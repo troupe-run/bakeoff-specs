@@ -317,6 +317,8 @@ class Config:
                 continue
             if site[0] == anc.source:
                 return None  # the ancestor already lives in the including file (e.g. an override mapping)
+            if any(isinstance(k, int) for k in p[j:]):
+                return None  # overrides can't address list items (lists replace wholesale): the step 1 rule
             if not site[0].startswith(REMOTE):
                 return p[:j], site
             # a remote file can't hold the override: the next local site up can (deep merge reaches down)
