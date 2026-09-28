@@ -24,9 +24,12 @@ def pytest_collection_modifyitems(config, items):
 def cli(request) -> Cli:
     # `--step` only selects which tests run (pytest_collection_modifyitems above); it does not by
     # itself change how the arm behaves. For the reference implementation, behaviour is gated by
-    # the TROUPE_REF_STEP env var (troupe_ref.step.STEP, default 7). Propagate --step into it here
-    # so `uv run pytest tests/hidden --step N -q` actually exercises the arm as step N, not step 7.
-    os.environ["TROUPE_REF_STEP"] = str(request.config.getoption("--step"))
+    # the TROUPE_REF_STEP env var (troupe_ref.step.STEP, default 7). Default it from --step here so
+    # `uv run pytest tests/hidden --step N -q` exercises the arm as step N, not step 7 — but only a
+    # default: setdefault, not assignment, so an explicitly-set TROUPE_REF_STEP always wins (e.g.
+    # Task 12's validator runs `TROUPE_REF_STEP=N-1 pytest --step N` to prove step N's new tests
+    # fail on step N-1's reference; an unconditional overwrite would silently defeat that check).
+    os.environ.setdefault("TROUPE_REF_STEP", str(request.config.getoption("--step")))
     prefix = request.config.getoption("--cmd-prefix")
     if prefix:
         return Cli(shlex.split(prefix))
