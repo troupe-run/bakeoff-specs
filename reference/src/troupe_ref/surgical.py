@@ -88,6 +88,72 @@ def indent_of_line(text: str, i: int) -> int:
     return k - ls
 
 
+# --------------------------------------------------------------------------- end-of-line comments
+
+
+def _scalar_spans(text: str) -> list[tuple[int, int]]:
+    """Source spans of every scalar (keys included), so a '#' inside a quoted scalar is not a comment."""
+    root = YAML().compose(text)
+    spans: list[tuple[int, int]] = []
+    seen: set[int] = set()
+
+    def walk(n):
+        if n is None or id(n) in seen:
+            return
+        seen.add(id(n))
+        if isinstance(n, ScalarNode):
+            spans.append((n.start_mark.index, n.end_mark.index))
+        elif isinstance(n, MappingNode):
+            for k, v in n.value:
+                walk(k)
+                walk(v)
+        elif isinstance(n, SequenceNode):
+            for v in n.value:
+                walk(v)
+
+    walk(root)
+    return spans
+
+
+def _comment_at(text: str, b: int, le: int) -> int | None:
+    """Position of the end-of-line comment's '#' in text[b:le], or None."""
+    spans = None
+    for q in range(b, le):
+        if text[q] == "#" and q > 0 and text[q - 1] in " \t":
+            if spans is None:
+                spans = _scalar_spans(text)
+            if not any(s <= q < e for s, e in spans):
+                return q
+    return None
+
+
+def _eol_tail(text: str, b: int, new_end_col: int, q: int | None = -1) -> str:
+    """The rest of the line from `b` (text[b:line_end]) as it must read once the content before `b`
+    has been replaced by content ending at column `new_end_col`: an end-of-line comment returns to
+    its previous column, or sits one space after the content if the content reaches that column.
+    Whatever lies between `b` and the comment's whitespace (e.g. a flow collection's `}`) is kept.
+    `q`: the comment's '#' if the caller already knows it (None: no comment); -1: find it."""
+    le = line_end(text, b)
+    if q == -1:
+        q = _comment_at(text, b, le)
+    if q is None:
+        return text[b:le]
+    ws = q
+    while ws > b and text[ws - 1] in " \t":
+        ws -= 1
+    between = text[b:ws]
+    end = new_end_col + len(between)
+    return between + " " * max(1, col(text, q) - end) + text[q:le]
+
+
+def _header_comment(text: str, a: int, rest_start: int) -> int | None:
+    """'#' of the comment in `text[rest_start:line_end]` when that stretch is only whitespace + comment
+    (a block scalar header's tail, or a key line whose value is a block collection)."""
+    le = line_end(text, rest_start)
+    m = re.match(r"[ \t]+#", text[rest_start:le])
+    return rest_start + m.end() - 1 if m else None
+
+
 # --------------------------------------------------------------------------- index
 
 
@@ -251,6 +317,24 @@ def _folded_source_lines(value: str) -> list[str] | None:
         if piece:
             out.append(piece)
     return out
+
+
+def _wrap(text: str, width: int) -> list[str]:
+    """Greedy word wrap at `width` columns; a word wider than that takes its own line. Breaks only at a
+    single space between two non-space characters, so folding the lines back gives `text` exactly."""
+    words = re.split(r"(?<=\S) (?=\S)", text)
+    lines: list[str] = []
+    cur = None
+    for w in words:
+        if cur is None:
+            cur = w
+        elif len(cur) + 1 + len(w) <= width:
+            cur += " " + w
+        else:
+            lines.append(cur)
+            cur = w
+    lines.append(cur if cur is not None else "")
+    return lines
 
 
 def _folded_paragraph_groups(src_lines: list[str]) -> list[list[str]]:
@@ -474,31 +558,36 @@ def _replace(text, ref, value, old_data, path, eff) -> str:
         content_src = old_src_lines[: len(old_vals)] if len(old_src_lines) >= len(old_vals) else None
         new_src = _reuse(old_vals, content_src, new_vals, lambda s: ind + s if s else "")
     else:
-        new_pieces = _folded_source_lines(value)
-        if new_pieces is None:
-            # more-indented lines: re-emit THIS value as a literal block (style change confined to it)
-            kind = "|"
-            new_src = [ind + ln if ln else "" for ln in _literal_source_lines(value)] + [""] * extra
-            new_header = kind + (ind1 or "") + chomp + (ind2 or "") + header_rest
-            return text[:a] + new_header + nl + nl.join(new_src) + nl + text[content_end:]
+        if _folded_source_lines(value) is None:
+            raise RejectedSet("a folded (>) value cannot hold a more-indented line")
         old_groups = _folded_paragraph_groups(old_src_lines)
         old_pars = [" ".join(l.strip() for l in g) for g in old_groups]
         new_pars = value.rstrip("\n").split("\n")
-        # reuse the original (possibly wrapped) source lines of unchanged paragraphs
+
+        def width_of(g):
+            return max((len(l.strip()) for l in g), default=0)
+
+        # unchanged paragraphs reuse their source lines; a changed paragraph is re-wrapped at the width
+        # of the paragraph it replaces (the widest old content line when it replaces none)
+        fallback = max((width_of(g) for g in old_groups), default=0)
         new_src = []
         sm = difflib.SequenceMatcher(a=old_pars, b=new_pars, autojunk=False)
         chunks: list[list[str] | None] = [None] * len(new_pars)
+        widths = [fallback] * len(new_pars)
         for op, i1, i2, j1, j2 in sm.get_opcodes():
             if op == "equal":
                 for off in range(i2 - i1):
                     chunks[j1 + off] = old_groups[i1 + off]
+            elif op == "replace":
+                for off in range(min(i2 - i1, j2 - j1)):
+                    widths[j1 + off] = width_of(old_groups[i1 + off]) or fallback
         for j, p in enumerate(new_pars):
             if j > 0:
                 new_src.append("")
             if chunks[j] is not None:
                 new_src.extend(chunks[j])
             elif p:
-                new_src.append(ind + p)
+                new_src.extend(ind + ln for ln in _wrap(p, widths[j]))
     new_src += [""] * extra
     new_header = kind + (ind1 or "") + chomp + (ind2 or "") + header_rest
     out_body = nl.join(new_src) + nl
