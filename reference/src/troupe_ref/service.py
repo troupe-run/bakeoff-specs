@@ -7,9 +7,11 @@ sees it. No echo-suppression flags, no "ignore next event for file X".
 """
 
 from __future__ import annotations
+import contextlib
 from pathlib import Path
 from typing import Any
 from .loader import load
+from .lock import theatre_lock
 from .step import STEP
 from .store import ConfigStore
 
@@ -30,22 +32,46 @@ class Service:
         self.theatre = theatre
         self.store = ConfigStore(theatre)
         self.cli_lineage = lineage_for_cli or {}
+        self._lock_depth = 0
+
+    @contextlib.contextmanager
+    def _locked(self):
+        """Re-entrant within this Service instance/process: a second nested acquisition (e.g.
+        `set`'s own call to `reconcile`) doesn't take the OS lock again — a fresh `open()` on the
+        lock file would get a distinct open file description and flock() would deadlock against
+        the outer hold. Tracks depth so only the outermost call actually takes/releases the lock."""
+        if self._lock_depth:
+            self._lock_depth += 1
+            try:
+                yield
+            finally:
+                self._lock_depth -= 1
+        else:
+            with theatre_lock(self.theatre):
+                self._lock_depth = 1
+                try:
+                    yield
+                finally:
+                    self._lock_depth = 0
 
     def ensure_imported(self) -> None:
-        if not self.store.exists() or not self.store.history(None):
-            flat = load(self.theatre).flat()
-            self.store.record_many([("import", k, None, v) for k, v in flat.items()], self._lineage("import"))
+        with self._locked():
+            if not self.store.exists() or not self.store.history(None):
+                flat = load(self.theatre).flat()
+                self.store.record_many([("import", k, None, v) for k, v in flat.items()], self._lineage("import"))
 
     def reconcile(self, via: str) -> int:
-        changes = diff(self.store.values(), load(self.theatre).flat())
-        if changes:
-            self.store.record_many(changes, self._lineage(via))
-        return len(changes)
+        with self._locked():
+            changes = diff(self.store.values(), load(self.theatre).flat())
+            if changes:
+                self.store.record_many(changes, self._lineage(via))
+            return len(changes)
 
     def set(self, path: str, value: Any, **opts) -> int:
-        cfg = load(self.theatre)
-        cfg.set(path, value, **opts)       # raises before writing if refused
-        return self.reconcile("cli")
+        with self._locked():                # held across write-back AND its own reconcile
+            cfg = load(self.theatre)
+            cfg.set(path, value, **opts)     # raises before writing if refused
+            return self.reconcile("cli")
 
     def _lineage(self, via: str) -> dict:
         return {}                          # Task 8 fills this in (step 4)

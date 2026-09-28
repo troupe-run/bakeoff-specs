@@ -1,10 +1,11 @@
 """Reference implementation CLI. Exit codes per scenario/contract.md."""
 from __future__ import annotations
-import argparse, json, sys
+import argparse, json, signal, sys, threading
 from pathlib import Path
 
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
+from watchfiles import watch as fs_watch
 
 from .config import ConfigError
 from .loader import LoadError, load
@@ -18,7 +19,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="troupe")
     top = p.add_subparsers(dest="area", required=True)
     config = top.add_parser("config").add_subparsers(dest="sub", required=True)
-    for name in ("show", "set", "history"):
+    names = ("show", "set", "history")
+    if STEP >= 2:
+        names = (*names, "watch")
+    for name in names:
         sp = config.add_parser(name)
         sp.add_argument("--theatre", default=".")
         sp.add_argument("args", nargs="*")
@@ -85,7 +89,30 @@ def cmd_history(svc, args) -> tuple[int, str]:
     rows = svc.store.history(args[0] if args else None)
     return EXIT_OK, "".join(json.dumps(r) + "\n" for r in rows)
 
-COMMANDS = {"show": cmd_show, "set": cmd_set, "history": cmd_history}
+def _is_relevant(path: str) -> bool:
+    # Ignore the state dir (the SQLite db + its -wal/-shm/-journal siblings and the lock file
+    # live there — a watcher that reconciled on its own store writes would loop forever) and the
+    # atomic-write temp files `_atomic_write` (config.py) creates via
+    # `tempfile.mkstemp(prefix=".troupe-tmp-")`, e.g. ".troupe-tmp-8f3a2b1c" — a fixed suffix
+    # check would never match since mkstemp appends random characters after the prefix.
+    return "/state/" not in path and not Path(path).name.startswith(".troupe-tmp-")
+
+def cmd_watch(svc, args) -> tuple[int, str]:
+    stop = threading.Event()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, lambda *_: stop.set())
+    troupe_dir = svc.theatre / ".troupe"
+    print(f"watching {svc.theatre}", flush=True)
+    for changes in fs_watch(troupe_dir, stop_event=stop, debounce=100, step=20, rust_timeout=200,
+                            yield_on_timeout=True):
+        if any(_is_relevant(p) for _, p in changes):
+            try:
+                svc.reconcile("file")
+            except Exception as e:           # a half-saved file: report and keep watching
+                print(f"warning: {e}", file=sys.stderr, flush=True)
+    return EXIT_OK, ""
+
+COMMANDS = {"show": cmd_show, "set": cmd_set, "history": cmd_history, "watch": cmd_watch}
 
 # Per-command argument-count rules, as a function of STEP (some commands' arity changes across
 # steps, e.g. `show`'s PATH becomes optional at STEP >= 3 — Task 7). Keyed by subcommand name so
@@ -96,6 +123,7 @@ ARITY = {
     "show": lambda step: (0, 1) if step >= 3 else (1, 1),
     "set": lambda step: (2, 2),
     "history": lambda step: (0, 1),
+    "watch": lambda step: (0, 0),
 }
 
 def _arity_desc(lo: int, hi: int) -> str:
