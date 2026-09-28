@@ -16,6 +16,10 @@ def pytest_collection_modifyitems(config, items):
         if m is None:
             raise pytest.UsageError(f"{item.nodeid}: every hidden test needs @pytest.mark.steps(first, last)")
         first, last = m.args[0], (m.args[1] if len(m.args) > 1 else 7)
+        only = config.getoption("--first-step-only")
+        if only is not None and first != only:
+            drop.append(item)
+            continue
         (keep if first <= step <= last else drop).append(item)
     config.hook.pytest_deselected(items=drop)
     items[:] = keep

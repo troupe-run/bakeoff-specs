@@ -1,0 +1,9 @@
+# harness/negative_allowlist.txt — tests allowed to pass on the previous step's reference.
+# Each entry must name the failing test in the same step that pins the behaviour.
+test_formatting_and_comment_only_edits_record_nothing   # paired with test_edit_while_idle_is_picked_up_by_the_next_command
+test_history_does_not_reconcile                         # paired with test_watch_picks_up_an_edit_to_an_included_file
+test_show_on_a_scalar_still_prints_the_value            # paired with test_show_on_a_section_prints_merged_yaml
+test_existing_value_not_overridden_still_changes_in_its_own_file  # paired with test_new_key_under_include_becomes_override_in_including_file
+test_show_unknown_path_exits_5                          # paired with test_get_on_a_section_exits_5_and_points_at_show
+test_setting_the_anchor_changes_every_alias             # paired with test_setting_through_an_alias_is_refused_and_suggests_expand
+test_literal_tag_is_literal_and_kept_on_set              # paired with test_url_value_set_on_untyped_field_is_written_as_literal

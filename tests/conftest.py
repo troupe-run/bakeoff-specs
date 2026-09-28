@@ -6,6 +6,8 @@ def pytest_addoption(parser):
     parser.addoption("--impl", default=str(REPO / "reference"), help="arm repo root (uv project)")
     parser.addoption("--step", type=int, default=7, help="scenario step whose suite to run (1-7)")
     parser.addoption("--cmd-prefix", default=None, help='overrides the command, e.g. "docker exec arm uv run troupe"')
+    parser.addoption("--first-step-only", type=int, default=None,
+                     help="keep only tests whose first valid step is this one")
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "steps(first, last=7): scenario steps this test is valid for")
