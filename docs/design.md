@@ -35,16 +35,16 @@ Research and citations: [`research/CANDIDATES.md`](../research/CANDIDATES.md) (2
 | speckitty | spec-kitty/spec-kitty | 3.2.7 (stable, not 4.0 RC) | beads |
 | superpowers | obra/superpowers | v6.4.2 | GitHub Issues (baseline) |
 | ccsdd | gotalab/cc-sdd | v3.1.0 | GitHub Issues (baseline) |
-| gsd | open-gsd/gsd-core (fork) | v1.15.0 | beads |
 | control | plain Claude Code, no methodology | — | GitHub Issues (baseline) |
 
-- **GSD** is the community fork only; the original `gsd-build/get-shit-done` is archived and described by the
-  fork as compromised or abandoned. Its arm runs inside a container sandbox.
+- **GSD dropped (owner, 2026-09-28).** The original `gsd-build/get-shit-done` is archived and described by
+  its community fork as compromised or abandoned. The fork is young, and GSD's change model (requirements
+  rebuilt per milestone) is weak on the axis that matters most here, so it does not justify the supply-chain risk.
 - **Control** tells us whether a methodology adds anything over Claude Code on its own.
 - **Tracking** uses what each tool ships with; tools that ship none get GitHub Issues as a common baseline.
   Tracker quality is recorded but scored separately, so a built-in board does not earn double credit.
   A dedicated tracker bake-off (`bakeoff-trackers-*`) is parked until this one concludes.
-- **Excluded:** Kiro (not drivable from Claude Code), Tessl spec tile (too thin and stale).
+- **Excluded:** GSD (above), Kiro (not drivable from Claude Code), Tessl spec tile (too thin and stale).
 
 Versions are pinned at setup and recorded; an upgrade mid-bake-off is not allowed.
 
@@ -111,7 +111,7 @@ or harness code. Pushed public to GitHub when complete.
 - `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`;
 - the same pinned Claude Code version and the same model for every arm, recorded in the run record;
 - tool telemetry disabled where the tool supports it (OpenSpec sends telemetry by default);
-- GSD's arm, at minimum, inside a container sandbox (spike B informs how).
+- whether every arm runs in a container, for an identical environment, is decided by spike B's findings.
 
 **Setup checklist per arm** (`checklists/<arm>.md`), derived from the tool's own docs in the research file,
 e.g. Spec Kit's constitution step, BMAD's `bmad setup`, beads initialisation. Each item is verified by a
@@ -166,11 +166,12 @@ All public.
 
 ## 11. Open items
 
-1. **GitHub org.** GitHub issue types and issue fields work only in organisation repos, so arms using GitHub
-   Issues need an org (hps-gd, or a troupe-run org). Needed before the first arm's step 6.
-2. **Spike B** (Claude Code in Docker) is still running; it decides how GSD's arm is sandboxed and whether all
-   arms should run in containers for uniformity.
-3. **Step 1 surgical bar** depends on spike A's corpus follow-up (block scalars, flow collections, appends);
-   if some cases cannot be made byte-surgical, step 1's contract states which, so every arm is held to the
-   same, achievable bar.
-4. **Model and version pin:** which model all arms use.
+1. ~~GitHub org~~ — decided: public repos under `troupe-run` (issue types Task/Bug/Feature are enabled there).
+2. **Containers for every arm?** Decided on spike B's findings (Claude Code in Docker, including sign-in).
+3. **Step 1 surgical-write judgement calls** (folded-text wrapping, style of new keys, etc.) to be settled in
+   the step 1 contract.
+
+Decided 2026-09-28: step 1 is held to the **byte-surgical** bar spike A achieved (only the changed value's bytes
+differ), with files containing a tab before an end-of-line comment and multi-document files out of contract.
+Every arm uses **Claude Opus 5.5** (`claude-opus-5-5`) and Claude Code **2.1.281**; a re-run of the top two arms
+and the control on a second model may follow once there is a winner.
