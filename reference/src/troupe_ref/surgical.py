@@ -708,13 +708,17 @@ def _add_into(text, parent, pnode, key, value, nl) -> str:
     if isinstance(pnode, SequenceNode):
         if not (isinstance(key, int) and key == len(pnode.value)):
             raise SpliceError("can only append at index len(list)")
+        vstyle = _quote_style(pnode.value[-1]) if pnode.value and isinstance(value, str) else None
         if flow:
-            r = render_inline(value, None, True)
+            r = render_inline(value, vstyle, True)
+            if r is None:
+                raise SpliceError("cannot render flow item")
             if pnode.value:
                 e = pnode.value[-1].end_mark.index
-                return text[:e] + ", " + r + text[e:]
-            e = pnode.start_mark.index + 1
-            return text[:e] + r + text[e:]
+                r = ", " + r
+            else:
+                e = pnode.start_mark.index + 1
+            return text[:e] + r + _eol_tail(text, e, col(text, e) + len(r)) + text[line_end(text, e):]
         first = pnode.value[0]
         ls = line_start(text, first.start_mark.index)
         dash = text[ls:first.start_mark.index].rfind("-")
@@ -722,30 +726,65 @@ def _add_into(text, parent, pnode, key, value, nl) -> str:
             blines = render_block_lines(value, nl)
             lines = [" " * dash + "- " + blines[0]] + [" " * (dash + 2) + l for l in blines[1:]]
         else:
-            r = render_inline(value, _sibling_style(pnode), False)
+            r = render_inline(value, vstyle, False)
+            if r is None:
+                raise SpliceError("cannot render single-line")
             lines = [" " * dash + "- " + r]
-        return _insert_lines(text, _last_line_end(text, pnode), lines, nl)
+        return _insert_lines(text, _insert_pos(text, pnode, dash), lines, nl)
 
     if not isinstance(pnode, MappingNode):
         raise SpliceError("parent is not a collection")
-    flow = bool(getattr(pnode, "flow_style", False))
+    # a new key (and a new string value) copies the preceding sibling's quoting style
+    kstyle = _quote_style(pnode.value[-1][0]) if pnode.value else None
+    vstyle = _quote_style(pnode.value[-1][1]) if pnode.value and isinstance(value, str) else None
+    rk = render_inline(key, kstyle, flow)
+    if rk is None:
+        raise SpliceError("cannot render key")
     if flow:
-        r = render_inline({key: value}, None, True)  # "{k: v}"
-        r = r[1:-1] if r and r.startswith("{") else r
+        rv = render_inline(value, vstyle, True)
+        if rv is None:
+            raise SpliceError("cannot render flow value")
+        r = f"{rk}: {rv}"
         if pnode.value:
             e = pnode.value[-1][1].end_mark.index
-            return text[:e] + ", " + r + text[e:]
-        e = pnode.start_mark.index + 1
-        return text[:e] + r + text[e:]
+            r = ", " + r
+        else:
+            e = pnode.start_mark.index + 1
+        return text[:e] + r + _eol_tail(text, e, col(text, e) + len(r)) + text[line_end(text, e):]
     kcol = col(text, pnode.value[0][0].start_mark.index)
     if isinstance(value, (dict, list)):
         blines = render_block_lines({key: value}, nl)
+        plain = render_inline(key, None, False)
+        if blines[0].startswith(plain + ":"):
+            blines[0] = rk + blines[0][len(plain):]
     else:
-        blines = [f"{render_inline(key, None, False)}: {render_inline(value, None, False)}"]
+        rv = render_inline(value, vstyle, False)
+        if rv is None:
+            raise SpliceError("cannot render single-line")
+        blines = [f"{rk}: {rv}"]
     lines = [" " * kcol + l for l in blines]
-    return _insert_lines(text, _last_line_end(text, pnode), lines, nl)
+    return _insert_lines(text, _insert_pos(text, pnode, kcol), lines, nl)
 
 
-def _sibling_style(seq):
-    styles = {getattr(v, "style", None) for v in seq.value if isinstance(v, ScalarNode)}
-    return styles.pop() if len(styles) == 1 else None
+def _quote_style(node):
+    """A scalar node's quoting style ("'" or '"'), else None (plain, block, or a collection)."""
+    if isinstance(node, ScalarNode) and node.style in ("'", '"'):
+        return node.style
+    return None
+
+
+def _insert_pos(text, coll, entry_col) -> int:
+    """Where a new entry of a block collection goes: after its last entry AND any comment-only lines
+    that follow at an indentation >= the entries' (blank lines between them included), up to the next
+    less-indented non-blank line."""
+    best = i = _last_line_end(text, coll)
+    while i < len(text):
+        line = text[i:line_end(text, i)]
+        body = line.lstrip(" ")
+        if body.strip() == "":
+            i = after_eol(text, i)
+            continue
+        if not (body.startswith("#") and len(line) - len(body) >= entry_col):
+            break
+        best = i = after_eol(text, i)
+    return best
