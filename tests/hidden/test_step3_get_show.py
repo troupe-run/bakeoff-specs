@@ -1,5 +1,5 @@
 import pytest
-import yaml
+from . import yaml12
 from .theatre import build
 
 CFG = ".troupe/troupe.yml"
@@ -37,7 +37,7 @@ def test_show_on_a_scalar_still_prints_the_value(cli, tmp_theatre):
 def test_show_on_a_section_prints_merged_yaml(cli, tmp_theatre):
     build(tmp_theatre, FILES)
     r = cli("show", "agents.coder", theatre=tmp_theatre)
-    assert r.code == 0 and yaml.safe_load(r.out) == MERGED["agents"]["coder"]
+    assert r.code == 0 and yaml12.load(r.out) == MERGED["agents"]["coder"]
 
 @pytest.mark.steps(3)
 def test_show_prints_text_includes_as_literal_blocks(cli, tmp_theatre):
@@ -48,13 +48,13 @@ def test_show_prints_text_includes_as_literal_blocks(cli, tmp_theatre):
 @pytest.mark.steps(3)
 def test_show_without_a_path_prints_everything(cli, tmp_theatre):
     build(tmp_theatre, FILES)
-    assert yaml.safe_load(cli("show", theatre=tmp_theatre).out) == MERGED
+    assert yaml12.load(cli("show", theatre=tmp_theatre).out) == MERGED
 
 @pytest.mark.steps(3)
 def test_show_sources_names_the_file_of_every_scalar(cli, tmp_theatre):
     build(tmp_theatre, FILES)
     r = cli("show", "--sources", theatre=tmp_theatre)
-    assert r.code == 0 and yaml.safe_load(r.out) == MERGED     # comments do not change the data
+    assert r.code == 0 and yaml12.load(r.out) == MERGED     # comments do not change the data
     lines = r.out.splitlines()
     def line_for(prefix):
         return next(l for l in lines if l.strip().startswith(prefix))
@@ -67,3 +67,23 @@ def test_show_sources_names_the_file_of_every_scalar(cli, tmp_theatre):
 def test_show_unknown_path_exits_5(cli, tmp_theatre):
     build(tmp_theatre, FILES)
     assert cli("show", "agents.nobody", theatre=tmp_theatre).code == 5
+
+# Regression fixture for fix round 1: a single-line string past ruamel's default ~80-column wrap
+# width (a plain YAML scalar that long silently folds onto continuation lines unless the dumper is
+# told not to wrap), an empty list, an empty mapping, and the string "yes" (a YAML 1.1 boolean but
+# a plain YAML 1.2 string — the contract is 1.2, so `yaml12.load`, not `yaml.safe_load`, must be
+# used to judge it).
+LONG = " ".join(["word"] * 40)  # 199 chars
+EDGE_FILES = {CFG: (
+    f"long: {LONG}\n"
+    "empty_list: []\n"
+    "empty_map: {}\n"
+    "flag: yes\n"
+)}
+EDGE_MERGED = {"long": LONG, "empty_list": [], "empty_map": {}, "flag": "yes"}
+
+@pytest.mark.steps(3)
+def test_show_handles_long_scalars_empty_collections_and_yaml12_strings(cli, tmp_theatre):
+    build(tmp_theatre, EDGE_FILES)
+    assert yaml12.load(cli("show", theatre=tmp_theatre).out) == EDGE_MERGED
+    assert yaml12.load(cli("show", "--sources", theatre=tmp_theatre).out) == EDGE_MERGED

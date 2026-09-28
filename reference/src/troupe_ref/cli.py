@@ -167,10 +167,13 @@ def main(argv: list[str] | None = None) -> int:
         # before STEP 2, where reconcile-first isn't a feature yet (only the first-run import is).
         if STEP >= 2 and ns.sub != "history":
             svc.reconcile("file")
-        if ns.sub == "show":
-            code, out = cmd_show(svc, ns.args, sources=getattr(ns, "sources", False))
-        else:
-            code, out = COMMANDS[ns.sub](svc, ns.args)
+        # Pass every subparser option through as a keyword, generically: a command whose
+        # subparser adds flags beyond --theatre/args (e.g. `show --sources`, and later `set
+        # --reason`, `--in-include`, `--expand-alias`, `--include`) receives them without main()
+        # naming that command specially. A command with no extra options just gets **{}, which
+        # matches its existing (svc, args) signature.
+        opts = {k: v for k, v in vars(ns).items() if k not in ("area", "sub", "theatre", "args")}
+        code, out = COMMANDS[ns.sub](svc, ns.args, **opts)
     except LoadError as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_LOAD

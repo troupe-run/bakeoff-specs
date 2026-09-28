@@ -14,10 +14,18 @@ def _literalise(v):
         return LiteralScalarString(v)
     return v
 
+# Never wrap a scalar onto a continuation line. `render_yaml` backs `render_with_sources`'s
+# `scalar_text` (below), which takes only the first line of its output to attach a trailing
+# `# from <file>` comment — a wrapped plain scalar would silently lose everything past the first
+# line. A block collection's structure is unaffected by `width`, so this is safe for whole-value
+# `show` output too.
+NO_WRAP = 1_000_000
+
 def render_yaml(value) -> str:
     y = YAML()
     y.default_flow_style = False
     y.indent(mapping=2, sequence=4, offset=2)
+    y.width = NO_WRAP
     buf = io.StringIO()
     y.dump(_literalise(value), buf)
     return buf.getvalue()
@@ -36,8 +44,11 @@ def render_with_sources(cfg, path: tuple, theatre: Path) -> str:
             head = f"{pad}{k}:" if isinstance(node, dict) else f"{pad}-"
             cp = (*p, k)
             if isinstance(v, (dict, list)):
-                out.append(head)
-                emit(v, cp, indent + 2)
+                if not v:  # an empty collection has no lines of its own to hold a source comment;
+                    out.append(f"{head} {'{}' if isinstance(v, dict) else '[]'}")
+                else:
+                    out.append(head)
+                    emit(v, cp, indent + 2)
             elif isinstance(v, str) and "\n" in v:
                 out.append(f"{head} |  # from {rel(cp)}" if v.endswith("\n") else f"{head} |-  # from {rel(cp)}")
                 out.extend(f"{pad}  {line}" for line in v.splitlines())
