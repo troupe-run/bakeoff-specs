@@ -386,6 +386,75 @@ def surgical_set(text: str, path: tuple, value) -> str:
     return new_text
 
 
+INCLUDE_KEY = "$include"
+
+
+def convert_include_to_mapping(text: str, path: tuple) -> str:
+    """Scalar-form include -> mapping form, byte-surgically (contract, "Overrides", step 5):
+
+        coder: file:agents/coder.yaml  # c   ->   coder:  # c
+                                                    $include: file:agents/coder.yaml
+
+    Only the key line's value part is removed (the end-of-line comment keeps its bytes, including the
+    whitespace before `#`) and one `$include:` line is inserted directly below at the site's indentation
+    + 2; the include scalar's own bytes (quotes included) move there verbatim. In a flow collection the
+    scalar is wrapped in place: `{$include: file:x}`. Verified like any other splice."""
+    refs = index(text)
+    ref = lookup(refs, path)
+    if ref is None or not isinstance(ref.node, ScalarNode):
+        raise SpliceError(f"no include scalar at {path}")
+    if ref.aliased:
+        raise AliasTargetError(f"{'.'.join(map(str, path))!r} is reached through a YAML alias")
+    node, nl = ref.node, newline_of(text)
+    a, b = node.start_mark.index, node.end_mark.index
+    raw = text[a:b]
+    if PROPS_RE.match(text, a, b) or "\n" in raw:
+        raise SpliceError("include scalar carries an anchor/tag or spans lines; convert it by hand")
+    if ref.flow:
+        wrapped = "{" + INCLUDE_KEY + ": " + raw + "}"
+        new_text = text[:a] + wrapped + _eol_tail(text, b, col(text, a) + len(wrapped)) + text[line_end(text, b):]
+    else:
+        if ref.key is not None:
+            cut = text.index(":", ref.key.end_mark.index) + 1  # keep `key:`
+        else:
+            cut = text.rindex("-", line_start(text, a), a) + 1  # keep `-`
+        if text[cut:a].strip(" \t"):
+            raise SpliceError("unexpected content between the key and the include scalar")
+        ind = " " * _parent_indent(text, ref)
+        eol = after_eol(text, b)
+        line_break = text[line_end(text, b):eol]
+        head = text[:cut] + text[b:line_end(text, b)]
+        new_line = ind + INCLUDE_KEY + ": " + raw
+        if line_break:
+            new_text = head + line_break + new_line + nl + text[eol:]
+        else:  # last line, no trailing newline: keep it that way
+            new_text = head + nl + new_line
+    _verify_conversion(text, new_text, path)
+    return new_text
+
+
+def _verify_conversion(old_text, new_text, path):
+    """The data equals the old data with the include string at `path` wrapped as {$include: string},
+    and every source node outside `path` is identical (kind/tag/style/raw value)."""
+    try:
+        new_data = load_data(new_text)
+    except Exception as e:
+        raise SpliceError(f"conversion produced invalid YAML: {e}") from e
+    want = load_data(old_text)
+    set_in(want, path, {INCLUDE_KEY: _old_value(want, path)})
+    if new_data != want:
+        raise SpliceError(f"conversion verification failed: data is not the old data with {path} wrapped")
+    cp = tuple(str(x) for x in path)
+    a = {k: v for k, v in source_map(old_text).items() if k[: len(cp)] != cp}
+    b = {k: v for k, v in source_map(new_text).items() if k[: len(cp)] != cp}
+    if a != b:
+        raise SpliceError("conversion verification failed: collateral change outside the include site")
+    inc = source_map(new_text).get((*cp, INCLUDE_KEY))
+    old = source_map(old_text).get(cp)
+    if inc is None or old is None or inc != old:
+        raise SpliceError("conversion verification failed: the include scalar did not move verbatim")
+
+
 def source_map(text: str) -> dict:
     """Source-level fingerprint of every node location: kind, tag, style, raw scalar text.
     Alias re-visits are dropped (their anchor is compared); merge-key contents are not walked."""
