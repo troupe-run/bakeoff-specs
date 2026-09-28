@@ -1909,12 +1909,48 @@ def test_set_while_watching_is_attributed_to_the_cli_not_the_file(cli, tmp_theat
             cli("set", "a", str(i), theatre=tmp_theatre, env={"TROUPE_ACTOR": "agent:a1"})
         sets = [e for e in events(cli, tmp_theatre) if e["op"] == "set"]
         assert [(e["new"], e["via"], e["actor"]["id"]) for e in sets] == [(i, "cli", "a1") for i in range(2, 7)]
+
+@pytest.mark.steps(4)
+def test_reason_is_recorded_when_given_and_null_otherwise(cli, tmp_theatre):
+    build(tmp_theatre, {CFG: "a: 1
+b: 1
+"})
+    assert cli("set", "--reason", "tuning for cost", "a", "2", theatre=tmp_theatre).code == 0
+    cli("set", "b", "2", theatre=tmp_theatre)
+    by_path = {e["path"]: e for e in events(cli, tmp_theatre) if e["op"] == "set"}
+    assert (by_path["a"]["reason"], by_path["b"]["reason"]) == ("tuning for cost", None)
+
+@pytest.mark.steps(4)
+def test_one_command_shares_one_change_id_and_commands_differ(cli, tmp_theatre):
+    build(tmp_theatre, {CFG: "m: flat
+z: 1
+"})
+    cli("set", "m", "{x: 1, y: 2}", theatre=tmp_theatre)     # one command, three events
+    cli("set", "z", "2", theatre=tmp_theatre)
+    evs = [e for e in events(cli, tmp_theatre) if e["op"] != "import"]
+    first = {e["change"] for e in evs if e["path"].startswith("m")}
+    second = {e["change"] for e in evs if e["path"] == "z"}
+    assert len(first) == 1 and len(second) == 1 and first != second
+    assert all(isinstance(c, str) and c for c in first | second)
+
+@pytest.mark.steps(4)
+def test_import_shares_one_change_id_and_a_file_reconcile_gets_its_own(cli, tmp_theatre):
+    build(tmp_theatre, {CFG: "a: 1
+b: 1
+"})
+    imported = {e["change"] for e in events(cli, tmp_theatre)}
+    build(tmp_theatre, {CFG: "a: 2
+b: 2
+"})
+    cli("show", "a", theatre=tmp_theatre)
+    edited = {e["change"] for e in events(cli, tmp_theatre) if e["op"] == "set"}
+    assert len(imported) == 1 and len(edited) == 1 and imported != edited
 ```
 
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `uv run pytest tests/hidden/test_step4_lineage.py --step 4 -q`
-Expected: FAIL (`KeyError: 'actor'`).
+Expected: FAIL (`KeyError: 'actor'`; `--reason` unknown).
 
 - [ ] **Step 3: Implement lineage in the reference**
 
@@ -1949,8 +1985,14 @@ from datetime import datetime, timezone
             return {}
         actor = self.actor if via == "cli" else {"kind": "unknown", "id": None}
         return {"actor": actor, "via": via,
-                "at": datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")}
+                "at": datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+                "reason": self.reason if via == "cli" else None,
+                "change": str(uuid.uuid4())}     # _lineage is called once per record_many, i.e. once per command
 ```
+
+Add `import uuid`, a `reason: str | None = None` constructor argument stored as `self.reason`, and
+`--reason TEXT` on `set` (STEP ≥ 4) passed through to `Service`. `record_many` must receive one lineage dict
+per call (it already does), so every event of one command carries the same `change`.
 
 - [ ] **Step 4: Run the suites for steps 1–4** (step 2's and 4's watcher tests five times)
 

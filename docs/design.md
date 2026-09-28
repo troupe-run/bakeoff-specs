@@ -88,8 +88,10 @@ every earlier step's still-valid tests, so regressions count.
 **Product-owner agent.** Answers every clarifying question and approval request from a fixed brief
 (`scenario/po-brief.md`) that the owner approves once before any run. Questions the brief does not cover are
 **escalated to the owner**, logged, and the answer is added to the brief so later arms receive the same answer.
-Because the brief grows, arms that ran earlier are re-checked against any answer added later that would have
-changed what they were told; the log records which arm first raised each question.
+**Two passes (owner, 2026-09-28).** Pass 1 runs every arm with the initial brief; every escalated answer is
+added to the brief, recording which arm first raised it. Pass 2 resets every arm repo to empty and runs every
+arm again from the complete brief, so all arms work from identical information. Pass 2 is the scored run;
+pass 1 is kept as evidence (notably of how each method handles ambiguity) and reported alongside.
 
 Proposed brief defaults to confirm: `config get` on a subtree fails with an error pointing at `config show`;
 `config show` renders the merged view (includes resolved), with `--sources` showing which file each value

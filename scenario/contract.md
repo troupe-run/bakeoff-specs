@@ -107,6 +107,9 @@ Every `history` event also has:
 - `"actor"`: `{"kind": "human" | "agent" | "unknown", "id": <string or null>}`
 - `"via"`: `"import"` | `"cli"` | `"file"`
 - `"at"`: RFC 3339 UTC timestamp ending in `Z`
+- `"reason"`: the text given with `set --reason TEXT`, else `null`
+- `"change"`: a string identifying the command (or file reconcile, or import) that produced the event; every
+  event one command produces has the same `change`, and no two commands share one
 
 A CLI command's actor comes from the `TROUPE_ACTOR` environment variable, `human:<id>` or `agent:<id>`
 (anything else → exit 2); unset → `{"kind": "human", "id": <login name>}`. Imports and file-originated events
