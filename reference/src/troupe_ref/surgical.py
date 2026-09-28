@@ -420,7 +420,8 @@ def convert_include_to_mapping(text: str, path: tuple) -> str:
             cut = text.rindex("-", line_start(text, a), a) + 1  # keep `-`
         if text[cut:a].strip(" \t"):
             raise SpliceError("unexpected content between the key and the include scalar")
-        ind = " " * _parent_indent(text, ref)
+        step = file_indent(text)
+        ind = " " * ((col(text, ref.key.start_mark.index) if ref.key is not None else cut - 1 - line_start(text, cut)) + step)
         eol = after_eol(text, b)
         line_break = text[line_end(text, b):eol]
         head = text[:cut] + text[b:line_end(text, b)]
@@ -431,6 +432,19 @@ def convert_include_to_mapping(text: str, path: tuple) -> str:
             new_text = head + nl + new_line
     _verify_conversion(text, new_text, path)
     return new_text
+
+
+def file_indent(text: str) -> int:
+    """The file's block-mapping indentation: how far the first nested block mapping's keys sit past its
+    parent key (default 2)."""
+    for ref in index(text).values():
+        n = ref.node
+        if (ref.key is not None and isinstance(n, MappingNode) and n.value and not ref.flow
+                and not getattr(n, "flow_style", False)):
+            d = col(text, n.value[0][0].start_mark.index) - col(text, ref.key.start_mark.index)
+            if d > 0:
+                return d
+    return 2
 
 
 def _verify_conversion(old_text, new_text, path):

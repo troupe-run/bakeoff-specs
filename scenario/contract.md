@@ -125,7 +125,7 @@ have actor `{"kind": "unknown", "id": null}`.
   string. Its other keys are **overrides**: the value is the included content deep-merged with the overrides
   (mappings merge recursively; scalars and lists in the override replace).
 - A new key whose deepest existing ancestor comes from an included file is written as an override in the
-  *including* file. A scalar-form include is first converted to mapping form, keeping any end-of-line comment
+  *including* file. A scalar-form include is first converted to mapping form, indented at the file's indentation, keeping any end-of-line comment
   on the key's line:
   `coder: file:agents/coder.yaml  # c` → `coder:  # c` / `  $include: file:agents/coder.yaml` / `  temperature: 0.3`
 - `set --in-include PATH VALUE` writes a new key into the included file instead (the step 1 rule).
