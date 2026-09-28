@@ -197,6 +197,11 @@ class Config:
                 continue
             ln = node.lc.key(k)[0] + 1 if k in node.lc.data else None
             overrides[k] = self._child(v, source, (*inner, k), (*merged_path, k), subschema(schema, k), stack, ln)
+        if not overrides:
+            return base  # `{$include: ref}` alone is just the include (whatever its kind)
+        if self.provenance[merged_path].kind == "text":
+            raise ConfigError(f"{source}: {fmt_path(merged_path)!r} overrides keys of {ref!r}, which is not a "
+                              f"YAML include; overrides apply only to YAML includes")
         merged = deep_merge(base, overrides)
         # a list or scalar override REPLACES: drop provenance the replaced included content left behind
         n = len(merged_path)
@@ -304,6 +309,8 @@ class Config:
         anc = self.provenance[p[:i]]
         if anc.kind == "text":
             return None  # plan_set refuses: a text include has no keys
+        if not isinstance(self.get(fmt_path(p[:i])), dict) or any(isinstance(k, int) for k in p[i:]):
+            return None  # a list append (or anything under a list) is not a new key: the step 1 rule
         for j in range(i, -1, -1):
             site = self.include_sites.get(p[:j])
             if site is None:
