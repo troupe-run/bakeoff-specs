@@ -721,7 +721,7 @@ def _add_into(text, parent, pnode, key, value, nl) -> str:
             raise SpliceError("can only append at index len(list)")
         vstyle = _quote_style(pnode.value[-1]) if pnode.value and isinstance(value, str) else None
         if flow:
-            r = render_inline(value, vstyle, True)
+            r = _render_copying(value, vstyle, True)
             if r is None:
                 raise SpliceError("cannot render flow item")
             if pnode.value:
@@ -737,7 +737,7 @@ def _add_into(text, parent, pnode, key, value, nl) -> str:
             blines = render_block_lines(value, nl)
             lines = [" " * dash + "- " + blines[0]] + [" " * (dash + 2) + l for l in blines[1:]]
         else:
-            r = render_inline(value, vstyle, False)
+            r = _render_copying(value, vstyle, False)
             if r is None:
                 raise SpliceError("cannot render single-line")
             lines = [" " * dash + "- " + r]
@@ -748,11 +748,11 @@ def _add_into(text, parent, pnode, key, value, nl) -> str:
     # a new key (and a new string value) copies the preceding sibling's quoting style
     kstyle = _quote_style(pnode.value[-1][0]) if pnode.value else None
     vstyle = _quote_style(pnode.value[-1][1]) if pnode.value and isinstance(value, str) else None
-    rk = render_inline(key, kstyle, flow)
+    rk = _render_copying(key, kstyle, flow)
     if rk is None:
         raise SpliceError("cannot render key")
     if flow:
-        rv = render_inline(value, vstyle, True)
+        rv = _render_copying(value, vstyle, True)
         if rv is None:
             raise SpliceError("cannot render flow value")
         r = f"{rk}: {rv}"
@@ -769,12 +769,18 @@ def _add_into(text, parent, pnode, key, value, nl) -> str:
         if blines[0].startswith(plain + ":"):
             blines[0] = rk + blines[0][len(plain):]
     else:
-        rv = render_inline(value, vstyle, False)
+        rv = _render_copying(value, vstyle, False)
         if rv is None:
             raise SpliceError("cannot render single-line")
         blines = [f"{rk}: {rv}"]
     lines = [" " * kcol + l for l in blines]
     return _insert_lines(text, _insert_pos(text, pnode, kcol), lines, nl)
+
+
+def _render_copying(value, style, flow):
+    """Render in a sibling's quoting style if that style can represent the text on one line, else minimal."""
+    r = render_inline(value, style, flow)
+    return r if r is not None or style is None else render_inline(value, None, flow)
 
 
 def _quote_style(node):
