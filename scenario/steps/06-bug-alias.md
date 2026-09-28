@@ -1,5 +1,3 @@
-# Setting one agent's model changed another agent's model
-
 Our troupe.yml shares settings between agents with a YAML anchor:
 
     defaults: &d
@@ -16,6 +14,4 @@ Expected: changing `defaults.model` changes everyone (that's what the anchor is 
 `coder.settings.model` should not silently change anyone else — refuse, and let me explicitly ask for coder's
 copy to be expanded so I can override it.
 
-The CLI contract sections in force are listed below; the full contract is attached.
-
-Contract sections in force: General; Includes; set PATH VALUE; history [PATH]; Sync with files; get and show; Lineage; Overrides; Aliases (from step 6).
+Contract sections added: Aliases.

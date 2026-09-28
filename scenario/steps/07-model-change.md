@@ -6,6 +6,4 @@
   that must never be treated as includes; the schema marks those with `"format": "uri"`, and a `!literal` tag
   marks any other value that must be taken literally.
 
-The CLI contract sections in force are listed below; the full contract is attached.
-
-Contract sections in force: General; Includes; set PATH VALUE; history [PATH]; Sync with files; get and show; Lineage; Overrides; Aliases; Remote includes and schema (from step 7).
+Contract sections added: Remote includes and schema.

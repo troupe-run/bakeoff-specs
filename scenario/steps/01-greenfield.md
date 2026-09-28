@@ -14,6 +14,4 @@ which can be split across files with includes. Build the configuration subsystem
 
 Python 3.12+, managed with uv; the CLI must run as `uv run troupe config …` from the repository root.
 
-The CLI contract sections in force are listed below; the full contract is attached.
-
 Contract sections in force: General; Includes; show PATH (step 1 and 2); set PATH VALUE; history [PATH].

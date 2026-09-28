@@ -8,6 +8,4 @@ change where they live.
 ## CR-B: but let me put it in the shared file when I mean to
 Sometimes a new setting genuinely belongs in the shared file. Give `set` an explicit way to do that.
 
-The CLI contract sections in force are listed below; the full contract is attached.
-
-Contract sections in force: General; Includes; set PATH VALUE; history [PATH]; Sync with files; get and show; Lineage; Overrides (replaces rule 2 under "set PATH VALUE").
+Contract sections added: Overrides (replaces rule 2 under "set PATH VALUE").
