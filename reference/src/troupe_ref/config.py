@@ -16,8 +16,6 @@ from typing import Any
 
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq, TaggedScalar
-from ruamel.yaml.error import CommentMark
-from ruamel.yaml.tokens import CommentToken
 
 from .surgical import RejectedSet, SpliceError, surgical_set
 from ruamel.yaml.scalarstring import ScalarString
@@ -211,6 +209,7 @@ class Config:
                 i -= 1
             prov = self.provenance[p[:i]]
             rel = p[i:]
+            self._check_new_path(p, i)
             if prov.kind == "text":
                 raise ConfigError(f"cannot add key {path!r}: parent {fmt_path(p[:i])!r} is a text include ({prov.source})")
             mode = "add"
@@ -221,6 +220,40 @@ class Config:
                 f"Override it locally by replacing the include, or edit the remote source."
             )
         return prov, rel, mode
+
+    def _check_new_path(self, p: tuple, i: int) -> None:
+        """`p[:i]` exists and `p[i]` does not: `p[i]` must be a key of a mapping (or of a null, which
+        becomes a mapping), or exactly the length of a list (append). Raises LookupError otherwise."""
+        node = self.merged
+        for k in p[:i]:
+            node = node[k]
+        seg = p[i]
+        if isinstance(node, list):
+            if not isinstance(seg, int):
+                raise KeyError(f"{fmt_path(p[:i])!r} is a list; {seg!r} is not an index")
+            if seg > len(node):
+                raise IndexError(f"index {seg} is beyond the end of {fmt_path(p[:i])!r} "
+                                 f"(length {len(node)}; use {len(node)} to append)")
+        elif not isinstance(node, dict) and node is not None:
+            raise KeyError(f"{fmt_path(p[:i])!r} is a value, not a section")
+
+    def _write_yaml(self, source: str, edit, path: str) -> str:
+        """Surgically edit one local YAML file (compare-and-swap, verify by reload, roll back on failure)."""
+        if read_exact(source) != self.texts[source]:
+            raise ConcurrentEditError(f"{source} changed on disk since it was loaded; reload and retry")
+        try:
+            new_text = edit(self.texts[source])
+        except SpliceError as e:
+            raise ConfigError(f"cannot set {path!r} surgically ({e}); refusing to re-serialise {source}") from e
+        original = self.texts[source]
+        _atomic_write(source, new_text)
+        try:
+            self.reload()
+        except Exception:
+            _atomic_write(source, original)
+            self.reload()
+            raise
+        return source
 
     def _site_desc(self, p):
         """Name the include reference that lives in a LOCAL file, since that's what a user can change."""
@@ -242,9 +275,17 @@ class Config:
         A URL-shaped string is written as `!literal` unless the schema already declares the field a
         literal URI, or the caller explicitly asks for an include (`include=True`). Otherwise
         `set x https://...` would silently change meaning from "a value" to "fetch and embed this"."""
-        if (isinstance(value, str) and INCLUDE_RE.match(value) and not include
+        # `!literal` tagging (and http(s) strings being includes at all) are step-7 features.
+        if (STEP >= 7 and isinstance(value, str) and INCLUDE_RE.match(value) and not include
                 and not schema_says_literal_uri(self.schema_at(path))):
             value = TaggedScalar(value, style='"', tag=LITERAL_TAG)
+        p = dotted(path)
+        if p in self.include_sites and self.provenance[p].kind != "text":
+            if not _is_include_ref(value):
+                raise RejectedSet(f"the whole value comes from the include {self.provenance[p].via!r}; "
+                                  f"set a value inside it, or replace it with another include")
+            site_file, site_inner = self.include_sites[p]
+            return self._write_yaml(site_file, lambda text: surgical_set(text, site_inner, value), path)
         prov, rel, mode = self.plan_set(path, value)
         # compare-and-swap: refuse to clobber a hand edit made since we loaded this file
         if read_exact(prov.source) != self.texts[prov.source]:
@@ -293,8 +334,6 @@ class Config:
         node = doc
         for k in parent_inner:
             node = node[k]
-        if mode == "add" and isinstance(node, CommentedMap) and keys[0] not in node:
-            _steal_trailing_comment(node, keys[0])
         for k in keys[:-1]:
             node = node.setdefault(k, CommentedMap())
         last = keys[-1]
@@ -327,28 +366,10 @@ class Config:
         return {s for s in self.texts if not s.startswith(("http://", "https://"))}
 
 
-def _steal_trailing_comment(mapping: CommentedMap, new_key) -> None:
-    """ruamel attaches blank lines + standalone comments that FOLLOW a mapping's last entry to that
-    entry (possibly deep inside it). Appending a key would then land below a comment that really
-    introduces the *next* section. Move everything after the end-of-line comment onto the new key."""
-    if not mapping:
-        return
-    m, last = mapping, list(mapping)[-1]
-    while isinstance(m[last], CommentedMap) and m[last] and last not in m.ca.items:
-        m, last = m[last], list(m[last])[-1]
-    tok = m.ca.items.get(last, [None, None, None, None])[2] if last in m.ca.items else None
-    if tok is None or "\n" not in tok.value:
-        return
-    i = tok.value.index("\n")
-    eol, rest = tok.value[: i + 1], tok.value[i + 1 :]
-    if not rest:
-        return
-    if eol.strip():
-        tok.value = eol
-    else:
-        m.ca.items[last][2] = None
-    mapping[new_key] = None  # placeholder so ca entry has a home; caller overwrites value
-    mapping.ca.items[new_key] = [None, None, CommentToken("\n" + rest, CommentMark(0), None), None]
+def _is_include_ref(v) -> bool:
+    """An include reference, as this step reads them (http(s) only from step 7)."""
+    return (isinstance(v, str) and not isinstance(v, TaggedScalar) and bool(INCLUDE_RE.match(v))
+            and (STEP >= 7 or not v.startswith(REMOTE)))
 
 
 def _plain(v):

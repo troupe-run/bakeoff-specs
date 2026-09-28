@@ -3,8 +3,13 @@ from __future__ import annotations
 import argparse, sys
 from pathlib import Path
 
+from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
+
+from .config import ConfigError
 from .loader import LoadError, load
 from .step import STEP
+from .surgical import RejectedSet, SpliceError
 
 EXIT_OK, EXIT_USAGE, EXIT_REFUSED, EXIT_LOAD, EXIT_PATH = 0, 2, 3, 4, 5
 
@@ -49,7 +54,32 @@ def cmd_show(cfg, args) -> tuple[int, str]:
         raise PathError(f"{args[0]}: is a section, not a value")
     return EXIT_OK, print_scalar(value)
 
-COMMANDS = {"show": cmd_show}
+class Refused(Exception):
+    pass
+
+class UsageError(Exception):
+    pass
+
+def parse_value(text: str):
+    """The contract's VALUE rule: a single YAML 1.2 (core schema) flow node."""
+    y = YAML(typ="safe")  # YAML 1.2 core schema
+    return y.load(text)
+
+def cmd_set(cfg, args) -> tuple[int, str]:
+    path, raw = args[0], args[1]
+    try:
+        value = parse_value(raw)
+    except YAMLError as e:
+        raise UsageError(f"{path}: VALUE is not a YAML flow node: {e}") from e
+    try:
+        cfg.set(path, value)
+    except LookupError as e:  # IndexError: index beyond the list's length; KeyError: wrong kind of node
+        raise PathError(f"{path}: {e.args[0] if e.args else e}") from e
+    except (RejectedSet, SpliceError, ConfigError) as e:  # ReadOnlyIncludeError is a ConfigError
+        raise Refused(f"{path}: {e}") from e
+    return EXIT_OK, ""
+
+COMMANDS = {"show": cmd_show, "set": cmd_set}
 
 # Per-command argument-count rules, as a function of STEP (some commands' arity changes across
 # steps, e.g. `show`'s PATH becomes optional at STEP >= 3 — Task 7). Keyed by subcommand name so
@@ -58,6 +88,7 @@ COMMANDS = {"show": cmd_show}
 # rather than an IndexError/traceback from inside the command.
 ARITY = {
     "show": lambda step: (0, 1) if step >= 3 else (1, 1),
+    "set": lambda step: (2, 2),
 }
 
 def _arity_desc(lo: int, hi: int) -> str:
@@ -85,6 +116,12 @@ def main(argv: list[str] | None = None) -> int:
     except PathError as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_PATH
+    except Refused as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_REFUSED
+    except UsageError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_USAGE
     sys.stdout.write(out)
     return code
 
