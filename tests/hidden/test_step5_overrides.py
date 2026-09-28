@@ -84,6 +84,9 @@ def test_override_events_carry_lineage(cli, tmp_theatre):
     e = [e for e in events(cli, tmp_theatre) if e["op"] == "set"][-1]
     assert (e["path"], e["new"], e["via"], e["actor"]) == ("agents.coder.temperature", 0.3, "cli",
                                                            {"kind": "agent", "id": "po"})
+    assert read(tmp_theatre, CFG) == ("agents:\n  coder:  # the coder\n"
+                                     "    $include: file:agents/coder.yaml\n    temperature: 0.3\n")
+    assert read(tmp_theatre, CODER) == SHARED[CODER]
 
 @pytest.mark.steps(5)
 def test_appending_to_an_included_list_is_not_an_override(cli, tmp_theatre):

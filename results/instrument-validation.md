@@ -10,7 +10,7 @@
 - step 2 negative: 8 new tests, 2 pass at step 1 (allowlisted: 2; unexplained: none)
 - step 3 negative: 14 new tests, 2 pass at step 2 (allowlisted: 2; unexplained: none)
 - step 4 negative: 14 new tests, 0 pass at step 3 (allowlisted: 0; unexplained: none)
-- step 5 negative: 12 new tests, 4 pass at step 4 (allowlisted: 1; unexplained: ['tests.hidden.test_step5_overrides::test_override_events_carry_lineage', 'tests.hidden.test_step5_overrides::test_appending_to_an_included_list_is_not_an_override', 'tests.hidden.test_step5_overrides::test_new_key_inside_an_included_list_item_is_written_in_the_file_holding_the_list'])
+- step 5 negative: 12 new tests, 3 pass at step 4 (allowlisted: 3; unexplained: none)
 - step 6 negative: 5 new tests, 1 pass at step 5 (allowlisted: 1; unexplained: none)
 - step 7 negative: 10 new tests, 1 pass at step 6 (allowlisted: 1; unexplained: none)
 - watcher run 1/5: 0 not passing 
@@ -19,4 +19,4 @@
 - watcher run 4/5: 0 not passing 
 - watcher run 5/5: 0 not passing 
 
-**Result: FAIL**
+**Result: PASS**
