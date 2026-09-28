@@ -8,9 +8,12 @@ REPO = Path(__file__).resolve().parents[1]
 ALLOW = {l.split("#")[0].strip() for l in (REPO / "harness/negative_allowlist.txt").read_text().splitlines()
          if l.split("#")[0].strip()}
 
-def run(step: int, ref_step: int, extra: list[str], xml: Path) -> tuple[dict[str, str], int]:
+WATCHER_SUITES = ["tests/hidden/test_step2_sync.py", "tests/hidden/test_step4_lineage.py"]
+
+def run(step: int, ref_step: int, extra: list[str], xml: Path,
+        targets: list[str] = ["tests/hidden"]) -> tuple[dict[str, str], int]:
     env = {**os.environ, "TROUPE_REF_STEP": str(ref_step)}
-    proc = subprocess.run(["uv", "run", "pytest", "tests/hidden", "--step", str(step), "-q", "-p", "no:cacheprovider",
+    proc = subprocess.run(["uv", "run", "pytest", *targets, "--step", str(step), "-q", "-p", "no:cacheprovider",
                     f"--junitxml={xml}", *extra], cwd=REPO, env=env)
     out = {}
     try:
@@ -44,12 +47,12 @@ def main() -> int:
                      + (f" [FAIL: pytest exit {rc}]" if crashed else "")
                      + (" [FAIL: no tests selected]" if none_selected else ""))
     for i in range(5):
-        res, rc = run(4, 4, ["-k", "watch or edit"], tmp / f"flake{i}.xml")
+        res, rc = run(4, 4, [], tmp / f"flake{i}.xml", WATCHER_SUITES)
         crashed = rc not in (0, 1)
         none_selected = not res
         bad = [t for t, o in res.items() if o != "passed"]
         ok &= not bad and not crashed and not none_selected
-        lines.append(f"- watcher run {i + 1}/5: {len(bad)} not passing {bad or ''}"
+        lines.append(f"- watcher run {i + 1}/5: {len(res)} tests, {len(bad)} not passing {bad or ''}"
                      + (f" [FAIL: pytest exit {rc}]" if crashed else "")
                      + (" [FAIL: no tests selected]" if none_selected else ""))
     lines += ["", f"**Result: {'PASS' if ok else 'FAIL'}**", ""]
