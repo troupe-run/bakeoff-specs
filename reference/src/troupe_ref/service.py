@@ -8,6 +8,8 @@ sees it. No echo-suppression flags, no "ignore next event for file X".
 
 from __future__ import annotations
 import contextlib
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from .loader import load
@@ -28,10 +30,11 @@ def diff(before: dict[str, Any], after: dict[str, Any]) -> list[tuple[str, str, 
     return out
 
 class Service:
-    def __init__(self, theatre: Path, lineage_for_cli: dict | None = None):
+    def __init__(self, theatre: Path, actor: dict | None = None, reason: str | None = None):
         self.theatre = theatre
+        self.actor = actor
+        self.reason = reason
         self.store = ConfigStore(theatre)
-        self.cli_lineage = lineage_for_cli or {}
         self._lock_depth = 0
 
     @contextlib.contextmanager
@@ -74,4 +77,10 @@ class Service:
             return self.reconcile("cli")
 
     def _lineage(self, via: str) -> dict:
-        return {}                          # Task 8 fills this in (step 4)
+        if STEP < 4:
+            return {}
+        actor = self.actor if via == "cli" else {"kind": "unknown", "id": None}
+        return {"actor": actor, "via": via,
+                "at": datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+                "reason": self.reason if via == "cli" else None,
+                "change": str(uuid.uuid4())}     # called once per record_many, i.e. once per command

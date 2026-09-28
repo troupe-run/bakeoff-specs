@@ -1,6 +1,6 @@
 """Reference implementation CLI. Exit codes per scenario/contract.md."""
 from __future__ import annotations
-import argparse, json, signal, sys, threading
+import argparse, getpass, json, os, signal, sys, threading
 from pathlib import Path
 
 from ruamel.yaml import YAML
@@ -30,6 +30,8 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--theatre", default=".")
         if name == "show":
             sp.add_argument("--sources", action="store_true")
+        if name == "set" and STEP >= 4:
+            sp.add_argument("--reason")
         sp.add_argument("args", nargs="*")
     return p
 
@@ -81,6 +83,15 @@ class Refused(Exception):
 
 class UsageError(Exception):
     pass
+
+def actor_from_env() -> dict:
+    raw = os.environ.get("TROUPE_ACTOR")
+    if raw is None:
+        return {"kind": "human", "id": getpass.getuser()}
+    kind, sep, ident = raw.partition(":")
+    if kind not in ("human", "agent") or not sep or not ident:
+        raise UsageError(f"TROUPE_ACTOR must be human:<id> or agent:<id>, got {raw!r}")
+    return {"kind": kind, "id": ident}
 
 def parse_value(text: str):
     """The contract's VALUE rule: a single YAML 1.2 (core schema) flow node."""
@@ -160,7 +171,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: config {ns.sub}: expected {_arity_desc(lo, hi)}, got {len(ns.args)}", file=sys.stderr)
             return EXIT_USAGE
     try:
-        svc = Service(Path(ns.theatre))
+        # Actor is computed before the Service exists, so a malformed TROUPE_ACTOR is a clean
+        # usage error that records nothing — not even the first-run import.
+        actor = actor_from_env() if STEP >= 4 else None
+        reason = getattr(ns, "reason", None)
+        svc = Service(Path(ns.theatre), actor=actor, reason=reason)
         svc.ensure_imported()
         # Every command reconciles first (file edits made while nothing was running are picked
         # up), except `history`, which only ever reports what has been recorded — and except
@@ -168,11 +183,12 @@ def main(argv: list[str] | None = None) -> int:
         if STEP >= 2 and ns.sub != "history":
             svc.reconcile("file")
         # Pass every subparser option through as a keyword, generically: a command whose
-        # subparser adds flags beyond --theatre/args (e.g. `show --sources`, and later `set
-        # --reason`, `--in-include`, `--expand-alias`, `--include`) receives them without main()
-        # naming that command specially. A command with no extra options just gets **{}, which
-        # matches its existing (svc, args) signature.
-        opts = {k: v for k, v in vars(ns).items() if k not in ("area", "sub", "theatre", "args")}
+        # subparser adds flags beyond --theatre/args (e.g. `show --sources`, and later
+        # `--in-include`, `--expand-alias`, `--include`) receives them without main() naming that
+        # command specially. A command with no extra options just gets **{}, which matches its
+        # existing (svc, args) signature. `reason` is excluded: it's consumed above to build the
+        # Service (lineage), not forwarded to the command — Config.set has no `reason` kwarg.
+        opts = {k: v for k, v in vars(ns).items() if k not in ("area", "sub", "theatre", "args", "reason")}
         code, out = COMMANDS[ns.sub](svc, ns.args, **opts)
     except LoadError as e:
         print(f"error: {e}", file=sys.stderr)
