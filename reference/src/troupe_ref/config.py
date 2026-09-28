@@ -45,6 +45,10 @@ class ConcurrentEditError(ConfigError):
     pass
 
 
+class SchemaViolation(ConfigError):
+    """The merged configuration does not validate against `.troupe/troupe.schema.json` (step 7)."""
+
+
 @dataclass(frozen=True)
 class Provenance:
     source: str  # absolute file path or URL
@@ -91,7 +95,18 @@ def subschema(schema: dict | None, key) -> dict | None:
 
 
 def schema_says_literal_uri(schema: dict | None) -> bool:
-    return bool(schema) and schema.get("format") in ("uri", "uri-reference", "iri")
+    # contract (step 7): exactly `"format": "uri"` marks a literal; other formats are out of contract
+    return bool(schema) and schema.get("format") == "uri"
+
+
+def validate_against(schema: dict, data) -> None:
+    """JSON Schema 2020-12, with format checking. Raises SchemaViolation naming the offending path."""
+    from jsonschema import Draft202012Validator
+    v = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
+    err = next(iter(sorted(v.iter_errors(data), key=lambda e: list(e.absolute_path))), None)
+    if err is not None:
+        where = fmt_path(tuple(err.absolute_path)) or "(root)"
+        raise SchemaViolation(f"{where}: {err.message} (troupe.schema.json)")
 
 
 # --------------------------------------------------------------------------- loader
@@ -104,6 +119,8 @@ class Config:
         self.root = str(Path(root).resolve())
         self.schema = schema
         self.allow_dump = allow_dump  # False: a write that can't be made surgical is refused
+        self._staged: dict[str, str] | None = None  # during set(): file -> new text, not yet on disk
+        self._remote: dict[str, str] = {}  # URL -> fetched text: fetched once per Config
         self.reload()
 
     # ---- reading -------------------------------------------------------------
@@ -113,13 +130,35 @@ class Config:
         self.texts: dict[str, str] = {}  # source -> raw text (all sources)
         self.provenance: dict[tuple, Provenance] = {}
         self.include_sites: dict[tuple, tuple[str, tuple]] = {}  # merged path -> (file, inner path) of the URL scalar
+        self.include_refs: dict[tuple, str] = {}  # merged path -> the include string exactly as written there
         self.merged = self._load_source(self.root, (), self.schema, stack=(), via=None)
+        if STEP >= 7 and self.schema is not None:
+            validate_against(self.schema, self.merged)
 
     def _read(self, source: str) -> str:
         if source.startswith(("http://", "https://")):
-            with urllib.request.urlopen(source, timeout=5) as r:
-                return r.read().decode()
+            if source not in self._remote:
+                try:
+                    with urllib.request.urlopen(source, timeout=5) as r:
+                        self._remote[source] = r.read().decode()
+                except (OSError, UnicodeDecodeError) as e:  # URLError/HTTPError/timeouts are OSErrors
+                    raise ConfigError(f"{source}: remote include could not be fetched: {e}") from e
+            return self._remote[source]
+        return self._read_local(source)
+
+    def _read_local(self, source: str) -> str:
+        """A local file as this Config sees it: a write staged by the current set(), else the disk."""
+        if self._staged is not None and source in self._staged:
+            return self._staged[source]
         return read_exact(source)
+
+    def _write(self, source: str, text: str) -> None:
+        """Every write goes through here: staged in memory during set(), committed only once the
+        result loads and validates (a refused set writes nothing)."""
+        if self._staged is not None:
+            self._staged[source] = text
+        else:
+            _atomic_write(source, text)
 
     def _resolve_ref(self, ref: str, including: str) -> str:
         if ref.startswith(("http://", "https://")):
@@ -181,6 +220,7 @@ class Config:
         if is_ref and not (STEP >= 7 and schema_says_literal_uri(schema)):
             target = self._resolve_ref(str(v), source)
             self.include_sites[merged_path] = (source, inner)
+            self.include_refs[merged_path] = str(v)
             return self._load_source(target, merged_path, schema, stack, via=str(v))
         return self._walk(v, source, inner, merged_path, schema, stack, None, line)
 
@@ -190,6 +230,7 @@ class Config:
         including) file; every other leaf keeps the included file's provenance."""
         ref = str(node[INCLUDE_KEY])
         self.include_sites[merged_path] = (source, (*inner, INCLUDE_KEY))
+        self.include_refs[merged_path] = ref
         base = self._load_source(self._resolve_ref(ref, source), merged_path, schema, stack, via=ref)
         overrides = {}
         for k, v in node.items():
@@ -205,7 +246,7 @@ class Config:
         merged = deep_merge(base, overrides)
         # a list or scalar override REPLACES: drop provenance the replaced included content left behind
         n = len(merged_path)
-        for table in (self.provenance, self.include_sites):
+        for table in (self.provenance, self.include_sites, self.include_refs):
             for p in [p for p in table if len(p) > n and p[:n] == merged_path and not _has_path(merged, p[n:])]:
                 del table[p]
         return merged
@@ -244,9 +285,8 @@ class Config:
             mode = "add"
         if prov.remote:
             raise ReadOnlyIncludeError(
-                f"cannot set {path!r}: value comes from remote include {prov.source} "
-                f"(included via {self._site_desc(p)}), which is read-only. "
-                f"Override it locally by replacing the include, or edit the remote source."
+                f"cannot set {path!r}: the value comes from a remote include, which is read-only "
+                f"({self._site_desc(p)}; fetched from {prov.source})"
             )
         return prov, rel, mode
 
@@ -274,23 +314,18 @@ class Config:
             new_text = edit(self.texts[source])
         except SpliceError as e:
             raise ConfigError(f"cannot set {path!r} surgically ({e}); refusing to re-serialise {source}") from e
-        original = self.texts[source]
-        _atomic_write(source, new_text)
-        try:
-            self.reload()
-        except Exception:
-            _atomic_write(source, original)
-            self.reload()
-            raise
+        self._write(source, new_text)
+        self.reload()  # staged: raises (nothing written) if the result doesn't load or validate
         return source
 
     def _site_desc(self, p):
-        """Name the include reference that lives in a LOCAL file, since that's what a user can change."""
+        """Name the include reference that lives in a LOCAL file -- the include string exactly as written
+        there (contract, step 7), where it is, and which file holds it -- since that's what a user can change."""
         for i in range(len(p), -1, -1):
             site = self.include_sites.get(p[:i])
             if site and not site[0].startswith(("http://", "https://")):
-                return f"{fmt_path(p[:i])!r} in {site[0]}"
-        return "?"
+                return f"included by {self.include_refs[p[:i]]} at {fmt_path(p[:i])!r} in {site[0]}"
+        return "included from a remote file"
 
     def schema_at(self, path: str):
         sch = self.schema
@@ -326,6 +361,29 @@ class Config:
 
     def set(self, path: str, value, include: bool = False, in_include: bool = False,
             expand_alias: bool = False) -> str:
+        """Write value into the file that owns it; returns the file written. The write is staged in
+        memory and re-loaded (which validates against the schema from step 7); only a result that loads
+        is written to disk, so a refused set leaves every file untouched."""
+        self._staged = {}
+        try:
+            written = self._set(path, value, include=include, in_include=in_include, expand_alias=expand_alias)
+            staged = self._staged
+        except Exception:
+            self._staged = None
+            try:
+                self.reload()  # back to what is on disk
+            except Exception:
+                pass  # report the refusal, not a secondary failure
+            raise
+        self._staged = None
+        for source, text in staged.items():
+            if text != read_exact(source):
+                _atomic_write(source, text)
+        self.reload()
+        return written
+
+    def _set(self, path: str, value, include: bool = False, in_include: bool = False,
+             expand_alias: bool = False) -> str:
         """Write value into the file that owns it. Returns the file written.
 
         A path reached through a YAML alias (step 6): refused unless `expand_alias`, which first replaces
@@ -338,7 +396,7 @@ class Config:
         # `!literal` tagging (and http(s) strings being includes at all) are step-7 features.
         if (STEP >= 7 and isinstance(value, str) and INCLUDE_RE.match(value) and not include
                 and not schema_says_literal_uri(self.schema_at(path))):
-            value = TaggedScalar(value, style='"', tag=LITERAL_TAG)
+            value = TaggedScalar(value, style=None, tag=LITERAL_TAG)  # style: the replaced scalar's, else minimal
         p = dotted(path)
         alias = "anchor" if STEP < 6 else ("expand" if expand_alias else "refuse")
         if p in self.include_sites and self.provenance[p].kind != "text":
@@ -370,7 +428,7 @@ class Config:
                 raise ConfigError(f"{path!r} is a text include ({prov.source}); value must be a string")
             if "\r\n" in self.texts[prov.source] and "\r\n" not in value:
                 value = value.replace("\n", "\r\n")  # caller gave LF content for a CRLF file
-            _atomic_write(prov.source, value)
+            self._write(prov.source, value)
         else:
             if mode == "replace" and not prov.inner_path:
                 raise ConfigError("cannot replace a whole file root")
@@ -389,14 +447,8 @@ class Config:
                 self.last_write_strategy = "dump"
                 self.last_splice_error = str(e)
                 new_text = self._dump_set(prov, rel, mode, value)
-            _atomic_write(prov.source, new_text)
-        original = self.texts[prov.source]
-        try:
-            self.reload()
-        except Exception:
-            _atomic_write(prov.source, original)  # never leave a config that doesn't load
-            self.reload()
-            raise
+            self._write(prov.source, new_text)
+        self.reload()  # staged: raises (nothing written) if the result doesn't load or validate
         return prov.source
 
     def _dump_set(self, prov, rel, mode, value) -> str:

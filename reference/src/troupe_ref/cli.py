@@ -38,6 +38,9 @@ def build_parser() -> argparse.ArgumentParser:
         if name == "set" and STEP >= 6:
             sp.add_argument("--expand-alias", action="store_true",
                             help="replace the alias on PATH with a local copy of its anchor, then set it there")
+        if name == "set" and STEP >= 7:
+            sp.add_argument("--include", action="store_true",
+                            help="write an include-shaped VALUE as an include rather than as a !literal string")
         sp.add_argument("args", nargs="*")
     return p
 
@@ -104,14 +107,16 @@ def parse_value(text: str):
     y = YAML(typ="safe")  # YAML 1.2 core schema
     return y.load(text)
 
-def cmd_set(svc, args, in_include: bool = False, expand_alias: bool = False) -> tuple[int, str]:
+def cmd_set(svc, args, in_include: bool = False, expand_alias: bool = False,
+            include: bool = False) -> tuple[int, str]:
     path, raw = args[0], args[1]
     try:
         value = parse_value(raw)
     except YAMLError as e:
         raise UsageError(f"{path}: VALUE is not a YAML flow node: {e}") from e
     try:
-        opts = {k: True for k, on in (("in_include", in_include), ("expand_alias", expand_alias)) if on}
+        opts = {k: True for k, on in (("in_include", in_include), ("expand_alias", expand_alias),
+                                           ("include", include)) if on}
         svc.set(path, value, **opts)
     except LookupError as e:  # IndexError: index beyond the list's length; KeyError: wrong kind of node
         raise PathError(f"{path}: {e.args[0] if e.args else e}") from e

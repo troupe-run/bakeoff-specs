@@ -852,6 +852,9 @@ def _replace(text, ref, value, old_data, path, eff) -> str:
             value = str(value.value)
     elif tag and isinstance(value, str) and not isinstance(value, TaggedScalar):
         value = eff[0] = TaggedScalar(value, style=style if style in ("'", '"') else None, tag=tag)
+    elif isinstance(value, TaggedScalar) and value.style is None and style in ("'", '"'):
+        # a newly tagged value (e.g. step 7's `!literal`) keeps the replaced scalar's quoting style
+        value = eff[0] = TaggedScalar(str(value.value), style=style, tag=value.tag.value)
     empty = node.value == "" and style is None and not props  # `key:` with nothing after it (null)
     if empty and ref.key is not None:
         a = b = text.index(":", ref.key.end_mark.index) + 1  # compose marks point at the NEXT token

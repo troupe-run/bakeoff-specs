@@ -6,6 +6,7 @@ reference could not make the write surgical, and the CLI would refuse it — tha
 import importlib.util
 from pathlib import Path
 
+from ruamel.yaml.comments import TaggedScalar
 from ruamel.yaml.nodes import MappingNode, ScalarNode, SequenceNode
 from troupe_ref.surgical import RejectedSet, SpliceError, index, surgical_set
 
@@ -17,6 +18,8 @@ CASES = _mod.CASES
 
 VALUES = ["changed", 42, "a: b", "multi\nline\n", "", "*x", "with 'quote' and \"dq\"", True, "ü ✓",
           {"k": 1}, [1, "two"]]
+# step 7: an include-shaped string set without --include is written tagged `!literal`
+VALUES += [TaggedScalar("http://h/z.yaml", tag="!literal"), TaggedScalar("file:x.yaml", tag="!literal")]
 
 
 def sweep():
