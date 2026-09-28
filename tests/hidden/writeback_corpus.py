@@ -290,3 +290,5 @@ case("append to a list with no trailing comment", G,
      "l:\n  - a\nn: 1\n", [("l.1", "b")], "l:\n  - a\n  - b\nn: 1\n")
 case("index beyond list length is refused as path error", G,
      "l:\n  - a\n", [("l.5", "b")], "l:\n  - a\n", expect="path")
+case("new key with a multi-line string value is a literal block", G,
+     "a: 1\n", [("b", "x\ny\n")], "a: 1\nb: |\n  x\n  y\n")

@@ -40,7 +40,7 @@ def test_value_in_nested_include_is_written_to_that_file_only(cli, tmp_theatre):
              ".troupe/agents/limits.yaml": "max_tokens: 8000  # cap\n"}
     build(tmp_theatre, files)
     assert cli("set", "agents.coder.limits.max_tokens", "16000", theatre=tmp_theatre).code == 0
-    assert read(tmp_theatre, ".troupe/agents/limits.yaml") == "max_tokens: 16000  # cap\n"
+    assert read(tmp_theatre, ".troupe/agents/limits.yaml") == "max_tokens: 16000 # cap\n"
     for rel in (CFG, ".troupe/agents/coder.yaml"):
         assert read(tmp_theatre, rel) == files[rel]
 

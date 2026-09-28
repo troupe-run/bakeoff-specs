@@ -59,9 +59,11 @@ How it is written:
 - A multi-line string replacing a plain or quoted scalar is written as a literal block (`|`, with `|-` when
   the value has no trailing newline). A block scalar keeps its indicator and chomping unless the value's
   trailing newlines require a different chomping.
+- A new key whose value is a multi-line string is written as a literal block in the same way.
 - **Folded (`>`) values:** paragraphs whose text is unchanged keep their bytes. A changed paragraph is
   re-wrapped, greedily by word, at the width of the longest content line of that paragraph before the
-  change (a single word longer than the width takes a line of its own). A change that would put a
+  change (a single word longer than the width takes a line of its own). A paragraph with no counterpart in
+  the old value is wrapped at the width of the value's longest old content line. A change that would put a
   more-indented line into a folded value → exit 3.
 - **New entries and trailing comments:** a new list item or mapping key goes after the collection's last
   entry *and below any comment lines that follow it* before the next less-indented line.
