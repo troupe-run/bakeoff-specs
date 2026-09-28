@@ -50,6 +50,8 @@ class Ref:
     key: object | None  # key node when parent is a mapping
     aliased: bool
     flow: bool  # node sits inside a flow collection
+    alias_site: tuple | None = None  # aliased: path of the (outermost) `*name` this path is reached through
+    anchor_path: tuple | None = None  # aliased: this path's counterpart under the anchor (`&name`)
 
 
 # --------------------------------------------------------------------------- text helpers
@@ -161,25 +163,26 @@ def _header_comment(text: str, rest_start: int) -> int | None:
 def index(text: str) -> dict[tuple, Ref]:
     root = YAML().compose(text)
     refs: dict[tuple, Ref] = {}
-    seen: set[int] = set()
+    first: dict[int, tuple] = {}  # node id -> the path it was first seen at (its anchor, in document order)
 
-    def walk(node, path, parent, key, aliased, flow):
-        if id(node) in seen:
-            aliased = True
-        seen.add(id(node))
-        refs[path] = Ref(node, parent, key, aliased, flow)
+    def walk(node, path, parent, key, flow, site, anchor):
+        if site is None and id(node) in first:
+            site, anchor = path, first[id(node)]  # an alias: everything below is reached through it
+        first.setdefault(id(node), path)
+        here = None if site is None else (*anchor, *path[len(site):])
+        refs[path] = Ref(node, parent, key, site is not None, flow, site, here)
         inner_flow = flow or bool(getattr(node, "flow_style", False))
         if isinstance(node, MappingNode):
             for k, v in node.value:
                 if k.value == "<<":  # merge key: merged-in keys have no location of their own
                     continue
-                walk(v, (*path, k.value), node, k, aliased, inner_flow)
+                walk(v, (*path, k.value), node, k, inner_flow, site, anchor)
         elif isinstance(node, SequenceNode):
             for i, v in enumerate(node.value):
-                walk(v, (*path, i), node, None, aliased, inner_flow)
+                walk(v, (*path, i), node, None, inner_flow, site, anchor)
 
     if root is not None:
-        walk(root, (), None, None, False, False)
+        walk(root, (), None, None, False, None, None)
     return refs
 
 
@@ -368,13 +371,26 @@ def _folded_paragraph_groups(src_lines: list[str]) -> list[list[str]]:
 # --------------------------------------------------------------------------- operations
 
 
-def surgical_set(text: str, path: tuple, value) -> str:
-    """Return new text with the value at `path` (inside this file) set to `value`."""
+ALIAS_MODES = ("refuse", "expand", "anchor")
+
+
+def surgical_set(text: str, path: tuple, value, alias: str = "refuse") -> str:
+    """Return new text with the value at `path` (inside this file) set to `value`.
+
+    `alias` says what to do when `path` is reached through a YAML alias (`*name`), i.e. the path, or its
+    deepest existing ancestor, lies at or below an alias:
+      "refuse" -- AliasTargetError, naming the alias and `--expand-alias` (contract, step 6);
+      "expand" -- replace that alias with a block-style copy of the anchored node, commented
+                  `# expanded from *name by troupe`, then set the value in the copy (repeated for every
+                  alias on the path, outermost first);
+      "anchor" -- write at the anchor instead, changing every alias (the naive, pre-step-6 behaviour)."""
+    if alias not in ALIAS_MODES:
+        raise ValueError(f"alias mode {alias!r}")
     refs = index(text)
     ref = lookup(refs, path)
-    if ref is not None and ref.aliased:
-        raise AliasTargetError(f"{'.'.join(map(str, path))!r} is reached through a YAML alias; "
-                               f"setting it would also change the anchor and every other alias")
+    via = ref if ref is not None else _deepest_ancestor(refs, path)
+    if via is not None and via.aliased:
+        return _set_through_alias(text, refs, path, value, via, alias)
     old_data = load_data(text)
     eff = [value]
     if ref is not None:
@@ -384,6 +400,286 @@ def surgical_set(text: str, path: tuple, value) -> str:
         new_text, changed = _add(text, refs, path, value, old_data, eff)
     _verify(text, new_text, path, eff[0], changed)
     return new_text
+
+
+def _deepest_ancestor(refs, path):
+    for i in range(len(path) - 1, -1, -1):
+        r = lookup(refs, path[:i])
+        if r is not None:
+            return r
+    return None
+
+
+# --------------------------------------------------------------------------- aliases (step 6)
+
+EXPANDED_MARK = "# expanded from *{name} by troupe"
+
+
+def _set_through_alias(text, refs, path, value, via, alias) -> str:
+    site = via.alias_site
+    name = lookup(refs, site).node.anchor
+    rest = tuple(path[len(site):])
+    if alias == "anchor":
+        # the naive write: the alias is followed to its anchor, so the anchor (and every alias) changes
+        return surgical_set(text, (*lookup(refs, site).anchor_path, *rest), value, alias)
+    shown = ".".join(map(str, path))
+    if alias == "refuse":
+        raise AliasTargetError(f"{shown} is reached through alias *{name}; use --expand-alias to make a "
+                               f"local copy (setting it at the anchor &{name} would change every alias)")
+    expanded, line_no = expand_alias(text, site)
+    out = surgical_set(expanded, path, value, alias)  # expands any further alias on the path, then sets
+    return _two_spaces_before_mark(out, line_no, name)
+
+
+@dataclass
+class AliasSite:
+    name: str
+    start: int  # the `*name` token
+    end: int
+    flow: bool
+    lead: int  # column of the key (mapping value) or `-` (list item) on the alias's line; -1: not on it
+
+
+def alias_sites(text: str) -> dict[tuple, AliasSite]:
+    """Every `*name` token in block or flow context, by its (str-normalised) path. Composed nodes cannot
+    give this: compose() hands back the anchored node itself, with the anchor's marks."""
+    out: dict[tuple, AliasSite] = {}
+    stack: list[dict] = []  # frames: {"kind", "path", "flow", "key", "key_start", "i", "skip"}
+
+    def node_path():
+        f = stack[-1]
+        if f["kind"] == "map":
+            return (*f["path"], f["key"]), f["key_start"]
+        p = (*f["path"], str(f["i"]))
+        return p, None
+
+    def after_node():
+        f = stack[-1]
+        if f["kind"] == "map":
+            f["key"] = None
+        else:
+            f["i"] += 1
+
+    for ev in YAML().parse(text):
+        kind = type(ev).__name__
+        if kind in ("MappingEndEvent", "SequenceEndEvent"):
+            done = stack.pop()
+            if stack and not done["is_key"]:
+                after_node()
+            continue
+        if kind not in ("ScalarEvent", "AliasEvent", "MappingStartEvent", "SequenceStartEvent"):
+            continue
+        if stack and stack[-1]["kind"] == "map" and stack[-1]["key"] is None:
+            # a key (complex keys are out of contract: they just get an unusable path)
+            stack[-1]["key"] = ev.value if kind == "ScalarEvent" else f"?{ev.start_mark.index}"
+            stack[-1]["key_start"] = ev.start_mark.index
+            if kind in ("MappingStartEvent", "SequenceStartEvent"):
+                stack.append({"kind": "map" if kind == "MappingStartEvent" else "seq", "path": ("?",),
+                              "flow": True, "key": None, "key_start": None, "i": 0, "skip": True,
+                              "is_key": True})
+            continue
+        path, key_start = node_path() if stack else ((), None)
+        skip = bool(stack) and (stack[-1]["skip"] or (stack[-1]["kind"] == "map" and stack[-1]["key"] == "<<"))
+        flow = bool(stack) and stack[-1]["flow"]
+        if kind == "AliasEvent":
+            if not skip:
+                a, ls = ev.start_mark.index, line_start(text, ev.start_mark.index)
+                if key_start is not None:  # a mapping value: the key must be on the alias's line
+                    lead = col(text, key_start) if line_start(text, key_start) == ls else -1
+                elif flow:
+                    lead = col(text, a)
+                else:  # a list item: its `-` must be on the alias's line
+                    d = text.rfind("-", ls, a)
+                    lead = d - ls if d >= 0 else -1
+                out[path] = AliasSite(ev.anchor, a, ev.end_mark.index, flow, lead)
+            after_node()
+        elif kind == "ScalarEvent":
+            after_node()
+        else:
+            stack.append({"kind": "map" if kind == "MappingStartEvent" else "seq", "path": path,
+                          "flow": flow or bool(ev.flow_style), "key": None, "key_start": None, "i": 0,
+                          "skip": skip, "is_key": False})
+    return out
+
+
+def expand_alias(text: str, site: tuple) -> tuple[str, int]:
+    """Replace the alias at `site` with a block-style copy of its anchored node (contract, "Aliases"):
+
+        settings: *d            ->   settings:  # expanded from *d by troupe
+                                       model: opus
+
+    The copy sits at the alias's key (or `-`) column + the file's indentation. Its scalars and keys are
+    the anchored source's bytes (quoting, tags) with the anchor dropped; a node inside the copy that
+    carries an anchor of its own, or is itself an alias, is written as `*name`, so no anchor is ever
+    redefined and every other alias keeps its target. A scalar alias is copied onto the key's line.
+    An existing end-of-line comment on the alias's line stays, after the new one. Merge keys are never
+    written: an anchored node containing one is refused. Returns (new text, line number of the key line).
+    Verified: the data is unchanged, and every source node outside `site` is identical."""
+    sites = alias_sites(text)
+    cp = tuple(str(x) for x in site)
+    s = sites.get(cp)
+    refs = index(text)
+    ref = lookup(refs, site)
+    if s is None or ref is None:
+        raise SpliceError(f"no alias at {site}")
+    if s.flow:
+        raise RejectedSet(f"the alias *{s.name} at {'.'.join(cp)} is inside a flow collection, which cannot "
+                          f"hold a block-style copy; expand it by hand")
+    if s.lead < 0:
+        raise SpliceError(f"the alias *{s.name} is not on its key's (or `-`'s) line; expand it by hand")
+    nl = newline_of(text)
+    step = file_indent(text)
+    base = s.lead + step
+    mark = EXPANDED_MARK.format(name=s.name)
+    anchored = ref.node
+    first = {id(r.node): p for p, r in reversed(list(refs.items()))}  # node -> path it is first seen at
+    anchor_path = ref.anchor_path
+
+    le = line_end(text, s.end)
+    q = _comment_at(text, s.end, le)
+    if text[s.end:q if q is not None else le].strip(" \t"):
+        raise SpliceError("unexpected content after the alias")
+    old_comment = ("  " + text[q:le]) if q is not None else ""
+    cut = s.start
+    while cut > 0 and text[cut - 1] in " \t":
+        cut -= 1
+
+    tokens: dict[str, str] = {}
+    copy_obj = _copy_obj(text, anchored, anchor_path, first, tokens, top=True)
+    if isinstance(copy_obj, LiteralScalarString):  # a multi-line scalar: `|` header on the key line
+        value = str(copy_obj)
+        if value[:1] in (" ", "\t"):
+            raise SpliceError("a block scalar starting with whitespace needs an indentation indicator")
+        chomp, extra = _chomp_for(value)
+        body = [" " * base + ln if ln else "" for ln in _literal_source_lines(value)] + [""] * extra
+        new = text[:cut] + " |" + chomp + "  " + mark + old_comment + nl + nl.join(body)
+    elif isinstance(copy_obj, str):  # a scalar (or an empty collection): onto the key line
+        new = text[:cut] + " " + tokens[copy_obj] + "  " + mark + old_comment
+    else:
+        lines = [" " * base + ln if ln else ln for ln in _render_copy(copy_obj, step, _seq_offset(text), tokens)]
+        new = text[:cut] + "  " + mark + old_comment + nl + nl.join(lines)
+    if le < len(text):
+        new += text[le:]
+    elif _ends_with_kept_break(copy_obj):  # last line, no final break: keep it so unless a block needs one
+        new += nl
+    _verify_expansion(text, new, site)
+    return new, text.count("\n", 0, s.start)
+
+
+def _copy_obj(text, node, path, first, tokens, top=False):
+    """The anchored node as render-able data whose leaves (and keys) are placeholder tokens standing for
+    source bytes, or `*name` references."""
+    def tok(raw):
+        t = f"__troupe_copy_{len(tokens)}__"
+        tokens[t] = raw
+        return t
+
+    if not top:
+        if first.get(id(node)) != path:  # an alias inside the anchored node: keep it an alias
+            return tok("*" + node.anchor)
+        if getattr(node, "anchor", None):  # an anchor inside the copied node: refer to it, never redefine
+            return tok("*" + node.anchor)
+    if isinstance(node, ScalarNode):
+        a, b = node.start_mark.index, node.end_mark.index
+        raw = text[a:b]
+        props = PROPS_RE.match(text, a, b)
+        if props:  # drop the anchor, keep a tag
+            raw = re.sub(r"&\S+[ \t]+", "", text[a:props.end()]) + text[props.end():b]
+        if node.style in ("|", ">") or "\n" in raw:
+            if not str(node.tag).endswith(":str"):
+                raise SpliceError("a tagged multi-line scalar cannot be copied; expand the alias by hand")
+            return LiteralScalarString(node.value)
+        if node.value == "" and node.style is None and not props:
+            return tok("")  # `key:` (null)
+        return tok(raw)
+    if getattr(node, "flow_style", False) and not node.value:
+        return tok("{}" if isinstance(node, MappingNode) else "[]")
+    if not str(node.tag).startswith(DEFAULT_TAG_PREFIX):
+        raise SpliceError("a tagged collection cannot be copied; expand the alias by hand")
+    if isinstance(node, MappingNode):
+        if not node.value:
+            return tok("{}")
+        out = {}
+        for k, v in node.value:
+            if k.value == "<<":
+                raise RejectedSet("the anchored node contains a merge key (<<), which troupe never writes; "
+                                  "expand the alias by hand")
+            if not isinstance(k, ScalarNode) or "\n" in text[k.start_mark.index:k.end_mark.index]:
+                raise SpliceError("a complex key cannot be copied")
+            kraw = text[k.start_mark.index:k.end_mark.index]
+            out[tok(kraw)] = _copy_obj(text, v, (*path, k.value), first, tokens)
+        return out
+    if not node.value:
+        return tok("[]")
+    return [_copy_obj(text, v, (*path, i), first, tokens) for i, v in enumerate(node.value)]
+
+
+def _render_copy(obj, step, seq_offset, tokens) -> list[str]:
+    """Block-style lines (no base indent) for the copy, nested at the file's indentation, with every
+    placeholder token swapped for its source bytes (an empty null `key:` loses the space before it)."""
+    y = _yaml()
+    y.indent(mapping=step, sequence=seq_offset + 2, offset=seq_offset)
+    buf = io.StringIO()
+    y.dump(obj, buf)
+    out = buf.getvalue()
+    if out.endswith("\n...\n"):  # ruamel ends the document after a keep-chomped (|+) scalar
+        out = out[: -len("...\n")]
+    lines = (out[:-1] if out.endswith("\n") else out).split("\n")
+
+    def swap(line):
+        def one(m):
+            raw = tokens[m.group(2)]
+            return m.group(1) + raw if raw or m.end() < len(line) else ""
+        return re.sub(r"( ?)(__troupe_copy_\d+__)", one, line)
+
+    return [swap(ln) for ln in lines]
+
+
+def _seq_offset(text: str) -> int:
+    """How far the file puts a block list's `-` past its parent key (0 when it has no such list)."""
+    for ref in index(text).values():
+        n = ref.node
+        if (ref.key is not None and not ref.aliased and isinstance(n, SequenceNode) and n.value
+                and not ref.flow and not getattr(n, "flow_style", False)):
+            d = _seq_dash_col(text, n)
+            if d is not None and line_start(text, n.value[0].start_mark.index) > ref.key.start_mark.index:
+                return max(0, d - col(text, ref.key.start_mark.index))
+    return 0
+
+
+def _verify_expansion(old_text, new_text, site):
+    try:
+        new_data = load_data(new_text)
+    except Exception as e:
+        raise SpliceError(f"expansion produced invalid YAML: {e}") from e
+    if new_data != load_data(old_text):
+        raise SpliceError("expansion verification failed: the data changed")
+    cp = tuple(str(x) for x in site)
+    old_map, new_map = source_map(old_text), source_map(new_text)
+    a = {k: v for k, v in old_map.items() if k[: len(cp)] != cp}
+    b = {k: v for k, v in new_map.items() if k[: len(cp)] != cp}
+    if a != b:
+        raise SpliceError("expansion verification failed: collateral change outside the alias")
+    if any(v[-1 if v[0] == "scalar" else 3] for k, v in new_map.items() if k[: len(cp)] == cp):
+        raise SpliceError("expansion verification failed: the copy defines an anchor")
+
+
+def _two_spaces_before_mark(text: str, line_no: int, name: str) -> str:
+    """After the set, the expansion comment is exactly two spaces after the key line's content (the set
+    may have moved it, e.g. a scalar copy that got longer). Nothing else changes."""
+    starts = [0] + [m.end() for m in re.finditer("\n", text)]
+    ls = starts[line_no]
+    le = line_end(text, ls)
+    # located by its text, not by _comment_at: on a block scalar's header line the comment lies inside the
+    # scalar's span. The verification below rules out having matched text inside a value.
+    m = re.compile(r"[ \t]+" + re.escape(EXPANDED_MARK.format(name=name))).search(text, ls, le)
+    if m is None:
+        return text  # the key line no longer carries the mark (e.g. the whole copy was replaced)
+    ws, q = m.start(), m.end() - len(EXPANDED_MARK.format(name=name))
+    new = text[:ws] + "  " + text[q:]
+    if new != text and (load_data(new) != load_data(text) or source_map(new) != source_map(text)):
+        raise SpliceError("re-spacing the expansion comment changed the data")
+    return new
 
 
 INCLUDE_KEY = "$include"

@@ -324,8 +324,13 @@ class Config:
             # a remote file can't hold the override: the next local site up can (deep merge reaches down)
         return None
 
-    def set(self, path: str, value, include: bool = False, in_include: bool = False) -> str:
+    def set(self, path: str, value, include: bool = False, in_include: bool = False,
+            expand_alias: bool = False) -> str:
         """Write value into the file that owns it. Returns the file written.
+
+        A path reached through a YAML alias (step 6): refused unless `expand_alias`, which first replaces
+        the alias with a commented local copy of the anchored node. Before step 6 the write naively
+        lands at the anchor (aliases are out of contract there, and a naive arm has exactly this bug).
 
         A URL-shaped string is written as `!literal` unless the schema already declares the field a
         literal URI, or the caller explicitly asks for an include (`include=True`). Otherwise
@@ -335,12 +340,13 @@ class Config:
                 and not schema_says_literal_uri(self.schema_at(path))):
             value = TaggedScalar(value, style='"', tag=LITERAL_TAG)
         p = dotted(path)
+        alias = "anchor" if STEP < 6 else ("expand" if expand_alias else "refuse")
         if p in self.include_sites and self.provenance[p].kind != "text":
             if not _is_include_ref(value):
                 raise RejectedSet(f"the whole value comes from the include {self.provenance[p].via!r}; "
                                   f"set a value inside it, or replace it with another include")
             site_file, site_inner = self.include_sites[p]
-            return self._write_yaml(site_file, lambda text: surgical_set(text, site_inner, value), path)
+            return self._write_yaml(site_file, lambda text: surgical_set(text, site_inner, value, alias), path)
         if STEP >= 5 and not in_include and p not in self.provenance:
             site = self._override_site(p)
             if site is not None:
@@ -348,10 +354,10 @@ class Config:
                 rel = p[len(site_path):]
                 if site_inner and site_inner[-1] == INCLUDE_KEY:  # mapping form: add under it
                     target = (*site_inner[:-1], *rel)
-                    edit = lambda text: surgical_set(text, target, value)
+                    edit = lambda text: surgical_set(text, target, value, alias)
                 else:  # scalar form: convert it to mapping form first, then add
                     target = (*site_inner, *rel)
-                    edit = lambda text: surgical_set(convert_include_to_mapping(text, site_inner), target, value)
+                    edit = lambda text: surgical_set(convert_include_to_mapping(text, site_inner), target, value, alias)
                 return self._write_yaml(site_file, edit, path)
         prov, rel, mode = self.plan_set(path, value)
         # compare-and-swap: refuse to clobber a hand edit made since we loaded this file
@@ -371,7 +377,7 @@ class Config:
             text = self.texts[prov.source]
             full = prov.inner_path if mode == "replace" else (*prov.inner_path, *rel)
             try:
-                new_text = surgical_set(text, full, value)
+                new_text = surgical_set(text, full, value, alias=alias)
                 self.last_write_strategy = "splice"
                 self.last_splice_error = None
             except RejectedSet as e:
