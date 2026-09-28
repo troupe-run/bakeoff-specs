@@ -1,6 +1,6 @@
 # bakeoff-specs — design
 
-Status: **draft for owner review** · 2026-09-28 · owner: Martin (hps.gd)
+Status: **approved by owner 2026-09-28** · 2026-09-28 · owner: Martin (hps.gd)
 
 A bake-off to choose the spec-driven development methodology — and, where it ships one, the work tracking —
 that troupe.run will be built with. Judged on how each method copes with **change over time**, not on a
@@ -167,13 +167,17 @@ All public.
 ## 11. Open items
 
 1. ~~GitHub org~~ — decided: public repos under `troupe-run` (issue types Task/Bug/Feature are enabled there).
-2. **Containers for every arm?** Decided on spike B's findings (Claude Code in Docker, including sign-in).
+2. ~~Containers for every arm~~ — decided: **yes**, every arm runs in the spike B container stage
+   (see `../spike-claude-docker/FINDINGS.md`), with its own `CLAUDE_CONFIG_DIR` mounted in and the
+   credential supplied the same way for every arm.
 
 Decided 2026-09-28: step 1 is held to the **byte-surgical** bar spike A achieved (only the changed value's bytes
 differ), with files containing a tab before an end-of-line comment and multi-document files out of contract.
 Every arm uses **Claude Opus 5.5** (`claude-opus-5-5`) and Claude Code **2.1.281**; a re-run of the top two arms
 and the control on a second model may follow once there is a winner. The model is passed explicitly
-(`--model`); an unpinned run was observed to default to a different model.
+(`--model`); an unpinned run was observed to default to a different model. **Pinning is verified, not
+assumed:** the runner checks the `model` field of every assistant message in every transcript, including
+subagents'; any model other than the pinned one is a harness fault and the step is re-run.
 
 Decided 2026-09-28, step 1 write-back rules (go into `scenario/contract.md`):
 - a changed paragraph of a folded (`>`) value is re-wrapped to the paragraph's previous width;
