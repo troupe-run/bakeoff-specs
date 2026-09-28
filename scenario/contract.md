@@ -42,7 +42,8 @@ Updates the configuration and writes the change back to the files, **byte-surgic
 
 Where the change is written:
 1. An existing value is changed in the file that contains it. For a text include, the target file's
-   content becomes `VALUE` exactly (`VALUE` must then be a string, else exit 3).
+   content becomes `VALUE` exactly, except that if the target file used CRLF line endings, the new content
+   uses CRLF line endings too (`VALUE` must then be a string, else exit 3).
 2. A new key is written into the file containing the deepest existing ancestor mapping of `PATH`; missing
    intermediate mappings are created there. *(Changed at step 5.)*
 3. `PATH` ending in the index equal to a list's length appends to that list. A larger index → exit 5.
@@ -59,7 +60,8 @@ How it is written:
 - A multi-line string replacing a plain or quoted scalar is written as a literal block (`|`, with `|-` when
   the value has no trailing newline). A block scalar keeps its indicator and chomping unless the value's
   trailing newlines require a different chomping.
-- A new key whose value is a multi-line string is written as a literal block in the same way.
+- A new key whose value is a multi-line string is written as a literal block in the same way, unless its
+  parent is a flow collection, where it is written as a double-quoted flow scalar.
 - **Folded (`>`) values:** paragraphs whose text is unchanged keep their bytes. A changed paragraph is
   re-wrapped, greedily by word, at the width of the longest content line of that paragraph before the
   change (a single word longer than the width takes a line of its own). A paragraph with no counterpart in
@@ -69,7 +71,7 @@ How it is written:
   entry *and below any comment lines that follow it* before the next less-indented line.
 - **End-of-line comments:** when a changed value's length changes, the comment on that line is moved back to
   its previous column; if the new value reaches that column, exactly one space separates value and comment.
-  No other line changes.
+  No other line changes. Columns count Unicode code points.
 
 ## `history [PATH]` (from step 1)
 

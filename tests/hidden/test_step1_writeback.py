@@ -17,7 +17,7 @@ def test_writeback_is_byte_surgical(cli, tmp_theatre, c):
     build(tmp_theatre, {CFG: c.before})
     codes = [cli("set", path, arg(value), theatre=tmp_theatre).code for path, value in c.ops]
     expected_code = {"error": 3, "path": 5}.get(c.expect, 0)
-    assert codes[-1] == expected_code, codes
+    assert codes == [0] * (len(codes) - 1) + [expected_code], codes
     assert read(tmp_theatre, CFG) == c.after
 
 @pytest.mark.steps(1)
@@ -26,6 +26,13 @@ def test_text_include_set_replaces_target_text_exactly(cli, tmp_theatre):
     assert cli("set", "prompt", arg("one\n2\nthree\n"), theatre=tmp_theatre).code == 0
     assert read(tmp_theatre, ".troupe/p.md") == "one\n2\nthree\n"
     assert read(tmp_theatre, CFG) == "prompt: file:p.md  # c\n"
+
+@pytest.mark.steps(1)
+def test_text_include_set_keeps_the_target_files_crlf_line_endings(cli, tmp_theatre):
+    build(tmp_theatre, {CFG: "prompt: file:p.md\n", ".troupe/p.md": "one\r\ntwo\r\n"})
+    assert cli("set", "prompt", arg("one\n2\n"), theatre=tmp_theatre).code == 0
+    assert read(tmp_theatre, ".troupe/p.md") == "one\r\n2\r\n"
+    assert read(tmp_theatre, CFG) == "prompt: file:p.md\n"
 
 @pytest.mark.steps(1)
 def test_text_include_rejects_non_string(cli, tmp_theatre):
