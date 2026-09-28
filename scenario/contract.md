@@ -128,7 +128,7 @@ have actor `{"kind": "unknown", "id": null}`.
 
 ## Overrides (from step 5 — replaces rule 2 under `set`)
 
-- An include may be written in **mapping form**: a mapping with an `$ref` key whose value is the include
+- An include may be written in **mapping form**: a mapping with a `$ref` key whose value is the include
   string. Its other keys are **overrides**: the value is the included content deep-merged with the overrides
   (mappings merge recursively; scalars and lists in the override replace).
 - A new key whose deepest existing ancestor comes from an included file is written as an override in the
