@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 import shlex
 from pathlib import Path
 import pytest
@@ -21,6 +22,11 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture(scope="session")
 def cli(request) -> Cli:
+    # `--step` only selects which tests run (pytest_collection_modifyitems above); it does not by
+    # itself change how the arm behaves. For the reference implementation, behaviour is gated by
+    # the TROUPE_REF_STEP env var (troupe_ref.step.STEP, default 7). Propagate --step into it here
+    # so `uv run pytest tests/hidden --step N -q` actually exercises the arm as step N, not step 7.
+    os.environ["TROUPE_REF_STEP"] = str(request.config.getoption("--step"))
     prefix = request.config.getoption("--cmd-prefix")
     if prefix:
         return Cli(shlex.split(prefix))

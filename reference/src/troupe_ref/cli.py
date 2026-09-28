@@ -51,11 +51,31 @@ def cmd_show(cfg, args) -> tuple[int, str]:
 
 COMMANDS = {"show": cmd_show}
 
+# Per-command argument-count rules, as a function of STEP (some commands' arity changes across
+# steps, e.g. `show`'s PATH becomes optional at STEP >= 3 — Task 7). Keyed by subcommand name so
+# later tasks can add "set" (always 2 args) and "history" (0 or 1) without touching this shape.
+# Checked in main() before dispatch, so a wrong argument count is a clean usage error (exit 2)
+# rather than an IndexError/traceback from inside the command.
+ARITY = {
+    "show": lambda step: (0, 1) if step >= 3 else (1, 1),
+}
+
+def _arity_desc(lo: int, hi: int) -> str:
+    if lo == hi:
+        return f"{lo} argument" + ("" if lo == 1 else "s")
+    return f"{lo}-{hi} arguments"
+
 def main(argv: list[str] | None = None) -> int:
     ns = build_parser().parse_args(argv)
     if ns.sub not in COMMANDS:
         print(f"troupe config {ns.sub}: not implemented", file=sys.stderr)
         return 99
+    arity = ARITY.get(ns.sub)
+    if arity is not None:
+        lo, hi = arity(STEP)
+        if not (lo <= len(ns.args) <= hi):
+            print(f"error: config {ns.sub}: expected {_arity_desc(lo, hi)}, got {len(ns.args)}", file=sys.stderr)
+            return EXIT_USAGE
     try:
         cfg = load(Path(ns.theatre))
         code, out = COMMANDS[ns.sub](cfg, ns.args)

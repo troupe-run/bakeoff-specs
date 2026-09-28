@@ -76,3 +76,9 @@ def test_show_on_a_mapping_exits_5_before_step_3(cli, tmp_theatre):
     build(tmp_theatre, {CFG: "a:\n  b: 1\n"})
     r = show(cli, tmp_theatre, "a")
     assert (r.code, r.out) == (5, "")
+
+@pytest.mark.steps(1, 2)
+def test_show_without_path_is_a_usage_error_before_step_3(cli, tmp_theatre):
+    build(tmp_theatre, {CFG: "a: 1\n"})
+    r = cli("show", theatre=tmp_theatre)
+    assert (r.code, r.out) == (2, "") and r.err.strip() and "Traceback" not in r.err
