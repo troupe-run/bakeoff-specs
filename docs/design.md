@@ -168,10 +168,21 @@ All public.
 
 1. ~~GitHub org~~ — decided: public repos under `troupe-run` (issue types Task/Bug/Feature are enabled there).
 2. **Containers for every arm?** Decided on spike B's findings (Claude Code in Docker, including sign-in).
-3. **Step 1 surgical-write judgement calls** (folded-text wrapping, style of new keys, etc.) to be settled in
-   the step 1 contract.
 
 Decided 2026-09-28: step 1 is held to the **byte-surgical** bar spike A achieved (only the changed value's bytes
 differ), with files containing a tab before an end-of-line comment and multi-document files out of contract.
 Every arm uses **Claude Opus 5.5** (`claude-opus-5-5`) and Claude Code **2.1.281**; a re-run of the top two arms
-and the control on a second model may follow once there is a winner.
+and the control on a second model may follow once there is a winner. The model is passed explicitly
+(`--model`); an unpinned run was observed to default to a different model.
+
+Decided 2026-09-28, step 1 write-back rules (go into `scenario/contract.md`):
+- a changed paragraph of a folded (`>`) value is re-wrapped to the paragraph's previous width;
+- a write that would add an indented line to a folded value is refused (folded style cannot represent it);
+- new keys copy their neighbours' quoting (e.g. `"temperature": 0.2` in a JSON-style file);
+- a list item appended to a list that ends with a comment goes **below** the comment;
+- when a value's length changes, only that line's end-of-line comment is re-aligned to its old column, or
+  one space where the column cannot be kept; other lines are untouched;
+- **anchors and aliases:** setting the anchor's own path changes every alias (expected). Setting a path
+  reached through an alias is **refused by default**; on explicit user confirmation (it is not surgical) the
+  alias is expanded into a local copy, with a comment saying why, and the value overridden. Merge keys
+  (`<<`) are not used or introduced.
