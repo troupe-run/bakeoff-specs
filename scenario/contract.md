@@ -55,6 +55,8 @@ How it is written:
   possible, else single-quoted, else double-quoted.
 - A new key, and a new string value, copy the quoting style of the preceding sibling key or value; with no
   sibling, plain (or the minimal quoting the text needs).
+- A double-quoted scalar escapes only what YAML requires (`\\`, `\"` and control characters, as `\t`, `\n`, …);
+  every other character is written literally.
 - A new collection value is written in block style at the file's indentation (default 2), unless its parent
   is a flow collection, in which case it is written in flow style.
 - A multi-line string replacing a plain or quoted scalar is written as a literal block (`|`, with `|-` when
@@ -68,7 +70,11 @@ How it is written:
   the old value is wrapped at the width of the value's longest old content line. A change that would put a
   more-indented line into a folded value → exit 3.
 - **New entries and trailing comments:** a new list item or mapping key goes after the collection's last
-  entry *and below any comment lines that follow it* before the next less-indented line.
+  entry *and below any comment lines that follow it* before the next less-indented line. A comment line
+  indented less than a collection's entries ends that collection.
+- In a flow collection, a new entry is appended after the last entry, on that entry's line.
+- When a scalar is replaced by a block collection, the key's line keeps its bytes up to and including its
+  end-of-line comment.
 - **End-of-line comments:** when a changed value's length changes, the comment on that line is moved back to
   its previous column; if the new value reaches that column, exactly one space separates value and comment.
   No other line changes. Columns count Unicode code points.
@@ -79,7 +85,8 @@ Prints the configuration's events as JSON Lines, oldest first; with `PATH`, only
 `PATH` or starts with `PATH.`. Each line is an object with at least:
 `{"seq": <int from 1>, "op": "import" | "set" | "remove", "path": "<dotted>", "old": <json>, "new": <json>}`.
 - Events are per **leaf** (a scalar, including a text-include string; list items are `list.0`, `list.1`, …).
-- The first command run against a theatre imports it: one `import` event per leaf, `old` null.
+- The first command run against a theatre imports it: one `import` event per leaf, `old` null. `history`
+  also imports a theatre that has never been imported; importing is not reconciling.
 - A `set` emits one `set` event per leaf whose value it changes or creates, and one `remove` event (`new`
   null) per leaf that no longer exists. A `set` that changes nothing emits nothing.
 
@@ -103,7 +110,7 @@ Prints the configuration's events as JSON Lines, oldest first; with `PATH`, only
   resolved, text includes as literal blocks). `PATH` omitted → the whole configuration.
 - `show [PATH] --sources` prints the same YAML with an end-of-line comment `# from <file>` on every line that
   holds a scalar, where `<file>` is the file the scalar comes from, relative to the theatre directory, with
-  `/` separators.
+  `/` separators. A text include's value comes from the included file.
 
 ## Lineage (from step 4)
 
