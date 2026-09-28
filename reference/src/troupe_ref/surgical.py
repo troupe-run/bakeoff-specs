@@ -23,6 +23,7 @@ from ruamel.yaml.comments import CommentedMap, CommentedSeq, TaggedScalar
 from ruamel.yaml.nodes import MappingNode, ScalarNode, SequenceNode
 from ruamel.yaml.scalarstring import (
     DoubleQuotedScalarString,
+    LiteralScalarString,
     ScalarString,
     SingleQuotedScalarString,
 )
@@ -275,10 +276,25 @@ def render_inline(value, style, flow) -> str | None:
     return out
 
 
+def _literal_blocks(value):
+    """Multi-line strings inside new block content become literal blocks (`|`, `|-`, `|+` by trailing
+    newlines), as the contract requires for a new key's multi-line string value."""
+    if isinstance(value, dict):
+        return {k: _literal_blocks(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_literal_blocks(v) for v in value]
+    if isinstance(value, str) and not isinstance(value, ScalarString) and "\n" in value:
+        return LiteralScalarString(value)
+    return value
+
+
 def render_block_lines(value, nl: str) -> list[str]:
     """Block-context rendering of a mapping/sequence as lines (no base indent)."""
-    out = _dump(value)
-    return out.rstrip("\n").split("\n")
+    out = _dump(_literal_blocks(value))
+    if out.endswith("\n...\n"):  # ruamel ends the document after a keep-chomped (|+) scalar
+        out = out[: -len("...\n")]
+    # drop only the final line break: a trailing |+ block's kept blank lines are part of its value
+    return (out[:-1] if out.endswith("\n") else out).split("\n")
 
 
 def _dump(obj, flow=False) -> str:
@@ -682,10 +698,11 @@ def _last_line_end(text, node) -> int:
     return _last_line_end(text, last)
 
 
-def _insert_lines(text, pos, lines, nl) -> str:
+def _insert_lines(text, pos, lines, nl, value=None) -> str:
     block = nl.join(lines)
     if pos >= len(text) and not text.endswith("\n"):
-        return text + nl + block  # keep "no trailing newline"
+        # keep "no trailing newline", unless the new content ends in a literal block whose value needs it
+        return text + nl + block + (nl if _ends_with_kept_break(value) else "")
     return text[:pos] + block + nl + text[pos:]
 
 
@@ -733,13 +750,13 @@ def _add_into(text, parent, pnode, key, value, nl) -> str:
         dash = text[ls:first.start_mark.index].rfind("-")
         if isinstance(value, (dict, list)):
             blines = render_block_lines(value, nl)
-            lines = [" " * dash + "- " + blines[0]] + [" " * (dash + 2) + l for l in blines[1:]]
+            lines = [" " * dash + "- " + blines[0]] + [" " * (dash + 2) + l if l else l for l in blines[1:]]
         else:
             r = _render_copying(value, vstyle, False)
             if r is None:
                 raise SpliceError("cannot render single-line")
             lines = [" " * dash + "- " + r]
-        return _insert_lines(text, _insert_pos(text, pnode, dash), lines, nl)
+        return _insert_lines(text, _insert_pos(text, pnode, dash), lines, nl, value)
 
     if not isinstance(pnode, MappingNode):
         raise SpliceError("parent is not a collection")
@@ -761,7 +778,7 @@ def _add_into(text, parent, pnode, key, value, nl) -> str:
             e = pnode.start_mark.index + 1
         return text[:e] + r + _eol_tail(text, e, col(text, e) + len(r)) + text[line_end(text, e):]
     kcol = col(text, pnode.value[0][0].start_mark.index)
-    if isinstance(value, (dict, list)):
+    if isinstance(value, (dict, list)) or (isinstance(value, str) and "\n" in value):
         blines = render_block_lines({key: value}, nl)
         plain = render_inline(key, None, False)
         if blines[0].startswith(plain + ":"):
@@ -771,8 +788,15 @@ def _add_into(text, parent, pnode, key, value, nl) -> str:
         if rv is None:
             raise SpliceError("cannot render single-line")
         blines = [f"{rk}: {rv}"]
-    lines = [" " * kcol + l for l in blines]
-    return _insert_lines(text, _insert_pos(text, pnode, kcol), lines, nl)
+    lines = [" " * kcol + l if l else l for l in blines]
+    return _insert_lines(text, _insert_pos(text, pnode, kcol), lines, nl, value)
+
+
+def _ends_with_kept_break(value) -> bool:
+    """True if the last scalar rendered for `value` is a literal block whose value ends in a line break."""
+    while isinstance(value, (dict, list)) and value:
+        value = list(value.values())[-1] if isinstance(value, dict) else value[-1]
+    return isinstance(value, str) and "\n" in value and value.endswith("\n")
 
 
 def _render_copying(value, style, flow):
