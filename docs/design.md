@@ -186,7 +186,5 @@ Decided 2026-09-28, step 1 write-back rules (go into `scenario/contract.md`):
 - a list item appended to a list that ends with a comment goes **below** the comment;
 - when a value's length changes, only that line's end-of-line comment is re-aligned to its old column, or
   one space where the column cannot be kept; other lines are untouched;
-- **anchors and aliases:** setting the anchor's own path changes every alias (expected). Setting a path
-  reached through an alias is **refused by default**; on explicit user confirmation (it is not surgical) the
-  alias is expanded into a local copy, with a comment saying why, and the value overridden. Merge keys
-  (`<<`) are not used or introduced.
+- **anchors and aliases** are out of step 1's contract, so step 6's bug is real; the owner's alias rule
+  (refuse through an alias; expand only on confirmation; never write merge keys) is step 6's expected fix.
