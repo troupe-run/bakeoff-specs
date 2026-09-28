@@ -98,3 +98,12 @@ def test_appending_to_an_included_list_is_not_an_override(cli, tmp_theatre):
 def test_overrides_on_a_text_include_cannot_be_loaded(cli, tmp_theatre):
     build(tmp_theatre, {CFG: "c:\n  $include: file:c.txt\n  x: 1\n", ".troupe/c.txt": "hello\n"})
     assert cli("get", "c.x", theatre=tmp_theatre).code == 4
+
+@pytest.mark.steps(5)
+def test_new_key_inside_an_included_list_item_is_written_in_the_file_holding_the_list(cli, tmp_theatre):
+    files = {CFG: "c: file:c.yaml\n", ".troupe/c.yaml": "tools:\n  - model: a\n  - model: b\n"}
+    build(tmp_theatre, files)
+    assert cli("set", "c.tools.0.name", "val", theatre=tmp_theatre).code == 0
+    assert read(tmp_theatre, ".troupe/c.yaml") == "tools:\n  - model: a\n    name: val\n  - model: b\n"
+    assert read(tmp_theatre, CFG) == files[CFG]
+    assert cli("get", "c.tools.1.model", theatre=tmp_theatre).out == "b\n"
