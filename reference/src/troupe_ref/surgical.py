@@ -495,12 +495,13 @@ def _replace(text, ref, value, old_data, path, eff) -> str:
         r = render_inline(value, style, ref.flow)
         if r is None:
             raise SpliceError("cannot render single-line")
-        return text[:a] + lead + r + text[b:]
+        new = lead + r
+        return text[:a] + new + _eol_tail(text, b, col(text, a) + len(new)) + text[line_end(text, b):]
 
     if not old_is_block and multiline:
         if ref.flow:
             r = render_inline(value, '"', True)  # escapes \n
-            return text[:a] + r + text[b:]
+            return text[:a] + r + _eol_tail(text, b, col(text, a) + len(r)) + text[line_end(text, b):]
         # inline -> literal block; any end-of-line comment stays on the header line
         chomp, extra = _chomp_for(value)
         ind = " " * _parent_indent(text, ref)
@@ -508,9 +509,11 @@ def _replace(text, ref, value, old_data, path, eff) -> str:
         le = line_end(text, b)
         rest = text[le:]
         body = nl.join(lines)
+        hdr = lead + "|" + chomp
+        hdr_line = text[:a] + hdr + _eol_tail(text, b, col(text, a) + len(hdr))
         if rest.startswith(nl) or rest.startswith("\n"):
-            return text[:a] + lead + "|" + chomp + text[b:le] + nl + body + rest
-        return text[:a] + lead + "|" + chomp + text[b:le] + nl + body + nl  # EOF: block needs a final break
+            return hdr_line + nl + body + rest
+        return hdr_line + nl + body + nl  # EOF: block needs a final break
 
     # ---- old value is a block scalar
     header_end = line_end(text, a)
@@ -521,6 +524,11 @@ def _replace(text, ref, value, old_data, path, eff) -> str:
     kind, ind1, old_chomp, ind2 = m.groups()
     explicit = ind1 or ind2
     header_rest = header[m.end():]  # e.g. '  # comment'
+    hq = _header_comment(text, a, a + m.end())
+
+    def rest_after(new_head: str) -> str:
+        """header_rest with its comment returned to its old column after `new_head` replaces the header."""
+        return _eol_tail(text, a + m.end(), col(text, a) + len(new_head), hq)
     region = text[a:b]
     if old_chomp == "+":
         content_end = b
@@ -548,7 +556,7 @@ def _replace(text, ref, value, old_data, path, eff) -> str:
             raise SpliceError("cannot render single-line")
         tail = text[content_end:]
         eol = nl if content_end <= len(text) and text[:content_end].endswith("\n") else ""
-        return text[:a] + r + header_rest + eol + tail
+        return text[:a] + r + rest_after(r) + eol + tail
 
     chomp, extra = _chomp_for(value)
     if kind == "|":
@@ -589,7 +597,8 @@ def _replace(text, ref, value, old_data, path, eff) -> str:
             elif p:
                 new_src.extend(ind + ln for ln in _wrap(p, widths[j]))
     new_src += [""] * extra
-    new_header = kind + (ind1 or "") + chomp + (ind2 or "") + header_rest
+    head = kind + (ind1 or "") + chomp + (ind2 or "")
+    new_header = head + rest_after(head)
     out_body = nl.join(new_src) + nl
     if content_end >= len(text) and not text.endswith("\n") and not value.endswith("\n"):
         out_body = out_body[: -len(nl)]  # file had no final line break; keep it that way
@@ -599,8 +608,9 @@ def _replace(text, ref, value, old_data, path, eff) -> str:
 def _replace_container(text, ref, value, nl) -> str:
     node = ref.node
     if getattr(node, "flow_style", False) or ref.flow:
-        r = render_inline(value, None, True) if isinstance(value, (dict, list)) else render_inline(value, None, True)
-        return text[: node.start_mark.index] + r + text[node.end_mark.index:]
+        r = render_inline(value, None, True)
+        a, b = node.start_mark.index, node.end_mark.index
+        return text[:a] + r + _eol_tail(text, b, col(text, a) + len(r)) + text[line_end(text, b):]
     if getattr(node, "anchor", None):
         raise RejectedSet(f"this collection defines anchor &{node.anchor}; replacing it wholesale would "
                           f"change or break its aliases. Set its fields individually instead")
@@ -629,8 +639,9 @@ def _replace_container(text, ref, value, nl) -> str:
     k_end = ref.key.end_mark.index
     colon = text.index(":", k_end) + 1
     le = line_end(text, colon)
-    rest = text[colon:le]  # e.g. '  # comment'
-    return text[:colon] + " " + r + rest + nl + text[body_end:]
+    new = " " + r
+    rest = _eol_tail(text, colon, col(text, colon) + len(new), _header_comment(text, colon, colon))
+    return text[:colon] + new + rest + nl + text[body_end:]
 
 
 def _seq_dash_col(text, node):
