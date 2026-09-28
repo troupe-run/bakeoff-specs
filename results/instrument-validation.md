@@ -13,10 +13,10 @@
 - step 5 negative: 12 new tests, 3 pass at step 4 (allowlisted: 3; unexplained: none)
 - step 6 negative: 5 new tests, 1 pass at step 5 (allowlisted: 1; unexplained: none)
 - step 7 negative: 10 new tests, 1 pass at step 6 (allowlisted: 1; unexplained: none)
-- watcher run 1/5: 0 not passing 
-- watcher run 2/5: 0 not passing 
-- watcher run 3/5: 0 not passing 
-- watcher run 4/5: 0 not passing 
-- watcher run 5/5: 0 not passing 
+- watcher run 1/5: 22 tests, 0 not passing 
+- watcher run 2/5: 22 tests, 0 not passing 
+- watcher run 3/5: 22 tests, 0 not passing 
+- watcher run 4/5: 22 tests, 0 not passing 
+- watcher run 5/5: 22 tests, 0 not passing 
 
 **Result: PASS**
