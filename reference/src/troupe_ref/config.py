@@ -17,7 +17,7 @@ from typing import Any
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq, TaggedScalar
 
-from .surgical import RejectedSet, SpliceError, surgical_set
+from .surgical import INCLUDE_KEY, RejectedSet, SpliceError, convert_include_to_mapping, surgical_set
 from ruamel.yaml.scalarstring import ScalarString
 from .step import STEP
 
@@ -153,6 +153,9 @@ class Config:
 
     def _walk(self, node, source, inner, merged_path, schema, stack, via, line):
         self.provenance[merged_path] = Provenance(source, inner, "yaml", line, via)
+        if (STEP >= 5 and isinstance(node, CommentedMap) and INCLUDE_KEY in node
+                and _is_include_ref(node[INCLUDE_KEY])):
+            return self._walk_overrides(node, source, inner, merged_path, schema, stack)
         if isinstance(node, CommentedMap):
             out = {}
             for k, v in node.items():
@@ -180,6 +183,27 @@ class Config:
             self.include_sites[merged_path] = (source, inner)
             return self._load_source(target, merged_path, schema, stack, via=str(v))
         return self._walk(v, source, inner, merged_path, schema, stack, None, line)
+
+    def _walk_overrides(self, node, source, inner, merged_path, schema, stack):
+        """Mapping-form include (step 5): `{$include: ref, **overrides}` is the included content
+        deep-merged with the overrides. A leaf the overrides supply is attributed to this (the
+        including) file; every other leaf keeps the included file's provenance."""
+        ref = str(node[INCLUDE_KEY])
+        self.include_sites[merged_path] = (source, (*inner, INCLUDE_KEY))
+        base = self._load_source(self._resolve_ref(ref, source), merged_path, schema, stack, via=ref)
+        overrides = {}
+        for k, v in node.items():
+            if k == INCLUDE_KEY:
+                continue
+            ln = node.lc.key(k)[0] + 1 if k in node.lc.data else None
+            overrides[k] = self._child(v, source, (*inner, k), (*merged_path, k), subschema(schema, k), stack, ln)
+        merged = deep_merge(base, overrides)
+        # a list or scalar override REPLACES: drop provenance the replaced included content left behind
+        n = len(merged_path)
+        for table in (self.provenance, self.include_sites):
+            for p in [p for p in table if len(p) > n and p[:n] == merged_path and not _has_path(merged, p[n:])]:
+                del table[p]
+        return merged
 
     # ---- querying ------------------------------------------------------------
 
@@ -364,6 +388,27 @@ class Config:
 
     def local_sources(self) -> set[str]:
         return {s for s in self.texts if not s.startswith(("http://", "https://"))}
+
+
+def deep_merge(base, override):
+    """Mappings merge recursively; scalars and lists in the override replace."""
+    if isinstance(base, dict) and isinstance(override, dict):
+        out = dict(base)
+        for k, v in override.items():
+            out[k] = deep_merge(base[k], v) if k in base else v
+        return out
+    return override
+
+
+def _has_path(node, rel: tuple) -> bool:
+    for k in rel:
+        if isinstance(node, dict) and k in node:
+            node = node[k]
+        elif isinstance(node, list) and isinstance(k, int) and k < len(node):
+            node = node[k]
+        else:
+            return False
+    return True
 
 
 def _is_include_ref(v) -> bool:
