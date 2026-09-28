@@ -1,3 +1,4 @@
+import re
 import pytest
 from . import yaml12
 from .theatre import build
@@ -50,18 +51,33 @@ def test_show_without_a_path_prints_everything(cli, tmp_theatre):
     build(tmp_theatre, FILES)
     assert yaml12.load(cli("show", theatre=tmp_theatre).out) == MERGED
 
+# Every scalar in FILES, keyed by its mapping key or list item, with the file it comes from.
+SOURCES = {"name": ".troupe/troupe.yml", "model": ".troupe/agents/coder.yaml",
+           "- bash": ".troupe/agents/coder.yaml", "- edit": ".troupe/agents/coder.yaml",
+           "prompt": ".troupe/agents/p.md"}
+
 @pytest.mark.steps(3)
 def test_show_sources_names_the_file_of_every_scalar(cli, tmp_theatre):
     build(tmp_theatre, FILES)
     r = cli("show", "--sources", theatre=tmp_theatre)
     assert r.code == 0 and yaml12.load(r.out) == MERGED     # comments do not change the data
-    lines = r.out.splitlines()
-    def line_for(prefix):
-        return next(l for l in lines if l.strip().startswith(prefix))
-    assert line_for("name:").endswith("# from .troupe/troupe.yml")
-    assert line_for("model:").endswith("# from .troupe/agents/coder.yaml")
-    assert line_for("- bash").endswith("# from .troupe/agents/coder.yaml")
-    assert line_for("prompt:").endswith("# from .troupe/agents/p.md")
+    seen, block_indent = {}, None
+    for line in r.out.splitlines():
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip())
+        if block_indent is not None and indent > block_indent:
+            continue                                         # content of a block scalar, not a line of its own
+        block_indent = None
+        if re.fullmatch(r"\s*[^\s#:-][^#:]*:\s*(#.*)?", line):
+            continue                                         # a mapping key opening a nested block
+        key = line.strip().split(":")[0] if not line.lstrip().startswith("- ") else re.sub(r"\s+#.*$", "", line).strip()
+        assert key in SOURCES, f"unexpected scalar line: {line!r}"
+        assert line.endswith(f"# from {SOURCES[key]}"), f"scalar line lacks its source comment: {line!r}"
+        seen[key] = line
+        if re.search(r":\s*[|>][-+0-9]*\s*(#.*)?$", line):
+            block_indent = indent                            # the scalar continues as a block below
+    assert set(seen) == set(SOURCES), f"scalars missing from --sources output: {set(SOURCES) - set(seen)}"
 
 @pytest.mark.steps(3)
 def test_show_unknown_path_exits_5(cli, tmp_theatre):
