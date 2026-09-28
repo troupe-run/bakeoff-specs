@@ -146,7 +146,7 @@ def _eol_tail(text: str, b: int, new_end_col: int, q: int | None = -1) -> str:
     return between + " " * max(1, col(text, q) - end) + text[q:le]
 
 
-def _header_comment(text: str, a: int, rest_start: int) -> int | None:
+def _header_comment(text: str, rest_start: int) -> int | None:
     """'#' of the comment in `text[rest_start:line_end]` when that stretch is only whitespace + comment
     (a block scalar header's tail, or a key line whose value is a block collection)."""
     le = line_end(text, rest_start)
@@ -523,8 +523,7 @@ def _replace(text, ref, value, old_data, path, eff) -> str:
         raise SpliceError(f"unrecognised block header {header!r}")
     kind, ind1, old_chomp, ind2 = m.groups()
     explicit = ind1 or ind2
-    header_rest = header[m.end():]  # e.g. '  # comment'
-    hq = _header_comment(text, a, a + m.end())
+    hq = _header_comment(text, a + m.end())  # the header's own comment, e.g. '|  # note'
 
     def rest_after(new_head: str) -> str:
         """header_rest with its comment returned to its old column after `new_head` replaces the header."""
@@ -638,9 +637,8 @@ def _replace_container(text, ref, value, nl) -> str:
     r = render_inline(value, None, False)
     k_end = ref.key.end_mark.index
     colon = text.index(":", k_end) + 1
-    le = line_end(text, colon)
     new = " " + r
-    rest = _eol_tail(text, colon, col(text, colon) + len(new), _header_comment(text, colon, colon))
+    rest = _eol_tail(text, colon, col(text, colon) + len(new), _header_comment(text, colon))
     return text[:colon] + new + rest + nl + text[body_end:]
 
 
