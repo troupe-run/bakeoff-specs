@@ -34,7 +34,7 @@ def test_new_key_under_remote_include_becomes_local_override(cli, tmp_theatre, s
     base = served({"team.yaml": "model: opus\n"})
     build(tmp_theatre, {CFG: f"team: {base}/team.yaml\n"})
     assert cli("set", "team.temperature", "0.3", theatre=tmp_theatre).code == 0
-    assert read(tmp_theatre, CFG) == f"team:\n  $include: {base}/team.yaml\n  temperature: 0.3\n"
+    assert read(tmp_theatre, CFG) == f"team:\n  $ref: {base}/team.yaml\n  temperature: 0.3\n"
 
 @pytest.mark.steps(7)
 def test_schema_format_uri_field_is_literal_and_not_fetched(cli, tmp_theatre):

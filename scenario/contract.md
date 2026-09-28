@@ -128,13 +128,13 @@ have actor `{"kind": "unknown", "id": null}`.
 
 ## Overrides (from step 5 — replaces rule 2 under `set`)
 
-- An include may be written in **mapping form**: a mapping with an `$include` key whose value is the include
+- An include may be written in **mapping form**: a mapping with an `$ref` key whose value is the include
   string. Its other keys are **overrides**: the value is the included content deep-merged with the overrides
   (mappings merge recursively; scalars and lists in the override replace).
 - A new key whose deepest existing ancestor comes from an included file is written as an override in the
   file that contains the include reference (the *including* file). A scalar-form include is first converted
   to mapping form, indented at the file's indentation, keeping any end-of-line comment on the key's line:
-  `coder: file:agents/coder.yaml  # c` → `coder:  # c` / `  $include: file:agents/coder.yaml` / `  temperature: 0.3`
+  `coder: file:agents/coder.yaml  # c` → `coder:  # c` / `  $ref: file:agents/coder.yaml` / `  temperature: 0.3`
 - `set --in-include PATH VALUE` writes a new key into the included file instead (the step 1 rule).
 - Appending a list item is not a new key: the item is appended in the file that holds the list. Likewise, a
   new key inside a list item is written in the file that holds the list, since overrides cannot address list

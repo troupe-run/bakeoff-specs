@@ -682,19 +682,19 @@ def _two_spaces_before_mark(text: str, line_no: int, name: str) -> str:
     return new
 
 
-INCLUDE_KEY = "$include"
+INCLUDE_KEY = "$ref"
 
 
 def convert_include_to_mapping(text: str, path: tuple) -> str:
     """Scalar-form include -> mapping form, byte-surgically (contract, "Overrides", step 5):
 
         coder: file:agents/coder.yaml  # c   ->   coder:  # c
-                                                    $include: file:agents/coder.yaml
+                                                    $ref: file:agents/coder.yaml
 
     Only the key line's value part is removed (the end-of-line comment keeps its bytes, including the
-    whitespace before `#`) and one `$include:` line is inserted directly below at the site's indentation
+    whitespace before `#`) and one `$ref:` line is inserted directly below at the site's indentation
     + 2; the include scalar's own bytes (quotes included) move there verbatim. In a flow collection the
-    scalar is wrapped in place: `{$include: file:x}`. Verified like any other splice."""
+    scalar is wrapped in place: `{$ref: file:x}`. Verified like any other splice."""
     refs = index(text)
     ref = lookup(refs, path)
     if ref is None or not isinstance(ref.node, ScalarNode):
@@ -744,7 +744,7 @@ def file_indent(text: str) -> int:
 
 
 def _verify_conversion(old_text, new_text, path):
-    """The data equals the old data with the include string at `path` wrapped as {$include: string},
+    """The data equals the old data with the include string at `path` wrapped as {$ref: string},
     and every source node outside `path` is identical (kind/tag/style/raw value)."""
     try:
         new_data = load_data(new_text)

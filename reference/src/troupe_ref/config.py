@@ -225,7 +225,7 @@ class Config:
         return self._walk(v, source, inner, merged_path, schema, stack, None, line)
 
     def _walk_overrides(self, node, source, inner, merged_path, schema, stack):
-        """Mapping-form include (step 5): `{$include: ref, **overrides}` is the included content
+        """Mapping-form include (step 5): `{$ref: ref, **overrides}` is the included content
         deep-merged with the overrides. A leaf the overrides supply is attributed to this (the
         including) file; every other leaf keeps the included file's provenance."""
         ref = str(node[INCLUDE_KEY])
@@ -239,7 +239,7 @@ class Config:
             ln = node.lc.key(k)[0] + 1 if k in node.lc.data else None
             overrides[k] = self._child(v, source, (*inner, k), (*merged_path, k), subschema(schema, k), stack, ln)
         if not overrides:
-            return base  # `{$include: ref}` alone is just the include (whatever its kind)
+            return base  # `{$ref: ref}` alone is just the include (whatever its kind)
         if self.provenance[merged_path].kind == "text":
             raise ConfigError(f"{source}: {fmt_path(merged_path)!r} overrides keys of {ref!r}, which is not a "
                               f"YAML include; overrides apply only to YAML includes")
