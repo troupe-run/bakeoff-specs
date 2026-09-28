@@ -1,6 +1,10 @@
 """Reference implementation CLI. Exit codes per scenario/contract.md."""
 from __future__ import annotations
 import argparse, sys
+from pathlib import Path
+
+from .loader import LoadError, load
+from .step import STEP
 
 EXIT_OK, EXIT_USAGE, EXIT_REFUSED, EXIT_LOAD, EXIT_PATH = 0, 2, 3, 4, 5
 
@@ -14,10 +18,55 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("args", nargs="*")
     return p
 
+def print_scalar(v) -> str:
+    """The contract's "Printing a scalar" rule (scenario/contract.md, General)."""
+    if isinstance(v, bool):
+        return "true\n" if v else "false\n"
+    if v is None:
+        return "null\n"
+    if isinstance(v, float):
+        return repr(v) + "\n"
+    s = str(v)
+    return s if s.endswith("\n") else s + "\n"
+
+class PathError(Exception):
+    pass
+
+def lookup(data, path: str):
+    node = data
+    for seg in path.split("."):
+        if isinstance(node, list) and seg.isdigit() and int(seg) < len(node):
+            node = node[int(seg)]
+        elif isinstance(node, dict) and seg in node:
+            node = node[seg]
+        else:
+            raise PathError(f"{path}: no such setting")
+    return node
+
+def cmd_show(cfg, args) -> tuple[int, str]:
+    value = lookup(cfg.merged, args[0])
+    if isinstance(value, (dict, list)):
+        raise PathError(f"{args[0]}: is a section, not a value")
+    return EXIT_OK, print_scalar(value)
+
+COMMANDS = {"show": cmd_show}
+
 def main(argv: list[str] | None = None) -> int:
     ns = build_parser().parse_args(argv)
-    print(f"troupe config {ns.sub}: not implemented", file=sys.stderr)
-    return 99
+    if ns.sub not in COMMANDS:
+        print(f"troupe config {ns.sub}: not implemented", file=sys.stderr)
+        return 99
+    try:
+        cfg = load(Path(ns.theatre))
+        code, out = COMMANDS[ns.sub](cfg, ns.args)
+    except LoadError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_LOAD
+    except PathError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_PATH
+    sys.stdout.write(out)
+    return code
 
 if __name__ == "__main__":
     sys.exit(main())
