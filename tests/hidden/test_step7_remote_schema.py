@@ -38,10 +38,13 @@ def test_new_key_under_remote_include_becomes_local_override(cli, tmp_theatre, s
 
 @pytest.mark.steps(7)
 def test_schema_format_uri_field_is_literal_and_not_fetched(cli, tmp_theatre):
-    schema = {"type": "object", "properties": {"homepage": {"type": "string", "format": "uri"}}}
-    build(tmp_theatre, {CFG: f"homepage: {DEAD}/site.yaml\n", SCHEMA: json.dumps(schema)})
+    schema = {"type": "object", "properties": {"homepage": {"type": "string", "format": "uri"},
+                                               "docs": {"type": "string", "format": "uri"}}}
+    build(tmp_theatre, {CFG: f"homepage: {DEAD}/site.yaml\ndocs: file:missing.yaml\n", SCHEMA: json.dumps(schema)})
     r = cli("get", "homepage", theatre=tmp_theatre)
     assert (r.code, r.out) == (0, f"{DEAD}/site.yaml\n")
+    r = cli("get", "docs", theatre=tmp_theatre)          # before step 7 this is an include of a missing file
+    assert (r.code, r.out) == (0, "file:missing.yaml\n")
 
 @pytest.mark.steps(7)
 def test_literal_tag_is_literal_and_kept_on_set(cli, tmp_theatre):
