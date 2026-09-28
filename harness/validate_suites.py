@@ -8,37 +8,50 @@ REPO = Path(__file__).resolve().parents[1]
 ALLOW = {l.split("#")[0].strip() for l in (REPO / "harness/negative_allowlist.txt").read_text().splitlines()
          if l.split("#")[0].strip()}
 
-def run(step: int, ref_step: int, extra: list[str], xml: Path) -> dict[str, str]:
+def run(step: int, ref_step: int, extra: list[str], xml: Path) -> tuple[dict[str, str], int]:
     env = {**os.environ, "TROUPE_REF_STEP": str(ref_step)}
-    subprocess.run(["uv", "run", "pytest", "tests/hidden", "--step", str(step), "-q", "-p", "no:cacheprovider",
+    proc = subprocess.run(["uv", "run", "pytest", "tests/hidden", "--step", str(step), "-q", "-p", "no:cacheprovider",
                     f"--junitxml={xml}", *extra], cwd=REPO, env=env)
     out = {}
-    for tc in ET.parse(xml).iter("testcase"):
-        outcome = "failed" if tc.find("failure") is not None or tc.find("error") is not None else \
-                  "skipped" if tc.find("skipped") is not None else "passed"
-        out[f"{tc.get('classname')}::{tc.get('name')}"] = outcome
-    return out
+    try:
+        for tc in ET.parse(xml).iter("testcase"):
+            outcome = "failed" if tc.find("failure") is not None or tc.find("error") is not None else \
+                      "skipped" if tc.find("skipped") is not None else "passed"
+            out[f"{tc.get('classname')}::{tc.get('name')}"] = outcome
+    except (ET.ParseError, FileNotFoundError):
+        pass
+    return out, proc.returncode
 
 def main() -> int:
     tmp = REPO / "results/tmp"; tmp.mkdir(parents=True, exist_ok=True)
     lines, ok = ["# Instrument validation", ""], True
     for n in range(1, 8):
-        res = run(n, n, [], tmp / f"pos{n}.xml")
+        res, rc = run(n, n, [], tmp / f"pos{n}.xml")
         bad = [t for t, o in res.items() if o != "passed"]
-        ok &= not bad and bool(res)
-        lines.append(f"- step {n} positive: {len(res)} tests, {len(bad)} not passing {bad or ''}")
+        crashed = rc not in (0, 1)
+        ok &= not bad and bool(res) and not crashed
+        lines.append(f"- step {n} positive: {len(res)} tests, {len(bad)} not passing {bad or ''}"
+                     + (f" [FAIL: pytest exit {rc}]" if crashed else ""))
     for n in range(2, 8):
-        res = run(n, n - 1, ["--first-step-only", str(n)], tmp / f"neg{n}.xml")
+        res, rc = run(n, n - 1, ["--first-step-only", str(n)], tmp / f"neg{n}.xml")
+        crashed = rc not in (0, 1)
+        none_selected = not res
         passing = [t for t, o in res.items() if o == "passed"]
         unexplained = [t for t in passing if t.split("::")[-1] not in ALLOW]
-        ok &= not unexplained
+        ok &= not unexplained and not crashed and not none_selected
         lines.append(f"- step {n} negative: {len(res)} new tests, {len(passing)} pass at step {n-1} "
-                     f"(allowlisted: {len(passing) - len(unexplained)}; unexplained: {unexplained or 'none'})")
+                     f"(allowlisted: {len(passing) - len(unexplained)}; unexplained: {unexplained or 'none'})"
+                     + (f" [FAIL: pytest exit {rc}]" if crashed else "")
+                     + (" [FAIL: no tests selected]" if none_selected else ""))
     for i in range(5):
-        res = run(4, 4, ["-k", "watch or edit"], tmp / f"flake{i}.xml")
+        res, rc = run(4, 4, ["-k", "watch or edit"], tmp / f"flake{i}.xml")
+        crashed = rc not in (0, 1)
+        none_selected = not res
         bad = [t for t, o in res.items() if o != "passed"]
-        ok &= not bad
-        lines.append(f"- watcher run {i + 1}/5: {len(bad)} not passing {bad or ''}")
+        ok &= not bad and not crashed and not none_selected
+        lines.append(f"- watcher run {i + 1}/5: {len(bad)} not passing {bad or ''}"
+                     + (f" [FAIL: pytest exit {rc}]" if crashed else "")
+                     + (" [FAIL: no tests selected]" if none_selected else ""))
     lines += ["", f"**Result: {'PASS' if ok else 'FAIL'}**", ""]
     (REPO / "results/instrument-validation.md").write_text("\n".join(lines))
     print("\n".join(lines))
