@@ -9,6 +9,7 @@ from watchfiles import watch as fs_watch
 
 from .config import ConfigError
 from .loader import LoadError, load
+from .render import render_with_sources, render_yaml
 from .service import Service
 from .step import STEP
 from .surgical import RejectedSet, SpliceError
@@ -22,9 +23,13 @@ def build_parser() -> argparse.ArgumentParser:
     names = ("show", "set", "history")
     if STEP >= 2:
         names = (*names, "watch")
+    if STEP >= 3:
+        names = (*names, "get")
     for name in names:
         sp = config.add_parser(name)
         sp.add_argument("--theatre", default=".")
+        if name == "show":
+            sp.add_argument("--sources", action="store_true")
         sp.add_argument("args", nargs="*")
     return p
 
@@ -53,12 +58,23 @@ def lookup(data, path: str):
             raise PathError(f"{path}: no such setting")
     return node
 
-def cmd_show(svc, args) -> tuple[int, str]:
-    cfg = load(svc.theatre)
-    value = lookup(cfg.merged, args[0])
+def cmd_get(svc, args) -> tuple[int, str]:
+    value = lookup(load(svc.theatre).merged, args[0])
     if isinstance(value, (dict, list)):
-        raise PathError(f"{args[0]}: is a section, not a value")
+        raise PathError(f"{args[0]}: is a section; use `troupe config show {args[0]}`")
     return EXIT_OK, print_scalar(value)
+
+def cmd_show(svc, args, sources: bool = False) -> tuple[int, str]:
+    cfg = load(svc.theatre)
+    path = tuple(int(s) if s.isdigit() else s for s in args[0].split(".")) if args else ()
+    value = lookup(cfg.merged, args[0]) if args else cfg.merged
+    if STEP < 3:
+        if isinstance(value, (dict, list)):
+            raise PathError(f"{args[0]}: is a section, not a value")
+        return EXIT_OK, print_scalar(value)
+    if not isinstance(value, (dict, list)):
+        return EXIT_OK, print_scalar(value)
+    return EXIT_OK, render_with_sources(cfg, path, svc.theatre) if sources else render_yaml(value)
 
 class Refused(Exception):
     pass
@@ -112,7 +128,7 @@ def cmd_watch(svc, args) -> tuple[int, str]:
                 print(f"warning: {e}", file=sys.stderr, flush=True)
     return EXIT_OK, ""
 
-COMMANDS = {"show": cmd_show, "set": cmd_set, "history": cmd_history, "watch": cmd_watch}
+COMMANDS = {"show": cmd_show, "set": cmd_set, "history": cmd_history, "watch": cmd_watch, "get": cmd_get}
 
 # Per-command argument-count rules, as a function of STEP (some commands' arity changes across
 # steps, e.g. `show`'s PATH becomes optional at STEP >= 3 — Task 7). Keyed by subcommand name so
@@ -124,6 +140,7 @@ ARITY = {
     "set": lambda step: (2, 2),
     "history": lambda step: (0, 1),
     "watch": lambda step: (0, 0),
+    "get": lambda step: (1, 1),
 }
 
 def _arity_desc(lo: int, hi: int) -> str:
@@ -150,7 +167,10 @@ def main(argv: list[str] | None = None) -> int:
         # before STEP 2, where reconcile-first isn't a feature yet (only the first-run import is).
         if STEP >= 2 and ns.sub != "history":
             svc.reconcile("file")
-        code, out = COMMANDS[ns.sub](svc, ns.args)
+        if ns.sub == "show":
+            code, out = cmd_show(svc, ns.args, sources=getattr(ns, "sources", False))
+        else:
+            code, out = COMMANDS[ns.sub](svc, ns.args)
     except LoadError as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_LOAD
