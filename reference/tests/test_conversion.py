@@ -32,3 +32,15 @@ def test_conversion_is_byte_surgical(before, site, converted, added):
 def test_anchored_include_is_refused_rather_than_mangled():
     with pytest.raises(SpliceError):
         convert_include_to_mapping("coder: &c file:c.yaml\n", ("coder",))
+
+
+def test_conversion_indents_at_the_files_indentation():
+    before = "agents:\n    coder: file:coder.yaml  # c\n    other: 1\n"
+    assert convert_include_to_mapping(before, ("agents", "coder")) == (
+        "agents:\n    coder:  # c\n        $include: file:coder.yaml\n    other: 1\n")
+
+
+def test_conversion_of_a_top_level_key_uses_the_indentation_found_elsewhere_in_the_file():
+    before = "coder: file:coder.yaml\nlimits:\n    a: 1\n"
+    assert convert_include_to_mapping(before, ("coder",)) == (
+        "coder:\n    $include: file:coder.yaml\nlimits:\n    a: 1\n")
