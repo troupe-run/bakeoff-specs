@@ -293,7 +293,29 @@ class Config:
             sch = subschema(sch, k)
         return sch
 
-    def set(self, path: str, value, include: bool = False) -> str:
+    def _override_site(self, p: tuple):
+        """Step 5: where a NEW key `p` goes when its deepest existing ancestor comes from an included
+        file -- the nearest local include site at or above that ancestor, as (site merged path,
+        (site file, site inner path)). None: the step 1 rule applies (the ancestor's own file)."""
+        i = len(p) - 1
+        while p[:i] not in self.provenance:
+            i -= 1
+        self._check_new_path(p, i)
+        anc = self.provenance[p[:i]]
+        if anc.kind == "text":
+            return None  # plan_set refuses: a text include has no keys
+        for j in range(i, -1, -1):
+            site = self.include_sites.get(p[:j])
+            if site is None:
+                continue
+            if site[0] == anc.source:
+                return None  # the ancestor already lives in the including file (e.g. an override mapping)
+            if not site[0].startswith(REMOTE):
+                return p[:j], site
+            # a remote file can't hold the override: the next local site up can (deep merge reaches down)
+        return None
+
+    def set(self, path: str, value, include: bool = False, in_include: bool = False) -> str:
         """Write value into the file that owns it. Returns the file written.
 
         A URL-shaped string is written as `!literal` unless the schema already declares the field a
@@ -310,6 +332,18 @@ class Config:
                                   f"set a value inside it, or replace it with another include")
             site_file, site_inner = self.include_sites[p]
             return self._write_yaml(site_file, lambda text: surgical_set(text, site_inner, value), path)
+        if STEP >= 5 and not in_include and p not in self.provenance:
+            site = self._override_site(p)
+            if site is not None:
+                site_path, (site_file, site_inner) = site
+                rel = p[len(site_path):]
+                if site_inner and site_inner[-1] == INCLUDE_KEY:  # mapping form: add under it
+                    target = (*site_inner[:-1], *rel)
+                    edit = lambda text: surgical_set(text, target, value)
+                else:  # scalar form: convert it to mapping form first, then add
+                    target = (*site_inner, *rel)
+                    edit = lambda text: surgical_set(convert_include_to_mapping(text, site_inner), target, value)
+                return self._write_yaml(site_file, edit, path)
         prov, rel, mode = self.plan_set(path, value)
         # compare-and-swap: refuse to clobber a hand edit made since we loaded this file
         if read_exact(prov.source) != self.texts[prov.source]:

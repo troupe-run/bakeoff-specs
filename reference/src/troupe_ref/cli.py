@@ -32,6 +32,9 @@ def build_parser() -> argparse.ArgumentParser:
             sp.add_argument("--sources", action="store_true")
         if name == "set" and STEP >= 4:
             sp.add_argument("--reason")
+        if name == "set" and STEP >= 5:
+            sp.add_argument("--in-include", action="store_true",
+                            help="write a new key into the included file instead of as an override")
         sp.add_argument("args", nargs="*")
     return p
 
@@ -98,14 +101,14 @@ def parse_value(text: str):
     y = YAML(typ="safe")  # YAML 1.2 core schema
     return y.load(text)
 
-def cmd_set(svc, args) -> tuple[int, str]:
+def cmd_set(svc, args, in_include: bool = False) -> tuple[int, str]:
     path, raw = args[0], args[1]
     try:
         value = parse_value(raw)
     except YAMLError as e:
         raise UsageError(f"{path}: VALUE is not a YAML flow node: {e}") from e
     try:
-        svc.set(path, value)
+        svc.set(path, value, **({"in_include": True} if in_include else {}))
     except LookupError as e:  # IndexError: index beyond the list's length; KeyError: wrong kind of node
         raise PathError(f"{path}: {e.args[0] if e.args else e}") from e
     except (RejectedSet, SpliceError, ConfigError) as e:  # ReadOnlyIncludeError is a ConfigError
