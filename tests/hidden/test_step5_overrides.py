@@ -38,7 +38,7 @@ def test_second_override_is_added_to_existing_mapping_form(cli, tmp_theatre):
 def test_existing_value_not_overridden_still_changes_in_its_own_file(cli, tmp_theatre):
     build(tmp_theatre, SHARED)
     assert cli("set", "agents.coder.model", "sonnet", theatre=tmp_theatre).code == 0
-    assert read(tmp_theatre, CODER) == "model: sonnet  # m\nlimits:\n  max_tokens: 8000\n"
+    assert read(tmp_theatre, CODER) == "model: sonnet # m\nlimits:\n  max_tokens: 8000\n"
     assert read(tmp_theatre, CFG) == SHARED[CFG]
 
 @pytest.mark.steps(5)
