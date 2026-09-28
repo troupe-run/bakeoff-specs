@@ -1,6 +1,6 @@
 """Reference implementation CLI. Exit codes per scenario/contract.md."""
 from __future__ import annotations
-import argparse, sys
+import argparse, json, sys
 from pathlib import Path
 
 from ruamel.yaml import YAML
@@ -8,6 +8,7 @@ from ruamel.yaml.error import YAMLError
 
 from .config import ConfigError
 from .loader import LoadError, load
+from .service import Service
 from .step import STEP
 from .surgical import RejectedSet, SpliceError
 
@@ -48,7 +49,8 @@ def lookup(data, path: str):
             raise PathError(f"{path}: no such setting")
     return node
 
-def cmd_show(cfg, args) -> tuple[int, str]:
+def cmd_show(svc, args) -> tuple[int, str]:
+    cfg = load(svc.theatre)
     value = lookup(cfg.merged, args[0])
     if isinstance(value, (dict, list)):
         raise PathError(f"{args[0]}: is a section, not a value")
@@ -65,21 +67,25 @@ def parse_value(text: str):
     y = YAML(typ="safe")  # YAML 1.2 core schema
     return y.load(text)
 
-def cmd_set(cfg, args) -> tuple[int, str]:
+def cmd_set(svc, args) -> tuple[int, str]:
     path, raw = args[0], args[1]
     try:
         value = parse_value(raw)
     except YAMLError as e:
         raise UsageError(f"{path}: VALUE is not a YAML flow node: {e}") from e
     try:
-        cfg.set(path, value)
+        svc.set(path, value)
     except LookupError as e:  # IndexError: index beyond the list's length; KeyError: wrong kind of node
         raise PathError(f"{path}: {e.args[0] if e.args else e}") from e
     except (RejectedSet, SpliceError, ConfigError) as e:  # ReadOnlyIncludeError is a ConfigError
         raise Refused(f"{path}: {e}") from e
     return EXIT_OK, ""
 
-COMMANDS = {"show": cmd_show, "set": cmd_set}
+def cmd_history(svc, args) -> tuple[int, str]:
+    rows = svc.store.history(args[0] if args else None)
+    return EXIT_OK, "".join(json.dumps(r) + "\n" for r in rows)
+
+COMMANDS = {"show": cmd_show, "set": cmd_set, "history": cmd_history}
 
 # Per-command argument-count rules, as a function of STEP (some commands' arity changes across
 # steps, e.g. `show`'s PATH becomes optional at STEP >= 3 — Task 7). Keyed by subcommand name so
@@ -89,6 +95,7 @@ COMMANDS = {"show": cmd_show, "set": cmd_set}
 ARITY = {
     "show": lambda step: (0, 1) if step >= 3 else (1, 1),
     "set": lambda step: (2, 2),
+    "history": lambda step: (0, 1),
 }
 
 def _arity_desc(lo: int, hi: int) -> str:
@@ -108,8 +115,14 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: config {ns.sub}: expected {_arity_desc(lo, hi)}, got {len(ns.args)}", file=sys.stderr)
             return EXIT_USAGE
     try:
-        cfg = load(Path(ns.theatre))
-        code, out = COMMANDS[ns.sub](cfg, ns.args)
+        svc = Service(Path(ns.theatre))
+        svc.ensure_imported()
+        # Every command reconciles first (file edits made while nothing was running are picked
+        # up), except `history`, which only ever reports what has been recorded — and except
+        # before STEP 2, where reconcile-first isn't a feature yet (only the first-run import is).
+        if STEP >= 2 and ns.sub != "history":
+            svc.reconcile("file")
+        code, out = COMMANDS[ns.sub](svc, ns.args)
     except LoadError as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_LOAD
