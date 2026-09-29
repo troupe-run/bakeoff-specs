@@ -20,7 +20,8 @@ What ends an attempt:
             `recover` (and so after any restore): a path counts only when its content is a blob that was not at
             that path then, so what an earlier step left behind never counts (fix rounds 1-2, I-1). If the check
             cannot run, the attempt goes on: `AttemptResult.code_check` records it as "unavailable" with the
-            reason — never a harness fault, so an arm's own git state can never halt the bake-off. At step 5 the PO classifies every arm message BEFORE a CR-B pre-emption in this mode (fix round
+            reason — never a harness fault, so an arm's own git state can never halt the bake-off.
+            At step 5 the PO classifies every arm message BEFORE a CR-B pre-emption in this mode (fix round
             1, L-3), so a gate on the pre-empted turn still stops the run; CR-B timing is unchanged from N.b.
             `AttemptResult.discovery` says which, at which turn
   parked    an owner prompt (gate or escalation) returned `owner.Park` — recorded, never treated as an answer,
@@ -262,7 +263,8 @@ def _code_check(res: AttemptResult, turn: int, fn):
         return None
 
 
-def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult, baseline: dict | None = None) -> AttemptResult:
+def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult,
+         baseline: dict | None = None) -> AttemptResult:
     discovery = baseline is not None
     pins, arm, p = ctx.pins, ctx.arm, ctx.paths
     ctx.out.mkdir(parents=True, exist_ok=True)

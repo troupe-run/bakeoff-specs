@@ -18,7 +18,8 @@ Classification (design §9, brief table, binding rulings):
   ledger records, except under `infra-auth` / `credential-persisted` (the hand edit's precedence).
 - A harness fault (raised by drive, found by the pin check, a failed container from the runner —
   `docker.ContainerError` or `subprocess.SubprocessError` — as `infra-container`; any other exception is a runner
-  bug and propagates (fix round 1 L-1), or the owner reclassifying the arm's first runaway breach, OD14 B) goes to the ledger
+  bug and propagates (fix round 1 L-1), or the owner reclassifying the arm's first runaway breach, OD14 B) goes to
+  the ledger
   (`faults.record`). The second identical one halts (`Halt`). Otherwise the owner confirms the fix (`Paused` if
   not, or if they park), every attempt since the last restore is parked under `attempts/<k>-harness-<kind>/`, the
   step snapshot is restored, `ctx.later_sent` is reset to 0 so CR-B is sent again (ruling 2), and the arm gets
@@ -264,7 +265,7 @@ def _arm_result(ctx, summary: hidden.Summary) -> None:
 def _parked(ctx, attempt: int, ar, pk: Park, arm_attempts: int, run: str) -> StepOutcome:
     (ctx.out / "parked.json").write_text(json.dumps(
         {"run": run, "attempt": attempt, "arm_attempts_before": arm_attempts, "outcome": ar.outcome if ar else None,
-         "park": asdict(pk)}, indent=2))
+         "park": asdict(pk), "code_check": getattr(ar, "code_check", None) if run == "a" else None}, indent=2))
     return StepOutcome("parked", arm_attempts, park=pk, run=run, attempt_outcome=ar.outcome if ar else None)
 
 
@@ -276,7 +277,8 @@ def _discovered(ctx, attempt: int, ar, pin, t0: float, extra: dict) -> StepOutco
     (out / "model-pin.json").write_text(pin.to_json())
     (out / "discovery.json").write_text(json.dumps(
         {"run": "a", "pass": ctx.pass_, "arm": ctx.arm.name, "step": ctx.step, "outcome": ar.outcome,
-         "discovery": ar.discovery, "code_check": ar.code_check, "attempt": attempt, "harness_restores": attempt - 1, "breach": ar.breach,
+         "discovery": ar.discovery, "code_check": ar.code_check, "attempt": attempt,
+         "harness_restores": attempt - 1, "breach": ar.breach,
          "exchanges": ar.exchanges, "interventions": ar.interventions, "model_pin_ok": pin.ok,
          "sha_before": ctx.sha_before, "started": t0, "ended": time.time(),
          "harness_faults": [e for e in faults.for_step(ctx.pass_, ctx.arm.name, ctx.step) if e.get("run") == "a"]},

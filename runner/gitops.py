@@ -132,39 +132,54 @@ def never_code_pathspecs() -> list[str]:
 
 
 # Read-only, and nothing an arm can leave in its repo makes it fail: files are hashed with `hash-object --no-filters`
-# (no index, no object writes, no filter drivers run); an untracked entry ending in `/` is an embedded repo (with or
-# without a commit) and is reported as such; baseline tips that no longer exist are dropped (`cat-file -e`) before
-# `log --not`. Sections, \001-separated: [0] mode; [1] NUL paths of regular files; [2] their blob ids, one per line;
-# [3] NUL embedded-repo dirs; [4] NUL `path, link target` pairs; [5] `refname\tsha` lines; then with mode "base"
-# [6] `ls-tree -r -z` of every tip, or with mode "check" [6] `log --raw -z` of every commit reachable from a branch
-# or HEAD that no surviving baseline tip reaches.
+# (no index, no object writes, no filter drivers run; paths fed as `./<path>` so a leading `"` is never C-unquoted);
+# an untracked entry ending in `/` is an embedded repo (with or without a commit) and is reported as such; a name with
+# a newline cannot go through `--stdin-paths` and is tagged like an embedded repo; baseline tips that no longer exist
+# are dropped (`cat-file -e`) before `log`, and HEAD joins the tips (and the log range) only when it resolves (a
+# detached HEAD is a tip; an orphan checkout has none). Output: seven sections, each `<byte length>\n<bytes>`, so no
+# byte in a name can split them: [0] mode; [1] NUL paths of regular files; [2] their blob ids, one per line; [3] NUL
+# embedded-repo dirs (and newline names); [4] NUL `path, link target` pairs; [5] `refname\tsha` lines (`HEAD\tsha`
+# included); then with mode "base" [6] `ls-tree -r -z` of every tip, or with mode "check" [6] `log --raw -z` of every
+# commit reachable from a branch or HEAD that no surviving baseline tip reaches.
 _CONTENT_SH = r"""cd "$1"; mode="$2"; shift 2
 g() { git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false "$@"; }
 set -e -o pipefail
 ex=(); while IFS= read -r l; do [ -n "$l" ] && ex+=("$l"); done <<< "$BK_EXCLUDES"
 t=$(mktemp -d)
 g ls-files -z --cached --others --exclude-standard -- . "${ex[@]}" | sort -zu > "$t/all"
-: > "$t/files0"; : > "$t/filesn"; : > "$t/emb"; : > "$t/links"
+: > "$t/s1"; : > "$t/filesn"; : > "$t/s2"; : > "$t/s3"; : > "$t/s4"; : > "$t/s6"
+printf '%s' "$mode" > "$t/s0"
 while IFS= read -r -d '' f; do
   case "$f" in
-    */) printf '%s\0' "$f" >> "$t/emb" ;;
-    *$'\n'*) printf '%s\0' "$f" >> "$t/emb" ;;
-    *) if [ -L "$f" ]; then printf '%s\0%s\0' "$f" "$(readlink -- "$f")" >> "$t/links"
-       elif [ -f "$f" ]; then printf '%s\0' "$f" >> "$t/files0"; printf '%s\n' "$f" >> "$t/filesn"; fi ;;
+    */) printf '%s\0' "$f" >> "$t/s3" ;;
+    *$'\n'*) printf '%s\0' "$f" >> "$t/s3" ;;
+    *) if [ -L "$f" ]; then printf '%s\0%s\0' "$f" "$(readlink -- "$f")" >> "$t/s4"
+       elif [ -f "$f" ]; then printf '%s\0' "$f" >> "$t/s1"; printf './%s\n' "$f" >> "$t/filesn"; fi ;;
   esac
 done < "$t/all"
-printf '%s\001' "$mode"
-cat "$t/files0"; printf '\001'
-if [ -s "$t/filesn" ]; then g hash-object --no-filters --stdin-paths < "$t/filesn"; fi; printf '\001'
-cat "$t/emb"; printf '\001'
-cat "$t/links"; printf '\001'
-g for-each-ref refs/heads --format='%(refname)%09%(objectname)'; printf '\001'
+if [ -s "$t/filesn" ]; then g hash-object --no-filters --stdin-paths < "$t/filesn" > "$t/s2"; fi
+head=(); if h=$(g rev-parse -q --verify HEAD); then head=(HEAD); fi
+{ g for-each-ref refs/heads --format='%(refname)%09%(objectname)'
+  if [ -n "${head[*]}" ]; then printf 'HEAD\t%s\n' "$h"; fi; } > "$t/s5"
 if [ "$mode" = base ]; then
-  for sha in $(g for-each-ref refs/heads --format='%(objectname)' | sort -u); do g ls-tree -r -z --full-tree "$sha"; done
+  for sha in $(cut -f2 "$t/s5" | sort -u); do g ls-tree -r -z --full-tree "$sha"; done > "$t/s6"
 else
   keep=(); for x in "$@"; do if g cat-file -e "$x^{commit}" 2>/dev/null; then keep+=("^$x"); fi; done
-  g log --raw --no-renames --no-abbrev --format= -z --branches HEAD "${keep[@]}" -- . "${ex[@]}"
-fi"""
+  g log --raw --no-renames --no-abbrev --format= -z --branches "${head[@]}" "${keep[@]}" -- . "${ex[@]}" > "$t/s6"
+fi
+for i in 0 1 2 3 4 5 6; do printf '%d\n' "$(wc -c < "$t/s$i")"; cat "$t/s$i"; done"""
+
+
+def _sections(out: bytes, n: int = 7) -> list[bytes]:
+    parts, pos = [], 0
+    for _ in range(n):
+        nl = out.index(b"\n", pos)
+        size = int(out[pos:nl])
+        parts.append(out[nl + 1:nl + 1 + size])
+        pos = nl + 1 + size
+    if pos != len(out):
+        raise ValueError(f"git content state: {len(out) - pos} trailing bytes")
+    return parts
 
 
 def _blob_of_link(target: bytes) -> str:
@@ -182,9 +197,12 @@ def _content(p: Paths, mode: str, tips: list[str]) -> tuple[dict[str, set[str]],
     if r.returncode != 0:
         raise docker.ContainerError(f"git content state failed in container ({r.returncode}): "
                                     f"{r.stderr.decode(errors='replace')[:400]}")
-    parts = r.stdout.split(b"\x01")
-    if len(parts) != 7 or parts[0].decode() != mode:
-        raise docker.ContainerError(f"git content state: {len(parts)} sections, expected 7")
+    try:
+        parts = _sections(r.stdout)
+    except ValueError as e:
+        raise docker.ContainerError(f"git content state: unreadable output ({e})") from e
+    if parts[0].decode() != mode:
+        raise docker.ContainerError(f"git content state: mode {parts[0][:20]!r}, expected {mode}")
     dec = lambda b: b.decode(errors="surrogateescape")
     wt: dict[str, set[str]] = {}
     files = [dec(x) for x in parts[1].split(b"\0") if x]
@@ -235,7 +253,9 @@ def changed_since(p: Paths, baseline: dict) -> list[str]:
     blob that was not at that path in the baseline. Committing or checking out leftovers, and touched-then-reverted
     files, therefore never count; deletions add no content and do not count. A new embedded repo counts as its
     `dir/`. Gaps: merge-only resolutions (a merge commit's own changes are not in `log --raw`), edits inside an
-    embedded repo that was already there, and work in a linked worktree outside the repo directory."""
+    embedded repo that was already there, edits to a file whose name contains a newline (tagged like an embedded
+    repo, so only its appearance counts, not its content), and work in a linked worktree outside the repo
+    directory."""
     wt, _, commits = _content(p, "check", sorted(set(baseline["tips"].values())))
     known = baseline["pairs"]
     out = set()
