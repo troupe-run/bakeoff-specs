@@ -64,12 +64,30 @@ def test_the_arm_runs_as_its_own_uid_under_the_harness_login_name(ref):     # re
     assert {"LOGNAME=actor", "USER=actor", "HOME=/home/actor", "gp=actor"} <= set(lines), out
 
 
-def test_the_arm_has_no_network_and_cannot_write_the_harness_tests(ref):
+def test_the_arm_has_no_network(ref):
     p, copy = ref
-    out = hidden.run_script(p, copy, "touch /harness/tests/x 2>&1 && echo WROTE; "
-                                     "python3 -c 'import socket; socket.create_connection((\"1.1.1.1\", 80), 3)' "
-                                     "2>&1 >/dev/null && echo NET || echo NONET; ls /harness")
-    assert "WROTE" not in out and "NONET" in out and "tests" in out, out
+    out = hidden.run_script(p, copy, "python3 -c 'import socket; socket.create_connection((\"1.1.1.1\", 80), 3)' "
+                                     "2>&1 >/dev/null && echo NET || echo NONET")
+    assert "NONET" in out, out
+
+
+# fix round 2, item 1: the reference is in the tester image, so the arm uid must not reach it by ANY path.
+REF_PROBE = r"""
+ls /opt/reference >/dev/null 2>&1 && echo LIST-OK
+cat /opt/reference/pyproject.toml >/dev/null 2>&1 && echo READ-OK
+/opt/reference/.venv/bin/troupe --help >/dev/null 2>&1 && echo EXEC-OK
+/opt/reference/.venv/bin/python -c 'import troupe_ref' >/dev/null 2>&1 && echo IMPORT-OK
+PYTHONPATH=/opt/reference/src python3 -c 'import troupe_ref' >/dev/null 2>&1 && echo PYPATH-OK
+uv run --offline --no-sync --project /opt/reference troupe --help >/dev/null 2>&1 && echo UVRUN-OK
+find / -xdev \( -path /proc -o -path /sys \) -prune -o \( -name 'troupe_ref*' -o -name 'troupe-ref*' \) -readable -print 2>/dev/null | sed 's/^/FOUND /'
+echo PROBE-DONE
+"""
+
+
+def test_the_arm_uid_cannot_reach_the_reference_by_any_path(ref):
+    p, copy = ref
+    out = hidden.run_script(p, copy, REF_PROBE)
+    assert "PROBE-DONE" in out and not [l for l in out.splitlines() if l.endswith("-OK") or l.startswith("FOUND")], out
 
 
 def test_a_test_stable_on_the_reference_is_an_arm_flake(ref):                # review C-2
@@ -115,71 +133,111 @@ def skeleton(state, tmp_path_factory):
 # The reviewer's exploit, plus the obvious variants: forge an all-passing junit wherever the harness might read
 # it, then try to kill pytest so the forged file is what gets scored. Every attempt is logged into the arm's own
 # copy (the one place it may write), so the test proves the attempts ran and were refused.
-_FORGER = r'''import glob, os, signal
+_FORGER = r'''import glob, json, os, signal, subprocess
 FORGED = '<testsuites><testsuite>' + ''.join(
     '<testcase classname="tests.hidden.test_step1_history" name="t%d"/>' % i for i in range(25)) + '</testsuite></testsuites>'
+FRAMES = ("exit 2\n0\n" + "junit.xml %d\n" % len(FORGED) + FORGED).encode()
 LOG = "/work/bakeoff-specs-dryrun/attempts.log"
+
+def _log(what, r):
+    with open(LOG, "a") as fh:
+        fh.write(f"{what} {r}\n")
 
 def _try(what, fn):
     try:
         fn(); r = "OK"
     except Exception as e:
         r = type(e).__name__
-    with open(LOG, "a") as fh:
-        fh.write(f"{what} {r}\n")
+    _log(what, r)
 
-def _write(path):
+def _write(path, data=FORGED):
     def f():
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as fh:
-            fh.write(FORGED)
+        with open(path, "w" if isinstance(data, str) else "wb") as fh:
+            fh.write(data)
     return f
 
-def _kill_all_pytest():
-    found = []
-    for d in glob.glob("/proc/[0-9]*"):
-        try:
-            cmd = open(d + "/cmdline", "rb").read()
-        except OSError:
-            continue
-        if b"pytest" in cmd:
-            found.append(int(d.rsplit("/", 1)[1]))
-    if not found:
-        raise LookupError("no pytest process visible")
-    for pid in found:
-        os.kill(pid, signal.SIGKILL)
+def _status(pid):
+    return dict(l.split(":", 1) for l in open(f"/proc/{pid}/status").read().splitlines() if ":" in l)
 
-def _uid(pid):
-    for line in open(f"/proc/{pid}/status"):
-        if line.startswith("Uid:"):
-            return int(line.split()[1])
-
-def _kill_first_foreign_ancestor():
-    pid = os.getppid()
-    while _uid(pid) == os.getuid():
-        pid = int(open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[1])
-    os.kill(pid, signal.SIGKILL)
+def _ppid(pid):
+    return int(open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[1])
 
 def main():
+    if os.path.exists(LOG):
+        return 0                                  # attack once per run; later calls just do nothing
+    me = _status("self")
+    _log("uid", me["Uid"].split()[0])
+    for k in ("CapEff", "CapAmb", "CapPrm", "CapBnd", "NoNewPrivs"):
+        _log("status-" + k, me[k].strip())
+    _log("oom", open("/proc/self/oom_score_adj").read().strip())
+    _try("lower-oom", _write("/proc/self/oom_score_adj", "0"))
+    _log("env", json.dumps(sorted(os.environ)))
+    pytest_pid = os.getppid()                      # uv run is our parent; pytest is ITS parent
+    while _status(pytest_pid)["Uid"].split()[0] == str(os.getuid()):
+        pytest_pid = _ppid(pytest_pid)
+    entry_pid = _ppid(pytest_pid)
+    _log("targets", f"pytest={pytest_pid} entry={entry_pid} cmd={open(f'/proc/{pytest_pid}/cmdline','rb').read()[:60]!r}")
     _try("write-out", _write("/out/junit.xml"))
-    _try("write-results", _write("/tmp/results/junit.xml"))
-    _try("kill-parent", _kill_first_foreign_ancestor)
-    _try("kill-pytest", _kill_all_pytest)
+    _try("write-results", _write("/results/junit.xml"))
+    _try("write-tmp-results", _write("/tmp/results/junit.xml"))
+    for name, pid in (("pid1", 1), ("entry", entry_pid), ("pytest", pytest_pid)):
+        _try(f"frames-fd1-{name}", _write(f"/proc/{pid}/fd/1", FRAMES))
+    for name, pid in (("pytest", pytest_pid), ("entry", entry_pid), ("pid1", 1)):
+        _try(f"kill-{name}", lambda pid=pid: os.kill(pid, signal.SIGKILL))
+    _try("list-harness", lambda: os.listdir("/harness"))
+    _try("read-test", lambda: open("/harness/tests/hidden/test_step1_history.py").read())
+    _try("read-test-via-cwd", lambda: open(f"/proc/{pytest_pid}/cwd/tests/hidden/test_step1_history.py").read())
+    _try("list-results", lambda: os.listdir("/results"))
+    for path in ("/opt/reference/.venv/bin/troupe", "/opt/reference/.venv/bin/python"):
+        _try("exec-ref " + path, lambda path=path: subprocess.run([path, "--help"], check=True, capture_output=True))
     return 0
 '''
 
 
-def test_an_arm_that_forges_junit_and_kills_pytest_scores_zero(state, tmp_path):     # fix round 1
+def test_an_arm_that_forges_junit_and_kills_pytest_scores_zero(state, tmp_path):     # fix rounds 1 + 2
     p, dst = _skeleton("forger", _FORGER, tmp_path)
     s = hidden.run(p, dst, 1, tmp_path)
     assert (s.scoreable, s.attribution, s.total, s.passed) == (True, None, EXPECTED[1], 0), s.attribution
-    attempts = (dst / "attempts.log").read_text().splitlines()
-    assert attempts, "the forger never ran"
-    results = {tuple(a.split()) for a in attempts}
-    assert {r[0] for r in results} == {"write-out", "write-results", "kill-parent", "kill-pytest"}
-    assert {r for r in results if r[0].startswith("kill-")} == {("kill-parent", "PermissionError"),
-                                                               ("kill-pytest", "PermissionError")}, results
-    assert not [r for r in results if r[1] == "OK"], results
+    rows = [l.split(" ", 1) for l in (dst / "attempts.log").read_text().splitlines()]
+    got = dict(rows)
+    assert len(got) == len(rows), "attempted twice"
+    # the real pytest-launched path: its own uid, no capabilities at all, no new privileges, OOM-first
+    assert got["uid"] == "1001"
+    assert {got[f"status-{k}"] for k in ("CapEff", "CapAmb", "CapPrm", "CapBnd")} == {"0000000000000000"}
+    assert got["status-NoNewPrivs"] == "1" and got["oom"] == "1000" and got["lower-oom"] != "OK"
+    env = json.loads(got["env"])
+    assert not [k for k in env if k.startswith(("TROUPE_REF", "PYTEST", "BAKEOFF", "PYTHONPATH"))], env
+    assert "b'/opt/harness/bin/python" in got["targets"] and "pytest" in got["targets"], got["targets"]
+    attacks = {k: v for k, v in got.items() if k.startswith(("write-", "frames-", "kill-", "list-", "read-", "exec-ref"))}
+    assert len(attacks) == 3 + 3 + 3 + 2 + 2 + 2, sorted(attacks)
+    assert not [k for k, v in attacks.items() if v == "OK"], attacks
+    assert {got["kill-pytest"], got["kill-entry"], got["kill-pid1"]} == {"PermissionError"}
+
+
+def test_an_arm_that_execs_the_reference_scores_zero(state, tmp_path):                  # fix round 2, item 1
+    shim = r"""import os, subprocess, sys
+PATHS = [["/opt/reference/.venv/bin/troupe"], ["/opt/reference/.venv/bin/python", "-m", "troupe_ref.cli"],
+         ["uv", "run", "--offline", "--no-sync", "--quiet", "--project", "/opt/reference", "troupe"]]
+def main():
+    os.environ["PYTHONPATH"] = "/opt/reference/src"
+    for argv in PATHS:
+        try:
+            r = subprocess.run(argv + sys.argv[1:], capture_output=True)
+        except OSError:
+            continue
+        if r.returncode == 0 or r.stdout:
+            sys.stdout.buffer.write(r.stdout); sys.stderr.buffer.write(r.stderr)
+            return r.returncode
+    for argv in PATHS[:2]:
+        try:
+            os.execv(argv[0], argv + sys.argv[1:])
+        except OSError:
+            pass
+    return 2
+"""
+    p, dst = _skeleton("refshim", shim, tmp_path)
+    s = hidden.run(p, dst, 1, tmp_path)
+    assert (s.scoreable, s.total, s.passed) == (True, EXPECTED[1], 0), [t for t, o in s.tests.items() if o == "passed"]
 
 
 def test_a_skeleton_that_does_nothing_scores_zero(skeleton):

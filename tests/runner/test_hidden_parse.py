@@ -85,28 +85,36 @@ def test_the_arm_uid_gets_the_same_login_name_as_the_harness_uid():
 
 def test_pytest_starts_as_the_harness_uid_with_only_the_caps_it_needs(tmp_state, accounts):
     _, _, s = _spec(tmp_state, "harness")
-    assert s.user == "0:0" and set(s.cap_add) == {"SETUID", "SETGID", "KILL", "DAC_OVERRIDE"}
+    caps = {"SETUID", "SETGID", "KILL", "DAC_OVERRIDE", "SETPCAP", "SYS_RESOURCE"}
+    assert s.user == "0:0" and set(s.cap_add) == caps
     assert s.cmd[:4] == ["setpriv", "--reuid=1000", "--regid=1000", "--clear-groups"]
-    assert "--ambient-caps=+setuid,+setgid,+kill,+dac_override" in s.cmd
+    assert "--ambient-caps=+setuid,+setgid,+kill,+dac_override,+setpcap,+sys_resource" in s.cmd
     i = s.cmd.index("--")
-    assert s.cmd[i + 1:i + 3] == ["bash", "/harness/entry.sh"]
+    assert s.cmd[i + 1:i + 5] == ["bash", "-c", hidden.ENTRY.read_text(), "entry"]
 
 
 def test_the_arm_cli_runs_under_its_own_uid_with_no_caps_and_setpriv_execs_it():
     pre = hidden.arm_prefix("/work/bakeoff-specs-dryrun")
-    assert pre == ["setpriv", "--reuid=1001", "--regid=1001", "--clear-groups", "--inh-caps=-all",
-                   "--ambient-caps=-all", "--", "uv", "run", "--quiet", "--project", "/work/bakeoff-specs-dryrun",
-                   "troupe"]
+    assert pre == ["choom", "-n", "1000", "--",            # set by the harness (SYS_RESOURCE): the arm cannot lower it
+                   "setpriv", "--reuid=1001", "--regid=1001", "--clear-groups", "--inh-caps=-all",
+                   "--ambient-caps=-all", "--bounding-set=-all", "--",
+                   "uv", "run", "--quiet", "--project", "/work/bakeoff-specs-dryrun", "troupe"]
     argv = hidden._pytest_argv(["tests/hidden", "--step", "1"], "/work/bakeoff-specs-dryrun")
     assert argv[argv.index("--cmd-prefix") + 1] == " ".join(pre)
-    assert "--junitxml=/tmp/results/junit.xml" in argv
+    assert "--junitxml=/results/junit.xml" in argv and "--forward-ref-step" not in argv
+
+
+def test_reference_runs_are_the_harness_uid_and_forward_the_ref_step():      # fix round 2, item 1 (b)
+    argv = hidden._pytest_argv(["x"], "/opt/reference", reference=True)
+    assert argv[argv.index("--cmd-prefix") + 1] == "uv run --quiet --project /opt/reference troupe"
+    assert "--forward-ref-step" in argv
 
 
 def test_both_uids_see_the_same_login_name_in_env_and_passwd(tmp_state, accounts):
     _, _, s = _spec(tmp_state, "harness")
     assert s.env["LOGNAME"] == s.env["USER"] == "actor" and s.env["BAKEOFF_SHARE_THEATRE_WITH_ARM"] == "1"
     m = {x.ctr: x for x in s.mounts}
-    assert m["/etc/passwd"].ro and m["/etc/group"].ro
+    assert m["/etc/passwd"].ro and m["/etc/group"].ro and "BAKEOFF_ARM_UNDER_TEST" not in s.env
     assert "actor:x:1001:1001:" in Path(m["/etc/passwd"].host).read_text()
 
 
@@ -127,14 +135,26 @@ def test_collection_runs_with_no_arm_code_mounted(tmp_state, accounts):
     assert "/work" not in {x.ctr for x in s.mounts}
 
 
-def test_the_harness_tests_are_read_only_and_the_copy_at_the_arms_own_path(tmp_state, accounts):
+def test_the_hidden_tests_are_never_bind_mounted_but_streamed_into_a_harness_only_tmpfs(tmp_state, accounts):
+    # fix round 2, item 2: Docker Desktop bind mounts cannot be protected by permissions
     _, copy, s = _spec(tmp_state, "harness")
     m = {x.ctr: x for x in s.mounts}
-    assert m["/harness/tests"].ro and m["/harness/tests"].host == REPO_ROOT / "tests"
-    assert m["/harness/pyproject.toml"].ro and m["/harness/entry.sh"].ro
+    assert not [c for c in m if c.startswith("/harness")]
+    assert "/harness:rw,uid=1000,gid=1000,mode=0700,size=64m" in s.tmpfs
+    assert "/results:rw,uid=1000,gid=1000,mode=0700,size=64m" in s.tmpfs          # item 3: not the shared /tmp
+    assert s.stdin
     assert m["/work"].host == copy.parent and s.network == "none" and not s.proxy
     assert {k: s.env[k] for k in ("UV_OFFLINE", "UV_NO_SYNC", "PYTHONDONTWRITEBYTECODE", "UV_CACHE_DIR")} == \
         {"UV_OFFLINE": "1", "UV_NO_SYNC": "1", "PYTHONDONTWRITEBYTECODE": "1", "UV_CACHE_DIR": "/tmp/uv-cache"}
+
+
+def test_the_harness_bundle_is_exactly_the_hidden_suite_and_its_config():
+    files = hidden.unpack_bundle(hidden.harness_bundle())
+    names = set(files)
+    assert {"pyproject.toml", "tests/__init__.py", "tests/conftest.py", "tests/hidden/conftest.py",
+            "tests/hidden/test_step1_history.py", "tests/hidden/driver.py"} <= names
+    assert not [n for n in names if n.startswith("tests/runner") or "__pycache__" in n or n.startswith("/") or ".." in n]
+    assert files["tests/hidden/driver.py"] == (REPO_ROOT / "tests/hidden/driver.py").read_bytes()
 
 
 def test_the_tester_never_mounts_scratch_or_the_arm_home_writable(tmp_state, accounts):
@@ -168,7 +188,9 @@ def test_run_argv_takes_the_user_and_added_caps_from_the_spec_and_defaults_are_u
     a = docker.run_argv(base)
     assert a[a.index("--user") + 1] == "1000:1000" and "--cap-add" not in a
     import dataclasses
-    b = docker.run_argv(dataclasses.replace(base, user="0:0", cap_add=("KILL", "SETUID")))
+    assert a.count("--tmpfs") == 1
+    b = docker.run_argv(dataclasses.replace(base, user="0:0", cap_add=("KILL", "SETUID"), tmpfs=("/r:mode=0700",)))
+    assert b[b.index("/r:mode=0700") - 1] == "--tmpfs"
     assert b[b.index("--user") + 1] == "0:0"
     assert b[b.index("--cap-drop") + 1] == "ALL" and [b[i + 1] for i, v in enumerate(b) if v == "--cap-add"] == ["KILL", "SETUID"]
 
@@ -281,3 +303,104 @@ def test_sharing_a_theatre_opens_it_and_only_traverse_on_its_own_ancestors(tmp_p
     assert root.stat().st_mode & 0o777 == 0o777
     assert (mid.stat().st_mode & 0o777, top.stat().st_mode & 0o777) == (0o711, 0o711)
     assert tmp_path.stat().st_mode & 0o777 == 0o700            # nothing above `top` is touched
+
+
+# --- fix round 2 ---------------------------------------------------------------------------------------------
+
+def test_install_failed_wins_over_a_harness_fault():                          # item 4
+    s = hidden.summarise(1, {}, [], flaky=[], flaky_arm=[], exit_code=2, install_failed=True,
+                         collected=["m::a", "m::b"], attribution="harness-fault: pytest exit 2")
+    assert s.scoreable and s.install_failed and (s.total, s.passed, s.failed) == (2, 0, 2)
+
+
+RES_OOM = b"low 0\nhigh 0\nmax 0\noom 1\noom_kill 1\noom_group_kill 0\n--pids\nmax 0\n--tmp\ntmpfs 4194304 12 4194292 1% /tmp\n"
+RES_PIDS = b"oom_kill 0\n--pids\nmax 3\n--tmp\ntmpfs 4194304 12 4194292 1% /tmp\n"
+RES_FULL = b"oom_kill 0\n--pids\nmax 0\n--tmp\ntmpfs 4194304 4194304 0 100% /tmp\n"
+RES_CALM = b"oom_kill 0\n--pids\nmax 0\n--tmp\ntmpfs 4194304 12 4194292 1% /tmp\n"
+
+
+def test_resource_evidence_is_read_from_the_cgroup_and_tmp_records():
+    assert hidden.resource_evidence({"resources": RES_OOM}) == ["oom-kill:1"]
+    assert hidden.resource_evidence({"resources": RES_PIDS}) == ["pids-max:3"]
+    assert hidden.resource_evidence({"resources": RES_FULL}) == ["tmp-full"]
+    assert hidden.resource_evidence({"resources": RES_CALM, "pytest.log": b"OSError: [Errno 28] No space left on device"}) == ["enospc-in-log"]
+    assert hidden.resource_evidence({"resources": RES_CALM}) == []
+
+
+def test_a_pytest_death_with_resource_evidence_is_arm_resource_not_harness_fault():   # item 3 ruling
+    tests, code, attribution = hidden.assess(["m::a", "m::b"], {"exit": b"137\n", "resources": RES_OOM})
+    assert (tests, code, attribution) == ({}, 137, "arm-resource")
+    _, _, attribution = hidden.assess(["m::a", "m::b"], {"exit": b"137\n", "resources": RES_CALM})
+    assert attribution.startswith("harness-fault")
+
+
+def test_a_completed_run_with_a_valid_junit_is_scored_even_under_resource_pressure():
+    tests, code, attribution = hidden.assess(["m::a", "m::b"], {"exit": b"1\n", "junit.xml": J_FAIL, "resources": RES_FULL})
+    assert (tests, attribution) == ({"m::a": "passed", "m::b": "failed"}, None)
+
+
+def test_timed_out_needs_the_timeout_exit_code_as_well_as_the_elapsed_time():       # item 5 (entry script)
+    text = hidden.ENTRY.read_text()
+    assert '"$rc" = 124' in text and '"$rc" = 137' in text
+
+
+def _fake_run(monkeypatch, results):
+    calls = []
+    monkeypatch.setattr(hidden, "_collect", lambda p, step, first_only: ["m::a", "m::b"] if not first_only else ["m::b"])
+    def fake(p, copy, args, **kw):
+        calls.append(args)
+        return results.pop(0), None
+    monkeypatch.setattr(hidden, "_pytest", fake)
+    return calls
+
+
+def test_arm_resource_is_rerun_once_and_a_clean_rerun_is_scored(tmp_state, monkeypatch):
+    calls = _fake_run(monkeypatch, [{"exit": b"137\n", "resources": RES_OOM},
+                                     {"exit": b"0\n", "junit.xml": J_PASS, "resources": RES_CALM}])
+    s = hidden.run(Paths("dryhp", "dryrun"), tmp_state / "c", 1, tmp_state / "out")
+    assert len(calls) == 2 and (s.scoreable, s.passed, s.attribution) == (True, 2, None)
+    assert s.resource_evidence == [["oom-kill:1"], []]
+
+
+def test_arm_resource_twice_scores_the_step_all_failed_with_the_evidence(tmp_state, monkeypatch):
+    calls = _fake_run(monkeypatch, [{"exit": b"137\n", "resources": RES_OOM},
+                                     {"exit": b"137\n", "resources": RES_PIDS}])
+    s = hidden.run(Paths("dryhp", "dryrun"), tmp_state / "c", 1, tmp_state / "out")
+    assert len(calls) == 2
+    assert (s.scoreable, s.attribution, s.total, s.passed, s.failed) == (True, "arm-resource", 2, 0, 2)
+    assert s.resource_evidence == [["oom-kill:1"], ["pids-max:3"]]
+    import json
+    assert json.loads((tmp_state / "out" / "hidden" / "summary.json").read_text())["resource_evidence"] == s.resource_evidence
+
+
+# --- the arm's environment is an allowlist (item 1) ---------------------------------------------------------
+
+from tests.hidden import driver
+
+
+def test_the_arm_gets_an_allowlisted_environment_only(monkeypatch):
+    for k in list(os.environ):
+        monkeypatch.delenv(k)
+    keep = {"PATH": "/usr/bin", "HOME": "/home/actor", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "TMPDIR": "/tmp",
+            "UV_OFFLINE": "1", "UV_CACHE_DIR": "/tmp/uv-cache", "LOGNAME": "actor", "USER": "actor", "TZ": "UTC",
+            "PYTHONDONTWRITEBYTECODE": "1"}
+    drop = {"TROUPE_REF_STEP": "3", "TROUPE_REF_ANYTHING": "x", "PYTEST_CURRENT_TEST": "t", "PYTEST_ADDOPTS": "-x",
+            "BAKEOFF_SHARE_THEATRE_WITH_ARM": "1", "PYTHONPATH": "/harness", "SECRET_TOKEN": "s", "TROUPE_ACTOR": "a"}
+    for k, v in {**keep, **drop}.items():
+        monkeypatch.setenv(k, v)
+    env = driver.Cli(["x"])._env({"TROUPE_ACTOR": "alice"})
+    assert env == {**keep, "TROUPE_ACTOR": "alice"}
+
+
+def test_the_reference_step_is_forwarded_only_when_asked(monkeypatch):
+    monkeypatch.setenv("TROUPE_REF_STEP", "3")
+    assert "TROUPE_REF_STEP" not in driver.Cli(["x"])._env(None)
+    assert driver.Cli(["x"], forward=("TROUPE_REF_STEP",))._env(None)["TROUPE_REF_STEP"] == "3"
+
+
+def test_the_ref_step_is_forwarded_for_the_reference_only(tmp_path):
+    ref = REPO_ROOT / "reference"
+    assert driver.forwarded(str(ref), None, False, ref) == ("TROUPE_REF_STEP",)      # Plan 1 host runs
+    assert driver.forwarded("/work/bakeoff-specs-x", "setpriv ... troupe", False, ref) == ()
+    assert driver.forwarded("/work/bakeoff-specs-x", None, False, ref) == ()
+    assert driver.forwarded("/opt/reference", "uv run ...", True, ref) == ("TROUPE_REF_STEP",)
