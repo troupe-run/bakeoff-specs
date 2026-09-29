@@ -268,8 +268,11 @@ def _land(ctx, k: int, step1_tests: dict[str, str], out: Path, pin, turns: list,
         raise HarnessFault("hand-edit", "scope", "; ".join(plan.violations))
     beside = sorted(_work_entries(p) - work_before)            # /work is the teammate's too: nothing may stay there
     for name in beside:
-        repo.remove_tree(p.work / name) if (p.work / name).is_dir() and not (p.work / name).is_symlink() \
-            else (p.work / name).unlink()
+        entry = p.work / name
+        if entry.is_dir() and not entry.is_symlink():
+            repo.remove_tree(entry)               # never follows links
+        else:
+            entry.unlink()
     try:
         sha = gitops.commit_all(p, gitops.TEAMMATE, MESSAGE)   # in the arm's container: its hooks run
     except RuntimeError as e:
