@@ -8,6 +8,11 @@ REPO = Path(__file__).resolve().parents[1]
 ALLOW = {l.split("#")[0].strip() for l in (REPO / "harness/negative_allowlist.txt").read_text().splitlines()
          if l.split("#")[0].strip()}
 
+def allowlisted(test_id: str) -> bool:
+    """`module::name[params]` is allowlisted iff its last `::` part is an entry verbatim (a parametrised id is
+    not the bare entry). The runner's hidden.summarise uses this same function (Task 18, review m10)."""
+    return test_id.split("::")[-1] in ALLOW
+
 WATCHER_SUITES = ["tests/hidden/test_step2_sync.py", "tests/hidden/test_step4_lineage.py"]
 
 def run(step: int, ref_step: int, extra: list[str], xml: Path,
@@ -40,7 +45,7 @@ def main() -> int:
         crashed = rc not in (0, 1)
         none_selected = not res
         passing = [t for t, o in res.items() if o == "passed"]
-        unexplained = [t for t in passing if t.split("::")[-1] not in ALLOW]
+        unexplained = [t for t in passing if not allowlisted(t)]
         ok &= not unexplained and not crashed and not none_selected
         lines.append(f"- step {n} negative: {len(res)} new tests, {len(passing)} pass at step {n-1} "
                      f"(allowlisted: {len(passing) - len(unexplained)}; unexplained: {unexplained or 'none'})"

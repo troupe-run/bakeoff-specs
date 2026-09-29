@@ -4,6 +4,7 @@ import shlex
 from pathlib import Path
 import pytest
 from .driver import Cli
+from .theatre import share_with_arm
 
 def pytest_collection_modifyitems(config, items):
     step = config.getoption("--step")
@@ -40,5 +41,16 @@ def cli(request) -> Cli:
     return Cli(["uv", "run", "--quiet", "--project", request.config.getoption("--impl"), "troupe"])
 
 @pytest.fixture
-def tmp_theatre(tmp_path) -> Path:
-    return tmp_path
+def tmp_theatre(tmp_path, tmp_path_factory):
+    # In the runner's tester (BAKEOFF_SHARE_THEATRE_WITH_ARM=1) the arm CLI runs under a different uid from
+    # pytest: open this theatre to it, and create files world-writable (umask 0) while the test runs so the
+    # arm can edit what the test builds. Elsewhere (Plan 1, host runs) nothing changes.
+    if os.environ.get("BAKEOFF_SHARE_THEATRE_WITH_ARM") != "1":
+        yield tmp_path
+        return
+    share_with_arm(tmp_path, tmp_path_factory.getbasetemp().parent)
+    old = os.umask(0)
+    try:
+        yield tmp_path
+    finally:
+        os.umask(old)

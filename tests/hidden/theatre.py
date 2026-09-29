@@ -16,3 +16,13 @@ def read(root: Path, rel: str) -> str:
 
 def snapshot(root: Path, rels: list[str]) -> dict[str, str]:
     return {rel: read(root, rel) for rel in rels}
+
+def share_with_arm(root: Path, top: Path) -> None:
+    """Tester mode (runner/hidden.py): the arm's CLI runs under its own uid, so the theatre it works in is opened
+    to it (0777) and every directory from `top` down to it gets traverse-only (+x) — nothing else, and nothing
+    above `top`. The harness's own results dir stays 0700."""
+    root.chmod(0o777)
+    for d in root.parents:
+        d.chmod(d.stat().st_mode | 0o111)
+        if d == top:
+            break

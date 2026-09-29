@@ -26,6 +26,8 @@ class RunSpec:
     stdin: bool
     limits: Limits
     proxy: bool
+    user: str = "1000:1000"          # the tester starts as root only to drop to two uids (hidden.py, fix round 1)
+    cap_add: tuple[str, ...] = ()    # added back after --cap-drop ALL
 
 _recorder: list[RunSpec] | None = None
 
@@ -54,7 +56,8 @@ def run_argv(s: RunSpec) -> list[str]:
         _recorder.append(s)
     a = ["docker", "run", "--rm", "--init", "--name", s.name, "--label", s.label,
          "--read-only", "--tmpfs", "/tmp:rw,exec,nosuid,nodev,size=4g",
-         "--user", "1000:1000", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
+         "--user", s.user, "--cap-drop", "ALL", *[x for c in s.cap_add for x in ("--cap-add", c)],
+         "--security-opt", "no-new-privileges",
          "--pids-limit", str(s.limits.pids), "--cpus", s.limits.cpus, "--memory", s.limits.memory,
          "--network", s.network, "-w", s.workdir]
     if s.stdin:
