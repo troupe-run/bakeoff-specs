@@ -3,7 +3,8 @@
 # Runs as the HARNESS uid (1000) with ambient SETUID/SETGID/KILL/DAC_OVERRIDE; the arm's CLI runs as uid 1001
 # (pytest's --cmd-prefix) with no capabilities, so it can neither signal pytest nor write this results dir.
 # Usage: entry.sh <timeout-seconds> <pytest argv...>
-# Output: ONLY a tar of the results dir on stdout (exit, pytest.log, junit.xml if written, timed_out if so).
+# Output: ONLY length-framed records on stdout, `<name> <size>\n<bytes>`, for exit, timed_out, junit.xml, pytest.log
+# (each if present and a regular file; the dir is 0700, harness-only).
 set -u
 umask 077
 R=/tmp/results
@@ -18,4 +19,10 @@ pkill -KILL -U 1001 2>/dev/null         # no arm process outlives pytest into th
 if [ "$(stat -c %s "$R/pytest.log")" -gt 8000000 ]; then
   tail -c 8000000 "$R/pytest.log" >"$R/log.tail" && mv -f "$R/log.tail" "$R/pytest.log"
 fi
-cd "$R" && exec tar -cf - $(ls -A)
+cd "$R" || exit 91
+for f in exit timed_out junit.xml pytest.log; do
+  if [ -f "$f" ] && [ ! -L "$f" ]; then
+    printf '%s %s\n' "$f" "$(stat -c %s "$f")"
+    cat "$f"
+  fi
+done

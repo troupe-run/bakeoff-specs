@@ -15,8 +15,8 @@ Privilege separation (fix round 1: a reviewer forged a full score by having the 
 - both uids carry the same login name: uid 1001 gets a passwd/group entry with uid 1000's name, and
   `LOGNAME`/`USER` are that name for both, so `getpass`/`pwd` defaults match (Plan 1's login-name note);
 - there is no `/out` mount at all (Docker Desktop's bind mounts do not enforce ownership, measured): the
-  results leave the container as a tar on the entry script's stdout, written after every uid-1001 process is
-  killed, and are parsed in memory — regular members with known names and size caps only. Host records are
+  results leave the container as length-framed records on the entry script's stdout, written after every uid-1001 process is
+  killed, and are parsed in memory — regular members with known names, exact lengths and size caps only. Host records are
   written only to host dirs that are never mounted;
 - a run is scored only if it is consistent: pytest exit 0 or 1, exit 0 iff no failure in the junit, and the
   junit's tests exactly the collected set (collected in a container with no arm code mounted). Anything else
@@ -26,7 +26,7 @@ The remaining PLAN-2 NOTEs are resolved as before: one network namespace (`127.0
 `docker exec` (env reaches the CLI), `--init` reaps, the container is removed.
 """
 from __future__ import annotations
-import functools, io, json, os, shutil, stat, subprocess, tarfile, time, uuid, xml.etree.ElementTree as ET
+import functools, json, os, shutil, stat, subprocess, time, uuid, xml.etree.ElementTree as ET
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from runner import config, docker, egress, gitops, repo
@@ -108,24 +108,31 @@ class ResultsError(ValueError):
 
 
 def unpack_results(blob: bytes) -> dict[str, bytes]:
-    """The entry script's stdout tar, read in memory: only regular members with known names within size caps."""
+    """The entry script's stdout: records `<name> <size>\n<size bytes>`, read in memory. Only known names, once
+    each, within size caps, exact lengths, nothing trailing. (No tar parsing anywhere in runner/.)"""
     out: dict[str, bytes] = {}
-    try:
-        with tarfile.open(fileobj=io.BytesIO(blob), mode="r:") as tf:
-            for m in tf:
-                name = m.name.removeprefix("./")
-                if name in ("", ".") and m.isdir():
-                    continue
-                if name not in RESULT_CAPS:
-                    raise ResultsError(f"unexpected results member {m.name!r}")
-                if not m.isreg():
-                    raise ResultsError(f"results member {name} is not a regular file")
-                if m.size > RESULT_CAPS[name]:
-                    raise ResultsError(f"results member {name} is {m.size} bytes (cap {RESULT_CAPS[name]})")
-                f = tf.extractfile(m)
-                out[name] = f.read() if f else b""
-    except tarfile.TarError as e:
-        raise ResultsError(f"results are not a tar: {e}") from e
+    i = 0
+    if not blob:
+        raise ResultsError("no results on stdout")
+    while i < len(blob):
+        nl = blob.find(b"\n", i, i + 64)
+        if nl < 0:
+            raise ResultsError(f"malformed results header at byte {i}")
+        try:
+            name_b, size_b = blob[i:nl].split(b" ")
+            name, size = name_b.decode("ascii"), int(size_b)
+        except ValueError as e:
+            raise ResultsError(f"malformed results header at byte {i}") from e
+        if name not in RESULT_CAPS:
+            raise ResultsError(f"unexpected results member {name!r}")
+        if name in out:
+            raise ResultsError(f"duplicate results member {name}")
+        if not 0 <= size <= RESULT_CAPS[name]:
+            raise ResultsError(f"results member {name} is {size} bytes (cap {RESULT_CAPS[name]})")
+        if nl + 1 + size > len(blob):
+            raise ResultsError(f"results member {name} is truncated")
+        out[name] = blob[nl + 1:nl + 1 + size]
+        i = nl + 1 + size
     return out
 
 
