@@ -457,3 +457,122 @@ def test_a_directory_the_walk_cannot_list_is_recorded_not_silently_dropped(tmp_p
         assert skipped == [{"path": "p/s1/subagents", "reason": "unreadable"}]
     finally:
         hidden.chmod(0o755)
+
+
+# --- fix round 2: an off-pin message hidden in a "truncated" last line (reviewer probes 1-4) ---------------
+
+OFF = json.dumps(asst("claude-haiku-4-5"))
+ON = json.dumps(asst("claude-opus-5-5"))
+
+def _stream_with_tail(path, tail, *, result=None):
+    with gzip.open(path, "wt") as fh:
+        body = [json.dumps(INIT_OK), ON] + ([json.dumps(result)] if result else [])
+        fh.write("\n".join(body) + "\n" + tail)
+    return path
+
+def test_probe1_off_pin_object_plus_garbage_as_the_last_transcript_line_fails(tmp_path):
+    f = tmp_path / "s.jsonl"; f.write_text(ON + "\n" + OFF + "TRAILING_GARBAGE_NO_NEWLINE")
+    r = verify_pin([f], [], config.load_pins(), unsafe=[])
+    assert not r.ok and r.truncated_lines == 0
+    assert [(v["line"], v["where"], v["model"]) for v in r.violations] == \
+        [(2, "assistant", "claude-haiku-4-5"), (2, "trailing_garbage", "<uninspected>")]
+
+def test_probe2_off_pin_event_plus_garbage_as_the_last_stream_line_fails(tmp_path):
+    t = tmp_path / "s.jsonl"; w(t, asst("claude-opus-5-5"))
+    s = _stream_with_tail(tmp_path / "t.stream.jsonl.gz", OFF + "GARBAGE_TAIL")
+    r = verify_pin([t], [s], config.load_pins(), unsafe=[])
+    assert not r.ok and ("stream.assistant", "claude-haiku-4-5") in [(v["where"], v["model"]) for v in r.violations]
+
+def test_probe3_sanity_shapes_still_fail(tmp_path):
+    two = tmp_path / "a.jsonl"; two.write_text(ON + OFF + "\n" + ON + "\n")
+    crlf = tmp_path / "b.jsonl"; crlf.write_bytes((ON + "\r\n" + OFF + "\r\n").encode())
+    bom = tmp_path / "c.jsonl"; bom.write_bytes(b"\xef\xbb\xbf" + (ON + "\n" + OFF + "\n").encode())
+    for f in (two, crlf, bom):
+        r = verify_pin([f], [], config.load_pins(), unsafe=[])
+        assert not r.ok, f.name
+
+def test_probe4_a_whole_subagent_file_that_is_one_corrupted_line_fails(tmp_path):
+    main = tmp_path / "main.jsonl"; main.write_text(ON + "\n")
+    sub = tmp_path / "agent-1.jsonl"; sub.write_text(OFF + "TAIL_GARBAGE_NO_NEWLINE")
+    r = verify_pin([main, sub], [], config.load_pins(), unsafe=[])
+    assert not r.ok and ("assistant", "claude-haiku-4-5") in [(v["where"], v["model"]) for v in r.violations]
+
+def test_a_bad_last_line_ending_in_a_newline_is_not_truncation(tmp_path):
+    f = tmp_path / "s.jsonl"; f.write_text(ON + "\n" + '{"type": "assi' + "\n")
+    r = verify_pin([f], [], config.load_pins(), unsafe=[])
+    assert not r.ok and r.truncated_lines == 0 and [v["where"] for v in r.violations] == ["unreadable_line"]
+
+def test_an_off_pin_model_visible_in_a_cut_off_last_line_is_a_violation(tmp_path):
+    f = tmp_path / "s.jsonl"; f.write_text(ON + "\n" + OFF[:-12])       # cut mid-object, model literal complete
+    r = verify_pin([f], [], config.load_pins(), unsafe=[])
+    assert not r.ok and [(v["where"], v["model"]) for v in r.violations] == [("unreadable_line.model", "claude-haiku-4-5")]
+
+def test_an_escaped_model_key_in_a_bad_line_is_still_found(tmp_path):
+    f = tmp_path / "s.jsonl"
+    f.write_text(ON + "\n" + '{"type": "assistant", "message": {"mod\\u0065l": "claude-haiku-4-5", "content": [')
+    r = verify_pin([f], [], config.load_pins(), unsafe=[])
+    assert not r.ok and ("unreadable_line.model", "claude-haiku-4-5") in [(v["where"], v["model"]) for v in r.violations]
+
+def test_a_bad_middle_line_is_scanned_for_models_too(tmp_path):
+    f = tmp_path / "s.jsonl"; f.write_text(ON + "\n" + OFF[:-12] + "\n" + ON + "\n")
+    r = verify_pin([f], [], config.load_pins(), unsafe=[])
+    assert [(v["where"], v["model"]) for v in r.violations] == \
+        [("unreadable_line", "<uninspected>"), ("unreadable_line.model", "claude-haiku-4-5")]
+
+def test_genuine_truncated_last_lines_still_pass(tmp_path):
+    for cut in (ON[:-12], ON[:25], '{"type": "assistant", "message": {"model": "claude-op'):
+        f = tmp_path / "s.jsonl"; f.write_text(ON + "\n" + cut)
+        r = verify_pin([f], [], config.load_pins(), unsafe=[])
+        assert r.ok and r.truncated_lines == 1, cut
+        s = _stream_with_tail(tmp_path / "t.stream.jsonl.gz", cut)
+        r = verify_pin([f], [s], config.load_pins(), unsafe=[])
+        assert r.ok and r.truncated_lines == 2, cut
+
+def test_a_transcript_with_no_decodable_line_is_unverifiable(tmp_path):
+    main = tmp_path / "main.jsonl"; main.write_text(ON + "\n")
+    sub = tmp_path / "agent-1.jsonl"; sub.write_text('{"type": "assi')
+    r = verify_pin([main, sub], [], config.load_pins(), unsafe=[])
+    assert not r.ok and r.violations == [{"file": str(sub), "line": None, "where": "transcript_unverifiable",
+                                          "model": "no-decodable-lines"}]
+
+# (a) the runner-captured stream is the backstop: every result must carry a well-formed, on-pin modelUsage
+
+def _result(mu=..., **kw):
+    r = {"type": "result", "subtype": "success", "is_error": False, **kw}
+    if mu is not ...:
+        r["modelUsage"] = mu
+    return r
+
+def test_a_result_with_an_off_pin_subagent_model_in_model_usage_is_a_violation(tmp_path):
+    t = tmp_path / "s.jsonl"; w(t, asst("claude-opus-5-5"))
+    s = gz(tmp_path / "t.stream.jsonl.gz", INIT_OK, asst("claude-opus-5-5"),
+           _result({"claude-opus-5-5": {"inputTokens": 1}, "claude-haiku-4-5": {"inputTokens": 1}}))
+    r = verify_pin([t], [s], config.load_pins(), unsafe=[])
+    assert not r.ok and [(v["where"], v["model"]) for v in r.violations] == [("result.modelUsage", "claude-haiku-4-5")]
+
+def test_a_result_must_carry_a_non_empty_model_usage_with_an_accepted_model(tmp_path):
+    t = tmp_path / "s.jsonl"; w(t, asst("claude-opus-5-5"))
+    for mu, tag in ((..., "<missing>"), ({}, "<empty>"), ({"<synthetic>": {}}, "<no-accepted-model>")):
+        s = gz(tmp_path / "t.stream.jsonl.gz", INIT_OK, asst("claude-opus-5-5"), _result(mu))
+        r = verify_pin([t], [s], config.load_pins(), unsafe=[])
+        assert not r.ok and [(v["where"], v["model"]) for v in r.violations] == [("result.modelUsage", tag)], tag
+
+def test_a_result_with_synthetic_and_accepted_usage_passes(tmp_path):
+    t = tmp_path / "s.jsonl"; w(t, asst("claude-opus-5-5"))
+    s = gz(tmp_path / "t.stream.jsonl.gz", INIT_OK, asst("claude-opus-5-5"),
+           _result({"claude-opus-5-5": {}, "<synthetic>": {}}))
+    r = verify_pin([t], [s], config.load_pins(), unsafe=[])
+    assert r.ok and r.synthetic == 1
+
+def test_a_cut_off_result_line_in_a_stream_is_a_violation(tmp_path):
+    t = tmp_path / "s.jsonl"; w(t, asst("claude-opus-5-5"))
+    s = _stream_with_tail(tmp_path / "t.stream.jsonl.gz", json.dumps(_result({"claude-opus-5-5": {}}))[:30])
+    r = verify_pin([t], [s], config.load_pins(), unsafe=[])
+    assert not r.ok and [v["where"] for v in r.violations] == ["unreadable_result"]
+
+def test_the_stream_backstop_catches_a_hidden_subagent_even_if_its_transcript_evades(tmp_path):
+    # Residual-risk scenario (module docstring): the transcript tree shows nothing off-pin, the stream does.
+    t = tmp_path / "s.jsonl"; w(t, asst("claude-opus-5-5"))
+    s = gz(tmp_path / "t.stream.jsonl.gz", INIT_OK, asst("claude-opus-5-5"),
+           _result({"claude-opus-5-5": {}, "claude-haiku-4-5": {}}))
+    assert not verify_pin([t], [s], config.load_pins(), unsafe=[]).ok
