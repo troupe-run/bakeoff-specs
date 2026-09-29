@@ -383,6 +383,39 @@ def staged_files() -> list[Path]:
     return [REPO_ROOT / os.fsdecode(n) for n in r.stdout.split(b"\0") if n]
 
 
+def staged_blobs() -> list[tuple[str, str, bytes]]:
+    """The harness repo only (the pre-commit hook's `runner scan --staged`, fix round 1): (path, mode, content)
+    of every staged, non-deleted path, read from the INDEX (`ls-files -s` + `cat-file --batch`), so a secret
+    that is staged but no longer in the working copy is still what gets scanned. Mode 120000 is link text."""
+    root = str(REPO_ROOT)
+    names = {os.fsdecode(n) for n in subprocess.run(
+        ["git", "-C", root, "diff", "--cached", "--name-only", "-z", "--diff-filter=d"],
+        capture_output=True, check=True).stdout.split(b"\0") if n}
+    entries = []
+    for rec in subprocess.run(["git", "-C", root, "ls-files", "-s", "-z"], capture_output=True,
+                              check=True).stdout.split(b"\0"):
+        if not rec:
+            continue
+        meta, path = rec.split(b"\t", 1)
+        mode, sha, _stage = meta.decode().split(" ")
+        if os.fsdecode(path) in names and mode != "160000":           # a gitlink has no blob here
+            entries.append((os.fsdecode(path), mode, sha))
+    if not entries:
+        return []
+    out = subprocess.run(["git", "-C", root, "cat-file", "--batch"], capture_output=True, check=True,
+                         input="".join(f"{sha}\n" for _, _, sha in entries).encode()).stdout
+    blobs, i = [], 0
+    for path, mode, sha in entries:
+        nl = out.index(b"\n", i)
+        head = out[i:nl].split(b" ")
+        if len(head) != 3 or head[0].decode() != sha:
+            raise RuntimeError(f"git cat-file --batch: unexpected header for {path}")
+        size = int(head[2])
+        blobs.append((path, mode, out[nl + 1:nl + 1 + size]))
+        i = nl + 1 + size + 1
+    return blobs
+
+
 def clone_bundle_bare(bundle_path: Path, dest: Path) -> None:
     """Host: bare clone of a bundle made in a container — objects and refs only, no config or hooks. System
     and global config are ignored too, so no template dir or include can add any."""

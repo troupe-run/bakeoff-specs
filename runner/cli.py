@@ -57,7 +57,11 @@ def register_github(sub):
 
     def publish(ns):
         from runner import secrets                           # Task 21 (review S-2): tip tree + full history
-        lits = secrets.literals()
+        try:
+            lits = secrets.literals(require_oauth=True)          # fix round 1: never publish without it
+        except RuntimeError as e:
+            print(f"Refusing to publish: the keychain OAuth token is needed for the secret scan ({e})")
+            return 1
         try:
             ok = repo.publish(paths.Paths(ns.pass_, ns.arm), ns.pass_,
                               lambda q: input(q).strip().lower() in ("y", "yes"),
@@ -136,7 +140,7 @@ def register_scan(sub):
         lits = secrets.literals()
         found = []
         if ns.staged:
-            found += secrets.scan_files(gitops.staged_files(), lits, harness=True)
+            found += secrets.scan_blobs(gitops.staged_blobs(), lits, harness=True)   # the index
         if ns.arm:
             found += secrets.scan_arm(paths.Paths(*ns.arm), lits)
         for x in ns.paths:

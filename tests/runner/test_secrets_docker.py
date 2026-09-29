@@ -86,7 +86,8 @@ def test_a_snapshot_is_scanned_with_its_git_history_and_the_pat_file_is_exempt(P
     assert ("literal", "home/.claude/projects/p/s.jsonl") in got
     assert got.count(("anthropic-token", "history")) >= 2                # the work repo AND the origin
     hosts = [(f.kind, f.line) for f in found if f.path.endswith("home/.config/gh/hosts.yml")]
-    assert hosts == [("github-pat", 3)]            # the keychain PAT is exempt there; another token is not (6)
+    assert sorted(hosts) == [("github-pat", 3), ("literal", 3)]   # the keychain PAT is exempt; another token
+                                                                    # (shape and, as a home value, literal) is not
     assert all(OAUTH not in f.path and HOME_PAT not in f.path for f in found)
     assert not list((P.scratch / "secret-scan").glob("*"))               # extraction removed
 

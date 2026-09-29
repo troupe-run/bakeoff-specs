@@ -536,8 +536,8 @@ def test_the_mark_never_hides_a_known_literal_nor_evidence_under_results(tmp_sta
 
 def test_the_existing_repo_fixtures_pass_the_staged_rules():
     """The fixtures already in the repo are recognisably fake; with the mark they pass, without it they fail."""
-    for tok in ("github_pat_FAKE_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ",
-                "sk-ant-oat01-FAKE-test-token-never-real-0123456789"):
+    for tok in ("github_pat_FAKE_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ",   # secret-scan: fake
+                "sk-ant-oat01-FAKE-test-token-never-real-0123456789"):          # secret-scan: fake
         assert secrets.scan_blobs([_blob("tests/runner/f.py", f'T = "{tok}"   # secret-scan: fake\n')], [],
                                   harness=True) == []
         assert secrets.scan_blobs([_blob("tests/runner/f.py", f'T = "{tok}"\n')], [], harness=True) != []

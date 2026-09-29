@@ -81,8 +81,8 @@ def from_keychain(service: str = "bakeoff-claude-oauth") -> Credential:
 def github_pat(pass_: str, arm: str) -> str:
     """The arm's fine-grained GitHub PAT for a pass, from keychain item `bakeoff-gh-<pass>-<arm>` (OD16).
     Same hygiene as `from_keychain`: absolute `security`, a timeout, and no exception raised while the output
-    is still a frame local. Only `checklist._install_github_pat` calls this; the PAT lands in the arm's home
-    (by design: the arm's own `gh` uses it) and nowhere else."""
+    is still a frame local. Callers: `checklist._install_github_pat` (the PAT lands in the arm's home, by design:
+    the arm's own `gh` uses it) and `secrets.keychain_pat` (a needle for the secret scan, never written)."""
     service, timed_out = f"bakeoff-gh-{pass_}-{arm}", False
     try:
         r = subprocess.run([SECURITY, "find-generic-password", "-s", service, "-w"],
