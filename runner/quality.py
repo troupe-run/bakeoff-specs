@@ -6,21 +6,36 @@ run against).
 Tool failures (a crash, a timeout) are recorded as such and kept distinct from a real, clean result — a
 crashed mypy is not "0 errors", a crashed or timed-out mutation run is not "score 0" (every mutant "survived")
 or "score 100": `mutation_summary` withholds the score (`None`) whenever `crashed` is set, and separately
-whenever the denominator collapses to zero. A crash inside the mutation run itself — `mutmut run` failing, or
-`mutmut results` failing to read back what it just did — is recorded the same way, never folded into "no
-mutants" or a misleadingly precise `0.0` (review ruling, fix round 1). Tool versions (and the tester image tag
-they were installed into) are read from the same pinned requirements files the tester image itself installs
-from, so the numbers are reproducible without re-deriving or guessing a version.
+whenever the denominator collapses to zero. A crash inside the mutation run itself — `mutmut run` failing,
+`mutmut results` failing to read back what it just did, or every selected mutant coming back with no real
+verdict at all (`not_checked` or, on its own, an all-`check_interrupted` run — fix round 2, item 1) — is
+recorded the same way, never folded into "no mutants" or a misleadingly precise `0.0` (review ruling, fix
+round 1). A `check_interrupted` mutant that isn't the whole run, or fewer statuses coming back than were
+sampled, sets `partial` instead (fix round 2, items 1 and 5) and is never silently dropped. `run_all` guards
+every phase — `targets()`, mypy, both ruff passes, `tool_versions()` and `_mutation` — in its own
+`try/except`, so an exception anywhere is recorded as that phase's crash (with the exception type and message)
+rather than losing every other phase's result or `summary.json` itself (fix round 2, item 2): this function
+always returns, and always writes `summary.json`. Tool versions (and the tester image tag they were installed
+into) are read from the same pinned requirements files the tester image itself installs from, so the numbers
+are reproducible without re-deriving or guessing a version.
 
 The host never opens an arm-written file through a link: by the time `pyproject.toml` is read or rewritten,
 arm code has already run (build backend, `uv sync`) with `/work` writable, so a symlink, FIFO or oversized
 file in its place is refused (`UnsafeFile`), never followed or read unbounded — the same convention
-`hidden._lockfile` already uses (`os.lstat`, no follow) extended here to `O_NOFOLLOW` reads and writes since
-this module also rewrites the file, not just checks its type.
+`hidden._lockfile` already uses (`os.lstat`, no follow) extended here to `O_NOFOLLOW`+`O_NONBLOCK` reads (a
+FIFO substituted between the check and the open must not be able to hang the host) and atomic
+temp-file-plus-`os.replace` writes (fix round 2, item 6), since this module also rewrites the file, not just
+checks its type. The arm's `project.scripts.troupe` entry point (used to pick a mypy/mutmut target directory)
+must be a plain dotted-identifier chain (`InvalidEntryPoint` otherwise, fix round 2, item 7) and is always
+passed to a shell command quoted (`shlex.quote`), never interpolated raw.
 
 mutmut itself is installed into, and always runs from, the arm's own `.venv` (`hidden._sync`'s
 `with_mutmut` branch) — inherent to measuring the arm's actual code and dependencies, not a gap: mutation
 testing that ran from a harness-controlled environment instead would not be testing what the arm shipped.
+
+The mutation run's own exit-code markers (`__run_rc`, `__results_rc`) are read from the LAST anchored
+occurrence on its own line in stdout, never the first (fix round 2, item 4): arm code running during
+`mutmut run` could otherwise print a forged marker line before the real one and have it trusted instead.
 """
 from __future__ import annotations
 
@@ -28,6 +43,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import stat
 import subprocess
 import tomllib
@@ -59,9 +75,11 @@ STATUS = {"killed": "killed", "survived": "survived", "timeout": "timeout", "sus
 
 MUTATION_COUNT_KEYS = ("killed", "survived", "timeout", "suspicious", "no_tests", "skipped", "not_checked",
                        "caught_by_type_check", "check_interrupted", "segfault")
-# A mutant outcome that is real signal (as opposed to "we never actually got a status for it").
-_REAL_OUTCOME_KEYS = ("killed", "survived", "timeout", "suspicious", "caught_by_type_check", "segfault",
-                     "check_interrupted")
+# A mutant outcome that is real signal (as opposed to "we never actually got a status for it"). `check_interrupted`
+# is deliberately excluded (fix round 2, item 1): "check was interrupted by user" means something (typically a
+# signal) stopped mutmut checking that mutant before it could reach a real verdict — the same epistemic status
+# as `not_checked`, not a verdict of its own. It still sets `partial`; it must never contribute to a score.
+_REAL_OUTCOME_KEYS = ("killed", "survived", "timeout", "suspicious", "caught_by_type_check", "segfault")
 
 # One shared zero-summary literal (review m10: this dict was repeated 3x). `mutation_summary` only ever
 # reads from a copy of it (`{**c, ...}`), so it is never mutated in place.
@@ -73,6 +91,14 @@ MAX_CONFIG_BYTES = 1_000_000     # generous for a pyproject.toml; anything bigge
 class UnsafeFile(ValueError):
     """Refused: the host never opens an arm-written path through a link, a FIFO, or an oversized file — arm
     code has already run, with `/work` writable, by the time quality reads or rewrites `pyproject.toml`."""
+
+
+class InvalidEntryPoint(UnsafeFile):
+    """The arm's `pyproject.toml` `project.scripts.troupe` entry point is not a safe dotted-identifier chain
+    (fix round 2, item 7) — refused rather than interpolated into a shell command unchecked. A subclass of
+    `UnsafeFile` (same "refuse on doubt" meaning), but deliberately *not* caught by `targets()`'s own
+    fallback-on-parse-error handling: this one is recorded as `run_all`'s `targets_crashed`, not silently
+    swallowed into the safe `["."]` default the way a merely-unreadable file is."""
 
 
 # --- pure --------------------------------------------------------------------------------------------------
@@ -135,8 +161,12 @@ def tool_versions() -> dict[str, str]:
 def _safe_read(path: Path, max_size: int = MAX_CONFIG_BYTES) -> str | None:
     """`None` if `path` doesn't exist. Raises `UnsafeFile` if it exists but is not a plain regular file within
     `max_size` — a symlink, FIFO, device, directory, or oversized file an arm could have substituted for a
-    config file. `lstat` first (never follows a link to even check); the read itself also refuses to follow
-    one (`O_NOFOLLOW`), belt-and-braces against a substitution between the check and the open."""
+    config file. `lstat` first (never follows a link to even check). The open itself adds `O_NONBLOCK` (fix
+    round 2, item 6): without it, a FIFO substituted between the `lstat` and the `open` could make `os.open`
+    itself block forever waiting for a writer — a host-side hang, not just a wrong read. `os.fstat` on the
+    now-open descriptor re-checks `S_ISREG` and the size: this is the authoritative check (it can no longer be
+    raced — a descriptor's type can't change after `open` returns), the `lstat` above is only a fast, cheap
+    first refusal."""
     try:
         st = os.lstat(path)
     except FileNotFoundError:
@@ -145,8 +175,14 @@ def _safe_read(path: Path, max_size: int = MAX_CONFIG_BYTES) -> str | None:
         raise UnsafeFile(f"{path} is not a regular file (mode {oct(st.st_mode)})")
     if st.st_size > max_size:
         raise UnsafeFile(f"{path} is {st.st_size} bytes (cap {max_size})")
-    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    flags = os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags)
     try:
+        fst = os.fstat(fd)
+        if not stat.S_ISREG(fst.st_mode):
+            raise UnsafeFile(f"{path} is not a regular file once opened (mode {oct(fst.st_mode)})")
+        if fst.st_size > max_size:
+            raise UnsafeFile(f"{path} is {fst.st_size} bytes once opened (cap {max_size})")
         data = os.read(fd, max_size + 1)
     finally:
         os.close(fd)
@@ -157,8 +193,13 @@ def _safe_read(path: Path, max_size: int = MAX_CONFIG_BYTES) -> str | None:
 
 def _safe_write(path: Path, text: str, max_size: int = MAX_CONFIG_BYTES) -> None:
     """Refuses (`UnsafeFile`) to write through a symlink or onto any other non-regular-file path — never
-    follows a link to write somewhere outside the copy. A path that doesn't exist yet is created as a plain
-    regular file (`O_CREAT`); one that exists and is not a regular file is refused outright."""
+    follows a link to write somewhere outside the copy. Writes to a fresh temp file in the same directory
+    (`O_CREAT | O_EXCL`, so it can never itself be a pre-planted non-regular file) and `os.replace`s it onto
+    `path` (fix round 2, item 6): `rename(2)` replaces whatever directory entry is at `path` atomically and
+    without following it, so even a symlink swapped in at the last moment is simply replaced, never written
+    through — this makes the write immune to the read/write TOCTOU a plain "check-then-truncate-and-write"
+    would still have. A path that doesn't exist yet, or that already exists as a plain regular file, both
+    succeed; one that exists as anything else is refused before the temp file is even created."""
     body = text.encode()
     if len(body) > max_size:
         raise UnsafeFile(f"refusing to write {len(body)} bytes to {path} (cap {max_size})")
@@ -169,11 +210,31 @@ def _safe_write(path: Path, text: str, max_size: int = MAX_CONFIG_BYTES) -> None
     else:
         if not stat.S_ISREG(st.st_mode):
             raise UnsafeFile(f"{path} is not a regular file (mode {oct(st.st_mode)}); refusing to write")
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o644)
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{id(text) & 0xffffff:x}.tmp")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(tmp, flags, 0o644)
     try:
+        fst = os.fstat(fd)
+        if not stat.S_ISREG(fst.st_mode):
+            raise UnsafeFile(f"{tmp} is not a regular file once opened; refusing to write")
         os.write(fd, body)
     finally:
         os.close(fd)
+    try:
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def _valid_module_path(mod: str) -> bool:
+    """A safe dotted-identifier chain (`troupe_cfg`, `troupe_cfg.cli`) — every dotted part must itself be a
+    valid Python identifier. Anything else (shell metacharacters, an empty part, a leading digit, ...) is
+    refused rather than guessed at or partially trusted."""
+    return bool(mod) and all(part.isidentifier() for part in mod.split("."))
 
 
 def targets(copy: Path) -> list[str]:
@@ -181,14 +242,25 @@ def targets(copy: Path) -> list[str]:
         return ["src"]
     try:
         text = _safe_read(copy / "pyproject.toml")
-        if text is None:
-            return ["."]
+    except UnsafeFile:
+        return ["."]                        # an unsafe pyproject.toml: the safe default, not a hard refusal
+    if text is None:
+        return ["."]
+    try:
         scripts = tomllib.loads(text).get("project", {}).get("scripts", {})
-        mod = scripts.get("troupe", "").split(":")[0].split(".")[0]
-        if mod and (copy / mod).is_dir():
-            return [mod]
-    except (OSError, tomllib.TOMLDecodeError, UnsafeFile):
-        pass
+    except tomllib.TOMLDecodeError:
+        return ["."]
+    mod_full = scripts.get("troupe", "").split(":")[0]
+    if not mod_full:
+        return ["."]
+    if not _valid_module_path(mod_full):
+        # Unlike an unreadable/unparsable file, a *present but malformed* entry point is worth surfacing as
+        # a crash (fix round 2, item 7) — it means the arm shipped something that doesn't look like a plain
+        # module path, which is exactly the case that must never reach a shell command uninspected.
+        raise InvalidEntryPoint(f"entry-point module {mod_full!r} is not a plain dotted identifier chain")
+    mod = mod_full.split(".")[0]
+    if (copy / mod).is_dir():
+        return [mod]
     return ["."]
 
 
@@ -226,6 +298,20 @@ def parse_results(text: str) -> tuple[list[str], dict[str, int]]:
         counts[STATUS.get(m.group(2), "not_checked")] += 1
     counts["total"] = len(names)
     return names, counts
+
+
+def _last_marker(text: str, name: str) -> int | None:
+    """The LAST `name=<int>` occurrence in `text`, anchored to its own line (fix round 2, item 4): arm code
+    running during `mutmut run` can print arbitrary stdout, including a line that looks exactly like one of
+    our own `__run_rc=0` / `__results_rc=0` markers, to forge apparent success. Our own `echo` for a marker
+    always runs strictly after everything that step could have produced, so the real marker is always the
+    last anchored occurrence — never the first. `text` must be `stdout` only, never `stderr` (the real
+    markers are only ever written there; searching `stderr` too would only widen the forgery surface for no
+    benefit). A file-based marker (written somewhere the arm's uid cannot reach) would close this more
+    completely, but `mode="script"` containers have no harness-owned mount to write it into without changing
+    `hidden.py` itself — out of this task's file scope; anchored-last-line is the documented fallback."""
+    matches = re.findall(rf"(?m)^{re.escape(name)}=(-?\d+)$", text)
+    return int(matches[-1]) if matches else None
 
 
 def sample(names: list[str], n: int) -> list[str]:
@@ -350,9 +436,18 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
     a harness/container-level code (125, 126, 127, 137, ...), an unexpected crash, or a timeout — is `crashed`:
     the score is withheld (`None`), never read as `0.0`, and never confused with `baseline_failed`/`no_tests`
     (fix round 1, item 5). The main mutation run and the results-reading step each get their own exit-code
-    marker; either failing is also `crashed`, not "no mutants" (item 2) — as is the degenerate case where
-    every selected mutant comes back "not checked" even though nothing else looked wrong: zero real signal
-    must never present as a score of `0.0`."""
+    marker (read from the LAST anchored occurrence on its own line in `stdout` only, never the first — arm
+    output printed during `mutmut run` could otherwise forge an early, fake marker; fix round 2, item 4);
+    either marker failing is also `crashed`, not "no mutants" (item 2) — as is the degenerate case where every
+    selected mutant comes back with no real verdict (`not_checked` or `check_interrupted`) even though nothing
+    else looked wrong: zero real signal must never present as a score of `0.0`. `check_interrupted` on its own
+    (a mutant whose check was interrupted mid-way — typically a signal — without everything being interrupted)
+    sets `partial`, the same as a partial `not_checked` set (item 1). Fewer statuses coming back than were
+    sampled — mutmut silently dropping a requested mutant — also sets `partial` and is recorded as
+    `missing_results` (item 5). Every return path — baseline failure, no tests, a harness fault, a refused
+    pyproject.toml, a timeout, or a real (possibly partial or crashed) run — carries the exact same key set,
+    via the `common` defaults below, so a consumer never has to guess which keys a given path bothered to
+    set."""
     lim = pins.limits
     log: list[str] = []
 
@@ -365,7 +460,7 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
         (qd / "mutmut.log").write_text("\n".join(log))
         return summary
 
-    common = dict(sampled=False, sample_size=0, mutmut_run_rc=None, mutmut_results_rc=None)
+    common = dict(sampled=False, sample_size=0, mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0)
 
     baseline = _run(p, copy, ["bash", "-c", ".venv/bin/python -m pytest -q -p no:cacheprovider -x"], 1800)
     log.append("$ baseline: pytest\n" + baseline.combined[-4000:])
@@ -413,13 +508,12 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
         return finish(dict(ZERO_MUTATION), partial=False, baseline_failed=False, crashed=True,
                       sampling=sampling, baseline_rc=baseline.rc, timed_out=True,
                       sampled=bool(chosen), sample_size=len(chosen),
-                      mutmut_run_rc=None, mutmut_results_rc=None)
+                      mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0)
 
-    out = outcome.combined
-    run_rc_m = re.search(r"__run_rc=(-?\d+)", out)
-    results_rc_m = re.search(r"__results_rc=(-?\d+)", out)
-    run_rc = int(run_rc_m.group(1)) if run_rc_m else None
-    results_rc = int(results_rc_m.group(1)) if results_rc_m else None
+    # The real markers are only ever written to our own script's stdout (never stderr): search stdout alone.
+    run_rc = _last_marker(outcome.stdout, "__run_rc")
+    results_rc = _last_marker(outcome.stdout, "__results_rc")
+    out = outcome.combined                          # for status-line parsing only, never for marker parsing
     # A crash in `mutmut results` (or a missing marker entirely) is recorded as a crash, not "no mutants".
     crashed = results_rc != 0 or run_rc not in (0, 124)
 
@@ -428,23 +522,44 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
         wanted = set(chosen)
         _, counts = parse_results("\n".join(ln for ln in out.splitlines() if ln.strip().split(":")[0] in wanted))
     real_outcomes = sum(counts.get(k, 0) for k in _REAL_OUTCOME_KEYS)
-    if not crashed and counts.get("total", 0) > 0 and real_outcomes == 0:
-        # Every selected mutant came back "not checked" even though nothing else looked wrong: no real signal
-        # at all, so this must never present as a precise-looking 0.0 (the exact regression this closes).
+    expected_any_result = counts.get("total", 0) > 0 or bool(chosen)
+    if not crashed and expected_any_result and real_outcomes == 0:
+        # Every selected mutant came back with no real verdict at all (not_checked/check_interrupted, or
+        # mutmut never even mentioned it) even though nothing else looked wrong: no real signal, so this must
+        # never present as a precise-looking 0.0 (the exact regression this closes).
         crashed = True
-    partial = (not crashed) and (run_rc == 124 or counts.get("not_checked", 0) > 0)
+    missing = max(0, len(chosen) - counts.get("total", 0)) if chosen else 0
+    partial = (not crashed) and (run_rc == 124 or counts.get("not_checked", 0) > 0 or
+                                 counts.get("check_interrupted", 0) > 0 or missing > 0)
     return finish({k: counts[k] for k in ZERO_MUTATION}, partial=partial, baseline_failed=False, crashed=crashed,
                   sampling=sampling, baseline_rc=baseline.rc, timed_out=False,
-                  sampled=bool(chosen), sample_size=len(chosen),
+                  sampled=bool(chosen), sample_size=len(chosen), missing_results=missing,
                   mutmut_run_rc=run_rc, mutmut_results_rc=results_rc)
+
+
+def _mutation_placeholder(sampling: str, *, crashed: bool = True, baseline_failed: bool = False,
+                          baseline_rc: int | None = None, timed_out: bool = False) -> dict[str, object]:
+    """A mutation summary carrying the full key set, for a path that never reached a real mutmut invocation
+    at all — install failed, or an unexpected exception inside `_mutation` itself. Every path through this
+    module returns the same keys, whatever went wrong (fix round 2, item 2)."""
+    return mutation_summary(dict(ZERO_MUTATION), partial=False, baseline_failed=baseline_failed, crashed=crashed,
+                            sampled=False, sample_size=0, sampling=sampling, baseline_rc=baseline_rc,
+                            timed_out=timed_out, mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0)
 
 
 def run_all(p: Paths, prep: "hidden.Prepared", out_dir: Path, pins: config.Pins | None = None) -> dict[str, object]:
     """mypy and ruff run on copy A (never mutated); mutmut runs only on copy B (review C-1: copy A must come
     out of this untouched). `pins` may be overridden by the caller (e.g. the dry run's cheaper mutation
-    budget) — default is the real pinned limits. Every phase is defensive: an unexpected exception in any one
-    of them is recorded as that phase's crash rather than losing the results of every other phase (or the
-    whole run) — this function always returns and always writes `summary.json`."""
+    budget) — default is the real pinned limits.
+
+    Every phase — `targets()`, mypy, the isolated ruff pass, `_has_arm_ruff_config()` and the arm-config ruff
+    pass, `tool_versions()`, and `_mutation` — runs inside its own `try/except Exception`, never just the ones
+    that happened to be exercised so far (fix round 2, item 2: the earlier version only guarded `targets()`
+    and `_mutation`, so an exception in mypy or ruff would still crash the whole function and lose every
+    result, including `summary.json` itself, not just that phase's). A caught exception is recorded as that
+    phase's `<phase>_crashed = True` plus `<phase>_error` (`f"{type(e).__name__}: {e}"`, capped) — visible,
+    not silently swallowed. This function therefore always returns, and always writes `summary.json`, however
+    badly any individual tool misbehaves."""
     pins = pins or config.load_pins()
     qd = out_dir / "quality"
     qd.mkdir(parents=True, exist_ok=True)
@@ -452,62 +567,82 @@ def run_all(p: Paths, prep: "hidden.Prepared", out_dir: Path, pins: config.Pins 
 
     try:
         tg = targets(a)
-    except Exception:                    # noqa: BLE001 -- targets() already handles its known cases; anything
-        tg = ["."]                        # else here must not lose the rest of the run's evidence
+        targets_crashed, targets_error = False, None
+    except Exception as e:                       # noqa: BLE001 -- never lose the rest of the run's evidence
+        tg, targets_crashed = ["."], True
+        targets_error = f"{type(e).__name__}: {e}"[:200]
 
-    mypy_run = _run(p, a, ["bash", "-c", "/opt/harness/bin/mypy --strict --no-incremental "
-                    "--cache-dir /tmp/mypy-cache --python-executable .venv/bin/python " + " ".join(tg)], 1800)
-    (qd / "mypy.txt").write_text(mypy_run.combined)
-    if mypy_run.timed_out:
-        mypy_errors_val, mypy_crashed, mypy_timed_out = None, True, True
-    else:
-        assert mypy_run.rc is not None                 # ToolRun invariant: rc is None only when timed_out
-        mypy_errors_val, mypy_crashed = mypy_result(mypy_run.rc, mypy_run.combined)
-        mypy_timed_out = False
-
-    ruff_run = _run(p, a, ["bash", "-c", "/opt/harness/bin/ruff check --isolated --exit-zero "
-                    "--cache-dir /tmp/ruff-cache --output-format json ."], 600)
-    (qd / "ruff.json").write_text(ruff_run.stdout)
-    if ruff_run.timed_out:
-        ruff_n, ruff_crashed, ruff_timed_out = None, True, True
-    else:
-        assert ruff_run.rc is not None                 # ToolRun invariant: rc is None only when timed_out
-        ruff_n, ruff_crashed = ruff_parse(ruff_run.rc, ruff_run.stdout)
-        ruff_timed_out = False
-
-    has_cfg, ruff_arm_precheck_crashed = _has_arm_ruff_config(a)
-    ruff_arm = ruff_arm_crashed = None
-    ruff_arm_timed_out = False
-    if ruff_arm_precheck_crashed:
-        ruff_arm_crashed = True
-    elif has_cfg:
-        ra_run = _run(p, a, ["bash", "-c", "/opt/harness/bin/ruff check --exit-zero "
-                       "--cache-dir /tmp/ruff-cache-arm --output-format json ."], 600)
-        (qd / "ruff-arm.json").write_text(ra_run.stdout)
-        if ra_run.timed_out:
-            ruff_arm, ruff_arm_crashed, ruff_arm_timed_out = None, True, True
+    try:
+        mypy_targets = " ".join(shlex.quote(t) for t in tg)     # never interpolated raw (fix round 2, item 7)
+        mypy_run = _run(p, a, ["bash", "-c", "/opt/harness/bin/mypy --strict --no-incremental "
+                        "--cache-dir /tmp/mypy-cache --python-executable .venv/bin/python " + mypy_targets], 1800)
+        (qd / "mypy.txt").write_text(mypy_run.combined)
+        if mypy_run.timed_out:
+            mypy_errors_val, mypy_crashed, mypy_timed_out, mypy_error = None, True, True, None
         else:
-            assert ra_run.rc is not None                 # ToolRun invariant: rc is None only when timed_out
-            ruff_arm, ruff_arm_crashed = ruff_parse(ra_run.rc, ra_run.stdout)
+            assert mypy_run.rc is not None          # ToolRun invariant: rc is None only when timed_out
+            mypy_errors_val, mypy_crashed = mypy_result(mypy_run.rc, mypy_run.combined)
+            mypy_timed_out, mypy_error = False, None
+    except Exception as e:                       # noqa: BLE001 -- never lose the rest of the run's evidence
+        mypy_errors_val, mypy_crashed, mypy_timed_out = None, True, False
+        mypy_error = f"{type(e).__name__}: {e}"[:200]
+
+    try:
+        ruff_run = _run(p, a, ["bash", "-c", "/opt/harness/bin/ruff check --isolated --exit-zero "
+                        "--cache-dir /tmp/ruff-cache --output-format json ."], 600)
+        (qd / "ruff.json").write_text(ruff_run.stdout)
+        if ruff_run.timed_out:
+            ruff_n, ruff_crashed, ruff_timed_out, ruff_error = None, True, True, None
+        else:
+            assert ruff_run.rc is not None          # ToolRun invariant: rc is None only when timed_out
+            ruff_n, ruff_crashed = ruff_parse(ruff_run.rc, ruff_run.stdout)
+            ruff_timed_out, ruff_error = False, None
+    except Exception as e:                       # noqa: BLE001 -- never lose the rest of the run's evidence
+        ruff_n, ruff_crashed, ruff_timed_out = None, True, False
+        ruff_error = f"{type(e).__name__}: {e}"[:200]
+
+    ruff_arm = ruff_arm_crashed = ruff_arm_error = None
+    ruff_arm_timed_out = False
+    try:
+        has_cfg, ruff_arm_precheck_crashed = _has_arm_ruff_config(a)
+        if ruff_arm_precheck_crashed:
+            ruff_arm_crashed = True
+        elif has_cfg:
+            ra_run = _run(p, a, ["bash", "-c", "/opt/harness/bin/ruff check --exit-zero "
+                           "--cache-dir /tmp/ruff-cache-arm --output-format json ."], 600)
+            (qd / "ruff-arm.json").write_text(ra_run.stdout)
+            if ra_run.timed_out:
+                ruff_arm, ruff_arm_crashed, ruff_arm_timed_out = None, True, True
+            else:
+                assert ra_run.rc is not None        # ToolRun invariant: rc is None only when timed_out
+                ruff_arm, ruff_arm_crashed = ruff_parse(ra_run.rc, ra_run.stdout)
+    except Exception as e:                       # noqa: BLE001 -- never lose the rest of the run's evidence
+        ruff_arm, ruff_arm_crashed, ruff_arm_timed_out = None, True, False
+        ruff_arm_error = f"{type(e).__name__}: {e}"[:200]
+
+    try:
+        versions = tool_versions()
+    except Exception as e:                       # noqa: BLE001 -- never lose the rest of the run's evidence
+        versions = {"error": f"{type(e).__name__}: {e}"[:200]}
 
     if b is not None and prep.prep.get("quality", {}).get("ok"):
         try:
             mut = _mutation(p, b, tg, out_dir, pins)
         except Exception as e:           # noqa: BLE001 -- never lose the run's evidence to an exception
-            mut = mutation_summary(dict(ZERO_MUTATION), partial=False, baseline_failed=False, crashed=True,
-                                   sampled=False, sample_size=0,
-                                   sampling=f"error: {type(e).__name__}: {e}"[:200])
+            mut = _mutation_placeholder(f"error: {type(e).__name__}: {e}"[:200])
     else:
-        mut = mutation_summary(dict(ZERO_MUTATION), partial=False, baseline_failed=False, crashed=True,
-                               sampled=False, sample_size=0, sampling="install failed")
+        mut = _mutation_placeholder("install failed")
     (qd / "mutation.json").write_text(json.dumps(mut, indent=2))
 
     s: dict[str, object] = {
         "mypy_errors": mypy_errors_val, "mypy_crashed": mypy_crashed, "mypy_timed_out": mypy_timed_out,
+        "mypy_error": mypy_error,
         "ruff_findings": ruff_n, "ruff_crashed": ruff_crashed, "ruff_timed_out": ruff_timed_out,
+        "ruff_error": ruff_error,
         "ruff_arm_findings": ruff_arm, "ruff_arm_crashed": ruff_arm_crashed,
-        "ruff_arm_timed_out": ruff_arm_timed_out,
-        "mutation": mut, "targets": tg, "tool_versions": tool_versions(),
+        "ruff_arm_timed_out": ruff_arm_timed_out, "ruff_arm_error": ruff_arm_error,
+        "mutation": mut, "targets": tg, "targets_crashed": targets_crashed, "targets_error": targets_error,
+        "tool_versions": versions,
     }
     (qd / "summary.json").write_text(json.dumps(s, indent=2))
     return s

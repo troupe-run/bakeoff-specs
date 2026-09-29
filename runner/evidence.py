@@ -39,6 +39,30 @@ def sha256_file(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else ""
 
 
+def mypy_summary_text(quality: dict[str, object]) -> str:
+    """The owner-facing mypy phrase: a real count when there is one, otherwise the reason there isn't --
+    never "None errors" (fix round 2, item 8: a crashed or timed-out mypy run must say so)."""
+    if quality.get("mypy_timed_out"):
+        return "timed out"
+    n = quality.get("mypy_errors")
+    return f"{n} errors" if n is not None else "crashed"
+
+
+def mutation_summary_text(mut: dict[str, object]) -> str:
+    """The owner-facing mutation phrase: the score when there is one, otherwise the reason there isn't --
+    crashed, baseline failed, no tests, or timed out (fix round 2, item 8) -- never a bare `None`."""
+    score = mut.get("score")
+    if score is not None:
+        return f"{score} ({mut.get('sampling', '')}{', partial' if mut.get('partial') else ''})"
+    if mut.get("timed_out"):
+        return "timed out"
+    if mut.get("baseline_failed"):
+        return "baseline failed"
+    if mut.get("sampling") == "no tests":
+        return "no tests"
+    return "crashed"
+
+
 def _iso(t: float) -> str:
     return datetime.fromtimestamp(t, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
@@ -176,9 +200,9 @@ def finalise(ctx, *, attempts, extra_turns, hidden, quality, pin, sha_before, st
              f"**Model pin:** {'ok' if pin.ok else 'VIOLATION'} ({pin.assistant_messages} transcript assistant messages)",
              f"**Cost (estimate):** arm ${c['arm']['usd']:.2f} · PO ${c['po']['usd']:.2f} · harness ${c['harness']['usd']:.2f}",
              f"**Time:** {run['wall_seconds']} s wall, {run['owner_wait_seconds']} s waiting on the owner",
-             f"**Quality:** mypy {quality.get('mypy_errors')} errors · "
+             f"**Quality:** mypy {mypy_summary_text(quality)} · "
              f"ruff {quality.get('ruff_findings')} (arm {quality.get('ruff_arm_findings')}) · "
-             f"mutation score {mut.get('score')} ({mut.get('sampling', '')}{', partial' if mut.get('partial') else ''})",
+             f"mutation score {mutation_summary_text(mut)}",
              f"**Research attempts:** {run['research_attempts']}", "", "## Escalations"]
     lines += [f"- {', '.join(q['escalated'])} → {q['reply']}" for q in esc] or ["- none"]
     lines += ["", "## Significant PO answers"] + \
