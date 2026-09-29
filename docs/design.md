@@ -88,10 +88,17 @@ every earlier step's still-valid tests, so regressions count.
 **Product-owner agent.** Answers every clarifying question and approval request from a fixed brief
 (`scenario/po-brief.md`) that the owner approves once before any run. Questions the brief does not cover are
 **escalated to the owner**, logged, and the answer is added to the brief so later arms receive the same answer.
-**Two passes (owner, 2026-09-28).** Pass 1 runs every arm with the initial brief; every escalated answer is
-added to the brief, recording which arm first raised it. Pass 2 resets every arm repo to empty and runs every
-arm again from the complete brief, so all arms work from identical information. Pass 2 is the scored run;
-pass 1 is kept as evidence (notably of how each method handles ambiguity) and reported alongside.
+**Two runs per step (owner, 2026-09-29; replaces the whole-run two passes of 2026-09-28).** For each step N:
+- **N.a (discovery):** each of the six arms, one at a time, starts step N and stops at the first approval
+  request or the first edit to code outside its spec and docs paths, whichever comes first. Every escalated
+  answer is added to the brief, recording which arm first raised it. The arm repo is then reset to its
+  pre-step commit.
+- **Consistency check:** before N.b, the answers gathered in N.a are checked to be consistent, so every arm
+  receives the same information.
+- **N.b (scored):** each arm, one at a time, re-runs step N from the same starting commit with the complete
+  brief, to completion. N.b is scored and is what step N+1 builds on.
+
+N.a is kept as evidence (notably of how each method handles ambiguity) and reported alongside.
 
 Proposed brief defaults to confirm: `config get` on a subtree fails with an error pointing at `config show`;
 `config show` renders the merged view (includes resolved), with `--sources` showing which file each value
@@ -154,6 +161,9 @@ recognisable by their artefact shapes — and the report says so.
 - **Harness faults** (our setup error, a wrong brief, a flaky hidden test) are fixed and the step is re-run;
   they never count against an arm. **The same harness fault twice halts the whole bake-off** for review with
   the owner.
+- **Resource exhaustion (owner, 2026-09-29):** an arm that exhausts memory, disk or process slots is re-run
+  once; a repeat scores that step as all-failed. If two arms exhaust resources at the same step, it is treated
+  as a harness fault (the suite, not the framework) and the bake-off halts for review.
 - **Arm faults:** if an arm makes no progress on the hidden tests for three attempts at one step, the arm
   stops at that step and that is recorded as its result.
 
