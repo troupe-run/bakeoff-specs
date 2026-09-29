@@ -1,12 +1,13 @@
 """Task 17: the step-6 bug in each arm's tracker, tracker snapshots, round-trip facts. No docker, no network:
 `gh` is a scripted fake (real GitHub belongs to the canary, Task 26) and `bd` calls go through a fake `_bd`."""
 import json
+import os
 import subprocess
 from types import SimpleNamespace
 
 import pytest
 
-from runner import config, handoff, tracker
+from runner import config, faults, handoff, tracker
 from runner.paths import Paths
 
 TITLE = "Setting one agent's model changed another agent's model"
@@ -117,7 +118,8 @@ class FakeGh:
         self.calls, self.stdout = [], stdout
 
     def __call__(self, argv, **kw):
-        self.calls.append(list(argv))
+        self.calls.append(list(argv)); self.kw = kw
+        self.cwd_listing = sorted(os.listdir(kw["cwd"])) if kw.get("cwd") else None
         if "--body-file" in argv:
             self.body = open(argv[argv.index("--body-file") + 1]).read()
         return subprocess.CompletedProcess(argv, 0, self.stdout, "")
@@ -176,8 +178,9 @@ def test_a_failed_gh_create_raises_with_its_stderr(tmp_state, monkeypatch):
     def boom(argv, **kw):
         return subprocess.CompletedProcess(argv, 1, "", "HTTP 404: Not Found")
     monkeypatch.setattr(tracker.subprocess, "run", boom)
-    with pytest.raises(RuntimeError, match="404"):
+    with pytest.raises(faults.HarnessFault) as e:
         tracker.create_bug(_ctx(tmp_state), Owner())
+    assert e.value.kind == "infra-tracker" and "404" in e.value.detail
 
 
 def test_dry_backend_numbers_issues_and_snapshots_them(tmp_state):
@@ -193,12 +196,28 @@ def test_dry_backend_numbers_issues_and_snapshots_them(tmp_state):
 
 
 class FakeBd:
-    """Records bd argv; keeps a tiny issue table so list/show/close behave like bd 1.3.0 (probed)."""
-    def __init__(self, issues=None):
-        self.calls, self.issues, self.mounts = [], {i["id"]: i for i in (issues or [])}, []
+    """Stands in for `tracker._bd`. Records the raw argv (`raw`) and the argv with bd's global flags removed
+    (`calls`, so `c[:2] == ["bd", "create"]`); keeps a tiny issue table so list/show/close behave like bd 1.3.0
+    (probed). `initialised=False` answers like bd without a .beads database."""
+    GLOBAL = {"--readonly": 0, "--sandbox": 0, "--actor": 1}
+
+    def __init__(self, issues=None, initialised=True):
+        self.calls, self.raw, self.mounts = [], [], []
+        self.issues, self.initialised = {i["id"]: i for i in (issues or [])}, initialised
+
+    def _strip(self, cmd):
+        out, k = [cmd[0]], 1
+        while k < len(cmd) and cmd[k] in self.GLOBAL:
+            k += 1 + self.GLOBAL[cmd[k]]
+        return out + list(cmd[k:])
 
     def __call__(self, ctx, *cmd, extra=None, check=True):
-        self.calls.append(list(cmd)); self.mounts.append(extra or [])
+        self.raw.append(list(cmd)); self.mounts.append(extra or [])
+        cmd = tuple(self._strip(cmd)); self.calls.append(list(cmd))
+        if not self.initialised:
+            if check:
+                raise faults.HarnessFault("infra-tracker", cmd[1], "no beads database found")
+            return subprocess.CompletedProcess(cmd, 1, "", "Error: no beads database found\nHint: run 'bd init'")
         if cmd[:2] == ("bd", "create"):
             i = {"id": "r-new", "title": cmd[cmd.index("--title") + 1], "status": "open"}
             self.issues[i["id"]] = i
@@ -212,11 +231,14 @@ class FakeBd:
         if cmd[:2] == ("bd", "close"):
             if cmd[2] not in self.issues:
                 if check:
-                    raise RuntimeError("bd failed: no issue found")
+                    raise faults.HarnessFault("infra-tracker", "close", "no issue found")
                 return subprocess.CompletedProcess(cmd, 1, "", "no issue found")
             self.issues[cmd[2]]["status"] = "closed"
             return subprocess.CompletedProcess(cmd, 0, "", "")
         raise AssertionError(cmd)
+
+    def verb_raw(self, verb):
+        return [r for r, c in zip(self.raw, self.calls) if c[1] == verb]
 
 
 def test_beads_bug_is_created_in_the_container_with_the_body_as_a_file(tmp_state, monkeypatch):
@@ -330,7 +352,87 @@ def test_dry_supersede_marks_the_old_file_and_tolerates_a_missing_one(tmp_state)
     assert tracker.supersede(ctx, gone, Owner())["action"] == "absent"
 
 
-def test_which_backends_survive_a_harness_restore_is_recorded():
+def test_survives_restore_map_is_github_and_dry_but_not_beads():
     """Preflight M9: only GitHub state lives outside the arm's snapshotted trees (dry lives in the arm base,
     beside the snapshots, so it survives too); beads lives in the work tree."""
     assert tracker.SURVIVES_RESTORE == {"github": True, "dry": True, "beads": False}
+
+
+# --- fix round 1 --------------------------------------------------------------------------------------------
+
+def test_harness_bd_writes_are_by_bug_reporter_in_sandbox_mode_and_reads_are_readonly(tmp_state, monkeypatch):
+    bd = FakeBd([{"id": "r-1", "status": "open"}]); monkeypatch.setattr(tracker, "_bd", bd)
+    ctx = _ctx(tmp_state, arm="speckitty")
+    new = tracker.create_bug(ctx, Owner())
+    tracker.supersede(ctx, tracker.IssueRef("beads", "beads r-1", None, "r-1"), Owner(), new=new)
+    tracker.snapshot(ctx)
+    for verb in ("create", "close"):
+        (raw,) = bd.verb_raw(verb)
+        assert raw[raw.index("--actor") + 1] == "bug-reporter" and "--sandbox" in raw and "--readonly" not in raw
+    reads = bd.verb_raw("list") + bd.verb_raw("show")
+    assert len(reads) >= 3 and all("--readonly" in r and "--sandbox" not in r for r in reads)
+
+
+@pytest.mark.parametrize("arm,pass_,reporter", [("speckitty", "pass1", "bug-reporter"),
+                                                ("openspec", "pass1", "owner-gh"), ("dryrun", "dry9", "harness")])
+def test_issue_json_records_who_reported_the_bug(tmp_state, monkeypatch, arm, pass_, reporter):
+    monkeypatch.setattr(tracker, "_bd", FakeBd()); monkeypatch.setattr(tracker.subprocess, "run", FakeGh())
+    ctx = _ctx(tmp_state, arm=arm, pass_=pass_)
+    tracker.create_bug(ctx, Owner())
+    assert json.loads((ctx.out / "issue.json").read_text())["reporter"] == reporter
+
+
+def test_snapshot_of_an_arm_without_a_beads_database_is_an_empty_uninitialised_tracker(tmp_state, monkeypatch):
+    monkeypatch.setattr(tracker, "_bd", FakeBd(initialised=False))
+    ctx = _ctx(tmp_state, arm="speckitty")
+    snap = tracker.snapshot(ctx)
+    assert snap["issues"] == [] and snap["initialised"] is False
+    assert json.loads((ctx.out / "tracker.json").read_text())["initialised"] is False
+
+
+def test_an_initialised_tracker_snapshot_says_so(tmp_state, monkeypatch):
+    monkeypatch.setattr(tracker, "_bd", FakeBd())
+    assert tracker.snapshot(_ctx(tmp_state, arm="speckitty"))["initialised"] is True
+
+
+def test_supersede_without_a_beads_database_records_absent(tmp_state, monkeypatch):
+    bd = FakeBd(initialised=False); monkeypatch.setattr(tracker, "_bd", bd)
+    rec = tracker.supersede(_ctx(tmp_state, arm="speckitty"), tracker.IssueRef("beads", "beads r-1", None, "r-1"),
+                            Owner())
+    assert rec["action"] == "absent" and not bd.verb_raw("close")
+
+
+def _docker_result(rc, out=b"", err=b""):
+    return subprocess.CompletedProcess(["docker"], rc, out, err)
+
+
+def test_a_failed_bd_raises_an_infra_tracker_fault_naming_the_verb(tmp_state, monkeypatch):
+    monkeypatch.setattr(tracker.docker, "run", lambda s, timeout=None: _docker_result(1, err=b"Error: disk full\nmore"))
+    ctx = _ctx(tmp_state, arm="speckitty")
+    ctx.paths.home.mkdir(parents=True); ctx.paths.work.mkdir(parents=True)
+    with pytest.raises(faults.HarnessFault) as e:
+        tracker._bd(ctx, "bd", "--sandbox", "--actor", "bug-reporter", "create", "--title", "t")
+    assert (e.value.kind, e.value.signature) == ("infra-tracker", "create") and "disk full" in e.value.detail
+
+
+def test_a_failed_gh_raises_an_infra_tracker_fault_without_the_token(tmp_state, monkeypatch):
+    tok = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+    def boom(argv, **kw):
+        return subprocess.CompletedProcess(argv, 1, "", f"HTTP 401: Bad credentials (token {tok})")
+    monkeypatch.setattr(tracker.subprocess, "run", boom)
+    with pytest.raises(faults.HarnessFault) as e:
+        tracker.create_bug(_ctx(tmp_state), Owner())
+    assert (e.value.kind, e.value.signature) == ("infra-tracker", "create") and "401" in e.value.detail
+    assert tok not in e.value.detail and tok not in str(e.value) and "github_pat_" not in e.value.detail
+
+
+def test_host_gh_runs_without_token_host_or_repo_env_and_in_an_empty_harness_dir(tmp_state, monkeypatch):
+    for k in ("GH_TOKEN", "GITHUB_TOKEN", "GH_HOST", "GH_REPO", "GH_ENTERPRISE_TOKEN"):
+        monkeypatch.setenv(k, "x")
+    monkeypatch.setenv("KEEP_ME", "1")
+    gh = FakeGh(); monkeypatch.setattr(tracker.subprocess, "run", gh)
+    tracker.create_bug(_ctx(tmp_state), Owner())
+    env = gh.kw["env"]
+    assert not {"GH_TOKEN", "GITHUB_TOKEN", "GH_HOST", "GH_REPO", "GH_ENTERPRISE_TOKEN"} & set(env)
+    assert env["KEEP_ME"] == "1"                      # the owner's own gh login (config dir, keyring) still works
+    assert gh.kw["cwd"] != os.getcwd() and gh.cwd_listing == []

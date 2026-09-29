@@ -54,7 +54,7 @@ def test_beads_backend_creates_lists_and_supersedes_a_bug_in_the_container(tmp_s
     snap = tracker.snapshot(ctx)
     (issue,) = [i for i in snap["issues"] if i.get("id") == ref.id]
     assert issue["title"] == "Setting one agent's model changed another agent's model"
-    assert issue["issue_type"] == "bug" and issue["status"] == "open"
+    assert issue["issue_type"] == "bug" and issue["status"] == "open" and issue["created_by"] == "bug-reporter"
     assert issue["description"] == (ctx.out / "issue-body.md").read_text()      # verbatim, newlines kept
     assert json.loads((ctx.out / "tracker.json").read_text()) == snap
     new = tracker.create_bug(ctx, ctx.owner)
@@ -76,3 +76,19 @@ def test_beads_supersede_after_a_restore_removed_the_issue_does_not_crash(tmp_st
     assert not any(i.get("id") == ref.id for i in tracker.snapshot(ctx)["issues"])
     rec = tracker.supersede(ctx, ref, ctx.owner)
     assert rec["action"] == "absent" and rec["survives_restore"] is False
+
+
+def test_beads_database_removed_by_a_restore_gives_an_uninitialised_snapshot_and_absent_supersede(tmp_state, tmp_path):
+    """Preflight M9 variant: the arm initialises beads only after the step-6 snapshot, so the restore removes
+    `.beads` itself; bd then has no database at all."""
+    ctx = _ctx(tmp_path, "speckitty")
+    repo.init(ctx.paths, "speckitty", "dry9")
+    repo.snapshot(ctx.paths, 6)
+    _bd_init(ctx.paths)
+    ref = tracker.create_bug(ctx, ctx.owner)
+    repo.restore(ctx.paths, 6)
+    assert not (ctx.paths.repo / ".beads").exists()
+    snap = tracker.snapshot(ctx)
+    assert snap["initialised"] is False and snap["issues"] == []
+    assert tracker.supersede(ctx, ref, ctx.owner)["action"] == "absent"
+    assert docker.running() == []
