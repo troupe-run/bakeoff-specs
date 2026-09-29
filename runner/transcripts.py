@@ -16,8 +16,9 @@ the product-owner agent — plus the stream's init model, Claude Code version, a
   * a stream carries session.py's oversize marker on a turn whose outcome was not timeout/no_result
     (`stream_outcomes`; on those outcomes the marker is counted in `truncated_lines`, like a truncated last line);
   * any inspected field has the wrong JSON shape (reported as `<missing>` / `<malformed:TYPE>`, never raised);
-  * a stream `result` lacks a non-empty `modelUsage` dict whose keys are all accepted (synthetic counted) with at
-    least one real accepted model (fix round 2 (a): the runner captures the stream from container stdout, so the
+  * a stream `result` of a turn that did work (a real assistant message, a tool_use, or total_cost_usd > 0) lacks
+    a non-empty `modelUsage` dict with at least one real accepted model; a `modelUsage` that IS present must be a
+    dict whose keys are all accepted (synthetic counted) whether or not the turn did work (fix round 2 (a): the runner captures the stream from container stdout, so the
     arm cannot edit it — this is the backstop for everything the transcript tree might hide);
   * a transcript file has no decodable line at all (`transcript_unverifiable`).
 An undecodable line is tolerated (counted in `truncated_lines`) only when it is a file's LAST line, the file does
@@ -287,6 +288,18 @@ def _salvage(raw: bytes) -> tuple[dict | None, str]:
     return (obj, text[end:]) if isinstance(obj, dict) else (None, text)
 
 
+def _did_work(ev: dict, synthetic: set[str]) -> bool:
+    """A stream assistant event is work if it is a real (non-synthetic) message or carries a tool_use."""
+    msg = ev.get("message")
+    if not isinstance(msg, dict):
+        return True                                       # unjudgeable: assume work (conservative)
+    model = msg.get("model")
+    if not (isinstance(model, str) and model in synthetic):
+        return True
+    content = msg.get("content")
+    return isinstance(content, list) and any(isinstance(c, dict) and c.get("type") == "tool_use" for c in content)
+
+
 def _not_a_dict(value: object) -> str:
     return "<missing>" if value is None else f"<malformed:{type(value).__name__}>"
 
@@ -372,7 +385,7 @@ def verify_pin(transcript_files: Iterable[Path], stream_files: Iterable[Path], p
             violation(f, None, "transcript_unverifiable", "no-decodable-lines")
 
     for f in stream_files:
-        st = {"init": False, "active": False}
+        st = {"init": False, "active": False, "work": False}
 
         def on_stream(i, ev, f=f, st=st):
             nonlocal sn, real_s, trunc
@@ -392,18 +405,29 @@ def verify_pin(transcript_files: Iterable[Path], stream_files: Iterable[Path], p
             elif t == "assistant":
                 sn += 1; st["active"] = True
                 real_s += judge_message(f, i, "stream.assistant", ev)
+                if _did_work(ev, synth):
+                    st["work"] = True
             elif t == "result":
                 # (a) The stream is runner-captured from container stdout, so the arm cannot edit it: every result
                 # must account for its models — present, a non-empty dict, every key accepted (synthetic counted),
                 # at least one key a real accepted model.
+                # Ruling: required only when the turn did work (a real assistant message, a tool_use, or a cost);
+                # a no-work error/auth result without it is not a pin fault — the turn's outcome carries that.
+                # Whatever IS present must be well-formed and all-accepted regardless.
                 st["active"] = True
+                cost = ev.get("total_cost_usd")
+                work = st["work"] or (cost is not None and not (isinstance(cost, (int, float)) and cost <= 0))
                 mu = ev.get("modelUsage")
-                if not isinstance(mu, dict):
+                if mu is None:
+                    if work:
+                        violation(f, i, "result.modelUsage", "<missing>")
+                elif not isinstance(mu, dict):
                     violation(f, i, "result.modelUsage", _not_a_dict(mu))
                 elif not mu:
-                    violation(f, i, "result.modelUsage", "<empty>")
+                    if work:
+                        violation(f, i, "result.modelUsage", "<empty>")
                 elif not sum(judge(f, i, "result.modelUsage", m) for m in mu) and \
-                        all(m in synth for m in mu):
+                        all(m in synth for m in mu) and work:
                     violation(f, i, "result.modelUsage", "<no-accepted-model>")
 
         for i, kind, payload, last in _lines(f):
