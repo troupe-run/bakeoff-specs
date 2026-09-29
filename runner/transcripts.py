@@ -144,6 +144,7 @@ class PinReport:
     claude_code_versions: list[str]
     no_evidence: bool
     violations: list[dict] = field(default_factory=list)
+    unverified_streams: list[str] = field(default_factory=list)   # streams with no init: version unproven
 
     def to_json(self) -> str:
         """The body of `model-pin.json`."""
@@ -184,27 +185,39 @@ def verify_pin(transcript_files: list[Path], stream_files: list[Path], pins: Pin
             elif ev.get("type") == "assistant":
                 n += 1
                 judge(f, i, "assistant", (ev.get("message") or {}).get("model"))
+    unverified: list[str] = []
     for f in stream_files:
+        saw_init = active = False
         for i, ev in _lines(f):
             t = None if ev is None else ev.get("type")
             if ev is None or t == OVERSIZE_MARKER:       # a line nobody could inspect: counted, not fatal
                 trunc += 1
             elif t == "system" and ev.get("subtype") == "init":
+                saw_init = True
                 judge(f, i, "init", ev.get("model"))
                 v = ev.get("claude_code_version")
                 versions.add(str(v))
                 if v != pins.claude_version:
                     bad.append({"file": str(f), "line": i, "where": "claude_code_version", "model": v})
             elif t == "assistant":
-                sn += 1
+                sn += 1; active = True
                 judge(f, i, "stream.assistant", (ev.get("message") or {}).get("model"))
             elif t == "result":
                 for m in (ev.get("modelUsage") or {}):
+                    active = True
                     judge(f, i, "result.modelUsage", m)
+        if not saw_init:
+            # Controller ruling (concern 2): the version is never assumed. Activity without an init means the
+            # model/version cannot be proven -> violation. No init and no activity (e.g. a turn that timed out
+            # before starting) -> recorded as unverified, not a violation: the turn's own outcome carries it.
+            versions.add("unverified")
+            unverified.append(str(f))
+            if active:
+                bad.append({"file": str(f), "line": None, "where": "claude_code_version", "model": "unverifiable"})
     # Controller ruling: checking nothing is a failure. Transcripts are the evidence for an arm step (a broken
     # transcript-path assumption must fault, not pass on streams); with transcripts optional, SOME assistant
     # message must still have been inspected.
     no_evidence = (require_transcripts and n == 0) or (n + sn == 0)
     return PinReport(ok=not bad and not no_evidence, assistant_messages=n, stream_assistant_messages=sn,
                      synthetic=s, truncated_lines=trunc, claude_code_versions=sorted(versions),
-                     no_evidence=no_evidence, violations=bad)
+                     no_evidence=no_evidence, violations=bad, unverified_streams=unverified)
