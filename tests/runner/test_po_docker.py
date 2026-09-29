@@ -1,33 +1,18 @@
 """The PO session against the real Docker daemon with the fake claude and the dummy credential (no model calls).
 Opt in with --run-docker (preflight M1).
 
-The fake's `/po/message.md` merge lands in `runner/images/dryrun/fake_claude.py` with this task, but images are
-never rebuilt from a parallel lane: the `fake_from_worktree` fixture bind-mounts this worktree's fake over the
-image's `/usr/local/bin/claude` for these tests only (the production PO turn mounts nothing of the sort)."""
-import dataclasses, json, shutil
+The fake's `/po/message.md` merge is baked into `bakeoff-arm-dryrun:1` (rebuilt by Task 24), so these tests run the
+image's own `/usr/local/bin/claude`; nothing is bind-mounted over it."""
+import dataclasses, json
 from pathlib import Path
 
 import pytest
 
 from runner import config, credentials, docker, po, repo
-from runner.docker import Mount
 from runner.paths import Paths
 
 pytestmark = pytest.mark.docker
 
-FAKE = Path(__file__).resolve().parents[2] / "runner" / "images" / "dryrun" / "fake_claude.py"
-
-
-@pytest.fixture(autouse=True)
-def fake_from_worktree(tmp_path, monkeypatch):
-    exe = tmp_path / "fake-claude"
-    shutil.copy(FAKE, exe); exe.chmod(0o755)
-    real = po.session.run_turn                                            # captured first (preflight M3)
-
-    def with_fake(t, *a, **k):
-        return real(dataclasses.replace(t, mounts=[*t.mounts, Mount(exe, "/usr/local/bin/claude", True)]), *a, **k)
-
-    monkeypatch.setattr(po.session, "run_turn", with_fake)
 
 
 @pytest.fixture(autouse=True)

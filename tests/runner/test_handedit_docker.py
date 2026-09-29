@@ -1,40 +1,27 @@
 """The hand edit against the real Docker daemon, with the fake claude and the dummy credential (no model calls).
 Opt in with --run-docker; run under the docker lock.
 
-Images are never rebuilt from a lane: like test_po_docker.py, the `fake_from_worktree` fixture bind-mounts this
-worktree's fake (which has the `FAKE:sh=` directive the scripted teammate uses) over the image's claude for these
-tests only. The teammate's fixed prompt is extended with FAKE: lines by monkeypatching `handedit.PROMPT`."""
+The fake's `FAKE:sh=` directive (the scripted teammate's edit) is baked into `bakeoff-arm-dryrun:1` (rebuilt by
+Task 24), so these tests run the image's own claude. The teammate's fixed prompt is extended with FAKE: lines by
+monkeypatching `handedit.PROMPT` (a directive wins over the fake's scripted teammate role)."""
 import dataclasses, gzip, json, shutil, subprocess
 from pathlib import Path
 
 import pytest
 
 from runner import docker, gitops, handedit, hidden, repo
-from runner.docker import Mount
 from runner.faults import HarnessFault
 from runner.paths import Paths, REPO_ROOT
 from tests.runner.conftest import make_test_ctx
 
 pytestmark = pytest.mark.docker
 LABEL = "bakeoff.run=dry9/dryrun"
-FAKE = REPO_ROOT / "runner" / "images" / "dryrun" / "fake_claude.py"
 # The teammate's scripted edit of the reference's CLI: TROUPE_THEATRE as --theatre's default, a test, and two side
 # effects (`uv run` rewriting the lock, a cache dir) that must be cleaned rather than committed.
 EDIT = ("FAKE:sh=sed -i 's/default=\"[.]\"/default=__import__(\"os\").environ.get(\"TROUPE_THEATRE\") or \".\"/' "
         "src/troupe_ref/cli.py && printf 'def test_theatre_env():\\n    assert True\\n' > tests/test_theatre_env.py "
         "&& echo '# rewritten' >> uv.lock && mkdir -p .pytest_cache && echo x > .pytest_cache/nodeids")
 
-
-@pytest.fixture(autouse=True)
-def fake_from_worktree(tmp_path, monkeypatch):
-    exe = tmp_path / "fake-claude"
-    shutil.copy(FAKE, exe); exe.chmod(0o755)
-    real = handedit.session.run_turn                                      # captured first (preflight M3)
-
-    def with_fake(t, *a, **k):
-        return real(dataclasses.replace(t, mounts=[*t.mounts, Mount(exe, "/usr/local/bin/claude", True)]), *a, **k)
-
-    monkeypatch.setattr(handedit.session, "run_turn", with_fake)
 
 
 @pytest.fixture(autouse=True)
