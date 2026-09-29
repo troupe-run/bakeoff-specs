@@ -13,12 +13,16 @@ IMAGES = Path(__file__).resolve().parent / "images"
 LOCK = config.CONFIG_DIR / "images.lock.json"
 VERSION_PROBES = {"claude": ["claude", "--version"], "uv": ["uv", "--version"], "python3": ["python3", "--version"],
                   "node": ["node", "--version"], "gh": ["gh", "--version"], "git": ["git", "--version"]}
+# `command -v bd` resolves to the 1.3KB JS wrapper (bin/bd.js); the ~143MB native binary @beads/bd's
+# postinstall downloads lives next to it as plain `bd` (fix-round-1 item 1) — `readlink -f "$(command -v bd)"`
+# alone hashes the wrapper, not the binary that actually runs.
+BD_NATIVE_BINARY_SH = 'p="$(readlink -f "$(command -v bd)")"; sha256sum "$(dirname "$p")/bd"'
 ARM_VERSION_PROBES = {
     "openspec": {"openspec": ["openspec", "--version"]},
     "speckit": {"specify": ["specify", "version"]},
     "speckitty": {"spec-kitty": ["spec-kitty", "--version"], "bd": ["bd", "version"],
-                  "bd-sha256": ["sh", "-c", "sha256sum \"$(readlink -f \"$(command -v bd)\")\""]},   # S-5
-    "ccsdd": {"cc-sdd": ["sh", "-c", "npm ls -g cc-sdd --depth=0 --json"]},       # parsed by npm_version (C-15)
+                  "bd-sha256": ["sh", "-c", BD_NATIVE_BINARY_SH]},   # S-5
+    "ccsdd": {"cc-sdd": ["cc-sdd", "--version"]},
 }
 
 
@@ -39,10 +43,6 @@ def _existing(arms: list[str]) -> list[str]:
     return [a for a in arms if (config.ARMS_DIR / f"{a}.toml").exists()]
 
 
-def npm_version(json_text: str, pkg: str) -> str:
-    return json.loads(json_text)["dependencies"][pkg]["version"]
-
-
 def specify_version(text: str) -> str:
     """`specify version` always prints an ASCII banner and a boxed info panel before the version — the
     version-probe's usual `text.splitlines()[0]` would capture a banner line instead (found building the
@@ -53,10 +53,21 @@ def specify_version(text: str) -> str:
     return m.group(1)
 
 
+def cc_sdd_version(text: str) -> str:
+    """`cc-sdd --version` prints `cc-sdd v3.1.0` — strip the name/`v` prefix so the lock reports a bare
+    version like every other arm tool (fix-round-1 item 6: `cc-sdd` is now resolved via a plain symlink,
+    like `openspec`, so it's no longer globally `npm install -g`'d and `npm ls -g` can't see it)."""
+    m = re.search(r"(\d+\.\d+\.\d+)", text)
+    if not m:
+        raise RuntimeError(f"could not find a version in `cc-sdd --version` output: {text!r}")
+    return m.group(1)
+
+
 def check_pinned() -> None:
     p = config.load_pins()
     missing = ([k for k, v in p.digests.items() if not v]
                + (["binary_sha256"] if not p.binary_sha256 else [])
+               + (["beads.sha256"] if not p.bd_sha256 else [])
                + (["images.tinyproxy"] if not p.images.get("tinyproxy") else []))
     if missing:
         raise NotPinned(f"unpinned: {missing}; run `uv run python -m runner images pin` and commit the result")
@@ -131,6 +142,22 @@ def _set_toml_value(path: Path, key: str, value: str, table: str | None = None) 
     path.write_text(head + new_body + tail)
 
 
+def _bd_sha256(base_image: str, speckitty_dir: Path) -> str:
+    """Resolve @beads/bd's native binary hash for this pinning host/platform by actually installing it
+    (network — the 'image build' phase egress is unrestricted, design table) and hashing the binary next
+    to its JS wrapper, not the wrapper itself. The postinstall script downloads the binary straight from
+    GitHub releases with no checksum of its own (fix-round-1 item 1) — pinning it here, the same way the
+    Claude CLI binary is pinned, is what lets the speckitty Dockerfile's `sha256sum -c` catch a corrupted
+    or substituted download on every later build. Independently verified 2026-09-29 against
+    gastownhall/beads' own release `checksums.txt` (see task-3-report.md)."""
+    out = _sh("docker", "run", "--rm", "--network", "bridge", "-v", f"{speckitty_dir}:/src:ro", base_image,
+               "sh", "-c",
+               'mkdir -p /tmp/beads && cp /src/package.json /src/package-lock.json /tmp/beads/ '
+               '&& cd /tmp/beads && npm ci --omit=dev --no-audit --no-fund 1>&2 '
+               '&& p="$(readlink -f node_modules/.bin/bd)" && sha256sum "$(dirname "$p")/bd"')
+    return out.split()[0]
+
+
 def pin() -> dict:
     p = config.load_pins()
     im, pins_file = p.images, config.CONFIG_DIR / "pins.toml"
@@ -147,6 +174,10 @@ def pin() -> dict:
     tinyproxy = _apk_version(f"alpine:{im['alpine']}@{got['alpine']}", "tinyproxy")
     _set_toml_value(pins_file, "tinyproxy", tinyproxy)
     got["tinyproxy"] = tinyproxy
+    if (IMAGES / "arm" / "speckitty").exists():                 # not present yet in a Task-2-only checkout
+        bd_sha = _bd_sha256(im["base"], IMAGES / "arm" / "speckitty")
+        _set_toml_value(pins_file, "sha256", bd_sha, table="beads")
+        got["bd_sha256"] = bd_sha
     plugin_shas, plugin_errors = _pin_plugins(_existing(config.all_arms()))
     got.update(plugin_shas)
     if plugin_errors:
@@ -192,7 +223,7 @@ def _versions(tag: str, extra: dict[str, list[str]]) -> dict[str, str]:
         r = subprocess.run(["docker", "run", "--rm", "--network", "none", tag, *cmd], capture_output=True, text=True)
         text = (r.stdout or r.stderr).strip()
         if name == "cc-sdd" and r.returncode == 0:
-            text = npm_version(r.stdout, "cc-sdd")
+            text = cc_sdd_version(r.stdout)
         if name == "specify" and r.returncode == 0:
             text = specify_version(r.stdout)
         out[name] = text.splitlines()[0] if text else f"exit {r.returncode}"
@@ -217,7 +248,8 @@ def build_all(arms: list[str], rebuild: bool = False) -> dict:
     _build(im["tester"], paths.REPO_ROOT, dockerfile=IMAGES / "tester" / "Dockerfile", BASE_IMAGE=im["base"])
     if (IMAGES / "dryrun" / "Dockerfile").exists():
         _build(im["dryrun"], paths.REPO_ROOT, dockerfile=IMAGES / "dryrun" / "Dockerfile", BASE_IMAGE=im["base"])
-    lock: dict = {"digests": p.digests, "binary_sha256": p.binary_sha256, "images": {}, "arms": {}}
+    lock: dict = {"digests": p.digests, "binary_sha256": p.binary_sha256, "bd_sha256": p.bd_sha256,
+                  "images": {}, "arms": {}}
     for tag in [im["base"], im["proxy"], im["tester"]] + ([im["dryrun"]] if (IMAGES / "dryrun").exists() else []):
         lock["images"][tag] = {"id": current_id(tag), "tar_sha256": _save(tag)}
     lock["images"][im["base"]]["versions"] = _versions(im["base"], {})
@@ -231,7 +263,8 @@ def build_all(arms: list[str], rebuild: bool = False) -> dict:
             continue
         df = IMAGES / "arm" / name / "Dockerfile"
         if df.exists():
-            _build(arm.image, IMAGES / "arm" / name, BASE_IMAGE=im["base"],
+            extra = {"BD_SHA256": p.bd_sha256} if name == "speckitty" else {}   # review fix-round-1 item 1
+            _build(arm.image, IMAGES / "arm" / name, BASE_IMAGE=im["base"], **extra,
                    **{f"PLUGIN_{i}_{k.upper()}": getattr(pl, k) for i, pl in enumerate(arm.plugins)
                       for k in ("name", "repo", "tag", "sha", "subdir")})
         lock["arms"][name] = {"image": arm.image, "id": current_id(arm.image),

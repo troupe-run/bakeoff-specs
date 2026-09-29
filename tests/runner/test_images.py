@@ -19,9 +19,8 @@ def test_base_build_args_use_digests_not_tags():
     assert args["CLAUDE_SHA256"] == "d"
 
 
-def test_cc_sdd_version_probe_reads_the_version_not_the_prefix():          # review C-15
-    out = '{"dependencies": {"cc-sdd": {"version": "3.1.0"}}}'
-    assert images.npm_version(out, "cc-sdd") == "3.1.0"
+def test_cc_sdd_version_probe_reads_the_version_not_the_v_prefix():        # review C-15, fix-round-1 item 6
+    assert images.cc_sdd_version("cc-sdd v3.1.0\n") == "3.1.0"
 
 
 def test_specify_version_probe_reads_the_version_out_of_the_banner():
@@ -104,10 +103,30 @@ def test_pin_plugins_parks_a_plugin_whose_tag_does_not_exist_instead_of_raising(
 
 
 def test_unpinned_plugins_is_empty_once_every_plugin_has_a_sha():
-    """The gate `build_all` uses to decide whether an arm is buildable (review B2): non-empty means park.
-    `build_all` itself skipping the docker build and writing the lock's "error" field for bmad is
-    exercised for real in the docker run — see task-3-report.md — not re-asserted here as a unit test."""
+    """The gate `build_all` uses to decide whether an arm is buildable (review B2): non-empty means park."""
     arm = dataclasses.replace(config.load_arm("bmad"), plugins=[
         config.Plugin(name="good", marketplace="", install="", version="1", repo="x/y", tag="v1",
                       sha="deadbeef", subdir="")])
     assert images._unpinned_plugins(arm) == []
+
+
+def test_build_all_skips_an_unpinned_arm_and_records_the_error_without_failing_the_rest(monkeypatch, tmp_path):
+    """review fix-round-1 item 4: build_all's B2 skip-and-record path, isolated from real docker calls."""
+    pins = dataclasses.replace(config.load_pins(),
+                                digests={"debian": "sha256:d", "node": "sha256:n", "uv": "sha256:u",
+                                         "alpine": "sha256:a"},
+                                binary_sha256="deadbeef", bd_sha256="beadbeef")
+    monkeypatch.setattr(images.config, "load_pins", lambda: pins)
+    monkeypatch.setattr(images, "LOCK", tmp_path / "images.lock.json")
+    monkeypatch.setattr(images, "_build", lambda *a, **k: None)
+    monkeypatch.setattr(images, "_save", lambda tag: "tarhash")
+    monkeypatch.setattr(images, "current_id", lambda tag: f"id:{tag}")
+    monkeypatch.setattr(images, "_versions", lambda tag, extra: {})
+
+    lock = images.build_all(["bmad", "control"], rebuild=True)
+
+    assert lock["arms"]["bmad"]["image"] == "bakeoff-arm-bmad:1"
+    assert "unpinned plugin(s)" in lock["arms"]["bmad"]["error"]
+    assert "id" not in lock["arms"]["bmad"]
+    assert lock["arms"]["control"]["id"] == "id:bakeoff-base:cc2.1.281"
+    assert "error" not in lock["arms"]["control"]

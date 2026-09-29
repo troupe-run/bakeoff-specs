@@ -38,6 +38,7 @@ class Pins:
     permission_mode: str
     disallowed_tools: list[str]
     binary_sha256: str
+    bd_sha256: str        # @beads/bd's native binary hash (fix-round-1 item 1); written by `runner images pin`
     images: dict[str, str]
     digests: dict[str, str]
     limits: Limits
@@ -126,7 +127,7 @@ def load_pins() -> Pins:
         claude_version=c["version"], model=c["model"], accepted_models=list(c["accepted_models"]),
         synthetic_models=list(c["synthetic_models"]), max_retries=int(c["max_retries"]),
         permission_mode=c["permission_mode"], disallowed_tools=list(c["disallowed_tools"]),
-        binary_sha256=c["binary_sha256"], images=im, digests=dict(digests),
+        binary_sha256=c["binary_sha256"], bd_sha256=raw["beads"]["sha256"], images=im, digests=dict(digests),
         limits=Limits(**raw["limits"]), pass2_order=raw["order"]["pass2_order"],
         plugin_route=raw["plugins"]["route"],
         egress_setup_common=_check_hosts(e["setup_common"], "pins.egress.setup_common"),

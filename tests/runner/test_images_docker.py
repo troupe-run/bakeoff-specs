@@ -1,6 +1,6 @@
 import subprocess
 import pytest
-from runner import config
+from runner import config, images
 
 pytestmark = pytest.mark.docker
 
@@ -13,8 +13,13 @@ def run(image, *cmd, user="1000:1000"):
 def all_arm_images():
     """Every arm image the lock says actually built — not every arm whose toml exists (review B2: a
     parked arm, e.g. bmad while its plugin tag is unresolved, has a lock entry with no built image)."""
-    from runner import images
     return sorted({v["image"] for v in images.lock()["arms"].values() if "error" not in v})
+
+
+def buildable_arm_names():
+    """Arm names (not images — several arms could share one, though none currently do) with a built
+    image, for tests that need the arm's own version-probe commands (`ARM_VERSION_PROBES`)."""
+    return sorted(n for n, v in images.lock()["arms"].items() if "error" not in v)
 
 
 def test_base_image_has_the_pinned_claude_code():
@@ -56,3 +61,33 @@ def test_proxy_image_runs_tinyproxy_pinned_by_apk_version():                    
     r = subprocess.run(["docker", "run", "--rm", config.load_pins().images["proxy"],
                         "tinyproxy", "-v"], capture_output=True, text=True, timeout=30)
     assert (r.stdout + r.stderr).strip()
+
+
+def test_speckitty_bd_native_binary_hash_matches_the_pin_not_the_js_wrapper():    # review fix-round-1 item 1
+    image = config.load_arm("speckitty").image
+    r = run(image, "sh", "-c", images.BD_NATIVE_BINARY_SH)
+    got_hash, got_path = r.stdout.split()
+    assert got_path.endswith("/bd")            # the ~143MB native binary, never bd.js (the 1.3KB wrapper)
+    assert got_hash == config.load_pins().bd_sha256
+    assert got_hash == images.lock()["bd_sha256"]
+
+
+@pytest.mark.parametrize("name", buildable_arm_names())
+def test_arm_image_has_no_root_owned_debris_under_home_actor(name):               # review fix-round-1 item 2
+    """Build steps run `USER root` with HOME=/home/actor baked in by the base image; without resetting HOME
+    during those RUN lines, uv/npm/a postinstall self-test (e.g. `bd version`) leave root-owned cache/config
+    files under /home/actor — which then breaks `actor` at runtime (e.g. `uv venv` failing with Permission
+    denied) whenever the container has no home bind-mount to paper over it. Exercised here with no mount at
+    all: `uv venv`, the arm's own version probe(s), then a scan for anything actor doesn't own."""
+    image = config.load_arm(name).image
+
+    venv = run(image, "uv", "venv", "/tmp/v")
+    assert venv.returncode == 0, venv.stderr
+
+    for probe_name, cmd in images.ARM_VERSION_PROBES.get(name, {}).items():
+        r = run(image, *cmd)
+        assert r.returncode == 0, f"{name} probe {probe_name!r} ({cmd}) failed as actor: {r.stderr or r.stdout}"
+
+    debris = run(image, "sh", "-c",
+                 'find /home/actor -mindepth 1 \\( -not -user actor -o -not -group actor \\) 2>/dev/null')
+    assert debris.stdout.strip() == "", f"{image}: root-owned debris under /home/actor:\n{debris.stdout}"

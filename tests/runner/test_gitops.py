@@ -1,5 +1,6 @@
 """Host-side git helpers (review B2): `ls_remote_tag` resolves a plugin's pinned tag to a commit SHA
 before any arm image exists. Task 8 extends `runner/gitops.py` with the in-container helpers."""
+import subprocess
 import pytest
 from runner import gitops
 
@@ -30,10 +31,26 @@ def test_ls_remote_tag_raises_when_the_remote_has_no_such_tag(monkeypatch):
         gitops.ls_remote_tag("bmad-code-org/bmad-plugins", "v6.12.0")
 
 
-def test_ls_remote_tag_raises_when_git_itself_fails(monkeypatch):
+def test_ls_remote_tag_raises_git_remote_unavailable_not_tag_not_found_when_git_itself_fails(monkeypatch):
+    """review fix-round-1 item 3: a nonzero exit from `git ls-remote` (network unreachable, repo not
+    found, DNS failure, ...) means we couldn't even ask the question — that's a transient/environment
+    failure, fatal, and must never be treated as 'this tag doesn't exist' (which parks the plugin)."""
     monkeypatch.setattr(gitops.subprocess, "run", lambda *a, **k: FakeCompleted("", returncode=128, stderr="boom"))
-    with pytest.raises(gitops.TagNotFound, match="boom"):
+    with pytest.raises(gitops.GitRemoteUnavailable, match="boom"):
         gitops.ls_remote_tag("x/y", "v1.0.0")
+
+
+def test_ls_remote_tag_raises_git_remote_unavailable_when_the_subprocess_call_itself_raises(monkeypatch):
+    def raiser(*a, **k):
+        raise subprocess.TimeoutExpired(cmd="git", timeout=30)
+    monkeypatch.setattr(gitops.subprocess, "run", raiser)
+    with pytest.raises(gitops.GitRemoteUnavailable):
+        gitops.ls_remote_tag("x/y", "v1.0.0")
+
+
+def test_git_remote_unavailable_is_not_a_tag_not_found():                  # they must not be confused
+    assert not issubclass(gitops.GitRemoteUnavailable, gitops.TagNotFound)
+    assert not issubclass(gitops.TagNotFound, gitops.GitRemoteUnavailable)
 
 
 def test_host_env_disables_interactive_credential_prompts():

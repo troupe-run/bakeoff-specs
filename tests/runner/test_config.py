@@ -13,6 +13,10 @@ def test_web_tools_and_ask_user_question_are_disallowed_for_every_session():
     assert set(config.load_pins().disallowed_tools) >= {"WebSearch", "WebFetch", "AskUserQuestion"}
 
 
+def test_beads_native_binary_is_pinned_by_a_real_sha256():                 # review fix-round-1 item 1
+    assert len(config.load_pins().bd_sha256) == 64
+
+
 def test_od_parameters_have_their_recommended_defaults():
     p = config.load_pins()
     assert p.pass2_order == "reverse"                      # OD13 B

@@ -10,8 +10,15 @@ import subprocess
 
 
 class TagNotFound(RuntimeError):
-    """`repo_slug`'s remote has no such tag. Callers park the plugin rather than pinning to nothing
-    (review B2: e.g. `bmad-code-org/bmad-plugins` carries no tags at all)."""
+    """The remote was reached and answered, but has no such tag. Callers may park the plugin rather than
+    pinning to nothing (review B2: e.g. `bmad-code-org/bmad-plugins` carries no tags at all)."""
+
+
+class GitRemoteUnavailable(RuntimeError):
+    """We couldn't even ask the remote (network unreachable, DNS failure, repo not found, the `git`
+    call timed out or the subprocess itself failed to start). Fatal — never a reason to park a plugin:
+    unlike `TagNotFound`, this doesn't mean the tag is absent, only that we don't know yet (review
+    fix-round-1 item 3: a transient failure here must not be mistaken for a genuinely missing tag)."""
 
 
 def _host_env() -> dict[str, str]:
@@ -23,16 +30,24 @@ def _host_env() -> dict[str, str]:
 
 def ls_remote_tag(repo_slug: str, tag: str) -> str:
     """The commit SHA `tag` points at on `https://github.com/<repo_slug>` (peeled to the target commit if
-    the tag is annotated). Read-only, host-side, no clone. Raises `TagNotFound` if the remote has no such
-    tag or the call itself fails.
+    the tag is annotated). Read-only, host-side, no clone.
+
+    Raises `GitRemoteUnavailable` (fatal, never park) if we couldn't reach the remote at all — a nonzero
+    exit from `git ls-remote` means the connection or the repo lookup itself failed (network unreachable,
+    DNS failure, repository not found, ...), not that the tag is absent; the same for a `subprocess.run`
+    failure (timeout, `git` not on PATH). Raises `TagNotFound` (may park) only when the remote answered
+    successfully and simply has no such tag (review fix-round-1 item 3).
 
     Queries every tag rather than passing `tag` as a refspec pattern: `git ls-remote --tags <url> <tag>`
     matches only the tag ref itself and drops the server's synthetic `^{}` peeled-commit line for an
     annotated tag, silently returning the tag *object* SHA instead of the commit it points at."""
-    r = subprocess.run(["git", "ls-remote", "--tags", f"https://github.com/{repo_slug}"],
-                        capture_output=True, text=True, env=_host_env(), timeout=30)
+    try:
+        r = subprocess.run(["git", "ls-remote", "--tags", f"https://github.com/{repo_slug}"],
+                            capture_output=True, text=True, env=_host_env(), timeout=30)
+    except (subprocess.SubprocessError, OSError) as e:
+        raise GitRemoteUnavailable(f"{repo_slug}@{tag}: could not run git ls-remote: {e}") from e
     if r.returncode != 0:
-        raise TagNotFound(f"{repo_slug}@{tag}: git ls-remote failed: {r.stderr.strip()}")
+        raise GitRemoteUnavailable(f"{repo_slug}@{tag}: git ls-remote failed: {r.stderr.strip()}")
     refs = dict(line.split(maxsplit=1)[::-1] for line in r.stdout.splitlines() if line.strip())
     want = f"refs/tags/{tag}"
     sha = refs.get(f"{want}^{{}}") or refs.get(want)

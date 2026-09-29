@@ -9,6 +9,13 @@ permission_mode = "bypassPermissions"        # OD11
 disallowed_tools = ["WebSearch", "WebFetch", "AskUserQuestion"]   # OD10, OD11
 binary_sha256 = "dd27b36438a4fed1670cd29bad2fda6a73b628b6da55443e5c2f647fe6ed328f"                           # written by `runner images pin` (Task 2); build refuses while empty
 
+[beads]
+# @beads/bd's postinstall downloads its ~143MB native binary straight from GitHub releases with NO checksum
+# of its own (fix-round-1 item 1). `runner images pin` resolves this by actually installing it and hashing
+# the real native binary (not its 1.3KB JS wrapper); the speckitty Dockerfile verifies with `sha256sum -c`
+# and fails the build on mismatch. Platform/arch-specific to the pinning host, like every other digest here.
+sha256 = "9e485eabbdb7ac39b0ca6abb13f394432a3d030460703be8565caaff662d82d3"
+
 [images]
 base = "bakeoff-base:cc2.1.281"
 tester = "bakeoff-tester:1"
