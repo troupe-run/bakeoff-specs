@@ -335,12 +335,15 @@ def test_cli_scan_paths_prints_path_line_kind_and_exits_1(tmp_path, monkeypatch,
     assert cli.main(["scan", str(tmp_path), str(tmp_path / "a.txt")]) == 0
 
 
-def test_cli_scan_staged_scans_the_staged_files(tmp_path, monkeypatch, capsys):
+def test_cli_scan_staged_scans_the_staged_files(tmp_state, monkeypatch, capsys):
     monkeypatch.setattr(secrets, "literals", lambda cred=None: ["dry-run-dummy-token"])
-    (tmp_path / "s.txt").write_text("dry-run-dummy-token\n")
-    monkeypatch.setattr(gitops, "staged_files", lambda: [tmp_path / "s.txt"])
+    ev = paths.RESULTS / "dry1" / "dryrun" / "01"; ev.mkdir(parents=True)
+    (ev / "s.txt").write_text("dry-run-dummy-token\n")                   # an evidence commit
+    (tmp_state / "src.py").write_text(f'F = "{PAT}"  # secret-scan: fake\n')   # a marked test fixture
+    monkeypatch.setattr(gitops, "staged_files", lambda: [ev / "s.txt", tmp_state / "src.py"])
     assert cli.main(["scan", "--staged"]) == 1
-    assert "s.txt:1 literal" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "s.txt:1 literal" in out and "src.py" not in out
 
 
 def test_cli_scan_needs_something_to_scan(capsys):
@@ -394,6 +397,33 @@ def test_fast_export_runs_in_one_networkless_container_with_only_out_writable(tm
     got = gitops.fast_export(p, root, ["a/.git", "origin.git"], dest, revs=("refs/heads/main",))
     [s] = specs
     assert s.network == "none"
-    assert sorted((str(m.host), m.ctr, m.ro) for m in s.mounts) == [(str(root), "/in", True), (str(dest), "/out", False)]
+    assert {(str(m.host), m.ctr, m.ro) for m in s.mounts} == {(str(root), "/in", True), (str(dest), "/out", False)}
     assert "fast-export" in s.cmd[2] and s.cmd[3:] == ["fast-export", "1", "refs/heads/main", "a/.git", "origin.git"]
     assert got == [dest / "1.fe", None]                     # no export file for a git dir means unscannable
+
+
+# --- harness sources (pre-commit): fake test tokens may be marked; evidence never honours the mark ---------------
+
+def test_a_marked_fake_token_in_a_harness_source_passes_the_staged_scan(tmp_state):
+    f = tmp_state / "src.py"
+    f.write_text(f'FAKE = "{PAT}"   # secret-scan: fake\nOTHER = "{GHO}"\n')
+    got = secrets.scan_files([f], [], harness=True)
+    assert [(x.kind, x.line) for x in got] == [("github-token", 2)]   # the unmarked line still fails
+
+
+def test_the_fake_mark_never_hides_a_real_value_or_evidence(tmp_state):
+    f = tmp_state / "src.py"
+    f.write_text(f'X = "{OAUTH}"   # secret-scan: fake\n')
+    assert [x.kind for x in secrets.scan_files([f], [OAUTH], harness=True)] == ["literal"]
+    ev = paths.RESULTS / "pass1" / "control" / "01"; ev.mkdir(parents=True)
+    (ev / "t.jsonl").write_text(f'{PAT} secret-scan: fake\n')
+    assert [x.kind for x in secrets.scan_files([ev / "t.jsonl"], [], harness=True)] == ["github-pat"]
+    assert [x.kind for x in secrets.scan_tree(ev)] == ["github-pat"]
+
+
+def test_the_dry_run_dummy_value_counts_in_results_but_not_in_harness_sources(tmp_state):
+    src = tmp_state / "credentials.py"; src.write_text('return Credential("dry-run-dummy-token")\n')
+    ev = paths.RESULTS / "dry1" / "dryrun" / "01"; ev.mkdir(parents=True)
+    (ev / "s.jsonl").write_text("dry-run-dummy-token\n")
+    got = secrets.scan_files([src, ev / "s.jsonl"], ["dry-run-dummy-token"], harness=True)
+    assert [(Path(x.path).name, x.kind) for x in got] == [("s.jsonl", "literal")]

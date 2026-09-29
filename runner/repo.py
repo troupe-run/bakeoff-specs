@@ -15,7 +15,7 @@ from runner.docker import Mount, RunSpec
 from runner.paths import Paths
 
 __all__ = ["ORG", "github_slug", "init", "head", "snapshot", "restore", "recover", "export", "bundle", "github_plan",
-           "github_verify", "verify_ok", "publish", "pat_instructions"]
+           "github_verify", "verify_ok", "publish", "pat_instructions", "extract_snapshot", "remove_tree"]
 
 
 def init(p: Paths, arm: str, pass_: str) -> str:
@@ -86,6 +86,28 @@ def _rmtree(path: Path) -> None:
             func(p_)
     if os.path.lexists(path):
         shutil.rmtree(path, onexc=fix)
+
+
+_EXTRACT_SH = r"""set -euo pipefail
+tar -x -f "/snap/$1" -C /out --no-same-owner --no-same-permissions
+chmod -R u+rwX /out"""
+
+
+def extract_snapshot(p: Paths, snapshot: Path, dest: Path) -> Path:
+    """A snapshot's trees, extracted INSIDE a container into the new directory `dest` for the secret scan
+    (runner.secrets.scan_snapshot) — never a restore. Made owner-readable in the container (`chmod -R`, which
+    never follows links), so an arm's `chmod 000` cannot hide content from the host scanner."""
+    if snapshot.parent != p.snapshots or not snapshot.is_file() or snapshot.is_symlink():
+        raise FileNotFoundError(f"no snapshot {snapshot} in {p.snapshots}")
+    dest.mkdir(parents=True)
+    _run(_tar_spec(p, [Mount(p.snapshots, "/snap", True), Mount(dest, "/out", False)], _EXTRACT_SH,
+                   snapshot.name, tag="scanx"), f"extract {snapshot.name}")
+    return dest
+
+
+def remove_tree(path: Path) -> None:
+    """Delete an extracted arm tree without following links (see `_rmtree`)."""
+    _rmtree(path)
 
 
 def restore(p: Paths, step: int | str) -> None:
@@ -252,7 +274,11 @@ def verify_ok(res: dict) -> bool:
 
 def publish(p: Paths, pass_: str, ask, scan) -> bool:
     """Push refs/heads/main via a host bare clone of a bundle made in a container (review S-1).
-    `scan(dir) -> list[findings]` is secrets.scan_tree (Task 21); any finding refuses the push."""
+    `scan(tree, history) -> list[Finding]` is `secrets.scan_publish` (Task 21, review S-2): `tree` is the tip
+    tree of THIS clone's main and `history` the `git fast-export` stream of everything reachable from it
+    (None if the export failed — the scanner fails closed), both made in network-less containers. Any finding
+    raises `secrets.SecretFound` ("secret-in-publish") naming where, never what, and nothing is pushed."""
+    from runner import secrets
     slug = github_slug(pass_, p.arm)
     if not slug:
         return False
@@ -266,10 +292,10 @@ def publish(p: Paths, pass_: str, ask, scan) -> bool:
     gitops.clone_bundle_bare(b, bare)                   # host: validated bundle -> config-free bare clone
     tree = gitops.bare_tree(p, bare, "main", work / "tree")   # scan input: THIS clone's main, extracted in a
                                                               # container; the scanner never follows links
-    findings = scan(tree)
+    [history] = gitops.fast_export(p, bare, ["."], work / "history", revs=("refs/heads/main",))
+    findings = scan(tree, history)
     if findings:
-        print(f"Refusing to publish {slug}: {len(findings)} secret finding(s): {findings[:5]}")
-        return False
+        raise secrets.SecretFound("secret-in-publish", findings)
     if not ask(f"Push main of {p.arm} ({pass_}) to {slug}? [y/N] "):
         return False
     gitops.push_from_bare(bare, f"https://github.com/{slug}.git")

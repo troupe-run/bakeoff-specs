@@ -1,0 +1,4 @@
+#!/bin/sh
+# .githooks/pre-commit — enable once with: git config core.hooksPath .githooks   (checklists/README.md step 4)
+# Secret scan of the staged files (Task 21, review S-2): token shapes, the keychain token and every arm-home PAT.
+exec uv run --quiet python -m runner scan --staged

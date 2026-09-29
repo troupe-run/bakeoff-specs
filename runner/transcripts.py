@@ -108,9 +108,13 @@ def safe_files(root: Path, pattern: str = "*.jsonl", *, skipped: list[dict] | No
 
 
 
-def _open_safe(p: Path, real_root: str) -> int | str:
-    """An fd for `p` if it is still a plain in-tree single-link regular file within the cap, else the reason.
-    O_NONBLOCK: opening a FIFO swapped in after the walk must not hang."""
+def open_regular(p: Path, real_root: str, *, max_bytes: int | None = None,
+                 allow_hardlinked: bool = False) -> int | str:
+    """An fd for `p` if it is still a plain in-tree regular file within `max_bytes` (and single-link unless
+    `allow_hardlinked`), else the reason. O_NONBLOCK: opening a FIFO swapped in after the walk must not hang.
+    Shared with runner.secrets, which reads hard-linked files too (it only searches them, never copies).
+    `max_bytes` defaults to MAX_FILE_BYTES (read at call time)."""
+    max_bytes = MAX_FILE_BYTES if max_bytes is None else max_bytes
     if not _inside(p.parent / "x", real_root):
         return "outside-root"
     try:
@@ -119,26 +123,39 @@ def _open_safe(p: Path, real_root: str) -> int | str:
         return "symlink" if os.path.islink(p) else "unreadable"
     st = os.fstat(fd)
     reason = ("not-regular" if not stat.S_ISREG(st.st_mode) else
-              "hardlinked" if st.st_nlink != 1 else
-              "oversize" if st.st_size > MAX_FILE_BYTES else None)
+              "hardlinked" if st.st_nlink != 1 and not allow_hardlinked else
+              "oversize" if st.st_size > max_bytes else None)
     if reason:
         os.close(fd)
         return reason
     return fd
 
 
-def _chunks(fd: int) -> Iterator[bytes]:
-    """The file's bytes in CHUNK_BYTES pieces; raises _Oversize past MAX_FILE_BYTES (it grew after the fstat)."""
+def _open_safe(p: Path, real_root: str) -> int | str:
+    return open_regular(p, real_root)
+
+
+def read_chunks(fd: int, max_bytes: int | None = None) -> Iterator[bytes]:
+    """The file's bytes in CHUNK_BYTES pieces; raises Oversize past `max_bytes` (default MAX_FILE_BYTES; the
+    file grew after the fstat)."""
+    max_bytes = MAX_FILE_BYTES if max_bytes is None else max_bytes
     total = 0
     while chunk := os.read(fd, CHUNK_BYTES):
         total += len(chunk)
-        if total > MAX_FILE_BYTES:
-            raise _Oversize
+        if total > max_bytes:
+            raise Oversize
         yield chunk
 
 
-class _Oversize(Exception):
+def _chunks(fd: int) -> Iterator[bytes]:
+    return read_chunks(fd)
+
+
+class Oversize(Exception):
     pass
+
+
+_Oversize = Oversize
 
 
 def safe_contains(p: Path, real_root: str, needle: bytes, *, since: float | None = None) -> bool:

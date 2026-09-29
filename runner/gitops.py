@@ -225,6 +225,39 @@ def bare_tree(p: Paths, bare: Path, ref: str, dest: Path) -> Path:
     return dest
 
 
+_FAST_EXPORT_SH = r"""set -uo pipefail
+n=$1; shift; revs=("${@:1:$n}"); shift "$n"; i=0
+for d in "$@"; do
+  i=$((i+1))
+  g() { git --git-dir="/in/$d" -c core.hooksPath=/dev/null -c core.fsmonitor=false -c safe.directory='*' "$@"; }
+  refs=$(g for-each-ref --count=1 --format=x) || continue          # unreadable: no file -> unscannable
+  if [ -z "$refs" ]; then : > "/out/$i.fe"; continue; fi            # no refs: nothing to export
+  g fast-export --reencode=yes --signed-tags=verbatim --show-original-ids "${revs[@]}" > "/out/$i.fe.part" \
+    && mv "/out/$i.fe.part" "/out/$i.fe"
+  rm -f "/out/$i.fe.part"
+done"""
+
+
+def fast_export(p: Paths, root: Path, git_dirs: list[str], dest: Path, *,
+                revs: tuple[str, ...] = ("--all", "--reflog")) -> list[Path | None]:
+    """Every object reachable from `revs` in each git dir under `root` (paths relative to it), as a
+    `git fast-export` stream — blobs, commit messages, identities, file and link names — for the secret scan
+    (review S-2). ONE network-less container of the arm's image: `root` read-only at /in, `dest` the only
+    writable mount. Result i is `dest/<i+1>.fe`, or None when that export failed (the scanner fails closed on
+    None). A git dir with no refs exports as an empty stream."""
+    check_trees(p)
+    dest.mkdir(parents=True, exist_ok=True)
+    base = spec(p, [])
+    s = dataclasses.replace(base, name=base.name.replace("bk-git-", "bk-fe-", 1),
+                            mounts=[Mount(root, "/in", True), Mount(dest, "/out", False)], workdir="/",
+                            cmd=["bash", "-c", _FAST_EXPORT_SH, "fast-export", str(len(revs)), *revs, *git_dirs])
+    r = docker.run(s, timeout=1800)
+    if r.returncode != 0:
+        raise RuntimeError(f"fast-export failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
+    return [f if (f := dest / f"{i}.fe").is_file() and not f.is_symlink() else None
+            for i in range(1, len(git_dirs) + 1)]
+
+
 BUNDLE_HEADERS = (b"# v2 git bundle\n", b"# v3 git bundle\n")
 
 
@@ -340,6 +373,14 @@ def commit_harness_file(path: Path, message: str) -> None:
 def harness_is_clean(path: Path) -> bool:
     r = subprocess.run(["git", "-C", str(REPO_ROOT), "diff", "--quiet", "--", str(path)])
     return r.returncode == 0
+
+
+def staged_files() -> list[Path]:
+    """The harness repo only (the pre-commit hook's `runner scan --staged`): paths staged for the next commit,
+    deletions excluded. Absolute, under REPO_ROOT."""
+    r = subprocess.run(["git", "-C", str(REPO_ROOT), "diff", "--cached", "--name-only", "-z", "--diff-filter=d"],
+                       capture_output=True, check=True)
+    return [REPO_ROOT / os.fsdecode(n) for n in r.stdout.split(b"\0") if n]
 
 
 def clone_bundle_bare(bundle_path: Path, dest: Path) -> None:

@@ -56,14 +56,17 @@ def register_github(sub):
     v.add_argument("pass_", metavar="pass"); v.set_defaults(func=verify)
 
     def publish(ns):
+        from runner import secrets                           # Task 21 (review S-2): tip tree + full history
+        lits = secrets.literals()
         try:
-            from runner import secrets                       # Task 21 (review S-2)
-        except ImportError:
-            print("Refusing to publish: no secret scan available yet (runner.secrets, Task 21).")
+            ok = repo.publish(paths.Paths(ns.pass_, ns.arm), ns.pass_,
+                              lambda q: input(q).strip().lower() in ("y", "yes"),
+                              lambda tree, history: secrets.scan_publish(tree, history, lits))
+        except secrets.SecretFound as e:
+            print(f"Refusing to publish: {e}")
+            for f in e.findings:
+                print(f"{f.path}:{f.line} {f.kind}")
             return 1
-        ok = repo.publish(paths.Paths(ns.pass_, ns.arm), ns.pass_,
-                          lambda q: input(q).strip().lower() in ("y", "yes"),
-                          lambda d: secrets.scan_tree(d, secrets.literals()))
         return 0 if ok else 1
     u = sub.add_parser("publish", help="push an arm's main to its GitHub repo (owner-approved, from a bundle clone)")
     u.add_argument("pass_", metavar="pass"); u.add_argument("arm"); u.set_defaults(func=publish)
@@ -119,3 +122,34 @@ def register_setup(sub):
     h.add_argument("pass_", metavar="pass"); h.add_argument("arm")
     h.set_defaults(func=lambda ns: checklist.interactive_shell(ns.pass_, ns.arm))
 REGISTRARS.append(register_setup)
+
+
+def register_scan(sub):
+    """`runner scan [--staged] [--arm PASS ARM] [PATH…]` (Task 21, review S-2): prints `path:line kind` per
+    finding (never the matched text) and exits 1 on any finding. `--staged` is the pre-commit hook
+    (.githooks/pre-commit); `--arm` scans an arm's results and every snapshot (with git history)."""
+    def scan(ns):
+        from pathlib import Path
+        from runner import gitops, secrets
+        if not (ns.staged or ns.arm or ns.paths):
+            ns.parser.error("nothing to scan: give --staged, --arm PASS ARM or PATH…")
+        lits = secrets.literals()
+        found = []
+        if ns.staged:
+            found += secrets.scan_files(gitops.staged_files(), lits, harness=True)
+        if ns.arm:
+            found += secrets.scan_arm(paths.Paths(*ns.arm), lits)
+        for x in ns.paths:
+            found += secrets.scan_tree(Path(x), lits)
+        for f in found:
+            print(f"{f.path}:{f.line} {f.kind}")
+        if found:
+            print(f"{len(found)} secret finding(s); nothing is printed but where. Scrub, then re-run `runner scan`.")
+        return 1 if found else 0
+    p = sub.add_parser("scan", help="secret scan (token shapes and keychain/PAT values) of paths, staged files "
+                                    "or an arm; exit 1 on any finding")
+    p.add_argument("--staged", action="store_true", help="the harness repo's staged files (pre-commit hook)")
+    p.add_argument("--arm", nargs=2, metavar=("PASS", "ARM"), help="an arm's results and snapshots")
+    p.add_argument("paths", nargs="*", metavar="PATH")
+    p.set_defaults(func=scan, parser=p)
+REGISTRARS.append(register_scan)

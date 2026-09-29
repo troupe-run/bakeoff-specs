@@ -150,20 +150,9 @@ def container_name(t: Turn) -> str:
 
 def credential_files(config_dir: Path | None, cred: Credential, since: float) -> list[str]:
     """Files under config_dir changed during the turn that contain the token, and any .credentials.json (S-3).
-    Never follows a link and never blocks: the content scan uses transcripts' no-follow readers (walk without
-    following links, then O_NOFOLLOW|O_NONBLOCK + fstat regular-file check + size cap; Task 8 fix round 2).
-    A `.credentials.json` of any file type is reported by name without being read."""
-    if config_dir is None or os.path.islink(config_dir) or not config_dir.is_dir():
-        return []
-    needle, hits = cred.raw_for_scanner().encode(), set()
-    for root, _dirs, files in os.walk(config_dir, followlinks=False):
-        if ".credentials.json" in files:
-            hits.add(str((Path(root) / ".credentials.json").relative_to(config_dir)))
-    real_root = os.path.realpath(config_dir)
-    for f in transcripts.safe_files(config_dir, "*"):
-        if transcripts.safe_contains(f, real_root, needle, since=since):
-            hits.add(str(f.relative_to(config_dir)))
-    return sorted(hits)
+    The scan lives in runner.secrets (the only reader of the raw token, Task 21); see its docstring."""
+    from runner import secrets
+    return secrets.credential_files(config_dir, cred, since)
 
 
 async def read_lines(reader: asyncio.StreamReader) -> AsyncIterator[bytes]:
