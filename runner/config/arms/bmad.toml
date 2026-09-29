@@ -39,3 +39,9 @@ must_run = []
 must_run_source = "CANDIDATES §1.5 Workflow stages: the one-session path (bmad-build) documents no closing command; bmad-retrospective closes epics only"
 fresh_session_before = []
 export_after = ""
+# N.a discovery stop (design §5): the method's own spec/plan/tracker folders; edits here are not code edits.
+# Every arm also gets pins.toml [discovery] docs_paths.
+spec_paths = [
+  { path = "_bmad-output/", why = "brief, PRD, spec, architecture and ticket trees (default output folder), CANDIDATES §1.5 Artefacts" },
+  { path = "_bmad/", why = "BMAD's config, scripts and ticketing store config (_bmad/custom/), CANDIDATES §1.5 item 3/5" },
+]

@@ -47,6 +47,24 @@ cpus = "4"
 memory = "8g"
 pids = 2048
 transient_backoff = [60, 300, 900]           # review C-4: in-place retries of transient API errors
+suite_resource_arms = 2                      # design §9 (owner, 2026-09-29): arms exhausting resources at one step
+                                             # -> harness fault `suite-resource:<step>`, the bake-off halts (Task 23)
+
+[discovery]
+# N.a (design §5, owner 2026-09-29): the discovery run stops at the arm's first approval request or its first edit to
+# code outside its spec and docs paths. These docs paths hold for every arm; each arm adds its own method's folders
+# (`[drive] spec_paths` in arms/<arm>.toml). A path ending in `/` is a directory prefix; anything else is an fnmatch
+# pattern on the repo-relative path (`*` crosses `/`).
+docs_paths = [
+  { path = "docs/", why = "project documentation, never the CLI's code" },
+  { path = "*.md", why = "Markdown anywhere (README, CLAUDE.md, AGENTS.md, notes) is prose, not code" },
+  { path = ".claude/", why = "Claude Code's project settings and the method's installed commands, not the CLI's code" },
+  { path = ".venv/", why = "`uv sync` output: an environment, not an edit (the initial repo has no .gitignore)" },
+  { path = "*__pycache__/*", why = "bytecode Python writes on import, not an edit" },
+  { path = ".pytest_cache/", why = "tool cache" },
+  { path = ".mypy_cache/", why = "tool cache" },
+  { path = ".ruff_cache/", why = "tool cache" },
+]
 
 [order]
 pass2_order = "reverse"                      # OD13 B (A: "same")

@@ -11,6 +11,12 @@ What ends an attempt:
   done      the PO said step_done and nothing was pending
   stalled   more than `limits.exchanges_per_attempt` exchanges (OD14; `breach="exchanges"`)
   timeout   an arm turn ran over `limits.turn_seconds` (`breach="turn_seconds"`)
+  discovery-stop
+            (only with `stop_at_first_gate_or_code=True`: the N.a discovery run, design §5 / Task 22 ruling 6)
+            the PO classified the arm's message as an approval request (the owner is NOT asked; the entry is
+            logged with `owner_action="discovery-stop"`), or an arm turn left paths changed since `sha_before`
+            outside the arm's spec paths and the pinned docs paths (`outside_spec`; checked before the PO sees
+            the turn). `AttemptResult.discovery` says which, at which turn
   parked    an owner prompt (gate or escalation) returned `owner.Park` — recorded, never treated as an answer,
             never appended to the brief (Task 15 ruling 1); the caller parks the arm and moves on. With several
             escalations in one message, answers the owner gave BEFORE the park are real answers and stay
@@ -27,7 +33,7 @@ been sent (`po.step_view(..., crb_sent=...)`, which needs `StepCtx.contract`). T
 transcripts: the caller (Task 22 `stepflow`) does, after `run_attempt` returns, when every container has exited.
 """
 from __future__ import annotations
-import dataclasses, json, re, time
+import dataclasses, fnmatch, json, re, time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -79,7 +85,7 @@ class StepCtx:
 
 @dataclass
 class AttemptResult:
-    outcome: Literal["done", "stalled", "timeout", "parked"]
+    outcome: Literal["done", "stalled", "timeout", "parked", "discovery-stop"]
     session_id: str | None
     turns: list = field(default_factory=list)
     po_results: list = field(default_factory=list)
@@ -88,6 +94,7 @@ class AttemptResult:
     breach: str | None = None
     retries: int = 0
     park: owner_mod.Park | None = None
+    discovery: dict | None = None        # discovery-stop: {"why": "approval"|"code", "turn": n[, "paths": [...]]}
 
 
 class _Parked(Exception):
@@ -207,19 +214,31 @@ def _next_later(ctx: StepCtx) -> str:
     return handoff.entry_message(ctx.arm, ctx.step, text)
 
 
-def run_attempt(ctx: StepCtx, attempt: int, message: str, resume: str | None = None) -> AttemptResult:
+def _matches(path: str, pattern: str) -> bool:
+    return path.startswith(pattern) if pattern.endswith("/") else fnmatch.fnmatchcase(path, pattern)
+
+
+def outside_spec(changed: list[str], arm: Arm, pins: Pins) -> list[str]:
+    """The changed paths that are code for the N.a discovery stop: under none of the arm's `spec_paths` and none
+    of the pinned `discovery_paths` (a `/`-ended entry is a directory prefix, anything else an fnmatch pattern)."""
+    pats = [s.path for s in arm.spec_paths] + [s.path for s in pins.discovery_paths]
+    return [c for c in changed if not any(_matches(c, pat) for pat in pats)]
+
+
+def run_attempt(ctx: StepCtx, attempt: int, message: str, resume: str | None = None, *,
+                stop_at_first_gate_or_code: bool = False) -> AttemptResult:
     checklist.require_clean_green(ctx.paths)                  # ruling 8: never drive a dirty or non-green setup
     repo.recover(ctx.paths)                                   # ruling 6: before the arm's home/work is touched
     _po_view(ctx)                                             # ruling 3: refuse a step-5 ctx before any turn
     res = AttemptResult("stalled", resume)
     try:
-        return _run(ctx, attempt, message, res)
+        return _run(ctx, attempt, message, res, stop_at_first_gate_or_code)
     except HarnessFault as f:
         f.attempt_result = res                                # the turns so far are evidence
         raise
 
 
-def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult) -> AttemptResult:
+def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult, discovery: bool = False) -> AttemptResult:
     pins, arm, p = ctx.pins, ctx.arm, ctx.paths
     ctx.out.mkdir(parents=True, exist_ok=True)
     qa_path = ctx.out / "questions.jsonl"
@@ -264,6 +283,10 @@ def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult) -> Attemp
                                    (r.final_text or "")[:500])
             res.session_id = r.session_id or res.session_id
             res.exchanges += 1; turns_ended += 1
+            if discovery and (code := outside_spec(gitops.changed_paths(p, ctx.sha_before), arm, pins)):
+                res.outcome = "discovery-stop"                                           # N.a: first code edit
+                res.discovery = {"why": "code", "turn": len(res.turns), "paths": code[:50]}
+                return res
             if res.exchanges > pins.limits.exchanges_per_attempt:                        # OD14
                 res.outcome, res.breach = "stalled", "exchanges"
                 return res
@@ -292,6 +315,12 @@ def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult) -> Attemp
             dec = pr.decision
             entry = {**base, "kind": dec.kind, "significant": dec.significant, "approved": dec.approved,
                      "po_cost_usd": sum(t.cost_usd for t in pr.turns), "po_retries": pr.retries, "answered_by": "po"}
+            if discovery and dec.kind == "approval":                                     # N.a: first gate
+                _log(qa, qa_path, {**entry, "answered_by": "runner", "owner_action": "discovery-stop",
+                                   "reply": None})
+                res.outcome = "discovery-stop"
+                res.discovery = {"why": "approval", "turn": len(res.turns)}
+                return res
             try:
                 reply = _reply(ctx, dec, r, entry, res, sent, source)
             except _Parked as pk:                                                        # ruling 1

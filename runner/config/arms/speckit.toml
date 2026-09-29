@@ -36,3 +36,9 @@ must_run = ["/speckit-converge"]
 must_run_source = "CANDIDATES §1.2 Workflow stages: repeat implement → converge until convergence reports Converged"
 fresh_session_before = []
 export_after = "/speckit-tasks"          # OD24 B: send /speckit-taskstoissues once after tasks ("" = OD24 A)
+# N.a discovery stop (design §5): the method's own spec/plan/tracker folders; edits here are not code edits.
+# Every arm also gets pins.toml [discovery] docs_paths.
+spec_paths = [
+  { path = "specs/", why = "per-feature spec.md, plan.md, tasks.md and checklists (specs/NNN-<slug>/), CANDIDATES §1.2 Artefacts" },
+  { path = ".specify/", why = "constitution (.specify/memory/), feature.json, bug reports and assessments (.specify/bugs/, .specify/assessments/), CANDIDATES §1.2 Artefacts" },
+]

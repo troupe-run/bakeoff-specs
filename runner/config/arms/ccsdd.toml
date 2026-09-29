@@ -27,3 +27,8 @@ must_run = ["/kiro-validate-impl"]
 must_run_source = "CANDIDATES §1.7a Workflow: … → /kiro-impl → /kiro-validate-impl (GO/NO-GO)"
 fresh_session_before = []
 export_after = ""
+# N.a discovery stop (design §5): the method's own spec/plan/tracker folders; edits here are not code edits.
+# Every arm also gets pins.toml [discovery] docs_paths.
+spec_paths = [
+  { path = ".kiro/", why = "Kiro specs (.kiro/specs/<feature>/: requirements, design, tasks) and steering (.kiro/steering/), CANDIDATES §1.7a Artefacts" },
+]

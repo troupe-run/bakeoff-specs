@@ -29,3 +29,8 @@ must_run = ["/opsx:archive"]
 must_run_source = "CANDIDATES §1.3 Workflow stages: /opsx:propose → /opsx:apply → /opsx:archive (archive merges deltas into specs)"
 fresh_session_before = []
 export_after = ""
+# N.a discovery stop (design §5): the method's own spec/plan/tracker folders; edits here are not code edits.
+# Every arm also gets pins.toml [discovery] docs_paths.
+spec_paths = [
+  { path = "openspec/", why = "living specs (openspec/specs/) and change folders with delta specs and tasks.md (openspec/changes/), CANDIDATES §1.3 Artefacts" },
+]

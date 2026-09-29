@@ -24,3 +24,8 @@ must_run = []
 must_run_source = "no methodology: no closing command"
 fresh_session_before = []
 export_after = ""
+# N.a discovery stop (design §5): the method's own spec/plan/tracker folders; edits here are not code edits.
+# Every arm also gets pins.toml [discovery] docs_paths.
+spec_paths = [
+  { path = "docs/", why = "plain Claude Code has no spec folder of its own: any plan it writes to docs/ is prose (common docs path, listed so the arm's list is explicit)" },
+]

@@ -26,6 +26,8 @@ class Limits:
     memory: str
     pids: int
     transient_backoff: list[int]
+    suite_resource_arms: int     # design §9 (owner, 2026-09-29): this many arms exhausting resources at one step
+                                 # is a harness fault (`suite-resource:<step>`); the counting is Task 23's
 
 
 @dataclass(frozen=True)
@@ -48,6 +50,16 @@ class Pins:
     egress_run_common: list[str]
     egress_po: list[str]
     egress_tester_prep: list[str]
+    discovery_paths: list["SpecPath"] = field(default_factory=list)   # every arm's docs paths (N.a, design §5)
+
+
+@dataclass(frozen=True)
+class SpecPath:
+    """A path an arm may change in its N.a discovery run without it counting as a code edit (design §5): a
+    directory prefix when it ends with `/`, otherwise an fnmatch pattern on the repo-relative path (`*` crosses
+    `/`). `why` is required: the list is data, and every entry says what the method keeps there."""
+    path: str
+    why: str
 
 
 @dataclass(frozen=True)
@@ -107,12 +119,13 @@ class Arm:
     export_after: str                              # speckit only (OD24 B): the command after which export runs
     dry: bool = False
     volatile_paths: list[Volatile] = field(default_factory=list)   # excluded from the pass-2 manifest comparison
+    spec_paths: list[SpecPath] = field(default_factory=list)       # the method's spec/plan/tracker folders (N.a)
 
 
 _ANCHORED = re.compile(r"^\^.+\$$")
 TOP = {"name", "tool", "version", "citation", "image", "tracker", "repo_name", "env", "egress", "setup", "drive", "dry"}
 SETUP = {"shell", "agent", "post_shell", "plugins", "smoke", "manifest_paths", "volatile_paths"}
-DRIVE = {"entry", "bug_entry", "must_run", "must_run_source", "fresh_session_before", "export_after"}
+DRIVE = {"entry", "bug_entry", "must_run", "must_run_source", "fresh_session_before", "export_after", "spec_paths"}
 
 
 def _check_hosts(patterns: list[str], where: str) -> list[str]:
@@ -148,6 +161,7 @@ def load_pins() -> Pins:
         egress_run_common=_check_hosts(e["run_common"], "pins.egress.run_common"),
         egress_po=_check_hosts(e["po"], "pins.egress.po"),
         egress_tester_prep=_check_hosts(e["tester_prep"], "pins.egress.tester_prep"),
+        discovery_paths=_spec_paths(raw.get("discovery", {}).get("docs_paths", []), "pins.discovery.docs_paths"),
     )
 
 
@@ -181,7 +195,20 @@ def load_arm(name: str) -> Arm:
         entry=dr["entry"], bug_entry=dr["bug_entry"], must_run=must_run,
         must_run_source=dr.get("must_run_source", ""), fresh_session_before=fresh,
         export_after=dr.get("export_after", ""), dry=bool(raw.get("dry", False)),
+        spec_paths=_spec_paths(dr.get("spec_paths", []), where + " [drive] spec_paths"),
     )
+
+
+def _spec_paths(raw: list, where: str) -> list[SpecPath]:
+    out = []
+    for v in raw:
+        v = _only(dict(v), {"path", "why"}, where)
+        if not str(v.get("path", "")).strip():
+            raise ConfigError(f"{where}: an entry has no path")
+        if not str(v.get("why", "")).strip():
+            raise ConfigError(f"{where}: {v['path']!r} needs a why (what the method keeps there)")
+        out.append(SpecPath(str(v["path"]), str(v["why"])))
+    return out
 
 
 def _volatile(raw: list, manifest_paths: list[str], where: str) -> list[Volatile]:

@@ -122,6 +122,27 @@ def state(p: Paths) -> RepoState:
     return RepoState(**json.loads(r.stdout))
 
 
+_CHANGED_SH = r"""cd "$1"; g() { git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false "$@"; }
+set -e
+g diff --name-only --no-renames -z "$2"
+g ls-files --others --exclude-standard -z
+g log --branches --not "$2" --name-only --no-renames --format= -z"""
+
+
+def changed_paths(p: Paths, base: str) -> list[str]:
+    """Every repo-relative path changed since `base` (Task 22, the N.a discovery stop): the working tree against
+    `base` (committed, staged and unstaged tracked changes), untracked files (not ignored), and every file a commit
+    on ANY local branch since `base` touched (an arm may commit on a feature branch and switch back). Sorted,
+    de-duplicated. Not seen: uncommitted work in a linked worktree outside the repo directory."""
+    check_trees(p)
+    s = dataclasses.replace(spec(p, []), cmd=["bash", "-c", _CHANGED_SH, "changed", p.container_repo, base])
+    r = docker.run(s, timeout=300)
+    if r.returncode != 0:
+        raise RuntimeError(f"git changed-paths failed in container ({r.returncode}): "
+                           f"{r.stderr.decode(errors='replace')[:400]}")
+    return sorted({x for x in r.stdout.decode(errors="replace").replace("\n", "\0").split("\0") if x.strip()})
+
+
 def archive(p: Paths, sha: str) -> bytes:
     return git(p, "archive", "--format=tar", sha).stdout
 

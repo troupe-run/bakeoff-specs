@@ -60,3 +60,10 @@ must_run = ["/spec-kitty.accept", "/spec-kitty.merge"]
 must_run_source = "CANDIDATES §1.4 Workflow stages: … implement → review per WP → accept → consolidate/merge"
 fresh_session_before = []
 export_after = ""
+# N.a discovery stop (design §5): the method's own spec/plan/tracker folders; edits here are not code edits.
+# Every arm also gets pins.toml [discovery] docs_paths.
+spec_paths = [
+  { path = "kitty-specs/", why = "per-mission meta.json, spec.md, plan.md, tasks.md, tasks/WP*.md, wps.yaml (kitty-specs/NNN-<slug>/), CANDIDATES §1.4 Artefacts" },
+  { path = ".kittify/", why = "spec-kitty's config and charter, CANDIDATES §1.4 Artefacts" },
+  { path = ".beads/", why = "the beads issue database: the arm's tracker (CANDIDATES §2.1), not code" },
+]
