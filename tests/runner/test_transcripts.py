@@ -215,7 +215,7 @@ def test_fake_claude_turn_collects_and_verifies(tmp_path):
     cfg, cwd = tmp_path / ".claude", tmp_path / "work"; cwd.mkdir()
     before = snapshot(cfg)
     stream = tmp_path / "01.stream.jsonl.gz"
-    _fake_turn(cfg, cwd, "FAKE: reply=hi", stream)
+    _fake_turn(cfg, cwd, "FAKE:reply=hi", stream)
     files = collect(cfg, before, tmp_path / "out")
     r = verify_pin(files, [stream], config.load_pins())
     assert r.ok and r.assistant_messages == 1 and r.stream_assistant_messages == 1, r
@@ -225,9 +225,9 @@ def test_fake_claude_subagent_on_another_model_is_caught_from_the_collected_tran
     cfg, cwd = tmp_path / ".claude", tmp_path / "work"; cwd.mkdir()
     before = snapshot(cfg)
     stream = tmp_path / "01.stream.jsonl.gz"
-    _fake_turn(cfg, cwd, "FAKE: subagent_model=claude-haiku-4-5", stream)
+    _fake_turn(cfg, cwd, "FAKE:subagent_model=claude-haiku-4-5", stream)
     files = collect(cfg, before, tmp_path / "out")
-    assert sorted(p.name for p in files)[0] == "agent-1.jsonl.gz"
+    assert len(files) == 2 and "agent-1.jsonl.gz" in {p.name for p in files}
     r = verify_pin(files, [stream], config.load_pins())
     assert not r.ok
     assert [(Path(v["file"]).name, v["where"], v["model"]) for v in r.violations] == \
