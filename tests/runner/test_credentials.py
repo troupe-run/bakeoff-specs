@@ -69,11 +69,12 @@ def test_keychain_success_reads_the_named_service_and_strips(monkeypatch):
     seen = {}
 
     def fake_run(argv, **k):
-        seen["argv"] = argv
+        seen["argv"], seen["kw"] = argv, k
         return subprocess.CompletedProcess(argv, 0, stdout=FAKE_REAL + "\n", stderr="")
     monkeypatch.setattr(credentials.subprocess, "run", fake_run)
     c = credentials.from_keychain("svc")
-    assert seen["argv"] == ["security", "find-generic-password", "-s", "svc", "-w"]
+    assert seen["argv"] == ["/usr/bin/security", "find-generic-password", "-s", "svc", "-w"]   # fix round 1 #2
+    assert seen["kw"].get("timeout", 0) >= 30
     assert c.payload() == (FAKE_REAL + "\n").encode()
     assert c.fingerprint() == hashlib.sha256(FAKE_REAL.encode()).hexdigest()
     assert c.raw_for_scanner() == FAKE_REAL
@@ -180,3 +181,52 @@ def test_arm_sessions_require_a_pass():                                     # co
         credentials.session_env(pins, arm, role="arm", isolated=False, pass_="")
     for role in ("po", "teammate"):
         credentials.session_env(pins, arm, role=role, isolated=True)           # optional for other roles
+
+
+# --- Fix round 1 -------------------------------------------------------------------------------------
+
+def _tb_locals_text(exc: BaseException) -> str:
+    """Everything a locals-showing traceback printer could reach: each frame's locals, plus the chained
+    __context__/__cause__ exceptions and their frames."""
+    seen, parts, todo = set(), [], [exc]
+    while todo:
+        e = todo.pop()
+        if e is None or id(e) in seen:
+            continue
+        seen.add(id(e))
+        parts.append(repr(e) + repr(vars(e)) if hasattr(e, "__dict__") else repr(e))
+        tb = e.__traceback__
+        while tb is not None:
+            parts.append(repr(tb.tb_frame.f_locals))
+            tb = tb.tb_next
+        todo += [e.__context__, e.__cause__]
+    return "\n".join(parts)
+
+
+def test_keychain_failure_leaves_no_stdout_in_traceback_locals(monkeypatch):   # fix round 1 #1
+    monkeypatch.setattr(credentials.subprocess, "run",
+                        lambda *a, **k: subprocess.CompletedProcess(a, 44, stdout=FAKE_REAL, stderr="x"))
+    with pytest.raises(RuntimeError) as e:
+        credentials.from_keychain("svc")
+    assert "44" in str(e.value)
+    assert FAKE_REAL not in _tb_locals_text(e.value)
+
+
+def test_keychain_timeout_is_a_clear_error_without_output(monkeypatch):       # fix round 1 #2
+    def slow(argv, **k):
+        raise subprocess.TimeoutExpired(argv, k.get("timeout"), output=FAKE_REAL, stderr="err-" + FAKE_REAL)
+    monkeypatch.setattr(credentials.subprocess, "run", slow)
+    with pytest.raises(RuntimeError, match="timed out") as e:
+        credentials.from_keychain("svc")
+    assert FAKE_REAL not in str(e.value)
+    assert e.value.__context__ is None and e.value.__cause__ is None
+    assert FAKE_REAL not in _tb_locals_text(e.value)
+
+
+@pytest.mark.parametrize("bad", ["", "   ", "\n", " \t\n "])
+def test_credential_rejects_empty_or_whitespace_tokens(bad):                   # fix round 1 #3
+    with pytest.raises(ValueError):
+        credentials.Credential(bad)
+    with pytest.raises(ValueError):
+        credentials.Credential(bad, dummy=True)
+    assert credentials.dummy().payload().strip()                              # dummy() still works

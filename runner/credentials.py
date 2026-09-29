@@ -12,7 +12,10 @@ class Credential:
     __slots__ = ("_t", "_dummy")
 
     def __init__(self, token: str, dummy: bool = False):
-        self._t, self._dummy = token.strip(), dummy
+        t = token.strip()
+        if not t:
+            raise ValueError("empty credential")          # fix round 1: never drive a turn with no token
+        self._t, self._dummy = t, dummy
 
     def payload(self) -> bytes:
         """Bytes for the container's stdin (→ fd 3 inside); the only place the token leaves this process."""
@@ -50,13 +53,29 @@ class Credential:
         raise TypeError("a credential is not picklable (it would land on disk)")
 
 
+SECURITY = "/usr/bin/security"      # absolute: a PATH-shadowed `security` must not receive the service name
+KEYCHAIN_TIMEOUT = 60.0             # generous: the first access may show a keychain approval prompt
+
+
 def from_keychain(service: str = "bakeoff-claude-oauth") -> Credential:
-    r = subprocess.run(["security", "find-generic-password", "-s", service, "-w"], capture_output=True, text=True)
-    if r.returncode != 0 or not r.stdout.strip():
-        # never include r.stdout (or stderr, which is not ours to vouch for) in the message (review S-6)
-        raise RuntimeError(f"no usable keychain item {service!r} (exit {r.returncode}); "
+    # Fix round 1: no exception is raised while a CompletedProcess/TimeoutExpired (carrying stdout) is a
+    # frame local or a chained __context__, so a locals-showing traceback cannot print the token (review S-6).
+    timed_out = False
+    try:
+        r = subprocess.run([SECURITY, "find-generic-password", "-s", service, "-w"],
+                           capture_output=True, text=True, timeout=KEYCHAIN_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        timed_out = True                  # the exception (and its output) is dropped at the end of this block
+    if timed_out:
+        raise RuntimeError(f"keychain lookup for {service!r} timed out after {KEYCHAIN_TIMEOUT:.0f}s "
+                           "(an unanswered keychain prompt?); see checklists/README.md")
+    code, token = r.returncode, r.stdout
+    del r
+    if code != 0 or not token.strip():
+        del token
+        raise RuntimeError(f"no usable keychain item {service!r} (exit {code}); "
                            "see checklists/README.md (owner one-time step)")
-    return Credential(r.stdout)
+    return Credential(token)
 
 
 def dummy() -> Credential:
