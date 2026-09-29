@@ -129,7 +129,7 @@ def test_no_runner_module_but_gitops_builds_a_git_argv():                     # 
 
 
 HOST_HELPERS = {"ls_remote_tag", "commit_harness_file", "harness_is_clean", "clone_bundle_bare", "push_from_bare",
-                "staged_files"}
+                "staged_files", "staged_blobs"}
 
 
 def test_host_side_git_lives_only_in_helpers_that_never_take_an_arm_repo():   # review S-1

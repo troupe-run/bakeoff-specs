@@ -2,7 +2,7 @@
 
 Every token here is FAKE and assembled at runtime, so this file itself never matches a pattern (the pre-commit
 hook scans it too)."""
-import ast, gzip, os, re, subprocess, threading
+import ast, base64, bz2, gzip, hashlib, io, lzma, os, re, subprocess, threading, zipfile
 from pathlib import Path
 
 import pytest
@@ -16,7 +16,17 @@ ANT = "sk-ant-oat01-" + "x" * 40
 KEY = "-----BEGIN " + "OPENSSH PRIVATE KEY-----"
 OAUTH = "fake-oauth-" + "q" * 30                      # the keychain token has no known shape: found as a literal
 HOME_PAT = "fakepat" + "9" * 30                        # a PAT value with no known shape, only in the arm's hosts.yml
+KC_PAT = "fakekeychainpat" + "4" * 30                  # the arm's keychain PAT item (`bakeoff-gh-<pass>-<arm>`)
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.fixture(autouse=True)
+def _no_real_keychain(monkeypatch):
+    """No test reads the real keychain: every lookup fails unless a test installs a fake."""
+    def absent(*a, **k):
+        raise RuntimeError("no keychain in tests")
+    monkeypatch.setattr(credentials, "from_keychain", absent)
+    monkeypatch.setattr(credentials, "github_pat", absent)
 
 
 # --- the brief's five ---------------------------------------------------------------------------------------
@@ -310,7 +320,7 @@ def test_publish_raises_secret_in_publish_and_never_pushes(tmp_state, monkeypatc
 
 
 def test_cli_publish_is_wired_to_the_scanner_and_reports_the_fault(tmp_state, monkeypatch, capsys):
-    monkeypatch.setattr(secrets, "literals", lambda cred=None: ["dry-run-dummy-token"])
+    monkeypatch.setattr(secrets, "literals", lambda cred=None, **k: ["dry-run-dummy-token"])
     seen = {}
     def fake_publish(p_, pass_, ask, scan):
         t = tmp_state / "t"; t.mkdir(); (t / "x").write_text(PAT)
@@ -326,7 +336,7 @@ def test_cli_publish_is_wired_to_the_scanner_and_reports_the_fault(tmp_state, mo
 # --- CLI `runner scan` and the pre-commit hook ---------------------------------------------------------------
 
 def test_cli_scan_paths_prints_path_line_kind_and_exits_1(tmp_path, monkeypatch, capsys):
-    monkeypatch.setattr(secrets, "literals", lambda cred=None: ["dry-run-dummy-token"])
+    monkeypatch.setattr(secrets, "literals", lambda cred=None, **k: ["dry-run-dummy-token"])
     (tmp_path / "a.txt").write_text(f"x\n{ANT}\n")
     assert cli.main(["scan", str(tmp_path)]) == 1
     out = capsys.readouterr().out
@@ -335,15 +345,45 @@ def test_cli_scan_paths_prints_path_line_kind_and_exits_1(tmp_path, monkeypatch,
     assert cli.main(["scan", str(tmp_path), str(tmp_path / "a.txt")]) == 0
 
 
-def test_cli_scan_staged_scans_the_staged_files(tmp_state, monkeypatch, capsys):
-    monkeypatch.setattr(secrets, "literals", lambda cred=None: ["dry-run-dummy-token"])
-    ev = paths.RESULTS / "dry1" / "dryrun" / "01"; ev.mkdir(parents=True)
-    (ev / "s.txt").write_text("dry-run-dummy-token\n")                   # an evidence commit
-    (tmp_state / "src.py").write_text(f'F = "{PAT}"  # secret-scan: fake\n')   # a marked test fixture
-    monkeypatch.setattr(gitops, "staged_files", lambda: [ev / "s.txt", tmp_state / "src.py"])
+def _staging_repo(tmp_path, monkeypatch) -> Path:
+    r = tmp_path / "h"; r.mkdir()
+    _host_git(r, "init", "-q", "-b", "main")
+    monkeypatch.setattr(gitops, "REPO_ROOT", r)
+    monkeypatch.setattr(paths, "RESULTS", r / "results")
+    return r
+
+
+def test_the_staged_scan_reads_the_index_not_the_working_tree(tmp_path, monkeypatch, capsys):   # fix round 1 (2)
+    monkeypatch.setattr(secrets, "literals", lambda cred=None, **k: ["dry-run-dummy-token"])
+    r = _staging_repo(tmp_path, monkeypatch)
+    (r / "a.txt").write_text(f"x\n{ANT}\n"); _host_git(r, "add", "a.txt")
+    (r / "a.txt").write_text("clean now\n")                              # the working copy no longer has it
+    os.symlink(f"/x/{GHO}", r / "l"); _host_git(r, "add", "l")            # mode 120000: the link text
+    assert cli.main(["scan", "--staged"]) == 1                             # what the hook execs
+    out = capsys.readouterr().out
+    assert "a.txt:2 anthropic-token" in out and "l:1 github-token" in out and ANT not in out and GHO not in out
+
+
+def test_the_staged_scan_passes_a_clean_index_and_ignores_staged_deletions(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(secrets, "literals", lambda cred=None, **k: ["dry-run-dummy-token"])
+    r = _staging_repo(tmp_path, monkeypatch)
+    (r / "gone.txt").write_text(ANT); _host_git(r, "add", "gone.txt"); _host_git(r, "commit", "-qm", "x")
+    _host_git(r, "rm", "-q", "gone.txt")
+    (r / "ok.txt").write_text("fine\n"); _host_git(r, "add", "ok.txt")
+    assert cli.main(["scan", "--staged"]) == 0
+    assert [p for p, _, _ in gitops.staged_blobs()] == ["ok.txt"]
+
+
+def test_the_staged_scan_treats_results_as_evidence_and_the_dummy_counts_there(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(secrets, "literals", lambda cred=None, **k: ["dry-run-dummy-token"])
+    r = _staging_repo(tmp_path, monkeypatch)
+    ev = r / "results" / "dry1" / "dryrun" / "01"; ev.mkdir(parents=True)
+    (ev / "s.txt").write_text("dry-run-dummy-token\n")
+    (r / "runner.py").write_text('Credential("dry-run-dummy-token")\n')   # the runner's own source
+    _host_git(r, "add", "-A")
     assert cli.main(["scan", "--staged"]) == 1
     out = capsys.readouterr().out
-    assert "s.txt:1 literal" in out and "src.py" not in out
+    assert "results/dry1/dryrun/01/s.txt:1 literal" in out and "runner.py" not in out
 
 
 def test_cli_scan_needs_something_to_scan(capsys):
@@ -378,11 +418,15 @@ def test_scan_arm_covers_results_and_every_snapshot(tmp_state, monkeypatch):
     p.snapshots.mkdir(parents=True)
     (p.snapshots / "step-01.tar").write_bytes(b"t"); (p.snapshots / "step-02.tar").write_bytes(b"t")
     scanned = []
-    monkeypatch.setattr(secrets, "scan_snapshot", lambda p_, snap, lits: scanned.append((snap.name, tuple(lits))) or [])
+    monkeypatch.setattr(credentials, "github_pat", lambda pass_, arm: KC_PAT if (pass_, arm) == ("pass1", "control") else
+                        (_ for _ in ()).throw(RuntimeError("absent")))
+    monkeypatch.setattr(secrets, "scan_snapshot",
+                        lambda p_, snap, lits, *, pat=None: scanned.append((snap.name, tuple(lits), pat)) or [])
     found = secrets.scan_arm(p, ["dry-run-dummy-token"])
     assert [(Path(f.path).name, f.kind) for f in found] == [("shell-history.txt", "literal")]
-    assert [s for s, _ in scanned] == ["step-01.tar", "step-02.tar"]
-    assert all(HOME_PAT in lits for _, lits in scanned)          # the arm's own PAT value is a needle
+    assert [s for s, _, _ in scanned] == ["step-01.tar", "step-02.tar"]
+    assert all(HOME_PAT in lits and KC_PAT in lits for _, lits, _ in scanned)   # home and keychain PATs are needles
+    assert {pat for _, _, pat in scanned} == {KC_PAT}             # the exemption is the keychain PAT only (6)
 
 
 def test_fast_export_runs_in_one_networkless_container_with_only_out_writable(tmp_state, monkeypatch):
@@ -402,28 +446,192 @@ def test_fast_export_runs_in_one_networkless_container_with_only_out_writable(tm
     assert got == [dest / "1.fe", None]                     # no export file for a git dir means unscannable
 
 
-# --- harness sources (pre-commit): fake test tokens may be marked; evidence never honours the mark ---------------
-
-def test_a_marked_fake_token_in_a_harness_source_passes_the_staged_scan(tmp_state):
-    f = tmp_state / "src.py"
-    f.write_text(f'FAKE = "{PAT}"   # secret-scan: fake\nOTHER = "{GHO}"\n')
-    got = secrets.scan_files([f], [], harness=True)
-    assert [(x.kind, x.line) for x in got] == [("github-token", 2)]   # the unmarked line still fails
 
 
-def test_the_fake_mark_never_hides_a_real_value_or_evidence(tmp_state):
-    f = tmp_state / "src.py"
-    f.write_text(f'X = "{OAUTH}"   # secret-scan: fake\n')
-    assert [x.kind for x in secrets.scan_files([f], [OAUTH], harness=True)] == ["literal"]
-    ev = paths.RESULTS / "pass1" / "control" / "01"; ev.mkdir(parents=True)
-    (ev / "t.jsonl").write_text(f'{PAT} secret-scan: fake\n')
-    assert [x.kind for x in secrets.scan_files([ev / "t.jsonl"], [], harness=True)] == ["github-pat"]
-    assert [x.kind for x in secrets.scan_tree(ev)] == ["github-pat"]
+# --- fix round 1 (1): encoded and terminal-wrapped leaks of a known value ----------------------------------------
+
+@pytest.mark.parametrize("prefix", ["", "x", "xy", "x-access-token:", "x:"])
+def test_a_base64_encoded_literal_is_found_at_every_alignment(tmp_path, prefix):
+    enc = base64.b64encode((prefix + OAUTH).encode()).decode()
+    (tmp_path / "a.log").write_text(f"hdr\nAuthorization: Basic {enc}\n")
+    assert [(f.kind, f.line) for f in secrets.scan_tree(tmp_path, [OAUTH])] == [("literal", 2)]
 
 
-def test_the_dry_run_dummy_value_counts_in_results_but_not_in_harness_sources(tmp_state):
-    src = tmp_state / "credentials.py"; src.write_text('return Credential("dry-run-dummy-token")\n')
-    ev = paths.RESULTS / "dry1" / "dryrun" / "01"; ev.mkdir(parents=True)
-    (ev / "s.jsonl").write_text("dry-run-dummy-token\n")
-    got = secrets.scan_files([src, ev / "s.jsonl"], ["dry-run-dummy-token"], harness=True)
-    assert [(Path(x.path).name, x.kind) for x in got] == [("s.jsonl", "literal")]
+def test_a_urlsafe_base64_literal_is_found(tmp_path):
+    val = "fake~oauth?" + "z" * 30 + ">>>"                                # bytes that encode to + and /
+    enc = base64.urlsafe_b64encode(val.encode()).decode()
+    assert enc != base64.b64encode(val.encode()).decode()
+    (tmp_path / "a.log").write_text(enc)
+    assert [f.kind for f in secrets.scan_tree(tmp_path, [val])] == ["literal"]
+
+
+def test_a_mime_wrapped_base64_literal_is_found(tmp_path):
+    enc = base64.encodebytes(os.urandom(100) + OAUTH.encode())            # 76-char lines
+    (tmp_path / "m.txt").write_bytes(enc)
+    assert [f.kind for f in secrets.scan_tree(tmp_path, [OAUTH])] == ["literal"]
+
+
+def test_a_hex_encoded_literal_is_found(tmp_path):
+    (tmp_path / "h.txt").write_text(f"dump: {OAUTH.encode().hex()}\n")
+    assert [f.kind for f in secrets.scan_tree(tmp_path, [OAUTH])] == ["literal"]
+
+
+def test_a_terminal_wrapped_literal_is_found_at_its_first_line(tmp_path):
+    wrapped = OAUTH[:17] + "\r\n" + OAUTH[17:30] + "\n" + OAUTH[30:]
+    (tmp_path / "t.txt").write_text(f"a\nb\ntoken: {wrapped}\nend\n")
+    assert [(f.kind, f.line) for f in secrets.scan_tree(tmp_path, [OAUTH])] == [("literal", 3)]
+
+
+def test_a_wrapped_literal_across_read_chunks_is_found(tmp_path, monkeypatch):
+    monkeypatch.setattr(secrets, "CHUNK_BYTES", 16)
+    (tmp_path / "t.txt").write_text("x" * 40 + OAUTH[:20] + "\n" + OAUTH[20:] + "\n")
+    assert [f.kind for f in secrets.scan_tree(tmp_path, [OAUTH])] == ["literal"]
+
+
+# --- fix round 1 (3): the fake mark — tests/ only, recognisably fake or allowlisted, never a known value ----------
+
+FAKE_SHAPED = "github_pat_FAKE_" + "0123456789abcdefghijklmnopqrstuvwxyzABCDEF"   # says FAKE in its body
+REAL_SHAPED = "gh" + "p_" + "k3Jx9Qm2Lp7Vr8Tz1Wc4Yb6Nd0Hf5Gs3Ae8R"             # unknown, looks real
+
+
+def _blob(path, text):
+    return (path, "100644", text.encode())
+
+
+def test_a_marked_recognisably_fake_token_under_tests_passes_the_staged_scan():
+    items = [_blob("tests/runner/t.py", f'FAKE = "{FAKE_SHAPED}"   # secret-scan: fake\nOTHER = "{GHO}"\n')]
+    got = secrets.scan_blobs(items, [], harness=True)
+    assert [(f.kind, f.line) for f in got] == [("github-token", 2)]      # the unmarked line still fails
+
+
+def test_the_mark_does_not_hide_an_unknown_real_shaped_token():
+    items = [_blob("tests/runner/t.py", f'T = "{REAL_SHAPED}"   # secret-scan: fake\n')]
+    assert [f.kind for f in secrets.scan_blobs(items, [], harness=True)] == ["github-token"]
+
+
+def test_an_allowlisted_fixture_line_passes_but_only_that_line(monkeypatch):
+    line = f'T = "{REAL_SHAPED}"   # secret-scan: fake'
+    monkeypatch.setattr(secrets, "FAKE_FIXTURE_LINES",
+                        frozenset({("tests/runner/t.py", hashlib.sha256(line.encode()).hexdigest())}))
+    ok = [_blob("tests/runner/t.py", line + "\n")]
+    assert secrets.scan_blobs(ok, [], harness=True) == []
+    moved = [_blob("tests/runner/other.py", line + "\n")]
+    assert [f.kind for f in secrets.scan_blobs(moved, [], harness=True)] == ["github-token"]
+
+
+def test_the_mark_is_ignored_outside_tests():
+    items = [_blob("runner/x.py", f'F = "{FAKE_SHAPED}"   # secret-scan: fake\n')]
+    assert [f.kind for f in secrets.scan_blobs(items, [], harness=True)] == ["github-pat"]
+
+
+def test_the_mark_never_hides_a_known_literal_nor_evidence_under_results(tmp_state, monkeypatch):
+    monkeypatch.setattr(paths, "RESULTS", paths.REPO_ROOT / "results")
+    lit = [_blob("tests/runner/t.py", f'X = "{OAUTH}"   # secret-scan: fake\n')]
+    assert [f.kind for f in secrets.scan_blobs(lit, [OAUTH], harness=True)] == ["literal"]
+    ev = [_blob("results/pass1/control/01/t.jsonl", f'{FAKE_SHAPED} secret-scan: fake\n')]
+    assert [f.kind for f in secrets.scan_blobs(ev, [], harness=True)] == ["github-pat"]
+    tree = tmp_state / "ev"; tree.mkdir(); (tree / "t.jsonl").write_text(f'{FAKE_SHAPED} secret-scan: fake\n')
+    assert [f.kind for f in secrets.scan_tree(tree)] == ["github-pat"]    # evidence scans never honour it
+
+
+def test_the_existing_repo_fixtures_pass_the_staged_rules():
+    """The fixtures already in the repo are recognisably fake; with the mark they pass, without it they fail."""
+    for tok in ("github_pat_FAKE_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ",
+                "sk-ant-oat01-FAKE-test-token-never-real-0123456789"):
+        assert secrets.scan_blobs([_blob("tests/runner/f.py", f'T = "{tok}"   # secret-scan: fake\n')], [],
+                                  harness=True) == []
+        assert secrets.scan_blobs([_blob("tests/runner/f.py", f'T = "{tok}"\n')], [], harness=True) != []
+
+
+def test_every_github_tracker_keychain_pat_is_a_needle(tmp_state, monkeypatch):
+    monkeypatch.setattr(credentials, "github_pat", lambda pass_, arm: f"kcpat-{pass_}-{arm}-" + "7" * 20)
+    lits = secrets.literals(credentials.Credential(OAUTH))
+    for pass_ in ("pass1", "pass2", "canary"):
+        assert f"kcpat-{pass_}-control-" + "7" * 20 in lits
+    assert not [l for l in lits if "-speckitty-" in l or "-dry" in l]     # beads/dry arms have no PAT item
+
+
+# --- fix round 1 (4): containers by magic bytes ------------------------------------------------------------------
+
+def test_gzip_is_detected_by_magic_whatever_the_name(tmp_path):
+    (tmp_path / "stream.bin").write_bytes(gzip.compress(f"ok\n{ANT}\n".encode()))
+    assert [(f.kind, f.line) for f in secrets.scan_tree(tmp_path)] == [("anthropic-token", 2)]
+
+
+def test_a_zip_is_read_in_memory_and_members_are_named(tmp_path):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("clean.txt", "fine\n")
+        z.writestr("dir/leak.txt", f"a\n{PAT}\n")
+        z.writestr(f"name-{GHO}.txt", "x")
+    (tmp_path / "bundle.dat").write_bytes(buf.getvalue())
+    got = sorted((f.path.split("!", 1)[1], f.kind, f.line) for f in secrets.scan_tree(tmp_path))
+    assert got == [("dir/leak.txt", "github-pat", 2), ("name-<redacted>.txt", "github-token", 0)]
+    assert not list(tmp_path.glob("**/leak.txt"))                            # nothing extracted to disk
+
+
+def test_an_oversize_zip_fails_closed(tmp_path, monkeypatch):
+    monkeypatch.setattr(secrets, "ZIP_MAX_BYTES", 100)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as z:
+        z.writestr("big.txt", "x" * 1000)
+    (tmp_path / "z.zip").write_bytes(buf.getvalue())
+    assert [f.kind for f in secrets.scan_tree(tmp_path)] == ["unscannable"]
+
+
+@pytest.mark.parametrize("data", [lzma.compress(b"hello"), bz2.compress(b"hello"),
+                                  b"\x28\xb5\x2f\xfd" + b"\0" * 20], ids=["xz", "bz2", "zstd"])
+def test_other_compressors_are_unscannable(tmp_path, data):
+    (tmp_path / "blob").write_bytes(data)
+    assert [f.kind for f in secrets.scan_tree(tmp_path)] == ["unscannable"]
+
+
+def test_text_that_merely_starts_like_bz2_is_plain(tmp_path):
+    (tmp_path / "t.txt").write_text("BZh is how this note starts\n")
+    assert secrets.scan_tree(tmp_path) == []
+
+
+def test_a_gzip_blob_in_history_is_decompressed(tmp_path):
+    r = tmp_path / "r"; r.mkdir()
+    _host_git(r, "init", "-q", "-b", "main")
+    (r / "log.gz").write_bytes(gzip.compress(f"{ANT}\n".encode())); _host_git(r, "add", "-A")
+    _host_git(r, "commit", "-qm", "x")
+    [f] = secrets.scan_history(_export(r, tmp_path / "h.fe"), "main")
+    assert f.kind == "anthropic-token" and f.path.endswith("(log.gz)")
+
+
+# --- fix round 1 (5): publish fails closed without the keychain token; the hook may skip it ------------------------
+
+def test_cli_publish_refuses_when_the_keychain_token_cannot_be_read(tmp_state, monkeypatch, capsys):
+    monkeypatch.setattr(repo, "publish", lambda *a, **k: (_ for _ in ()).throw(AssertionError("published")))
+    assert cli.main(["publish", "pass1", "control"]) == 1
+    assert "keychain" in capsys.readouterr().out
+
+
+def test_literals_strict_raises_but_default_skips_a_missing_keychain_token(tmp_state):
+    assert secrets.literals() == ["dry-run-dummy-token"]
+    with pytest.raises(RuntimeError):
+        secrets.literals(require_oauth=True)
+
+
+# --- fix round 1 (6): the PAT-file exemption covers only the keychain PAT value ------------------------------------
+
+def _fake_extract(tree_files):
+    def extract(p, snapshot, dest):
+        for rel, text in tree_files.items():
+            (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+            (dest / rel).write_text(text)
+        return dest
+    return extract
+
+
+def test_the_snapshot_pat_file_exemption_is_the_keychain_pat_only(tmp_state, monkeypatch):
+    p = Paths("pass1", "control"); p.snapshots.mkdir(parents=True); (p.snapshots / "step-01.tar").write_bytes(b"t")
+    hosts = f"github.com:\n    oauth_token: {PAT}\n    other: {GHO}\n    again: {HOME_PAT}\n"
+    monkeypatch.setattr(repo, "extract_snapshot", _fake_extract({"home/.config/gh/hosts.yml": hosts}))
+    lits = [HOME_PAT, PAT]
+    exempt = secrets.scan_snapshot(p, p.snapshots / "step-01.tar", lits, pat=PAT)
+    assert sorted((f.kind, f.line) for f in exempt) == [("github-token", 3), ("literal", 4)]
+    none = secrets.scan_snapshot(p, p.snapshots / "step-01.tar", lits, pat=None)
+    assert sorted((f.kind, f.line) for f in none) == [("github-pat", 2), ("github-token", 3), ("literal", 2),
+                                                      ("literal", 4)]

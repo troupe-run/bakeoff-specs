@@ -79,13 +79,14 @@ def test_a_snapshot_is_scanned_with_its_git_history_and_the_pat_file_is_exempt(P
     gitops.git(P, "push", "-q", "origin", "main", write=True)
     snap = repo.snapshot(P, 3)
     lits = [OAUTH, *secrets.home_pat_values(P.home)]
-    found = secrets.scan_snapshot(P, snap, lits)
+    found = secrets.scan_snapshot(P, snap, lits, pat=HOME_PAT)            # HOME_PAT plays the keychain PAT
     got = sorted((f.kind, f.path.split(":", 1)[1].split(" ")[0] if " history: " not in f.path else "history")
                  for f in found)
     assert ("literal", "home/.bash_history") in got
     assert ("literal", "home/.claude/projects/p/s.jsonl") in got
     assert got.count(("anthropic-token", "history")) >= 2                # the work repo AND the origin
-    assert not [g for g in got if g[1] == "home/.config/gh/hosts.yml"]    # the PAT file itself is exempt
+    hosts = [(f.kind, f.line) for f in found if f.path.endswith("home/.config/gh/hosts.yml")]
+    assert hosts == [("github-pat", 3)]            # the keychain PAT is exempt there; another token is not (6)
     assert all(OAUTH not in f.path and HOME_PAT not in f.path for f in found)
     assert not list((P.scratch / "secret-scan").glob("*"))               # extraction removed
 
@@ -94,5 +95,5 @@ def test_an_oauth_token_in_the_pat_file_is_still_found(P):
     gh = P.home / ".config" / "gh"; gh.mkdir(parents=True)
     (gh / "hosts.yml").write_text(f"github.com:\n    oauth_token: {HOME_PAT}\n# {OAUTH}\n")
     snap = repo.snapshot(P, 4)
-    found = secrets.scan_snapshot(P, snap, [OAUTH, *secrets.home_pat_values(P.home)])
+    found = secrets.scan_snapshot(P, snap, [OAUTH, *secrets.home_pat_values(P.home)], pat=HOME_PAT)
     assert [(f.kind, f.line) for f in found if "hosts.yml" in f.path] == [("literal", 3)]
