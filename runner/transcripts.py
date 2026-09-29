@@ -15,12 +15,27 @@ the product-owner agent — plus the stream's init model, Claude Code version, a
   * a line other than a file's last cannot be read, or any line exceeds MAX_LINE_BYTES;
   * a stream carries session.py's oversize marker on a turn whose outcome was not timeout/no_result
     (`stream_outcomes`; on those outcomes the marker is counted in `truncated_lines`, like a truncated last line);
-  * any inspected field has the wrong JSON shape (reported as `<missing>` / `<malformed:TYPE>`, never raised).
+  * any inspected field has the wrong JSON shape (reported as `<missing>` / `<malformed:TYPE>`, never raised);
+  * a stream `result` lacks a non-empty `modelUsage` dict whose keys are all accepted (synthetic counted) with at
+    least one real accepted model (fix round 2 (a): the runner captures the stream from container stdout, so the
+    arm cannot edit it — this is the backstop for everything the transcript tree might hide);
+  * a transcript file has no decodable line at all (`transcript_unverifiable`).
+An undecodable line is tolerated (counted in `truncated_lines`) only when it is a file's LAST line, the file does
+not end with a newline, no complete JSON object starts it (one that does is judged like any line, and its trailing
+garbage is a violation), and no `"model": "<off-pin>"` pair is visible in it (every undecodable line is scanned,
+with JSON-unescaped keys and values). In a stream, a visible `"type": "result"` in an unsalvageable line is a
+violation too.
+
+RESIDUAL RISK (fix round 2 (e)): the transcript-file check is best effort against a deliberately crafted
+incomplete last line — e.g. an off-pin model string split or encoded so that no complete `"model": "..."` literal
+pair survives in it. The stream's `result.modelUsage` rule is the backstop: the API's own per-model usage cannot
+be forged from inside the container. Arms are spec methodologies, not adversaries; this defends against accidents
+and sloppy tooling first, and makes deliberate evasion require defeating a record the arm cannot write.
 `faults.classify_pin(report, who)` (Task 15, preflight m4) turns a report into a fault.
 """
 from __future__ import annotations
 
-import gzip, hashlib, json, os, stat
+import gzip, hashlib, json, os, re, stat
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
@@ -209,7 +224,8 @@ class PinReport:
 
 
 def _raw_lines(f: Path) -> Iterator[tuple[int, str, object]]:
-    """(line number, kind, event) with kind ok|bad|oversize. A line is never held beyond MAX_LINE_BYTES."""
+    """(line number, kind, payload): kind ok -> the decoded dict; bad -> the raw bytes (to be salvaged and
+    scanned); oversize -> None. A line is never held beyond MAX_LINE_BYTES."""
     with (gzip.open(f, "rb") if f.suffix == ".gz" else open(f, "rb")) as fh:
         i = 0
         while raw := fh.readline(MAX_LINE_BYTES + 1):
@@ -224,9 +240,9 @@ def _raw_lines(f: Path) -> Iterator[tuple[int, str, object]]:
             try:
                 ev = json.loads(raw)
             except (ValueError, RecursionError):
-                yield i, "bad", None
+                yield i, "bad", raw
                 continue
-            yield i, ("ok" if isinstance(ev, dict) else "bad"), ev
+            yield (i, "ok", ev) if isinstance(ev, dict) else (i, "bad", raw)
 
 
 def _lines(f: Path) -> Iterator[tuple[int, str, object, bool]]:
@@ -238,6 +254,37 @@ def _lines(f: Path) -> Iterator[tuple[int, str, object, bool]]:
         prev = item
     if prev is not None:
         yield (*prev, True)
+
+
+_STR = r'"(?:[^"\\]|\\.)*"'
+_KEY_VALUE = re.compile(rf"({_STR})\s*:\s*({_STR})")
+
+
+def _unescape(literal: str) -> str | None:
+    try:
+        v = json.loads(literal)
+    except (ValueError, RecursionError):
+        return None
+    return v if isinstance(v, str) else None
+
+
+def _string_pairs(text: str) -> Iterator[tuple[str, str]]:
+    """Every `"key": "value"` pair of JSON string literals in `text`, JSON-unescaped (so `"mod\\u0065l"` is
+    `model`). Best effort over a line that does not decode — see the residual risk in the module docstring."""
+    for k, v in _KEY_VALUE.findall(text):
+        key, value = _unescape(k), _unescape(v)
+        if key is not None and value is not None:
+            yield key, value
+
+
+def _salvage(raw: bytes) -> tuple[dict | None, str]:
+    """A complete JSON object at the start of an undecodable line (and the text after it), else (None, text)."""
+    text = raw.decode("utf-8", errors="replace").lstrip("﻿ \t\r\n")
+    try:
+        obj, end = json.JSONDecoder().raw_decode(text)
+    except (ValueError, RecursionError):
+        return None, text
+    return (obj, text[end:]) if isinstance(obj, dict) else (None, text)
 
 
 def _not_a_dict(value: object) -> str:
@@ -285,26 +332,50 @@ def verify_pin(transcript_files: Iterable[Path], stream_files: Iterable[Path], p
             return False
         return judge(f, i, where, msg.get("model"))
 
-    def unreadable(f, i, kind, last) -> None:
+    def undecodable(f, i, kind, raw, last, on_event, *, stream: bool) -> None:
+        """A line that did not decode: salvage a leading object, scan for model literals, and tolerate it only as
+        a genuinely cut-off last line (no trailing newline, nothing salvageable, nothing off-pin visible)."""
         nonlocal trunc
-        if kind == "bad" and last:                       # a timed-out turn's cut-off last line: counted
-            trunc += 1
+        if kind == "oversize":
+            violation(f, i, "oversize_line", UNINSPECTED)
+            return
+        obj, rest = _salvage(raw)
+        if obj is not None:
+            on_event(i, obj)                              # judged like any other line ...
+            violation(f, i, "trailing_garbage", UNINSPECTED)   # ... and the garbage after it is never benign
+        elif last and not raw.endswith(b"\n"):
+            trunc += 1                                    # a timed-out turn's cut-off last line: counted
         else:
-            violation(f, i, "unreadable_line" if kind == "bad" else "oversize_line", UNINSPECTED)
+            violation(f, i, "unreadable_line", UNINSPECTED)
+        for key, value in _string_pairs(rest):
+            if key == "model":
+                judge(f, i, "unreadable_line.model", value)
+            elif stream and obj is None and key == "type" and value == "result":
+                violation(f, i, "unreadable_result", UNINSPECTED)   # (a) the backstop itself is unreadable
 
     for f in transcript_files:
-        for i, kind, ev, last in _lines(f):
-            if kind != "ok":
-                unreadable(f, i, kind, last)
-            elif ev.get("type") == "assistant":
+        decoded = 0
+
+        def on_transcript(i, ev, f=f):
+            nonlocal n, real_t, decoded
+            decoded += 1
+            if ev.get("type") == "assistant":
                 n += 1
                 real_t += judge_message(f, i, "assistant", ev)
+
+        for i, kind, payload, last in _lines(f):
+            if kind == "ok":
+                on_transcript(i, payload)
+            else:
+                undecodable(f, i, kind, payload, last, on_transcript, stream=False)
+        if decoded == 0:                                  # (d) nothing in this file could be checked
+            violation(f, None, "transcript_unverifiable", "no-decodable-lines")
+
     for f in stream_files:
-        saw_init = active = False
-        for i, kind, ev, last in _lines(f):
-            if kind != "ok":
-                unreadable(f, i, kind, last)
-                continue
+        st = {"init": False, "active": False}
+
+        def on_stream(i, ev, f=f, st=st):
+            nonlocal sn, real_s, trunc
             t = ev.get("type")
             if t == OVERSIZE_MARKER:
                 if outcomes.get(str(f)) in TRUNCATION_OK_OUTCOMES:
@@ -312,30 +383,41 @@ def verify_pin(transcript_files: Iterable[Path], stream_files: Iterable[Path], p
                 else:
                     violation(f, i, "oversize_marker", UNINSPECTED)
             elif t == "system" and ev.get("subtype") == "init":
-                saw_init = True
+                st["init"] = True
                 judge(f, i, "init", ev.get("model"), allow_synthetic=False)
                 v = ev.get("claude_code_version")
                 versions.add(_shape(v))
                 if not isinstance(v, str) or v != pins.claude_version:
                     violation(f, i, "claude_code_version", _shape(v))
             elif t == "assistant":
-                sn += 1; active = True
+                sn += 1; st["active"] = True
                 real_s += judge_message(f, i, "stream.assistant", ev)
-            elif t == "result" and "modelUsage" in ev:
-                active = True
-                mu = ev["modelUsage"]
+            elif t == "result":
+                # (a) The stream is runner-captured from container stdout, so the arm cannot edit it: every result
+                # must account for its models — present, a non-empty dict, every key accepted (synthetic counted),
+                # at least one key a real accepted model.
+                st["active"] = True
+                mu = ev.get("modelUsage")
                 if not isinstance(mu, dict):
                     violation(f, i, "result.modelUsage", _not_a_dict(mu))
-                else:
-                    for m in mu:
-                        judge(f, i, "result.modelUsage", m)
-        if not saw_init:
+                elif not mu:
+                    violation(f, i, "result.modelUsage", "<empty>")
+                elif not sum(judge(f, i, "result.modelUsage", m) for m in mu) and \
+                        all(m in synth for m in mu):
+                    violation(f, i, "result.modelUsage", "<no-accepted-model>")
+
+        for i, kind, payload, last in _lines(f):
+            if kind == "ok":
+                on_stream(i, payload)
+            else:
+                undecodable(f, i, kind, payload, last, on_stream, stream=True)
+        if not st["init"]:
             # Controller ruling (concern 2): the version is never assumed. Activity without an init means the
             # model/version cannot be proven -> violation. No init and no activity (e.g. a turn that timed out
             # before starting) -> recorded as unverified, not a violation: the turn's own outcome carries it.
             versions.add("unverified")
             unverified.append(str(f))
-            if active:
+            if st["active"]:
                 violation(f, None, "claude_code_version", "unverifiable")
     # Controller rulings: checking nothing is a failure, and synthetic messages are not evidence. Transcripts are
     # the evidence for an arm step (a broken transcript-path assumption must fault, not pass on streams); with
