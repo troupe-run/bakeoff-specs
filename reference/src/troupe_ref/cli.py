@@ -141,14 +141,26 @@ def cmd_watch(svc, args) -> tuple[int, str]:
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: stop.set())
     troupe_dir = svc.theatre / ".troupe"
-    print(f"watching {svc.theatre}", flush=True)
+    # Readiness is announced only once the OS-level watch is registered. `fs_watch` is a generator:
+    # the underlying notifier (FSEvents on macOS, inotify on Linux) is created on the first `next()`,
+    # not when `fs_watch(...)` is called, and `yield_on_timeout=True` guarantees that first `next()`
+    # returns within `rust_timeout` even when nothing changes. Printing `watching` before that point
+    # let an edit made immediately after the line land before the watch existed and be lost for good
+    # (~1% of runs on macOS; results/watch-flake-investigation.md). On that first batch we reconcile
+    # unconditionally, *then* announce: this also picks up an edit made between main()'s
+    # reconcile-first and the watch being registered, which no event will ever report.
+    announced = False
     for changes in fs_watch(troupe_dir, stop_event=stop, debounce=100, step=20, rust_timeout=200,
                             yield_on_timeout=True):
-        if any(_is_relevant(p) for _, p in changes):
-            try:
-                svc.reconcile("file")
-            except Exception as e:           # a half-saved file: report and keep watching
-                print(f"warning: {e}", file=sys.stderr, flush=True)
+        if announced and not any(_is_relevant(p) for _, p in changes):
+            continue
+        try:
+            svc.reconcile("file")
+        except Exception as e:               # a half-saved file: report and keep watching
+            print(f"warning: {e}", file=sys.stderr, flush=True)
+        if not announced:
+            print(f"watching {svc.theatre}", flush=True)
+            announced = True
     return EXIT_OK, ""
 
 COMMANDS = {"show": cmd_show, "set": cmd_set, "history": cmd_history, "watch": cmd_watch, "get": cmd_get}
