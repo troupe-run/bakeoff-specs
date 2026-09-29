@@ -15,7 +15,10 @@ next arm/round. `Owner` implements that "not available" outcome directly, as a `
   letting `EOFError` propagate. No prompt method raises on EOF.
 - **a per-prompt timeout** (`Owner(timeout=<seconds>, ...)`, `None` = wait forever, the default): if the
   owner's answer took longer than `timeout` seconds (by the injected `clock`), the prompt parks rather than
-  blocking the run indefinitely.
+  blocking the run indefinitely. The default reader (no `input_fn`) is select-based (Task 15 ruling 7): it
+  reads the terminal's file descriptor directly and never blocks past the prompt's remaining time, so an
+  unanswered prompt really does park after `timeout` seconds. An injected `input_fn` (tests) is called as-is
+  and the timeout is then only checked around it.
 - **owner choice**: at every keystroke prompt, one key parks after a confirm — "p" everywhere except
   `step_review`, which already uses "p" for "pause the run here" (a normal, non-park outcome); there the park
   key is "k" instead, so the pre-existing pause semantics are not silently overloaded.
@@ -35,7 +38,7 @@ instant (0.0s), drawn from a small TOML script, and only ever produced once `.bi
 arm is a dry run.
 """
 from __future__ import annotations
-import re, time, tomllib
+import os, re, select, sys, time, tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -71,17 +74,54 @@ def _first_line(text: str) -> str:
     return "(empty)"
 
 
+class _SelectLines:
+    """Lines from a file descriptor with a deadline: `select` waits at most the remaining time, and the fd is
+    read directly (never through a buffered file object, whose buffer `select` cannot see). Raises
+    `_ParkSignal("timeout")` when no complete line arrives in time and `_ParkSignal("eof")` at end of input."""
+
+    def __init__(self, fd: int):
+        self.fd, self.buf, self.eof = fd, b"", False
+
+    def readline(self, remaining: float | None) -> str:
+        deadline = None if remaining is None else time.monotonic() + max(0.0, remaining)
+        while b"\n" not in self.buf:
+            if self.eof:
+                if self.buf:                                   # a last line without a newline
+                    line, self.buf = self.buf, b""
+                    return line.decode(errors="replace")
+                raise _ParkSignal("eof")
+            wait = None if deadline is None else max(0.0, deadline - time.monotonic())
+            ready, _, _ = select.select([self.fd], [], [], wait)
+            if not ready:
+                raise _ParkSignal("timeout")
+            chunk = os.read(self.fd, 4096)
+            if chunk:
+                self.buf += chunk
+            else:
+                self.eof = True
+        line, self.buf = self.buf.split(b"\n", 1)
+        return line.decode(errors="replace").rstrip("\r")
+
+
+def _write_prompt(text: str) -> None:
+    sys.stdout.write(text)
+    sys.stdout.flush()
+
+
 class Owner:
     """The owner at the terminal. Every prompt is timed from first shown to last input line, and every
-    prompt can park instead of answering (see the module docstring)."""
+    prompt can park instead of answering (see the module docstring). With no `input_fn`, input is read from
+    `stdin` (default `sys.stdin`) by a select-based reader that enforces `timeout` for real (ruling 7)."""
 
-    def __init__(self, input_fn: Callable[..., str] = input, out: Callable[[str], None] = print,
+    def __init__(self, input_fn: Callable[..., str] | None = None, out: Callable[[str], None] = print,
                  clock: Callable[[], float] = time.monotonic, now_fn: Callable[[], float] = time.time,
-                 unattended: bool = False, timeout: float | None = None):
+                 unattended: bool = False, timeout: float | None = None, stdin=None,
+                 prompt_out: Callable[[str], None] = _write_prompt):
         self._in, self._out, self._clock, self._now = input_fn, out, clock, now_fn
         self.unattended = unattended
         self.timeout = timeout
         self.parks: list[Park] = []
+        self._stdin, self._prompt_out, self._lines = stdin, prompt_out, None
 
     # -- park machinery -----------------------------------------------------------------------------------
 
@@ -97,10 +137,18 @@ class Owner:
         internal `_ParkSignal`, which every public method catches at its own boundary."""
         if self.timeout is not None and (self._clock() - t0) > self.timeout:
             raise _ParkSignal("timeout")
-        try:
-            line = self._in(io_prompt)
-        except EOFError:
-            raise _ParkSignal("eof")
+        if self._in is None:                                   # the real terminal: select-based (ruling 7)
+            if self._lines is None:
+                self._lines = _SelectLines((self._stdin or sys.stdin).fileno())
+            if io_prompt:
+                self._prompt_out(io_prompt)
+            remaining = None if self.timeout is None else self.timeout - (self._clock() - t0)
+            line = self._lines.readline(remaining)
+        else:
+            try:
+                line = self._in(io_prompt)
+            except EOFError:
+                raise _ParkSignal("eof")
         if self.timeout is not None and (self._clock() - t0) > self.timeout:
             raise _ParkSignal("timeout")
         return line
