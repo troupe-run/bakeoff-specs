@@ -48,9 +48,38 @@ def mypy_summary_text(quality: dict[str, object]) -> str:
     return f"{n} errors" if n is not None else "crashed"
 
 
+def ruff_summary_text(quality: dict[str, object]) -> str:
+    """The owner-facing isolated-ruff phrase: a real count when there is one, otherwise the reason there
+    isn't (fix round 3, item 7) -- never a bare `None`."""
+    n = quality.get("ruff_findings")
+    if n is not None:
+        return str(n)
+    if quality.get("ruff_timed_out"):
+        return "timed out"
+    return "crashed"
+
+
+def ruff_arm_summary_text(quality: dict[str, object]) -> str:
+    """The owner-facing arm-config-ruff phrase. "no config" (the arm simply has none — the pass was never
+    attempted, and that's not a failure) is distinct from "crashed" (an actual failure trying to run it):
+    `run_all` only ever sets `ruff_arm_crashed` to `True` or `None` (never `False`) — `None` means the
+    precheck found no config and the pass was skipped outright, `True` means something went wrong either
+    finding out or running it (fix round 3, item 7)."""
+    n = quality.get("ruff_arm_findings")
+    if n is not None:
+        return str(n)
+    if quality.get("ruff_arm_timed_out"):
+        return "timed out"
+    if quality.get("ruff_arm_crashed") is None:
+        return "no config"
+    return "crashed"
+
+
 def mutation_summary_text(mut: dict[str, object]) -> str:
     """The owner-facing mutation phrase: the score when there is one, otherwise the reason there isn't --
-    crashed, baseline failed, no tests, or timed out (fix round 2, item 8) -- never a bare `None`."""
+    crashed, baseline failed, no tests, or timed out (fix round 2, item 8) -- never a bare `None`. A
+    placeholder reason (`_mutation_placeholder`'s "install failed" or an "error: ..." exception summary,
+    fix round 3, item 7) renders with its own specific text rather than collapsing to a generic "crashed"."""
     score = mut.get("score")
     if score is not None:
         return f"{score} ({mut.get('sampling', '')}{', partial' if mut.get('partial') else ''})"
@@ -58,8 +87,11 @@ def mutation_summary_text(mut: dict[str, object]) -> str:
         return "timed out"
     if mut.get("baseline_failed"):
         return "baseline failed"
-    if mut.get("sampling") == "no tests":
+    sampling = mut.get("sampling")
+    if sampling == "no tests":
         return "no tests"
+    if isinstance(sampling, str) and (sampling == "install failed" or sampling.startswith("error:")):
+        return sampling
     return "crashed"
 
 
@@ -201,7 +233,7 @@ def finalise(ctx, *, attempts, extra_turns, hidden, quality, pin, sha_before, st
              f"**Cost (estimate):** arm ${c['arm']['usd']:.2f} · PO ${c['po']['usd']:.2f} · harness ${c['harness']['usd']:.2f}",
              f"**Time:** {run['wall_seconds']} s wall, {run['owner_wait_seconds']} s waiting on the owner",
              f"**Quality:** mypy {mypy_summary_text(quality)} · "
-             f"ruff {quality.get('ruff_findings')} (arm {quality.get('ruff_arm_findings')}) · "
+             f"ruff {ruff_summary_text(quality)} (arm {ruff_arm_summary_text(quality)}) · "
              f"mutation score {mutation_summary_text(mut)}",
              f"**Research attempts:** {run['research_attempts']}", "", "## Escalations"]
     lines += [f"- {', '.join(q['escalated'])} → {q['reply']}" for q in esc] or ["- none"]

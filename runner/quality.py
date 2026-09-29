@@ -31,11 +31,23 @@ passed to a shell command quoted (`shlex.quote`), never interpolated raw.
 
 mutmut itself is installed into, and always runs from, the arm's own `.venv` (`hidden._sync`'s
 `with_mutmut` branch) — inherent to measuring the arm's actual code and dependencies, not a gap: mutation
-testing that ran from a harness-controlled environment instead would not be testing what the arm shipped.
+testing that ran from a harness-controlled environment instead would not be testing what the arm shipped. But
+that same fact is also this method's honest limit (fix round 3, item 2 — see `_mutation`'s docstring for the
+full account): the arm's own test process runs each mutant as the same uid, with `/work` writable, so a
+determined arm could tamper with its own `mutmut` binary or its own persisted mutation results directly,
+without ever printing a forged line this module would see. Everything below closes the *accidental* and
+*unprivileged-forgery* cases — a stray print, a naive attempt at a fake status or exit-code line — not a
+hostile arm rewriting its own tooling. The mutation score is a 10%-weight code-quality input (design §8), only
+as trustworthy as the arm's own environment; this is recorded here and in the task report as an owner-visible
+note, not presented as solved.
 
-The mutation run's own exit-code markers (`__run_rc`, `__results_rc`) are read from the LAST anchored
-occurrence on its own line in stdout, never the first (fix round 2, item 4): arm code running during
-`mutmut run` could otherwise print a forged marker line before the real one and have it trusted instead.
+Status lines (`<name>__mutmut_N: <status>`) are parsed only from a second, fresh container that runs nothing
+but `mutmut results` — never from the container that actually ran the mutants, whose stdout could otherwise
+carry a forged status line from the arm's own test output (fix round 3, item 1); duplicate names keep only
+their last-seen status, never summed. The mutation run's own exit-code markers (`__run_rc`, `__results_rc`)
+are each read from the LAST anchored occurrence on its own line in that container's stdout, never the first
+(fix round 2, item 4): our own `echo` for a marker always runs after everything that step could have printed
+(including a tailed log of arm output), so the real marker is provably always last.
 """
 from __future__ import annotations
 
@@ -46,6 +58,7 @@ import re
 import shlex
 import stat
 import subprocess
+import tempfile
 import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -193,13 +206,17 @@ def _safe_read(path: Path, max_size: int = MAX_CONFIG_BYTES) -> str | None:
 
 def _safe_write(path: Path, text: str, max_size: int = MAX_CONFIG_BYTES) -> None:
     """Refuses (`UnsafeFile`) to write through a symlink or onto any other non-regular-file path — never
-    follows a link to write somewhere outside the copy. Writes to a fresh temp file in the same directory
-    (`O_CREAT | O_EXCL`, so it can never itself be a pre-planted non-regular file) and `os.replace`s it onto
-    `path` (fix round 2, item 6): `rename(2)` replaces whatever directory entry is at `path` atomically and
-    without following it, so even a symlink swapped in at the last moment is simply replaced, never written
-    through — this makes the write immune to the read/write TOCTOU a plain "check-then-truncate-and-write"
-    would still have. A path that doesn't exist yet, or that already exists as a plain regular file, both
-    succeed; one that exists as anything else is refused before the temp file is even created."""
+    follows a link to write somewhere outside the copy. Writes to a fresh `tempfile.mkstemp` temp file in the
+    same directory (fix round 3, item 3: `mkstemp` guarantees a fresh, securely-named, `O_EXCL`-created file —
+    no hand-rolled name scheme, and a pre-existing path collision never escapes as a raw `FileExistsError`,
+    `mkstemp` retries internally) and `os.replace`s it onto `path`: `rename(2)` replaces whatever directory
+    entry is at `path` atomically and without following it, so even a symlink swapped in at the last moment is
+    simply replaced, never written through — this makes the write immune to the read/write TOCTOU a plain
+    "check-then-truncate-and-write" would still have. The write loop and the replace are one `try/except
+    BaseException: unlink the temp file; re-raise` (fix round 3, item 3): a failure at either step — a short
+    write, a disk-full `os.write`, or a failed `os.replace` — must never leave the temp file behind. A path
+    that doesn't exist yet, or that already exists as a plain regular file, both succeed; one that exists as
+    anything else is refused before the temp file is even created."""
     body = text.encode()
     if len(body) > max_size:
         raise UnsafeFile(f"refusing to write {len(body)} bytes to {path} (cap {max_size})")
@@ -210,17 +227,15 @@ def _safe_write(path: Path, text: str, max_size: int = MAX_CONFIG_BYTES) -> None
     else:
         if not stat.S_ISREG(st.st_mode):
             raise UnsafeFile(f"{path} is not a regular file (mode {oct(st.st_mode)}); refusing to write")
-    tmp = path.with_name(f".{path.name}.{os.getpid()}.{id(text) & 0xffffff:x}.tmp")
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0)
-    fd = os.open(tmp, flags, 0o644)
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    tmp = Path(tmp_name)
     try:
-        fst = os.fstat(fd)
-        if not stat.S_ISREG(fst.st_mode):
-            raise UnsafeFile(f"{tmp} is not a regular file once opened; refusing to write")
-        os.write(fd, body)
-    finally:
-        os.close(fd)
-    try:
+        try:
+            written = 0
+            while written < len(body):
+                written += os.write(fd, body[written:])
+        finally:
+            os.close(fd)
         os.replace(tmp, path)
     except BaseException:
         try:
@@ -292,12 +307,21 @@ def mutation_summary(c: dict[str, int], *, partial: bool, baseline_failed: bool,
 
 
 def parse_results(text: str) -> tuple[list[str], dict[str, int]]:
-    names, counts = [], {k: 0 for k in MUTATION_COUNT_KEYS}
+    """One status per mutant name. If a name appears more than once (fix round 3, item 1 — a duplicate line,
+    or a status-shaped line from elsewhere in the stream), the LAST occurrence wins and it is counted exactly
+    once, never summed — duplicates must never inflate a count. `names` preserves first-seen order."""
+    by_name: dict[str, str] = {}
+    order: list[str] = []
     for m in re.finditer(r"(?m)^\s*(\S+__mutmut_\d+): ([a-z ]+?)\s*$", text):
-        names.append(m.group(1))
-        counts[STATUS.get(m.group(2), "not_checked")] += 1
-    counts["total"] = len(names)
-    return names, counts
+        name, status = m.group(1), m.group(2)
+        if name not in by_name:
+            order.append(name)
+        by_name[name] = status
+    counts = {k: 0 for k in MUTATION_COUNT_KEYS}
+    for status in by_name.values():
+        counts[STATUS.get(status, "not_checked")] += 1
+    counts["total"] = len(by_name)
+    return order, counts
 
 
 def _last_marker(text: str, name: str) -> int | None:
@@ -435,19 +459,42 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
     rc 5 means no tests were collected (`no_tests`), also not scored and not the arm's fault. Any other exit —
     a harness/container-level code (125, 126, 127, 137, ...), an unexpected crash, or a timeout — is `crashed`:
     the score is withheld (`None`), never read as `0.0`, and never confused with `baseline_failed`/`no_tests`
-    (fix round 1, item 5). The main mutation run and the results-reading step each get their own exit-code
-    marker (read from the LAST anchored occurrence on its own line in `stdout` only, never the first — arm
-    output printed during `mutmut run` could otherwise forge an early, fake marker; fix round 2, item 4);
-    either marker failing is also `crashed`, not "no mutants" (item 2) — as is the degenerate case where every
-    selected mutant comes back with no real verdict (`not_checked` or `check_interrupted`) even though nothing
-    else looked wrong: zero real signal must never present as a score of `0.0`. `check_interrupted` on its own
-    (a mutant whose check was interrupted mid-way — typically a signal — without everything being interrupted)
-    sets `partial`, the same as a partial `not_checked` set (item 1). Fewer statuses coming back than were
-    sampled — mutmut silently dropping a requested mutant — also sets `partial` and is recorded as
-    `missing_results` (item 5). Every return path — baseline failure, no tests, a harness fault, a refused
-    pyproject.toml, a timeout, or a real (possibly partial or crashed) run — carries the exact same key set,
-    via the `common` defaults below, so a consumer never has to guess which keys a given path bothered to
-    set."""
+    (fix round 1, item 5).
+
+    The mutation run itself happens in TWO containers (fix round 3, item 1): container 1 runs `mutmut run`
+    (mutmut's own stdout/stderr redirected to a log file inside it — arm test code executes here and must
+    never be able to print a line shaped like `<name>__mutmut_N: killed` and have it counted); container 2 is
+    fresh and runs nothing but `mutmut results --all true` against the same host-mounted copy, so its stdout
+    is guaranteed clean of anything the arm could have produced. Status lines are parsed ONLY from container
+    2's stdout. `parse_results` also keeps one status per name — a duplicate line (forged or not) is never
+    summed, the last occurrence wins.
+
+    Each container gets its own exit-code marker (read from the LAST anchored occurrence on its own line in
+    stdout only, never the first — even a forged marker embedded in container 1's tailed log cannot beat our
+    own `echo`, which is always the provably-last line; fix round 2, item 4); either marker failing is also
+    `crashed`, not "no mutants" (item 2) — as is the degenerate case where every selected mutant comes back
+    with no real verdict (`not_checked` or `check_interrupted`) even though nothing else looked wrong: zero
+    real signal must never present as a score of `0.0`. `check_interrupted` on its own (a mutant whose check
+    was interrupted mid-way — typically a signal — without everything being interrupted) sets `partial`, the
+    same as a partial `not_checked` set (fix round 2, item 1). Fewer statuses coming back than were sampled —
+    mutmut silently dropping a requested mutant — also sets `partial` and is recorded as `missing_results`
+    (item 5). Every return path — baseline failure, no tests, a harness fault, a refused pyproject.toml, either
+    container timing out, or a real (possibly partial or crashed) run — carries the exact same key set, via the
+    `common`/`post_sample_common` defaults below, so a consumer never has to guess which keys a given path
+    bothered to set.
+
+    **What this does not, and cannot, guard against** (fix round 3, item 2 — an owner-visible limitation, not
+    a bug): the arm's own pytest process, running each mutant, is the same uid as the harness's `mutmut`
+    invocation, with `/work` writable. A sufficiently determined arm could tamper with its own
+    `.venv/bin/mutmut`, or write directly into `mutants/*.meta`/`mutants/mutmut-stats.json` — mutmut's own
+    persisted result state — to fabricate a result container 2 would then read back as genuine, no forged
+    stdout line required. The stdout hardening in this function closes the *accidental* and the
+    *unprivileged-forgery* case (a stray print, or a naive attempt at gaming a printed line); it is not, and
+    cannot be, a guarantee against a hostile arm actively rewriting its own tooling or its own on-disk mutation
+    results. The mutation score is therefore only as trustworthy as the arm's own environment — a limitation
+    of the whole "run untrusted code and trust the numbers it reports" method (OD15), not something quality.py
+    can fix from the outside. Given the score is a 10%-weight input to the overall code-quality dimension
+    (design §8), this residual risk is recorded here and in the task report rather than treated as solved."""
     lim = pins.limits
     log: list[str] = []
 
@@ -496,24 +543,43 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
         else:
             sampling = "unavailable"          # listing unsupported (or refused/timed out): fall back to A
 
-    # Mutant names reach mutmut through argv, never through string interpolation into the script (fix round
-    # 1): `bash -c '<script using "$@">' _ <mutation_seconds> run --max-children 4 <name> <name> ...` — bash's
-    # own argv handling quotes each name safely regardless of its content, with no shell-injection surface.
-    script = 'timeout "$1" "${@:2}"; echo __run_rc=$?; .venv/bin/mutmut results --all true; echo __results_rc=$?'
-    cmd = ["bash", "-c", script, "_", str(lim.mutation_seconds),
-           ".venv/bin/mutmut", "run", "--max-children", "4", *chosen]
-    outcome = _run(p, copy, cmd, lim.mutation_seconds + 900)
-    log.append(f"$ mutmut run ({'sampled ' + str(len(chosen)) if chosen else 'all'})\n" + outcome.combined[-20000:])
-    if outcome.timed_out:
+    post_sample_common = dict(sampled=bool(chosen), sample_size=len(chosen))
+
+    # Container 1: the actual mutation run. Arm test code executes here (it IS the arm's own pytest suite,
+    # run under each mutant), so anything it prints to stdout must never reach a stream this function later
+    # searches for a status line or a marker (fix round 3, item 1) -- mutmut's own stdout/stderr are redirected
+    # to a log file *inside* the container instead. The exit code is captured into a shell variable immediately
+    # (before the log tail, which could itself contain a forged marker-lookalike from the arm) and echoed last,
+    # so the real marker is provably the final line regardless of what the tailed log contains. Mutant names
+    # still reach mutmut through argv, never string interpolation (fix round 1): bash's own positional-parameter
+    # handling quotes each one safely regardless of content, with no shell-injection surface.
+    run_script = ('timeout "$1" "${@:2}" >mutmut-run.log 2>&1; rc=$?; tail -c 20000 mutmut-run.log; '
+                  'echo __run_rc=$rc')
+    run_cmd = ["bash", "-c", run_script, "_", str(lim.mutation_seconds),
+              ".venv/bin/mutmut", "run", "--max-children", "4", *chosen]
+    run_outcome = _run(p, copy, run_cmd, lim.mutation_seconds + 300)
+    log.append(f"$ mutmut run ({'sampled ' + str(len(chosen)) if chosen else 'all'})\n"
+              + run_outcome.combined[-20000:])
+    if run_outcome.timed_out:
         return finish(dict(ZERO_MUTATION), partial=False, baseline_failed=False, crashed=True,
                       sampling=sampling, baseline_rc=baseline.rc, timed_out=True,
-                      sampled=bool(chosen), sample_size=len(chosen),
-                      mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0)
+                      mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0, **post_sample_common)
+    run_rc = _last_marker(run_outcome.stdout, "__run_rc")
 
-    # The real markers are only ever written to our own script's stdout (never stderr): search stdout alone.
-    run_rc = _last_marker(outcome.stdout, "__run_rc")
-    results_rc = _last_marker(outcome.stdout, "__results_rc")
-    out = outcome.combined                          # for status-line parsing only, never for marker parsing
+    # Container 2: fresh, and runs nothing but `mutmut results` -- no arm code ever executes here, so its
+    # stdout is guaranteed clean by construction, not merely by redirection (fix round 3, item 1). mutmut's own
+    # persisted state (the `mutants/` directory) survives on the host-mounted copy between the two containers,
+    # so this one sees exactly what the run container just recorded. Status lines are parsed ONLY from here.
+    results_outcome = _run(p, copy, ["bash", "-c", ".venv/bin/mutmut results --all true; echo __results_rc=$?"],
+                           300)
+    log.append("$ mutmut results (fresh container)\n" + results_outcome.combined[-20000:])
+    if results_outcome.timed_out:
+        return finish(dict(ZERO_MUTATION), partial=False, baseline_failed=False, crashed=True,
+                      sampling=sampling, baseline_rc=baseline.rc, timed_out=True,
+                      mutmut_run_rc=run_rc, mutmut_results_rc=None, missing_results=0, **post_sample_common)
+    results_rc = _last_marker(results_outcome.stdout, "__results_rc")
+
+    out = results_outcome.stdout
     # A crash in `mutmut results` (or a missing marker entirely) is recorded as a crash, not "no mutants".
     crashed = results_rc != 0 or run_rc not in (0, 124)
 
@@ -532,9 +598,8 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
     partial = (not crashed) and (run_rc == 124 or counts.get("not_checked", 0) > 0 or
                                  counts.get("check_interrupted", 0) > 0 or missing > 0)
     return finish({k: counts[k] for k in ZERO_MUTATION}, partial=partial, baseline_failed=False, crashed=crashed,
-                  sampling=sampling, baseline_rc=baseline.rc, timed_out=False,
-                  sampled=bool(chosen), sample_size=len(chosen), missing_results=missing,
-                  mutmut_run_rc=run_rc, mutmut_results_rc=results_rc)
+                  sampling=sampling, baseline_rc=baseline.rc, timed_out=False, missing_results=missing,
+                  mutmut_run_rc=run_rc, mutmut_results_rc=results_rc, **post_sample_common)
 
 
 def _mutation_placeholder(sampling: str, *, crashed: bool = True, baseline_failed: bool = False,
