@@ -573,6 +573,9 @@ def test_speckitty_setup_passes_its_checks_and_every_check_fails_when_broken(tmp
                                 {"speckitty.tracker-egress"}, *none),
         "egress a near-miss spelling": (_kittify_tracker(p, lambda t: t.replace("egress: permitted", "egress: Permitted")),
                                         {"speckitty.tracker-egress"}, *none),
+        # FR1 item 2: hosted-sync consent recorded (spec-kitty's own remedy for the hosted row) → hosted egress granted
+        "hosted-sync consent recorded": (_kittify_tracker(p, lambda t: t + "sync:\n  enabled: true\n"),
+                                         {"speckitty.hosted-egress-refused"}, *none),
         "no beads database": (lambda: shutil.rmtree(p.repo / ".beads/embeddeddolt"), {"beads.init"}, *none),
         "no beads config": (lambda: (p.repo / ".beads/config.yaml").unlink(), {"beads.init"}, *none),
         "beads metrics on": (lambda: (p.home / ".config/bd/config.yaml").write_text(
@@ -641,3 +644,49 @@ def test_ccsdd_setup_passes_its_checks_and_every_check_fails_when_broken(tmp_sta
     want = {n: w for n, (_, w, _, _) in cases.items()} | {n: w for n, (_, w, _) in common.items()}
     assert seen == want
     assert_every_script_id_falsified("ccsdd", want.values())
+
+
+
+# ---- 7. Task 11 fix round 1 -------------------------------------------------------------------------------------
+def test_speckitty_setup_commit_and_origin_push_succeed_with_the_beads_hooks_active(tmp_state):
+    """FR1 item 1: after speckitty's real shell steps (bd init: core.hooksPath=.beads/hooks, a Dolt remote on origin),
+    the runner's own setup commit and `setup.origin-push` run through gitops' write containers (network none,
+    GIT_CONFIG_GLOBAL=/dev/null, hooks ON) and both succeed."""
+    p = Paths(PASS, "speckitty")
+    checklist.run_shell_only(PASS, "speckitty", offline=True)
+    cfg = (p.repo / ".git/config").read_text()
+    assert f"hookspath = {p.container_repo}/.beads/hooks" in cfg.lower()          # the beads hooks are live
+    assert {"pre-commit", "pre-push"} <= {f.name for f in (p.repo / ".beads/hooks").iterdir()}
+    assert 'sync.remote: "/home/actor/origin.git"' in (p.repo / ".beads/config.yaml").read_text()
+    assert gitops.state(p).dirty
+    sha = gitops.commit_all(p, gitops.IDENTITY, "Set up spec-kitty/spec-kitty 3.2.7")
+    assert not gitops.state(p).dirty
+    c = checklist._origin_push(p)
+    assert c.ok, c
+    remote = gitops.git(p, "ls-remote", gitops.ORIGIN, "refs/heads/main").stdout.decode().split()
+    assert remote and remote[0] == sha
+
+
+def _two_offline_manifests(arm_name: str, tmp_path, monkeypatch) -> tuple[dict, dict]:
+    from runner import paths
+    out = []
+    for n in (1, 2):
+        monkeypatch.setattr(paths, "STATE", tmp_path / f"setup-{n}")
+        checklist.run_shell_only(PASS, arm_name, offline=True)
+        out.append(checklist.manifest_full(Paths(PASS, arm_name), config.load_arm(arm_name)))
+    (a, ma), (b, mb) = out
+    assert ma == mb == []                                        # every listed manifest path is created by setup
+    return a, b
+
+
+@pytest.mark.parametrize("arm", ["speckit", "speckitty", "ccsdd"])
+def test_volatile_paths_are_exactly_what_differs_between_two_offline_setups(arm, tmp_state, tmp_path, monkeypatch):
+    """FR1 item 6 guard: every `install-stamp` entry really differs between two identical offline setups (so the list
+    cannot quietly hide a real difference), and nothing else differs (so pass 2 of an unchanged setup is green)."""
+    a, b = _two_offline_manifests(arm, tmp_path, monkeypatch)
+    home = Paths(PASS, arm).container_home
+    vol = config.load_arm(arm).volatile_paths
+    differing = {k for k in set(a) | set(b) if a.get(k) != b.get(k)}
+    for v in (v for v in vol if v.kind == "install-stamp"):
+        assert any(checklist.is_volatile(k, [v.path], home) for k in differing), f"{v.path} never differs: {v.why}"
+    assert {k for k in differing if not checklist.is_volatile(k, [v.path for v in vol], home)} == set()

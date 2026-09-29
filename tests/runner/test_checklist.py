@@ -752,3 +752,98 @@ def test_speckitty_entry_commands_need_the_charter_driven_workflow():
     assert checklist.needed_commands(config.load_arm("speckitty")) == ["spec-kitty.specify", "spec-kitty.accept",
                                                                        "spec-kitty.merge"]
     assert "speckit-taskstoissues" in checklist.needed_commands(config.load_arm("speckit"))     # OD24 B export
+
+
+# --- Task 11 fix round 1 ---------------------------------------------------------------------------------------
+def test_speckitty_sessions_have_the_saas_sync_flag_off_and_no_upgrade_check():        # FR1 items 2, 3
+    """Provisional ruling: spec-kitty's SaaS flag is OFF in arm sessions — one explicit config value (spec-kitty reads
+    only 1/true/yes/y/on as on), so turning it on is a config change."""
+    a = config.load_arm("speckitty")
+    env = credentials.session_env(config.load_pins(), a, role="arm", isolated=False, pass_="pass1")
+    assert env["SPEC_KITTY_ENABLE_SAAS_SYNC"] == "0"
+    assert env["SPEC_KITTY_NO_UPGRADE_CHECK"] == "1"
+    raw = (config.ARMS_DIR / "speckitty.toml").read_text()
+    assert "SPEC_KITTY_ENABLE_SAAS_SYNC" in raw.split("[egress]")[0]          # the switch lives in the arm's env
+
+
+def test_speckit_md_says_the_adoption_branch_is_skipped_on_purpose():                    # FR1 item 4
+    assert "adoption branch" in _section((ROOT / "speckit.md").read_text(), "## Setup (what the runner runs)")
+
+
+def test_speckitty_md_records_the_inert_binding_and_beads_via_bd_prime():                # FR1 item 2
+    text = (ROOT / "speckitty.md").read_text()
+    assert "inert" in text and "bd prime" in text and "speckitty.hosted-egress-refused" in md_ids("speckitty")
+
+
+def test_speckitty_manifest_lists_the_setup_files_both_inits_create():                   # FR1 item 5
+    m = set(config.load_arm("speckitty").manifest_paths)
+    assert {"AGENTS.md", ".agents", ".beads/hooks", ".gitignore", ".claudeignore", ".gitattributes"} <= m
+
+
+# volatile paths (FR1 item 6): excluded from the pass-2 comparison, each with a kind and a reason
+def _arm_with(tmp_path, monkeypatch, setup_extra: str):
+    import shutil
+    arms = tmp_path / "arms"; shutil.copytree(config.ARMS_DIR, arms)
+    t = (arms / "dryrun.toml").read_text()
+    t = t.replace("[setup]\n", "[setup]\n" + setup_extra + "\n", 1)
+    if "manifest_paths" in setup_extra:
+        t = t.replace("manifest_paths = []\n", "", 1)
+    (arms / "dryrun.toml").write_text(t)
+    monkeypatch.setattr(config, "ARMS_DIR", arms)
+    return lambda: config.load_arm("dryrun")
+
+
+@pytest.mark.parametrize("extra,msg", [
+    ('manifest_paths = [".x"]\nvolatile_paths = [{ path = ".x/a", kind = "install-stamp" }]', "why"),
+    ('manifest_paths = [".x"]\nvolatile_paths = [{ path = ".x/a", kind = "other", why = "w" }]', "kind"),
+    ('manifest_paths = [".x"]\nvolatile_paths = [{ path = ".y/a", kind = "install-stamp", why = "w" }]', "manifest"),
+])
+def test_a_volatile_path_needs_a_kind_a_reason_and_a_manifest_path_to_live_in(tmp_path, monkeypatch, extra, msg):
+    load = _arm_with(tmp_path, monkeypatch, extra)
+    with pytest.raises(config.ConfigError, match=msg):
+        load()
+
+
+def test_volatile_paths_default_to_none():
+    assert config.load_arm("openspec").volatile_paths == []
+
+
+def _pass1(d: dict):
+    f = Paths("pass1", "dryrun").setup_results; f.mkdir(parents=True, exist_ok=True)
+    (f / "manifest.json").write_text(json.dumps(d))
+
+
+def test_pass2_ignores_only_the_volatile_entries(tmp_state):
+    _pass1({".x/stamp.json": "1", ".x/memory/c.md": "1", ".x/keep": "1", "/home/actor/.k/id": "1"})
+    vol = [".x/stamp.json", ".x/memory", "~/.k"]
+    c = checklist.manifest_check("pass2", "dryrun", {".x/stamp.json": "2", ".x/memory/c.md": "2", ".x/memory/new.md": "9",
+                                                     ".x/keep": "1", "/home/actor/.k/id": "2"}, None, volatile=vol)
+    assert c.ok and "4 volatile" in c.detail, c
+    c = checklist.manifest_check("pass2", "dryrun", {".x/stamp.json": "2", ".x/memory/c.md": "1", ".x/keep": "2",
+                                                     "/home/actor/.k/id": "1"}, None, volatile=vol)
+    assert not c.ok and ".x/keep (changed)" in c.detail and "stamp" not in c.detail
+    # a prefix is a path prefix, never a string prefix
+    _pass1({".x/memoryX": "1"})
+    assert not checklist.manifest_check("pass2", "dryrun", {".x/memoryX": "2"}, None, volatile=vol).ok
+
+
+def test_host_checks_pass_the_arms_volatile_paths_to_the_manifest_check(tmp_state, monkeypatch):
+    seen = {}
+    a = config.load_arm("speckit")
+    monkeypatch.setattr(checklist.repo, "recover", lambda p: None)
+    monkeypatch.setattr(checklist.commands, "listing", lambda p, arm: type("L", (), {"names": set(), "models": []})())
+    monkeypatch.setattr(checklist, "issues_access_check", lambda *x: checklist.Check("github.issues-access", True, ""))
+    monkeypatch.setattr(checklist, "manifest_full", lambda p, arm: ({}, []))
+    monkeypatch.setattr(checklist, "_origin_push", lambda p: checklist.Check("setup.origin-push", True, ""))
+    real = checklist.manifest_check
+    monkeypatch.setattr(checklist, "manifest_check", lambda *x, **k: seen.update(k) or real(*x, **k))
+    checklist.host_checks(Paths("dry9", "speckit"), a, "dry9", None, None)
+    assert seen["volatile"] == [v.path for v in a.volatile_paths] and seen["volatile"]
+
+
+@pytest.mark.parametrize("arm", ["speckit", "speckitty"])
+def test_model_written_volatile_paths_are_what_the_checklist_owner_checks(arm):
+    """A model-written entry must be the agent turn's output that the checklist names (the owner reads it)."""
+    text = (ROOT / f"{arm}.md").read_text()
+    mw = [v.path for v in config.load_arm(arm).volatile_paths if v.kind == "model-written"]
+    assert mw and all(f"`{p}" in text for p in mw), mw
