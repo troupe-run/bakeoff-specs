@@ -19,7 +19,7 @@ import asyncio, gzip, json, os, time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import AsyncIterator, Iterable, Literal
-from runner import docker
+from runner import docker, transcripts
 from runner.credentials import Credential
 from runner.docker import Mount, RunSpec
 from runner.config import load_pins
@@ -150,23 +150,20 @@ def container_name(t: Turn) -> str:
 
 def credential_files(config_dir: Path | None, cred: Credential, since: float) -> list[str]:
     """Files under config_dir changed during the turn that contain the token, and any .credentials.json (S-3).
-    Walks without following symlinks (review S-1 extension)."""
-    if config_dir is None or not config_dir.exists():
+    Never follows a link and never blocks: the content scan uses transcripts' no-follow readers (walk without
+    following links, then O_NOFOLLOW|O_NONBLOCK + fstat regular-file check + size cap; Task 8 fix round 2).
+    A `.credentials.json` of any file type is reported by name without being read."""
+    if config_dir is None or os.path.islink(config_dir) or not config_dir.is_dir():
         return []
-    needle, hits = cred.raw_for_scanner().encode(), []
+    needle, hits = cred.raw_for_scanner().encode(), set()
     for root, _dirs, files in os.walk(config_dir, followlinks=False):
-        for f in files:
-            p = Path(root) / f
-            if p.is_symlink():
-                continue
-            if f == ".credentials.json":
-                hits.append(str(p.relative_to(config_dir))); continue
-            try:
-                if p.stat().st_mtime >= since and needle in p.read_bytes():
-                    hits.append(str(p.relative_to(config_dir)))
-            except OSError:
-                continue
-    return sorted(set(hits))
+        if ".credentials.json" in files:
+            hits.add(str((Path(root) / ".credentials.json").relative_to(config_dir)))
+    real_root = os.path.realpath(config_dir)
+    for f in transcripts.safe_files(config_dir, "*"):
+        if transcripts.safe_contains(f, real_root, needle, since=since):
+            hits.add(str(f.relative_to(config_dir)))
+    return sorted(hits)
 
 
 async def read_lines(reader: asyncio.StreamReader) -> AsyncIterator[bytes]:

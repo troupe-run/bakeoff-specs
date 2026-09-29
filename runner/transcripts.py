@@ -141,6 +141,29 @@ class _Oversize(Exception):
     pass
 
 
+def safe_contains(p: Path, real_root: str, needle: bytes, *, since: float | None = None) -> bool:
+    """Whether the plain in-tree regular file `p` contains `needle` (and, with `since`, was modified at or
+    after it). Opened O_NOFOLLOW|O_NONBLOCK and fstat-checked, read in chunks up to MAX_FILE_BYTES; a link,
+    FIFO, device, hard-linked, oversize or vanished file is never read and counts as False."""
+    got = _open_safe(p, real_root)
+    if isinstance(got, str):
+        return False
+    try:
+        if since is not None and os.fstat(got).st_mtime < since:
+            return False
+        tail = b""
+        for chunk in _chunks(got):
+            buf = tail + chunk
+            if needle in buf:
+                return True
+            tail = buf[-(len(needle) - 1):] if len(needle) > 1 else b""
+        return False
+    except _Oversize:
+        return False
+    finally:
+        os.close(got)
+
+
 def _each_safe(config_dir: Path, skipped: list[dict]) -> Iterator[tuple[str, int]]:
     """(relative path, open fd) for each safe transcript, one at a time; the caller closes the fd."""
     root = config_dir / "projects"

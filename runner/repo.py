@@ -14,7 +14,7 @@ from runner.config import GITHUB_ORG as ORG, github_slug     # single source; re
 from runner.docker import Mount, RunSpec
 from runner.paths import Paths
 
-__all__ = ["ORG", "github_slug", "init", "head", "snapshot", "restore", "export", "bundle", "github_plan",
+__all__ = ["ORG", "github_slug", "init", "head", "snapshot", "restore", "recover", "export", "bundle", "github_plan",
            "github_verify", "verify_ok", "publish", "pat_instructions"]
 
 
@@ -62,6 +62,7 @@ mv -f "/snap/$1.partial" "/snap/$1"
 def snapshot(p: Paths, step: int | str) -> Path:
     """Tar of the arm-controlled trees (home — including the bare origin — and work), made in a container
     with both mounted read-only. GNU tar stores links as links and never follows them."""
+    recover(p)
     p.snapshots.mkdir(parents=True, exist_ok=True)
     name = _snap_name(step)
     _run(_tar_spec(p, [Mount(p.home, "/src/home", True), Mount(p.work, "/src/work", True),
@@ -89,15 +90,19 @@ def _rmtree(path: Path) -> None:
 
 def restore(p: Paths, step: int | str) -> None:
     """Extract the snapshot INSIDE a container into a fresh staging dir; then swap by rename-aside (current
-    trees moved aside, restored trees moved in, aside deleted last). A refused or failed extract, or a failure
-    mid-swap, leaves (or puts back) the current home and work, so the arm is never left without them."""
+    trees moved aside, restored trees moved in, aside deleted last). A failed extract leaves the current trees
+    untouched; a failure mid-swap puts them back. If putting them back fails too, both errors are reported,
+    the aside (the only copy of the previous trees) is kept, and every gitops call refuses the arm until
+    `recover(p)` finishes the rollback."""
+    recover(p)
     src = p.snapshots / _snap_name(step)
     if not src.is_file() or src.is_symlink():
         raise FileNotFoundError(f"no snapshot {src}")
     run_id = uuid.uuid4().hex[:12]
     staging, aside = p.base / f".restore-{run_id}", p.base / f".aside-{run_id}"
-    staging.mkdir(); aside.mkdir()
+    keep_aside = False
     try:
+        staging.mkdir(); aside.mkdir()
         _run(_tar_spec(p, [Mount(p.snapshots, "/snap", True), Mount(staging, "/out", False)],
                        _RESTORE_SH, src.name, tag="restore"), f"restore {src.name}")
         moved: list[tuple[Path, Path]] = []
@@ -107,18 +112,58 @@ def restore(p: Paths, step: int | str) -> None:
                     live.rename(aside / name); moved.append((aside / name, live))
             (staging / "home").rename(p.home)
             (staging / "work").rename(p.work)
-        except BaseException:
-            for held, live in reversed(moved):              # undo: put the previous trees back
-                if os.path.lexists(live):
-                    live.rename(staging / f"failed-{live.name}")
-                held.rename(live)
+        except BaseException as e:
+            try:
+                for held, live in reversed(moved):          # undo: put the previous trees back
+                    if os.path.lexists(live):
+                        live.rename(staging / f"failed-{live.name}")
+                    held.rename(live)
+            except BaseException as undo:
+                keep_aside = True
+                e.add_note(f"rollback failed too: {undo!r}; the previous trees are in {aside}; "
+                           f"repo.recover(p) finishes the rollback")
             raise
     finally:
-        _rmtree(staging); _rmtree(aside)
+        _rmtree(staging)
+        if not keep_aside:
+            _rmtree(aside)
     _await_visible_in_containers(p)
 
 
+def recover(p: Paths) -> None:
+    """Deterministic recovery from an interrupted restore (a crash or failed rollback between the moves).
+    With one `.aside-*`: if a live tree is missing, the swap did not finish, so roll back: every tree held
+    aside goes back (a restored tree in its way is discarded). If both live trees exist and the aside holds
+    both old ones, the swap finished and only cleanup is left. Staging dirs are always discarded. Any other
+    shape (several asides, a live tree missing with no copy aside) raises InterruptedRestore — never guesses."""
+    if not p.base.is_dir():
+        return
+    asides = sorted(x for x in p.base.iterdir() if x.name.startswith(".aside-"))
+    stagings = sorted(x for x in p.base.iterdir() if x.name.startswith(".restore-"))
+    if len(asides) > 1:
+        raise gitops.InterruptedRestore(f"{p.base}: several interrupted restores {[a.name for a in asides]}")
+    live = {"home": p.home, "work": p.work}
+    for a in asides:
+        held = {n for n in live if os.path.lexists(a / n)}
+        missing = {n for n in live if not os.path.lexists(live[n])}
+        if missing:
+            if not missing <= held:
+                raise gitops.InterruptedRestore(f"{p.base}: {sorted(missing)} missing and not held in {a.name}")
+            for n in sorted(held):
+                if os.path.lexists(live[n]):
+                    live[n].rename(a / f"discard-{n}-{uuid.uuid4().hex[:8]}")
+                (a / n).rename(live[n])
+        elif held and held != set(live):
+            raise gitops.InterruptedRestore(f"{p.base}: {a.name} holds only {sorted(held)} with both trees live")
+        _rmtree(a)
+    for s in stagings:
+        _rmtree(s)
+    if any(not os.path.lexists(x) for x in live.values()) and (asides or stagings):
+        raise gitops.InterruptedRestore(f"{p.base}: home or work still missing after recovery")
+
+
 PROBE_SECONDS = 5.0
+PROBE_STOP_GRACE = 2         # a timed-out probe is stopped with this grace, not docker's default 30 s
 
 
 def _await_visible_in_containers(p: Paths, timeout: float = 60.0) -> None:
@@ -126,8 +171,10 @@ def _await_visible_in_containers(p: Paths, timeout: float = 60.0) -> None:
     for about a second (observed: the first git container after a swap saw an empty /work). Every restored
     file is a new inode, so once a container sees a fresh token at both new roots it sees the whole restored
     tree. The tokens sit at the mount roots, outside the repo, so a lingering cached entry is harmless.
-    Gives up with RuntimeError once `timeout` seconds have passed; each probe container is itself capped at
-    PROBE_SECONDS, so the total wait is at most `timeout + PROBE_SECONDS` plus one 0.25 s pause."""
+    Gives up with RuntimeError once `timeout` seconds have passed. Each probe is capped at PROBE_SECONDS, and a
+    probe that hits the cap is stopped with PROBE_STOP_GRACE seconds' grace before `docker rm -f`, so the worst
+    case is `timeout + PROBE_SECONDS + PROBE_STOP_GRACE`, plus one 0.25 s pause and the `docker stop`/`rm`
+    round-trips."""
     token = f".bk-restored-{uuid.uuid4().hex}"
     (p.work / token).touch(); (p.home / token).touch()
     base = gitops.spec(p, [])
@@ -139,7 +186,7 @@ def _await_visible_in_containers(p: Paths, timeout: float = 60.0) -> None:
         while True:
             try:
                 ok = docker.run(dataclasses.replace(s, name=f"{s.name}-{uuid.uuid4().hex[:4]}"),
-                                timeout=PROBE_SECONDS).returncode == 0
+                                timeout=PROBE_SECONDS, stop_grace=PROBE_STOP_GRACE).returncode == 0
             except subprocess.TimeoutExpired:
                 ok = False
             if ok:
@@ -215,9 +262,10 @@ def publish(p: Paths, pass_: str, ask, scan) -> bool:
     _rmtree(root)
     work = root / uuid.uuid4().hex[:12]; work.mkdir(parents=True)
     b = gitops.bundle(p, work / "main.bundle", refs=("refs/heads/main",))
-    tree = gitops.bundle_tree(p, b, "main", "tree")     # scan input, extracted in a container; the scanner
-    bare = work / "clone.git"                           # walks it without following links (Task 21)
+    bare = work / "clone.git"
     gitops.clone_bundle_bare(b, bare)                   # host: validated bundle -> config-free bare clone
+    tree = gitops.bare_tree(p, bare, "main", work / "tree")   # scan input: THIS clone's main, extracted in a
+                                                              # container; the scanner never follows links
     findings = scan(tree)
     if findings:
         print(f"Refusing to publish {slug}: {len(findings)} secret finding(s): {findings[:5]}")

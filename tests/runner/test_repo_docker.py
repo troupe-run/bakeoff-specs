@@ -117,7 +117,10 @@ def test_log_is_exact_for_an_empty_message_an_empty_author_and_a_utf16_log_encod
     crafted = _out(gitops.git(P, "hash-object", "-t", "commit", "-w", "--literally", "--stdin", input=raw, write=True))
     gitops.git(P, "update-ref", "refs/heads/main", crafted, write=True)
     with (P.repo / ".git" / "config").open("a") as f:
-        f.write("[i18n]\n\tlogOutputEncoding = UTF-16LE\n")           # arm-writable: would put NULs in the output
+        # Arm-writable. Probed 2026-09-29: git 2.39.5 in these images does NOT actually re-encode -z output to
+        # UTF-16LE (with or without our override), so this guards a future git/image, it does not demonstrate
+        # corruption today; the pure test checks the override is always passed.
+        f.write("[i18n]\n\tlogOutputEncoding = UTF-16LE\n")
     assert gitops.log(P, root, "main") == [
         {"sha": crafted, "author": "", "subject": "no author"},
         {"sha": empty_msg, "author": "Dev", "subject": ""}]

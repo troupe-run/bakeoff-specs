@@ -26,7 +26,7 @@ TEAMMATE = ("Sam Teammate", "sam.teammate@troupe.run")
 ORIGIN = "/home/actor/origin.git"                            # every arm's local bare origin (owner answer, B4)
 VERSION_PROBE = ["git", "--version"]                         # images.py's version probe (argv lives here, S-1)
 READ_CFG = ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "safe.directory=*",
-            "-c", "diff.external=", "-c", "core.pager=cat"]
+            "-c", "diff.external=", "-c", "core.pager=cat", "-c", "i18n.logOutputEncoding=UTF-8"]
 WRITE_CFG = ["-c", "safe.directory=*", "-c", "core.pager=cat", "-c", "commit.gpgsign=false"]
 
 
@@ -52,8 +52,20 @@ def spec(p: Paths, argv: list[str], *, write: bool = False, env: dict | None = N
                    stdin=False, limits=config.load_pins().limits, proxy=False)
 
 
+class InterruptedRestore(RuntimeError):
+    """An arm's base holds a leftover `.aside-*`/`.restore-*` from an interrupted `repo.restore`: its home or
+    work may be the wrong tree, or missing. Nothing may touch it until `repo.recover(p)` has run."""
+
+
+def check_trees(p: Paths) -> None:
+    base = p.base
+    if base.is_dir() and (left := sorted(x.name for x in base.iterdir() if x.name.startswith((".aside-", ".restore-")))):
+        raise InterruptedRestore(f"{base}: interrupted restore {left}; run repo.recover first")
+
+
 def git(p: Paths, *args: str, write: bool = False, env: dict | None = None, input: bytes | None = None,
         out_dir: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
+    check_trees(p)
     s = spec(p, list(args), write=write, env=env, out_dir=out_dir)
     if input is not None:
         s = dataclasses.replace(s, stdin=True)
@@ -102,6 +114,7 @@ jq -cn --arg b "$b" --arg d "$d" --arg h "$h" --arg m "$m" --argjson a $a \
 
 def state(p: Paths) -> RepoState:
     """One container for all five facts (same read config as `spec`, via a small script)."""
+    check_trees(p)
     s = dataclasses.replace(spec(p, []), cmd=["bash", "-c", _STATE_SH, "state", p.container_repo])
     r = docker.run(s, timeout=120)
     if r.returncode != 0:
@@ -119,19 +132,23 @@ def grep_files(p: Paths, sha: str, pattern: str, pathspec: str = ":!*.py") -> li
 
 
 def _nul_fields(r: subprocess.CompletedProcess, n: int) -> list[list[str]]:
-    """`git log -z` with NUL between fields: NUL can never occur in a sha, an author name or a message
-    (git truncates messages at NUL), so the split is exact whatever the text contains."""
+    """`git log -z` output with NUL between fields: git ends every record with exactly one NUL, and NUL can
+    never occur in a sha, an author name or a message (git truncates messages at NUL). Output is forced to
+    UTF-8 (READ_CFG and `--encoding=UTF-8`), so an arm-set `i18n.logOutputEncoding=UTF-16LE` cannot inject
+    NULs. Exactly one trailing NUL is removed, so an empty last field survives."""
     raw = r.stdout.decode(errors="replace")
     if not raw:
         return []
-    parts = raw.rstrip("\0").split("\0")
+    if not raw.endswith("\0"):
+        raise RuntimeError("git log -z: output does not end with a record NUL")
+    parts = raw[:-1].split("\0")
     if len(parts) % n:
         raise RuntimeError(f"git log: {len(parts)} NUL-separated fields is not a multiple of {n}")
     return [parts[i:i + n] for i in range(0, len(parts), n)]
 
 
 def log(p: Paths, a: str, b: str) -> list[dict]:
-    r = git(p, "log", "-z", "--format=%H%x00%an%x00%s", f"{a}..{b}")
+    r = git(p, "log", "-z", "--encoding=UTF-8", "--format=%H%x00%an%x00%s", f"{a}..{b}")
     return [dict(zip(("sha", "author", "subject"), f)) for f in _nul_fields(r, 3)]
 
 
@@ -142,7 +159,7 @@ def commits_between(p: Paths, a: str, b: str) -> str:
     r"""Records `sha\x1fmessage\x1e` (message = subject, newline, body; trailing whitespace stripped), newest
     first. Parsed exactly from NUL-delimited output; any \x1e or \x1f inside a message is replaced by U+FFFD,
     so splitting on \x1e then on the first \x1f is always exact."""
-    r = git(p, "log", "-z", "--format=%H%x00%s%n%b", f"{a}..{b}")
+    r = git(p, "log", "-z", "--encoding=UTF-8", "--format=%H%x00%s%n%b", f"{a}..{b}")
     return "".join(f"{sha}\x1f{msg.rstrip().translate(_SEPS)}\x1e" for sha, msg in _nul_fields(r, 2))
 
 
@@ -182,6 +199,7 @@ git -C "$1" -c core.hooksPath=/dev/null -c core.fsmonitor=false -c safe.director
 def export_tree(p: Paths, sha: str, dest: Path) -> None:
     """The committed tree at `sha`, extracted INSIDE a read container into `dest` (mounted at /out). The host
     never untars an arm tree: links in it are just data, written as links, contained by the sandbox."""
+    check_trees(p)
     dest.mkdir(parents=True, exist_ok=True)
     s = dataclasses.replace(spec(p, [], out_dir=dest), cmd=["bash", "-c", _EXPORT_SH, "export", p.container_repo, sha])
     r = docker.run(s, timeout=600)
@@ -189,30 +207,29 @@ def export_tree(p: Paths, sha: str, dest: Path) -> None:
         raise RuntimeError(f"export failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
 
 
-_BUNDLE_TREE_SH = r"""set -euo pipefail
-git -c core.hooksPath=/dev/null -c safe.directory='*' clone -q --bare "/out/$1" /tmp/clone.git
-git -C /tmp/clone.git archive --format=tar "$2" | tar -x -f - -C "/out/$3" --no-same-owner"""
+_BARE_TREE_SH = r"""set -euo pipefail
+git -C /in/bare.git -c core.hooksPath=/dev/null -c safe.directory='*' archive --format=tar "$1" \
+  | tar -x -f - -C /out --no-same-owner"""
 
 
-def bundle_tree(p: Paths, bundle_path: Path, ref: str, dest_name: str) -> Path:
-    """The tree of `ref` in a bundle, extracted INSIDE a network-less container into
-    `bundle_path.parent / dest_name` (publish's scan input: exactly what would be pushed)."""
-    check_bundle(bundle_path)
-    out = bundle_path.parent
-    (out / dest_name).mkdir()
-    s = dataclasses.replace(spec(p, [], out_dir=out), mounts=[Mount(out, "/out", False)],
-                            cmd=["bash", "-c", _BUNDLE_TREE_SH, "bundle-tree", bundle_path.name, ref, dest_name])
+def bare_tree(p: Paths, bare: Path, ref: str, dest: Path) -> Path:
+    """The tree of `ref` in the host bare clone that publish will push, extracted INSIDE a network-less
+    container: the bare clone is mounted read-only, and only `dest` (at /out) is writable. So the scanned tree
+    is exactly what gets pushed."""
+    dest.mkdir()
+    s = dataclasses.replace(spec(p, []), mounts=[Mount(bare, "/in/bare.git", True), Mount(dest, "/out", False)],
+                            cmd=["bash", "-c", _BARE_TREE_SH, "bare-tree", ref])
     r = docker.run(s, timeout=600)
     if r.returncode != 0:
-        raise RuntimeError(f"bundle tree failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
-    return out / dest_name
+        raise RuntimeError(f"bare tree failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
+    return dest
 
 
 BUNDLE_HEADERS = (b"# v2 git bundle\n", b"# v3 git bundle\n")
 
 
 def check_bundle(path: Path) -> None:
-    """Before any git reads it (the host clone above all): a regular file — not a link, directory or device —
+    """Before host git reads it: a regular file — not a link, directory or device —
     whose first line is a v2 or v3 git bundle header."""
     try:
         st = os.lstat(path)

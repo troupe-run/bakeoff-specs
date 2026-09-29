@@ -3,6 +3,14 @@ import pytest
 from runner import config, docker
 from runner.docker import RunSpec, Mount, run_argv, stop_argv
 
+@pytest.fixture(autouse=True)
+def _fake_root_exists(monkeypatch):
+    """These tests check argv shape with fake host paths under /h/; only that fake root counts as existing
+    (run_argv refuses a mount source that does not exist — see the last test)."""
+    real = docker.os.path.exists
+    monkeypatch.setattr(docker.os.path, "exists", lambda p: str(p).startswith("/h/") or real(p))
+
+
 def spec(**kw):
     base = dict(name="bk-pass1-control-01-arm-a1-001", image="img", label="bakeoff.run=pass1/control",
                 network="bk-net-pass1-control-run", mounts=[Mount(Path("/h/home"), "/home/actor", False)],

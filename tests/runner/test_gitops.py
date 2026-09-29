@@ -375,7 +375,7 @@ def test_restore_wait_is_bounded(tmp_state, monkeypatch):                    # i
     monkeypatch.setattr(r.time, "monotonic", lambda: next(clock))
     monkeypatch.setattr(r.time, "sleep", lambda s: None)
     calls = []
-    monkeypatch.setattr(r.docker, "run", lambda s, timeout=None, input=None:
+    monkeypatch.setattr(r.docker, "run", lambda s, timeout=None, input=None, stop_grace=30:
                         calls.append(timeout) or subprocess.CompletedProcess([], 1, b"", b""))
     with pytest.raises(RuntimeError, match="not visible"):
         r._await_visible_in_containers(p, timeout=30)

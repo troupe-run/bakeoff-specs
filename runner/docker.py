@@ -1,7 +1,7 @@
 """docker argv builders (pure) and the few effectful calls. The argv is built only from declared inputs:
 no env pass-through, no implicit mounts (spike B Q2)."""
 from __future__ import annotations
-import contextlib, subprocess
+import contextlib, os, subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
@@ -46,6 +46,10 @@ def run_argv(s: RunSpec) -> list[str]:
                 f"mount path contains ':', which the docker -v host:ctr:mode syntax cannot represent "
                 f"unambiguously (fix round 1, item 5): {m.host!r} -> {m.ctr!r}"
             )
+        if not os.path.exists(m.host):
+            # Docker would silently create an empty directory in its place — e.g. an arm home lost mid-restore
+            # would come back as an empty home (Task 8 fix round 2).
+            raise FileNotFoundError(f"mount source does not exist: {m.host} -> {m.ctr}")
     if _recorder is not None:
         _recorder.append(s)
     a = ["docker", "run", "--rm", "--init", "--name", s.name, "--label", s.label,
@@ -71,17 +75,18 @@ def stop_argv(name: str, grace: int = 30) -> list[str]:
 def rm_argv(name: str) -> list[str]:
     return ["docker", "rm", "-f", name]
 
-def stop(name: str) -> None:
+def stop(name: str, grace: int = 30) -> None:
     """Graceful then hard; never relies on killing the local docker CLI (spike B Q5)."""
-    subprocess.run(stop_argv(name), capture_output=True)
+    subprocess.run(stop_argv(name, grace), capture_output=True)
     subprocess.run(rm_argv(name), capture_output=True)
 
-def run(spec: RunSpec, input: bytes | None = None, timeout: float | None = None) -> subprocess.CompletedProcess:
+def run(spec: RunSpec, input: bytes | None = None, timeout: float | None = None,
+        stop_grace: int = 30) -> subprocess.CompletedProcess:
     """A short container (git, verify, tester): stdout/stderr captured, container removed on timeout."""
     try:
         return subprocess.run(run_argv(spec), input=input, capture_output=True, timeout=timeout)
     except subprocess.TimeoutExpired:
-        stop(spec.name)
+        stop(spec.name, stop_grace)
         raise
 
 def sweep(label: str = "bakeoff.run") -> dict[str, list[str]]:
