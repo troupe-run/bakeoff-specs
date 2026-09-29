@@ -264,8 +264,8 @@ def test_a_scripted_owner_answer_is_appended_as_scripted(rig, tmp_path):        
     ctx.arm = drive.config.load_arm("dryrun")
     (tmp_path / "s.toml").write_text('[escalations]\ndefault = "Scripted answer."\n')
     ctx.owner = owner.ScriptedOwner(tmp_path / "s.toml").bind(ctx.arm)
-    script["arm"] = [TR("b?"), TR("done")]
-    script["po"] = [D("question", answers=[Answer("b?", None, True, None)]), D("step_done")]
+    script["arm"] = [TR("b?"), TR("done"), TR("closed")]                         # dryrun's must_run: /dry-close
+    script["po"] = [D("question", answers=[Answer("b?", None, True, None)]), D("step_done"), D("step_done")]
     drive.run_attempt(ctx, 1, "go")
     text = ctx.brief_path.read_text()
     assert "Scripted answer." in text and "answered by the scripted owner" in text

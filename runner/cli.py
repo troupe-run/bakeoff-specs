@@ -308,4 +308,19 @@ def register_orchestrate(sub):
 
     st = sub.add_parser("status", help="every arm's progress, step by step, run a and b")
     st.set_defaults(func=lambda ns: print(orchestrate.status()))
+
+    def dry_run(ns):
+        """Task 24: the four dry passes (fake claude, dummy credential, scripted owner); with --report, writes
+        results/dryrun-validation.md and exits 1 unless it says PASS."""
+        res = orchestrate.dry_run()
+        print(json.dumps(res, indent=2, default=str))
+        if not ns.report:
+            return 0
+        out = orchestrate.dry_report(res)
+        text = out.read_text()
+        print(text)
+        return 0 if text.rstrip().endswith("**Result: PASS**") else 1
+    d = sub.add_parser("dry-run", help="the runner's own end-to-end dry run (no model, no GitHub)")
+    d.add_argument("--report", action="store_true", help="write results/dryrun-validation.md; exit 1 unless PASS")
+    d.set_defaults(func=dry_run)
 REGISTRARS.append(register_orchestrate)

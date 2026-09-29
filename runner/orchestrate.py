@@ -792,7 +792,10 @@ def _run(pass_: str, arms: list[str], cred, owner, *, limits_override: dict | No
         checklist.require_clean_green(p)                  # design §6: no step before a clean, green setup
         preflight.check_images(a, p)                      # design §2: the locked images, the baked reference
     docker.sweep()
-    R = _Run(pass_, arms, cred, owner, pins, secrets.literals(cred))
+    # A dry pass never touches the keychain (Task 24): its only credential is the dummy, so the dummy token (and any
+    # arm-home PAT value) is what its scans look for; a real pass adds every keychain value.
+    dry = all(config.load_arm(a).dry for a in arms)
+    R = _Run(pass_, arms, cred, owner, pins, secrets.literals(cred, keychain=not dry))
     try:
         R.pending()
         for step in range(1, (stop_after or 7) + 1):
@@ -1072,3 +1075,90 @@ def status() -> str:
             end = f" stopped_at={prog['stopped_at']}" if prog.get("stopped_at") else ""
             rows.append(f"{pass_dir.name:8} {arm_dir.name:12} {' '.join(cells)}{end} finished={prog['finished']}")
     return "\n".join(rows)
+
+
+# ---- the dry run (Task 24) ------------------------------------------------------------------------------------------
+# The whole runner end to end with the fake claude as arm, PO and teammate (no model, no GitHub), the dummy credential
+# and the scripted owner. Each pass is the step-major structure of the real run for one arm: N.a (discovery, reset),
+# the consistency check, N.b. `limits_override` is for dry arms only: a 1 s transient backoff, a smaller mutation
+# budget (quality.run_all's "cheaper mutation budget"), and dry4's 20 s turn limit (the fake hangs for 120 s).
+DRY_TOKEN = "dry-run-dummy-token"
+_DRY_LIMITS = {"transient_backoff": [1, 1, 1], "mutation_sample": 20, "mutation_seconds": 600}
+DRY = [("dry1", "dryrun", "dryrun-owner.toml", dict(_DRY_LIMITS)),
+       ("dry2", "dryrun-broken", "dryrun-owner.toml", dict(_DRY_LIMITS)),
+       ("dry3", "dryrun-pinfault", "dryrun-owner.toml", dict(_DRY_LIMITS)),
+       ("dry4", "dryrun-edge", "dryrun-owner-dry4.toml", {**_DRY_LIMITS, "turn_seconds": 20})]
+# Task 18's PLAN-2 NOTE: hidden tests whose harness plumbing only a full run exercises; dry1 must pass them.
+PLAN2_NOTE = {2: "tests/hidden/test_step2_sync.py::test_watch_picks_up_an_edit_to_an_included_file",
+              4: "tests/hidden/test_step4_lineage.py::test_cli_actor_defaults_to_the_login_user",
+              7: "tests/hidden/test_step7_remote_schema.py::test_remote_yaml_and_text_includes_load"}
+
+
+def dry_run() -> dict:
+    """The four dry passes (plan Task 24), each from nothing: state and results removed, a fresh copy of the PO brief,
+    setup (once, under the runner lock), then `run_arm`; dry4 pauses after step 1 and is resumed. Every container
+    spec built is recorded, and those carrying the dummy token are counted (`results/dryrun-specs.json`)."""
+    from runner import credentials
+    cred, res = credentials.dummy(), {}
+    with docker.recording() as specs:
+        for pass_, arm_name, script, limits in DRY:
+            shutil.rmtree(paths.STATE / pass_, ignore_errors=True)
+            shutil.rmtree(paths.RESULTS / pass_, ignore_errors=True)
+            (paths.STATE / pass_).mkdir(parents=True)
+            shutil.copy(REPO_ROOT / "scenario" / "po-brief.md", paths.brief_path(pass_))
+            o = owner_mod.ScriptedOwner(config.CONFIG_DIR / script).bind(config.load_arm(arm_name))
+            s = setup(pass_, arm_name, cred, o)
+            if not s.green:
+                res[pass_] = {"setup_not_green": [c.id for c in s.checks if c.status != "ok"]}
+                continue
+            try:
+                r = run_arm(pass_, arm_name, cred, o, limits)
+                if "paused_after" in r:                         # dry4: paused by the owner, then resumed
+                    _jw(Paths(pass_, arm_name).results / "resume.json", r)
+                    r = run_arm(pass_, arm_name, cred, o, limits)
+                res[pass_] = r
+            except stepflow.Halt as h:
+                res[pass_] = {"halted": str(h)[:500]}
+    bad = sum(1 for s in specs if DRY_TOKEN in json.dumps(s.env) or any(DRY_TOKEN in x for x in s.cmd))
+    _jw(paths.RESULTS / "dryrun-specs.json", {"specs": len(specs), "specs_containing_token": bad})
+    return res
+
+
+def _dry_facts() -> list[str]:
+    """What dry1 shows about the run structure and the hidden tests (read from its evidence; absent → says so)."""
+    p = Paths("dry1", "dryrun")
+    lines = ["", "## dry1: N.a → reset → consistency check → N.b, per step", ""]
+    for n in STEPS:
+        d = _jr(p.step(n) / "a" / "discovery.json", {}) or {}
+        why = (d.get("discovery") or {}).get("why") or d.get("outcome") or "no N.a record"
+        s = _jr(p.step(n) / "hidden" / "summary.json", {}) or {}
+        c = (_jr(paths.RESULTS / "dry1" / "consistency" / f"step-{n:02d}.json", {}) or {}).get("status")
+        lines.append(f"- step {n}: N.a stopped at {why}; consistency check {c or 'no record'}; N.b hidden "
+                     f"{s.get('passed', '?')}/{s.get('total', '?')} passed, {s.get('failed', '?')} failed")
+    lines += ["", "## Task 18 PLAN-2 NOTE tests in dry1", ""]
+    for n, t in PLAN2_NOTE.items():
+        tests = (_jr(p.step(n) / "hidden" / "summary.json", {}) or {}).get("tests", {})
+        got = next((o for k, o in tests.items() if k.endswith(t.split("::")[-1])), "not run")
+        lines.append(f"- step {n}: `{t}`: {got}")
+    return lines
+
+
+def dry_report(res: dict) -> Path:
+    """`results/dryrun-validation.md`, ending `**Result: PASS**` only when dry1 and dry4 completed, dry2 stopped at
+    step 2, dry3 halted, no container spec carried the token, no token is anywhere in the four passes' evidence or
+    state (.gz decompressed, tars opened), and no `bakeoff.run` container is left."""
+    findings = [f for i in range(1, 5) for root in (paths.RESULTS / f"dry{i}", paths.STATE / f"dry{i}")
+                for f in secrets.scan_tree(root, [DRY_TOKEN])]
+    left = docker.running("bakeoff.run")
+    spec = _jr(paths.RESULTS / "dryrun-specs.json", {}) or {"specs": 0, "specs_containing_token": None}
+    ok = (not findings and not left and spec["specs_containing_token"] == 0 and "halted" in res.get("dry3", {})
+          and res.get("dry2", {}).get("stopped_at") == 2 and res.get("dry1", {}).get("completed") is True
+          and res.get("dry4", {}).get("completed") is True)
+    lines = ["# Dry-run validation", "", f"- results: {json.dumps(res)[:2000]}",
+             f"- secret findings (evidence + state, .gz decompressed): {len(findings)}",
+             *[f"  - {f.path}:{f.line} {f.kind}" for f in findings[:20]],
+             f"- container specs built: {spec['specs']}; containing the token: {spec['specs_containing_token']}",
+             f"- leftover containers: {len(left)}", *_dry_facts(), "", f"**Result: {'PASS' if ok else 'FAIL'}**", ""]
+    out = paths.RESULTS / "dryrun-validation.md"
+    fsutil.write_text(out, "\n".join(lines))
+    return out

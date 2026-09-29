@@ -1,8 +1,9 @@
-# runner/config/arms/dryrun.toml (Task 24 extends [setup] and [drive])
+# runner/config/arms/dryrun.toml — the dry-run arm (Task 24): the fake claude plays the arm with the reference
+# implementation. dryrun-broken / -pinfault / -edge are identical except name, repo_name and env.
 name = "dryrun"
 tool = "fake claude (runner self-test)"
 version = "0"
-citation = "runner Task 6/24"
+citation = "runner Task 6/24 (runner self-test)"
 image = "bakeoff-arm-dryrun:1"
 tracker = "dry"
 repo_name = "bakeoff-specs-dryrun"
@@ -14,16 +15,16 @@ setup = []
 run = []
 
 [setup]
-shell = []
+shell = ["mkdir -p .claude/commands && printf 'Dry next\\n' > .claude/commands/dry-next.md && printf 'Dry close\\n' > .claude/commands/dry-close.md"]
 agent = []
 plugins = []
-manifest_paths = []                        # setup creates nothing in the repo (Task 9 fix round 1: a missing path fails)
+manifest_paths = []                        # no manifest compare (setup runs once per arm, Task 23): the check is computed away
 
 [drive]
 entry = "{handoff}"
 bug_entry = "{handoff}"
-must_run = []
-must_run_source = ""
+must_run = ["/dry-close"]                  # sent once per step: the fake never invokes it itself
+must_run_source = "runner self-test"
 fresh_session_before = []
 export_after = ""
 # N.a discovery stop (design §5): the method's own spec/plan/tracker folders; edits here are not code edits.

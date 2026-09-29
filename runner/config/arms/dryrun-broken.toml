@@ -1,0 +1,34 @@
+# runner/config/arms/dryrun-broken.toml — the dry-run arm (Task 24): the fake claude plays the arm with the reference
+# implementation. dryrun-broken / -pinfault / -edge are identical except name, repo_name and env.
+name = "dryrun-broken"
+tool = "fake claude (runner self-test)"
+version = "0"
+citation = "runner Task 6/24 (runner self-test)"
+image = "bakeoff-arm-dryrun:1"
+tracker = "dry"
+repo_name = "bakeoff-specs-dryrun-broken"
+env = { FAKE_VARIANT = "broken" }
+dry = true
+
+[egress]
+setup = []
+run = []
+
+[setup]
+shell = ["mkdir -p .claude/commands && printf 'Dry next\\n' > .claude/commands/dry-next.md && printf 'Dry close\\n' > .claude/commands/dry-close.md"]
+agent = []
+plugins = []
+manifest_paths = []                        # no manifest compare (setup runs once per arm, Task 23): the check is computed away
+
+[drive]
+entry = "{handoff}"
+bug_entry = "{handoff}"
+must_run = ["/dry-close"]                  # sent once per step: the fake never invokes it itself
+must_run_source = "runner self-test"
+fresh_session_before = []
+export_after = ""
+# N.a discovery stop (design §5): the method's own spec/plan/tracker folders; edits here are not code edits.
+# Every arm also gets pins.toml [discovery] docs_paths.
+spec_paths = [
+  { path = "docs/", why = "the fake claude has no method; docs/ as for control" },
+]

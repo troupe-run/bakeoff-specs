@@ -1,0 +1,20 @@
+# runner/config/dryrun-owner-dry4.toml — dry4 (Task 24): dryrun-owner.toml plus a pause after step 1 (then resume).
+# Every answer is instant and recorded as "the scripted owner".
+[escalations]
+default = "Print floats exactly as written in the file."
+
+[gates]
+default = "accept"
+
+[items]
+default = true
+
+[review]
+default = "continue"
+pause_after = [1]
+
+[confirm]
+default = true
+
+[reclassify]
+default = "arm"
