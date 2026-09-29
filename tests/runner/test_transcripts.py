@@ -443,3 +443,17 @@ def test_fake_claude_subagent_on_another_model_is_caught_from_the_collected_tran
     assert not r.ok
     assert [(Path(v["file"]).name, v["where"], v["model"]) for v in r.violations] == \
         [("agent-1.jsonl.gz", "assistant", "claude-haiku-4-5")]
+
+
+def test_a_directory_the_walk_cannot_list_is_recorded_not_silently_dropped(tmp_path):
+    # os.walk swallows listing errors by default; a chmod-000 subagents dir would hide an off-model transcript.
+    root = tmp_path / ".claude" / "projects"
+    w(root / "p/s1.jsonl", asst("claude-opus-5-5"))
+    hidden = root / "p/s1/subagents"; w(hidden / "agent-1.jsonl", asst("claude-haiku-4-5"))
+    hidden.chmod(0)
+    try:
+        skipped: list[dict] = []
+        assert safe_files(root, skipped=skipped) == [root / "p/s1.jsonl"]
+        assert skipped == [{"path": "p/s1/subagents", "reason": "unreadable"}]
+    finally:
+        hidden.chmod(0o755)

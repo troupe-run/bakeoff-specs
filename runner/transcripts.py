@@ -1,19 +1,27 @@
 """Transcript collection (symlink-safe) and model-pin verification (design §2, §11; review S-1, C-6, C-16).
 
 `$CLAUDE_CONFIG_DIR/projects/` is written by the arm, so everything under it is hostile input: a symlink, a
-hard link, a FIFO or a symlinked directory could make the host copy or hash a file outside the arm's tree
-(or hang on a pipe). `safe_files` walks without following links and skips, and records, anything that is not
-a plain single-link regular file whose real path stays under the root. Reads re-check with O_NOFOLLOW + fstat
-so an entry swapped after the walk is still refused.
+hard link, a FIFO, a symlinked directory or a huge (sparse) file could make the host copy or hash a file outside
+the arm's tree, hang on a pipe, or exhaust memory/disk. `safe_files` walks without following links and skips,
+and records, anything that is not a plain single-link regular file of at most MAX_FILE_BYTES whose real path
+stays under the root (and any directory it cannot list). Reads re-check with O_NOFOLLOW + fstat so an entry
+swapped after the walk is still refused, and stream in CHUNK_BYTES pieces with the cap re-enforced.
 
 `verify_pin` checks the pinned model on every assistant message the turn produced — main session, subagents,
 the product-owner agent — plus the stream's init model, Claude Code version, assistant events and
-`result.modelUsage`. Checking nothing is a failure (`no_evidence`), never a vacuous pass.
+`result.modelUsage`. It fails (never passes vacuously) when:
+  * no REAL (non-synthetic) assistant message was inspected (`no_evidence`);
+  * any entry of the transcript tree was skipped by collection (`unsafe`: the evidence is incomplete);
+  * a line other than a file's last cannot be read, or any line exceeds MAX_LINE_BYTES;
+  * a stream carries session.py's oversize marker on a turn whose outcome was not timeout/no_result
+    (`stream_outcomes`; on those outcomes the marker is counted in `truncated_lines`, like a truncated last line);
+  * any inspected field has the wrong JSON shape (reported as `<missing>` / `<malformed:TYPE>`, never raised).
 `faults.classify_pin(report, who)` (Task 15, preflight m4) turns a report into a fault.
 """
 from __future__ import annotations
 
 import gzip, hashlib, json, os, stat
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
 
@@ -21,10 +29,11 @@ from runner.config import Pins
 
 OVERSIZE_MARKER = "bk_oversize_line"        # runner.session writes this in place of a line over its reader limit
 UNSAFE_RECORD = "unsafe-entries.json"       # written into collect()'s dest when anything was skipped
-
-
-def _open(p: Path):
-    return gzip.open(p, "rt", errors="replace") if p.suffix == ".gz" else open(p, errors="replace")
+MAX_FILE_BYTES = 256 * 1024 * 1024          # per transcript file; larger is skipped as "oversize" (fix round 1)
+MAX_LINE_BYTES = 64 * 1024 * 1024           # per JSONL line when verifying; matches session.STREAM_LINE_LIMIT
+CHUNK_BYTES = 1024 * 1024
+TRUNCATION_OK_OUTCOMES = ("timeout", "no_result")   # session.TurnResult outcomes that may cut a stream short
+UNINSPECTED = "<uninspected>"
 
 
 def _rel(p: Path, root: Path) -> str:
@@ -38,7 +47,8 @@ def _inside(p: Path, real_root: str) -> bool:
 
 def safe_files(root: Path, pattern: str = "*.jsonl", *, skipped: list[dict] | None = None) -> list[Path]:
     """Plain regular files matching `pattern` under `root`, never following a link. Skipped entries are
-    appended to `skipped` as {"path": <relative to root>, "reason": symlink|outside-root|not-regular|hardlinked}."""
+    appended to `skipped` as {"path": <relative to root>,
+    "reason": symlink|outside-root|not-regular|hardlinked|oversize|unreadable}."""
     rec = skipped if skipped is not None else []
     if os.path.islink(root):
         rec.append({"path": ".", "reason": "symlink"})
@@ -46,7 +56,9 @@ def safe_files(root: Path, pattern: str = "*.jsonl", *, skipped: list[dict] | No
     if not root.is_dir():
         return []
     real_root, out = os.path.realpath(root), []
-    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+    def unlistable(e: OSError) -> None:            # os.walk silently drops what it cannot list; never here
+        rec.append({"path": _rel(Path(e.filename), root), "reason": "unreadable"})
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False, onerror=unlistable):
         d = Path(dirpath)
         keep = []
         for name in sorted(dirnames):
@@ -57,7 +69,11 @@ def safe_files(root: Path, pattern: str = "*.jsonl", *, skipped: list[dict] | No
         dirnames[:] = keep
         for name in sorted(filenames):
             p = d / name
-            st = os.lstat(p)
+            try:
+                st = os.lstat(p)
+            except OSError:
+                rec.append({"path": _rel(p, root), "reason": "unreadable"})
+                continue
             if stat.S_ISLNK(st.st_mode):
                 rec.append({"path": _rel(p, root), "reason": "symlink"})
                 continue
@@ -65,6 +81,7 @@ def safe_files(root: Path, pattern: str = "*.jsonl", *, skipped: list[dict] | No
                 continue
             reason = ("not-regular" if not stat.S_ISREG(st.st_mode) else
                       "hardlinked" if st.st_nlink != 1 else
+                      "oversize" if st.st_size > MAX_FILE_BYTES else
                       "outside-root" if not _inside(p, real_root) else None)
             if reason:
                 rec.append({"path": _rel(p, root), "reason": reason})
@@ -73,58 +90,98 @@ def safe_files(root: Path, pattern: str = "*.jsonl", *, skipped: list[dict] | No
     return sorted(out)
 
 
-def _read_safe(p: Path, real_root: str) -> bytes | None:
-    """The file's bytes, or None when it is no longer a plain in-tree regular file (swapped after the walk)."""
+
+
+def _open_safe(p: Path, real_root: str) -> int | str:
+    """An fd for `p` if it is still a plain in-tree single-link regular file within the cap, else the reason.
+    O_NONBLOCK: opening a FIFO swapped in after the walk must not hang."""
     if not _inside(p.parent / "x", real_root):
-        return None
+        return "outside-root"
     try:
         fd = os.open(p, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     except OSError:
-        return None
-    try:
-        st = os.fstat(fd)
-        if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1:
-            return None
-        with os.fdopen(fd, "rb", closefd=False) as fh:
-            return fh.read()
-    finally:
+        return "symlink" if os.path.islink(p) else "unreadable"
+    st = os.fstat(fd)
+    reason = ("not-regular" if not stat.S_ISREG(st.st_mode) else
+              "hardlinked" if st.st_nlink != 1 else
+              "oversize" if st.st_size > MAX_FILE_BYTES else None)
+    if reason:
         os.close(fd)
+        return reason
+    return fd
 
 
-def _safe_contents(config_dir: Path, skipped: list[dict]) -> dict[str, bytes]:
+def _chunks(fd: int) -> Iterator[bytes]:
+    """The file's bytes in CHUNK_BYTES pieces; raises _Oversize past MAX_FILE_BYTES (it grew after the fstat)."""
+    total = 0
+    while chunk := os.read(fd, CHUNK_BYTES):
+        total += len(chunk)
+        if total > MAX_FILE_BYTES:
+            raise _Oversize
+        yield chunk
+
+
+class _Oversize(Exception):
+    pass
+
+
+def _each_safe(config_dir: Path, skipped: list[dict]) -> Iterator[tuple[str, int]]:
+    """(relative path, open fd) for each safe transcript, one at a time; the caller closes the fd."""
     root = config_dir / "projects"
     files = safe_files(root, skipped=skipped)
-    if not files:
-        return {}
-    real_root, out = os.path.realpath(root), {}
+    real_root = os.path.realpath(root) if files else ""
     for f in files:
-        data = _read_safe(f, real_root)
-        if data is None:
-            skipped.append({"path": _rel(f, root), "reason": "changed-under-read"})
+        got = _open_safe(f, real_root)
+        if isinstance(got, str):
+            skipped.append({"path": _rel(f, root), "reason": "oversize" if got == "oversize" else "changed-under-read"})
             continue
-        out[_rel(f, root)] = data
-    return out
+        yield _rel(f, root), got
 
 
 def snapshot(config_dir: Path) -> dict[str, str]:
-    """Relative path under `projects/` → sha256, for every safe transcript file."""
-    return {rel: hashlib.sha256(b).hexdigest() for rel, b in _safe_contents(config_dir, []).items()}
+    """Relative path under `projects/` → sha256, for every safe transcript file (streamed, one file at a time)."""
+    out: dict[str, str] = {}
+    for rel, fd in _each_safe(config_dir, []):
+        try:
+            h = hashlib.sha256()
+            for chunk in _chunks(fd):
+                h.update(chunk)
+            out[rel] = h.hexdigest()
+        except _Oversize:
+            pass
+        finally:
+            os.close(fd)
+    return out
 
 
 def collect(config_dir: Path, before: dict[str, str], dest: Path, *,
             skipped: list[dict] | None = None) -> list[Path]:
     """Gzip every safe transcript that is new or changed since `before` into `dest/<rel>.gz` (recursive, so
-    `<session>/subagents/*.jsonl` come too). Each file is read once: the bytes hashed are the bytes copied.
-    Anything skipped is appended to `skipped` and recorded in `dest/unsafe-entries.json`."""
+    `<session>/subagents/*.jsonl` come too). Each file is read once, in chunks: the bytes hashed are the bytes
+    copied. Anything skipped is appended to `skipped` and recorded in `dest/unsafe-entries.json`; pass the same
+    list to `verify_pin(unsafe=...)`."""
     rec: list[dict] = []
     out = []
-    for rel, data in _safe_contents(config_dir, rec).items():
-        if before.get(rel) == hashlib.sha256(data).hexdigest():
-            continue
+    for rel, fd in _each_safe(config_dir, rec):
         target = dest / (rel + ".gz")
-        target.parent.mkdir(parents=True, exist_ok=True)
-        with gzip.open(target, "wb") as dst:
-            dst.write(data)
+        part = target.with_name(target.name + ".part")
+        part.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            h = hashlib.sha256()
+            with gzip.open(part, "wb") as dst:
+                for chunk in _chunks(fd):
+                    h.update(chunk)
+                    dst.write(chunk)
+        except _Oversize:
+            part.unlink()
+            rec.append({"path": rel, "reason": "oversize"})
+            continue
+        finally:
+            os.close(fd)
+        if before.get(rel) == h.hexdigest():
+            part.unlink()
+            continue
+        part.replace(target)
         out.append(target)
     if rec:
         dest.mkdir(parents=True, exist_ok=True)
@@ -151,61 +208,127 @@ class PinReport:
         return json.dumps(asdict(self), indent=2)
 
 
-def _lines(f: Path):
-    with _open(f) as fh:
-        for i, line in enumerate(fh, 1):
-            if not line.strip():
+def _raw_lines(f: Path) -> Iterator[tuple[int, str, object]]:
+    """(line number, kind, event) with kind ok|bad|oversize. A line is never held beyond MAX_LINE_BYTES."""
+    with (gzip.open(f, "rb") if f.suffix == ".gz" else open(f, "rb")) as fh:
+        i = 0
+        while raw := fh.readline(MAX_LINE_BYTES + 1):
+            i += 1
+            if len(raw) > MAX_LINE_BYTES and not raw.endswith(b"\n"):
+                while (more := fh.readline(CHUNK_BYTES)) and not more.endswith(b"\n"):
+                    pass
+                yield i, "oversize", None
+                continue
+            if not raw.strip():
                 continue
             try:
-                ev = json.loads(line)
-            except json.JSONDecodeError:
-                yield i, None
+                ev = json.loads(raw)
+            except (ValueError, RecursionError):
+                yield i, "bad", None
                 continue
-            yield i, ev if isinstance(ev, dict) else None
+            yield i, ("ok" if isinstance(ev, dict) else "bad"), ev
 
 
-def verify_pin(transcript_files: list[Path], stream_files: list[Path], pins: Pins, *,
-               require_transcripts: bool = True) -> PinReport:
+def _lines(f: Path) -> Iterator[tuple[int, str, object, bool]]:
+    """_raw_lines plus whether each is the file's last non-empty line."""
+    prev = None
+    for item in _raw_lines(f):
+        if prev is not None:
+            yield (*prev, False)
+        prev = item
+    if prev is not None:
+        yield (*prev, True)
+
+
+def _not_a_dict(value: object) -> str:
+    return "<missing>" if value is None else f"<malformed:{type(value).__name__}>"
+
+
+def _shape(value: object) -> str:
+    """The value if it is a string, else a tag naming what it is (so a hostile shape is reported, not raised)."""
+    if isinstance(value, str):
+        return value
+    return "<missing>" if value is None else f"<malformed:{type(value).__name__}>"
+
+
+def verify_pin(transcript_files: Iterable[Path], stream_files: Iterable[Path], pins: Pins, *,
+               unsafe: list[dict], require_transcripts: bool = True,
+               stream_outcomes: Mapping[Path | str, str] | None = None) -> PinReport:
+    """`unsafe` is REQUIRED: collect()'s skipped entries. Any of them means the evidence is incomplete."""
     ok_models, synth = set(pins.accepted_models), set(pins.synthetic_models)
-    n = sn = s = trunc = 0
-    bad: list[dict] = []
+    outcomes = {str(k): v for k, v in (stream_outcomes or {}).items()}
+    n = sn = real_t = real_s = s = trunc = 0
+    bad: list[dict] = [{"file": e.get("path"), "line": None, "where": "transcript_unverifiable",
+                        "model": e.get("reason")} for e in unsafe]
     versions: set[str] = set()
+    unverified: list[str] = []
 
-    def judge(f, i, where, model):
+    def violation(f, i, where, model):
+        bad.append({"file": str(f), "line": i, "where": where, "model": model})
+
+    def judge(f, i, where, value, *, allow_synthetic=True) -> bool:
+        """True when `value` is a real accepted model."""
         nonlocal s
-        if model in synth:
+        m = _shape(value)
+        if isinstance(value, str) and value in synth and allow_synthetic:
             s += 1
-        elif model not in ok_models:
-            bad.append({"file": str(f), "line": i, "where": where, "model": model})
+            return False
+        if isinstance(value, str) and value in ok_models:
+            return True
+        violation(f, i, where, m)
+        return False
+
+    def judge_message(f, i, where, ev) -> bool:
+        msg = ev.get("message")
+        if not isinstance(msg, dict):
+            violation(f, i, where, _not_a_dict(msg))
+            return False
+        return judge(f, i, where, msg.get("model"))
+
+    def unreadable(f, i, kind, last) -> None:
+        nonlocal trunc
+        if kind == "bad" and last:                       # a timed-out turn's cut-off last line: counted
+            trunc += 1
+        else:
+            violation(f, i, "unreadable_line" if kind == "bad" else "oversize_line", UNINSPECTED)
 
     for f in transcript_files:
-        for i, ev in _lines(f):
-            if ev is None:
-                trunc += 1
+        for i, kind, ev, last in _lines(f):
+            if kind != "ok":
+                unreadable(f, i, kind, last)
             elif ev.get("type") == "assistant":
                 n += 1
-                judge(f, i, "assistant", (ev.get("message") or {}).get("model"))
-    unverified: list[str] = []
+                real_t += judge_message(f, i, "assistant", ev)
     for f in stream_files:
         saw_init = active = False
-        for i, ev in _lines(f):
-            t = None if ev is None else ev.get("type")
-            if ev is None or t == OVERSIZE_MARKER:       # a line nobody could inspect: counted, not fatal
-                trunc += 1
+        for i, kind, ev, last in _lines(f):
+            if kind != "ok":
+                unreadable(f, i, kind, last)
+                continue
+            t = ev.get("type")
+            if t == OVERSIZE_MARKER:
+                if outcomes.get(str(f)) in TRUNCATION_OK_OUTCOMES:
+                    trunc += 1
+                else:
+                    violation(f, i, "oversize_marker", UNINSPECTED)
             elif t == "system" and ev.get("subtype") == "init":
                 saw_init = True
-                judge(f, i, "init", ev.get("model"))
+                judge(f, i, "init", ev.get("model"), allow_synthetic=False)
                 v = ev.get("claude_code_version")
-                versions.add(str(v))
-                if v != pins.claude_version:
-                    bad.append({"file": str(f), "line": i, "where": "claude_code_version", "model": v})
+                versions.add(_shape(v))
+                if not isinstance(v, str) or v != pins.claude_version:
+                    violation(f, i, "claude_code_version", _shape(v))
             elif t == "assistant":
                 sn += 1; active = True
-                judge(f, i, "stream.assistant", (ev.get("message") or {}).get("model"))
-            elif t == "result":
-                for m in (ev.get("modelUsage") or {}):
-                    active = True
-                    judge(f, i, "result.modelUsage", m)
+                real_s += judge_message(f, i, "stream.assistant", ev)
+            elif t == "result" and "modelUsage" in ev:
+                active = True
+                mu = ev["modelUsage"]
+                if not isinstance(mu, dict):
+                    violation(f, i, "result.modelUsage", _not_a_dict(mu))
+                else:
+                    for m in mu:
+                        judge(f, i, "result.modelUsage", m)
         if not saw_init:
             # Controller ruling (concern 2): the version is never assumed. Activity without an init means the
             # model/version cannot be proven -> violation. No init and no activity (e.g. a turn that timed out
@@ -213,11 +336,11 @@ def verify_pin(transcript_files: list[Path], stream_files: list[Path], pins: Pin
             versions.add("unverified")
             unverified.append(str(f))
             if active:
-                bad.append({"file": str(f), "line": None, "where": "claude_code_version", "model": "unverifiable"})
-    # Controller ruling: checking nothing is a failure. Transcripts are the evidence for an arm step (a broken
-    # transcript-path assumption must fault, not pass on streams); with transcripts optional, SOME assistant
-    # message must still have been inspected.
-    no_evidence = (require_transcripts and n == 0) or (n + sn == 0)
+                violation(f, None, "claude_code_version", "unverifiable")
+    # Controller rulings: checking nothing is a failure, and synthetic messages are not evidence. Transcripts are
+    # the evidence for an arm step (a broken transcript-path assumption must fault, not pass on streams); with
+    # transcripts optional, SOME real assistant message must still have been inspected.
+    no_evidence = (require_transcripts and real_t == 0) or (real_t + real_s == 0)
     return PinReport(ok=not bad and not no_evidence, assistant_messages=n, stream_assistant_messages=sn,
                      synthetic=s, truncated_lines=trunc, claude_code_versions=sorted(versions),
                      no_evidence=no_evidence, violations=bad, unverified_streams=unverified)
