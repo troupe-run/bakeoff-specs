@@ -5,7 +5,7 @@ that sits at the same path the arm used (`/work/bakeoff-specs-<arm>`). A prep co
 harness anything) installs it; then every test run happens in a separate, network-less tester container, outside
 every arm session.
 
-Separation inside the tester (fix rounds 1 and 2):
+Separation inside the tester (fix rounds 1-3):
 
 - pytest runs as the HARNESS uid 1000 (`runner/tester_entry.sh`, passed as `bash -c` text) with only SETUID/
   SETGID (start the arm), KILL (signal its `watch` leader), DAC_OVERRIDE (read files the arm made private),
@@ -19,18 +19,22 @@ Separation inside the tester (fix rounds 1 and 2):
   ownership, measured): the hidden suite is streamed on stdin into `/harness`, and results are written to
   `/results`, both tmpfs owned by uid 1000, mode 0700, created before any arm code runs; results leave as
   length-framed records on the entry script's stdout and are parsed in memory;
-- the reference (`/opt/reference`, the answer key) is uid-1000-only, 0700, in the image layer; reference runs
-  (flake classification) run it as the harness uid;
+- the reference (`/opt/reference`, the answer key) exists only in its own image, `bakeoff-tester-ref` (fix round
+  3): the tester image every arm-code container uses (prep, harness, script) holds no reference at all. Only
+  the harness's reference runs (flake classification, `_spec(..., reference=True)`, never with an arm copy) use
+  it, running the reference as the harness uid (uid-1000-only, 0700, in the image layer);
 - a run is scored only if it is consistent: pytest exit 0 or 1, exit 0 iff no failure in the junit, and the
   junit's tests exactly the collected set (collected with no arm code mounted). An abnormal death with resource
   evidence is `arm-resource` (re-run once, then all-failed); a run over budget is `arm-timeout` (all failed);
-  anything else abnormal is a `harness-fault` (not scoreable).
+  results overflow (a junit/log member over its cap, or `/results` full) is `arm-output` (all failed) only when
+  `driver.Cli`'s truncation marker corroborates it (fix round 4); anything else abnormal is a `harness-fault`
+  (not scoreable).
 
 The remaining PLAN-2 NOTEs are resolved as before: one network namespace (`127.0.0.1` for `served`), no
 `docker exec` (env reaches the CLI), `--init` reaps, the container is removed.
 """
 from __future__ import annotations
-import functools, json, os, shutil, stat, subprocess, time, uuid, xml.etree.ElementTree as ET
+import functools, json, os, re, shutil, stat, subprocess, time, uuid, xml.etree.ElementTree as ET
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from runner import config, docker, egress, gitops, repo
@@ -41,6 +45,13 @@ from harness.validate_suites import allowlisted   # single source for allowlist 
 ENV = {"UV_OFFLINE": "1", "UV_NO_SYNC": "1", "PYTHONDONTWRITEBYTECODE": "1", "UV_CACHE_DIR": "/tmp/uv-cache",
        "HOME": "/home/actor", "UV_PYTHON_DOWNLOADS": "never"}
 PYTEST = ["/opt/harness/bin/python", "-m", "pytest"]
+# pytest's assertion truncation is what bounds the reprs in failure messages (e.g. a theatre file compared in an
+# assert). It is off at verbosity >= 2 or when CI/BUILD_NUMBER is set (`_pytest.compat.running_on_ci`), and
+# PYTEST_ADDOPTS could add -vv: strip those from pytest's own environment and pin the rest (fix round 4, item 3).
+PYTEST_ENV_STRIP = ("CI", "BUILD_NUMBER", "PYTEST_ADDOPTS")
+PYTEST_PINS = ["-q", "-o", "verbosity_assertions=auto", "-o", "truncation_limit_lines=8",
+               "-o", "truncation_limit_chars=640"]
+PYTEST_FORBIDDEN = ("-v", "--verbos", "-o", "--override-ini", "-c", "--config-file", "-p", "-q", "--quiet")
 MAIN = "refs/heads/main"
 HARNESS_UID, ARM_UID = 1000, 1001
 HARNESS_CAPS = ("SETUID", "SETGID", "KILL", "DAC_OVERRIDE", "SETPCAP", "SYS_RESOURCE")
@@ -118,9 +129,13 @@ def arm_prefix(impl: str) -> list[str]:
 def _pytest_argv(args: list[str], impl: str, reference: bool = False) -> list[str]:
     """Arm runs: the CLI as uid 1001, no TROUPE_REF_STEP. Reference runs (flake classification): the reference is
     reachable only by the harness uid, so it runs as uid 1000 and gets its step (fix round 2, item 1 (b))."""
+    bad = [a for a in args if a.startswith(PYTEST_FORBIDDEN)]
+    if bad:     # verbosity, ini overrides, config files and plugins are the harness's pins, never a caller's
+        raise ValueError(f"pytest args may not override the harness pins: {bad}")
     prefix = ["uv", "run", "--quiet", "--project", impl, "troupe"] if reference else arm_prefix(impl)
-    return [*PYTEST, *args, "--impl", impl, "--cmd-prefix", " ".join(prefix), *(["--forward-ref-step"] if reference else []),
-            "-q", "-p", "no:cacheprovider", "--rootdir", "/harness", f"--junitxml={RESULTS}/junit.xml"]
+    return ["env", *[x for k in PYTEST_ENV_STRIP for x in ("-u", k)], *PYTEST, *args, "--impl", impl,
+            "--cmd-prefix", " ".join(prefix), *(["--forward-ref-step"] if reference else []), *PYTEST_PINS,
+            "-p", "no:cacheprovider", "--rootdir", "/harness", f"--junitxml={RESULTS}/junit.xml"]
 
 
 def _bundle_files() -> list[Path]:
@@ -155,16 +170,38 @@ def unpack_bundle(blob: bytes) -> dict[str, bytes]:
     return dict(bundle_unpack.parse(blob))
 
 
+# Exactly what `tests/hidden/driver.cap` writes at the head of a capped stream (a pure test ties the two together).
+TRUNCATION_MARKER = re.compile(rb"\[\.\.\. [0-9]+ bytes truncated \.\.\.\]")
+MARKER_SCAN = 8_000_000     # how much of a member's readable tail is searched for the marker
+ARM_OUTPUT_MEMBERS = ("junit.xml", "pytest.log")    # the only members arm output can grow; the rest are harness-only
+
+
+def marker_in_tail(data: bytes) -> bool:
+    return TRUNCATION_MARKER.search(data[-MARKER_SCAN:]) is not None
+
+
 class ResultsError(ValueError):
-    def __init__(self, msg: str, oversize: bool = False):
+    """`overflow`: set only for junit.xml/pytest.log at a non-negative size over its cap —
+    {"member", "size", "cap", "marker"} (marker: the Cli truncation marker is in the readable tail)."""
+    def __init__(self, msg: str, overflow: dict | None = None):
         super().__init__(msg)
-        self.oversize = oversize
+        self.overflow = overflow
+
+
+def _overflow_detail(member: str, size: int | str, marker: bool) -> str:
+    return f"{member} {size} bytes; Cli truncation marker {'found' if marker else 'not found'}"
 
 
 def _frames_error(e: ResultsError) -> str:
-    """An over-cap member can only come from arm output (the hidden suite's own output is small): the arm's
-    result, `arm-output`, all-failed. Anything else wrong with the frames is the harness's."""
-    return f"arm-output: {e}" if e.oversize else f"harness-fault: {e}"
+    """An over-cap junit.xml/pytest.log is `arm-output` (all-failed, scoreable) only when the Cli cap's truncation
+    marker corroborates that arm output grew it; without the marker, and for anything else wrong with the frames
+    (a negative size, a harness-only member over its cap, a bad header), it is a `harness-fault` (fix round 4).
+    The member, its size and whether the marker was found are kept in the attribution."""
+    o = e.overflow
+    if o is None:
+        return f"harness-fault: {e}"
+    return f"{'arm-output' if o['marker'] else 'harness-fault'}: results member over its cap (cap {o['cap']}): " \
+           + _overflow_detail(o["member"], o["size"], o["marker"])
 
 
 def unpack_results(blob: bytes) -> dict[str, bytes]:
@@ -187,8 +224,13 @@ def unpack_results(blob: bytes) -> dict[str, bytes]:
             raise ResultsError(f"unexpected results member {name!r}")
         if name in out:
             raise ResultsError(f"duplicate results member {name}")
-        if not 0 <= size <= RESULT_CAPS[name]:
-            raise ResultsError(f"results member {name} is {size} bytes (cap {RESULT_CAPS[name]})", oversize=True)
+        if size < 0 or (size > RESULT_CAPS[name] and name not in ARM_OUTPUT_MEMBERS):
+            raise ResultsError(f"malformed results frame: {name} has size {size} (cap {RESULT_CAPS[name]})")
+        if size > RESULT_CAPS[name]:
+            readable = blob[nl + 1:min(nl + 1 + size, len(blob))]
+            raise ResultsError(f"results member {name} is {size} bytes (cap {RESULT_CAPS[name]})",
+                               {"member": name, "size": size, "cap": RESULT_CAPS[name],
+                                "marker": marker_in_tail(readable)})
         if nl + 1 + size > len(blob):
             raise ResultsError(f"results member {name} is truncated")
         out[name] = blob[nl + 1:nl + 1 + size]
@@ -231,8 +273,13 @@ def assess(collected: list[str], res: dict[str, bytes]) -> tuple[dict[str, str],
     if "timed_out" in res:
         return {t: "failed" for t in collected}, code, "arm-timeout"
     ev = resource_evidence(res)
-    if "results-full" in ev:           # only arm output can fill /results (fix round 3): the arm's result
-        return {t: "failed" for t in collected}, code, "arm-output"
+    if "results-full" in ev:           # arm output filling /results is the arm's result — if the marker says so
+        found = [m for m in ARM_OUTPUT_MEMBERS if marker_in_tail(res.get(m, b""))]
+        detail = "; ".join(_overflow_detail(m, len(res[m]), m in found) for m in ARM_OUTPUT_MEMBERS if m in res) \
+            or "no junit.xml or pytest.log"
+        if found:
+            return {t: "failed" for t in collected}, code, f"arm-output: /results full: {detail}"
+        return {}, code, f"harness-fault: /results full: {detail}"
     if code not in (0, 1) or "junit.xml" not in res:
         if ev:
             return {}, code, "arm-resource"
@@ -267,7 +314,10 @@ class Summary:
     exit_code: int
     install_failed: bool = False
     scoreable: bool = True
-    attribution: str | None = None      # None | "arm-timeout" | "arm-resource" | "harness-fault: <why>"
+    # None (scored normally) | "arm-timeout" | "arm-resource" (both all-failed, scoreable) | "arm-output: <member,
+    # size, marker found>" (results overflow corroborated by the Cli marker; all-failed, scoreable) |
+    # "harness-fault: <why>" (not scoreable, no outcomes)
+    attribution: str | None = None
     skipped: int = 0
     resource_evidence: list = field(default_factory=list)   # one list per full-suite attempt
 
@@ -529,8 +579,8 @@ def run(p: Paths, copy: Path, step: int, out_dir: Path, install_failed: bool = F
             if "junit.xml" in res:
                 (hd / "junit.xml").write_bytes(res["junit.xml"])
         if err is not None or res is None:
-            if err and err.startswith("arm-output"):     # results over their caps: the arm's output, all-failed
-                tests, code, attribution = {t: "failed" for t in collected}, -1, "arm-output"
+            if err and err.startswith("arm-output"):     # corroborated results overflow: all-failed, detail kept
+                tests, code, attribution = {t: "failed" for t in collected}, -1, err
             else:
                 tests, code, attribution = {}, -1, err if err and err.startswith("harness-fault") else f"harness-fault: {err}"
             break

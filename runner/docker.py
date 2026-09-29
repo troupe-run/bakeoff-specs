@@ -26,7 +26,10 @@ class RunSpec:
     stdin: bool
     limits: Limits
     proxy: bool
-    user: str = "1000:1000"          # the tester starts as root only to drop to two uids (hidden.py, fix round 1)
+    user: str = "1000:1000"          # default for the other containers; the tester sets its own (hidden._spec):
+                                     # prep runs as the arm uid 1001:1001 directly, while harness and script modes
+                                     # start as 0:0 only to drop (harness: pytest as 1000, the arm as 1001; script:
+                                     # 1001 alone)
     cap_add: tuple[str, ...] = ()    # added back after --cap-drop ALL
     tmpfs: tuple[str, ...] = ()      # extra tmpfs mounts ("path:opts"), beside the fixed /tmp
 
