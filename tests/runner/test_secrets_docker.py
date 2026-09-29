@@ -74,13 +74,13 @@ def test_a_snapshot_is_scanned_with_its_git_history_and_the_pat_file_is_exempt(P
     (proj / "s.jsonl").write_text(f'{{"text": "{OAUTH}"}}\n')            # the keychain token in a transcript
     (P.repo / "k.txt").write_text(ANT + "\n")
     gitops.commit_all(P, gitops.IDENTITY, "leak")
-    (P.repo / "k.txt").unlink()
-    gitops.commit_all(P, gitops.IDENTITY, "unleak")
+    gitops.git(P, "rm", "-q", "k.txt", write=True)                   # in the container: a host unlink can
+    gitops.commit_all(P, gitops.IDENTITY, "unleak")                      # look stale through the bind mount
     gitops.git(P, "push", "-q", "origin", "main", write=True)
     snap = repo.snapshot(P, 3)
     lits = [OAUTH, *secrets.home_pat_values(P.home)]
     found = secrets.scan_snapshot(P, snap, lits)
-    got = sorted((f.kind, f.path.split(":", 1)[1].split(" ")[0] if "history" not in f.path else "history")
+    got = sorted((f.kind, f.path.split(":", 1)[1].split(" ")[0] if " history: " not in f.path else "history")
                  for f in found)
     assert ("literal", "home/.bash_history") in got
     assert ("literal", "home/.claude/projects/p/s.jsonl") in got
