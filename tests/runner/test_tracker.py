@@ -57,8 +57,9 @@ def test_round_trip_facts_are_raw_facts(monkeypatch, tmp_path):
 
 def test_github_references_by_slug_or_issue_url_count_but_a_longer_number_or_beads_prefix_does_not():
     log = ("a1\x1fFixes o/r#7\x1e" "a2\x1fsee https://github.com/o/r/issues/7\x1e" "a3\x1fbump #70\x1e"
-           "a4\x1fx-#7 is not a ref\x1e" "a5\x1fissue 7\x1e")
-    assert tracker.commits_referencing(log, "7") == ["a1", "a2"]
+           "a4\x1fx-#7 is not a ref\x1e" "a5\x1fissue 7\x1e" "a6\x1fFixes troupe-run/bakeoff-specs-openspec-pass1#7\x1e"
+           "a7\x1f#7: at the start\x1e")
+    assert tracker.commits_referencing(log, "7") == ["a1", "a2", "a6", "a7"]
 
 
 def test_beads_id_must_stand_alone():
