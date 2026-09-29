@@ -82,8 +82,12 @@ class Summary:
 
 def summarise(step, tests, new_at_step, flaky, flaky_arm, exit_code, install_failed=False) -> Summary:
     """Harness flakes (`flaky`: flaky on the reference too) are neither passed nor failed; arm flakes
-    (`flaky_arm`: stable on the reference) count as failed for the arm and are recorded (review C-2)."""
-    final = {t: ("flaky" if t in flaky else "failed" if t in flaky_arm else o) for t, o in tests.items()}
+    (`flaky_arm`: stable on the reference) count as failed for the arm and are recorded (review C-2).
+    `install_failed` (prep failed twice): every test counts as failed."""
+    if install_failed:    # the arm's result: every test fails (a test may pass vacuously on uv's own exit 2)
+        final = {t: "failed" for t in tests}
+    else:
+        final = {t: ("flaky" if t in flaky else "failed" if t in flaky_arm else o) for t, o in tests.items()}
     new = [t for t in new_at_step if t in final]
     return Summary(step, len(final), sum(o == "passed" for o in final.values()),
                    sum(o == "failed" for o in final.values()), sum(o == "flaky" for o in final.values()),
