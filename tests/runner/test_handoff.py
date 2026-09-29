@@ -101,3 +101,18 @@ def test_every_arm_receives_the_handoff_byte_identical_inside_its_entry_wrapper(
 def test_in_force_at_step3_excludes_the_replaced_show_section():
     text = handoff.in_force(3, C)
     assert "## `get` and `show`" in text and "## `show PATH` (step 1 and 2)" not in text
+
+def test_po_view_at_step5_excludes_in_include_until_cr_b_is_delivered():            # coordinator ruling (PO leak)
+    before = handoff.in_force(5, C)
+    assert "## Overrides (from step 5" in before and "## In-include" not in before and "--in-include" not in before
+
+def test_po_view_at_step5_includes_in_include_once_cr_b_is_delivered():
+    after = handoff.in_force(5, C, after_crb=True)
+    assert "## Overrides (from step 5" in after and "## In-include (from step 5, change request B)" in after
+
+@pytest.mark.parametrize("step", [6, 7])
+def test_po_view_after_step5_always_includes_in_include(step):
+    assert "## In-include" in handoff.in_force(step, C)
+
+def test_po_view_before_step5_never_includes_in_include_even_with_the_flag():
+    assert "## In-include" not in handoff.in_force(4, C, after_crb=True)
