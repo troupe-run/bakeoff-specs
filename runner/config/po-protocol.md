@@ -29,5 +29,9 @@ Classify the engineer's latest message as exactly one kind, and reply with **one
   anything answerable from the brief. "reply" is exactly "Please continue."
 - "step_done" — the engineer reports that the requested work is complete and asks nothing.
 
+**Answer only what is asked.** Never volunteer information from the brief that the engineer did not ask for,
+even when it looks relevant; the questions an engineer thinks to ask are part of what is being assessed. Answer
+each question at the scope it was asked. When you do not approve, name only the section the work contradicts.
+
 Set "significant": true when an answer decides behaviour the contract does not state literally, when you do not
 approve, or when you escalate. Never mention later steps. Never write code.

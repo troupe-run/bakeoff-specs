@@ -93,10 +93,15 @@ every earlier step's still-valid tests, so regressions count.
   request or the first edit to code outside its spec and docs paths, whichever comes first. Every escalated
   answer is added to the brief, recording which arm first raised it. The arm repo is then reset to its
   pre-step commit.
-- **Consistency check:** before N.b, the answers gathered in N.a are checked to be consistent, so every arm
-  receives the same information.
-- **N.b (scored):** each arm, one at a time, re-runs step N from the same starting commit with the complete
-  brief, to completion. N.b is scored and is what step N+1 builds on.
+- **Consistency check:** before N.b, the answers gathered in N.a are checked to be consistent with each other
+  and with the brief, so the same question always gets the same answer.
+- **N.b (scored):** each arm, one at a time, re-runs step N from the same starting commit, to completion, with
+  the brief as it stands after the check. N.b is scored and is what step N+1 builds on.
+
+**Consistent, not identical (owner, 2026-09-29).** Arms get the same answer to the same question, but only
+what they ask for: the product owner never volunteers brief content an arm did not ask about. Asking tougher or
+more insightful questions is a strength the scoring must be able to see, and handing everyone the same
+information would hide it. The question log records which arm first raised each escalation.
 
 N.a is kept as evidence (notably of how each method handles ambiguity) and reported alongside.
 
