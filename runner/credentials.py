@@ -65,7 +65,10 @@ def dummy() -> Credential:
 
 def session_env(pins: Pins, arm: Arm, *, role: str, isolated: bool, tools: str = "", resume: str = "",
                 mcp: bool = False, pass_: str = "") -> dict[str, str]:
-    """Non-secret environment for one Claude session. `pass_` only feeds GH_REPO (preflight M4)."""
+    """Non-secret environment for one Claude session. `pass_` only feeds GH_REPO (preflight M4); it is
+    required for arm sessions so a forgotten pass cannot silently drop GH_REPO (controller ruling)."""
+    if role == "arm" and not pass_:
+        raise ValueError("session_env(role='arm') needs pass_ (it decides GH_REPO, preflight M4)")
     m = pins.model
     env = {
         "BK_MODEL": m, "BK_PERMISSION_MODE": pins.permission_mode,

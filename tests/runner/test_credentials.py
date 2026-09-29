@@ -8,6 +8,8 @@ FAKE_REAL = "sk-ant-oat01-FAKE-test-token-never-real-0123456789"   # fake only; 
 
 def env(arm="control", **kw):
     kw.setdefault("role", "arm"); kw.setdefault("isolated", False)
+    if kw["role"] == "arm":
+        kw.setdefault("pass_", "pass1")
     return credentials.session_env(config.load_pins(), config.load_arm(arm), **kw)
 
 
@@ -34,7 +36,8 @@ def test_plugin_dirs_only_for_arm_sessions_under_route_b():                 # OD
     assert env("superpowers")["BK_PLUGIN_DIRS"] == "/opt/plugins/superpowers"
     assert "BK_PLUGIN_DIRS" not in env("superpowers", role="po", isolated=True)
     pins_a = dataclasses.replace(config.load_pins(), plugin_route="marketplace")
-    e = credentials.session_env(pins_a, config.load_arm("superpowers"), role="arm", isolated=False)
+    e = credentials.session_env(pins_a, config.load_arm("superpowers"), role="arm", isolated=False,
+                                pass_="pass1")
     assert "BK_PLUGIN_DIRS" not in e
 
 
@@ -115,7 +118,7 @@ def test_gh_repo_absent_for_beads_dry_slugless_and_non_arm_sessions():
     e = credentials.session_env(config.load_pins(), dry_arm, role="arm", isolated=False, pass_="pass1")
     assert "GH_REPO" not in e                                                # dry tracker even on a real pass name
     assert "GH_REPO" not in env("control", pass_="dry1")                     # no slug on dry/probe passes
-    assert "GH_REPO" not in env("control")                                   # pass not given
+    assert "GH_REPO" not in env("control", role="po", isolated=True)        # non-arm role, no pass given
     assert "GH_REPO" not in env("control", role="po", isolated=True, pass_="pass1")
 
 
@@ -127,6 +130,8 @@ def _all_envs():
         arm = config.load_arm(name)
         for role, isolated in (("arm", False), ("arm", True), ("po", True), ("teammate", True)):
             for pass_ in ("", "pass1", "pass2", "canary", "dry1"):
+                if role == "arm" and not pass_:
+                    continue                                     # refused: pass_ is required for arm sessions
                 yield credentials.session_env(pins, arm, role=role, isolated=isolated, tools="Read",
                                               resume="sess-1", mcp=True, pass_=pass_)
 
@@ -165,3 +170,13 @@ def test_credential_refuses_pickling_but_survives_copy():
     with pytest.raises(TypeError):
         pickle.dumps(c)
     assert copy.deepcopy({"c": c})["c"] is c and copy.copy(c) is c
+
+
+def test_arm_sessions_require_a_pass():                                     # controller ruling on concern 1
+    pins, arm = config.load_pins(), config.load_arm("control")
+    with pytest.raises(ValueError):
+        credentials.session_env(pins, arm, role="arm", isolated=False)
+    with pytest.raises(ValueError):
+        credentials.session_env(pins, arm, role="arm", isolated=False, pass_="")
+    for role in ("po", "teammate"):
+        credentials.session_env(pins, arm, role=role, isolated=True)           # optional for other roles
