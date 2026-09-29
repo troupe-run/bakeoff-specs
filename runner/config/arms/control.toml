@@ -1,0 +1,26 @@
+name = "control"
+tool = "plain Claude Code, no methodology"
+version = "2.1.281"
+citation = "design §2 (control arm)"
+image = "bakeoff-base:cc2.1.281"
+tracker = "github"
+repo_name = "bakeoff-specs-control"
+env = {}
+
+[egress]
+setup = []
+run = ['^api\.github\.com$']
+
+[setup]
+shell = []
+agent = []
+plugins = []
+manifest_paths = [".claude"]
+
+[drive]
+entry = "{handoff}"
+bug_entry = "{handoff}"
+must_run = []
+must_run_source = "no methodology: no closing command"
+fresh_session_before = []
+export_after = ""
