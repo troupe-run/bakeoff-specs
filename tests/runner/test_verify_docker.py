@@ -110,15 +110,19 @@ def test_vendored_plugins_pass_their_version_checks_offline(arm, tmp_state):    
     assert got[f"{arm}.plugin-version"] and got["common.claude-version"] and got["common.no-foreign-plugins"]
 
 
-@pytest.mark.parametrize("arm", ["control", "superpowers", "openspec", "bmad"])
+STEP_IDS = {"control": set(), "superpowers": {"superpowers.plugin-version"}, "bmad": {"bmad.plugin-version"},
+            "openspec": {"openspec.version"}, "speckit": {"speckit.version"},
+            "speckitty": {"speckitty.version", "beads.version"}, "ccsdd": {"ccsdd.version"}}
+
+
+@pytest.mark.parametrize("arm", DONE_ARMS)
 def test_step_mode_prints_only_the_common_checks_and_the_version(arm, tmp_state):
     skip_if_parked(arm)
     p = Paths(PASS, arm); repo.init(p, arm, PASS)
     got = {c.id for c in checklist.verify(p, config.load_arm(arm), "step")}
     common = {"common.claude-version", "common.isolation-env", "common.git-identity", "common.no-foreign-plugins",
               "common.origin"}
-    assert got == common | ({f"{arm}.plugin-version"} if arm in ("superpowers", "bmad") else set()) \
-        | ({"openspec.version"} if arm == "openspec" else set())
+    assert got == common | STEP_IDS[arm]
 
 
 # ---- 2. control ---------------------------------------------------------------------------------------------
@@ -411,3 +415,225 @@ def test_bmad_real_image_checks_skip_while_parked():
     if why is None:
         pytest.skip("bmad is no longer parked: the real-image tests above run instead")
     assert "PARKED" in why and "bmad" in why
+
+
+
+# ---- 6. Task 11: speckit, speckitty (+ beads), ccsdd — the real [setup] shell steps offline, the agent turn's file
+#         as a fixture, then every check broken in turn ----------------------------------------------------------
+def fake_version(tmp_path: Path, name: str, argv: str, prints: str) -> list:
+    """/fakebin/<name>: prints `prints` for exactly `<name> <argv>`, and runs the real /usr/local/bin/<name>
+    otherwise (so only the version check can see it)."""
+    d = tmp_path / f"fakebin-{name}"; d.mkdir()
+    (d / name).write_text(f'#!/bin/sh\n[ "$*" = "{argv}" ] && {{ echo "{prints}"; exit 0; }}\n'
+                          f'exec /usr/local/bin/{name} "$@"\n')
+    (d / name).chmod(0o755)
+    return [Mount(d, "/fakebin", True)]
+
+
+def foreign_plugin(p: Paths):
+    def mutate():
+        (p.config_dir / "plugins").mkdir(parents=True, exist_ok=True)
+        (p.config_dir / "plugins" / "installed_plugins.json").write_text(
+            json.dumps({"plugins": {"superpowers@claude-plugins-official": []}}))
+    return mutate
+
+
+def break_each(monkeypatch, p, arm, backup, cases) -> dict:
+    """cases: name -> (mutate or None, want, env, extra mounts); each on its own never-mounted copy of `backup`."""
+    seen = {}
+    for n, (name, (mutate, _, env, extra)) in enumerate(cases.items()):
+        fresh(monkeypatch, p, backup, f"t11-{n}")
+        if mutate:
+            mutate()
+        seen[name] = failing(run(p, arm, extra=extra, env=env))
+    return seen
+
+
+def offline_setup_then_backup(arm_name: str, complete, tmp_path) -> tuple[config.Arm, Paths, Path, set[str]]:
+    """The arm's real [setup] shell steps with an EMPTY egress allowlist (they need no network); only the agent turn's
+    output is missing, and `complete` writes it as a fixture. Then every script check is green. Returns the arm, its
+    paths, a backup of the post-setup state and the checks that failed BEFORE the fixture."""
+    arm, p = config.load_arm(arm_name), Paths(PASS, arm_name)
+    got = {c.id: c for c in checklist.run_shell_only(PASS, arm_name, offline=True)}
+    assert set(got) == script_only_ids(arm_name)
+    before = failing(got)
+    complete(p)
+    got = run(p, arm)
+    assert not failing(got), [got[i] for i in failing(got)]
+    backup = tmp_path / "backup"; shutil.copytree(p.base, backup, symlinks=True)
+    return arm, p, backup, before
+
+
+PRINCIPLES_TEXT = checklist.PRINCIPLES.read_text()
+
+
+def _constitution(p: Paths) -> None:
+    f = p.repo / ".specify/memory/constitution.md"
+    (p.base.parent / "constitution-template.md").write_text(f.read_text())       # kept for the "template" case
+    f.write_text("# Project Constitution\n\n" + PRINCIPLES_TEXT)
+
+
+def test_speckit_setup_passes_its_checks_and_every_check_fails_when_broken(tmp_state, tmp_path, monkeypatch):
+    arm, p, backup, before = offline_setup_then_backup("speckit", _constitution, tmp_path)
+    assert before == {"speckit.constitution"}        # init leaves the template: red until the agent turn has run
+    template = (tmp_path / "state" / PASS / "constitution-template.md").read_text()
+
+    def registry(fn):
+        return lambda: _edit_json(p.repo / ".specify/extensions/.registry", fn)
+    none = ({}, [])
+    cases = {
+        "constitution is the template": (lambda: (p.repo / ".specify/memory/constitution.md").write_text(template),
+                                         {"speckit.constitution"}, *none),
+        "constitution empty": (lambda: (p.repo / ".specify/memory/constitution.md").write_text(""),
+                               {"speckit.constitution"}, *none),
+        "a placeholder left": (lambda: (p.repo / ".specify/memory/constitution.md").write_text(
+            "# Constitution\n\nRatified: [RATIFICATION_DATE]\n"), {"speckit.constitution"}, *none),
+        "no converge skill": (lambda: shutil.rmtree(p.repo / ".claude/skills/speckit-converge"), {"speckit.skills"}, *none),
+        "no taskstoissues skill": (lambda: shutil.rmtree(p.repo / ".claude/skills/speckit-taskstoissues"),
+                                   {"speckit.skills"}, *none),
+        "no constitution skill": (lambda: shutil.rmtree(p.repo / ".claude/skills/speckit-constitution"),
+                                  {"speckit.skills"}, *none),
+        "no bug-fix skill": (lambda: shutil.rmtree(p.repo / ".claude/skills/speckit-bug-fix"), {"speckit.bug-skills"}, *none),
+        "bug extension disabled": (registry(lambda d: d["extensions"]["bug"].update(enabled=False)),
+                                   {"speckit.bug-skills"}, *none),
+        "bug extension unregistered": (registry(lambda d: d["extensions"].pop("bug")), {"speckit.bug-skills"}, *none),
+        "specify 1.0.11 on PATH": (None, {"speckit.version"}, {"PATH": f"/fakebin:{PATH}"},
+                                   fake_version(tmp_path, "specify", "version", "│     CLI Version    1.0.11     │")),
+        "a plugin installed": (foreign_plugin(p), {"common.no-foreign-plugins"}, *none),
+    }
+    seen = break_each(monkeypatch, p, arm, backup, cases)
+    common = common_breaks(p)
+    seen |= run_breaks(monkeypatch, p, arm, backup, common)
+    want = {n: w for n, (_, w, _, _) in cases.items()} | {n: w for n, (_, w, _) in common.items()}
+    assert seen == want
+    assert_every_script_id_falsified("speckit", want.values())
+
+
+def _charter(p: Paths) -> None:
+    d = p.repo / ".kittify/charter"; d.mkdir(parents=True)
+    (d / "charter.md").write_text("# Charter\n\n" + PRINCIPLES_TEXT)
+    (d / "charter.yaml").write_text("schema_version: 1\nprinciples: see charter.md\n")
+
+
+def _kittify_tracker(p: Paths, fn):
+    """Edit the `tracker:` block of .kittify/config.yaml as text (a YAML round trip would reorder it)."""
+    def edit():
+        f = p.repo / ".kittify/config.yaml"
+        f.write_text(fn(f.read_text()))
+    return edit
+
+
+def _drop_hook(p: Paths, command_re: str):
+    import re as _re
+
+    def edit():
+        f = p.repo / ".claude/settings.json"
+        d = json.loads(f.read_text())
+        d["hooks"]["SessionStart"] = [e for e in d["hooks"]["SessionStart"]
+                                      if not any(_re.search(command_re, h.get("command", "")) for h in e.get("hooks", []))]
+        f.write_text(json.dumps(d))
+    return edit
+
+
+def _tamper(p: Paths, rel: str):
+    """spec-kitty installs its managed files read-only; a hand edit makes it writable first."""
+    def edit():
+        f = p.repo / rel
+        f.chmod(0o644); f.write_text(f.read_text() + "\ntampered\n")
+    return edit
+
+
+def test_speckitty_setup_passes_its_checks_and_every_check_fails_when_broken(tmp_state, tmp_path, monkeypatch):
+    arm, p, backup, before = offline_setup_then_backup("speckitty", _charter, tmp_path)
+    assert before == {"speckitty.charter"}           # red until the agent turn has run
+    none = ({}, [])
+    cases = {
+        "no charter.yaml": (lambda: (p.repo / ".kittify/charter/charter.yaml").unlink(), {"speckitty.charter"}, *none),
+        "empty charter.md": (lambda: (p.repo / ".kittify/charter/charter.md").write_text(""), {"speckitty.charter"}, *none),
+        "no /spec-kitty.accept": (lambda: (p.config_dir / "commands/spec-kitty.accept.md").unlink(),
+                                  {"speckitty.commands"}, *none),
+        "no /spec-kitty.charter": (lambda: (p.config_dir / "commands/spec-kitty.charter.md").unlink(),
+                                   {"speckitty.commands"}, *none),
+        "a managed skill tampered with": (_tamper(p, ".claude/skills/spec-kitty-runtime-next/SKILL.md"),
+                                          {"speckitty.verify-setup"}, *none),
+        "spec-kitty's SessionStart hook dropped": (_drop_hook(p, r"^spec-kitty session-start"),
+                                                  {"speckitty.session-hook"}, *none),
+        "bd prime hook dropped": (_drop_hook(p, r"^bd prime"), {"beads.claude-hook"}, *none),
+        "bound to fp": (_kittify_tracker(p, lambda t: t.replace("provider: beads", "provider: fp")),
+                        {"speckitty.tracker-binding"}, *none),
+        "another workspace": (_kittify_tracker(p, lambda t: t.replace("workspace: beads", "workspace: other")),
+                              {"speckitty.tracker-binding"}, *none),
+        "egress refused": (_kittify_tracker(p, lambda t: t.replace("egress: permitted", "egress: refused")),
+                           {"speckitty.tracker-egress"}, *none),
+        "egress not recorded": (_kittify_tracker(p, lambda t: t.replace("  egress: permitted\n", "")),
+                                {"speckitty.tracker-egress"}, *none),
+        "egress a near-miss spelling": (_kittify_tracker(p, lambda t: t.replace("egress: permitted", "egress: Permitted")),
+                                        {"speckitty.tracker-egress"}, *none),
+        "no beads database": (lambda: shutil.rmtree(p.repo / ".beads/embeddeddolt"), {"beads.init"}, *none),
+        "no beads config": (lambda: (p.repo / ".beads/config.yaml").unlink(), {"beads.init"}, *none),
+        "beads metrics on": (lambda: (p.home / ".config/bd/config.yaml").write_text(
+            (p.home / ".config/bd/config.yaml").read_text().replace("disabled: true", "disabled: false")),
+                             {"beads.metrics-off"}, *none),
+        "spec-kitty 3.2.7rc1 on PATH": (None, {"speckitty.version"}, {"PATH": f"/fakebin:{PATH}"},
+                                        fake_version(tmp_path, "spec-kitty", "--version", "spec-kitty-cli version 3.2.7rc1")),
+        "bd 1.3.1 on PATH": (None, {"beads.version"}, {"PATH": f"/fakebin:{PATH}"},
+                             fake_version(tmp_path, "bd", "version", "bd version 1.3.1 (0000000: HEAD@0000000)")),
+        "a plugin installed": (foreign_plugin(p), {"common.no-foreign-plugins"}, *none),
+    }
+    seen = break_each(monkeypatch, p, arm, backup, cases)
+    common = common_breaks(p)
+    seen |= run_breaks(monkeypatch, p, arm, backup, common)
+    want = {n: w for n, (_, w, _, _) in cases.items()} | {n: w for n, (_, w, _) in common.items()}
+    assert seen == want
+    assert_every_script_id_falsified("speckitty", want.values())
+
+
+def test_speckitty_setup_leaves_bd_inits_commit_a_local_dolt_remote_and_both_tools_hooks(tmp_state, tmp_path, monkeypatch):
+    """What setup leaves beside the checks: bd init's own commit as the neutral identity, beads' Dolt remote on the
+    local origin only, and spec-kitty's hooks and bd's hook side by side in the one project settings file."""
+    offline_setup_then_backup("speckitty", _charter, tmp_path)
+    p = Paths(PASS, "speckitty")
+    log = gitops.git(p, "log", "--format=%an <%ae>|%s").stdout.decode().splitlines()
+    assert "Developer <developer@troupe.run>|bd init: initialize beads issue tracking" in log
+    assert "sync.remote: \"/home/actor/origin.git\"" in (p.repo / ".beads/config.yaml").read_text()
+    hooks = json.loads((p.repo / ".claude/settings.json").read_text())["hooks"]
+    starts = [h["command"] for e in hooks["SessionStart"] for h in e["hooks"]]
+    assert "spec-kitty session-start" in starts and any(c.startswith("bd prime") for c in starts)
+    assert [h["command"] for e in hooks["Stop"] for h in e["hooks"]] == ["spec-kitty session-stop"]
+
+
+def _steering(p: Paths) -> None:
+    d = p.repo / ".kiro/steering"; d.mkdir(parents=True)
+    (d / "product.md").write_text("# Product\n\n" + PRINCIPLES_TEXT)
+
+
+def test_ccsdd_setup_passes_its_checks_and_every_check_fails_when_broken(tmp_state, tmp_path, monkeypatch):
+    arm, p, backup, before = offline_setup_then_backup("ccsdd", _steering, tmp_path)
+    assert before == {"ccsdd.steering"}              # red until the agent turn has run
+    none = ({}, [])
+
+    def claude_md(fn):
+        return lambda: (p.repo / "CLAUDE.md").write_text(fn((p.repo / "CLAUDE.md").read_text()))
+    cases = {
+        "no kiro-validate-impl skill": (lambda: shutil.rmtree(p.repo / ".claude/skills/kiro-validate-impl"),
+                                        {"ccsdd.skills"}, *none),
+        "no kiro-discovery skill": (lambda: shutil.rmtree(p.repo / ".claude/skills/kiro-discovery"), {"ccsdd.skills"}, *none),
+        "an 18th kiro skill": (lambda: shutil.copytree(p.repo / ".claude/skills/kiro-impl", p.repo / ".claude/skills/kiro-extra"),
+                               {"ccsdd.skills"}, *none),
+        "no steering templates": (lambda: shutil.rmtree(p.repo / ".kiro/settings/templates/steering"), {"ccsdd.settings"}, *none),
+        "no spec templates": (lambda: shutil.rmtree(p.repo / ".kiro/settings/templates/specs"), {"ccsdd.settings"}, *none),
+        "no CLAUDE.md": (lambda: (p.repo / "CLAUDE.md").unlink(), {"ccsdd.project-memory"}, *none),
+        "CLAUDE.md without the kiro paths": (claude_md(lambda t: t.replace(".kiro/", "docs/")), {"ccsdd.project-memory"}, *none),
+        "no steering": (lambda: shutil.rmtree(p.repo / ".kiro/steering"), {"ccsdd.steering"}, *none),
+        "an empty steering file": (lambda: (p.repo / ".kiro/steering/tech.md").write_text(""), {"ccsdd.steering"}, *none),
+        "legacy command mode": (lambda: (p.repo / ".claude/commands/kiro").mkdir(parents=True), {"ccsdd.no-legacy"}, *none),
+        "cc-sdd 3.0.0 on PATH": (None, {"ccsdd.version"}, {"PATH": f"/fakebin:{PATH}"},
+                                 fake_version(tmp_path, "cc-sdd", "--version", "cc-sdd v3.0.0")),
+        "a plugin installed": (foreign_plugin(p), {"common.no-foreign-plugins"}, *none),
+    }
+    seen = break_each(monkeypatch, p, arm, backup, cases)
+    common = common_breaks(p)
+    seen |= run_breaks(monkeypatch, p, arm, backup, common)
+    want = {n: w for n, (_, w, _, _) in cases.items()} | {n: w for n, (_, w, _) in common.items()}
+    assert seen == want
+    assert_every_script_id_falsified("ccsdd", want.values())

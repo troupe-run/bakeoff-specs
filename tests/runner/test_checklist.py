@@ -464,7 +464,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2] / "checklists"
-DONE_ARMS = ["bmad", "control", "openspec", "superpowers"]        # Task 11 extends this to all seven
+DONE_ARMS = config.all_arms()                                    # Task 11: all seven real arms
 SECTIONS = ["## Source", "## Pins", "## Setup (what the runner runs)", "## Machine-verified", "## Owner-verified",
             "## Known traps"]
 
@@ -518,7 +518,7 @@ def test_every_setup_step_cites_its_source_section(arm):
     assert steps and all("§" in l for l in steps), [l for l in steps if "§" not in l]
 
 
-@pytest.mark.parametrize("arm", ["superpowers", "openspec", "bmad"])
+@pytest.mark.parametrize("arm", ["superpowers", "openspec", "bmad", "speckit", "speckitty", "ccsdd"])
 def test_method_checklists_cite_their_candidates_section(arm):
     src = _section((ROOT / f"{arm}.md").read_text(), "## Source")
     cite = config.load_arm(arm).citation                                   # e.g. "CANDIDATES §1.1"
@@ -702,3 +702,53 @@ def test_recheck_records_the_sha_it_commits_from_a_dirty_repo(tmp_state, monkeyp
     monkeypatch.setattr(checklist.repo, "snapshot", lambda p_, n: None)
     checklist.recheck("dry9", "dryrun", None)
     assert calls == [(p.setup_results, "sha-from-recheck")]
+
+
+# --- Task 11: speckit, speckitty (+ beads), ccsdd ----------------------------------------------------------------
+def test_done_arms_are_all_seven_real_arms():
+    assert sorted(DONE_ARMS) == ["bmad", "ccsdd", "control", "openspec", "speckit", "speckitty", "superpowers"]
+
+
+def test_speckit_setup_is_the_existing_repo_init_the_bug_extension_and_the_constitution():   # CANDIDATES §1.2
+    a = config.load_arm("speckit")
+    assert a.setup_shell == ["specify init --here --force --integration claude", "specify extension add bug"]
+    assert a.setup_agent == ["/speckit-constitution {principles}"]
+    assert (a.setup_post_shell, a.plugins) == ([], [])
+    assert a.manifest_paths == [".claude", ".specify"]
+    assert a.export_after == "/speckit-tasks"                                  # Task 12's OD24 = B, unchanged
+
+
+def test_speckitty_setup_is_init_verify_beads_then_the_tracker_binding_with_its_egress_decision():  # §1.4, §2.1
+    a = config.load_arm("speckitty")
+    s = a.setup_shell
+    assert s[:2] == ["spec-kitty init . --ai claude", "spec-kitty verify-setup"]
+    assert s.index("bd metrics off") < s.index("bd init") < s.index("bd setup claude")          # telemetry off first
+    bind = next(c for c in s if "tracker bind" in c)
+    assert bind == "SPEC_KITTY_ENABLE_SAAS_SYNC=1 spec-kitty tracker bind --provider beads --workspace beads"
+    assert s.index(bind) > s.index("bd init")
+    egress = s[-1]                                                             # recorded after the binding exists
+    assert "EGRESS_PERMITTED" in egress and "save_tracker_config" in egress and 'c.provider == "beads"' in egress
+    assert a.setup_agent == ["/spec-kitty.charter {principles}"]
+    assert (a.setup_post_shell, a.plugins) == ([], [])
+    assert {"~/.claude/commands", "~/.claude/skills", "~/.config/bd", ".beads/config.yaml"} <= set(a.manifest_paths)
+
+
+def test_ccsdd_setup_is_the_skills_installer_then_steering():                  # CANDIDATES §1.7a
+    a = config.load_arm("ccsdd")
+    assert a.setup_shell == ["cc-sdd --claude-skills"]
+    assert a.setup_agent == ["/kiro-steering\n\n{principles}"]
+    assert (a.setup_post_shell, a.plugins) == ([], [])
+    assert a.manifest_paths == [".claude", ".kiro/settings", "CLAUDE.md"]
+
+
+@pytest.mark.parametrize("arm", ["speckit", "speckitty", "ccsdd"])
+def test_the_three_arms_get_every_computed_host_check(arm):
+    """Each has setup prompts, a manifest list and slash commands to require: nothing is computed away."""
+    assert checklist.conditional_ids(config.load_arm(arm)) <= checklist.HOST_CHECKS[arm]
+    assert ("github.issues-access" in checklist.HOST_CHECKS[arm]) == (arm != "speckitty")    # beads: no GitHub
+
+
+def test_speckitty_entry_commands_need_the_charter_driven_workflow():
+    assert checklist.needed_commands(config.load_arm("speckitty")) == ["spec-kitty.specify", "spec-kitty.accept",
+                                                                       "spec-kitty.merge"]
+    assert "speckit-taskstoissues" in checklist.needed_commands(config.load_arm("speckit"))     # OD24 B export
