@@ -20,7 +20,8 @@ def test_watching_stops_a_uv_wrapped_candidate_with_exactly_one_sigterm(tmp_path
     monkeypatch.setenv("FAKE_SIGTERM_COUNT", str(count_file))
     theatre = tmp_path / "theatre"
     theatre.mkdir()
-    cli = Cli(["uv", "run", "--quiet", "--project", str(project), "python", str(FAKE)])
+    # the CLI's env is an allowlist (Task 18 fix round 2): the fake's count file must be forwarded by name
+    cli = Cli(["uv", "run", "--quiet", "--project", str(project), "python", str(FAKE)], forward=("FAKE_SIGTERM_COUNT",))
     with Watching(cli, theatre, ready_timeout=60) as w:
         pass
     assert count_file.read_text() == "1"
