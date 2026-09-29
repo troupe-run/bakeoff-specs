@@ -143,7 +143,7 @@ def test_the_hidden_tests_are_never_bind_mounted_but_streamed_into_a_harness_onl
     m = {x.ctr: x for x in s.mounts}
     assert not [c for c in m if c.startswith("/harness")]
     assert "/harness:rw,uid=1000,gid=1000,mode=0700,size=64m" in s.tmpfs
-    assert "/results:rw,uid=1000,gid=1000,mode=0700,size=64m" in s.tmpfs          # item 3: not the shared /tmp
+    assert "/results:rw,uid=1000,gid=1000,mode=0700,size=160m" in s.tmpfs         # item 3: not the shared /tmp
     assert s.stdin
     assert m["/work"].host == copy.parent and s.network == "none" and not s.proxy
     assert {k: s.env[k] for k in ("UV_OFFLINE", "UV_NO_SYNC", "PYTHONDONTWRITEBYTECODE", "UV_CACHE_DIR")} == \

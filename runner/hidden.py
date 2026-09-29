@@ -46,10 +46,11 @@ HARNESS_UID, ARM_UID = 1000, 1001
 HARNESS_CAPS = ("SETUID", "SETGID", "KILL", "DAC_OVERRIDE", "SETPCAP", "SYS_RESOURCE")
 # SETPCAP: drop the arm's bounding set; SYS_RESOURCE: pin the arm's oom_score_adj at 1000 so it cannot lower it.
 ENTRY = REPO_ROOT / "runner" / "tester_entry.sh"      # passed as `bash -c` text, not mounted
+UNPACKER = REPO_ROOT / "runner" / "bundle_unpack.py"  # passed to the entry as source text (run as `python -c`)
 RESULTS = "/results"
-RESULT_CAPS = {"exit": 64, "timed_out": 64, "resources": 64_000, "junit.xml": 16_000_000, "pytest.log": 8_100_000}
-OWN_TMPFS = "rw,uid=1000,gid=1000,mode=0700,size=64m"     # harness-only: the arm can neither enter nor fill it
-HARNESS_TMPFS = (f"/harness:{OWN_TMPFS}", f"/results:{OWN_TMPFS}")
+RESULT_CAPS = {"exit": 64, "timed_out": 64, "resources": 64_000, "junit.xml": 48_000_000, "pytest.log": 8_100_000}
+OWN_TMPFS = "rw,uid=1000,gid=1000,mode=0700"               # harness-only: the arm can neither enter nor fill them
+HARNESS_TMPFS = (f"/harness:{OWN_TMPFS},size=64m", f"/results:{OWN_TMPFS},size=160m")
 BUNDLE = ("pyproject.toml", "tests/__init__.py", "tests/conftest.py", "tests/hidden")
 ARM_OOM_SCORE_ADJ = 1000
 PER_COMMAND = 60       # driver.Cli's per-command timeout: the whole-run budget scales with it
@@ -123,10 +124,16 @@ def _pytest_argv(args: list[str], impl: str, reference: bool = False) -> list[st
 
 
 def _bundle_files() -> list[Path]:
+    """Every file under tests/hidden (fix round 3: not just *.py — a data file the suite reads must arrive too),
+    minus bytecode caches; links are refused by harness_bundle."""
     out = []
     for rel in BUNDLE:
         f = REPO_ROOT / rel
-        out += sorted(x for x in f.rglob("*.py") if "__pycache__" not in x.parts) if f.is_dir() else [f]
+        if f.is_dir():
+            out += sorted(x for x in f.rglob("*") if "__pycache__" not in x.parts and x.suffix != ".pyc"
+                          and (x.is_symlink() or x.is_file()))
+        else:
+            out.append(f)
     return out
 
 
@@ -143,18 +150,21 @@ def harness_bundle() -> bytes:
 
 
 def unpack_bundle(blob: bytes) -> dict[str, bytes]:
-    """Host-side mirror of the entry script's unpacker (used by tests)."""
-    out, i = {}, 0
-    while i < len(blob):
-        nl = blob.index(b"\n", i)
-        name, size = blob[i:nl].decode().rsplit(" ", 1)
-        out[name] = blob[nl + 1:nl + 1 + int(size)]
-        i = nl + 1 + int(size)
-    return out
+    """The in-container unpacker's own parse (runner/bundle_unpack.py), for tests."""
+    from runner import bundle_unpack
+    return dict(bundle_unpack.parse(blob))
 
 
 class ResultsError(ValueError):
-    pass
+    def __init__(self, msg: str, oversize: bool = False):
+        super().__init__(msg)
+        self.oversize = oversize
+
+
+def _frames_error(e: ResultsError) -> str:
+    """An over-cap member can only come from arm output (the hidden suite's own output is small): the arm's
+    result, `arm-output`, all-failed. Anything else wrong with the frames is the harness's."""
+    return f"arm-output: {e}" if e.oversize else f"harness-fault: {e}"
 
 
 def unpack_results(blob: bytes) -> dict[str, bytes]:
@@ -178,7 +188,7 @@ def unpack_results(blob: bytes) -> dict[str, bytes]:
         if name in out:
             raise ResultsError(f"duplicate results member {name}")
         if not 0 <= size <= RESULT_CAPS[name]:
-            raise ResultsError(f"results member {name} is {size} bytes (cap {RESULT_CAPS[name]})")
+            raise ResultsError(f"results member {name} is {size} bytes (cap {RESULT_CAPS[name]})", oversize=True)
         if nl + 1 + size > len(blob):
             raise ResultsError(f"results member {name} is truncated")
         out[name] = blob[nl + 1:nl + 1 + size]
@@ -191,7 +201,8 @@ def resource_evidence(res: dict[str, bytes]) -> list[str]:
     ev = []
     text = res.get("resources", b"").decode(errors="replace")
     mem, _, rest = text.partition("--pids")
-    pids, _, tmp = rest.partition("--tmp")
+    pids, _, rest = rest.partition("--tmp")
+    tmp, _, results = rest.partition("--results")
     kv = lambda block: dict(l.split()[:2] for l in block.splitlines() if len(l.split()) >= 2)
     if int(kv(mem).get("oom_kill", "0") or 0) > 0:
         ev.append(f"oom-kill:{kv(mem)['oom_kill']}")
@@ -200,6 +211,9 @@ def resource_evidence(res: dict[str, bytes]) -> list[str]:
     cols = tmp.split()
     if len(cols) >= 4 and cols[3].isdigit() and int(cols[3]) < 1024:
         ev.append("tmp-full")
+    rcols = results.split()
+    if len(rcols) >= 4 and rcols[3].isdigit() and int(rcols[3]) < 1024:
+        ev.append("results-full")
     if not ev and b"No space left on device" in res.get("pytest.log", b""):
         ev.append("enospc-in-log")
     return ev
@@ -216,8 +230,11 @@ def assess(collected: list[str], res: dict[str, bytes]) -> tuple[dict[str, str],
         return {}, -1, "harness-fault: no exit code"
     if "timed_out" in res:
         return {t: "failed" for t in collected}, code, "arm-timeout"
+    ev = resource_evidence(res)
+    if "results-full" in ev:           # only arm output can fill /results (fix round 3): the arm's result
+        return {t: "failed" for t in collected}, code, "arm-output"
     if code not in (0, 1) or "junit.xml" not in res:
-        if resource_evidence(res):
+        if ev:
             return {}, code, "arm-resource"
         return {}, code, f"harness-fault: pytest exit {code}" if code not in (0, 1) else "harness-fault: no junit"
     try:
@@ -339,21 +356,26 @@ def _accounts(p: Paths, image: str) -> tuple[Path, Path, str]:
 
 
 def _spec(p: Paths, copy: Path | None, cmd: list[str], *, mode: str, network: str = "none", proxy: bool = False,
-          env: dict | None = None, workdir: str | None = None, timeout: int = 600, name: str = "tester") -> RunSpec:
-    """`mode`: "prep" (uid 1000, no caps, no harness mounts), "harness" (the entry script runs `cmd` — pytest —
-    as uid 1000; the arm is uid 1001 via --cmd-prefix) or "script" (`cmd` as uid 1001, no caps). Creates a
-    fresh, empty home for this one container (removed by `_run`)."""
+          env: dict | None = None, workdir: str | None = None, timeout: int = 600, name: str = "tester",
+          reference: bool = False) -> RunSpec:
+    """`mode`: "prep" (the arm's build: uid 1001, no caps, no harness mounts), "harness" (the entry script runs
+    `cmd` — pytest — as uid 1000; the arm is uid 1001 via --cmd-prefix) or "script" (`cmd` as uid 1001, no
+    caps). All run in the tester image, which holds no reference; `reference=True` (harness mode, no arm copy)
+    selects the reference image for the harness's own reference runs. Creates a fresh, empty home for this one
+    container (removed by `_run`)."""
     if mode not in ("prep", "harness", "script"):
         raise ValueError(mode)
+    if reference and (mode != "harness" or copy is not None):
+        raise ValueError("the reference image runs only the harness's reference runs, never an arm copy")
     pins = config.load_pins()
-    image = pins.images["tester"]
+    image = pins.images["tester_ref" if reference else "tester"]
     home = _tester_root(p) / f"home-{uuid.uuid4().hex[:12]}"
     home.mkdir(parents=True)
     mounts = [Mount(home, "/home/actor", False)]
     if copy is not None:
         mounts.insert(0, Mount(copy.parent, "/work", False))
     e = {**ENV, **(env or {})}
-    user, caps, tmpfs, stdin = "1000:1000", (), (), False
+    user, caps, tmpfs, stdin = f"{ARM_UID}:{ARM_UID}", (), (), False    # prep: arm build code is untrusted too
     if mode != "prep":
         passwd, group, login = _accounts(p, image)
         mounts += [Mount(passwd, "/etc/passwd", True), Mount(group, "/etc/group", True)]
@@ -364,7 +386,7 @@ def _spec(p: Paths, copy: Path | None, cmd: list[str], *, mode: str, network: st
             low = ",".join(f"+{c.lower()}" for c in HARNESS_CAPS)
             cmd = ["setpriv", f"--reuid={HARNESS_UID}", f"--regid={HARNESS_UID}", "--clear-groups",
                    f"--inh-caps={low}", f"--ambient-caps={low}", "--",
-                   "bash", "-c", ENTRY.read_text(), "entry", str(timeout), *cmd]
+                   "bash", "-c", ENTRY.read_text(), "entry", UNPACKER.read_text(), str(timeout), *cmd]
             tmpfs, stdin = HARNESS_TMPFS, True        # the suite arrives on stdin (harness_bundle)
         else:                                          # the arm uid alone: no harness dirs, no reference, no caps
             caps = ("SETUID", "SETGID", "SETPCAP", "SYS_RESOURCE")
@@ -443,7 +465,7 @@ def _pytest(p: Paths, copy: Path | None, args: list[str], *, impl: str | None = 
     """pytest in the tester as the harness uid; returns (results members, error). Never raises for what the
     run itself did: a hung container or unreadable results is reported as an error string."""
     impl = impl or (f"/work/{copy.name}" if copy is not None else "/nonexistent")
-    s = _spec(p, copy, _pytest_argv(args, impl, reference), mode="harness", env=env, workdir="/harness",
+    s = _spec(p, copy, _pytest_argv(args, impl, reference), mode="harness", env=env, workdir="/harness", reference=reference,
               timeout=timeout)
     try:
         r = _run(s, timeout=timeout + 30 + OUTER_GRACE)
@@ -452,7 +474,7 @@ def _pytest(p: Paths, copy: Path | None, args: list[str], *, impl: str | None = 
     try:
         return unpack_results(r.stdout), None
     except ResultsError as e:
-        return None, f"{e} (docker exit {r.returncode}: {r.stderr.decode(errors='replace')[-300:]})"
+        return None, f"{_frames_error(e)} (docker exit {r.returncode}: {r.stderr.decode(errors='replace')[-300:]})"
 
 
 def _collect(p: Paths, step: int, first_only: bool) -> list[str]:
@@ -507,7 +529,10 @@ def run(p: Paths, copy: Path, step: int, out_dir: Path, install_failed: bool = F
             if "junit.xml" in res:
                 (hd / "junit.xml").write_bytes(res["junit.xml"])
         if err is not None or res is None:
-            tests, code, attribution = {}, -1, f"harness-fault: {err}"
+            if err and err.startswith("arm-output"):     # results over their caps: the arm's output, all-failed
+                tests, code, attribution = {t: "failed" for t in collected}, -1, "arm-output"
+            else:
+                tests, code, attribution = {}, -1, err if err and err.startswith("harness-fault") else f"harness-fault: {err}"
             break
         tests, code, attribution = assess(collected, res)
         evidence.append(resource_evidence(res))

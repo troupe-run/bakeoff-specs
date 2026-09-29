@@ -4,6 +4,19 @@ import os, subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+CAP = 64 * 1024
+
+
+def cap(text: str) -> str:
+    """What assertions see of arm output: at most the last 64 KB, with a marker saying how much was cut (Task 18
+    fix round 3: an untruncated assertion message is a way to flood the junit)."""
+    b = text.encode(errors="replace")
+    if len(b) <= CAP:
+        return text
+    tail = b[-CAP:].decode(errors="ignore")
+    return f"[... {len(b) - len(tail.encode())} bytes truncated ...]\n{tail}"
+
+
 @dataclass(frozen=True)
 class Result:
     code: int
@@ -43,7 +56,7 @@ class Cli:
                  timeout: float = 60) -> Result:
         p = subprocess.run(self._argv(sub, args, theatre), capture_output=True, text=True,
                            env=self._env(env), timeout=timeout)
-        return Result(p.returncode, p.stdout, p.stderr)
+        return Result(p.returncode, cap(p.stdout), cap(p.stderr))
 
     def spawn(self, sub: str, *args: str, theatre: Path, env: dict[str, str] | None = None) -> subprocess.Popen:
         return subprocess.Popen(self._argv(sub, args, theatre), stdout=subprocess.PIPE, stderr=subprocess.PIPE,

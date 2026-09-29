@@ -1,4 +1,5 @@
 import os, signal, threading, time
+from .driver import cap
 
 def wait_for(predicate, timeout: float) -> bool:
     deadline = time.monotonic() + timeout
@@ -50,7 +51,7 @@ class Watching:
             if self.p.poll() is not None:
                 break
         self._stop()
-        raise AssertionError(f"`config watch` never printed its readiness line; stderr: {''.join(self.err)}")
+        raise AssertionError(f"`config watch` never printed its readiness line; stderr: {cap(''.join(self.err))}")
 
     def _stop(self):
         if self.p.poll() is None:

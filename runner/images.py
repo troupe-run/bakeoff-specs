@@ -255,11 +255,12 @@ def build_all(arms: list[str], rebuild: bool = False) -> dict:
     _build(im["base"], IMAGES / "base", **base_build_args(p))
     _build(im["proxy"], IMAGES / "proxy", **proxy_build_args(p))
     _build(im["tester"], paths.REPO_ROOT, dockerfile=IMAGES / "tester" / "Dockerfile", BASE_IMAGE=im["base"])
+    _build(im["tester_ref"], paths.REPO_ROOT, dockerfile=IMAGES / "tester-ref" / "Dockerfile", TESTER_IMAGE=im["tester"])
     if (IMAGES / "dryrun" / "Dockerfile").exists():
         _build(im["dryrun"], paths.REPO_ROOT, dockerfile=IMAGES / "dryrun" / "Dockerfile", BASE_IMAGE=im["base"])
     lock: dict = {"digests": p.digests, "binary_sha256": p.binary_sha256, "bd_sha256": p.bd_sha256,
                   "images": {}, "arms": {}}
-    for tag in [im["base"], im["proxy"], im["tester"]] + ([im["dryrun"]] if (IMAGES / "dryrun").exists() else []):
+    for tag in [im["base"], im["proxy"], im["tester"], im["tester_ref"]] + ([im["dryrun"]] if (IMAGES / "dryrun").exists() else []):
         lock["images"][tag] = {"id": current_id(tag), "content": content_id(tag), "tar_sha256": _save(tag)}
     lock["images"][im["base"]]["versions"] = _versions(im["base"], {})
     for name in _existing(arms):
