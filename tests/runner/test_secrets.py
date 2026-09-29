@@ -1,0 +1,399 @@
+"""Task 21 (review S-2): secret scan of evidence, results, snapshots and everything publish pushes.
+
+Every token here is FAKE and assembled at runtime, so this file itself never matches a pattern (the pre-commit
+hook scans it too)."""
+import ast, gzip, os, re, subprocess, threading
+from pathlib import Path
+
+import pytest
+
+from runner import cli, credentials, faults, gitops, paths, repo, secrets
+from runner.paths import Paths
+
+PAT = "github_pat_" + "A" * 22 + "_" + "b" * 59
+GHO = "gh" + "o_" + "Z" * 36
+ANT = "sk-ant-oat01-" + "x" * 40
+KEY = "-----BEGIN " + "OPENSSH PRIVATE KEY-----"
+OAUTH = "fake-oauth-" + "q" * 30                      # the keychain token has no known shape: found as a literal
+HOME_PAT = "fakepat" + "9" * 30                        # a PAT value with no known shape, only in the arm's hosts.yml
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+# --- the brief's five ---------------------------------------------------------------------------------------
+
+def test_a_pat_in_a_plain_file_is_found_by_path_and_kind_only(tmp_path):
+    (tmp_path / "t.jsonl").write_text(f'{{"text": "token {PAT}"}}\n')
+    [f] = secrets.scan_tree(tmp_path)
+    assert f.path.endswith("t.jsonl") and f.kind == "github-pat" and f.line == 1 and PAT not in repr(f)
+
+
+def test_a_token_inside_a_gz_is_found(tmp_path):
+    with gzip.open(tmp_path / "s.stream.jsonl.gz", "wt") as fh:
+        fh.write("ok\n" + ANT + "\n")
+    assert [f.kind for f in secrets.scan_tree(tmp_path)] == ["anthropic-token"]
+
+
+def test_a_literal_value_is_found_even_without_a_known_shape(tmp_path):
+    (tmp_path / "a.txt").write_text("hello dry-run-dummy-token\n")
+    assert [f.kind for f in secrets.scan_tree(tmp_path, ["dry-run-dummy-token"])] == ["literal"]
+
+
+def test_symlinks_are_not_followed(tmp_path):
+    (tmp_path / "outside").mkdir(); (tmp_path / "outside" / "k").write_text(PAT)
+    (tmp_path / "tree").mkdir(); os.symlink(tmp_path / "outside" / "k", tmp_path / "tree" / "k")
+    assert secrets.scan_tree(tmp_path / "tree") == []
+
+
+def test_a_clean_tree_has_no_findings(tmp_path):
+    (tmp_path / "a.md").write_text("github_pat is a word here, and so is sk-ant.\n")
+    assert secrets.scan_tree(tmp_path) == []
+
+
+# --- every pattern, line numbers, names ----------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,kind", [(PAT, "github-pat"), (GHO, "github-token"), (ANT, "anthropic-token"),
+                                       (KEY, "private-key")])
+def test_every_pattern_kind_is_found(tmp_path, text, kind):
+    (tmp_path / "x.log").write_text(f"a\nb\nsee {text} here\n")
+    assert [(f.kind, f.line) for f in secrets.scan_tree(tmp_path)] == [(kind, 3)]
+
+
+def test_a_token_split_across_read_chunks_is_found_with_its_true_line(tmp_path, monkeypatch):
+    monkeypatch.setattr(secrets, "CHUNK_BYTES", 64)
+    body = "".join(f"line {i}\n" for i in range(1, 40)) + "x" * 50 + PAT + "\n"
+    (tmp_path / "big.txt").write_text(body)
+    assert [(f.kind, f.line) for f in secrets.scan_tree(tmp_path)] == [("github-pat", 40)]
+
+
+def test_a_secret_in_a_file_name_is_found(tmp_path):
+    (tmp_path / f"note-{GHO}.txt").write_text("nothing\n")
+    [f] = secrets.scan_tree(tmp_path)
+    assert f.kind == "github-token" and f.line == 0
+    assert GHO not in f.path and f.path.endswith("note-<redacted>.txt")   # named, but never printed
+
+
+def test_a_literal_in_a_history_path_is_redacted_too(tmp_path):
+    h = tmp_path / "h.fe"
+    h.write_bytes(b"blob\nmark :1\noriginal-oid abc\ndata 2\nx\n\ncommit refs/heads/main\nmark :2\n"
+                  b"original-oid def\nauthor a <a> 1 +0000\ncommitter a <a> 1 +0000\ndata 2\nm\n"
+                  + f"M 100644 :1 {OAUTH}.txt\n".encode())
+    found = secrets.scan_history(h, "main", [OAUTH])
+    assert [f.kind for f in found] == ["literal"] and all(OAUTH not in f.path for f in found)
+
+
+def test_a_symlink_target_text_is_scanned_without_following_it(tmp_path):
+    os.symlink(f"/nowhere/{PAT}", tmp_path / "link")         # a link is published as its target text
+    assert [f.kind for f in secrets.scan_tree(tmp_path)] == ["github-pat"]
+
+
+def test_a_fifo_never_blocks_the_scan(tmp_path):
+    os.mkfifo(tmp_path / "pipe")
+    (tmp_path / "ok.txt").write_text(PAT)
+    got = []
+    t = threading.Thread(target=lambda: got.append(secrets.scan_tree(tmp_path)), daemon=True)
+    t.start(); t.join(10)
+    assert not t.is_alive(), "scan_tree blocked on a FIFO"
+    assert [f.kind for f in got[0]] == ["github-pat"]       # a FIFO holds no content: nothing to report
+
+
+def test_a_hard_linked_file_is_still_scanned(tmp_path):
+    (tmp_path / "a").write_text(PAT); os.link(tmp_path / "a", tmp_path / "b")
+    assert sorted(Path(f.path).name for f in secrets.scan_tree(tmp_path)) == ["a", "b"]
+
+
+def test_an_unreadable_directory_fails_closed(tmp_path):
+    d = tmp_path / "locked"; d.mkdir(); (d / "x").write_text(PAT); d.chmod(0)
+    try:
+        assert [f.kind for f in secrets.scan_tree(tmp_path)] == ["unscannable"]
+    finally:
+        d.chmod(0o700)
+
+
+def test_a_corrupt_gz_fails_closed(tmp_path):
+    (tmp_path / "s.jsonl.gz").write_bytes(gzip.compress(b"ok\n" * 1000)[:-30])
+    assert [f.kind for f in secrets.scan_tree(tmp_path)] == ["unscannable"]
+
+
+def test_a_gz_bomb_is_capped_and_fails_closed(tmp_path, monkeypatch):
+    monkeypatch.setattr(secrets, "SCAN_MAX_BYTES", 10_000)
+    (tmp_path / "b.gz").write_bytes(gzip.compress(b"\0" * 1_000_000))
+    assert [f.kind for f in secrets.scan_tree(tmp_path)] == ["unscannable"]
+
+
+def test_a_concatenated_gz_is_read_to_the_end(tmp_path):
+    (tmp_path / "c.gz").write_bytes(gzip.compress(b"a\n") + gzip.compress(f"{ANT}\n".encode()))
+    assert [(f.kind, f.line) for f in secrets.scan_tree(tmp_path)] == [("anthropic-token", 2)]
+
+
+def test_scan_files_scans_exactly_the_given_files(tmp_path):
+    (tmp_path / "a").write_text(PAT); (tmp_path / "b").write_text(PAT)
+    assert [Path(f.path).name for f in secrets.scan_files([tmp_path / "a"])] == ["a"]
+
+
+def test_empty_and_short_literals_are_ignored(tmp_path):
+    (tmp_path / "a").write_text("abc\n")
+    assert secrets.scan_tree(tmp_path, ["", "a"]) == []
+
+
+# --- faults name the file, never the secret ------------------------------------------------------------------
+
+def test_require_clean_raises_a_named_harness_fault_without_the_secret(tmp_path):
+    (tmp_path / "t.jsonl").write_text(f"{OAUTH}\n")
+    found = secrets.scan_tree(tmp_path, [OAUTH])
+    with pytest.raises(faults.HarnessFault) as e:
+        secrets.require_clean(found, "secret-in-evidence")
+    assert e.value.kind == "secret-in-evidence" and e.value.signature == "literal"
+    assert "t.jsonl:1 literal" in e.value.detail
+    assert OAUTH not in f"{e.value!s}{e.value!r}{e.value.detail}{e.value.findings!r}"
+    secrets.require_clean([], "secret-in-evidence")         # clean: no fault
+
+
+# --- the needles: keychain token (via raw_for_scanner) and the arm-home PAT files ------------------------------
+
+def _home_with_pat(state: Path, pass_="pass1", arm="control") -> Path:
+    home = state / pass_ / arm / "home"
+    (home / ".config" / "gh").mkdir(parents=True)
+    (home / ".config" / "gh" / "hosts.yml").write_text(f"github.com:\n    oauth_token: {HOME_PAT}\n")
+    return home
+
+
+def test_literals_hold_the_dummy_the_credential_and_every_arm_home_pat(tmp_state):
+    _home_with_pat(paths.STATE)
+    lits = secrets.literals(credentials.Credential(OAUTH))
+    assert set(lits) == {"dry-run-dummy-token", OAUTH, HOME_PAT}
+
+
+def test_a_home_pat_file_that_is_a_symlink_is_not_read(tmp_state):
+    home = paths.STATE / "pass1" / "control" / "home"
+    (home / ".config" / "gh").mkdir(parents=True)
+    secret = paths.STATE.parent / "elsewhere.yml"; secret.write_text(f"oauth_token: {HOME_PAT}\n")
+    os.symlink(secret, home / ".config" / "gh" / "hosts.yml")
+    assert HOME_PAT not in secrets.home_pat_values(home)
+
+
+def test_a_short_home_value_never_becomes_a_needle(tmp_state):
+    home = paths.STATE / "pass1" / "control" / "home"
+    (home / ".config" / "gh").mkdir(parents=True)
+    (home / ".config" / "gh" / "hosts.yml").write_text("github.com:\n    oauth_token: e\n")
+    assert secrets.home_pat_values(home) == []               # an arm cannot make every file match
+
+
+def test_a_literal_without_a_credential_falls_back_to_the_keychain(tmp_state, monkeypatch):
+    monkeypatch.setattr(credentials, "from_keychain", lambda: credentials.Credential(OAUTH))
+    assert OAUTH in secrets.literals()
+    def missing():
+        raise RuntimeError("no item")
+    monkeypatch.setattr(credentials, "from_keychain", missing)
+    assert secrets.literals() == ["dry-run-dummy-token"]
+
+
+def test_only_runner_secrets_calls_raw_for_scanner():                        # controller ruling (S-2)
+    """AST: no Python file of the harness (tests aside) reads `raw_for_scanner` except runner/secrets.py; its
+    definition lives in runner/credentials.py. A text check catches getattr(cred, "raw_for_scanner") too."""
+    skip = {".venv", "tests", "state", "results", ".git", "node_modules"}
+    offenders = []
+    for f in REPO_ROOT.rglob("*.py"):
+        rel = f.relative_to(REPO_ROOT)
+        if skip & set(rel.parts[:-1]) or rel.as_posix() == "runner/secrets.py":
+            continue
+        text = f.read_text(errors="replace")
+        if "raw_for_scanner" not in text:
+            continue
+        tree = ast.parse(text)
+        uses = [n for n in ast.walk(tree) if isinstance(n, ast.Attribute) and n.attr == "raw_for_scanner"]
+        strings = [n for n in ast.walk(tree) if isinstance(n, ast.Constant) and n.value == "raw_for_scanner"]
+        defined_here = rel.as_posix() == "runner/credentials.py"
+        if uses or strings or (not defined_here and "raw_for_scanner" in text):
+            offenders.append(rel.as_posix())
+    assert offenders == []
+    assert "raw_for_scanner" in (REPO_ROOT / "runner" / "secrets.py").read_text()
+
+
+def test_session_credential_files_still_finds_the_token_via_secrets(tmp_path):
+    from runner import session
+    cred = credentials.Credential(OAUTH)
+    (tmp_path / "log.txt").write_text(f"x {OAUTH}\n")
+    assert session.credential_files(tmp_path, cred, 0.0) == ["log.txt"]
+
+
+# --- full history (fast-export stream) -----------------------------------------------------------------------
+
+def _host_git(repo_dir: Path, *args: str) -> str:
+    env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null",
+           "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+           "GIT_COMMITTER_EMAIL": "t@t"}
+    return subprocess.run(["git", "-C", str(repo_dir), *args], check=True, capture_output=True,
+                          env=env).stdout.decode()
+
+
+def _export(repo_dir: Path, dest: Path) -> Path:
+    dest.write_bytes(subprocess.run(["git", "-C", str(repo_dir), "fast-export", "--all", "--show-original-ids",
+                                     "--reencode=yes", "--signed-tags=verbatim"],
+                                    check=True, capture_output=True).stdout)
+    return dest
+
+
+def test_history_scan_finds_a_secret_that_the_tip_tree_no_longer_has(tmp_path):
+    r = tmp_path / "r"; r.mkdir()
+    _host_git(r, "init", "-q", "-b", "main")
+    (r / "cfg.txt").write_text(f"a\n{PAT}\n"); _host_git(r, "add", "-A"); _host_git(r, "commit", "-qm", "add")
+    blob = _host_git(r, "rev-parse", "HEAD:cfg.txt").strip()
+    (r / "cfg.txt").write_text("a\n"); _host_git(r, "commit", "-qam", "scrub")
+    _host_git(r, "commit", "-q", "--allow-empty", "-m", f"note {GHO}")
+    msg_commit = _host_git(r, "rev-parse", "HEAD").strip()
+    found = secrets.scan_history(_export(r, tmp_path / "h.fe"), "main")
+    by_kind = {f.kind: f for f in found}
+    assert set(by_kind) == {"github-pat", "github-token"}
+    assert by_kind["github-pat"].path == f"main: blob {blob} (cfg.txt)" and by_kind["github-pat"].line == 2
+    assert by_kind["github-token"].path == f"main: commit {msg_commit} message"
+    assert all(PAT not in repr(f) and GHO not in repr(f) for f in found)
+
+
+def test_history_scan_reads_data_by_length_so_content_cannot_forge_commands(tmp_path):
+    r = tmp_path / "r"; r.mkdir()
+    _host_git(r, "init", "-q", "-b", "main")
+    (r / "a.txt").write_text(f"data 3\nblob\nmark :9\n{ANT}\n"); _host_git(r, "add", "-A")
+    _host_git(r, "commit", "-qm", "x")
+    [f] = secrets.scan_history(_export(r, tmp_path / "h.fe"), "main")
+    assert f.kind == "anthropic-token" and f.path.endswith("(a.txt)") and f.line == 4
+
+
+def test_history_scan_of_a_missing_export_fails_closed(tmp_path):
+    assert [f.kind for f in secrets.scan_history(None, "main")] == ["unscannable"]
+    (tmp_path / "bad.fe").write_bytes(b"blob\nmark :1\ndata notanumber\n")
+    assert [f.kind for f in secrets.scan_history(tmp_path / "bad.fe", "main")] == ["unscannable"]
+
+
+def test_scan_publish_covers_tree_and_history(tmp_path):
+    t = tmp_path / "tree"; t.mkdir(); (t / "ok.txt").write_text("fine\n")
+    h = tmp_path / "h.fe"; h.write_bytes(b"blob\nmark :1\noriginal-oid abc\ndata 5\nfine\n\n")
+    assert secrets.scan_publish(t, h, []) == []
+    assert [f.kind for f in secrets.scan_publish(t, None, [])] == ["unscannable"]
+
+
+# --- publish refuses on any finding, with a fault ------------------------------------------------------------
+
+def _fake_publish_chain(monkeypatch, calls):
+    def fake_bundle(p_, dest, refs=()):
+        dest.write_bytes(b"# v2 git bundle\n"); calls.append("bundle"); return dest
+    monkeypatch.setattr(gitops, "bundle", fake_bundle)
+    monkeypatch.setattr(gitops, "clone_bundle_bare", lambda b, d: (d.mkdir(), calls.append(("clone", d))))
+    monkeypatch.setattr(gitops, "bare_tree", lambda p_, bare, ref, dest: (dest.mkdir(), calls.append(("tree", bare)))[0] or dest)
+    def fake_fe(p_, root, git_dirs, dest, *, revs=()):
+        calls.append(("history", root, tuple(revs))); dest.mkdir(parents=True, exist_ok=True)
+        (dest / "1.fe").write_bytes(b""); return [dest / "1.fe"]
+    monkeypatch.setattr(gitops, "fast_export", fake_fe)
+    monkeypatch.setattr(gitops, "push_from_bare", lambda bare, url, ref="main": calls.append(("push", bare)))
+
+
+def test_publish_scans_tree_and_full_history_of_the_clone_it_pushes(tmp_state, monkeypatch):
+    p = Paths("pass1", "control"); p.scratch.mkdir(parents=True)
+    calls = []
+    _fake_publish_chain(monkeypatch, calls)
+    assert repo.publish(p, "pass1", ask=lambda q: True, scan=lambda t, h: calls.append(("scan", h)) or [])
+    kinds = [c if isinstance(c, str) else c[0] for c in calls]
+    assert kinds == ["bundle", "clone", "tree", "history", "scan", "push"]
+    clone = calls[1][1]
+    assert calls[2][1] == clone and calls[3][1] == clone and calls[5][1] == clone
+    assert calls[3][2] == ("refs/heads/main",)
+
+
+def test_publish_raises_secret_in_publish_and_never_pushes(tmp_state, monkeypatch):
+    p = Paths("pass1", "control"); p.scratch.mkdir(parents=True)
+    calls = []
+    _fake_publish_chain(monkeypatch, calls)
+    hit = [secrets.Finding("main: blob abc (cfg.txt)", "github-pat", 2)]
+    with pytest.raises(secrets.SecretFound) as e:
+        repo.publish(p, "pass1", ask=lambda q: True, scan=lambda t, h: hit)
+    assert e.value.kind == "secret-in-publish" and "cfg.txt" in e.value.detail
+    assert not [c for c in calls if isinstance(c, tuple) and c[0] == "push"]
+
+
+def test_cli_publish_is_wired_to_the_scanner_and_reports_the_fault(tmp_state, monkeypatch, capsys):
+    monkeypatch.setattr(secrets, "literals", lambda cred=None: ["dry-run-dummy-token"])
+    seen = {}
+    def fake_publish(p_, pass_, ask, scan):
+        t = tmp_state / "t"; t.mkdir(); (t / "x").write_text(PAT)
+        seen["found"] = scan(t, None)
+        raise secrets.SecretFound("secret-in-publish", seen["found"])
+    monkeypatch.setattr(repo, "publish", fake_publish)
+    assert cli.main(["publish", "pass1", "control"]) == 1
+    out = capsys.readouterr().out
+    assert "secret-in-publish" in out and "x:1 github-pat" in out and PAT not in out
+    assert {f.kind for f in seen["found"]} == {"github-pat", "unscannable"}
+
+
+# --- CLI `runner scan` and the pre-commit hook ---------------------------------------------------------------
+
+def test_cli_scan_paths_prints_path_line_kind_and_exits_1(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(secrets, "literals", lambda cred=None: ["dry-run-dummy-token"])
+    (tmp_path / "a.txt").write_text(f"x\n{ANT}\n")
+    assert cli.main(["scan", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert f"{tmp_path / 'a.txt'}:2 anthropic-token" in out and ANT not in out
+    (tmp_path / "a.txt").write_text("clean\n")
+    assert cli.main(["scan", str(tmp_path), str(tmp_path / "a.txt")]) == 0
+
+
+def test_cli_scan_staged_scans_the_staged_files(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(secrets, "literals", lambda cred=None: ["dry-run-dummy-token"])
+    (tmp_path / "s.txt").write_text("dry-run-dummy-token\n")
+    monkeypatch.setattr(gitops, "staged_files", lambda: [tmp_path / "s.txt"])
+    assert cli.main(["scan", "--staged"]) == 1
+    assert "s.txt:1 literal" in capsys.readouterr().out
+
+
+def test_cli_scan_needs_something_to_scan(capsys):
+    with pytest.raises(SystemExit):
+        cli.main(["scan"])
+
+
+def test_staged_files_asks_the_harness_repo_for_staged_non_deleted_paths(monkeypatch):
+    seen = []
+    def fake_run(argv, **kw):
+        seen.append(argv)
+        return subprocess.CompletedProcess(argv, 0, b"a.txt\0dir/b c.txt\0", b"")
+    monkeypatch.setattr(gitops.subprocess, "run", fake_run)
+    assert gitops.staged_files() == [paths.REPO_ROOT / "a.txt", paths.REPO_ROOT / "dir/b c.txt"]
+    assert seen == [["git", "-C", str(paths.REPO_ROOT), "diff", "--cached", "--name-only", "-z",
+                     "--diff-filter=d"]]
+
+
+def test_the_pre_commit_hook_runs_the_staged_scan():
+    hook = REPO_ROOT / ".githooks" / "pre-commit"
+    assert os.access(hook, os.X_OK)
+    assert re.search(r"^exec uv run --quiet python -m runner scan --staged$", hook.read_text(), re.M)
+
+
+# --- the arm-level API orchestration calls (preflight row 36) --------------------------------------------------
+
+def test_scan_arm_covers_results_and_every_snapshot(tmp_state, monkeypatch):
+    p = Paths("pass1", "control")
+    _home_with_pat(paths.STATE)
+    (p.setup_results).mkdir(parents=True)
+    (p.setup_results / "shell-history.txt").write_text(f"echo {HOME_PAT}\n")
+    p.snapshots.mkdir(parents=True)
+    (p.snapshots / "step-01.tar").write_bytes(b"t"); (p.snapshots / "step-02.tar").write_bytes(b"t")
+    scanned = []
+    monkeypatch.setattr(secrets, "scan_snapshot", lambda p_, snap, lits: scanned.append((snap.name, tuple(lits))) or [])
+    found = secrets.scan_arm(p, ["dry-run-dummy-token"])
+    assert [(Path(f.path).name, f.kind) for f in found] == [("shell-history.txt", "literal")]
+    assert [s for s, _ in scanned] == ["step-01.tar", "step-02.tar"]
+    assert all(HOME_PAT in lits for _, lits in scanned)          # the arm's own PAT value is a needle
+
+
+def test_fast_export_runs_in_one_networkless_container_with_only_out_writable(tmp_state, monkeypatch):
+    p = Paths("dry9", "dryrun")
+    root, dest = tmp_state / "x", tmp_state / "fe"
+    root.mkdir()
+    specs = []
+    def fake_run(s, input=None, timeout=None):
+        specs.append(s); dest.joinpath("1.fe").write_bytes(b"")
+        return subprocess.CompletedProcess(s.cmd, 0, b"", b"")
+    monkeypatch.setattr(gitops.docker, "run", fake_run)
+    got = gitops.fast_export(p, root, ["a/.git", "origin.git"], dest, revs=("refs/heads/main",))
+    [s] = specs
+    assert s.network == "none"
+    assert sorted((str(m.host), m.ctr, m.ro) for m in s.mounts) == [(str(root), "/in", True), (str(dest), "/out", False)]
+    assert "fast-export" in s.cmd[2] and s.cmd[3:] == ["fast-export", "1", "refs/heads/main", "a/.git", "origin.git"]
+    assert got == [dest / "1.fe", None]                     # no export file for a git dir means unscannable

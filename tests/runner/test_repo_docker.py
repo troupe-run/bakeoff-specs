@@ -270,7 +270,7 @@ def test_no_planted_git_vector_ever_executes_on_the_host(P, tmp_path_factory, sc
     real_push = gitops.push_from_bare
     monkeypatch.setattr(gitops, "push_from_bare", lambda bare, url, ref="main": real_push(bare, str(target), ref))
     scanned = []
-    assert repo.publish(P, "dry9", ask=lambda q: True, scan=lambda d: scanned.append(d) or [])
+    assert repo.publish(P, "dry9", ask=lambda q: True, scan=lambda d, h: scanned.append(d) or [])
     assert scanned and [f.name for f in transcripts.safe_files(scanned[0], "*")] == [".gitattributes", "a.py", "u.py"]
     [clone] = (P.scratch / "publish").glob("*/clone.git")
     bare_cfg = (clone / "config").read_text()

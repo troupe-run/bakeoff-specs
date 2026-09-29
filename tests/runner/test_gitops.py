@@ -128,7 +128,8 @@ def test_no_runner_module_but_gitops_builds_a_git_argv():                     # 
     assert offenders == []
 
 
-HOST_HELPERS = {"ls_remote_tag", "commit_harness_file", "harness_is_clean", "clone_bundle_bare", "push_from_bare"}
+HOST_HELPERS = {"ls_remote_tag", "commit_harness_file", "harness_is_clean", "clone_bundle_bare", "push_from_bare",
+                "staged_files"}
 
 
 def test_host_side_git_lives_only_in_helpers_that_never_take_an_arm_repo():   # review S-1
@@ -243,15 +244,6 @@ def test_cli_github_verify_exits_nonzero_unless_verify_ok(monkeypatch, capsys):
     assert cli.main(["github-verify", "pass1"]) != 0
     monkeypatch.setattr(repo, "github_verify", lambda pass_: {"_public_repos": []})
     assert cli.main(["github-verify", "pass1"]) == 0
-
-
-def test_cli_publish_refuses_while_there_is_no_secret_scanner(monkeypatch, capsys):   # S-2 lands in Task 21
-    import importlib.util
-    if importlib.util.find_spec("runner.secrets") is not None:
-        pytest.skip("runner.secrets exists; publish is wired to it")
-    monkeypatch.setattr(repo, "publish", lambda *a, **k: (_ for _ in ()).throw(AssertionError("published")))
-    assert cli.main(["publish", "pass1", "control"]) != 0
-    assert "secret scan" in capsys.readouterr().out
 
 
 # --- fix round 1 ----------------------------------------------------------------------------------------
@@ -465,10 +457,11 @@ def test_publish_scans_the_tree_of_the_very_clone_it_pushes(tmp_state, monkeypat
     monkeypatch.setattr(gitops, "bundle", fake_bundle)
     monkeypatch.setattr(gitops, "clone_bundle_bare", lambda b, d: (d.mkdir(), calls.append(("clone", d))))
     monkeypatch.setattr(gitops, "bare_tree", lambda p_, bare, ref, dest: (dest.mkdir(), calls.append(("tree", bare))))
+    monkeypatch.setattr(gitops, "fast_export", lambda p_, root, dirs, dest, revs=(): (calls.append(("history", root)), [None])[1])
     monkeypatch.setattr(gitops, "push_from_bare", lambda bare, url, ref="main": calls.append(("push", bare)))
-    assert repo.publish(p, "pass1", ask=lambda q: True, scan=lambda d: calls.append("scan") or [])
-    assert [c if isinstance(c, str) else c[0] for c in calls] == ["bundle", "clone", "tree", "scan", "push"]
-    assert calls[1][1] == calls[2][1] == calls[4][1]
+    assert repo.publish(p, "pass1", ask=lambda q: True, scan=lambda t, h: calls.append("scan") or [])
+    assert [c if isinstance(c, str) else c[0] for c in calls] == ["bundle", "clone", "tree", "history", "scan", "push"]
+    assert calls[1][1] == calls[2][1] == calls[3][1] == calls[5][1]
 
 
 # --- restore consistency (item 7 residual, breakage 3) -------------------------------------------------------
