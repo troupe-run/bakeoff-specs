@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# runner/images/base/bk-claude-turn MESSAGE_FILE
+# Runs one `claude -p` turn. Stdin line 1 is the OAuth token (spike B option a′): it becomes fd 3 and is
+# never placed in env, argv or a file. Every other setting arrives as a non-secret BK_* env var.
+set -euo pipefail
+IFS= read -r T
+exec 3< <(printf %s "$T"); unset T
+args=(-p "$(cat "$1")" --model "$BK_MODEL" --output-format stream-json --verbose
+      --permission-mode "$BK_PERMISSION_MODE" --strict-mcp-config)
+if [ -n "${BK_MCP_CONFIG:-}" ]; then args+=(--mcp-config "$BK_MCP_CONFIG"); fi     # OD24 B only (speckit)
+if [ -n "${BK_RESUME:-}" ]; then args+=(--resume "$BK_RESUME"); fi
+if [ "${BK_ISOLATED:-0}" = 1 ]; then args+=(--setting-sources ""); fi
+if [ -n "${BK_TOOLS:-}" ]; then args+=(--tools "$BK_TOOLS"); fi
+for d in ${BK_PLUGIN_DIRS:-}; do args+=(--plugin-dir "$d"); done                   # OD9 B
+# Variadic flag last so it cannot swallow the prompt (spike B Q8 surprise 9).
+if [ -n "${BK_DISALLOWED:-}" ]; then args+=(--disallowedTools "$BK_DISALLOWED"); fi
+unset BK_MODEL BK_PERMISSION_MODE BK_RESUME BK_ISOLATED BK_TOOLS BK_DISALLOWED BK_PLUGIN_DIRS BK_MCP_CONFIG
+exec env CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR=3 claude "${args[@]}" </dev/null
