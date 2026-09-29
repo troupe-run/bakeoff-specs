@@ -8,6 +8,8 @@
 #   (arm, po, teammate, setup, probe). A later role layer may only script turns whose prompt carries no
 #   `FAKE:` line; it must plug in at `respond()` behind the `if directives` guard, never ahead of it.
 #   This keeps the runner's own session tests (test_session_docker.py) valid once roles exist.
+#   A PO session's prompt is fixed ("Read /po/protocol.md ..."), so `/po/message.md` (the arm's message the PO
+#   is deciding on) is appended to the prompt before directives are parsed (Task 13; test_po_docker.py).
 import json, os, sys, time, uuid
 from pathlib import Path
 
@@ -42,6 +44,9 @@ def main():
     token = os.read(int(fd), 4096).decode() if fd else ""
     model = arg("--model")
     sid = arg("--resume") or str(uuid.uuid4())
+    po_message = Path("/po/message.md")        # Task 13: a PO session's directives come from the arm's message
+    if po_message.exists():
+        prompt += "\n" + po_message.read_text()
     directives = parse_directives(prompt)
     emit(type="system", subtype="init", session_id=sid, model=directives.get("init_model", model),
          claude_code_version=directives.get("cc_version", "2.1.281"),
