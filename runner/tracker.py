@@ -10,11 +10,11 @@ Backends, by `arm.tracker`:
 A substitute bug (ledger rulings B5a/B5b) goes through the same `create_bug` path with its own title and body.
 """
 from __future__ import annotations
-import json, re, subprocess, uuid
+import json, os, re, subprocess, tempfile, uuid
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from runner import config, docker, gitops, handoff
+from runner import config, docker, faults, gitops, handoff
 from runner.docker import Mount, RunSpec
 from runner.paths import REPO_ROOT
 
@@ -25,6 +25,15 @@ SUPERSEDED = "Superseded by a harness re-run"
 # arm base beside (not inside) the snapshotted home/work trees; beads lives in the work tree, so a restore to a
 # snapshot taken before the issue was filed removes it.
 SURVIVES_RESTORE = {"github": True, "dry": True, "beads": False}
+
+# Who files the harness's issues (fix round 1): beads records the actor; GitHub records the owner's own login,
+# labelled here without an extra API call; the dry file has no author.
+REPORTER = {"beads": "bug-reporter", "github": "owner-gh", "dry": "harness"}
+BD_WRITE = ["--sandbox", "--actor", REPORTER["beads"]]   # --sandbox: no Dolt auto-push
+BD_READ = ["--readonly"]
+NO_BEADS_DB = "no beads database found"
+GH_ENV_STRIP = ("GH_TOKEN", "GITHUB_TOKEN", "GH_HOST", "GH_REPO", "GH_ENTERPRISE_TOKEN")
+_TOKEN = re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})")
 
 
 @dataclass(frozen=True)
@@ -124,6 +133,20 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def _summary(text: str) -> str:
+    """First non-empty lines of a tool's stderr, with anything token-shaped removed."""
+    lines = [l.strip() for l in (text or "").splitlines() if l.strip()]
+    return _TOKEN.sub("[redacted]", " | ".join(lines[:3]))[:300]
+
+
+def _fault(verb: str, rc: int, stderr: str) -> faults.HarnessFault:
+    return faults.HarnessFault("infra-tracker", verb, f"exit {rc}: {_summary(stderr)}")
+
+
+def _verb(cmd: tuple[str, ...]) -> str:
+    return next((c for c in cmd[1:] if not c.startswith("-") and c != REPORTER["beads"]), "bd")
+
+
 def _bd(ctx, *cmd: str, extra: list[Mount] | None = None, check: bool = True) -> subprocess.CompletedProcess:
     """`bd` in the arm container: arm image, network none, the arm's home and work mounted."""
     p, arm = ctx.paths, ctx.arm
@@ -137,14 +160,18 @@ def _bd(ctx, *cmd: str, extra: list[Mount] | None = None, check: bool = True) ->
     r = subprocess.CompletedProcess(r.args, r.returncode, r.stdout.decode(errors="replace"),
                                     r.stderr.decode(errors="replace"))
     if check and r.returncode != 0:
-        raise RuntimeError(f"bd {cmd[1] if len(cmd) > 1 else ''} failed ({r.returncode}): {r.stderr[:300]}")
+        raise _fault(_verb(cmd), r.returncode, r.stderr)
     return r
 
 
 def _gh(argv: list[str]) -> str:
-    r = subprocess.run(argv, capture_output=True, text=True)
+    """`gh` on the host with the owner's own login: no token/host/repo overrides from the environment, and a
+    neutral empty cwd so no local git repo can steer it."""
+    env = {k: v for k, v in os.environ.items() if k not in GH_ENV_STRIP}
+    with tempfile.TemporaryDirectory(prefix="bakeoff-gh-") as cwd:
+        r = subprocess.run(argv, capture_output=True, text=True, env=env, cwd=cwd)
     if r.returncode != 0:
-        raise RuntimeError(f"{' '.join(argv[:3])} failed ({r.returncode}): {(r.stderr or '')[:300]}")
+        raise _fault(argv[2] if len(argv) > 2 else "gh", r.returncode, r.stderr)
     return r.stdout
 
 
@@ -181,7 +208,7 @@ def create_bug(ctx, owner, *, title: str | None = None, body: str | None = None)
         (d / f"issue-{n}.md").write_text(f"# {title}\n\n{text}")
         ref = IssueRef("dry", f"dry#{n}", None, str(n))
     elif backend == "beads":
-        r = _bd(ctx, "bd", "create", "--title", title, "--type", "bug", "--body-file", "/setup/issue.md", "--json",
+        r = _bd(ctx, "bd", *BD_WRITE, "create", "--title", title, "--type", "bug", "--body-file", "/setup/issue.md", "--json",
                 extra=[Mount(body_file, "/setup/issue.md", True)])
         ref = parse_bd(r.stdout)
     elif backend == "github":
@@ -192,13 +219,20 @@ def create_bug(ctx, owner, *, title: str | None = None, body: str | None = None)
     else:
         raise ValueError(f"unknown tracker backend {backend!r}")
     (ctx.out / "issue.json").write_text(json.dumps(
-        {**asdict(ref), "title": title, "source": source, "created_at": _now(),
+        {**asdict(ref), "title": title, "source": source, "reporter": REPORTER[backend], "created_at": _now(),
          "survives_restore": SURVIVES_RESTORE[backend]}, indent=2))
     return ref
 
 
-def _beads_list(ctx) -> list[dict]:
-    return _json_in(_bd(ctx, "bd", "list", "--all", "--json").stdout or "[]") or []
+def _beads_list(ctx) -> list[dict] | None:
+    """Every beads issue, or None when the arm has no beads database (never initialised, or removed by a
+    harness restore)."""
+    r = _bd(ctx, "bd", *BD_READ, "list", "--all", "--json", check=False)
+    if r.returncode != 0:
+        if NO_BEADS_DB in (r.stderr + r.stdout):
+            return None
+        raise _fault("list", r.returncode, r.stderr)
+    return _json_in(r.stdout or "[]") or []
 
 
 def supersede(ctx, old: IssueRef, owner, new: IssueRef | None = None) -> dict:
@@ -210,7 +244,7 @@ def supersede(ctx, old: IssueRef, owner, new: IssueRef | None = None) -> dict:
     reason = SUPERSEDED + (f": {new.ref}" if new else "")
     action = None
     if old.backend == "beads":
-        match = next((i for i in _beads_list(ctx) if i.get("id") == old.id), None)
+        match = next((i for i in _beads_list(ctx) or [] if i.get("id") == old.id), None)
         if match is None:
             action = "absent"
         elif match.get("status") == "closed":
@@ -226,7 +260,7 @@ def supersede(ctx, old: IssueRef, owner, new: IssueRef | None = None) -> dict:
             _gh(gh_close_argv(old.ref.rsplit("#", 1)[0], old.id, new.ref if new else None))
             action = "closed"
         elif old.backend == "beads":
-            _bd(ctx, "bd", "close", old.id, "--reason", reason)
+            _bd(ctx, "bd", *BD_WRITE, "close", old.id, "--reason", reason)
             action = "closed"
         elif old.backend == "dry":
             with open(_dry_dir(ctx) / f"issue-{old.id}.md", "a") as fh:
@@ -245,6 +279,7 @@ def snapshot(ctx) -> dict:
     """Every issue in the arm's tracker now, written as `out/tracker.json` (after every step: design §2 records
     tracker quality separately)."""
     backend = ctx.arm.tracker
+    initialised = True
     if backend == "dry":
         d = _dry_dir(ctx)
         files = sorted((f for f in d.glob("issue-*.md") if f.stem.split("-")[1].isdigit()),
@@ -252,14 +287,17 @@ def snapshot(ctx) -> dict:
         issues = [{"ref": f"dry#{f.stem.split('-')[1]}", "id": f.stem.split("-")[1], "text": f.read_text()}
                   for f in files]
     elif backend == "beads":
-        ids = [i["id"] for i in _beads_list(ctx)]
-        issues = _json_in(_bd(ctx, "bd", "show", *ids, "--json", "--include-comments").stdout) if ids else []
+        listed = _beads_list(ctx)
+        initialised = listed is not None
+        ids = [i["id"] for i in listed or []]
+        issues = _json_in(_bd(ctx, "bd", *BD_READ, "show", *ids, "--json", "--include-comments").stdout) if ids else []
         issues = issues if isinstance(issues, list) else [issues]
     elif backend == "github":
         issues = json.loads(_gh(gh_list_argv(_slug(ctx))) or "[]")
     else:
         raise ValueError(f"unknown tracker backend {backend!r}")
-    snap = {"backend": backend, "survives_restore": SURVIVES_RESTORE[backend], "at": _now(), "issues": issues}
+    snap = {"backend": backend, "survives_restore": SURVIVES_RESTORE[backend], "initialised": initialised,
+            "at": _now(), "issues": issues}
     ctx.out.mkdir(parents=True, exist_ok=True)
     (ctx.out / "tracker.json").write_text(json.dumps(snap, indent=2))
     return snap
