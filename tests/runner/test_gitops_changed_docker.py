@@ -1,6 +1,8 @@
-"""Task 22 (ruling 6, fix round 1 I-1): the N.a discovery stop's code check with real git in a real container. The
-baseline is the repo's CONTENT at the attempt's start (working tree, untracked files, branch tips), so whatever an
-earlier step left behind never counts as this attempt's edit. Run with `--run-docker` (through the docker lock)."""
+"""Task 22 (ruling 6, fix rounds 1-2, I-1): the N.a discovery stop's code check with real git in a real container.
+The baseline is every (path, blob) the repo holds at the attempt's start (working tree, untracked files, every branch
+tip's tree); a path is the arm's code only when its content is a blob that was not at that path then. Whatever an
+earlier step left behind never counts, and no git state the arm creates can make the check raise. Run with
+`--run-docker` (through the docker lock)."""
 import contextlib, subprocess
 import pytest
 from runner import drive, gitops, repo
@@ -49,7 +51,7 @@ def test_leftover_state_from_a_previous_step_is_not_a_change(P):
     assert gitops.changed_since(P, base) == []
 
 
-def test_changed_since_reports_only_paths_whose_content_changed_after_the_baseline(P):
+def test_changed_since_reports_only_paths_whose_content_is_a_new_blob(P):
     _leftovers(P)
     base = gitops.content_state(P)
     (P.repo / "new dir" / "u.py").write_text("y = 1\n")           # leftover untracked file, now edited
@@ -57,12 +59,88 @@ def test_changed_since_reports_only_paths_whose_content_changed_after_the_baseli
     (P.repo / "docs").mkdir(); (P.repo / "docs" / "d.md").write_text("d\n")
     (P.repo / "ignored" / "j.py").write_text("")                   # ignored: never reported
     gitops.git(P, "checkout", "-q", "-b", "other", "main", write=True)   # the uncommitted tracked.py change travels along
-    (P.repo / "b.py").write_text("")
+    (P.repo / "b.py").write_text("b = 1\n")
     gitops.git(P, "add", "b.py", write=True)
     gitops.git(P, "commit", "-q", "-m", "b", write=True, env=WHO)
     gitops.git(P, "checkout", "-q", "feature", write=True)
-    (P.repo / "tracked.py").write_text("x = 2\n")                  # the working tree as at the baseline again
     assert gitops.changed_since(P, base) == ["b.py", "docs/d.md", "new dir/u.py"]
+
+
+def test_committing_leftover_code_is_not_a_change(P):                                           # fix round 2
+    _leftovers(P)
+    base = gitops.content_state(P)
+    gitops.git(P, "add", "-A", write=True)
+    gitops.git(P, "commit", "-q", "-m", "the previous step's work", write=True, env=WHO)
+    assert gitops.changed_since(P, base) == []
+
+
+def test_checking_out_main_from_the_leftover_feature_branch_is_not_a_change(P):
+    _leftovers(P)
+    (P.repo / "tracked.py").write_text("x = 1\n")                  # a clean tree, so checkout is plain
+    gitops.git(P, "checkout", "-q", "abandoned", write=True)       # HEAD left on a branch with its own file
+    base = gitops.content_state(P)
+    gitops.git(P, "checkout", "-q", "main", write=True)
+    assert gitops.changed_since(P, base) == []
+
+
+def test_a_path_touched_then_reverted_is_not_a_change(P):
+    _leftovers(P)
+    base = gitops.content_state(P)
+    (P.repo / "tracked.py").write_text("x = 99\n")
+    (P.repo / "tracked.py").write_text("x = 2\n")
+    assert gitops.changed_since(P, base) == []
+
+
+def test_a_genuinely_new_code_edit_is_a_change(P):
+    _leftovers(P)
+    base = gitops.content_state(P)
+    (P.repo / "tracked.py").write_text("x = 3\n")
+    assert gitops.changed_since(P, base) == ["tracked.py"]
+
+
+def test_a_commit_on_a_detached_head_is_seen(P):
+    _leftovers(P)
+    (P.repo / "tracked.py").write_text("x = 1\n")
+    base = gitops.content_state(P)
+    gitops.git(P, "checkout", "-q", "--detach", "main", write=True)
+    (P.repo / "d.py").write_text("d = 1\n")
+    gitops.git(P, "add", "d.py", write=True)
+    gitops.git(P, "commit", "-q", "-m", "detached", write=True, env=WHO)
+    (P.repo / "d.py").unlink()                                      # not in the working tree, only in the commit
+    gitops.git(P, "rm", "-q", "--cached", "d.py", write=True)
+    assert gitops.changed_since(P, base) == ["d.py"]
+
+
+def test_virtualenvs_and_tool_caches_are_never_hashed_or_reported(P):
+    _leftovers(P)
+    base = gitops.content_state(P)
+    for d in gitops.NEVER_CODE:
+        (P.repo / "pkg" / d / "x").mkdir(parents=True, exist_ok=True)
+        (P.repo / "pkg" / d / "x" / "f.py").write_text("f = 1\n")
+        (P.repo / d).mkdir(exist_ok=True); (P.repo / d / "g.py").write_text("g = 1\n")
+    assert gitops.changed_since(P, base) == []
+    assert not any(any(d in k for d in gitops.NEVER_CODE) for k in base["pairs"])
+
+
+def test_a_nested_repo_without_a_commit_never_makes_the_check_raise_and_is_reported(P):        # fix round 2
+    _leftovers(P)
+    (P.repo / "empty-at-start").mkdir(); gitops.git(P, "-C", "empty-at-start", "init", "-q", write=True)
+    base = gitops.content_state(P)                                  # a nested repo with no commit: no raise
+    (P.repo / "nested").mkdir(); gitops.git(P, "-C", "nested", "init", "-q", write=True)
+    (P.repo / "nested" / "code.py").write_text("c = 1\n")
+    assert gitops.changed_since(P, base) == ["nested/"]
+
+
+def test_a_baseline_tip_deleted_and_pruned_never_makes_the_check_raise(P):                     # fix round 2
+    _leftovers(P)
+    (P.repo / "tracked.py").write_text("x = 1\n")
+    base = gitops.content_state(P)
+    gitops.git(P, "branch", "-q", "-D", "abandoned", write=True)
+    gitops.git(P, "reflog", "expire", "--expire=now", "--all", write=True)
+    gitops.git(P, "gc", "-q", "--prune=now", write=True)
+    assert gitops.git(P, "cat-file", "-e", base["tips"]["refs/heads/abandoned"], check=False).returncode != 0
+    (P.repo / "n.py").write_text("n = 1\n")
+    assert gitops.changed_since(P, base) == ["n.py"]
 
 
 def test_a_discovery_attempt_on_leftover_state_does_not_stop_on_turn_1_and_stops_at_the_arms_code_edit(P, tmp_path,

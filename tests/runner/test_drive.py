@@ -639,3 +639,51 @@ def test_discovery_at_step_5_still_preempts_with_cr_b_when_the_po_sees_no_gate(d
 def test_outside_spec_sorts_paths_by_the_arms_spec_paths_and_the_common_docs_paths(path, spec):
     arm, pins = drive.config.load_arm("openspec"), drive.config.load_pins()
     assert (drive.outside_spec([path], arm, pins) == []) is spec
+
+
+# ---- Task 22 fix round 2 (I-1): an arm's git state can never make the code check raise ---------------------------
+
+def test_a_baseline_that_cannot_be_taken_leaves_the_code_check_unavailable_and_the_attempt_running(disc, monkeypatch):
+    sent, script, ctx, changed = disc
+    def broken(p):
+        raise drive.docker.ContainerError("git content state failed in container (128): fatal: bad object")
+    monkeypatch.setattr(drive.gitops, "content_state", broken)
+    monkeypatch.setattr(drive.gitops, "changed_since", lambda p, b: pytest.fail("checked without a baseline"))
+    script["arm"] = [TR("working"), TR("approve?")]
+    script["po"] = [D("continue"), D("approval", "Approved.", approved=True)]
+    r = drive.run_attempt(ctx, 1, "go", stop_at_first_gate_or_code=True)
+    assert r.discovery["why"] == "approval"
+    assert r.code_check["status"] == "unavailable" and "bad object" in r.code_check["reasons"][0]["reason"]
+    assert r.code_check["reasons"][0]["turn"] == 0
+
+
+def test_a_code_check_that_fails_on_one_turn_is_recorded_and_the_next_turn_is_checked_again(disc, monkeypatch):
+    sent, script, ctx, changed = disc
+    results = iter([drive.docker.ContainerError("git content state failed (1)"), ["src/troupe/cli.py"]])
+
+    def flaky(p, b):
+        x = next(results)
+        if isinstance(x, Exception):
+            raise x
+        return x
+    monkeypatch.setattr(drive.gitops, "changed_since", flaky)
+    script["arm"] = [TR("a"), TR("b")]
+    script["po"] = [D("continue")]
+    r = drive.run_attempt(ctx, 1, "go", stop_at_first_gate_or_code=True)
+    assert r.discovery == {"why": "code", "turn": 2, "paths": ["src/troupe/cli.py"]}
+    assert r.code_check["status"] == "unavailable" and [x["turn"] for x in r.code_check["reasons"]] == [1]
+
+
+def test_a_code_check_that_always_works_is_recorded_as_ok(disc):
+    sent, script, ctx, changed = disc
+    script["arm"] = [TR("approve?")]
+    script["po"] = [D("approval", "Approved.", approved=True)]
+    r = drive.run_attempt(ctx, 1, "go", stop_at_first_gate_or_code=True)
+    assert r.code_check == {"status": "ok", "reasons": []}
+
+
+def test_the_never_code_directories_are_one_named_constant_turned_into_exclude_pathspecs():
+    from runner import gitops
+    assert set(gitops.NEVER_CODE) == {".venv", "venv", "__pycache__", ".mypy_cache", ".ruff_cache", ".pytest_cache",
+                                      "node_modules"}
+    assert ":(exclude,glob)**/node_modules/**" in gitops.never_code_pathspecs()

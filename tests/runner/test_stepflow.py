@@ -503,3 +503,18 @@ def test_the_scored_evidence_keeps_step_level_faults_that_have_no_run(fake_step)
     fake_step.progress = [3]
     stepflow.run_step(fake_step.ctx, "go")
     assert [e["signature"] for e in fake_step.finalised[-1]["fault_entries"]] == ["scope"]
+
+
+def test_run_a_records_whether_the_code_check_could_run(fake_step, monkeypatch):                # fix round 2
+    _run_a(fake_step)
+    real = stepflow.drive.run_attempt
+
+    def with_check(c, attempt, message, resume=None, **kw):
+        r = real(c, attempt, message, resume, **kw)
+        r.outcome, r.code_check = "discovery-stop", {"status": "unavailable", "reasons": [{"turn": 0, "reason": "x"}]}
+        return r
+    monkeypatch.setattr(stepflow.drive, "run_attempt", with_check)
+    stepflow.run_step(fake_step.ctx, "go", run="a")
+    rec = json.loads((fake_step.ctx.out / "discovery.json").read_text())
+    assert rec["code_check"]["status"] == "unavailable"
+    assert faults.for_step("dry9", "control", 2) == []                   # never a harness fault

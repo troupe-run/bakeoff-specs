@@ -220,3 +220,13 @@ def test_every_other_command_refuses_while_halted(capsys):
     assert cli.main(["github-plan", "pass1"]) == 1
     assert "HALTED" in capsys.readouterr().out
     assert cli.main(["faults", "list"]) == 0                       # `faults …` still runs
+
+
+# ---- fix round 2 -------------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("pass_, arm, slug", [("dry3\n", "control", "x"), ("dry3", "control\n", "x"),
+                                              ("dry3", "control", "x\n")])
+def test_a_trailing_newline_is_not_a_valid_name(pass_, arm, slug):
+    with pytest.raises(ValueError):
+        faults.declare(pass_, arm, 4, slug, "retest")
+    assert not (paths.RESULTS / "dry3" / "faults.jsonl").exists()
