@@ -28,6 +28,15 @@ def test_arm_flakes_count_as_failed_and_harness_flakes_as_flaky():         # rev
     assert (s.passed, s.failed, s.flaky, s.flaky_arm) == (1, 1, 1, 1)
     assert s.tests["m::b"] == "failed" and s.tests["m::a"] == "flaky"
 
+def test_install_failed_fails_every_test_even_one_that_passed_vacuously():
+    # found by the docker run: `uv run` on an uninstalled project exits 2 with stderr, which is exactly what
+    # test_show_without_path_is_a_usage_error_before_step_3 asserts — the brief says every test fails
+    tests = {"m::test_a": "failed", "m::test_usage": "passed"}
+    s = hidden.summarise(1, tests, ["m::test_a", "m::test_usage"], flaky=[], flaky_arm=[], exit_code=1,
+                         install_failed=True)
+    assert (s.passed, s.failed, s.new_passed, s.new_discriminating_passed) == (0, 2, 0, 0)
+    assert s.install_failed and s.tests == {"m::test_a": "failed", "m::test_usage": "failed"}
+
 def test_flake_verdict_needs_three_failures_to_be_a_plain_failure():
     assert hidden.flake_verdict(["failed", "failed", "failed"]) == "failed"
     assert hidden.flake_verdict(["failed", "passed", "failed"]) == "flaky"
