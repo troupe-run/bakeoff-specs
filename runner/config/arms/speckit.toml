@@ -18,9 +18,9 @@ plugins = []
 manifest_paths = [".claude", ".specify"]
 
 [drive]
-entry = "{handoff}"
-bug_entry = "{handoff}"
-must_run = []
-must_run_source = ""
+entry = "/speckit-specify {handoff}"
+bug_entry = "/speckit-bug-assess {handoff}"
+must_run = ["/speckit-converge"]
+must_run_source = "CANDIDATES §1.2 Workflow stages: repeat implement → converge until convergence reports Converged"
 fresh_session_before = []
-export_after = ""
+export_after = "/speckit-tasks"          # OD24 B: send /speckit-taskstoissues once after tasks ("" = OD24 A)

@@ -23,9 +23,9 @@ plugins = []
 manifest_paths = [".claude", "openspec", "~/.config/openspec"]
 
 [drive]
-entry = "{handoff}"
-bug_entry = "{handoff}"
-must_run = []
-must_run_source = ""
+entry = "/opsx:propose {handoff}"
+bug_entry = "/opsx:propose {handoff}"
+must_run = ["/opsx:archive"]
+must_run_source = "CANDIDATES §1.3 Workflow stages: /opsx:propose → /opsx:apply → /opsx:archive (archive merges deltas into specs)"
 fresh_session_before = []
 export_after = ""

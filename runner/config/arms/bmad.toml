@@ -32,9 +32,10 @@ plugins = [{ name = "bmad-method", marketplace = "bmad-code-org/bmad-plugins", i
 manifest_paths = ["_bmad"]
 
 [drive]
-entry = "{handoff}"
-bug_entry = "{handoff}"
+# "ask the bmad skill" (CANDIDATES §1.5 item 3)
+entry = "Use the bmad skill for this request:\n\n{handoff}"
+bug_entry = "Use the bmad skill for this request:\n\n{handoff}"
 must_run = []
-must_run_source = ""
+must_run_source = "CANDIDATES §1.5 Workflow stages: the one-session path (bmad-build) documents no closing command; bmad-retrospective closes epics only"
 fresh_session_before = []
 export_after = ""
