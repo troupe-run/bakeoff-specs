@@ -1,5 +1,5 @@
 # tests/runner/test_checklist.py
-import gzip, json, os, stat, subprocess
+import dataclasses, gzip, json, os, stat, subprocess
 import pytest
 from runner import checklist, config, credentials, docker, transcripts
 from runner.paths import Paths
@@ -99,7 +99,7 @@ def test_the_github_pat_is_installed_right_after_repo_init(tmp_state, monkeypatc
     monkeypatch.setattr(checklist.egress, "Stage", Stage)
     monkeypatch.setattr(checklist, "install_plugins", lambda *a: calls.append("plugins") or {})
     monkeypatch.setattr(checklist, "_shell", lambda *a: calls.append("shell") or 0)
-    monkeypatch.setattr(checklist, "_agent_turns", lambda *a: calls.append("agent") or (0.0, {}))
+    monkeypatch.setattr(checklist, "_agent_turns", lambda *a: calls.append("agent") or (0.0, {}, []))
 
     class Stop(Exception):
         pass
@@ -307,15 +307,154 @@ def test_cli_shell_runs_an_interactive_container_inside_the_setup_egress_stage(t
     assert "bk-net-x" in argv and "HTTPS_PROXY=http://egress:3128" in argv
 
 
-def test_cli_checklist_copies_the_shell_history_without_following_links(tmp_state, monkeypatch, tmp_path, capsys):
-    from runner import cli
+def test_shell_history_is_copied_without_following_links(tmp_state, tmp_path):
     p = Paths("dry9", "dryrun"); p.config_dir.mkdir(parents=True); p.repo.mkdir(parents=True)
-    monkeypatch.setattr(checklist, "verify", lambda p_, a, mode: [checklist.Check("x", True, "")])
     (p.home / ".bash_history").write_text("ls\n")
-    assert cli.main(["checklist", "dry9", "dryrun"]) == 0
+    assert checklist.copy_shell_history(p)
     assert (p.setup_results / "shell-history.txt").read_text() == "ls\n"
     (p.home / ".bash_history").unlink()
     secret = tmp_path / "outside.txt"; secret.write_text("host secret")
     os.symlink(secret, p.home / ".bash_history")
-    cli.main(["checklist", "dry9", "dryrun"])
+    assert not checklist.copy_shell_history(p)
     assert "host secret" not in (p.setup_results / "shell-history.txt").read_text()
+
+
+# --- fix round 1 (controller rulings) --------------------------------------------------------------------
+def test_a_check_has_three_statuses_and_n_a_is_never_a_pass_for_a_real_arm():            # FR1 item 1
+    na = checklist.Check("github.issues-access", False, "no repo", "n/a")
+    assert na.status == "n/a" and not na.ok
+    assert checklist.Check("a", True, "").status == "ok" and checklist.Check("a", False, "").status == "fail"
+    ok = checklist.Check("a", True, "")
+    assert not checklist.green([ok, na], {}) and not checklist.green([ok, na], {}, dry=False)
+    assert checklist.green([ok, na], {}, dry=True)
+    assert not checklist.green([ok, checklist.Check("b", False, "")], {}, dry=True)
+
+
+def _records(p, checks):
+    d = p.setup_results; d.mkdir(parents=True, exist_ok=True)
+    (d / "checklist.json").write_text(json.dumps([dataclasses.asdict(c) for c in checks]))
+    (d / "owner-checklist.json").write_text(json.dumps({"OV1": {"ok": True, "note": ""}}))
+
+
+def test_is_green_counts_n_a_only_for_dry_arms(tmp_state):
+    na = checklist.Check("github.issues-access", False, "no repo", "n/a")
+    real, dry = Paths("dry9", "control"), Paths("dry9", "dryrun")
+    _records(real, [checklist.Check("a", True, ""), na]); _records(dry, [checklist.Check("a", True, ""), na])
+    assert not checklist.is_green(real) and checklist.is_green(dry)
+
+
+def test_old_records_without_a_status_still_load(tmp_state):
+    p = Paths("pass1", "control"); d = p.setup_results; d.mkdir(parents=True)
+    (d / "checklist.json").write_text(json.dumps([{"id": "a", "ok": True, "detail": ""}]))
+    (d / "owner-checklist.json").write_text(json.dumps({}))
+    assert checklist.is_green(p)
+
+
+def test_issues_access_is_n_a_without_a_repo_and_fails_without_a_stage(tmp_state):
+    arm = config.load_arm("control")
+    na = checklist.issues_access_check(Paths("dry9", "control"), arm, "dry9", object())
+    assert na.status == "n/a" and "dry9" in na.detail
+    no_stage = checklist.issues_access_check(Paths("pass1", "control"), arm, "pass1", None)
+    assert no_stage.status == "fail" and not no_stage.ok
+
+
+def _turns(*rows):
+    return [{"prompt": i, "turn": n, "outcome": o} for n, (i, o) in enumerate(rows, 1)]
+
+
+def test_agent_turns_check_needs_the_last_turn_of_every_prompt_ok():                        # FR1 item 2
+    arm = dataclasses.replace(config.load_arm("dryrun"), setup_agent=["a", "b"])
+    assert checklist.agent_turns_check(arm, _turns((0, "ok"), (1, "ok"))).ok
+    assert checklist.agent_turns_check(arm, _turns((0, "timeout"), (0, "ok"), (1, "ok"))).ok   # owner reply fixed it
+    c = checklist.agent_turns_check(arm, _turns((0, "ok"), (1, "ok"), (1, "is_error")))
+    assert not c.ok and "is_error" in c.detail
+    for bad in ("timeout", "no_result"):
+        assert not checklist.agent_turns_check(arm, _turns((0, "ok"), (1, bad))).ok
+    missing = checklist.agent_turns_check(arm, _turns((0, "ok")))
+    assert not missing.ok and "never ran" in missing.detail
+    none = checklist.agent_turns_check(dataclasses.replace(arm, setup_agent=[]), [])
+    assert none.ok and none.id == "setup.agent-turns"
+
+
+def test_every_arm_lists_the_agent_turns_check():
+    for arm in checklist.HOST_CHECKS:
+        assert "setup.agent-turns" in checklist.HOST_CHECKS[arm], arm
+
+
+def test_a_shell_session_marks_setup_dirty_before_it_starts(tmp_state, monkeypatch):       # FR1 item 3
+    p = Paths("dry9", "dryrun"); p.config_dir.mkdir(parents=True); p.repo.mkdir(parents=True)
+
+    class Stage:
+        net = "n"
+        def __init__(self, *a): pass
+        def __enter__(self): return self
+        def __exit__(self, *e): pass
+    monkeypatch.setattr(checklist.egress, "Stage", Stage)
+    seen = []
+    monkeypatch.setattr(checklist.subprocess, "call", lambda argv: seen.append(checklist.is_dirty(p)) or 0)
+    _records(p, [checklist.Check("a", True, "")])
+    assert checklist.is_green(p)
+    checklist.interactive_shell("dry9", "dryrun")
+    assert seen == [True] and checklist.is_dirty(p) and not checklist.is_green(p)
+    assert "since" in json.loads(checklist.dirty_marker(p).read_text())
+    with pytest.raises(checklist.NotReady, match="dirty"):
+        checklist.require_clean_green(p)
+
+
+def test_require_clean_green_refuses_a_setup_that_is_not_green(tmp_state):
+    p = Paths("dry9", "dryrun")
+    with pytest.raises(checklist.NotReady, match="not green"):
+        checklist.require_clean_green(p)
+    _records(p, [checklist.Check("a", True, "")])
+    checklist.require_clean_green(p)
+
+
+def test_interactive_shell_refuses_a_parked_arm(tmp_state):                              # FR1 item 10
+    with pytest.raises(checklist.NotReady, match="bmad"):
+        checklist.interactive_shell("dry9", "bmad")
+
+
+def test_cli_checklist_runs_the_full_recheck_and_its_exit_code_is_the_result(monkeypatch):
+    from runner import cli
+    monkeypatch.setattr(cli, "_owner_for", lambda arm: "owner")
+    got = []
+    res = checklist.SetupResult([checklist.Check("a", True, "")], {}, False, 0.0)
+    monkeypatch.setattr(checklist, "recheck", lambda *a: got.append(a) or res)
+    assert cli.main(["checklist", "dry9", "dryrun"]) == 1
+    monkeypatch.setattr(checklist, "recheck", lambda *a: dataclasses.replace(res, green=True))
+    assert cli.main(["checklist", "dry9", "dryrun"]) == 0
+    assert got == [("dry9", "dryrun", "owner")]
+
+
+def test_the_applied_model_env_is_what_sessions_get():                                  # FR1 item 4
+    pins = config.load_pins()
+    env = checklist.applied_model_env(pins, config.load_arm("control"), "pass1")
+    for k in ("ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+              "CLAUDE_CODE_SUBAGENT_MODEL", "BK_MODEL"):
+        assert env[k] == pins.model
+    full = credentials.session_env(pins, config.load_arm("control"), role="arm", isolated=False, pass_="pass1")
+    assert env == {k: v for k, v in full.items() if "MODEL" in k}
+
+
+def test_a_missing_manifest_path_fails_the_manifest_check_naming_it():                    # FR1 item 7
+    c = checklist.manifest_check("pass1", "dryrun", {"a": "1"}, None, missing=["openspec"])
+    assert not c.ok and "openspec" in c.detail
+    assert checklist.manifest_check("pass1", "dryrun", {"a": "1"}, None, missing=[]).ok
+
+
+def test_arms_whose_setup_creates_nothing_in_the_repo_list_no_manifest_paths():
+    for arm in ("control", "superpowers", "dryrun"):
+        assert config.load_arm(arm).manifest_paths == [], arm
+
+
+def test_a_broken_arm_toml_does_not_break_importing_checklist(tmp_path):                  # FR1 item 8
+    import shutil, sys
+    arms = tmp_path / "arms"; shutil.copytree(config.ARMS_DIR, arms)
+    (arms / "broken.toml").write_text("this is [not toml")
+    code = ("import sys; from pathlib import Path; from runner import config; config.ARMS_DIR = Path(sys.argv[1]); "
+            "import runner.checklist as c; print(sorted(c.HOST_CHECKS)[:1], 'control' in c.HOST_CHECKS, "
+            "'setup.origin-push' in c.HOST_CHECKS['control'])")
+    r = subprocess.run([sys.executable, "-c", code, str(arms)], capture_output=True, text=True,
+                       cwd=checklist.REPO_ROOT)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "['bmad'] True True"

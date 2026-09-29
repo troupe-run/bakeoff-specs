@@ -22,6 +22,7 @@ DRY_MD = """# dryrun (test copy; Task 24 writes the real one)
 - `common.no-foreign-model-ids` — host
 - `setup.manifest-matches-pass1` — host
 - `setup.origin-push` — host
+- `setup.agent-turns` — host
 ## Owner-verified
 - [ ] OV1: The setup session's reply reads sensibly.
 ## Known traps
@@ -79,7 +80,8 @@ def test_setup_runs_shell_agent_turns_and_post_shell_then_is_green(tmp_state, ch
     got = {c.id: c for c in r.checks}
     assert r.green, [c for c in r.checks if not c.ok]
     for cid in ["common.claude-version", "common.isolation-env", "common.git-identity", "common.no-foreign-plugins",
-                "common.origin", "common.no-foreign-model-ids", "setup.manifest-matches-pass1", "setup.origin-push"]:
+                "common.origin", "common.no-foreign-model-ids", "setup.manifest-matches-pass1", "setup.origin-push",
+                "setup.agent-turns"]:
         assert got[cid].ok, got[cid]
     # the owner's reply went in as the next turn, before the second configured prompt
     assert owner.shown == ["set up", "answered", "second"]
@@ -101,6 +103,9 @@ def test_setup_runs_shell_agent_turns_and_post_shell_then_is_green(tmp_state, ch
     assert {"shell-was-here.txt", "post-was-here.txt"} <= set(gitops.ls_files(p, "HEAD"))
     assert (p.snapshots / "step-01.tar").is_file()
     assert checklist.is_green(p)
+    overrides = json.loads((out / "model-overrides.json").read_text())                    # FR1 item 4
+    assert overrides["env"]["ANTHROPIC_DEFAULT_SONNET_MODEL"] == config.load_pins().model
+    assert overrides["env"]["CLAUDE_CODE_SUBAGENT_MODEL"] == config.load_pins().model
 
 
 def test_an_off_pin_model_in_a_setup_turn_is_a_harness_fault(tmp_state, checks_dir, monkeypatch):   # M5
@@ -152,3 +157,44 @@ def test_the_origin_checks_pass_on_the_local_bare_origin_and_fail_elsewhere(tmp_
     bad = {c.id: c for c in checklist.verify(p, config.load_arm("dryrun"), "setup")}
     assert not bad["common.origin"].ok and "/tmp/elsewhere.git" in bad["common.origin"].detail
     assert not checklist._origin_push(p).ok                        # setup.origin-push fails with it too
+
+
+# --- fix round 1 ----------------------------------------------------------------------------------------
+def test_a_setup_prompt_whose_last_turn_failed_is_not_green(tmp_state, checks_dir, monkeypatch):   # FR1 item 2
+    use_arm(monkeypatch, setup_agent=["FAKE:is_error\nFAKE:reply=broke"])
+    r = checklist.run_setup(PASS, "dryrun", credentials.dummy(), StubOwner())
+    c = {c.id: c for c in r.checks}["setup.agent-turns"]
+    assert not c.ok and "is_error" in c.detail and not r.green
+
+
+def test_a_missing_manifest_path_is_named_by_a_failing_check(tmp_state, checks_dir, monkeypatch):   # FR1 item 7
+    use_arm(monkeypatch, manifest_paths=["nope-not-created"])
+    r = checklist.run_setup(PASS, "dryrun", credentials.dummy(), StubOwner())
+    c = {c.id: c for c in r.checks}["setup.manifest-matches-pass1"]
+    assert not c.ok and "nope-not-created" in c.detail and not r.green
+
+
+def test_checklist_after_a_shell_session_is_a_full_recheck(tmp_state, checks_dir, monkeypatch):     # FR1 item 3
+    use_arm(monkeypatch, setup_agent=["FAKE:reply=set up"])
+    assert checklist.run_setup(PASS, "dryrun", credentials.dummy(), StubOwner()).green
+    p = Paths(PASS, "dryrun")
+    snap_before = (p.snapshots / "step-01.tar").stat().st_mtime_ns
+    checklist.mark_dirty(p, "test: owner shell")
+    (p.repo / "owner-edit.txt").write_text("edited in the shell\n")                  # what a shell session did
+    with pytest.raises(checklist.NotReady, match="dirty"):
+        checklist.require_clean_green(p)
+    r = checklist.recheck(PASS, "dryrun", None)
+    assert r.green and not checklist.is_dirty(p)
+    checklist.require_clean_green(p)
+    assert "owner-edit.txt" in gitops.ls_files(p, "HEAD")                                 # committed and pushed
+    assert gitops.git(p, "rev-parse", "origin/main").stdout == gitops.git(p, "rev-parse", "HEAD").stdout
+    rec = {c["id"]: c for c in json.loads((p.setup_results / "checklist.json").read_text())}
+    assert rec["setup.agent-turns"]["ok"] and rec["common.origin"]["ok"]                  # carried over + re-run
+    assert (p.snapshots / "step-01.tar").stat().st_mtime_ns > snap_before
+    # a recheck that is not green leaves setup dirty and says so
+    checklist.mark_dirty(p, "test: owner shell")
+    gitops.git(p, "remote", "set-url", "origin", "/tmp/elsewhere.git", write=True)
+    bad = checklist.recheck(PASS, "dryrun", None)
+    assert not bad.green and checklist.is_dirty(p) and not checklist.is_green(p)
+    rec = {c["id"]: c for c in json.loads((p.setup_results / "checklist.json").read_text())}
+    assert not rec["common.origin"]["ok"]
