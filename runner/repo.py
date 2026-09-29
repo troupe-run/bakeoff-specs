@@ -231,9 +231,10 @@ def bundle(p: Paths, dest: Path) -> Path:
 
 
 def github_plan(pass_: str) -> list[str]:
-    """The `gh repo create` commands for the owner to run. Runs nothing."""
+    """The `gh repo create` commands for the owner to run, for the active arms (parked ones have no repo). Runs
+    nothing."""
     out = []
-    for arm in config.all_arms():
+    for arm in config.active_arms():
         a = config.load_arm(arm)
         out.append(f'gh repo create {github_slug(pass_, arm)} --private '
                    f'--description "bakeoff-specs arm: {a.tool} {a.version} ({pass_})"')
@@ -243,7 +244,7 @@ def github_plan(pass_: str) -> list[str]:
 def pat_instructions(pass_: str) -> list[str]:
     """One fine-grained PAT per GitHub-tracker arm (OD16)."""
     out = []
-    for arm in config.all_arms():
+    for arm in config.active_arms():
         if config.load_arm(arm).tracker != "github":
             continue
         out.append(f"{arm}: Create a fine-grained token: resource owner {ORG}; repository access: only "
@@ -255,7 +256,7 @@ def pat_instructions(pass_: str) -> list[str]:
 
 def github_verify(pass_: str) -> dict:
     res: dict = {}
-    for arm in config.all_arms():
+    for arm in config.active_arms():
         r = subprocess.run(["gh", "repo", "view", github_slug(pass_, arm), "--json",
                             "visibility,hasIssuesEnabled,isEmpty"], capture_output=True, text=True)
         res[arm] = json.loads(r.stdout) if r.returncode == 0 else {"error": r.stderr.strip()}

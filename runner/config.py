@@ -118,12 +118,14 @@ class Arm:
     fresh_session_before: list[dict[str, str]]    # [{command, source}] (OD19 B)
     export_after: str                              # speckit only (OD24 B): the command after which export runs
     dry: bool = False
+    parked: bool = False         # Task 23 (owner): not run, not in github-plan/verify, PAT needles or the order
     volatile_paths: list[Volatile] = field(default_factory=list)   # excluded from the pass-2 manifest comparison
     spec_paths: list[SpecPath] = field(default_factory=list)       # the method's spec/plan/tracker folders (N.a)
 
 
 _ANCHORED = re.compile(r"^\^.+\$$")
-TOP = {"name", "tool", "version", "citation", "image", "tracker", "repo_name", "env", "egress", "setup", "drive", "dry"}
+TOP = {"name", "tool", "version", "citation", "image", "tracker", "repo_name", "env", "egress", "setup", "drive", "dry",
+       "parked"}
 SETUP = {"shell", "agent", "post_shell", "plugins", "smoke", "manifest_paths", "volatile_paths"}
 DRIVE = {"entry", "bug_entry", "must_run", "must_run_source", "fresh_session_before", "export_after", "spec_paths"}
 
@@ -181,6 +183,8 @@ def load_arm(name: str) -> Arm:
     fresh = [dict(x) for x in dr.get("fresh_session_before", [])]
     if any(not x.get("source") for x in fresh):
         raise ConfigError(f"{where}: every fresh_session_before entry needs a source (OD19)")
+    if not isinstance(raw.get("parked", False), bool):
+        raise ConfigError(f"{where}: parked must be true or false")
     sm = su.get("smoke")
     manifest_paths = list(su.get("manifest_paths", [".claude"]))
     return Arm(
@@ -194,7 +198,7 @@ def load_arm(name: str) -> Arm:
         manifest_paths=manifest_paths, volatile_paths=_volatile(su.get("volatile_paths", []), manifest_paths, where),
         entry=dr["entry"], bug_entry=dr["bug_entry"], must_run=must_run,
         must_run_source=dr.get("must_run_source", ""), fresh_session_before=fresh,
-        export_after=dr.get("export_after", ""), dry=bool(raw.get("dry", False)),
+        export_after=dr.get("export_after", ""), dry=bool(raw.get("dry", False)), parked=raw.get("parked", False),
         spec_paths=_spec_paths(dr.get("spec_paths", []), where + " [drive] spec_paths"),
     )
 
@@ -243,4 +247,11 @@ def github_slug(pass_: str, arm: str) -> str | None:
 
 
 def all_arms() -> list[str]:
+    """Every real arm, parked ones included (setup checklists, config tests)."""
     return list(REAL_ARMS)
+
+
+def active_arms() -> list[str]:
+    """The real arms that run (Task 23): every arm not marked `parked = true` (bmad until BMAD 6.13, owner).
+    github-plan/verify, the PAT instructions and needles, and the run order iterate these."""
+    return [a for a in REAL_ARMS if not load_arm(a).parked]

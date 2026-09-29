@@ -717,7 +717,7 @@ def _arm_homes() -> Iterator[Path]:
 def _keychain_pats() -> list[str]:
     from runner import config
     out = []
-    for arm in config.all_arms():
+    for arm in config.active_arms():             # Task 23: a parked arm has no PAT item
         a = config.load_arm(arm)
         if a.tracker != "github" or a.dry:
             continue
