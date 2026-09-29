@@ -6,6 +6,7 @@ from runner import docker, gitops, hidden, repo
 from runner.docker import Mount, RunSpec
 from runner.paths import Paths, REPO_ROOT
 from tests.hidden.theatre import share_with_arm
+from runner import bundle_unpack
 
 JUNIT = '''<testsuites><testsuite>
 <testcase classname="tests.hidden.test_step2_sync" name="test_a"/>
@@ -90,7 +91,7 @@ def test_pytest_starts_as_the_harness_uid_with_only_the_caps_it_needs(tmp_state,
     assert s.cmd[:4] == ["setpriv", "--reuid=1000", "--regid=1000", "--clear-groups"]
     assert "--ambient-caps=+setuid,+setgid,+kill,+dac_override,+setpcap,+sys_resource" in s.cmd
     i = s.cmd.index("--")
-    assert s.cmd[i + 1:i + 5] == ["bash", "-c", hidden.ENTRY.read_text(), "entry"]
+    assert s.cmd[i + 1:i + 6] == ["bash", "-c", hidden.ENTRY.read_text(), "entry", hidden.UNPACKER.read_text()]
 
 
 def test_the_arm_cli_runs_under_its_own_uid_with_no_caps_and_setpriv_execs_it():
@@ -127,7 +128,8 @@ def test_no_container_mounts_an_out_dir_the_arm_could_write(tmp_state, accounts)
 def test_the_prep_container_has_no_harness_mounts_and_no_privileges(tmp_state, accounts):
     _, _, s = _spec(tmp_state, "prep")
     assert not [x for x in s.mounts if x.ctr.startswith(("/harness", "/etc"))]
-    assert s.user == "1000:1000" and s.cap_add == ()
+    # fix round 3: arm build code (uv sync runs the arm's build backend) is untrusted, like the arm itself
+    assert s.user == "1001:1001" and s.cap_add == () and s.tmpfs == ()
 
 
 def test_collection_runs_with_no_arm_code_mounted(tmp_state, accounts):
@@ -149,12 +151,51 @@ def test_the_hidden_tests_are_never_bind_mounted_but_streamed_into_a_harness_onl
 
 
 def test_the_harness_bundle_is_exactly_the_hidden_suite_and_its_config():
-    files = hidden.unpack_bundle(hidden.harness_bundle())
-    names = set(files)
-    assert {"pyproject.toml", "tests/__init__.py", "tests/conftest.py", "tests/hidden/conftest.py",
-            "tests/hidden/test_step1_history.py", "tests/hidden/driver.py"} <= names
-    assert not [n for n in names if n.startswith("tests/runner") or "__pycache__" in n or n.startswith("/") or ".." in n]
+    files = dict(bundle_unpack.parse(hidden.harness_bundle()))
+    every = {f.relative_to(REPO_ROOT).as_posix() for f in (REPO_ROOT / "tests" / "hidden").rglob("*")
+             if f.is_file() and "__pycache__" not in f.parts}                         # fix round 3: every file
+    assert set(files) == every | {"pyproject.toml", "tests/__init__.py", "tests/conftest.py"}
     assert files["tests/hidden/driver.py"] == (REPO_ROOT / "tests/hidden/driver.py").read_bytes()
+
+
+def test_the_bundle_refuses_a_link_loudly(tmp_path, monkeypatch):
+    (tmp_path / "tests" / "hidden").mkdir(parents=True)
+    (tmp_path / "pyproject.toml").write_text("")
+    for f in ("tests/__init__.py", "tests/conftest.py", "tests/hidden/a.py"):
+        (tmp_path / f).write_text("x")
+    (tmp_path / "tests" / "hidden" / "data.yml").write_text("k: v")
+    (tmp_path / "tests" / "hidden" / "link.py").symlink_to(tmp_path / "pyproject.toml")
+    monkeypatch.setattr(hidden, "REPO_ROOT", tmp_path)
+    with pytest.raises(ValueError, match="link"):
+        hidden.harness_bundle()
+    (tmp_path / "tests" / "hidden" / "link.py").unlink()
+    assert "tests/hidden/data.yml" in dict(bundle_unpack.parse(hidden.harness_bundle()))
+
+
+def _rec(name: str, data: bytes, size: int | None = None) -> bytes:
+    return f"{name} {len(data) if size is None else size}\n".encode() + data
+
+
+@pytest.mark.parametrize("blob,why", [
+    (_rec("a.py", b"x", size=-1), "size"),
+    (_rec("a.py", b"x" * 10, size=11), "truncated"),
+    (_rec("a.py", b"x") + _rec("b.py", b"yy")[:-1], "truncated"),
+    (_rec("a.py", b"x", size=bundle_unpack.MAX_FILE + 1), "size"),
+    (_rec("/etc/x", b"x"), "path"),
+    (_rec("a/../b", b"x"), "path"),
+    (_rec("a//b", b"x"), "path"),
+    (_rec("a.py", b"x") + _rec("a.py", b"x"), "duplicate"),
+    (b"no header at all", "header"),
+])
+def test_the_in_container_unpacker_rejects_bad_records(blob, why):             # fix round 3, minor
+    with pytest.raises(ValueError, match=why):
+        bundle_unpack.parse(blob)
+
+
+def test_the_in_container_unpacker_writes_only_under_its_root(tmp_path):
+    bundle_unpack.write(_rec("tests/hidden/a.py", b"A") + _rec("pyproject.toml", b"P"), tmp_path)
+    assert (tmp_path / "tests/hidden/a.py").read_bytes() == b"A" and (tmp_path / "pyproject.toml").read_bytes() == b"P"
+    assert (tmp_path / "tests").stat().st_mode & 0o777 == 0o700
 
 
 def test_the_tester_never_mounts_scratch_or_the_arm_home_writable(tmp_state, accounts):
@@ -404,3 +445,68 @@ def test_the_ref_step_is_forwarded_for_the_reference_only(tmp_path):
     assert driver.forwarded("/work/bakeoff-specs-x", "setpriv ... troupe", False, ref) == ()
     assert driver.forwarded("/work/bakeoff-specs-x", None, False, ref) == ()
     assert driver.forwarded("/opt/reference", "uv run ...", True, ref) == ("TROUPE_REF_STEP",)
+
+
+# --- fix round 3 -----------------------------------------------------------------------------------------------
+
+def test_the_reference_image_is_used_only_by_reference_runs(tmp_state, accounts):
+    pins = hidden.config.load_pins()
+    assert pins.images["tester_ref"] != pins.images["tester"]
+    p = Paths("dryhp", "dryrun")
+    copy = _copy(p)
+    seen = {}
+    for mode in ("prep", "harness", "script"):
+        seen[mode] = hidden._spec(p, copy, ["true"], mode=mode).image
+    seen["reference"] = hidden._spec(p, None, ["true"], mode="harness", reference=True).image
+    assert seen == {"prep": pins.images["tester"], "harness": pins.images["tester"], "script": pins.images["tester"],
+                    "reference": pins.images["tester_ref"]}
+    with pytest.raises(ValueError):                    # the reference image never gets an arm copy
+        hidden._spec(p, copy, ["true"], mode="harness", reference=True)
+
+
+def test_reference_runs_go_through_the_reference_image(tmp_state, accounts, monkeypatch):
+    got = []
+    monkeypatch.setattr(hidden, "_run", lambda s, timeout: got.append(s) or type("R", (), {"stdout": b"", "stderr": b"", "returncode": 1})())
+    hidden.classify_flaky(Paths("dryhp", "dryrun"), 1, "tests/hidden/test_step1_history.py::test_x")
+    assert got and {s.image for s in got} == {hidden.config.load_pins().images["tester_ref"]}
+    assert not [m for s in got for m in s.mounts if m.ctr == "/work"]
+
+
+def test_the_cli_caps_what_it_exposes_to_assertions():
+    small = "hello\n"
+    assert driver.cap(small) == small
+    big = "a" * 100_000 + "TAIL"
+    c = driver.cap(big)
+    assert c.endswith("TAIL") and len(c.encode()) <= driver.CAP + 200
+    assert c.startswith("[... ") and "truncated" in c.splitlines()[0]
+
+
+def test_the_cli_result_is_capped_on_both_streams(tmp_path):
+    cli = driver.Cli([__import__("sys").executable, "-c",
+                      "import sys; sys.stdout.write('o' * 300000 + 'END'); sys.stderr.write('e' * 300000 + 'ERR'); sys.exit(3)"])
+    r = cli("show", theatre=tmp_path)
+    assert r.code == 3 and r.out.endswith("END") and r.err.endswith("ERR")
+    assert len(r.out.encode()) <= driver.CAP + 200 and len(r.err.encode()) <= driver.CAP + 200
+
+
+def test_the_watcher_readiness_failure_message_is_capped():
+    text = (REPO_ROOT / "tests/hidden/watcher.py").read_text()
+    assert "cap(''.join(self.err))" in text
+
+
+def test_an_oversized_result_is_attributed_to_arm_output_and_scores_all_failed(tmp_state, monkeypatch):
+    monkeypatch.setattr(hidden, "_collect", lambda p, step, first_only: ["m::a", "m::b"] if not first_only else [])
+    oversize = hidden._frames_error(hidden.ResultsError("results member junit.xml is 99 bytes (cap 1)", oversize=True))
+    assert oversize.startswith("arm-output")
+    monkeypatch.setattr(hidden, "_pytest", lambda *a, **k: (None, oversize))
+    s = hidden.run(Paths("dryhp", "dryrun"), tmp_state / "c", 1, tmp_state / "out")
+    assert (s.scoreable, s.attribution, s.passed, s.failed) == (True, "arm-output", 0, 2)
+
+
+def test_a_malformed_result_is_still_a_harness_fault():
+    assert hidden._frames_error(hidden.ResultsError("malformed results header at byte 0")).startswith("harness-fault")
+
+
+def test_a_full_results_tmpfs_is_arm_output_too():
+    res = {"exit": b"3\n", "resources": b"oom_kill 0\n--pids\nmax 0\n--tmp\ntmpfs 1 0 1 0% /tmp\n--results\ntmpfs 131072 131072 0 100% /results\n"}
+    assert hidden.assess(["m::a"], res)[2] == "arm-output"

@@ -49,12 +49,16 @@ def test_claude_binary_matches_the_pinned_sha256():
     assert r.stdout.split()[0] == config.load_pins().binary_sha256
 
 
-def test_tester_image_has_harness_venv_quality_tools_and_the_reference():
+def test_tester_image_has_harness_venv_and_quality_tools_but_no_reference():
     img = config.load_pins().images["tester"]
     for tool in ["pytest", "mypy", "ruff"]:
         assert run(img, f"/opt/harness/bin/{tool}", "--version").returncode == 0
     assert run(img, "/opt/harness/bin/python", "-c", "import ruamel.yaml, yaml").returncode == 0
-    assert run(img, "/opt/reference/.venv/bin/troupe", "--help").returncode == 0   # reference for flake checks (C-2, m24)
+    assert run(img, "test", "-e", "/opt/reference").returncode == 1        # Task 18 fix round 3: arm code runs here
+
+
+def test_reference_image_has_the_reference_for_the_harness_uid():               # flake checks (C-2, m24)
+    assert run(config.load_pins().images["tester_ref"], "/opt/reference/.venv/bin/troupe", "--help").returncode == 0
 
 
 def test_proxy_image_runs_tinyproxy_pinned_by_apk_version():                      # review m1

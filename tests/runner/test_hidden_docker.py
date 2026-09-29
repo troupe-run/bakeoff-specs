@@ -82,23 +82,40 @@ def test_the_arm_has_no_network(ref):
     assert "NONET" in out, out
 
 
-# fix round 2, item 1: the reference is in the tester image, so the arm uid must not reach it by ANY path.
+# fix round 3: no image that arm code runs in (prep or test) contains the reference at all.
 REF_PROBE = r"""
-ls /opt/reference >/dev/null 2>&1 && echo LIST-OK
-cat /opt/reference/pyproject.toml >/dev/null 2>&1 && echo READ-OK
-/opt/reference/.venv/bin/troupe --help >/dev/null 2>&1 && echo EXEC-OK
-/opt/reference/.venv/bin/python -c 'import troupe_ref' >/dev/null 2>&1 && echo IMPORT-OK
-PYTHONPATH=/opt/reference/src python3 -c 'import troupe_ref' >/dev/null 2>&1 && echo PYPATH-OK
-uv run --offline --no-sync --project /opt/reference troupe --help >/dev/null 2>&1 && echo UVRUN-OK
-find / -xdev \( -path /proc -o -path /sys \) -prune -o \( -name 'troupe_ref*' -o -name 'troupe-ref*' \) -readable -print 2>/dev/null | sed 's/^/FOUND /'
+test -e /opt/reference && echo REF-EXISTS
+find / -xdev \( -path /proc -o -path /sys \) -prune -o \( -name 'troupe_ref*' -o -name 'troupe-ref*' -o -name 'troupe_ref' \) -print 2>/dev/null | sed 's/^/FOUND /'
 echo PROBE-DONE
 """
 
 
-def test_the_arm_uid_cannot_reach_the_reference_by_any_path(ref):
+def test_the_tester_image_has_no_reference_anywhere(ref):
     p, copy = ref
     out = hidden.run_script(p, copy, REF_PROBE)
-    assert "PROBE-DONE" in out and not [l for l in out.splitlines() if l.endswith("-OK") or l.startswith("FOUND")], out
+    assert "PROBE-DONE" in out and not [l for l in out.splitlines() if l == "REF-EXISTS" or l.startswith("FOUND")], out
+
+
+def test_the_reference_image_has_the_reference_for_the_harness_uid():
+    img = hidden.config.load_pins().images["tester_ref"]
+    r = subprocess.run(["docker", "run", "--rm", "--network", "none", "--user", "1000:1000", "--tmpfs", "/tmp",
+                        "-e", "UV_CACHE_DIR=/tmp/c", img, "uv", "run", "--offline", "--no-sync", "--quiet",
+                        "--project", "/opt/reference", "troupe", "--help"], capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0 and "troupe" in r.stdout, r.stderr
+
+
+def test_prep_runs_as_the_arm_uid_with_nothing(state, tmp_path):                   # fix round 3, item 2
+    p = Paths("dryhidden", "dryrun")
+    dst = p.scratch / "prepcheck" / "a" / "bakeoff-specs-dryrun"
+    dst.mkdir(parents=True)
+    spec = hidden._spec(p, dst, ["sh", "-c", "id -u; grep -E '^(Cap(Inh|Prm|Eff|Bnd|Amb)|NoNewPrivs):' /proc/self/status; "
+                                              "test -e /opt/reference && echo REF-EXISTS; echo DONE"], mode="prep")
+    out = hidden._run(spec, timeout=120).stdout.decode()
+    lines = [l.split() for l in out.splitlines()]
+    assert lines[0] == ["1001"] and ["DONE"] in lines and ["REF-EXISTS"] not in lines, out
+    caps = {l[0].rstrip(":"): l[1] for l in lines if l and l[0].startswith(("Cap", "NoNew"))}
+    assert caps == {"CapInh": "0000000000000000", "CapPrm": "0000000000000000", "CapEff": "0000000000000000",
+                    "CapBnd": "0000000000000000", "CapAmb": "0000000000000000", "NoNewPrivs": "1"}, out
 
 
 def test_a_test_stable_on_the_reference_is_an_arm_flake(ref):                # review C-2
@@ -178,7 +195,7 @@ def main():
         return 0                                  # attack once per run; later calls just do nothing
     me = _status("self")
     _log("uid", me["Uid"].split()[0])
-    for k in ("CapEff", "CapAmb", "CapPrm", "CapBnd", "NoNewPrivs"):
+    for k in ("CapInh", "CapEff", "CapAmb", "CapPrm", "CapBnd", "NoNewPrivs"):
         _log("status-" + k, me[k].strip())
     _log("oom", open("/proc/self/oom_score_adj").read().strip())
     _try("lower-oom", _write("/proc/self/oom_score_adj", "0"))
@@ -214,7 +231,7 @@ def test_an_arm_that_forges_junit_and_kills_pytest_scores_zero(state, tmp_path):
     assert len(got) == len(rows), "attempted twice"
     # the real pytest-launched path: its own uid, no capabilities at all, no new privileges, OOM-first
     assert got["uid"] == "1001"
-    assert {got[f"status-{k}"] for k in ("CapEff", "CapAmb", "CapPrm", "CapBnd")} == {"0000000000000000"}
+    assert {got[f"status-{k}"] for k in ("CapInh", "CapEff", "CapAmb", "CapPrm", "CapBnd")} == {"0000000000000000"}
     assert got["status-NoNewPrivs"] == "1" and got["oom"] == "1000" and got["lower-oom"] != "OK"
     env = json.loads(got["env"])
     assert not [k for k in env if k.startswith(("TROUPE_REF", "PYTEST", "BAKEOFF", "PYTHONPATH"))], env
@@ -249,6 +266,22 @@ def main():
     p, dst = _skeleton("refshim", shim, tmp_path)
     s = hidden.run(p, dst, 1, tmp_path)
     assert (s.scoreable, s.total, s.passed) == (True, EXPECTED[1], 0), [t for t, o in s.tests.items() if o == "passed"]
+
+
+_VERBOSE = r"""import sys
+def main():
+    # a CLI that legitimately prints a great deal (think a debug dump) and then fails
+    sys.stdout.write("progress line\n" * 400_000)
+    sys.stderr.write("diagnostic detail\n" * 400_000)
+    return 1
+"""
+
+
+def test_a_very_verbose_failing_arm_is_scored_not_a_harness_fault(state, tmp_path):   # fix round 3, item 3
+    p, dst = _skeleton("verbose", _VERBOSE, tmp_path)
+    s = hidden.run(p, dst, 1, tmp_path)
+    assert s.scoreable and s.passed == 0 and s.total == EXPECTED[1], s.attribution
+    assert s.attribution in (None, "arm-output"), s.attribution
 
 
 def test_a_skeleton_that_does_nothing_scores_zero(skeleton):
