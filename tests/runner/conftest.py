@@ -251,6 +251,8 @@ class FakeOrch:
         self.extras: dict = {}
         self.outcome: dict = {}               # (arm, step, run) -> list of behaviours, consumed in order
         self.escalate: dict = {}              # (arm, step) -> (question, answer) appended to the brief in N.a
+        self.escalate_b: dict = {}            # (arm, step) -> (question, answer) appended to the brief in N.b
+        self.crash_after: set = set()         # (arm, step, run): stepflow finished, then the runner died
         self.resource: dict = {}              # (arm, step) -> "once" | "repeat" recorded during N.b
         self.state = {"branch": "main", "dirty": False}
         self.main = {}                        # arm -> current main sha
@@ -383,6 +385,9 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
         if run == "a" and (a, n) in env.escalate:
             q, ans = env.escalate[(a, n)]
             po.append_escalation(ctx.brief_path, q, ans, ctx.pass_, a, n, source="scripted")
+        if run == "b" and (a, n) in env.escalate_b:
+            q, ans = env.escalate_b[(a, n)]
+            po.append_escalation(ctx.brief_path, q, ans, ctx.pass_, a, n, source="scripted")
         if behaviour == "halt":
             raise stepflow.Halt("HALTED")
         if behaviour == "paused":
@@ -402,16 +407,24 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
         (ctx.out / "transcripts" / "a1" / "projects" / "s.jsonl.gz").write_bytes(b"")
         if run == "a":
             (ctx.out / "discovery.json").write_text("{}")
+            if (a, n, run) in env.crash_after:
+                env.crash_after.discard((a, n, run))
+                raise KeyboardInterrupt("killed after stepflow returned")
             return stepflow.StepOutcome("discovered", 1, run="a")
         env.main[a] = f"sha-{n}"
         if (a, n) in env.resource:
             faults.record_resource(ctx.pass_, a, n, 1, env.resource[(a, n)], [["oom"]])
         (ctx.out / "summary.md").write_text(f"# Step {n} summary — {a} ({ctx.pass_})\n")
+        (ctx.out / "run.json").write_text(J.dumps({"outcome": "stopped" if behaviour == "stopped" else "done"}))
         s = hidden.summarise(n, {"m::t": "passed"}, ["m::t"], [], [], 0)
         s.write(ctx.out)
         if behaviour == "stopped":
             ctx.paths.results.mkdir(parents=True, exist_ok=True)
             (ctx.paths.results / "arm-result.json").write_text(J.dumps({"stopped_at": n, "by": "stepflow"}))
+        if (a, n, run) in env.crash_after:
+            env.crash_after.discard((a, n, run))
+            raise KeyboardInterrupt("killed after stepflow returned")
+        if behaviour == "stopped":
             return stepflow.StepOutcome("stopped", 3, s, {}, run="b")
         return stepflow.StepOutcome("done", 1, s, {}, run="b")
     monkeypatch.setattr(stepflow, "run_step", run_step)
