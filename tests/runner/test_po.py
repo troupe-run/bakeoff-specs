@@ -453,3 +453,134 @@ def test_attempts_never_collide(ctx, brief, monkeypatch):
     po.decide(dataclasses.replace(ctx, attempt=2), "y", po.credentials.dummy(), 1, brief)
     assert (ctx.out_dir / "po" / "a1-001" / "message.md").read_text() == "x"
     assert (ctx.out_dir / "po" / "a2-001" / "message.md").read_text() == "y"
+
+
+# --- fix round 1 -----------------------------------------------------------------------------------------------
+
+def test_extraction_takes_the_first_decision_object_not_a_greedy_span():            # fix 1
+    text = 'Here is {"note": "not it"} and then ' + J(kind="continue", answers=[], reply="Please continue.") + \
+           ' and trailing {"x": 1}'
+    assert po.parse(text).kind == "continue"
+
+
+def test_extraction_skips_braces_in_prose_before_the_object():
+    text = "I read {the plan} and {more}.\n" + J(kind="step_done", answers=[])
+    assert po.parse(text).kind == "step_done"
+
+
+def test_a_reply_with_no_decision_object_is_rejected():
+    with pytest.raises(po.ProtocolError):
+        po.parse('{"note": "no kind here"} {"also": 2}')
+
+
+@pytest.mark.parametrize("bad", [                                                    # fix 2
+    J(answers=[{"question": None, "reply": "x", "escalate": False, "cited": None}]),
+    J(answers=[{"question": 7, "reply": "x", "escalate": False, "cited": None}]),
+    J(answers=[{"question": "q?", "reply": 5, "escalate": False, "cited": None}]),
+    J(answers=[{"question": "q?", "reply": "x", "escalate": "false", "cited": None}]),
+    J(answers=[{"question": "q?", "reply": "x", "escalate": 0, "cited": None}]),
+    J(answers=[{"question": "q?", "reply": "x", "cited": None}]),                      # escalate missing
+    J(significant="yes"), J(significant=1), J(significant=None),
+    J(kind=None), J(arguments=3),
+])
+def test_strict_types(bad):
+    with pytest.raises(po.ProtocolError):
+        po.parse(bad)
+
+
+@pytest.mark.parametrize("kind,extra", [                                             # fix 3
+    ("continue", {"reply": "Please continue."}),
+    ("step_done", {}),
+    ("approval", {"reply": "ok", "approved": True}),
+    ("next_command", {"command": "speckit.plan"}),
+])
+def test_answers_on_a_non_question_kind_are_rejected(kind, extra):
+    with pytest.raises(po.ProtocolError):
+        po.parse(J(kind=kind, **extra))                    # J's default carries one answer entry
+
+
+def _grown(tmp_path):
+    b = tmp_path / "po-brief.md"; b.write_text(BRIEF)
+    po.append_escalation(b, "early?", "yes", "pass1", "openspec", 1, source="real")
+    po.append_escalation(b, "late?", "line one\n\nline three", "pass1", "speckit", 5, source="real")
+    po.append_escalation(b, "mid?", "no", "pass1", "ccsdd", 3, source="scripted")
+    return b
+
+
+@pytest.mark.parametrize("step,seen,hidden", [                                       # fix 6
+    (1, ["early?"], ["late?", "mid?", "line three"]),
+    (3, ["early?", "mid?"], ["late?", "line three"]),
+    (5, ["early?", "late?", "line three", "mid?"], []),
+])
+def test_the_po_sees_only_escalations_raised_at_or_before_its_step(tmp_path, step, seen, hidden):
+    view = po.brief_for_step(_grown(tmp_path).read_text(), step)
+    assert all(s in view for s in seen) and not any(h in view for h in hidden)
+    assert view.startswith("# Product-owner brief") and "## Escalated answers" in view
+
+
+def test_the_filter_keeps_sections_after_the_escalated_answers(tmp_path):
+    b = _grown(tmp_path); b.write_text(b.read_text() + "\n## Later section\nkeep me\n")
+    view = po.brief_for_step(b.read_text(), 1)
+    assert "keep me" in view and "late?" not in view
+
+
+def test_decide_gives_the_po_the_filtered_copy_and_keeps_the_full_brief(ctx, tmp_path, monkeypatch):
+    b = _grown(tmp_path); full = b.read_text()
+    fake_turns(monkeypatch, [("ok", GOOD())])
+    po.decide(ctx, "x", po.credentials.dummy(), 1, b)                     # ctx.step == 1
+    copy = (ctx.out_dir / "po" / "a1-001" / "po-brief.md").read_text()
+    assert "early?" in copy and "late?" not in copy and "mid?" not in copy
+    assert b.read_text() == full
+
+
+def test_brief_writes_are_atomic(tmp_path, monkeypatch):                            # fix 7
+    b = tmp_path / "po-brief.md"; b.write_text(BRIEF)
+    calls = []
+    real = po.os.replace
+    def spy(src, dst):
+        calls.append((Path(src), Path(dst)))
+        return real(src, dst)
+    monkeypatch.setattr(po.os, "replace", spy)
+    po.append_escalation(b, "q?", "a", "pass1", "control", 1, source="real")
+    ((src, dst),) = calls
+    assert dst == b and src.parent == b.parent and src != b
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["po-brief.md"]            # no temp file left behind
+
+
+def test_a_failed_brief_write_leaves_the_brief_intact(tmp_path, monkeypatch):
+    b = tmp_path / "po-brief.md"; b.write_text(BRIEF)
+    def boom(src, dst): raise OSError("disk full")
+    monkeypatch.setattr(po.os, "replace", boom)
+    with pytest.raises(OSError):
+        po.append_escalation(b, "q?", "a", "pass1", "control", 1, source="real")
+    assert b.read_text() == BRIEF and sorted(p.name for p in tmp_path.iterdir()) == ["po-brief.md"]
+
+
+def test_results_are_refused_except_the_six_po_inputs(ctx):                         # fix 8
+    from runner.docker import Mount
+    d = ctx.paths.step(1) / "po" / "a1-001"
+    ok = [Mount(d / f, f"/po/{f}", True) for f in po.PO_FILES]
+    po.check_mounts(ok, ctx.paths, allowed_files=[d / f for f in po.PO_FILES])
+    for bad in [ctx.paths.step(1) / "hidden", ctx.paths.step(1), d, d / "decision.json", ctx.paths.results,
+                Paths("dry9", "other").step(1) / "po" / "a1-001" / "message.md"]:
+        with pytest.raises(PermissionError):
+            po.check_mounts([Mount(bad, "/po/x", True)], ctx.paths, allowed_files=[d / f for f in po.PO_FILES])
+
+
+def test_hidden_tests_are_identified_by_path_not_by_name(ctx):
+    from runner.docker import Mount
+    notes = ctx.paths.work / "hidden-notes"; notes.mkdir(parents=True)
+    po.check_mounts([Mount(notes, "/work/hidden-notes", True)], ctx.paths)       # a name is not a path
+    with pytest.raises(PermissionError):                                             # a hidden copy, whatever its name
+        po.check_mounts([Mount(ctx.paths.scratch / "06-precheck" / "a", "/data", True)], ctx.paths)
+    with pytest.raises(PermissionError):
+        po.check_mounts([Mount(REPO / "tests" / "hidden" / "driver.py", "/data/x.py", True)], ctx.paths)
+
+
+def test_a_step5_brief_without_its_change_requests_is_a_clear_error():             # fix 9
+    with pytest.raises(ValueError, match="CR-B"):
+        po.step_view(5, "# Step 5\n\n## CR-A: x\nbody\n", CONTRACT, delivery="two-requests")
+
+
+def test_the_park_reason_docs_name_empty_answer():
+    assert "empty-answer" in owner.__doc__ and "empty-answer" in owner.Park.__doc__
