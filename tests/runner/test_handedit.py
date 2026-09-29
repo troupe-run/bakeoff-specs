@@ -327,7 +327,8 @@ def test_unparseable_probe_output_is_a_probe_fault_not_a_crash(ctx, monkeypatch)
 
 def test_a_changed_step_1_outcome_is_changed_hidden_results(ctx, monkeypatch):
     changed = {**STEP1, "tests.hidden.test_a::t1": "failed"}
-    World(monkeypatch, ctx, outcomes=("ok", "ok"), porcelains=(" M a.py\n",) * 2, rechecks=(changed, changed))
+    World(monkeypatch, ctx, outcomes=("ok", "ok"), porcelains=(" M a.py\n",) * 2, probes=(GOOD_PROBE,) * 2,
+          rechecks=(changed, changed))
     with pytest.raises(HarnessFault) as e:
         handedit.apply(ctx, STEP1)
     assert (e.value.kind, e.value.signature) == ("hand-edit", "changed-hidden-results")
