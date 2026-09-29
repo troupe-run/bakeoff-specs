@@ -93,8 +93,9 @@ Prints the configuration's events as JSON Lines, oldest first; with `PATH`, only
 ## Sync with files (from step 2)
 
 - `troupe config watch --theatre <dir>` runs in the foreground until SIGINT or SIGTERM (then exits 0). Once it
-  is watching, it prints one line `watching <dir>` to stdout and flushes. Within 2 seconds of any change to
-  the config file or an included file, it reconciles.
+  is watching, it prints one line `watching <dir>` to stdout and flushes. The line is a promise: it is printed
+  only after `watch` is able to observe changes. Within 2 seconds of any change to the config file or an
+  included file made after that line appears, it reconciles.
 - **Reconcile:** compare the files with the configuration and emit a `set`/`remove` event for each leaf that
   differs. A formatting-only or comment-only edit emits nothing.
 - Every other command except `history` reconciles first, so edits made while nothing was running are picked
