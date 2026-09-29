@@ -27,6 +27,8 @@ def test_set_records_one_event_per_changed_leaf_and_seq_continues(cli, tmp_theat
 def test_set_to_the_same_value_records_nothing(cli, tmp_theatre):
     build(tmp_theatre, {CFG: "a: 1\n"})
     before = events(cli, tmp_theatre)
+    # the import must have been recorded first, else "nothing changed" is vacuous on a CLI that records nothing
+    assert before and any(e["op"] == "import" and e["path"] == "a" for e in before)
     assert cli("set", "a", "1", theatre=tmp_theatre).code == 0
     assert events(cli, tmp_theatre) == before
 

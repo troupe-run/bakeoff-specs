@@ -91,13 +91,6 @@ build-backend = "uv_build"
 '''
 
 
-# Found by this suite (Task 18): on a CLI that installs, exits 0 and does nothing, exactly one step-1 hidden
-# test passes — it only checks that history is unchanged after a same-value `set`, which is vacuously true
-# when nothing is ever recorded. It is not in harness/negative_allowlist.txt, so it also counts as
-# discriminating progress. Changing the instrument (allowlist or test) is a controller/owner decision.
-VACUOUS_ON_DO_NOTHING = {"tests.hidden.test_step1_history::test_set_to_the_same_value_records_nothing"}
-
-
 @pytest.fixture(scope="module")
 def skeleton(state, tmp_path_factory):
     """A CLI that exists, installs and does nothing. (No `uv.lock`: the prep takes the `uv sync` path,
@@ -113,15 +106,10 @@ def skeleton(state, tmp_path_factory):
     return hidden.run(p, dst, 1, out)
 
 
-def test_a_do_nothing_skeleton_passes_only_the_known_vacuous_step1_test(skeleton):
-    assert skeleton.total == EXPECTED[1]
-    assert {t for t, o in skeleton.tests.items() if o != "failed"} == VACUOUS_ON_DO_NOTHING
-
-
-@pytest.mark.xfail(strict=True, reason="instrument gap: test_set_to_the_same_value_records_nothing passes on a "
-                                       "do-nothing arm and is not allowlisted (reported to the controller)")
 def test_a_skeleton_that_does_nothing_scores_zero(skeleton):
-    assert skeleton.passed == 0 and skeleton.new_discriminating_passed == 0
+    assert skeleton.total == EXPECTED[1]
+    assert skeleton.passed == 0 and skeleton.new_discriminating_passed == 0, \
+        [t for t, o in skeleton.tests.items() if o != "failed"]
 
 
 def test_an_uninstallable_arm_is_install_failed_and_scores_zero_without_reruns(state, tmp_path):
