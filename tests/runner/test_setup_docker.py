@@ -20,9 +20,9 @@ DRY_MD = """# dryrun (test copy; Task 24 writes the real one)
 - `common.no-foreign-plugins` — none
 - `common.origin` — local bare origin, main resolves
 - `common.no-foreign-model-ids` — host
-- `setup.manifest-matches-pass1` — host
 - `setup.origin-push` — host
-- `setup.agent-turns` — host
+- (computed) `setup.manifest-matches-pass1` — host, when the effective manifest list is not empty
+- (computed) `setup.agent-turns` — host, when setup prompts are configured
 ## Owner-verified
 - [ ] OV1: The setup session's reply reads sensibly.
 ## Known traps
@@ -79,9 +79,9 @@ def test_setup_runs_shell_agent_turns_and_post_shell_then_is_green(tmp_state, ch
     p, out = Paths(PASS, "dryrun"), Paths(PASS, "dryrun").setup_results
     got = {c.id: c for c in r.checks}
     assert r.green, [c for c in r.checks if not c.ok]
+    assert "setup.manifest-matches-pass1" not in got         # dryrun lists no manifest paths: omitted (T10 FR1)
     for cid in ["common.claude-version", "common.isolation-env", "common.git-identity", "common.no-foreign-plugins",
-                "common.origin", "common.no-foreign-model-ids", "setup.manifest-matches-pass1", "setup.origin-push",
-                "setup.agent-turns"]:
+                "common.origin", "common.no-foreign-model-ids", "setup.origin-push", "setup.agent-turns"]:
         assert got[cid].ok, got[cid]
     # the owner's reply went in as the next turn, before the second configured prompt
     assert owner.shown == ["set up", "answered", "second"]

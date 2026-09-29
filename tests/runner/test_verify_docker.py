@@ -63,6 +63,36 @@ def fresh(monkeypatch, p: Paths, backup: Path, n) -> None:
     shutil.copytree(backup, p.base, symlinks=True)
 
 
+def common_breaks(p: Paths) -> dict:
+    """name -> (mutate or None, failing set, env): one break for each lib.sh `common` check but no-foreign-plugins
+    (each arm breaks that its own way). Runs on the arm's own image."""
+    return {
+        "a foreign git identity": (lambda: gitops.git(p, "config", "user.name", "Someone", write=True),
+                                   {"common.git-identity"}, {}),
+        "origin elsewhere": (lambda: gitops.git(p, "remote", "set-url", "origin", "/tmp/elsewhere.git", write=True),
+                             {"common.origin"}, {}),
+        "auto-memory on": (None, {"common.isolation-env"}, {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "0"}),
+        "another Claude Code expected": (None, {"common.claude-version"},
+                                         {"BK_EXPECT_CLAUDE_VERSION": "2.1.280 (Claude Code)"}),
+    }
+
+
+def run_breaks(monkeypatch, p, arm, backup, cases, extra=lambda: [], tag="c") -> dict:
+    """Each case on its own never-mounted copy of the post-setup state; returns {name: failing set}."""
+    seen = {}
+    for n, (name, (mutate, _, env)) in enumerate(cases.items()):
+        fresh(monkeypatch, p, backup, f"{tag}{n}")
+        if mutate:
+            mutate()
+        seen[name] = failing(run(p, arm, extra=extra(), env=env))
+    return seen
+
+
+def assert_every_script_id_falsified(arm: str, wants) -> None:
+    """T10 FR1 item 2: every id the arm's script prints (common ones included) fails in at least one case."""
+    assert set().union(*wants) == script_only_ids(arm), script_only_ids(arm) - set().union(*wants)
+
+
 # ---- 1. the scripts print what the mds list ------------------------------------------------------------------
 @pytest.mark.parametrize("arm", DONE_ARMS)
 def test_the_script_prints_exactly_the_non_host_ids_of_the_md(arm, tmp_state):
@@ -115,6 +145,16 @@ def _control_mutations(p: Paths):
         "user-scope commands": (lambda: home(".claude/commands"), {"control.no-method"}),
         "user-scope skills": (lambda: home(".claude/skills"), {"control.no-method"}),
         "user-scope agents": (lambda: home(".claude/agents"), {"control.no-method"}),
+        "CLAUDE.local.md in the repo": (lambda: write("CLAUDE.local.md"), {"control.no-method", "control.empty-repo"}),
+        "user-scope CLAUDE.md": (lambda: (p.config_dir / "CLAUDE.md").write_text("x"), {"control.no-method"}),
+        "user-scope output styles": (lambda: home(".claude/output-styles"), {"control.no-method"}),
+        "user-scope hooks": (lambda: (p.config_dir / "settings.json").write_text(json.dumps(
+            {"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": "echo hi"}]}]}})),
+                             {"control.no-method"}),
+        "user-scope output style setting": (lambda: (p.config_dir / "settings.json").write_text(
+            json.dumps({"outputStyle": "Explanatory"})), {"control.no-method"}),
+        "CLAUDE.md above the repo": (lambda: (p.work / "CLAUDE.md").write_text("x"), {"control.no-method"}),
+        "CLAUDE.local.md above the repo": (lambda: (p.work / "CLAUDE.local.md").write_text("x"), {"control.no-method"}),
         "a committed file": (commit, {"control.empty-repo"}),
         "an untracked file": (lambda: write("notes.txt"), {"control.empty-repo"}),
         "a foreign git identity": (lambda: gitops.git(p, "config", "user.name", "Someone", write=True),
@@ -142,8 +182,14 @@ def test_every_control_check_fails_when_what_it_checks_is_broken(tmp_state, tmp_
     want = {n: w for n, (_, w) in _control_mutations(p).items()} | {
         "auto-memory on": {"common.isolation-env"}, "another Claude Code expected": {"common.claude-version"}}
     assert seen == want
-    # every script check of control was falsified at least once
-    assert set().union(*want.values()) == script_only_ids("control")
+    assert_every_script_id_falsified("control", want.values())
+
+
+def test_harmless_user_settings_do_not_trip_control_no_method(tmp_state):
+    """The check reads hooks and outputStyle, not the file's existence: a settings.json without them passes."""
+    arm, p = config.load_arm("control"), Paths(PASS, "control"); repo.init(p, "control", PASS)
+    (p.config_dir / "settings.json").write_text(json.dumps({"permissions": {"allow": []}}))
+    assert not failing(run(p, arm))
 
 
 # ---- 3. superpowers -----------------------------------------------------------------------------------------
@@ -160,9 +206,10 @@ def _edit_json(f: Path, fn) -> None:
     d = json.loads(f.read_text()); fn(d); f.write_text(json.dumps(d))
 
 
-def test_every_superpowers_check_fails_when_what_it_checks_is_broken(tmp_state, tmp_path):
+def test_every_superpowers_check_fails_when_what_it_checks_is_broken(tmp_state, tmp_path, monkeypatch):
     arm, p = config.load_arm("superpowers"), Paths(PASS, "superpowers"); repo.init(p, "superpowers", PASS)
     assert not failing(run(p, arm)), "the vendored plugin passes every script check"
+    backup = tmp_path / "backup"; shutil.copytree(p.base, backup, symlinks=True)
     clean = tmp_path / "plugins"; _export_plugins(p, arm, clean)
     root = "superpowers"
 
@@ -174,6 +221,10 @@ def test_every_superpowers_check_fails_when_what_it_checks_is_broken(tmp_state, 
                           {"superpowers.plugin-version"}),
         "no writing-plans skill": (lambda r: shutil.rmtree(r / "skills/writing-plans"), {"superpowers.skills"}),
         "no using-superpowers skill": (lambda r: shutil.rmtree(r / "skills/using-superpowers"), {"superpowers.skills"}),
+        "no executing-plans skill": (lambda r: shutil.rmtree(r / "skills/executing-plans"), {"superpowers.skills"}),
+        "no using-git-worktrees skill": (lambda r: shutil.rmtree(r / "skills/using-git-worktrees"), {"superpowers.skills"}),
+        "no requesting-code-review skill": (lambda r: shutil.rmtree(r / "skills/requesting-code-review"),
+                                            {"superpowers.skills"}),
         "no SessionStart hook": (lambda r: _edit_json(r / "hooks/hooks.json", lambda d: d["hooks"].pop("SessionStart")),
                                  {"superpowers.session-hook"}),
         "no session-start script": (lambda r: (r / "hooks/session-start").unlink(), {"superpowers.session-hook"}),
@@ -181,22 +232,52 @@ def test_every_superpowers_check_fails_when_what_it_checks_is_broken(tmp_state, 
     }
     seen = {n: failing(run(p, arm, extra=[Mount(variant(n.replace(" ", "-"), fn), "/opt/plugins", True)]))
             for n, (fn, _) in cases.items()}
-    assert seen == {n: w for n, (_, w) in cases.items()}
+    common = common_breaks(p)
+    seen |= run_breaks(monkeypatch, p, arm, backup, common)
+    want = {n: w for n, (_, w) in cases.items()} | {n: w for n, (_, w, _) in common.items()}
+    assert seen == want
+    assert_every_script_id_falsified("superpowers", want.values())
 
 
-def test_superpowers_route_a_reads_the_installed_plugin(tmp_state, tmp_path):                   # OD9 A
+def test_superpowers_route_a_reads_the_installed_plugin_from_install_path(tmp_state, tmp_path, monkeypatch):  # OD9 A
+    """T10 FR1 item 3: the root is installed_plugins.json's installPath for superpowers@claude-plugins-official;
+    never `.`, never another cached version or marketplace."""
     arm, p = config.load_arm("superpowers"), Paths(PASS, "superpowers"); repo.init(p, "superpowers", PASS)
     clean = tmp_path / "plugins"; _export_plugins(p, arm, clean)
-    cache = p.config_dir / "plugins" / "cache" / "claude-plugins-official" / "superpowers" / "6.4.2"
-    shutil.copytree(clean / "superpowers", cache)
-    (p.config_dir / "plugins" / "installed_plugins.json").write_text(
-        json.dumps({"plugins": {"superpowers@claude-plugins-official": [{"installPath": str(cache)}]}}))
+    cache = p.config_dir / "plugins" / "cache"
+    for mkt, ver in (("claude-plugins-official", "6.4.2"), ("claude-plugins-official", "6.4.1"),
+                     ("superpowers-marketplace", "6.4.2")):
+        d = cache / mkt / "superpowers" / ver; shutil.copytree(clean / "superpowers", d)
+        _edit_json(d / ".claude-plugin/plugin.json", lambda j, v=ver: j.update(version=v))
+    ctr = f"{p.container_home}/.claude/plugins/cache"
+
+    def installed(path, key="superpowers@claude-plugins-official"):
+        return lambda: (p.config_dir / "plugins" / "installed_plugins.json").write_text(
+            json.dumps({"version": 2, "plugins": {key: [{"scope": "user", "installPath": path}]}}))
+    backup = tmp_path / "backup"; shutil.copytree(p.base, backup, symlinks=True)
     env = {"PLUGIN_ROUTE": "marketplace"}
+    cases = {
+        "the installed 6.4.2": (installed(f"{ctr}/claude-plugins-official/superpowers/6.4.2"), set(), env),
+        "installed 6.4.1 beside a cached 6.4.2": (installed(f"{ctr}/claude-plugins-official/superpowers/6.4.1"),
+                                                  {"superpowers.plugin-version"}, env),
+        "installPath missing on disk": (installed(f"{ctr}/claude-plugins-official/superpowers/9.9.9"),
+                                        {"superpowers.plugin-version", "superpowers.skills",
+                                         "superpowers.session-hook"}, env),
+        "installed from another marketplace": (installed(f"{ctr}/superpowers-marketplace/superpowers/6.4.2",
+                                                         "superpowers@superpowers-marketplace"),
+                                               {"superpowers.plugin-version", "superpowers.skills",
+                                                "superpowers.session-hook"}, env),
+        "no installed_plugins.json": (None, {"superpowers.plugin-version", "superpowers.skills",
+                                             "superpowers.session-hook"}, env),
+    }
+    seen = run_breaks(monkeypatch, p, arm, backup, cases)
+    assert seen == {n: w for n, (_, w, _) in cases.items()}
+    fresh(monkeypatch, p, backup, "detail"); cases["the installed 6.4.2"][0]()
     got = run(p, arm, env=env)
-    assert not failing(got), [got[i] for i in failing(got)]
-    assert got["superpowers.plugin-version"].detail.startswith(f"{p.container_home}/.claude/plugins/cache/")
-    _edit_json(cache / ".claude-plugin/plugin.json", lambda d: d.update(version="6.5.0"))
-    assert failing(run(p, arm, env=env)) == {"superpowers.plugin-version"}
+    assert got["superpowers.plugin-version"].detail == f"{ctr}/claude-plugins-official/superpowers/6.4.2: 6.4.2"
+    fresh(monkeypatch, p, backup, "none")
+    got = run(p, arm, env=env)
+    assert got["superpowers.plugin-version"].detail.startswith("<no installPath"), got["superpowers.plugin-version"]
 
 
 # ---- 4. openspec: the real [setup] shell steps, offline, then each check broken in turn ------------------------
@@ -224,6 +305,8 @@ def test_openspec_setup_passes_its_checks_and_every_check_fails_when_broken(tmp_
         "sync command missing": (lambda: (p.repo / ".claude/commands/opsx/sync.md").unlink(), {"openspec.commands"}),
         "explore skill missing": (lambda: shutil.rmtree(p.repo / ".claude/skills/openspec-explore"), {"openspec.skills"}),
         "no specs tree": (lambda: shutil.rmtree(p.repo / "openspec/specs"), {"openspec.tree"}),
+        "no changes tree": (lambda: shutil.rmtree(p.repo / "openspec/changes"), {"openspec.tree"}),
+        "another schema": (yaml(lambda t: t.replace("schema: spec-driven", "schema: my-schema")), {"openspec.tree"}),
         "telemetry on in config": (cfg(lambda d: d["telemetry"].update(enabled=True)), {"openspec.telemetry-off"}),
         "telemetry unset in config": (cfg(lambda d: d.pop("telemetry")), {"openspec.telemetry-off"}),
         "context with a changed principle": (yaml(lambda t: t.replace(principle, "Use SQLite for the event store.")),
@@ -238,10 +321,18 @@ def test_openspec_setup_passes_its_checks_and_every_check_fails_when_broken(tmp_
     seen["OPENSPEC_TELEMETRY=1"] = failing(run(p, arm, env={"OPENSPEC_TELEMETRY": "1"}))
     seen["openspec 1.13.1 on PATH"] = failing(run(p, arm, extra=[Mount(fake, "/fakebin", True)],
                                                   env={"PATH": f"/fakebin:{PATH}"}))
+    common = common_breaks(p)
+    seen |= run_breaks(monkeypatch, p, arm, backup, common)
+    seen["a plugin installed"] = run_breaks(monkeypatch, p, arm, backup, {"x": (lambda: (
+        (p.config_dir / "plugins").mkdir(parents=True, exist_ok=True),
+        (p.config_dir / "plugins" / "installed_plugins.json").write_text(
+            json.dumps({"plugins": {"superpowers@claude-plugins-official": []}}))), None, {})}, tag="pl")["x"]
     want = {n: w for n, (_, w) in cases.items()} | {"OPENSPEC_TELEMETRY=1": {"openspec.telemetry-off"},
-                                                     "openspec 1.13.1 on PATH": {"openspec.version"}}
+                                                     "openspec 1.13.1 on PATH": {"openspec.version"},
+                                                     "a plugin installed": {"common.no-foreign-plugins"}} \
+        | {n: w for n, (_, w, _) in common.items()}
     assert seen == want
-    assert {i for i in script_only_ids("openspec") if i.startswith("openspec.")} <= set().union(*want.values())
+    assert_every_script_id_falsified("openspec", want.values())
 
 
 # ---- 5. bmad: PARKED — the script's logic against fixtures on the base image ----------------------------------
@@ -308,8 +399,11 @@ def test_every_bmad_check_fails_when_what_it_checks_is_broken_on_fixtures(tmp_st
         fresh(monkeypatch, p, backup, n)
         cur["plugins"] = tmp_path / f"plugins-{n}"; shutil.copytree(pbackup, cur["plugins"])
         mutate(); seen[name] = failing(run(p, arm, extra=[Mount(cur["plugins"], "/opt/plugins", True)], env=env))
-    assert seen == {n: w for n, (_, w, _) in cases.items()}
-    assert {i for i in script_only_ids("bmad") if i.startswith("bmad.")} <= set().union(*(w for _, w, _ in cases.values()))
+    common = common_breaks(p)
+    seen |= run_breaks(monkeypatch, p, arm, backup, common, extra=lambda: [Mount(pbackup, "/opt/plugins", True)])
+    want = {n: w for n, (_, w, _) in cases.items()} | {n: w for n, (_, w, _) in common.items()}
+    assert seen == want
+    assert_every_script_id_falsified("bmad", want.values())
 
 
 def test_bmad_real_image_checks_skip_while_parked():

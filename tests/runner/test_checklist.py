@@ -51,14 +51,14 @@ FAKE_PAT = "github_pat_FAKE_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ"   # 
 def test_every_arm_including_dry_ones_has_the_origin_push_host_check():         # preflight B4
     assert "dryrun" in checklist.HOST_CHECKS
     for arm, ids in checklist.HOST_CHECKS.items():
-        assert {"setup.origin-push", "common.no-foreign-model-ids", "setup.manifest-matches-pass1"} <= ids, arm
+        assert {"setup.origin-push", "common.no-foreign-model-ids"} <= ids, arm          # always, never computed away
 
 
 def test_host_check_ids_follow_the_plan_for_real_arms():
     h = checklist.HOST_CHECKS
     assert "github.issues-access" in h["control"] and "github.issues-access" not in h["speckitty"]
     assert "github.issues-access" not in h["dryrun"]
-    assert "superpowers.smoke" in h["superpowers"] and "openspec.entry-commands" in h["openspec"]
+    assert "superpowers.smoke" in h["superpowers"]
     assert "control.entry-commands" not in h["control"]
 
 
@@ -372,13 +372,12 @@ def test_agent_turns_check_needs_the_last_turn_of_every_prompt_ok():            
         assert not checklist.agent_turns_check(arm, _turns((0, "ok"), (1, bad))).ok
     missing = checklist.agent_turns_check(arm, _turns((0, "ok")))
     assert not missing.ok and "never ran" in missing.detail
-    none = checklist.agent_turns_check(dataclasses.replace(arm, setup_agent=[]), [])
-    assert none.ok and none.id == "setup.agent-turns"
+    assert checklist.agent_turns_check(dataclasses.replace(arm, setup_agent=[]), []) is None   # T10 FR1: omitted
 
 
-def test_every_arm_lists_the_agent_turns_check():
+def test_the_agent_turns_check_exists_exactly_for_arms_with_setup_prompts():      # T10 FR1 item 1
     for arm in checklist.HOST_CHECKS:
-        assert "setup.agent-turns" in checklist.HOST_CHECKS[arm], arm
+        assert ("setup.agent-turns" in checklist.HOST_CHECKS[arm]) == bool(config.load_arm(arm).setup_agent), arm
 
 
 def test_a_shell_session_marks_setup_dirty_before_it_starts(tmp_state, monkeypatch):       # FR1 item 3
@@ -484,7 +483,14 @@ def script_ids(arm):
 
 @pytest.mark.parametrize("arm", DONE_ARMS)
 def test_every_machine_id_in_the_md_is_named_by_a_check_call_or_host_checks_and_vice_versa(arm):   # m14: added
-    assert md_ids(arm) == script_ids(arm) | checklist.HOST_CHECKS[arm]
+    """Static bullets are the script's ids plus the host ids that are never computed away; every id that can be
+    computed away is documented as a `- (computed)` bullet instead (T10 FR1 item 1)."""
+    text = (ROOT / f"{arm}.md").read_text()
+    a = config.load_arm(arm)
+    conditional = checklist.conditional_ids(a)
+    assert md_ids(arm) == script_ids(arm) | (checklist.HOST_CHECKS[arm] - conditional)
+    assert checklist.computed_ids(text) == conditional
+    assert checklist.HOST_CHECKS[arm] - md_ids(arm) <= checklist.computed_ids(text)
 
 
 @pytest.mark.parametrize("arm", DONE_ARMS)
@@ -553,3 +559,96 @@ def test_verify_containers_see_the_principles_read_only(tmp_state, monkeypatch):
     m = {x.ctr: x for x in seen[0].mounts}
     assert m["/setup/project-principles.md"].host == checklist.PRINCIPLES and m["/setup/project-principles.md"].ro
     assert m["/checks"].ro and seen[0].network == "none"
+
+
+# --- Task 10 fix round 1: vacuous host checks are omitted, not recorded ok --------------------------------
+def _arm(name, **kw):
+    return dataclasses.replace(config.load_arm(name), **kw)
+
+
+def _route(monkeypatch, route):
+    real = config.load_pins
+    monkeypatch.setattr(config, "load_pins", lambda: dataclasses.replace(real(), plugin_route=route))
+
+
+def test_agent_turns_is_omitted_without_prompts_and_present_with_them():
+    assert "setup.agent-turns" not in checklist.host_check_ids(_arm("control"))
+    assert "setup.agent-turns" in checklist.host_check_ids(_arm("bmad"))
+    assert "setup.agent-turns" in checklist.host_check_ids(_arm("control", setup_agent=["x"]))
+
+
+def test_manifest_check_follows_the_effective_manifest_list(monkeypatch):            # route-dependent
+    _route(monkeypatch, "plugin-dir")
+    assert checklist.effective_manifest_paths(_arm("superpowers")) == []
+    assert "setup.manifest-matches-pass1" not in checklist.host_check_ids(_arm("superpowers"))
+    assert "setup.manifest-matches-pass1" not in checklist.host_check_ids(_arm("control"))
+    assert "setup.manifest-matches-pass1" in checklist.host_check_ids(_arm("openspec"))
+    _route(monkeypatch, "marketplace")
+    assert checklist.effective_manifest_paths(_arm("superpowers")) == ["~/.claude/plugins/cache"]
+    assert "setup.manifest-matches-pass1" in checklist.host_check_ids(_arm("superpowers"))
+    assert "setup.manifest-matches-pass1" not in checklist.host_check_ids(_arm("control"))   # no plugins
+
+
+def test_entry_commands_is_omitted_when_no_slash_command_is_needed():
+    assert checklist.needed_commands(_arm("openspec")) == []
+    assert "openspec.entry-commands" not in checklist.host_check_ids(_arm("openspec"))
+    a = _arm("openspec", must_run=["/opsx:archive"], must_run_source="CANDIDATES §1.3")
+    assert checklist.needed_commands(a) == ["opsx:archive"]
+    assert "openspec.entry-commands" in checklist.host_check_ids(a)
+    assert "control.entry-commands" not in checklist.host_check_ids(_arm("control", must_run=["/x"],
+                                                                         must_run_source="s"))  # not a command arm
+
+
+def test_the_conditional_ids_are_the_three_computable_host_checks():
+    assert checklist.conditional_ids(_arm("openspec")) == {"setup.agent-turns", "setup.manifest-matches-pass1",
+                                                           "openspec.entry-commands"}
+    assert checklist.conditional_ids(_arm("control")) == {"setup.agent-turns", "setup.manifest-matches-pass1"}
+
+
+MD_COMPUTED = MD_FULL.replace("## Owner-verified", "- (computed) `setup.agent-turns` — when prompts exist\n## Owner-verified")
+
+
+def test_computed_bullets_are_not_static_ids_and_missing_checks_uses_the_computed_set():
+    assert checklist.computed_ids(MD_COMPUTED) == {"setup.agent-turns"}
+    assert "setup.agent-turns" not in checklist.machine_ids(MD_COMPUTED)
+    done = [checklist.Check("common.claude-version", True, ""), checklist.Check("setup.origin-push", True, "")]
+    assert checklist.missing_checks(MD_COMPUTED, done) == []                  # computed away: nothing missing
+    got = checklist.missing_checks(MD_COMPUTED, done, expected={"setup.agent-turns"})
+    assert got == [checklist.Check("setup.agent-turns", False, "listed in the checklist but not produced")]
+
+
+def _host_checks(tmp_state, monkeypatch, arm, names=frozenset(), missing=()):
+    import shutil
+    p = Paths("dry9", arm.name); shutil.rmtree(p.setup_results, ignore_errors=True); p.setup_results.mkdir(parents=True)
+    monkeypatch.setattr(checklist.repo, "recover", lambda p: None)
+    monkeypatch.setattr(checklist.commands, "listing", lambda p, a: checklist.commands.Listing(set(names), []))
+    calls = []
+    monkeypatch.setattr(checklist, "manifest_full", lambda p, a: calls.append(a) or ({"f": "1"}, list(missing)))
+    monkeypatch.setattr(checklist, "_origin_push", lambda p: checklist.Check("setup.origin-push", True, ""))
+    monkeypatch.setattr(checklist, "issues_access_check",
+                        lambda *a: checklist.Check("github.issues-access", True, ""))
+    return {c.id: c for c in checklist.host_checks(p, arm, "dry9", None, None)}, calls
+
+
+def test_host_checks_omit_the_empty_checks_and_produce_exactly_host_check_ids(tmp_state, monkeypatch):
+    _route(monkeypatch, "plugin-dir")
+    for arm in (_arm("control"), _arm("superpowers"), _arm("openspec")):
+        got, calls = _host_checks(tmp_state, monkeypatch, arm)
+        smoke = {f"{arm.name}.smoke"} if arm.smoke else set()          # _smoke is run by run_setup, not here
+        agent = {"setup.agent-turns"} if arm.setup_agent else set()     # agent_turns_check, run by run_setup
+        assert set(got) == checklist.host_check_ids(arm) - smoke - agent, arm.name
+        assert bool(calls) == bool(checklist.effective_manifest_paths(arm)), arm.name   # no container when empty
+
+
+def test_present_entry_commands_is_falsifiable(tmp_state, monkeypatch):
+    a = _arm("openspec", must_run=["/opsx:archive"], must_run_source="CANDIDATES §1.3")
+    got, _ = _host_checks(tmp_state, monkeypatch, a, names={"opsx:propose"})
+    assert not got["openspec.entry-commands"].ok and "opsx:archive" in got["openspec.entry-commands"].detail
+    got, _ = _host_checks(tmp_state, monkeypatch, a, names={"opsx:archive"})
+    assert got["openspec.entry-commands"].ok
+
+
+def test_present_manifest_check_on_route_a_is_falsifiable(tmp_state, monkeypatch):
+    _route(monkeypatch, "marketplace")
+    got, calls = _host_checks(tmp_state, monkeypatch, _arm("superpowers"), missing=["~/.claude/plugins/cache"])
+    assert calls and not got["setup.manifest-matches-pass1"].ok
