@@ -46,6 +46,18 @@ sys.exit(0 if raw == "permitted" and not v.refused else 1)
 PY
 ); rc=$?
 check speckitty.tracker-egress "$rc" "$e"
+# the hosted service (spec-kitty's SaaS) stays refused: no hosted-sync consent is recorded (the same verdict function).
+# Consent lives in the home's project store (~/.spec-kitty/projects/<uuid>, sqlite): read from the scratch home copy
+e=$(HOME=$th /opt/venvs/speckitty/bin/python - <<'PY' 2>&1
+import sys
+from pathlib import Path
+from specify_cli.tracker.egress_verdict import tracker_egress_verdict, EgressDestination
+v = tracker_egress_verdict(Path("."), destination=EgressDestination.HOSTED_SERVICE, identifiers="beads")
+print(f"hosted_service {'REFUSED by ' + ','.join(sorted(v.refusing_channels)) if v.refused else 'permitted'}")
+sys.exit(0 if v.refused else 1)
+PY
+); rc=$?
+check speckitty.hosted-egress-refused "$rc" "$e"
 # embedded Dolt takes a lock file even for --readonly, and the repo is mounted read-only: list on a scratch copy of .beads
 check beads.init "$(ok_if bash -c 'test -s .beads/config.yaml && b=$(mktemp -d) && cp -a .beads "$b/" && cd "$b" && bd --readonly --sandbox list --all --json')" \
       "$(ls .beads 2>/dev/null | tr '\n' ' ')"

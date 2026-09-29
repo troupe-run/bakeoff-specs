@@ -787,7 +787,7 @@ def _arm_with(tmp_path, monkeypatch, setup_extra: str):
     t = (arms / "dryrun.toml").read_text()
     t = t.replace("[setup]\n", "[setup]\n" + setup_extra + "\n", 1)
     if "manifest_paths" in setup_extra:
-        t = t.replace("manifest_paths = []\n", "", 1)
+        t = re.sub(r"^manifest_paths = \[\].*\n", "", t, count=1, flags=re.M)
     (arms / "dryrun.toml").write_text(t)
     monkeypatch.setattr(config, "ARMS_DIR", arms)
     return lambda: config.load_arm("dryrun")

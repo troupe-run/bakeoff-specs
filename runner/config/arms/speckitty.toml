@@ -5,7 +5,12 @@ citation = "CANDIDATES §1.4 (+ beads §2.1)"
 image = "bakeoff-arm-speckitty:1"
 tracker = "beads"
 repo_name = "bakeoff-specs-speckitty"
-env = {}
+# Provisional ruling (Task 11 FR1; the owner may flip it): spec-kitty's SaaS-sync flag is OFF in arm sessions — the
+# conservative default, and what a user following the 3.2.7 docs gets. THIS is the switch: "1" makes the `tracker`
+# command group (and spec-kitty's hosted-sync code paths) visible to the arm; spec-kitty reads only 1/true/yes/y/on as
+# on. Setup and the verify script set it to 1 only for their own `tracker` commands.
+# SPEC_KITTY_NO_UPGRADE_CHECK: no PyPI upgrade-check notice (as openspec's OPENSPEC_TELEMETRY=0).
+env = { SPEC_KITTY_ENABLE_SAAS_SYNC = "0", SPEC_KITTY_NO_UPGRADE_CHECK = "1" }
 
 [egress]
 setup = []
@@ -32,10 +37,21 @@ shell = ["spec-kitty init . --ai claude",
 agent = ["/spec-kitty.charter {principles}"]
 post_shell = []
 plugins = []
-# spec-kitty installs its /spec-kitty.* commands and most skills user-scope (CLAUDE_CONFIG_DIR), not in the repo;
-# `bd init` writes the beads section of CLAUDE.md
-manifest_paths = [".claude", ".kittify", ".beads/config.yaml", "CLAUDE.md", "~/.claude/commands", "~/.claude/skills",
-                  "~/.config/bd"]
+# Every setup file both inits create, measured in two offline setups (Task 11 FR1): spec-kitty init writes .claude/,
+# .kittify/, .gitignore, .gitattributes, .claudeignore and its /spec-kitty.* commands and most skills user-scope
+# (CLAUDE_CONFIG_DIR); bd init writes CLAUDE.md (beads section), AGENTS.md, .agents/ (beads skill), .codex/, .cursor/,
+# .beads/ (config.yaml and hooks/ are setup; embeddeddolt/ and metadata.json are the database and its ids, and
+# .beads.gate.lock is a lock), and `bd metrics off` writes ~/.config/bd. Nothing writes the home's settings.json.
+manifest_paths = [".claude", ".kittify", ".gitignore", ".gitattributes", ".claudeignore",
+                  "CLAUDE.md", "AGENTS.md", ".agents", ".codex", ".cursor", ".beads/config.yaml", ".beads/hooks",
+                  "~/.claude/commands", "~/.claude/skills", "~/.config/bd"]
+volatile_paths = [
+  { path = ".kittify/config.yaml", kind = "install-stamp", why = "per-run project uuid, node_id and build_id; its tracker keys are machine-checked (speckitty.tracker-binding, tracker-egress, hosted-egress-refused)" },
+  { path = ".kittify/metadata.yaml", kind = "install-stamp", why = "per-run values (differs between two identical offline setups; project identity, as config.yaml)" },
+  { path = ".kittify/canonical-events.jsonl", kind = "install-stamp", why = "the init event log: per-run event ids and times" },
+  { path = ".kittify/skills-manifest.json", kind = "install-stamp", why = "per-skill `installed_at` timestamps; the skills themselves are compared" },
+  { path = ".kittify/charter", kind = "model-written", why = "/spec-kitty.charter writes it; OV5 reads it" },
+]
 
 [drive]
 entry = "/spec-kitty.specify {handoff}"

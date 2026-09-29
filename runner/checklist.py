@@ -197,10 +197,23 @@ def parse_verify(arm_name: str, r: subprocess.CompletedProcess) -> list[Check]:
     return out
 
 
-def manifest_check(pass_: str, arm_name: str, m: dict[str, str], owner, missing: list[str] = ()) -> Check:
+def is_volatile(key: str, volatile, home: str = "/home/actor") -> bool:
+    """A manifest key (repo-relative, or absolute under the arm's home) is under a volatile entry: equal to it, or
+    below it as a PATH prefix (`.x/memory` covers `.x/memory/c.md`, never `.x/memoryX`). `~/` means the home."""
+    for v in volatile:
+        v = (home + v[1:] if v.startswith("~/") else v).rstrip("/")
+        if key == v or key.startswith(v + "/"):
+            return True
+    return False
+
+
+def manifest_check(pass_: str, arm_name: str, m: dict[str, str], owner, missing: list[str] = (),
+                   volatile: list[str] = ()) -> Check:
     """Pass 2 must set up the same files as pass 1 (OD20); a difference is shown to the owner, who may accept
     it (the acceptance and the files are recorded in the detail) — review G6. A configured manifest path that
-    does not exist fails, naming it (fix round 1): setup did not create what the method's docs say it creates."""
+    does not exist fails, naming it (fix round 1): setup did not create what the method's docs say it creates.
+    Entries under the arm's `volatile_paths` (install stamps, model-written files) are left out of the comparison
+    and counted in the detail (Task 11 FR1); manifest.json still records them."""
     cid = "setup.manifest-matches-pass1"
     if missing:
         return Check(cid, False, f"manifest path(s) not created by setup: {', '.join(missing)}")
@@ -209,13 +222,17 @@ def manifest_check(pass_: str, arm_name: str, m: dict[str, str], owner, missing:
     first_f = Paths("pass1", arm_name).setup_results / "manifest.json"
     if not first_f.is_file():
         return Check(cid, False, f"no pass 1 manifest at {first_f} to compare with")
-    diff = manifest_diff(json.loads(first_f.read_text()), m)
+    first = json.loads(first_f.read_text())
+    skipped = {k for k in set(first) | set(m) if is_volatile(k, volatile)}
+    diff = manifest_diff({k: v for k, v in first.items() if k not in skipped},
+                         {k: v for k, v in m.items() if k not in skipped})
+    note = f" ({len(skipped)} volatile entries not compared)" if skipped else ""
     if not diff:
-        return Check(cid, True, "identical to pass 1")
+        return Check(cid, True, "identical to pass 1" + note)
     shown = "; ".join(diff[:20]) + (f"; … {len(diff) - 20} more" if len(diff) > 20 else "")
     if owner is not None and owner.confirm(f"{arm_name}: setup files differ from pass 1: {shown}. Accept?"):
-        return Check(cid, True, f"owner accepted: {shown}")
-    return Check(cid, False, shown)
+        return Check(cid, True, f"owner accepted: {shown}{note}")
+    return Check(cid, False, shown + note)
 
 
 def agent_turns_check(arm: config.Arm, record: list[dict]) -> Check | None:
@@ -508,7 +525,7 @@ def host_checks(p: Paths, arm: config.Arm, pass_: str, smoke: Check | None, st: 
         out.append(issues_access_check(p, arm, pass_, st))
     if effective_manifest_paths(arm):                            # empty list → omitted, no container (Task 10 FR1)
         m, missing = manifest_full(p, arm)
-        out.append(manifest_check(pass_, arm.name, m, owner, missing))
+        out.append(manifest_check(pass_, arm.name, m, owner, missing, volatile=[v.path for v in arm.volatile_paths]))
     else:
         m = {}
     (p.setup_results / "manifest.json").write_text(json.dumps(m, indent=2, sort_keys=True))

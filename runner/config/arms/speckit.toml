@@ -19,6 +19,15 @@ agent = ["/speckit-constitution {principles}"]
 post_shell = []
 plugins = []
 manifest_paths = [".claude", ".specify"]
+# Left out of the pass-2 manifest comparison (Task 11 FR1): each install-stamp entry is proven to differ between two
+# identical offline setups (test_volatile_paths_are_exactly_what_differs_between_two_offline_setups)
+volatile_paths = [
+  { path = ".specify/extensions/.registry", kind = "install-stamp", why = "the bug extension's `installed_at` timestamp" },
+  { path = ".specify/integrations/claude.manifest.json", kind = "install-stamp", why = "per-file install timestamps" },
+  { path = ".specify/integrations/speckit.manifest.json", kind = "install-stamp", why = "per-file install timestamps" },
+  { path = ".specify/workflows/workflow-registry.json", kind = "install-stamp", why = "the workflow's install timestamp" },
+  { path = ".specify/memory/constitution.md", kind = "model-written", why = "/speckit-constitution writes it; OV1 reads it" },
+]
 
 [drive]
 entry = "/speckit-specify {handoff}"

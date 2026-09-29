@@ -27,7 +27,7 @@ def test_openspec_shell_setup_passes_its_machine_checks(tmp_state):
 @pytest.mark.parametrize("arm,ids", [
     ("speckit", ["speckit.version", "speckit.skills", "speckit.bug-skills"]),
     ("speckitty", ["speckitty.version", "speckitty.verify-setup", "speckitty.commands", "speckitty.session-hook",
-                   "speckitty.tracker-binding", "speckitty.tracker-egress",
+                   "speckitty.tracker-binding", "speckitty.tracker-egress", "speckitty.hosted-egress-refused",
                    "beads.version", "beads.init", "beads.claude-hook", "beads.metrics-off"]),
     ("ccsdd", ["ccsdd.version", "ccsdd.skills", "ccsdd.settings", "ccsdd.project-memory", "ccsdd.no-legacy"]),
 ])

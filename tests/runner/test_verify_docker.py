@@ -535,6 +535,21 @@ def _drop_hook(p: Paths, command_re: str):
     return edit
 
 
+_OPT_IN = """/opt/venvs/speckitty/bin/python -c 'from pathlib import Path
+from specify_cli.sync.routing import resolve_checkout_sync_routing_readonly
+from specify_cli.sync.consent import record_project_opt_in
+r = resolve_checkout_sync_routing_readonly(Path("."))
+record_project_opt_in(str(r.project_uuid), actor="falsification-test")'"""
+
+
+def _in_arm(p: Paths, arm: config.Arm, cmd: str):
+    """A mutation that has to run as the tool itself: the arm image, network none, home and work writable."""
+    def run_it():
+        r = docker.run(checklist.arm_spec(p, arm, ["bash", "-c", cmd], ro=False, name="mutate"), timeout=300)
+        assert r.returncode == 0, r.stderr.decode()[-500:]
+    return run_it
+
+
 def _tamper(p: Paths, rel: str):
     """spec-kitty installs its managed files read-only; a hand edit makes it writable first."""
     def edit():
@@ -573,9 +588,9 @@ def test_speckitty_setup_passes_its_checks_and_every_check_fails_when_broken(tmp
                                 {"speckitty.tracker-egress"}, *none),
         "egress a near-miss spelling": (_kittify_tracker(p, lambda t: t.replace("egress: permitted", "egress: Permitted")),
                                         {"speckitty.tracker-egress"}, *none),
-        # FR1 item 2: hosted-sync consent recorded (spec-kitty's own remedy for the hosted row) → hosted egress granted
-        "hosted-sync consent recorded": (_kittify_tracker(p, lambda t: t + "sync:\n  enabled: true\n"),
-                                         {"speckitty.hosted-egress-refused"}, *none),
+        # FR1 item 2: hosted-sync consent granted through spec-kitty's own "only action that may create a local
+        # hosted-sync grant" (record_project_opt_in; `spec-kitty sync opt-in` refuses offline on a fresh project store)
+        "hosted-sync consent granted": (_in_arm(p, arm, _OPT_IN), {"speckitty.hosted-egress-refused"}, *none),
         "no beads database": (lambda: shutil.rmtree(p.repo / ".beads/embeddeddolt"), {"beads.init"}, *none),
         "no beads config": (lambda: (p.repo / ".beads/config.yaml").unlink(), {"beads.init"}, *none),
         "beads metrics on": (lambda: (p.home / ".config/bd/config.yaml").write_text(
@@ -663,7 +678,7 @@ def test_speckitty_setup_commit_and_origin_push_succeed_with_the_beads_hooks_act
     assert not gitops.state(p).dirty
     c = checklist._origin_push(p)
     assert c.ok, c
-    remote = gitops.git(p, "ls-remote", gitops.ORIGIN, "refs/heads/main").stdout.decode().split()
+    remote = gitops.git(p, "ls-remote", gitops.ORIGIN, "refs/heads/main", write=True).stdout.decode().split()
     assert remote and remote[0] == sha
 
 

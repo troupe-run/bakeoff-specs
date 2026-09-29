@@ -9,7 +9,7 @@ https://github.github.io/spec-kit/quickstart.html
 specify-cli 1.0.12, hash-locked (image bakeoff-arm-speckit:1); Claude Code 2.1.281; model claude-opus-5-5.
 
 ## Setup (what the runner runs)
-1. `specify init --here --force --integration claude` — the existing-repo route (§1.2 item 3; the repo holds only its empty initial commit). Skills mode: `.claude/skills/speckit-*/`, plus `.specify/` (templates, scripts, `memory/constitution.md` as a template). Verified offline in the pinned image: no prompt without a TTY, exit 0.
+1. `specify init --here --force --integration claude` — the existing-repo route (§1.2 item 3; the repo holds only its empty initial commit). The guide's "create an adoption branch" first is deliberately skipped: it protects existing work from `--force`, and this repo has none; setup lands on `main` like every arm's. Skills mode: `.claude/skills/speckit-*/`, plus `.specify/` (templates, scripts, `memory/constitution.md` as a template). Verified offline in the pinned image: no prompt without a TTY, exit 0.
 2. `specify extension add bug` — the documented bug process (§1.2 item 4, used at step 6 — OD5): `.claude/skills/speckit-bug-{assess,fix,test}/`, registered in `.specify/extensions/.registry`.
 3. Agent: `/speckit-constitution <project-principles.md>` (§1.2 item 5) — writes `.specify/memory/constitution.md`.
 4. OD24 B with MCP only (§1.2 "Task/issue tracking"; probe P11): `home/.bk-mcp.json` (GitHub MCP server with the arm's Issues-only PAT) when `config/mcp/speckit.json` exists — it does not yet.
@@ -47,7 +47,7 @@ Ids marked `(computed)` are omitted, never recorded ok, when they would check no
   extension registers `speckit.bug.<cmd>` and installs the skills `speckit-bug-<cmd>`.
 - `specify init` warns that agent folders may hold credentials and suggests ignoring `.claude/`: the runner does not
   (setup files are part of the arm's history, design §6); the PAT lives in the arm's home, never in the repo.
-- Four `.specify/` files carry an install timestamp, so pass 2's manifest always differs from pass 1's there, as does the model-written constitution: `setup.manifest-matches-pass1` shows the owner the difference to accept (review G6).
+- Four `.specify/` files carry an install timestamp and the constitution is model-written: they are `volatile_paths`, left out of the pass-2 manifest comparison (each timestamp file is proven to differ between two offline setups; the constitution is OV1's).
 - Single active feature state in `.specify/feature.json`: step 5's two CRs may collide — record, do not intervene.
 - `/speckit-taskstoissues` pushes to GitHub Issues **one way** (OD24).
 - No project-wide canonical spec; later features can silently stale earlier ones (#620) — what step 3 probes.

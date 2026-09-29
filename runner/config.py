@@ -1,7 +1,7 @@
 """Pins and per-arm configuration. Everything that differs between arms lives in config/arms/<arm>.toml."""
 from __future__ import annotations
 import re, tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 CONFIG_DIR = Path(__file__).resolve().parent / "config"
@@ -62,6 +62,19 @@ class Plugin:
     subdir: str = ""      # plugin root inside the repo ("" = repo root)
 
 
+VOLATILE_KINDS = ("install-stamp", "model-written")
+
+
+@dataclass(frozen=True)
+class Volatile:
+    """A manifest entry (a file, or a directory prefix) the pass-2 comparison leaves out (Task 11 FR1 item 6).
+    `install-stamp`: the tool writes a timestamp or per-run id there — a test proves it differs between two identical
+    offline setups. `model-written`: the setup agent turn writes it — the checklist names it and the owner reads it."""
+    path: str
+    kind: str
+    why: str
+
+
 @dataclass(frozen=True)
 class Smoke:
     prompt: str
@@ -93,11 +106,12 @@ class Arm:
     fresh_session_before: list[dict[str, str]]    # [{command, source}] (OD19 B)
     export_after: str                              # speckit only (OD24 B): the command after which export runs
     dry: bool = False
+    volatile_paths: list[Volatile] = field(default_factory=list)   # excluded from the pass-2 manifest comparison
 
 
 _ANCHORED = re.compile(r"^\^.+\$$")
 TOP = {"name", "tool", "version", "citation", "image", "tracker", "repo_name", "env", "egress", "setup", "drive", "dry"}
-SETUP = {"shell", "agent", "post_shell", "plugins", "smoke", "manifest_paths"}
+SETUP = {"shell", "agent", "post_shell", "plugins", "smoke", "manifest_paths", "volatile_paths"}
 DRIVE = {"entry", "bug_entry", "must_run", "must_run_source", "fresh_session_before", "export_after"}
 
 
@@ -154,6 +168,7 @@ def load_arm(name: str) -> Arm:
     if any(not x.get("source") for x in fresh):
         raise ConfigError(f"{where}: every fresh_session_before entry needs a source (OD19)")
     sm = su.get("smoke")
+    manifest_paths = list(su.get("manifest_paths", [".claude"]))
     return Arm(
         name=raw["name"], tool=raw["tool"], version=raw["version"], citation=raw.get("citation", ""),
         image=raw["image"], tracker=raw["tracker"], repo_name=raw["repo_name"], env=dict(raw.get("env", {})),
@@ -162,11 +177,26 @@ def load_arm(name: str) -> Arm:
         setup_post_shell=list(su.get("post_shell", [])),
         plugins=[Plugin(**p) for p in su.get("plugins", [])],
         smoke=Smoke(sm["prompt"], sm["expect_skill"]) if sm else None,
-        manifest_paths=list(su.get("manifest_paths", [".claude"])),
+        manifest_paths=manifest_paths, volatile_paths=_volatile(su.get("volatile_paths", []), manifest_paths, where),
         entry=dr["entry"], bug_entry=dr["bug_entry"], must_run=must_run,
         must_run_source=dr.get("must_run_source", ""), fresh_session_before=fresh,
         export_after=dr.get("export_after", ""), dry=bool(raw.get("dry", False)),
     )
+
+
+def _volatile(raw: list, manifest_paths: list[str], where: str) -> list[Volatile]:
+    out = []
+    for v in raw:
+        v = _only(dict(v), {"path", "kind", "why"}, where + " volatile_paths")
+        if not str(v.get("why", "")).strip():
+            raise ConfigError(f"{where}: volatile path {v.get('path')!r} needs a why (the reason it may differ)")
+        if v.get("kind") not in VOLATILE_KINDS:
+            raise ConfigError(f"{where}: volatile path {v.get('path')!r}: kind must be one of {VOLATILE_KINDS}")
+        path = str(v.get("path", "")).rstrip("/")
+        if not any(path == m.rstrip("/") or path.startswith(m.rstrip("/") + "/") for m in manifest_paths):
+            raise ConfigError(f"{where}: volatile path {path!r} is under no manifest path (it would hide nothing)")
+        out.append(Volatile(path, v["kind"], v["why"]))
+    return out
 
 
 GITHUB_ORG = "troupe-run"
