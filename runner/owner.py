@@ -20,11 +20,14 @@ next arm/round. `Owner` implements that "not available" outcome directly, as a `
   `step_review`, which already uses "p" for "pause the run here" (a normal, non-park outcome); there the park
   key is "k" instead, so the pre-existing pause semantics are not silently overloaded.
 
-Every park is recorded (`Owner.parks`, and returned to the caller) as a `Park(prompt, reason, at, seconds)` —
-`prompt` names which method was parked, `reason` is one of `"unattended" | "eof" | "timeout" | "owner-choice"`,
-`at` is a wall-clock timestamp (`now_fn`, default `time.time`), and `seconds` is owner time spent before the
-park (evidence, same as a normal answer). Callers (Task 23's `run_arm`) check `isinstance(result, Park)` and
-park the arm, moving on to the next arm/round, rather than trying to make sense of a normal-shaped reply.
+Every park is recorded (`Owner.parks`, and returned to the caller) as a
+`Park(prompt, context, reason, at, seconds)` — `prompt` names which method was parked, `context` is a short,
+self-explaining summary of what was being asked (e.g. the question's first line, or which item/gate it was),
+`reason` is one of `"unattended" | "eof" | "timeout" | "owner-choice"`, `at` is a wall-clock timestamp
+(`now_fn`, default `time.time`), and `seconds` is owner time spent before the park (evidence, same as a
+normal answer). Callers (Task 23's `run_arm`) check `isinstance(result, Park)` and park the arm, moving on to
+the next arm/round, rather than trying to make sense of a normal-shaped reply — and can read a park record
+on its own, without cross-referencing the run, thanks to `context`.
 
 `ScriptedOwner` never parks — a dry run has no owner to wait for at all, so every one of its answers is
 instant (0.0s), drawn from a small TOML script, and only ever produced once `.bind(arm)` has confirmed the
@@ -41,8 +44,10 @@ from typing import Callable
 class Park:
     """Recorded whenever a prompt could not (or would not) be answered by the owner. The run parks the arm
     and moves on to the next arm/round rather than blocking. `seconds` is owner time spent before parking —
-    it is evidence just like a normal answer's seconds, even when the outcome is "no answer"."""
+    it is evidence just like a normal answer's seconds, even when the outcome is "no answer". `context` makes
+    the record understandable on its own (in a log, a ledger, a report) without cross-referencing the run."""
     prompt: str    # which Owner method was parked, e.g. "gate", "escalation"
+    context: str   # a short summary of what was being asked, e.g. the question's first line or an item id
     reason: str    # "unattended" | "eof" | "timeout" | "owner-choice"
     at: float      # wall-clock timestamp when the park was recorded (Owner's `now_fn`, default time.time)
     seconds: float
@@ -53,6 +58,14 @@ class _ParkSignal(Exception):
     at its own boundary and converts it into a `Park` return value."""
     def __init__(self, reason: str):
         self.reason = reason
+
+
+def _first_line(text: str) -> str:
+    """A short, non-empty summary line for `Park.context` — the first non-blank line of `text`."""
+    for line in (text or "").splitlines():
+        if line.strip():
+            return line.strip()
+    return "(empty)"
 
 
 class Owner:
@@ -69,10 +82,11 @@ class Owner:
 
     # -- park machinery -----------------------------------------------------------------------------------
 
-    def _park(self, prompt_name: str, reason: str, t0: float) -> Park:
-        p = Park(prompt=prompt_name, reason=reason, at=self._now(), seconds=self._clock() - t0)
+    def _park(self, prompt_name: str, reason: str, t0: float, context: str) -> Park:
+        p = Park(prompt=prompt_name, context=context, reason=reason, at=self._now(), seconds=self._clock() - t0)
         self.parks.append(p)
-        self._out(f"PARKED [{prompt_name}] ({reason}) — recorded; the run moves on to the next arm/round.")
+        self._out(f"PARKED [{prompt_name}] ({reason}) — {context} — recorded; the run moves on to the next "
+                   "arm/round.")
         return p
 
     def _read_checked(self, prompt_name: str, t0: float, io_prompt: str = "") -> str:
@@ -119,24 +133,39 @@ class Owner:
             lines.append(line)
         return "\n".join(lines).strip()
 
+    def _text_checked(self, prompt_name: str, t0: float, io_prompt: str, park_key: str = "p") -> str:
+        """Read one free-text line, first checking it against the park-by-choice key (with a confirm). Used
+        where the answer is a single line of free text (not a keystroke, not a multi-line block) — e.g. an
+        item's note, or the substitute bug's title — so the returned text's case and content are otherwise
+        preserved untouched."""
+        while True:
+            line = self._read_checked(prompt_name, t0, io_prompt)
+            if line.strip().lower() == park_key:
+                if self._confirm_park(prompt_name, t0):
+                    raise _ParkSignal("owner-choice")
+                continue
+            return line
+
     # -- prompts --------------------------------------------------------------------------------------------
 
     def escalation(self, question: str, context: str) -> tuple[str, float] | Park:
         t0 = self._clock()
+        ctx = _first_line(question)
         if self.unattended:
-            return self._park("escalation", "unattended", t0)
+            return self._park("escalation", "unattended", t0, ctx)
         try:
             self._out("=" * 72 + "\nESCALATION — the PO brief does not answer this:\n" + question)
             self._out("--- the arm's message (last 40 lines) ---\n" + "\n".join(context.splitlines()[-40:]))
             answer = self._lines_checked("Your answer (it is added to the PO brief)", "escalation", t0)
             return answer, self._clock() - t0
         except _ParkSignal as e:
-            return self._park("escalation", e.reason, t0)
+            return self._park("escalation", e.reason, t0, ctx)
 
     def gate(self, arm_message: str, decision, repo_changes: str) -> tuple[str, str, float] | Park:
         t0 = self._clock()
+        ctx = _first_line(arm_message)
         if self.unattended:
-            return self._park("gate", "unattended", t0)
+            return self._park("gate", "unattended", t0, ctx)
         try:
             self._out("=" * 72 + "\nOWNER GATE — the arm asks for approval.")
             self._out("--- the arm's message (last 60 lines) ---\n" + "\n".join(arm_message.splitlines()[-60:]))
@@ -153,52 +182,57 @@ class Owner:
                 if k == "d":
                     self._out(repo_changes or "(none)")
         except _ParkSignal as e:
-            return self._park("gate", e.reason, t0)
+            return self._park("gate", e.reason, t0, ctx)
 
     def confirm(self, text: str) -> bool | Park:
         t0 = self._clock()
+        ctx = _first_line(text)
         if self.unattended:
-            return self._park("confirm", "unattended", t0)
+            return self._park("confirm", "unattended", t0, ctx)
         try:
             k = self._choice_checked("confirm", t0, text + " [y/N] · p = park: ")
             return k in ("y", "yes")
         except _ParkSignal as e:
-            return self._park("confirm", e.reason, t0)
+            return self._park("confirm", e.reason, t0, ctx)
 
     def items(self, items: list[tuple[str, str]]) -> dict[str, tuple[bool, str, float]] | Park:
         t0 = self._clock()
+        ctx = f"{len(items)} item(s) to review"
         if self.unattended:
-            return self._park("items", "unattended", t0)
+            return self._park("items", "unattended", t0, ctx)
         out: dict[str, tuple[bool, str, float]] = {}
         try:
             for iid, text in items:
                 it0 = self._clock()
+                ctx = f"{iid}: {text}"
                 k = self._choice_checked("items", t0, f"{iid}: {text}\n  ok? [y/n] · p = park: ")
                 ok = k in ("y", "yes")
-                note = self._read_checked("items", t0, "  note (optional): ").strip()
+                note = self._text_checked("items", t0, "  note (optional) · p = park: ").strip()
                 out[iid] = (ok, note, self._clock() - it0)
             return out
         except _ParkSignal as e:
-            return self._park("items", e.reason, t0)
+            return self._park("items", e.reason, t0, ctx)
 
     def setup_reply(self, text: str) -> tuple[str, float] | Park:
         t0 = self._clock()
+        ctx = _first_line(text)
         if self.unattended:
-            return self._park("setup_reply", "unattended", t0)
+            return self._park("setup_reply", "unattended", t0, ctx)
         try:
             self._out("--- setup session says (last 40 lines) ---\n" + "\n".join(text.splitlines()[-40:]))
             k = self._choice_checked("setup_reply", t0, "[Enter] = move on · r = reply · p = park: ")
             reply = self._lines_checked("Your reply", "setup_reply", t0) if k == "r" else ""
             return reply, self._clock() - t0
         except _ParkSignal as e:
-            return self._park("setup_reply", e.reason, t0)
+            return self._park("setup_reply", e.reason, t0, ctx)
 
     def step_review(self, summary_md: str) -> tuple[str, float] | Park:
         """Note: "p" here means "pause the run after this step" (a normal outcome, not a Park) — it was
         already in use before this module had a park concept. The park-by-choice key here is "k" instead."""
         t0 = self._clock()
+        ctx = _first_line(summary_md)
         if self.unattended:
-            return self._park("step_review", "unattended", t0)
+            return self._park("step_review", "unattended", t0, ctx)
         try:
             self._out(summary_md)
             k = self._choice_checked("step_review", t0,
@@ -206,12 +240,13 @@ class Owner:
                                       park_key="k")
             return ("pause" if k == "p" else "continue"), self._clock() - t0
         except _ParkSignal as e:
-            return self._park("step_review", e.reason, t0)
+            return self._park("step_review", e.reason, t0, ctx)
 
     def reclassify(self, what: str, detail: str) -> str | Park:
         t0 = self._clock()
+        ctx = _first_line(what)
         if self.unattended:
-            return self._park("reclassify", "unattended", t0)
+            return self._park("reclassify", "unattended", t0, ctx)
         try:
             self._out(f"First runaway breach for this arm: {what}\n{detail}")
             k = self._choice_checked("reclassify", t0,
@@ -219,15 +254,16 @@ class Owner:
                                       "p = park: ")
             return "harness" if k == "h" else "arm"
         except _ParkSignal as e:
-            return self._park("reclassify", e.reason, t0)
+            return self._park("reclassify", e.reason, t0, ctx)
 
     def substitute_bug(self, arm, precheck_summary: str) -> tuple[str, str, str, str, str, float] | Park:
         """Step-6 fallback (preflight B5): the planted bug already passes on the step-5 commit. The owner
         either keeps it (plan A still runs) or picks a substitute bug — with its own acceptance test, so
         Task 23 can prove the substitute FAILS on the arm's step-5 commit before it is delivered."""
         t0 = self._clock()
+        ctx = f"{arm.name}: {_first_line(precheck_summary)}"
         if self.unattended:
-            return self._park("substitute_bug", "unattended", t0)
+            return self._park("substitute_bug", "unattended", t0, ctx)
         try:
             self._out("=" * 72 + f"\nSTEP 6 PRE-CHECK ({arm.name}) — the planted bug already passes "
                                   "on the step-5 commit.")
@@ -237,7 +273,7 @@ class Owner:
                                       "p = park: ")
             if k != "s":
                 return "planted", "", "", "", "", self._clock() - t0
-            title = self._read_checked("substitute_bug", t0, "Substitute bug title: ").strip()
+            title = self._text_checked("substitute_bug", t0, "Substitute bug title · p = park: ").strip()
             body = self._lines_checked("Substitute bug body", "substitute_bug", t0)
             why = self._lines_checked("Why this substitute", "substitute_bug", t0)
             test_body = self._lines_checked(
@@ -245,7 +281,7 @@ class Owner:
                 "the substitute is fixed", "substitute_bug", t0)
             return "substitute", title, body, why, test_body, self._clock() - t0
         except _ParkSignal as e:
-            return self._park("substitute_bug", e.reason, t0)
+            return self._park("substitute_bug", e.reason, t0, ctx)
 
 
 class ScriptedOwner:
