@@ -200,7 +200,7 @@ def main():
     _try("read-test-via-cwd", lambda: open(f"/proc/{pytest_pid}/cwd/tests/hidden/test_step1_history.py").read())
     _try("list-results", lambda: os.listdir("/results"))
     for path in ("/opt/reference/.venv/bin/troupe", "/opt/reference/.venv/bin/python"):
-        _try("exec-ref " + path, lambda path=path: subprocess.run([path, "--help"], check=True, capture_output=True))
+        _try("exec-ref-" + path.rsplit("/", 1)[1], lambda path=path: subprocess.run([path, "--help"], check=True, capture_output=True))
     return 0
 '''
 
