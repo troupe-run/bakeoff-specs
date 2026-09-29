@@ -162,3 +162,40 @@ def test_a_discovery_attempt_on_leftover_state_does_not_stop_on_turn_1_and_stops
         Decision("continue", None, [], None, None, "", False), [], PinReport(True, 1, 1, 0, 0, ["2.1.281"], False, [])))
     r = drive.run_attempt(ctx, 1, "go", stop_at_first_gate_or_code=True)
     assert r.outcome == "discovery-stop" and r.discovery == {"why": "code", "turn": 2, "paths": ["src.py"]}
+
+
+# ---- fix round 3 ---------------------------------------------------------------------------------------------------
+
+def test_detached_commits_left_by_an_earlier_step_are_not_a_change(P):
+    _leftovers(P)
+    (P.repo / "tracked.py").write_text("x = 1\n")
+    gitops.git(P, "checkout", "-q", "--detach", "main", write=True)
+    (P.repo / "left.py").write_text("left = 1\n")
+    gitops.git(P, "add", "left.py", write=True)
+    gitops.git(P, "commit", "-q", "-m", "left detached", write=True, env=WHO)
+    base = gitops.content_state(P)                                  # the arm then does nothing
+    assert "HEAD" in base["tips"] and gitops.changed_since(P, base) == []
+
+
+def test_a_file_named_with_quotes_is_hashed_as_itself(P):
+    _leftovers(P)
+    (P.repo / '"a.py"').write_text("a = 1\n")
+    base = gitops.content_state(P)
+    assert gitops.changed_since(P, base) == []
+    (P.repo / '"a.py"').write_text("a = 2\n")
+    assert gitops.changed_since(P, base) == ['"a.py"']
+
+
+def test_a_control_character_in_a_name_is_reported_not_a_broken_check(P):
+    _leftovers(P)
+    base = gitops.content_state(P)
+    (P.repo / "odd\x01name.py").write_text("o = 1\n")
+    assert gitops.changed_since(P, base) == ["odd\x01name.py"]
+
+
+def test_an_orphan_checkout_does_not_blind_the_check(P):
+    _leftovers(P)
+    base = gitops.content_state(P)
+    gitops.git(P, "checkout", "-q", "--orphan", "fresh", write=True)
+    (P.repo / "orphan.py").write_text("o = 1\n")
+    assert gitops.changed_since(P, base) == ["orphan.py"]

@@ -518,3 +518,17 @@ def test_run_a_records_whether_the_code_check_could_run(fake_step, monkeypatch):
     rec = json.loads((fake_step.ctx.out / "discovery.json").read_text())
     assert rec["code_check"]["status"] == "unavailable"
     assert faults.for_step("dry9", "control", 2) == []                   # never a harness fault
+
+
+def test_run_a_records_the_code_check_when_it_ends_parked(fake_step, monkeypatch):               # fix round 3
+    _run_a(fake_step)
+    real = stepflow.drive.run_attempt
+
+    def parked(c, attempt, message, resume=None, **kw):
+        r = real(c, attempt, message, resume, **kw)
+        r.outcome, r.park = "parked", PARK
+        r.code_check = {"status": "unavailable", "reasons": [{"turn": 1, "reason": "x"}]}
+        return r
+    monkeypatch.setattr(stepflow.drive, "run_attempt", parked)
+    stepflow.run_step(fake_step.ctx, "go", run="a")
+    assert json.loads((fake_step.ctx.out / "parked.json").read_text())["code_check"]["status"] == "unavailable"
