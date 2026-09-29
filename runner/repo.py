@@ -50,7 +50,7 @@ def _tar_spec(p: Paths, mounts: list[Mount], script: str, *args: str, tag: str) 
 def _run(s: RunSpec, what: str) -> None:
     r = docker.run(s, timeout=1800)
     if r.returncode != 0:
-        raise RuntimeError(f"{what} failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
+        raise docker.ContainerError(f"{what} failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
 
 
 _SNAPSHOT_SH = r"""set -euo pipefail
@@ -214,7 +214,7 @@ def _await_visible_in_containers(p: Paths, timeout: float = 60.0) -> None:
             if ok:
                 return
             if time.monotonic() >= deadline:
-                raise RuntimeError(f"restored {p.base} not visible to containers after {timeout:.0f}s")
+                raise docker.ContainerError(f"restored {p.base} not visible to containers after {timeout:.0f}s")
             time.sleep(0.25)
     finally:
         (p.work / token).unlink(missing_ok=True); (p.home / token).unlink(missing_ok=True)

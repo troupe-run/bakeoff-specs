@@ -71,7 +71,7 @@ def git(p: Paths, *args: str, write: bool = False, env: dict | None = None, inpu
         s = dataclasses.replace(s, stdin=True)
     r = docker.run(s, input=input, timeout=600)
     if check and r.returncode != 0:
-        raise RuntimeError(f"git {args[0]} failed in container ({r.returncode}): "
+        raise docker.ContainerError(f"git {args[0]} failed in container ({r.returncode}): "
                            f"{r.stderr.decode(errors='replace')[:400]}")
     return r
 
@@ -118,29 +118,69 @@ def state(p: Paths) -> RepoState:
     s = dataclasses.replace(spec(p, []), cmd=["bash", "-c", _STATE_SH, "state", p.container_repo])
     r = docker.run(s, timeout=120)
     if r.returncode != 0:
-        raise RuntimeError(f"git state failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
+        raise docker.ContainerError(f"git state failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
     return RepoState(**json.loads(r.stdout))
 
 
-_CHANGED_SH = r"""cd "$1"; g() { git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false "$@"; }
+# The repo's CONTENT (Task 22 fix round 1, I-1): every non-ignored file of the working tree (tracked or not) as
+# path -> blob id, and every local branch tip. The read container mounts /work read-only, so `git add -A` goes into a
+# throwaway index and object directory in the container's /tmp (the repo's own objects are its alternate): nothing
+# is written to the arm's repo. Output: `ls-files -s -z` records, a \001 separator, then `refname\tsha` lines; with
+# $2.. (baseline tips), a second \001 and the files changed by commits on any branch that no baseline tip reaches.
+_CONTENT_SH = r"""cd "$1"; shift
+g() { git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false "$@"; }
 set -e
-g diff --name-only --no-renames -z "$2"
-g ls-files --others --exclude-standard -z
-g log --branches --not "$2" --name-only --no-renames --format= -z"""
+t=$(mktemp -d)
+export GIT_INDEX_FILE="$t/index" GIT_OBJECT_DIRECTORY="$t/objects" GIT_ALTERNATE_OBJECT_DIRECTORIES="$PWD/.git/objects"
+mkdir -p "$t/objects"
+g read-tree HEAD 2>/dev/null || g read-tree --empty
+g add -A
+g ls-files -s -z
+printf '\001'
+g for-each-ref refs/heads --format='%(refname)%09%(objectname)'
+if [ "$#" -gt 0 ]; then
+  printf '\001'
+  g log --branches --not "$@" --name-only --no-renames --format= -z
+fi"""
 
 
-def changed_paths(p: Paths, base: str) -> list[str]:
-    """Every repo-relative path changed since `base` (Task 22, the N.a discovery stop): the working tree against
-    `base` (committed, staged and unstaged tracked changes), untracked files (not ignored), and every file a commit
-    on ANY local branch since `base` touched (an arm may commit on a feature branch and switch back). Sorted,
-    de-duplicated. Not seen: uncommitted work in a linked worktree outside the repo directory."""
+def _content(p: Paths, tips: list[str]) -> tuple[dict[str, str], dict[str, str], list[str]]:
     check_trees(p)
-    s = dataclasses.replace(spec(p, []), cmd=["bash", "-c", _CHANGED_SH, "changed", p.container_repo, base])
-    r = docker.run(s, timeout=300)
+    s = dataclasses.replace(spec(p, []), cmd=["bash", "-c", _CONTENT_SH, "content", p.container_repo, *tips])
+    r = docker.run(s, timeout=600)
     if r.returncode != 0:
-        raise RuntimeError(f"git changed-paths failed in container ({r.returncode}): "
-                           f"{r.stderr.decode(errors='replace')[:400]}")
-    return sorted({x for x in r.stdout.decode(errors="replace").replace("\n", "\0").split("\0") if x.strip()})
+        raise docker.ContainerError(f"git content state failed in container ({r.returncode}): "
+                                    f"{r.stderr.decode(errors='replace')[:400]}")
+    parts = r.stdout.split(b"\x01")
+    files: dict[str, str] = {}
+    for rec in parts[0].split(b"\0"):
+        if rec:
+            meta, _, path = rec.decode(errors="surrogateescape").partition("\t")
+            files[path] = meta.split()[1]
+    refs = dict(l.split("\t", 1) for l in parts[1].decode(errors="replace").splitlines() if "\t" in l) \
+        if len(parts) > 1 else {}
+    logged = [x for x in parts[2].decode(errors="surrogateescape").replace("\n", "\0").split("\0") if x.strip()] \
+        if len(parts) > 2 else []
+    return files, {k: v.strip() for k, v in refs.items()}, logged
+
+
+def content_state(p: Paths) -> dict:
+    """The N.a discovery run's baseline (Task 22 fix round 1, I-1), taken at the attempt's start: `{"files":
+    {path: blob}, "tips": {ref: sha}}`. Whatever an earlier step left behind (uncommitted or untracked work, an
+    abandoned branch, HEAD on a feature branch) is part of the baseline, so it never reads as this attempt's edit."""
+    files, tips, _ = _content(p, [])
+    return {"files": files, "tips": tips}
+
+
+def changed_since(p: Paths, baseline: dict) -> list[str]:
+    """Paths whose content changed since `baseline` (`content_state`): working-tree files added, removed or with
+    a different blob (ignored files never count), plus every file a commit on any local branch touched that no
+    baseline tip reaches. Sorted. Not seen: uncommitted work in a linked worktree outside the repo directory."""
+    old_tips = sorted(set(baseline["tips"].values()))
+    files, _, logged = _content(p, old_tips)
+    old = baseline["files"]
+    changed = {f for f in set(old) | set(files) if old.get(f) != files.get(f)}
+    return sorted(changed | set(logged))
 
 
 def archive(p: Paths, sha: str) -> bytes:
@@ -232,7 +272,7 @@ def export_tree(p: Paths, sha: str, dest: Path) -> None:
     s = dataclasses.replace(spec(p, [], out_dir=dest), cmd=["bash", "-c", _EXPORT_SH, "export", p.container_repo, sha])
     r = docker.run(s, timeout=600)
     if r.returncode != 0:
-        raise RuntimeError(f"export failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
+        raise docker.ContainerError(f"export failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
 
 
 _BARE_TREE_SH = r"""set -euo pipefail
@@ -249,7 +289,7 @@ def bare_tree(p: Paths, bare: Path, ref: str, dest: Path) -> Path:
                             cmd=["bash", "-c", _BARE_TREE_SH, "bare-tree", ref])
     r = docker.run(s, timeout=600)
     if r.returncode != 0:
-        raise RuntimeError(f"bare tree failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
+        raise docker.ContainerError(f"bare tree failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
     return dest
 
 
@@ -281,7 +321,7 @@ def fast_export(p: Paths, root: Path, git_dirs: list[str], dest: Path, *,
                             cmd=["bash", "-c", _FAST_EXPORT_SH, "fast-export", str(len(revs)), *revs, *git_dirs])
     r = docker.run(s, timeout=1800)
     if r.returncode != 0:
-        raise RuntimeError(f"fast-export failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
+        raise docker.ContainerError(f"fast-export failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
     return [f if (f := dest / f"{i}.fe").is_file() and not f.is_symlink() else None
             for i in range(1, len(git_dirs) + 1)]
 

@@ -16,7 +16,11 @@ What ends an attempt:
             the PO classified the arm's message as an approval request (the owner is NOT asked; the entry is
             logged with `owner_action="discovery-stop"`), or an arm turn left paths changed since `sha_before`
             outside the arm's spec paths and the pinned docs paths (`outside_spec`; checked before the PO sees
-            the turn). `AttemptResult.discovery` says which, at which turn
+            the turn). "Changed" is against `gitops.content_state` taken once at the attempt's start, after
+            `recover` (and so after any restore): what an earlier step left behind never counts (fix round 1,
+            I-1). At step 5 the PO classifies every arm message BEFORE a CR-B pre-emption in this mode (fix round
+            1, L-3), so a gate on the pre-empted turn still stops the run; CR-B timing is unchanged from N.b.
+            `AttemptResult.discovery` says which, at which turn
   parked    an owner prompt (gate or escalation) returned `owner.Park` — recorded, never treated as an answer,
             never appended to the brief (Task 15 ruling 1); the caller parks the arm and moves on. With several
             escalations in one message, answers the owner gave BEFORE the park are real answers and stay
@@ -232,13 +236,15 @@ def run_attempt(ctx: StepCtx, attempt: int, message: str, resume: str | None = N
     _po_view(ctx)                                             # ruling 3: refuse a step-5 ctx before any turn
     res = AttemptResult("stalled", resume)
     try:
-        return _run(ctx, attempt, message, res, stop_at_first_gate_or_code)
+        baseline = gitops.content_state(ctx.paths) if stop_at_first_gate_or_code else None    # I-1
+        return _run(ctx, attempt, message, res, baseline)
     except HarnessFault as f:
         f.attempt_result = res                                # the turns so far are evidence
         raise
 
 
-def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult, discovery: bool = False) -> AttemptResult:
+def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult, baseline: dict | None = None) -> AttemptResult:
+    discovery = baseline is not None
     pins, arm, p = ctx.pins, ctx.arm, ctx.paths
     ctx.out.mkdir(parents=True, exist_ok=True)
     qa_path = ctx.out / "questions.jsonl"
@@ -283,7 +289,7 @@ def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult, discovery
                                    (r.final_text or "")[:500])
             res.session_id = r.session_id or res.session_id
             res.exchanges += 1; turns_ended += 1
-            if discovery and (code := outside_spec(gitops.changed_paths(p, ctx.sha_before), arm, pins)):
+            if baseline is not None and (code := outside_spec(gitops.changed_since(p, baseline), arm, pins)):
                 res.outcome = "discovery-stop"                                           # N.a: first code edit
                 res.discovery = {"why": "code", "turn": len(res.turns), "paths": code[:50]}
                 return res
@@ -294,7 +300,8 @@ def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult, discovery
                     "escalated": [], "significant": False, "cited": None, "approved": None,
                     "owner_action": None, "owner_seconds": 0.0, "po_cost_usd": 0.0, "po_retries": 0}
             pending_later = ctx.later_sent < len(ctx.later_messages)
-            if pending_later and turns_ended >= cr_b_after:                              # OD6 B
+            preempt = pending_later and turns_ended >= cr_b_after
+            if preempt and not discovery:                                                # OD6 B
                 message = _next_later(ctx)
                 _log(qa, qa_path, {**base, "kind": "preempted", "reply": message, "answered_by": "runner"})
                 res.interventions.append("step5-cr-b")
@@ -321,6 +328,12 @@ def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult, discovery
                 res.outcome = "discovery-stop"
                 res.discovery = {"why": "approval", "turn": len(res.turns)}
                 return res
+            if preempt:                                   # N.a at step 5: the PO has seen the turn (L-3); now CR-B
+                message = _next_later(ctx)
+                _log(qa, qa_path, {**entry, "kind": "preempted", "po_kind": dec.kind, "reply": message,
+                                   "answered_by": "runner"})
+                res.interventions.append("step5-cr-b")
+                continue
             try:
                 reply = _reply(ctx, dec, r, entry, res, sent, source)
             except _Parked as pk:                                                        # ruling 1

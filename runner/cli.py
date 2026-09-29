@@ -20,6 +20,8 @@ def main(argv: list[str] | None = None) -> int:
     if ns.cmd != "faults":                   # design §9: halted until `faults resume --note` (Task 22)
         from runner import faults
         pass_ = getattr(ns, "pass_", None) or "pass1"      # no pass named: the real bake-off's ledger
+        if not faults.NAME.match(pass_):                   # never build a ledger path from a bad name (M-2)
+            pass_ = "pass1"
         if (h := faults.halted(pass_)):
             print(f"HALTED ({faults.ledger_paths(pass_)[1]}): the same harness fault occurred twice (design §9).\n{h}\n"
                   f"Review with the owner, then `runner faults resume {pass_} --note \"<resolution>\"`.")
@@ -168,36 +170,53 @@ REGISTRARS.append(register_scan)
 
 def register_faults(sub):
     """`faults list [--pass P]`, `faults declare <pass> <arm> <step> <slug> --scope rerun-step|retest`,
-    `faults resume <pass> --note "<text>"` (Task 22, design §9). The only commands that run while HALTED."""
+    `faults resume <pass> --note "<text>"` (Task 22, design §9). The only commands that run while HALTED. Bad input
+    (unknown pass or arm, step outside 1-7, an empty note, resuming a pass that is not halted) is a clean error,
+    exit 2, and writes nothing (fix round 1 M-2)."""
+    import sys
     from runner import faults
-    p = sub.add_parser("faults", help="the harness-fault ledger: list, declare, resume after a halt")
-    s = p.add_subparsers(dest="faults_cmd", required=True)
+
+    def clean(fn):
+        def run(ns):
+            try:
+                return fn(ns)
+            except ValueError as e:
+                print(f"error: {e}", file=sys.stderr)
+                return 2
+        return run
 
     def list_(ns):
-        for e in faults.entries(ns.pass_ or "pass1"):
+        pass_ = faults.check_pass(ns.pass_) if ns.pass_ else "pass1"
+        for e in faults.entries(pass_):
             print(json.dumps(e))
-        if (h := faults.halted(ns.pass_ or "pass1")):
+        if (h := faults.halted(pass_)):
             print(f"HALTED: {h}")
-    ls = s.add_parser("list", help="print the ledger (the real passes' shared ledger unless --pass names another)")
-    ls.add_argument("--pass", dest="pass_", default=None); ls.set_defaults(func=list_)
+    p = sub.add_parser("faults", help="the harness-fault ledger: list, declare, resume after a halt")
+    s_ = p.add_subparsers(dest="faults_cmd", required=True)
+    ls = s_.add_parser("list", help="print the ledger (the real passes' shared ledger unless --pass names another)")
+    ls.add_argument("--pass", dest="pass_", default=None); ls.set_defaults(func=clean(list_))
 
     def declare(ns):
-        faults.declare(ns.pass_, ns.arm, ns.step, ns.slug, ns.scope)
+        action = faults.declare(ns.pass_, ns.arm, ns.step, ns.slug, ns.scope)
         if ns.scope == "rerun-step":                      # Task 23 honours it: supersede the step and re-run it
             prog = paths.Paths(ns.pass_, ns.arm).progress
             cur = json.loads(prog.read_text()) if prog.exists() else {}
             prog.parent.mkdir(parents=True, exist_ok=True)
             prog.write_text(json.dumps({**cur, "rerun": ns.step}, indent=2))
         print(f"declared manual:{ns.slug} ({ns.scope}) for {ns.pass_}/{ns.arm} step {ns.step}")
-    d = s.add_parser("declare", help="record an owner-declared harness fault (manual:<slug>)")
+        if action == "halt":
+            print(f"HALTED: manual:{ns.slug} was already recorded since the last resolution (design §9).\n"
+                  f"{faults.halted(ns.pass_)}")
+            return 1
+    d = s_.add_parser("declare", help="record an owner-declared harness fault (manual:<slug>)")
     d.add_argument("pass_", metavar="pass"); d.add_argument("arm"); d.add_argument("step", type=int)
     d.add_argument("slug"); d.add_argument("--scope", required=True, choices=("rerun-step", "retest"))
-    d.set_defaults(func=declare)
+    d.set_defaults(func=clean(declare))
 
     def resume(ns):
         faults.resume(ns.pass_, ns.note)
         print(f"resolution recorded for {ns.pass_}; HALTED cleared")
-    r = s.add_parser("resume", help="record the owner's resolution and clear HALTED")
+    r = s_.add_parser("resume", help="record the owner's resolution and clear HALTED")
     r.add_argument("pass_", metavar="pass"); r.add_argument("--note", required=True)
-    r.set_defaults(func=resume)
+    r.set_defaults(func=clean(resume))
 REGISTRARS.append(register_faults)

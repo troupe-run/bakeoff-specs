@@ -82,6 +82,12 @@ def stop_argv(name: str, grace: int = 30) -> list[str]:
 def rm_argv(name: str) -> list[str]:
     return ["docker", "rm", "-f", name]
 
+class ContainerError(RuntimeError):
+    """A container the runner started failed (docker, git-in-container, tar-in-container, the egress proxy). Task 22
+    fix round 1 (L-1): stepflow records exactly this (and `subprocess.SubprocessError`) as `infra-container`; any
+    other exception from a step is a runner bug and propagates."""
+
+
 def stop(name: str, grace: int = 30) -> None:
     """Graceful then hard; never relies on killing the local docker CLI (spike B Q5)."""
     subprocess.run(stop_argv(name, grace), capture_output=True)

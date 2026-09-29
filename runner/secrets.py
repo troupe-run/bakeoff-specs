@@ -34,7 +34,9 @@ What is scanned where (orchestration decides WHEN; preflight row 36, m12):
                              history of every git dir in it (work repo and the bare origin). In the arm-home PAT
                              files (`home/.config/gh/hosts.yml`, `home/.bk-mcp.json`) only the arm's keychain PAT
                              (`pat`) is exempt — they hold it by design (OD16); any other token there is a finding.
-  * `scan_arm(p, lits)`    — results + every snapshot of one arm. `runner scan --arm PASS ARM`.
+  * `scan_arm(p, lits)`    — results + every snapshot of one arm, plus the pass's harness-fault ledger files
+                             (`ledger_files`: fault details quote arm and API output). `runner scan --arm PASS ARM`.
+  * `scan_step(p, n, lits)` — one step's evidence dir plus the pass's ledger files (the per-step scan, Task 23).
   * `scan_publish(tree, history)` — what `repo.publish` pushes: the tip tree AND the full history.
   * `scan_blobs(items, harness=True)` — the pre-commit hook (`runner scan --staged`): the INDEX blobs.
 The `secret-scan: fake` line mark is honoured only by the pre-commit scan, only in files under `tests/`, only
@@ -639,6 +641,21 @@ def keychain_pat(pass_: str, arm: str) -> str | None:
     return _KEYCHAIN[key]      # type: ignore[return-value]
 
 
+def ledger_files(pass_: str) -> list[Path]:
+    """The pass's harness-fault ledger, its HALTED record and its resource-exhaustion record (Task 22): real passes
+    share `results/faults.jsonl`; every other pass has its own under `results/<pass>/`. Details quote arm and API
+    output, so they are evidence and scanned with it (fix round 1 L-4)."""
+    ledger, halted = faults.ledger_paths(pass_)
+    return [ledger, halted, faults.resource_path(pass_)]
+
+
+def scan_step(p: paths.Paths, step: int, literals: Iterable[str] = ()) -> list[Finding]:
+    """The per-step scan: the step's evidence dir (`results/<pass>/<arm>/NN`, its `a/` run included) and the pass's
+    ledger files, with the arm home's PAT values added to the needles."""
+    lits = [*literals, *home_pat_values(p.home)]
+    return scan_tree(p.step(step), lits) + scan_files(ledger_files(p.pass_), lits)
+
+
 def scan_arm(p: paths.Paths, literals: Iterable[str] = (), *, snapshots: bool = True) -> list[Finding]:
     """One arm: its whole results tree (every step's evidence, `00-setup` with shell-history.txt and the setup
     transcripts) and, with `snapshots`, every `snapshots/*.tar`. The arm home's PAT values and its keychain PAT
@@ -646,6 +663,7 @@ def scan_arm(p: paths.Paths, literals: Iterable[str] = (), *, snapshots: bool = 
     pat = keychain_pat(p.pass_, p.arm)
     lits = [*literals, *home_pat_values(p.home), *([pat] if pat else [])]
     found = scan_tree(p.results, lits) if p.results.is_dir() else []
+    found += scan_files(ledger_files(p.pass_), lits)
     if snapshots and p.snapshots.is_dir() and not p.snapshots.is_symlink():
         for snap in sorted(p.snapshots.glob("*.tar")):
             if snap.is_file() and not snap.is_symlink():

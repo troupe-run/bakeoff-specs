@@ -16,15 +16,18 @@ Classification (design §9, brief table, binding rulings):
   (ruling 3: its turns are on `fault.attempt_result`). `verify_pin` always gets the runner-captured streams with
   their outcomes and collection's skipped entries (ruling 4). Behind a raised fault, an off-pin model is what the
   ledger records, except under `infra-auth` / `credential-persisted` (the hand edit's precedence).
-- A harness fault (raised by drive, found by the pin check, a docker/proxy error from the runner as
-  `infra-container`, or the owner reclassifying the arm's first runaway breach, OD14 B) goes to the ledger
+- A harness fault (raised by drive, found by the pin check, a failed container from the runner —
+  `docker.ContainerError` or `subprocess.SubprocessError` — as `infra-container`; any other exception is a runner
+  bug and propagates (fix round 1 L-1), or the owner reclassifying the arm's first runaway breach, OD14 B) goes to the ledger
   (`faults.record`). The second identical one halts (`Halt`). Otherwise the owner confirms the fix (`Paused` if
   not, or if they park), every attempt since the last restore is parked under `attempts/<k>-harness-<kind>/`, the
   step snapshot is restored, `ctx.later_sent` is reset to 0 so CR-B is sent again (ruling 2), and the arm gets
   its full three attempts again (review C-3).
 - A drive outcome of `parked` is not a fault (ruling 1): `parked.json` records it and the step returns
-  `status="parked"` — no hidden tests, not counted as an arm attempt, and nothing restored: the tree is left for
-  the owner, and the caller (Task 23) restores the pre-step snapshot before it re-runs the step.
+  `status="parked"` — no hidden tests, not counted as an arm attempt.
+- **On `Halt`, `Paused` or a `parked` result, stepflow leaves the tree mid-step** (nothing is restored, so the
+  owner can inspect it): the caller (Task 23) must restore the existing pre-step snapshot (`ctx.snapshot`, or the
+  step's) before the step runs again (review I-2).
 - Hidden tests (run b): a harness flake (flaky on the reference too) is `flaky-test:<nodeid>` and a hidden
   `harness-fault` attribution is `infra-hidden:<why>`; both are ledger faults that RE-TEST the same commit after
   the owner's fix (no new arm session). `arm-resource` (re-run once by `hidden`, then all-failed) and `arm-output`
@@ -42,8 +45,8 @@ import json, re, shutil, subprocess, time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from runner import checklist, drive, evidence, faults, gitops, handedit, handoff, hidden, preflight, quality, repo, \
-    transcripts
+from runner import checklist, docker, drive, evidence, faults, gitops, handedit, handoff, hidden, preflight, quality, \
+    repo, transcripts
 from runner.faults import HarnessFault
 from runner.owner import Park
 
@@ -175,6 +178,19 @@ def _behind(f: HarnessFault, pin) -> HarnessFault:
     return HarnessFault(pf.kind, pf.signature, f"{pf.detail}; the attempt raised {f.kind}: {f.signature}")
 
 
+def _faulted(ctx, f: HarnessFault, attempt: int, before: dict, ar) -> HarnessFault:
+    """The fault to record for an attempt that raised `f`. If collecting or pin-checking its evidence fails too,
+    the ORIGINAL fault is still what is recorded, with the evidence error as a note (fix round 1 L-2)."""
+    try:
+        pin = _evidence_pin(ctx, attempt, before, ar)
+    except Exception as e:
+        note = f"collecting the attempt's evidence failed too: {e!r}"
+        f.add_note(note)
+        f.detail = f"{f.detail}; {note}" if f.detail else note
+        return f
+    return _behind(f, pin)
+
+
 # ---- faults ---------------------------------------------------------------------------------------------------
 
 def _sig(text: str | None) -> str:
@@ -289,12 +305,12 @@ def run_step(ctx, first_message: str, extra: dict | None = None, run: str = "b")
             try:
                 ar = drive.run_attempt(ctx, attempt, message, resume, **kw)
             except HarnessFault as f:
-                raise _behind(f, _evidence_pin(ctx, attempt, before, getattr(f, "attempt_result", None)))
+                raise _faulted(ctx, f, attempt, before, getattr(f, "attempt_result", None))
             except checklist.NotReady:
                 raise                                # a precondition, never a fault: the caller refuses the arm
-            except (RuntimeError, OSError, subprocess.SubprocessError) as e:     # docker / proxy, from the runner
+            except (docker.ContainerError, subprocess.SubprocessError) as e:     # a failed container (L-1)
                 f = HarnessFault("infra-container", _sig(str(e)), repr(e)[:500])
-                raise _behind(f, _evidence_pin(ctx, attempt, before, None)) from e
+                raise _faulted(ctx, f, attempt, before, None) from e
             pin = _evidence_pin(ctx, attempt, before, ar)
             if (pf := _pin_fault(pin)):
                 raise pf
@@ -335,7 +351,8 @@ def run_step(ctx, first_message: str, extra: dict | None = None, run: str = "b")
             outcome = "done" if progressed else "stopped"
             evidence.finalise(ctx, attempts=history + [ar], extra_turns=extra, hidden=summary, quality=q, pin=pin,
                               sha_before=ctx.sha_before, started=t0, ended=time.time(),
-                              fault_entries=faults.for_step(ctx.pass_, ctx.arm.name, ctx.step),
+                              fault_entries=[e for e in faults.for_step(ctx.pass_, ctx.arm.name, ctx.step)
+                                             if e.get("run") == "b"],                          # L-5
                               shas=ctx.shas, tests_seconds=tests_s, outcome=outcome)
             if outcome == "stopped":
                 _arm_result(ctx, summary)

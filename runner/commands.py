@@ -120,7 +120,7 @@ def listing(p: Paths, arm: config.Arm) -> Listing:
                 stdin=False, limits=config.load_pins().limits, proxy=False)
     r = docker.run(s, timeout=120)
     if r.returncode != 0:
-        raise RuntimeError(f"command listing failed: {r.stderr.decode(errors='replace')[:300]}")
+        raise docker.ContainerError(f"command listing failed: {r.stderr.decode(errors='replace')[:300]}")
     return parse_listing(r.stdout.decode())
 
 
