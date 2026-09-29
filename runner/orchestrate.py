@@ -48,7 +48,7 @@ a stopped arm's is stepflow's and is never rewritten); `repo.publish` to the arm
 (scan of the tip tree and history first; the owner's confirmation, where a park is never a yes).
 """
 from __future__ import annotations
-import dataclasses, hashlib, json, random, re, shutil, time
+import dataclasses, hashlib, json, random, re, shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -742,7 +742,8 @@ def _run(pass_: str, arms: list[str], cred, owner, *, limits_override: dict | No
                 if not live:
                     break
                 for run in RUNS:
-                    if run == "b" and R.consistency(step) == "parked":
+                    pending_b = run == "b" and not all(R.is_complete(a, step, "b") for a in live)
+                    if pending_b and R.consistency(step) == "parked":     # only before a scored run is due
                         return _result(R, arms)
                     for a in live:
                         got = R.run_one(a, step, run)
@@ -922,8 +923,8 @@ def close_out(pass_: str, owner) -> Path:
     """The end of a run (review S-2): every arm finished, a secret scan of `results/<pass>` and the ledger clean, every
     bundle present, and every run PAT revoked (the owner confirms each). Written to `results/<pass>/close-out.md`."""
     rec = _jr(paths.RESULTS / pass_ / "order.json") or {}
-    arms = rec.get("order") or sorted(x.name for x in (paths.STATE / pass_).iterdir()
-                                      if (x / "progress.json").exists()) if (paths.STATE / pass_).is_dir() else []
+    arms = rec.get("order") or (sorted(x.name for x in (paths.STATE / pass_).iterdir()
+                                       if (x / "progress.json").exists()) if (paths.STATE / pass_).is_dir() else [])
     missing = [a for a in arms if not (Paths(pass_, a).results / "arm-result.json").exists()]
     if missing:
         raise NotReady(f"{pass_}: not finished: {missing}")

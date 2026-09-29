@@ -391,6 +391,44 @@ def test_no_new_answers_needs_no_owner_prompt_but_is_recorded(fake_orch):
     assert rec["status"] == "nothing-new"
 
 
+def test_a_resumed_run_does_not_ask_again_about_steps_whose_scored_runs_are_done(fake_orch):
+    fake_orch.escalate[("openspec", 1)] = (Q, "Yes.")
+    state = {"paused": False}
+
+    def review(md):
+        if "Step 3 " in md and not state["paused"]:
+            state["paused"] = True
+            return "pause", 0.0
+        return "continue", 0.0
+    fake_orch.owner.review_answer = review
+    real(fake_orch)
+    from runner import po
+    po.append_escalation(fake_orch.brief, "Asked during 1.b?", "Yes.", "pass1", "control", 1, source="scripted")
+    real(fake_orch)
+    assert len(fake_orch.owner.item_calls) == 1
+
+
+def test_a_crash_inside_the_hand_edit_restarts_it_from_the_pre_edit_snapshot(fake_orch, monkeypatch):
+    real_edit = stepflow.hand_edit
+    tries = []
+
+    def edit(ctx, step1):
+        tries.append(1)
+        if len(tries) == 1:
+            ctx.paths.snapshots.mkdir(parents=True, exist_ok=True)
+            (ctx.paths.snapshots / "step-02-pre-edit.tar").write_bytes(b"")
+            raise KeyboardInterrupt
+        return real_edit(ctx, step1)
+    monkeypatch.setattr(stepflow, "hand_edit", edit)
+    with pytest.raises(KeyboardInterrupt):
+        dry(fake_orch)
+    fake_orch.calls.clear()
+    dry(fake_orch)
+    c = fake_orch.calls
+    assert c.index(("restore", "dryrun", "02-pre-edit")) < c.index(("hand_edit", "dryrun", 2))
+    assert count(fake_orch, ("hand_edit", "dryrun", 2)) == 1
+
+
 def test_answers_from_an_earlier_step_are_not_shown_again(fake_orch):
     fake_orch.escalate[("openspec", 1)] = (Q, "Yes.")
     real(fake_orch)
