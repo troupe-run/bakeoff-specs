@@ -662,3 +662,43 @@ def test_present_manifest_check_on_route_a_is_falsifiable(tmp_state, monkeypatch
     _route(monkeypatch, "marketplace")
     got, calls = _host_checks(tmp_state, monkeypatch, _arm("superpowers"), missing=["~/.claude/plugins/cache"])
     assert calls and not got["setup.manifest-matches-pass1"].ok
+
+
+# --- Task 20 fix round 1 (MEDIUM: owner-shell interventions can be forged) --------------------------------
+def test_record_owner_shell_commit_appends_to_a_harness_side_file_under_setup_results(tmp_state):
+    """The arm has no write access to `p.setup_results` (outside its repo and home) — this file, not a
+    pattern-matched git-log subject, is what `evidence.finalise` trusts for owner-shell interventions."""
+    p = Paths("dry9", "dryrun")
+    p.setup_results.mkdir(parents=True)
+    checklist.record_owner_shell_commit(p.setup_results, "aaa111")
+    checklist.record_owner_shell_commit(p.setup_results, "bbb222")
+    recorded = json.loads((p.setup_results / checklist.OWNER_SHELL_COMMITS_FILE).read_text())
+    assert [r["sha"] for r in recorded] == ["aaa111", "bbb222"]
+    assert all("at" in r for r in recorded)
+
+
+def test_recheck_records_the_sha_it_commits_from_a_dirty_repo(tmp_state, monkeypatch):
+    """`checklist.recheck` (the `runner checklist` CLI, run after an owner `runner shell` session) must record
+    every commit sha it makes — not just leave the arm's forgeable git-log subject as the only trace."""
+    calls = []
+
+    class Stage:
+        net = "bk-net-x"
+        def __init__(self, *a): pass
+        def __enter__(self): return self
+        def __exit__(self, *e): pass
+    p = Paths("dry9", "dryrun")
+    p.setup_results.mkdir(parents=True)
+    monkeypatch.setattr(checklist.gitops, "state", lambda p_: type("S", (), {"dirty": True})())
+    monkeypatch.setattr(checklist.gitops, "commit_all", lambda p_, who, msg: "sha-from-recheck")
+    monkeypatch.setattr(checklist, "record_owner_shell_commit", lambda out, sha: calls.append((out, sha)))
+    monkeypatch.setattr(checklist.egress, "Stage", Stage)
+    monkeypatch.setattr(checklist, "verify", lambda *a: [])
+    monkeypatch.setattr(checklist, "host_checks", lambda *a, **k: [])
+    monkeypatch.setattr(checklist, "_read_md", lambda n: MD)
+    monkeypatch.setattr(checklist, "missing_checks", lambda *a: [])
+    monkeypatch.setattr(checklist, "copy_shell_history", lambda p_: True)
+    monkeypatch.setattr(checklist.repo, "recover", lambda p_: None)
+    monkeypatch.setattr(checklist.repo, "snapshot", lambda p_, n: None)
+    checklist.recheck("dry9", "dryrun", None)
+    assert calls == [(p.setup_results, "sha-from-recheck")]
