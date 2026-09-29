@@ -160,6 +160,33 @@ def test_an_oversize_stream_line_is_counted_as_uninspected(tmp_path):
     assert r.ok and r.truncated_lines == 1
 
 
+# --- a stream without init (controller ruling on concern 2) -----------------------------------------------
+
+def test_assistant_activity_without_init_is_an_unverifiable_version_violation(tmp_path):
+    t = tmp_path / "s.jsonl"; w(t, asst("claude-opus-5-5"))
+    s = gz(tmp_path / "t.stream.jsonl.gz", asst("claude-opus-5-5"))
+    r = verify_pin([t], [s], config.load_pins())
+    assert not r.ok
+    assert r.violations == [{"file": str(s), "line": None, "where": "claude_code_version", "model": "unverifiable"}]
+    assert r.claude_code_versions == ["unverified"] and r.unverified_streams == [str(s)]
+
+def test_model_usage_without_init_is_assistant_activity_too(tmp_path):
+    t = tmp_path / "s.jsonl"; w(t, asst("claude-opus-5-5"))
+    s = gz(tmp_path / "t.stream.jsonl.gz", {"type": "result", "modelUsage": {"claude-opus-5-5": {}}})
+    r = verify_pin([t], [s], config.load_pins())
+    assert not r.ok and [v["model"] for v in r.violations] == ["unverifiable"]
+
+def test_a_stream_with_no_init_and_no_activity_is_recorded_unverified_not_faulted(tmp_path):
+    # e.g. a turn that timed out before Claude Code started: the turn's own outcome carries the failure.
+    t = tmp_path / "s.jsonl"; w(t, asst("claude-opus-5-5"))
+    ok = gz(tmp_path / "a.stream.jsonl.gz", INIT_OK, asst("claude-opus-5-5"))
+    empty = gz(tmp_path / "b.stream.jsonl.gz")
+    r = verify_pin([t], [ok, empty], config.load_pins())
+    assert r.violations == [] and r.ok
+    assert r.claude_code_versions == ["2.1.281", "unverified"]      # never reported as the pinned version
+    assert r.unverified_streams == [str(empty)]
+
+
 # --- "checked nothing" is a failure, never a vacuous pass (controller ruling) ----------------------------
 
 def test_nothing_at_all_is_not_evidence(tmp_path):
@@ -195,7 +222,7 @@ def test_report_serialises_every_field_for_model_pin_json(tmp_path):
     f = tmp_path / "s.jsonl"; w(f, asst("claude-opus-5-5"))
     r = json.loads(verify_pin([f], [], config.load_pins()).to_json())
     assert set(r) == {"ok", "assistant_messages", "stream_assistant_messages", "synthetic", "truncated_lines",
-                      "claude_code_versions", "no_evidence", "violations"}
+                      "claude_code_versions", "no_evidence", "violations", "unverified_streams"}
     assert r["ok"] is True and r["assistant_messages"] == 1
 
 
