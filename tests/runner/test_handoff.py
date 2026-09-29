@@ -48,6 +48,33 @@ def test_step5_one_message_keeps_both_change_requests(monkeypatch):             
     monkeypatch.setitem(handoff.STEP5, "delivery", "one-message")
     [m] = handoff.step5(BRIEFS[4].read_text(), C)
     assert "## CR-A" in m and "## CR-B" in m
+    assert "## Overrides (from step 5" in m and "## In-include (from step 5, change request B)" in m
+    assert m.count(DELIVERY) == 1
+
+def test_cr_a_never_pre_announces_cr_b_s_answer_and_cr_b_carries_it(monkeypatch):   # coordinator ruling 1
+    monkeypatch.setitem(handoff.STEP5, "delivery", "two-requests")
+    a, b = handoff.step5(BRIEFS[4].read_text(), C)
+    assert "--in-include" not in a and "## In-include" not in a and "In-include" not in a
+    assert "## In-include (from step 5, change request B)" in b and "--in-include" in b
+    assert "## Overrides" not in b and b.count(DELIVERY) == 1
+
+def test_step5_brief_names_overrides_under_cr_a_and_in_include_under_cr_b():
+    parts = BRIEFS[4].read_text().split("## CR-B")
+    assert handoff.named(parts[0]) == ("added", ['Overrides (replaces rule 2 under "set PATH VALUE")'])
+    assert handoff.named(parts[1]) == ("added", ["In-include"])
+
+def test_in_include_rule_lives_only_in_its_own_section_right_after_overrides():
+    secs = handoff.contract_sections(C)
+    assert "--in-include" not in secs["Overrides"] and "--in-include" in secs["In-include"]
+    names = list(secs)
+    assert names.index("In-include") == names.index("Overrides") + 1
+
+@pytest.mark.parametrize("name", config.all_arms())
+def test_step5_messages_are_identical_for_every_arm_inside_the_entry_wrapper(name):
+    arm = config.load_arm(name)
+    pre, post = arm.entry.split("{handoff}")
+    for m in handoff.step5(BRIEFS[4].read_text(), C):
+        assert handoff.entry_message(arm, 5, m) == pre + m + post
 
 def test_step5_default_is_two_requests_with_cr_b_after_the_second_turn():          # OD6 B approved
     assert handoff.STEP5["delivery"] == "two-requests" and handoff.STEP5["cr_b_after_turn"] == 2
