@@ -14,6 +14,7 @@ STEP6: dict[str, str] = _SCEN["step6"]
 _LAST = re.compile(r"^Contract sections (in force|added): (.+)\.\s*$", re.M)
 _FROM = re.compile(r"\(from step (\d)")
 _ONLY = re.compile(r"\(step 1 and 2\)")
+_CRB = re.compile(r"\(from step 5, change request B\)")   # sections CR-B introduces (step 5, OD6 B)
 
 
 def norm(name: str) -> str:
@@ -67,13 +68,17 @@ def bug_message(ref: str, contract: str) -> str:
                     f"Contract sections added: Aliases.\n\n---\n\n{contract_sections(contract)['Aliases']}")
 
 
-def in_force(step: int, contract: str) -> str:
-    """Every contract section in force at `step` (for the PO)."""
+def in_force(step: int, contract: str, after_crb: bool = False) -> str:
+    """Every contract section in force at `step` (for the PO). At step 5 a CR-B section (In-include) is in force
+    only once CR-B has been delivered to the arm (`after_crb`, from drive state); the default is the
+    conservative view, so the PO cannot pre-announce CR-B's answer while the arm works on CR-A."""
     keep = []
     for sec in contract_sections(contract).values():
         head = sec.splitlines()[0]
         m = _FROM.search(head)          # checked first: the step-3 heading also quotes "(step 1 and 2)"
         ok = int(m.group(1)) <= step if m else bool(_ONLY.search(head)) and step <= 2
+        if ok and step == 5 and _CRB.search(head) and not after_crb:
+            ok = False
         if ok:
             keep.append(sec)
     return "\n\n".join(keep) + "\n"
