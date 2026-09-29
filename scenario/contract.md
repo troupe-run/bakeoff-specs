@@ -136,13 +136,16 @@ have actor `{"kind": "unknown", "id": null}`.
   file that contains the include reference (the *including* file). A scalar-form include is first converted
   to mapping form, indented at the file's indentation, keeping any end-of-line comment on the key's line:
   `coder: file:agents/coder.yaml  # c` → `coder:  # c` / `  $ref: file:agents/coder.yaml` / `  temperature: 0.3`
-- `set --in-include PATH VALUE` writes a new key into the included file instead (the step 1 rule).
 - Appending a list item is not a new key: the item is appended in the file that holds the list. Likewise, a
   new key inside a list item is written in the file that holds the list, since overrides cannot address list
   items.
 - Overrides apply only to YAML includes; a mapping-form include of any other file with sibling keys → exit 4.
 - Setting an existing value that is overridden changes the override; one that is not overridden is still
   changed in the file it comes from.
+
+## In-include (from step 5, change request B)
+
+- `set --in-include PATH VALUE` writes a new key into the included file instead (the step 1 rule).
 
 ## Aliases (from step 6)
 

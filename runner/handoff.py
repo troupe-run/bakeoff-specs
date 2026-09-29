@@ -26,8 +26,10 @@ def contract_sections(text: str) -> dict[str, str]:
 
 
 def named(brief: str) -> tuple[str, list[str]]:
-    m = list(_LAST.finditer(brief))[-1]
-    return m.group(1), [n.strip() for n in m.group(2).split(";")]
+    """Every section named by the brief's `Contract sections …` line(s), in order. Step 5 has one line per change
+    request (Overrides under CR-A, In-include under CR-B), so CR-B's answer is not handed over with CR-A."""
+    ms = list(_LAST.finditer(brief))
+    return ms[-1].group(1), [n.strip() for m in ms for n in m.group(2).split(";")]
 
 
 def _sections(brief: str, contract: str) -> str:
@@ -44,17 +46,15 @@ def compose(step: int, brief: str, contract: str) -> str:
 
 
 def step5(brief: str, contract: str) -> list[str]:
-    """OD6: "one-message" (A) = the whole brief as one handoff; "two-requests" (B) = CR-A (with the Overrides
-    section, which covers both requests) first, then CR-B alone, sent at `STEP5["cr_b_after_turn"]`."""
+    """OD6: "one-message" (A) = the whole brief as one handoff; "two-requests" (B) = CR-A with the Overrides
+    section first, then CR-B with the In-include section, sent at `STEP5["cr_b_after_turn"]`."""
     if STEP5["delivery"] == "one-message":
         return [compose(5, brief, contract)]
     parts = re.split(r"(?m)^(?=## )", brief)
-    cr_a = next(p for p in parts if p.startswith("## CR-A")).rstrip()
+    cr_a = next(p for p in parts if p.startswith("## CR-A")).rstrip()   # each part ends with its own contract line
     cr_b = next(p for p in parts if p.startswith("## CR-B")).rstrip()
-    line = _LAST.search(brief).group(0).strip()
-    cr_b = _LAST.sub("", cr_b).rstrip()
-    first = _deliver(f"{STEP5['title_a']}\n\n{cr_a}\n\n{line}\n\n---\n\n{_sections(brief, contract)}")
-    second = _deliver(f"{STEP5['cr_b_intro']}\n\n{cr_b}")
+    first = _deliver(f"{STEP5['title_a']}\n\n{cr_a}\n\n---\n\n{_sections(cr_a, contract)}")
+    second = _deliver(f"{STEP5['cr_b_intro']}\n\n{cr_b}\n\n---\n\n{_sections(cr_b, contract)}")
     return [first, second]
 
 
