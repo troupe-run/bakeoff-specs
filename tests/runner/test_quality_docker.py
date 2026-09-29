@@ -2,12 +2,6 @@ import shutil
 
 import pytest
 
-# runner/hidden.py is Task 18's file (round 4 as of this writing) and is not merged into this lane. Skip this
-# whole module cleanly (not a collection error) until it lands, rather than hard-failing `pytest tests/runner
-# -q` for every other task's tests too. Once merged, this import succeeds and these tests run exactly as
-# specified (still gated by the `docker` marker/--run-docker below).
-pytest.importorskip("runner.hidden", reason="runner/hidden.py (Task 18) not yet present in this lane")
-
 from runner import hidden, quality
 from runner.paths import Paths, REPO_ROOT
 

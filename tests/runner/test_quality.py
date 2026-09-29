@@ -95,3 +95,43 @@ def test_mutation_summary_json_round_trips(tmp_path):
                                  sampled=False, sample_size=0, sampling="all")
     (tmp_path / "mutation.json").write_text(json.dumps(s, indent=2))
     assert json.loads((tmp_path / "mutation.json").read_text())["score"] == 1.0
+
+
+# --- binding isolation rule (coordinator, re-alignment to Task 18): mutation/mypy/ruff execute the arm's own
+# code, so they must run the way prep and the hidden tests do -- uid 1001, no capabilities once the
+# privilege-drop wrapper execs, no-new-privileges, the tester image (never tester-ref), network off ----------
+
+def test_quality_specs_run_hardened_like_prep_and_hidden_tests(tmp_state, monkeypatch, tmp_path):
+    from runner import config, docker, hidden
+    from runner.paths import Paths
+
+    accounts_dir = tmp_path / "accounts"
+    accounts_dir.mkdir()
+    passwd, group = accounts_dir / "passwd", accounts_dir / "group"
+    passwd.write_text("actor:x:1000:1000::/home/actor:/bin/bash\n")
+    group.write_text("actor:x:1000:\n")
+    # avoid a real `docker run ... cat /etc/passwd` against the tester image: _accounts is the only side
+    # effect _spec has for mode="script" that this test needs to avoid to stay pure.
+    monkeypatch.setattr(hidden, "_accounts", lambda p, image: (passwd, group, "actor"))
+
+    p = Paths("dryquality", "dryrun")
+    copy = tmp_path / "work" / "bakeoff-specs-dryrun"
+    copy.mkdir(parents=True)
+
+    spec = quality._script_spec(p, copy, ["bash", "-c", "true"])
+
+    pins = config.load_pins()
+    assert spec.image == pins.images["tester"]
+    assert spec.image != pins.images["tester_ref"]                 # never the harness's reference-only image
+    assert spec.network == "none"                                  # never overridden by quality.py
+
+    # docker's own --user starts the container as root only so setpriv (in spec.cmd) can drop it; the caps
+    # granted are exactly the minimal set that privilege-drop needs, never the full set.
+    assert set(spec.cap_add) == {"SETUID", "SETGID", "SETPCAP", "SYS_RESOURCE"}
+    joined = " ".join(spec.cmd)
+    assert f"--reuid={hidden.ARM_UID}" in joined and f"--regid={hidden.ARM_UID}" in joined
+    assert "--bounding-set=-all" in joined and "--ambient-caps=-all" in joined and "--inh-caps=-all" in joined
+
+    argv = docker.run_argv(spec)
+    assert "--security-opt" in argv and "no-new-privileges" in argv     # applied to every RunSpec unconditionally
+    assert "--cap-drop" in argv and "ALL" in argv

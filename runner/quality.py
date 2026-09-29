@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from runner import config
+from runner.docker import RunSpec
 from runner.paths import Paths, REPO_ROOT
 
 # `runner.hidden` (Task 18) is imported lazily, inside `_run` only, so this module has no hard import-time
@@ -127,11 +128,29 @@ def set_mutmut_paths(copy: Path, paths_: list[str]) -> None:
 
 # --- containers ----------------------------------------------------------------------------------------------
 
-def _run(p: Paths, copy: Path, script: str, timeout: int) -> tuple[int, str]:
-    """Every quality tool runs in its own tester container, `--network none` (hidden._run also cleans up
-    the per-container home directory this creates, whether the run succeeds, fails or times out)."""
+def _script_spec(p: Paths, copy: Path, cmd: list[str], *, name: str = "quality") -> RunSpec:
+    """Binding isolation rule: mutation, mypy and ruff execute the arm's own code, so they run the way prep and
+    the hidden tests do — `hidden._spec(..., mode="script")` starts the container as root only long enough to
+    `setpriv` down to uid 1001 (`ARM_UID`) with every capability cleared (`--bounding-set=-all`,
+    `--ambient-caps=-all`, `--inh-caps=-all`) and `no_new_privs` set; `docker.run_argv` adds
+    `--security-opt no-new-privileges` to every `RunSpec` unconditionally. `mode="script"` never accepts
+    `reference=True` (that raises), so `_spec` can only pick the plain tester image — never `tester_ref`, which
+    exists solely for the harness's own reference-flake runs and holds no arm-relevant tooling anyway. Network
+    defaults to `"none"` and is never overridden here.
+
+    `runner.run_script` (public) does the same `mode="script"` build, but hardcodes a 600s timeout and returns
+    only decoded stdout — it drops the exit code and stderr. This task's whole point is distinguishing a tool
+    crash from a clean result, which needs the exit code, and mypy/mutation need up to 1800s+, so `_spec`/`_run`
+    are used directly here instead of the public wrapper."""
     from runner import hidden          # lazy: Task 18's module, not a module-load-time dependency
-    r = hidden._run(hidden._spec(p, copy, ["bash", "-c", script], name="quality"), timeout=timeout)
+    return hidden._spec(p, copy, cmd, mode="script", name=name)
+
+
+def _run(p: Paths, copy: Path, script: str, timeout: int) -> tuple[int, str]:
+    """Every quality tool runs in its own tester container (see `_script_spec`); `hidden._run` also cleans up
+    the per-container home directory this creates, whether the run succeeds, fails or times out."""
+    from runner import hidden          # lazy: Task 18's module, not a module-load-time dependency
+    r = hidden._run(_script_spec(p, copy, ["bash", "-c", script]), timeout=timeout)
     return r.returncode, (r.stdout + r.stderr).decode(errors="replace")
 
 

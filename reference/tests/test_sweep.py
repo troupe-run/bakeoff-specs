@@ -6,11 +6,21 @@ reference could not make the write surgical, and the CLI would refuse it — tha
 import importlib.util
 from pathlib import Path
 
+import pytest
 from ruamel.yaml.comments import TaggedScalar
 from ruamel.yaml.nodes import MappingNode, ScalarNode, SequenceNode
 from troupe_ref.surgical import RejectedSet, SpliceError, index, surgical_set
 
+# The golden corpus lives in the harness's tests/hidden/, two directories above reference/ in the full
+# monorepo checkout. `tests/hidden` is never shipped to a quality run or exported alongside reference/ (design:
+# "hidden tests never enter an arm repo or an arm session container") -- reference/ is exported standalone by
+# both the hidden-test flow (Task 18) and mutation testing (Task 19, review C-1), so this corpus is absent in
+# both. Skip cleanly rather than fail collection; do not copy the corpus into reference/ to route around this.
 _CORPUS = Path(__file__).resolve().parents[2] / "tests/hidden/writeback_corpus.py"
+if not _CORPUS.exists():
+    pytest.skip(f"{_CORPUS} not present -- this suite only runs inside the full harness checkout, never once "
+                "reference/ is exported standalone (tests/hidden is deliberately never shipped there)",
+                allow_module_level=True)
 _spec = importlib.util.spec_from_file_location("writeback_corpus", _CORPUS)
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
