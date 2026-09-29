@@ -211,3 +211,218 @@ def fake_step(tmp_path, monkeypatch, tmp_state):
     monkeypatch.setattr(stepflow, "park", lambda out, k, label: fs.parked.append((k, label)))
     monkeypatch.setattr(stepflow, "wait_idle", lambda ctx: None)
     return fs
+
+
+# ---- Task 23 test helpers: the `fake_orch` fixture (stepflow, git, snapshots, tracker, scans faked) ----------------
+class OrchOwner(StubOwner):
+    """StubOwner plus the prompts orchestration uses; every answer is scripted by the test."""
+
+    def __init__(self):
+        super().__init__()
+        self.reviews, self.confirms, self.item_calls, self.substitutes = [], [], [], []
+        self.review_answer = lambda md: ("continue", 0.0)
+        self.confirm_answer = lambda text: True
+        self.items_answer = lambda items: {i: (True, "", 0.0) for i, _ in items}
+        self.substitute_answers: list = []
+
+    def step_review(self, md):
+        self.reviews.append(md)
+        return self.review_answer(md)
+
+    def confirm(self, text):
+        self.confirms.append(text)
+        return self.confirm_answer(text)
+
+    def items(self, items):
+        self.item_calls.append(items)
+        return self.items_answer(items)
+
+    def substitute_bug(self, arm, summary):
+        self.substitutes.append(summary)
+        return self.substitute_answers.pop(0)
+
+
+class FakeOrch:
+    def __init__(self, tmp_path):
+        self.tmp = tmp_path
+        self.calls: list = []                 # ("run_step", arm, step, run) and other effect markers, in order
+        self.ctxs: dict = {}                  # (arm, step, run) -> the last StepCtx passed to run_step
+        self.firsts: dict = {}
+        self.extras: dict = {}
+        self.outcome: dict = {}               # (arm, step, run) -> list of behaviours, consumed in order
+        self.escalate: dict = {}              # (arm, step) -> (question, answer) appended to the brief in N.a
+        self.resource: dict = {}              # (arm, step) -> "once" | "repeat" recorded during N.b
+        self.state = {"branch": "main", "dirty": False}
+        self.main = {}                        # arm -> current main sha
+        self.findings: dict = {}              # (arm, step) -> remaining scans that find a secret
+        self.touched: set = set()             # issue numbers the arm has touched (comments, state)
+        self.precheck_passes = False
+        self.acceptance: list = []            # run_acceptance outcomes, consumed in order
+        self.owner = OrchOwner()
+        self.issues = 0
+        self.turns_written: dict = {}
+
+
+@_pytest.fixture
+def fake_orch(tmp_state, tmp_path, monkeypatch):
+    import json as J
+    from runner import (checklist, config, credentials, docker, faults, gitops, handedit, hidden, images, orchestrate,
+                        paths, po, preflight, quality, repo, secrets, stepflow, tracker)
+    from runner.paths import Paths
+    from runner.session import TurnResult
+    env = FakeOrch(tmp_path)
+    env.cred = credentials.dummy()
+    brief = tmp_path / "po-brief.md"
+    shutil.copy(paths.REPO_ROOT / "scenario" / "po-brief.md", brief)
+    env.brief = brief
+    monkeypatch.setattr(paths, "brief_path", lambda pass_: brief)
+    monkeypatch.setattr(gitops, "commit_harness_file", lambda path, msg: env.calls.append(("commit-brief", msg)))
+    monkeypatch.setattr(checklist, "require_clean_green", lambda p: None)
+    monkeypatch.setattr(checklist, "verify", lambda p, arm, mode: [])
+    monkeypatch.setattr(preflight, "check_images", lambda arm, p: None)
+    monkeypatch.setattr(docker, "sweep", lambda *a, **k: env.calls.append(("sweep",)) or {})
+    monkeypatch.setattr(secrets, "literals", lambda *a, **k: ["dry-run-dummy-token"])
+
+    def scan_step(p, n, lits=()):
+        left = env.findings.get((p.arm, n), 0)
+        env.calls.append(("scan", p.arm, n))
+        if left:
+            env.findings[(p.arm, n)] = left - 1
+            return [secrets.Finding(f"{n:02d}/turns/x.gz", "github-pat", 3)]
+        return []
+    monkeypatch.setattr(secrets, "scan_step", scan_step)
+    monkeypatch.setattr(gitops, "main_sha", lambda p: env.main.get(p.arm, "sha-0"))
+    monkeypatch.setattr(gitops, "state", lambda p: gitops.RepoState(env.state["branch"], env.state["dirty"],
+                                                                  env.main.get(p.arm, "sha-0"),
+                                                                  env.main.get(p.arm, "sha-0"), True))
+
+    def set_aside(p, message):
+        env.calls.append(("set_aside", p.arm))
+        env.state.update(branch="main", dirty=False)
+        return {"stashed": True, "checked_out_main": True}
+    monkeypatch.setattr(gitops, "set_aside_to_main", set_aside)
+    monkeypatch.setattr(repo, "snapshot", lambda p, s: env.calls.append(("snapshot", p.arm, s)))
+    monkeypatch.setattr(repo, "restore", lambda p, s: env.calls.append(("restore", p.arm, s)))
+    monkeypatch.setattr(repo, "bundle", lambda p, d: env.calls.append(("bundle", p.arm)) or d)
+    monkeypatch.setattr(repo, "publish", lambda p, pass_, ask, scan: env.calls.append(("publish", p.arm))
+                        or ask(f"Push main of {p.arm}? ") is True)
+
+    def turn(cost):
+        return TurnResult("t", "ok", "", {}, None, cost, {"input_tokens": 1}, {}, 1.0, [], None)
+
+    def hand_edit(ctx, step1_tests):
+        env.calls.append(("hand_edit", ctx.arm.name, ctx.step))
+        env.main[ctx.arm.name] = "edit-sha"
+        return handedit.HandEdit("edit-sha", ["src/cli.py"], [], {}, 1, {}, [turn(0.25)])
+    monkeypatch.setattr(stepflow, "hand_edit", hand_edit)
+
+    def detect(ctx, edit, end_sha, arm_files=None):
+        env.calls.append(("detect", ctx.arm.name, end_sha, tuple(sorted(str(f.relative_to(ctx.out)) for f in arm_files))))
+        return {}
+    monkeypatch.setattr(handedit, "detect", detect)
+
+    def create_bug(ctx, owner, *, title=None, body=None):
+        if not owner.confirm(f"Create the step-6 issue for {ctx.arm.name}?"):
+            raise RuntimeError("declined")
+        env.issues += 1
+        env.calls.append(("create_bug", ctx.arm.name, title))
+        return tracker.IssueRef("github", f"troupe-run/x#{env.issues}", None, str(env.issues))
+    monkeypatch.setattr(tracker, "create_bug", create_bug)
+
+    def supersede(ctx, old, owner, new=None):
+        if not owner.confirm(f"Close {old.ref}?"):
+            return {"action": "declined"}
+        env.calls.append(("supersede", ctx.arm.name, old.ref))
+        return {"action": "closed"}
+    monkeypatch.setattr(tracker, "supersede", supersede)
+
+    def tsnap(ctx):
+        env.calls.append(("tracker.snapshot", ctx.arm.name, ctx.step))
+        snap = {"issues": [{"number": i, "state": "commented" if i in env.touched else "open"}
+                           for i in range(1, env.issues + 1)]}
+        ctx.out.mkdir(parents=True, exist_ok=True)
+        (ctx.out / "tracker.json").write_text(J.dumps(snap))
+        return snap
+    monkeypatch.setattr(tracker, "snapshot", tsnap)
+    monkeypatch.setattr(tracker, "round_trip_facts",
+                        lambda ctx, issue, a, b, snap: env.calls.append(("round_trip", ctx.arm.name, issue.ref, a, b))
+                        or {"issue": issue.ref})
+
+    def prepare(p, sha, label, out_dir, with_quality=False, require_main=True):
+        env.calls.append(("prepare", p.arm, label, sha))
+        return hidden.Prepared(tmp_path / "copy", None, {"hidden": {"ok": True}})
+    monkeypatch.setattr(hidden, "prepare", prepare)
+
+    def hrun(p, copy, step, out_dir, install_failed=False):
+        env.calls.append(("hidden.run", p.arm, step))
+        ok = env.precheck_passes
+        return hidden.summarise(step, {"m::new": "passed" if ok else "failed", "m::old": "passed"}, ["m::new"], [],
+                                [], 0 if ok else 1)
+    monkeypatch.setattr(hidden, "run", hrun)
+    monkeypatch.setattr(hidden, "run_acceptance", lambda p, copy, step, body: env.calls.append(("acceptance", body))
+                        or env.acceptance.pop(0))
+    monkeypatch.setattr(quality, "run_all", lambda p, prep, out, pins=None: env.calls.append(("quality", p.arm)) or {})
+
+    def run_step(ctx, first, extra=None, run="b"):
+        a, n = ctx.arm.name, ctx.step
+        env.calls.append(("run_step", a, n, run))
+        env.ctxs[(a, n, run)] = ctx
+        env.firsts[(a, n, run)] = first
+        env.extras[(a, n, run)] = extra
+        behaviour = (env.outcome.get((a, n, run)) or ["ok"]).pop(0) if env.outcome.get((a, n, run)) else "ok"
+        ctx.out.mkdir(parents=True, exist_ok=True)
+        if behaviour.startswith("touch"):                      # the arm comments on the step-6 issue
+            env.touched.add(env.issues)
+            behaviour = behaviour.removeprefix("touch").lstrip("-") or "ok"
+        if behaviour == "harness-rerun":                      # stepflow's harness restore inside the step
+            env.restore_message = ctx.on_restore() if ctx.on_restore is not None else None
+            behaviour = "ok"
+        if run == "a" and (a, n) in env.escalate:
+            q, ans = env.escalate[(a, n)]
+            po.append_escalation(ctx.brief_path, q, ans, ctx.pass_, a, n, source="scripted")
+        if behaviour == "halt":
+            raise stepflow.Halt("HALTED")
+        if behaviour == "paused":
+            raise stepflow.Paused("the owner declined")
+        if behaviour == "paused-park":
+            from runner.owner import Park
+            raise stepflow.Paused("parked", park=Park("confirm", "x", "unattended", 0.0, 0.0))
+        if behaviour == "boom":
+            raise RuntimeError("crash mid-step")
+        if behaviour == "parked":
+            from runner.owner import Park
+            (ctx.out / "parked.json").write_text("{}")
+            return stepflow.StepOutcome("parked", 0, park=Park("gate", "x", "unattended", 0.0, 0.0), run=run)
+        (ctx.out / "turns").mkdir(exist_ok=True)
+        (ctx.out / "turns" / "arm-a1-001.stream.jsonl.gz").write_bytes(b"")
+        (ctx.out / "transcripts" / "a1" / "projects").mkdir(parents=True, exist_ok=True)
+        (ctx.out / "transcripts" / "a1" / "projects" / "s.jsonl.gz").write_bytes(b"")
+        if run == "a":
+            (ctx.out / "discovery.json").write_text("{}")
+            return stepflow.StepOutcome("discovered", 1, run="a")
+        env.main[a] = f"sha-{n}"
+        if (a, n) in env.resource:
+            faults.record_resource(ctx.pass_, a, n, 1, env.resource[(a, n)], [["oom"]])
+        (ctx.out / "summary.md").write_text(f"# Step {n} summary — {a} ({ctx.pass_})\n")
+        s = hidden.summarise(n, {"m::t": "passed"}, ["m::t"], [], [], 0)
+        s.write(ctx.out)
+        if behaviour == "stopped":
+            ctx.paths.results.mkdir(parents=True, exist_ok=True)
+            (ctx.paths.results / "arm-result.json").write_text(J.dumps({"stopped_at": n, "by": "stepflow"}))
+            return stepflow.StepOutcome("stopped", 3, s, {}, run="b")
+        return stepflow.StepOutcome("done", 1, s, {}, run="b")
+    monkeypatch.setattr(stepflow, "run_step", run_step)
+
+    def setup_arm(pass_, arm, cred, owner):
+        p = Paths(pass_, arm)
+        p.base.mkdir(parents=True)
+        env.calls.append(("setup", arm))
+        return checklist.SetupResult([], {}, True, 0.0)
+    monkeypatch.setattr(checklist, "run_setup", setup_arm)
+
+    def arms(*names, pass_="dry7"):
+        for a in names:
+            Paths(pass_, a).base.mkdir(parents=True, exist_ok=True)
+    env.make = arms
+    env.runs = lambda: [c[1:] for c in env.calls if c[0] == "run_step"]
+    return env

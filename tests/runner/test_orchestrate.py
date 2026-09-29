@@ -1,0 +1,686 @@
+"""Task 23: orchestration — the arm order, the step-major N.a / consistency check / N.b run (owner, 2026-09-29),
+resume and restore after a park/pause/halt/crash, the step-2 hand edit, step 5's two requests, step 6's issue (with
+the substitute-bug fallback), the suite-resource halt, per-step secret scans, the owner's step review, the end of an
+arm (bundle, arm-result, private publish), declared re-runs and re-tests, setup once per arm, close-out, status.
+
+Everything effectful is faked by the `fake_orch` fixture (conftest): stepflow, git, snapshots, the tracker, the
+scans and the hidden tests. Docker-backed pieces have their own tests."""
+import json
+
+import pytest
+
+from runner import checklist, cli, config, faults, orchestrate, paths, stepflow
+from runner.owner import Park
+from runner.paths import Paths
+
+PARK = Park("x", "context", "unattended", 0.0, 0.0)
+ARMS = ("openspec", "control")
+
+
+def real(env, arms=ARMS):
+    env.make(*arms, pass_="pass1")
+    f = paths.RESULTS / "pass1" / "order.json"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps({"seed": 1, "rule": "test", "order": list(arms)}))
+    return orchestrate.run_pass("pass1", env.cred, env.owner)
+
+
+def dry(env, **kw):
+    env.make("dryrun", pass_="dry7")
+    return orchestrate.run_arm("dry7", "dryrun", env.cred, env.owner, **kw)
+
+
+def progress(pass_, arm):
+    return json.loads(Paths(pass_, arm).progress.read_text())
+
+
+def count(env, call):
+    return env.calls.count(call)
+
+
+# ---- the order (OD13, owner: bmad parked) --------------------------------------------------------------------
+
+def test_order_is_reproducible_from_the_seed_control_never_goes_first_and_only_active_arms_run(tmp_state):
+    for seed in range(50):
+        o = orchestrate.order("pass1", seed)
+        assert o == orchestrate.order("pass1", seed) and o[0] != "control"
+        assert sorted(o) == sorted(config.active_arms()) and "bmad" not in o
+    rec = json.loads((paths.RESULTS / "pass1" / "order.json").read_text())
+    assert rec["seed"] == 49 and rec["order"] == orchestrate.order("pass1", 49)
+
+
+def test_an_order_without_a_seed_draws_one_and_records_it_so_it_can_be_reproduced(tmp_state):
+    o = orchestrate.order("pass1")
+    seed = json.loads((paths.RESULTS / "pass1" / "order.json").read_text())["seed"]
+    assert isinstance(seed, int) and orchestrate.order("pass1", seed) == o
+
+
+def test_the_canary_orders_control_alone(tmp_state):
+    assert orchestrate.order("canary") == ["control"]
+
+
+def test_there_is_no_second_real_pass(tmp_state):          # owner 2026-09-29: N.a/N.b inside each step
+    with pytest.raises(orchestrate.NotReady, match="pass1"):
+        orchestrate.order("pass2")
+
+
+# ---- the step-major run ------------------------------------------------------------------------------------------
+
+def test_each_step_runs_every_arms_discovery_then_the_check_then_every_arms_scored_run(fake_orch):
+    real(fake_orch)
+    want = [(a, n, r) for n in range(1, 8) for r in ("a", "b") for a in ARMS]
+    assert fake_orch.runs() == want
+
+
+def test_discovery_evidence_goes_under_a_and_the_scored_run_under_the_step(fake_orch):
+    real(fake_orch)
+    p = Paths("pass1", "openspec")
+    assert fake_orch.ctxs[("openspec", 3, "a")].out == p.step(3) / "a"
+    assert fake_orch.ctxs[("openspec", 3, "b")].out == p.step(3)
+    assert (p.step(3) / "a" / "handoff.md").exists() and (p.step(3) / "handoff.md").exists()
+
+
+def test_the_scored_run_starts_from_the_discovery_runs_snapshot_and_sha(fake_orch):
+    real(fake_orch)
+    for n in range(1, 8):
+        a, b = fake_orch.ctxs[("control", n, "a")], fake_orch.ctxs[("control", n, "b")]
+        assert (a.snapshot, a.sha_before) == (b.snapshot, b.sha_before) == (n, a.sha_before)
+    assert count(fake_orch, ("snapshot", "control", 4)) == 1          # one pre-step snapshot per step
+
+
+def test_the_scored_run_builds_on_the_previous_scored_run(fake_orch):
+    real(fake_orch)
+    assert fake_orch.ctxs[("openspec", 4, "a")].sha_before == "sha-3"
+
+
+def test_a_run_sweeps_leftover_containers_before_anything_else(fake_orch):
+    real(fake_orch)
+    assert fake_orch.calls[0] == ("sweep",)
+
+
+# ---- step 2: the hand edit ---------------------------------------------------------------------------------------
+
+def test_the_hand_edit_is_applied_once_before_2a_and_both_runs_start_from_its_commit(fake_orch):
+    real(fake_orch)
+    c = fake_orch.calls
+    assert count(fake_orch, ("hand_edit", "openspec", 2)) == 1
+    assert c.index(("hand_edit", "openspec", 2)) < c.index(("run_step", "openspec", 2, "a"))
+    assert fake_orch.ctxs[("openspec", 2, "a")].sha_before == fake_orch.ctxs[("openspec", 2, "b")].sha_before == "edit-sha"
+    assert ("snapshot", "openspec", 2) not in c                         # apply takes snapshot(2) itself
+
+
+def test_the_teammates_turns_are_harness_cost_of_the_scored_run_only(fake_orch):
+    real(fake_orch)
+    b = fake_orch.extras[("openspec", 2, "b")]
+    assert list(b) == ["teammate"] and [t.cost_usd for t in b["teammate"]] == [0.25]
+    assert not fake_orch.extras[("openspec", 2, "a")]                   # never counted twice
+
+
+def test_leftovers_after_step1_are_set_aside_so_the_teammate_commits_on_a_clean_main(fake_orch):
+    fake_orch.state.update(branch="feature", dirty=True)
+    dry(fake_orch)
+    c = fake_orch.calls
+    assert c.index(("set_aside", "dryrun")) < c.index(("hand_edit", "dryrun", 2))
+    rec = json.loads((Paths("dry7", "dryrun").step(2) / "hand-edit" / "pre-edit-state.json").read_text())
+    assert rec["branch"] == "feature" and rec["dirty"] is True
+
+
+def test_a_clean_main_is_not_touched(fake_orch):
+    dry(fake_orch)
+    assert ("set_aside", "dryrun") not in fake_orch.calls
+
+
+def test_detection_reads_the_scored_runs_arm_streams_and_transcripts_at_its_end(fake_orch):
+    dry(fake_orch)
+    [d] = [c for c in fake_orch.calls if c[0] == "detect"]
+    assert d == ("detect", "dryrun", "sha-2", ("transcripts/a1/projects/s.jsonl.gz", "turns/arm-a1-001.stream.jsonl.gz"))
+    a = json.loads((Paths("dry7", "dryrun").step(2) / "hand-edit" / "detection-a.json").read_text())
+    assert a["session_mentions"] == 0 and "raised_with_po" in a                  # 2.a recorded, not scored
+
+
+def test_a_parked_hand_edit_is_retried_from_the_pre_edit_snapshot(fake_orch, monkeypatch):
+    real_edit = stepflow.hand_edit
+    tries = []
+
+    def edit(ctx, step1):
+        tries.append(1)
+        if len(tries) == 1:                      # as apply: the pre-edit snapshot is taken before the teammate
+            ctx.paths.snapshots.mkdir(parents=True, exist_ok=True)
+            (ctx.paths.snapshots / "step-02-pre-edit.tar").write_bytes(b"")
+            raise stepflow.Paused("parked", park=PARK)
+        return real_edit(ctx, step1)
+    monkeypatch.setattr(stepflow, "hand_edit", edit)
+    assert "parked" in dry(fake_orch)
+    assert ("run_step", "dryrun", 2, "a") not in fake_orch.calls
+    dry(fake_orch)
+    c = fake_orch.calls
+    assert c.index(("restore", "dryrun", "02-pre-edit")) < c.index(("hand_edit", "dryrun", 2))
+
+
+# ---- step 5: two requests; the PO gets the full contract ----------------------------------------------------------
+
+def test_step5_hands_cr_b_as_a_later_message_in_both_runs_and_the_po_the_full_contract(fake_orch):
+    real(fake_orch)
+    contract = (paths.REPO_ROOT / "scenario" / "contract.md").read_text()
+    for run in ("a", "b"):
+        ctx = fake_orch.ctxs[("openspec", 5, run)]
+        assert len(ctx.later_messages) == 1 and "## CR-B" in ctx.later_messages[0]
+        assert ctx.contract == contract and "## CR-B" in ctx.step_brief
+    assert fake_orch.ctxs[("openspec", 4, "b")].later_messages == []
+
+
+# ---- step 6: the issue -------------------------------------------------------------------------------------------
+
+def test_step6_files_the_bug_before_its_snapshot_and_hands_the_arm_the_issue_ref(fake_orch):
+    dry(fake_orch)
+    c = fake_orch.calls
+    assert c.index(("create_bug", "dryrun", None)) < c.index(("snapshot", "dryrun", 6)) < \
+        c.index(("run_step", "dryrun", 6, "a"))
+    assert "A bug has been reported in our tracker: troupe-run/x#1." in fake_orch.firsts[("dryrun", 6, "b")]
+    assert count(fake_orch, ("create_bug", "dryrun", None)) == 1
+
+
+def test_an_issue_the_arm_touched_in_6a_is_superseded_and_6b_gets_a_fresh_one(fake_orch):
+    fake_orch.outcome[("dryrun", 6, "a")] = ["touch"]
+    dry(fake_orch)
+    assert ("supersede", "dryrun", "troupe-run/x#1") in fake_orch.calls
+    assert "troupe-run/x#2" in fake_orch.firsts[("dryrun", 6, "b")]
+
+
+def test_an_untouched_issue_is_kept_for_6b(fake_orch):
+    dry(fake_orch)
+    assert not [c for c in fake_orch.calls if c[0] == "supersede"]
+    assert "troupe-run/x#1" in fake_orch.firsts[("dryrun", 6, "b")]
+
+
+def test_a_harness_rerun_inside_step6_supersedes_a_touched_issue_and_names_the_new_one(fake_orch):
+    fake_orch.outcome[("dryrun", 6, "b")] = ["touch-harness-rerun"]
+    dry(fake_orch)
+    assert ("supersede", "dryrun", "troupe-run/x#1") in fake_orch.calls
+    assert "troupe-run/x#2" in fake_orch.restore_message
+
+
+def test_a_harness_rerun_inside_step6_keeps_an_untouched_issue(fake_orch):
+    fake_orch.outcome[("dryrun", 6, "b")] = ["harness-rerun"]
+    dry(fake_orch)
+    assert fake_orch.restore_message is None and not [c for c in fake_orch.calls if c[0] == "supersede"]
+
+
+def test_the_round_trip_facts_and_the_tracker_snapshot_are_taken_after_6b(fake_orch):
+    dry(fake_orch)
+    [rt] = [c for c in fake_orch.calls if c[0] == "round_trip"]
+    assert rt == ("round_trip", "dryrun", "troupe-run/x#1", "sha-5", "sha-6")
+    assert (Paths("dry7", "dryrun").step(6) / "tracker-round-trip.json").exists()
+    assert all((Paths("dry7", "dryrun").step(n) / "tracker.json").exists() for n in range(1, 8))
+
+
+def test_the_planted_bug_is_prechecked_on_the_step5_commit(fake_orch):
+    dry(fake_orch)
+    assert ("prepare", "dryrun", "06-precheck", "refs/heads/main") in fake_orch.calls
+    pc = json.loads((Paths("dry7", "dryrun").step(6) / "precheck" / "precheck.json").read_text())
+    assert pc["planted_already_passes"] is False and fake_orch.owner.substitutes == []
+
+
+def test_a_bug_that_already_passes_lets_the_owner_substitute_one_whose_test_fails_first(fake_orch):
+    fake_orch.precheck_passes = True
+    fake_orch.owner.substitute_answers = [("substitute", "Sub title", "Sub body", "why", "def test_x(): 0", 1.0)]
+    fake_orch.acceptance = [{"outcome": "failed", "tests": {"m::x": "failed"}}]
+    dry(fake_orch)
+    d = Paths("dry7", "dryrun").step(6) / "substitute"
+    assert ("create_bug", "dryrun", "Sub title") in fake_orch.calls
+    assert (d / "test_substitute.py").read_text() == "def test_x(): 0" and "why" in (d / "why.md").read_text()
+    assert json.loads((d / "acceptance.json").read_text())["outcome"] == "failed"
+
+
+def test_a_substitute_whose_test_already_passes_is_refused_and_the_owner_asked_again(fake_orch):
+    fake_orch.precheck_passes = True
+    fake_orch.owner.substitute_answers = [("substitute", "A", "a", "w", "t1", 1.0),
+                                          ("substitute", "B", "b", "w", "t2", 1.0)]
+    fake_orch.acceptance = [{"outcome": "passed", "tests": {}}, {"outcome": "failed", "tests": {}}]
+    dry(fake_orch)
+    assert ("create_bug", "dryrun", "B") in fake_orch.calls and ("create_bug", "dryrun", "A") not in fake_orch.calls
+    assert "did not fail" in fake_orch.owner.substitutes[1]
+
+
+def test_keeping_the_planted_bug_files_it_as_usual(fake_orch):
+    fake_orch.precheck_passes = True
+    fake_orch.owner.substitute_answers = [("planted", "", "", "", "", 0.0)]
+    dry(fake_orch)
+    assert ("create_bug", "dryrun", None) in fake_orch.calls
+
+
+def test_a_parked_substitute_decision_parks_the_arm_before_anything_is_filed(fake_orch):
+    fake_orch.precheck_passes = True
+    fake_orch.owner.substitute_answers = [PARK]
+    assert "parked" in dry(fake_orch)
+    assert not [c for c in fake_orch.calls if c[0] == "create_bug"]
+
+
+def test_an_owner_park_while_filing_the_issue_is_never_taken_as_yes(fake_orch):
+    fake_orch.owner.confirm_answer = lambda text: PARK if "step-6 issue" in text else True
+    assert "parked" in dry(fake_orch)
+    assert not [c for c in fake_orch.calls if c[0] == "create_bug"]
+
+
+# ---- parks, pauses, halts and crashes: the existing snapshot is restored before any re-run (I-2) ------------------
+
+def test_a_parked_discovery_run_moves_on_to_the_next_arm_and_holds_the_phase(fake_orch):
+    fake_orch.outcome[("openspec", 1, "a")] = ["parked"]
+    r = real(fake_orch)
+    assert fake_orch.runs() == [("openspec", 1, "a"), ("control", 1, "a")]
+    assert r["parked"] == [{"arm": "openspec", "step": 1, "run": "a", "what": "run"}]
+    assert fake_orch.owner.item_calls == []                             # no consistency check yet
+    log = [json.loads(l) for l in (paths.RESULTS / "pass1" / "run-log.jsonl").read_text().splitlines()]
+    assert any(e["event"] == "parked" and e["arm"] == "openspec" for e in log)
+
+
+def test_a_parked_run_is_restored_to_its_existing_snapshot_and_its_evidence_kept_aside(fake_orch):
+    fake_orch.outcome[("openspec", 1, "a")] = ["parked"]
+    real(fake_orch)
+    before = fake_orch.ctxs[("openspec", 1, "a")].sha_before
+    fake_orch.calls.clear()
+    real(fake_orch)
+    c = fake_orch.calls
+    assert c.index(("restore", "openspec", 1)) < c.index(("run_step", "openspec", 1, "a"))
+    assert ("snapshot", "openspec", 1) not in c                         # never re-snapshotted once started
+    assert fake_orch.ctxs[("openspec", 1, "a")].sha_before == before
+    assert (Paths("pass1", "openspec").step(1) / "a-interrupted-1" / "parked.json").exists()
+    assert ("run_step", "control", 1, "a") not in c                     # done runs are not repeated
+
+
+def test_a_halt_propagates_and_the_resumed_run_restores_first(fake_orch):
+    fake_orch.outcome[("dryrun", 1, "b")] = ["halt"]
+    with pytest.raises(stepflow.Halt):
+        dry(fake_orch)
+    assert progress("dry7", "dryrun")["steps"]["1"]["b"]["status"] == "halted"
+    fake_orch.calls.clear()
+    dry(fake_orch)
+    c = fake_orch.calls
+    assert c.index(("restore", "dryrun", 1)) < c.index(("run_step", "dryrun", 1, "b"))
+    assert (Paths("dry7", "dryrun").step(1) / "b-interrupted-1").is_dir()
+    assert (Paths("dry7", "dryrun").step(1) / "a" / "discovery.json").exists()        # N.a evidence stays
+
+
+def test_an_owner_who_declines_a_harness_fix_stops_the_whole_run(fake_orch):
+    fake_orch.outcome[("openspec", 1, "a")] = ["paused"]
+    r = real(fake_orch)
+    assert fake_orch.runs() == [("openspec", 1, "a")] and "declined" in r
+
+
+def test_a_park_inside_a_harness_fault_prompt_parks_the_arm_and_moves_on(fake_orch):
+    fake_orch.outcome[("openspec", 1, "a")] = ["paused-park"]
+    r = real(fake_orch)
+    assert ("control", 1, "a") in fake_orch.runs() and r["parked"][0]["arm"] == "openspec"
+
+
+def test_a_crash_mid_run_is_restored_before_the_run_is_tried_again(fake_orch):
+    fake_orch.outcome[("dryrun", 3, "a")] = ["boom"]
+    with pytest.raises(RuntimeError, match="crash"):
+        dry(fake_orch)
+    assert progress("dry7", "dryrun")["steps"]["3"]["restore_needed"] is True
+    fake_orch.calls.clear()
+    dry(fake_orch)
+    assert fake_orch.calls.index(("restore", "dryrun", 3)) < fake_orch.calls.index(("run_step", "dryrun", 3, "a"))
+
+
+# ---- the consistency check before N.b ------------------------------------------------------------------------
+
+Q = "Should config show print floats exactly as written in the file?"
+
+
+def test_conflicting_answers_to_the_same_question_are_shown_together_and_flagged(fake_orch):
+    fake_orch.escalate[("openspec", 1)] = (Q, "Yes, byte for byte.")
+    fake_orch.escalate[("control", 1)] = (Q, "No, normalise them.")
+    real(fake_orch)
+    [items] = fake_orch.owner.item_calls
+    assert len(items) == 1
+    text = items[0][1]
+    assert "CONFLICT" in text and "Yes, byte for byte." in text and "No, normalise them." in text
+    assert "openspec" in text and "control" in text
+    rec = json.loads((paths.RESULTS / "pass1" / "consistency" / "step-01.json").read_text())
+    assert rec["status"] == "confirmed" and rec["rounds"][0]["groups"][0]["conflict"] is True
+
+
+def test_overlapping_questions_are_flagged_for_the_owner(fake_orch):
+    fake_orch.escalate[("openspec", 1)] = (Q, "Yes.")
+    fake_orch.escalate[("control", 1)] = ("Should config show print floats exactly as they are written?", "Yes.")
+    real(fake_orch)
+    [items] = fake_orch.owner.item_calls
+    assert len(items) == 2 and any("OVERLAPS" in t for _, t in items)
+
+
+def test_the_check_runs_before_any_scored_run_of_the_step(fake_orch):
+    fake_orch.escalate[("openspec", 2)] = (Q, "Yes.")
+    seen = []
+    fake_orch.owner.items_answer = lambda items: (seen.append(list(fake_orch.runs())), {i: (True, "", 0.0) for i, _ in items})[1]
+    real(fake_orch)
+    assert seen[0][-1] == ("control", 2, "a") and ("openspec", 2, "b") not in seen[0]
+
+
+def test_a_rejected_answer_waits_for_the_owners_brief_edit_then_rechecks(fake_orch):
+    fake_orch.escalate[("openspec", 1)] = (Q, "Yes.")
+    fake_orch.escalate[("control", 1)] = (Q, "No.")
+    answers = iter([False, True])
+    fake_orch.owner.items_answer = lambda items: {i: (next(answers), "", 0.0) for i, _ in items}
+
+    def edit(text):
+        if "Edit" in text:
+            fake_orch.brief.write_text(fake_orch.brief.read_text().replace("**A:** No.", "**A:** Yes."))
+        return True
+    fake_orch.owner.confirm_answer = edit
+    real(fake_orch)
+    rec = json.loads((paths.RESULTS / "pass1" / "consistency" / "step-01.json").read_text())
+    assert len(rec["rounds"]) == 2 and rec["edited"] is True and rec["rounds"][1]["groups"][0]["conflict"] is False
+    assert any(c[0] == "commit-brief" for c in fake_orch.calls)         # real pass: the brief is committed
+
+
+def test_the_check_parks_when_the_owner_is_away_and_no_scored_run_starts(fake_orch):
+    fake_orch.escalate[("openspec", 1)] = (Q, "Yes.")
+    fake_orch.owner.items_answer = lambda items: PARK
+    r = real(fake_orch)
+    assert not [x for x in fake_orch.runs() if x[2] == "b"] and r["parked"][0]["what"] == "consistency"
+    fake_orch.owner.items_answer = lambda items: {i: (True, "", 0.0) for i, _ in items}
+    real(fake_orch)
+    assert ("openspec", 1, "b") in fake_orch.runs()
+
+
+def test_no_new_answers_needs_no_owner_prompt_but_is_recorded(fake_orch):
+    real(fake_orch)
+    assert fake_orch.owner.item_calls == []
+    rec = json.loads((paths.RESULTS / "pass1" / "consistency" / "step-04.json").read_text())
+    assert rec["status"] == "nothing-new"
+
+
+def test_answers_from_an_earlier_step_are_not_shown_again(fake_orch):
+    fake_orch.escalate[("openspec", 1)] = (Q, "Yes.")
+    real(fake_orch)
+    assert len(fake_orch.owner.item_calls) == 1
+
+
+# ---- resource exhaustion across arms (design §9, owner 2026-09-29) -----------------------------------------------
+
+def test_two_arms_exhausting_resources_at_one_step_halt_the_bake_off_as_a_suite_fault(fake_orch):
+    fake_orch.resource[("openspec", 3)] = "repeat"
+    fake_orch.resource[("control", 3)] = "once"
+    with pytest.raises(stepflow.Halt):
+        real(fake_orch)
+    e = [x for x in faults.entries("pass1") if x.get("kind") == "suite-resource"]
+    assert [(x["signature"], x["step"]) for x in e] == [("3", 3)] and faults.halted("pass1")
+
+
+def test_one_arm_exhausting_resources_is_that_arms_result(fake_orch):
+    fake_orch.resource[("openspec", 3)] = "repeat"
+    real(fake_orch)
+    assert not faults.halted("pass1")
+
+
+def test_after_the_fix_arms_scored_all_failed_at_that_step_are_rerun(fake_orch):
+    fake_orch.resource[("openspec", 3)] = "repeat"
+    fake_orch.resource[("control", 3)] = "once"
+    with pytest.raises(stepflow.Halt):
+        real(fake_orch)
+    faults.resume("pass1", "raised the memory limit")
+    fake_orch.resource.clear(); fake_orch.calls.clear()
+    real(fake_orch)
+    runs = fake_orch.runs()
+    assert runs[0] == ("openspec", 3, "b") and ("control", 3, "b") not in runs
+    assert fake_orch.calls.index(("restore", "openspec", 3)) < fake_orch.calls.index(("run_step", "openspec", 3, "b"))
+    assert (Paths("pass1", "openspec").step(3) / "b-superseded-1").is_dir()
+
+
+# ---- stopped arms -----------------------------------------------------------------------------------------------
+
+def test_a_stopped_arm_runs_no_further_steps_and_keeps_stepflows_arm_result(fake_orch):
+    fake_orch.outcome[("dryrun", 3, "b")] = ["stopped"]
+    assert dry(fake_orch) == {"stopped_at": 3}
+    assert fake_orch.runs()[-1] == ("dryrun", 3, "b")
+    assert json.loads((Paths("dry7", "dryrun").results / "arm-result.json").read_text()) == {"stopped_at": 3,
+                                                                                               "by": "stepflow"}
+    assert ("bundle", "dryrun") in fake_orch.calls
+
+
+def test_a_stopped_arm_leaves_the_others_running(fake_orch):
+    fake_orch.outcome[("openspec", 3, "b")] = ["stopped"]
+    real(fake_orch)
+    assert not [x for x in fake_orch.runs() if x[0] == "openspec" and x[1] > 3]
+    assert ("control", 7, "b") in fake_orch.runs()
+
+
+# ---- per-step secret scan (review S-2) --------------------------------------------------------------------------
+
+def test_a_secret_in_a_steps_evidence_stops_everything_until_scrubbed_and_is_never_rerun(fake_orch):
+    fake_orch.findings[("dryrun", 2)] = 1
+    with pytest.raises(orchestrate.NotReady, match="secret"):
+        dry(fake_orch)
+    assert [(e["kind"], e["signature"], e["arm"]) for e in faults.entries("dry7")] == \
+        [("secret-in-evidence", "github-pat", "dryrun")]
+    assert ("run_step", "dryrun", 2, "b") not in fake_orch.calls
+    dry(fake_orch)
+    assert count(fake_orch, ("run_step", "dryrun", 2, "a")) == 1
+
+
+def test_every_run_is_scanned(fake_orch):
+    dry(fake_orch)
+    assert count(fake_orch, ("scan", "dryrun", 4)) == 2               # after 4.a and after 4.b
+
+
+# ---- the owner's step review -------------------------------------------------------------------------------------
+
+def test_a_pause_at_the_review_stops_cleanly_and_the_next_run_resumes(fake_orch):
+    state = {"paused": False}
+
+    def review(md):
+        if "Step 2 " in md and not state["paused"]:
+            state["paused"] = True
+            return "pause", 0.0
+        return "continue", 0.0
+    fake_orch.owner.review_answer = review
+    assert dry(fake_orch) == {"paused_after": 2}
+    dry(fake_orch)
+    assert fake_orch.runs() == [("dryrun", n, r) for n in range(1, 8) for r in ("a", "b")]
+
+
+def test_a_parked_review_is_asked_again_before_the_arm_advances(fake_orch):
+    answers = iter([PARK])
+    fake_orch.owner.review_answer = lambda md: next(answers, ("continue", 0.0)) if "Step 2 " in md else ("continue", 0.0)
+    assert "parked" in dry(fake_orch)
+    assert ("run_step", "dryrun", 3, "a") not in fake_orch.calls
+    dry(fake_orch)
+    assert len([m for m in fake_orch.owner.reviews if "Step 2 " in m]) == 2
+    assert count(fake_orch, ("run_step", "dryrun", 2, "b")) == 1
+
+
+# ---- the end of an arm ----------------------------------------------------------------------------------------
+
+def test_the_end_bundles_records_completion_and_publishes_to_the_private_repo_on_confirmation(fake_orch):
+    real(fake_orch)
+    for a in ARMS:
+        assert ("bundle", a) in fake_orch.calls and ("publish", a) in fake_orch.calls
+        assert json.loads((Paths("pass1", a).results / "arm-result.json").read_text())["completed"] is True
+
+
+def test_a_parked_publish_confirmation_is_never_a_yes_and_is_retried_alone(fake_orch):
+    fake_orch.owner.confirm_answer = lambda text: PARK if text.startswith("Push") else True
+    r = real(fake_orch)
+    assert progress("pass1", "openspec")["finished"]["published"] is None and r["parked"]
+    fake_orch.owner.confirm_answer = lambda text: True
+    fake_orch.calls.clear()
+    real(fake_orch)
+    assert fake_orch.runs() == [] and ("publish", "openspec") in fake_orch.calls
+    assert progress("pass1", "openspec")["finished"]["published"] is True
+
+
+def test_a_dry_arm_has_no_repo_to_publish(fake_orch):
+    assert dry(fake_orch) == {"completed": True}
+    assert ("publish", "dryrun") not in fake_orch.calls
+
+
+def test_the_canary_stops_after_step_2(fake_orch):
+    fake_orch.make("control", pass_="canary")
+    r = orchestrate.run_arm("canary", "control", fake_orch.cred, fake_orch.owner, stop_after=2)
+    assert r == {"stopped_after": 2} and max(x[1] for x in fake_orch.runs()) == 2
+    assert ("bundle", "control") not in fake_orch.calls
+
+
+# ---- refusals ------------------------------------------------------------------------------------------------
+
+def test_nothing_runs_while_halted(fake_orch):
+    faults.record(faults.HarnessFault("x", "y"), "dry7", "dryrun", 1, 1)
+    faults.record(faults.HarnessFault("x", "y"), "dry7", "dryrun", 1, 1)
+    with pytest.raises(orchestrate.NotReady, match="halted"):
+        dry(fake_orch)
+    assert fake_orch.runs() == []
+
+
+def test_nothing_runs_unless_the_setup_is_clean_and_green(fake_orch, monkeypatch):
+    def no(p):
+        raise checklist.NotReady("setup checklist is not green")
+    monkeypatch.setattr(checklist, "require_clean_green", no)
+    with pytest.raises(orchestrate.NotReady, match="checklist"):
+        dry(fake_orch)
+    assert fake_orch.runs() == []
+
+
+def test_nothing_runs_on_images_other_than_the_locked_ones(fake_orch, monkeypatch):
+    from runner import preflight
+
+    def no(arm, p):
+        raise checklist.NotReady("image differs")
+    monkeypatch.setattr(preflight, "check_images", no)
+    with pytest.raises(orchestrate.NotReady, match="image"):
+        dry(fake_orch)
+
+
+def test_setup_drift_before_a_run_is_a_harness_fault(fake_orch, monkeypatch):
+    monkeypatch.setattr(checklist, "verify", lambda p, arm, mode: [checklist.Check("common.claude-md", False, "gone")])
+    with pytest.raises(orchestrate.NotReady, match="setup-drift"):
+        dry(fake_orch)
+    assert [(e["kind"], e["signature"]) for e in faults.entries("dry7")] == [("setup-drift", "common.claude-md")]
+
+
+def test_limits_can_be_overridden_for_dry_arms_only(fake_orch):
+    dry(fake_orch, limits_override={"turn_seconds": 20})
+    assert fake_orch.ctxs[("dryrun", 1, "a")].pins.limits.turn_seconds == 20
+    fake_orch.make("control", pass_="canary")
+    with pytest.raises(PermissionError):
+        orchestrate.run_arm("canary", "control", fake_orch.cred, fake_orch.owner, limits_override={"turn_seconds": 1})
+
+
+def test_one_arm_alone_never_runs_on_the_real_pass(fake_orch):
+    fake_orch.make("openspec", pass_="pass1")
+    with pytest.raises(orchestrate.NotReady, match="run-pass"):
+        orchestrate.run_arm("pass1", "openspec", fake_orch.cred, fake_orch.owner)
+
+
+def test_run_pass_needs_the_recorded_order(fake_orch):
+    with pytest.raises(orchestrate.NotReady, match="order"):
+        orchestrate.run_pass("pass1", fake_orch.cred, fake_orch.owner)
+
+
+def test_run_pass_sets_up_an_arm_that_has_no_state_once_the_owner_confirms(fake_orch):
+    f = paths.RESULTS / "pass1" / "order.json"
+    f.parent.mkdir(parents=True)
+    f.write_text(json.dumps({"seed": 1, "rule": "t", "order": ["control"]}))
+    fake_orch.owner.confirm_answer = lambda text: PARK if text.startswith("Set up") else True
+    assert "parked" in orchestrate.run_pass("pass1", fake_orch.cred, fake_orch.owner)
+    assert ("setup", "control") not in fake_orch.calls
+    fake_orch.owner.confirm_answer = lambda text: True
+    orchestrate.run_pass("pass1", fake_orch.cred, fake_orch.owner)
+    assert ("setup", "control") in fake_orch.calls and ("control", 7, "b") in fake_orch.runs()
+
+
+# ---- declared faults: re-run a step, re-test a commit --------------------------------------------------------------
+
+def test_a_declared_rerun_supersedes_the_step_and_every_later_one_and_runs_them_again(fake_orch):
+    dry(fake_orch)
+    assert cli.main(["faults", "declare", "dry7", "dryrun", "3", "wrong-brief", "--scope", "rerun-step"]) == 0
+    fake_orch.calls.clear()
+    assert dry(fake_orch) == {"completed": True}
+    p = Paths("dry7", "dryrun")
+    assert fake_orch.runs() == [("dryrun", n, r) for n in range(3, 8) for r in ("a", "b")]
+    assert fake_orch.calls.index(("restore", "dryrun", 3)) < fake_orch.calls.index(("run_step", "dryrun", 3, "a"))
+    assert ("snapshot", "dryrun", 3) not in fake_orch.calls and ("snapshot", "dryrun", 4) in fake_orch.calls
+    assert all((p.results / f"{n:02d}-superseded-1").is_dir() for n in range(3, 8))
+    assert progress("dry7", "dryrun")["rerun"] is None
+
+
+def test_a_declared_rerun_of_step2_keeps_the_hand_edit(fake_orch):
+    dry(fake_orch)
+    (Paths("dry7", "dryrun").step(2) / "hand-edit" / "edit.json").write_text("{}")
+    assert cli.main(["faults", "declare", "dry7", "dryrun", "2", "wrong-brief", "--scope", "rerun-step"]) == 0
+    fake_orch.calls.clear()
+    dry(fake_orch)
+    assert ("hand_edit", "dryrun", 2) not in fake_orch.calls
+    assert (Paths("dry7", "dryrun").step(2) / "hand-edit" / "edit.json").exists()
+    assert fake_orch.ctxs[("dryrun", 2, "b")].sha_before == "edit-sha"
+
+
+def test_a_declared_retest_re_tests_the_recorded_commit_without_a_new_session(fake_orch):
+    dry(fake_orch)
+    p = Paths("dry7", "dryrun")
+    (p.step(2) / "git.json").write_text(json.dumps({"sha_after": "sha-2"}))
+    assert cli.main(["faults", "declare", "dry7", "dryrun", "2", "flaky-fixture", "--scope", "retest"]) == 0
+    fake_orch.calls.clear()
+    dry(fake_orch)
+    assert fake_orch.runs() == []
+    assert ("prepare", "dryrun", "02-retest1", "sha-2") in fake_orch.calls and ("quality", "dryrun") in fake_orch.calls
+    assert (p.step(2) / "hidden-superseded-1" / "summary.json").exists()
+    assert json.loads((p.step(2) / "retest-1.json").read_text())["sha"] == "sha-2"
+    assert progress("dry7", "dryrun")["retest"] is None
+
+
+# ---- setup once per arm; moving state aside after a fault ------------------------------------------------------------
+
+def test_setup_runs_once_and_again_only_moves_unstarted_state_aside(fake_orch):
+    orchestrate.setup("dry7", "dryrun", fake_orch.cred, fake_orch.owner)
+    with pytest.raises(orchestrate.NotReady, match="once"):
+        orchestrate.setup("dry7", "dryrun", fake_orch.cred, fake_orch.owner)
+    orchestrate.setup("dry7", "dryrun", fake_orch.cred, fake_orch.owner, again=True)
+    assert [x.name for x in (paths.STATE / "dry7").iterdir() if ".aside-" in x.name]
+    assert count(fake_orch, ("setup", "dryrun")) == 2
+
+
+def test_setup_again_is_refused_once_a_step_has_started(fake_orch):
+    dry(fake_orch)
+    with pytest.raises(orchestrate.NotReady, match="started"):
+        orchestrate.setup("dry7", "dryrun", fake_orch.cred, fake_orch.owner, again=True)
+
+
+def test_a_harness_fault_in_setup_is_recorded(fake_orch, monkeypatch):
+    def boom(pass_, arm, cred, owner):
+        raise faults.HarnessFault("model-pin", "claude-haiku-4-5", "setup")
+    monkeypatch.setattr(checklist, "run_setup", boom)
+    with pytest.raises(orchestrate.NotReady, match="model-pin"):
+        orchestrate.setup("dry7", "dryrun", fake_orch.cred, fake_orch.owner)
+    assert [(e["kind"], e["step"]) for e in faults.entries("dry7")] == [("model-pin", 0)]
+
+
+# ---- close-out and status ------------------------------------------------------------------------------------
+
+def test_close_out_needs_every_arm_finished(fake_orch):
+    fake_orch.outcome[("openspec", 1, "a")] = ["parked"]
+    real(fake_orch)
+    with pytest.raises(orchestrate.NotReady, match="openspec"):
+        orchestrate.close_out("pass1", fake_orch.owner)
+
+
+def test_close_out_scans_checks_bundles_and_asks_for_every_pat_revocation(fake_orch, monkeypatch):
+    real(fake_orch)
+    for a in ARMS:
+        (Paths("pass1", a).results / "repo.bundle").write_bytes(b"# v2 git bundle\n")
+    from runner import secrets
+    monkeypatch.setattr(secrets, "scan_tree", lambda root, lits=(): [])
+    f = orchestrate.close_out("pass1", fake_orch.owner)
+    text = f.read_text()
+    assert "secret scan: clean" in text and "bundles: all present" in text
+    ids = [i for i, _ in fake_orch.owner.item_calls[-1]]
+    assert ids == ["pat-openspec", "pat-control"]
+    assert "- [x] pat-openspec" in text
+
+
+def test_status_shows_every_arm_and_both_runs_of_each_step(fake_orch):
+    fake_orch.outcome[("openspec", 2, "a")] = ["parked"]
+    real(fake_orch)
+    s = orchestrate.status()
+    assert "pass1" in s and "openspec" in s and "control" in s
+    assert "2:a=parked" in s and "1:a=discovered,b=done" in s
