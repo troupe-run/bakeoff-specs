@@ -66,7 +66,8 @@ def test_leftovers_on_a_branch_are_stashed_and_main_checked_out_clean(P):
     (P.repo / "a.py").write_text("A = 2\n")                           # tracked change
     (P.repo / "new.py").write_text("N = 1\n")                         # untracked file
     rec = gitops.set_aside_to_main(P, "bakeoff: leftovers at the end of step 1")
-    assert rec == {"branch": "feature", "dirty": True, "stashed": True, "checked_out_main": True}
+    assert rec == {"branch": "feature", "dirty": True, "stashed": True, "checked_out_main": True,
+                   "aside_branch": None}
     st = gitops.state(P)
     assert (st.branch, st.dirty, st.head) == ("main", False, base)
     assert (P.repo / "a.py").read_text() == "A = 1\n" and not (P.repo / "new.py").exists()
@@ -135,3 +136,17 @@ def test_an_acceptance_test_without_the_steps_marker_is_an_error_not_a_verdict(s
     p, copy = step5_copy
     r = hidden.run_acceptance(p, copy, 6, ALREADY_FINE.replace("@pytest.mark.steps(6)\n", ""))
     assert r["outcome"] == "error", r
+
+
+def test_commits_on_a_detached_head_stay_reachable_on_an_aside_branch(P):    # fix round 1
+    (P.repo / "a.py").write_text("A = 1\n")
+    base = gitops.commit_all(P, gitops.IDENTITY, "step 1")
+    gitops.git(P, "checkout", "-q", "--detach", write=True)
+    (P.repo / "b.py").write_text("B = 1\n")
+    orphan = gitops.commit_all(P, gitops.IDENTITY, "made on a detached HEAD")
+    rec = gitops.set_aside_to_main(P, "x", label="02")
+    assert rec["aside_branch"].startswith("bakeoff/aside-02-") and rec["checked_out_main"]
+    st = gitops.state(P)
+    assert (st.branch, st.head) == ("main", base)
+    tip = gitops.git(P, "rev-parse", f"refs/heads/{rec['aside_branch']}").stdout.decode().strip()
+    assert tip == orphan

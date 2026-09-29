@@ -37,6 +37,23 @@ class NotReady(RuntimeError):
     """Setup cannot start: a parked arm (no image in the lock) or no checklist for it."""
 
 
+class SetupParked(NotReady):
+    """An owner prompt during setup returned `owner.Park` (Task 23 fix round 1): setup ends as parked — never a crash,
+    never read as an answer. The arm is parked; `runner setup --again` (or the next `run-pass`) redoes the setup."""
+
+    def __init__(self, park):
+        super().__init__(f"setup parked: {getattr(park, 'prompt', '?')} ({getattr(park, 'reason', '?')}): "
+                         f"{getattr(park, 'context', '')}")
+        self.park = park
+
+
+def _unparked(got):
+    from runner.owner import Park
+    if isinstance(got, Park):
+        raise SetupParked(got)
+    return got
+
+
 def needed_commands(arm: config.Arm) -> list[str]:
     """The slash commands `<arm>.entry-commands` requires installed: from entry, bug_entry, must_run, and for
     OD24 B the export trigger and the export command itself."""
@@ -230,7 +247,7 @@ def manifest_check(pass_: str, arm_name: str, m: dict[str, str], owner, missing:
     if not diff:
         return Check(cid, True, "identical to pass 1" + note)
     shown = "; ".join(diff[:20]) + (f"; … {len(diff) - 20} more" if len(diff) > 20 else "")
-    if owner is not None and owner.confirm(f"{arm_name}: setup files differ from pass 1: {shown}. Accept?"):
+    if owner is not None and _unparked(owner.confirm(f"{arm_name}: setup files differ from pass 1: {shown}. Accept?")) is True:
         return Check(cid, True, f"owner accepted: {shown}{note}")
     return Check(cid, False, shown + note)
 
@@ -261,7 +278,7 @@ def applied_model_env(pins: config.Pins, arm: config.Arm, pass_: str) -> dict[st
 
 def ask_owner(owner, items: list[tuple[str, str]]) -> tuple[dict[str, dict], float]:
     """Every listed item gets a record; an item the owner did not answer is not ok."""
-    answers = owner.items(items) if items else {}
+    answers = _unparked(owner.items(items)) if items else {}
     rec, secs = {}, 0.0
     for iid, _ in items:
         a = answers.get(iid)
@@ -417,7 +434,7 @@ def _agent_turns(p, arm, pass_, cred, owner, st, out) -> tuple[float, dict[Path,
         (out / "setup-turns.json").write_text(json.dumps(record, indent=2))
         _check_turn(r, f"setup turn {n}")
         sid = r.session_id or sid
-        reply, secs = owner.setup_reply(r.final_text)
+        reply, secs = _unparked(owner.setup_reply(r.final_text))
         owner_s += secs
         if reply:
             queue.insert(0, (prompt, reply))           # the owner's reply belongs to the prompt it answers

@@ -23,7 +23,7 @@ def main(argv: list[str] | None = None) -> int:
         if not faults.valid_name(pass_):                   # never build a ledger path from a bad name (M-2)
             pass_ = "pass1"
         if (h := faults.halted(pass_)):
-            print(f"HALTED ({faults.ledger_paths(pass_)[1]}): the same harness fault occurred twice (design §9).\n{h}\n"
+            print(f"HALTED ({faults.ledger_paths(pass_)[1]}): {faults.halt_reason(pass_)} (design §9).\n{h}\n"
                   f"Review with the owner, then `runner faults resume {pass_} --note \"<resolution>\"`.")
             return 1
     return int(ns.func(ns) or 0)
@@ -219,8 +219,8 @@ def register_faults(sub):
         if ns.scope == "rerun-step":                      # Task 23 honours it: supersede the step and re-run it
             prog = paths.Paths(ns.pass_, ns.arm).progress
             cur = json.loads(prog.read_text()) if prog.exists() else {}
-            prog.parent.mkdir(parents=True, exist_ok=True)
-            prog.write_text(json.dumps({**cur, "rerun": ns.step}, indent=2))
+            from runner import fsutil
+            fsutil.write_json(prog, {**cur, "rerun": ns.step})          # atomic (Task 23 fix round 1)
         # --scope retest: the orchestrator reads it from the ledger (Task 23) and re-tests the recorded sha_after
         print(f"declared manual:{ns.slug} ({ns.scope}) for {ns.pass_}/{ns.arm} step {ns.step}")
         if action == "halt":
@@ -259,7 +259,11 @@ def _orchestrated(fn):
         try:
             res = fn(ns)
         except stepflow.Halt as h:
-            print(f"HALTED (design §9): {h}\nReview with the owner, then `runner faults resume <pass> --note \"...\"`.")
+            from runner import faults
+            pass_ = getattr(ns, "pass_", None) or "pass1"
+            why = faults.halt_reason(pass_) if faults.valid_name(pass_) else None
+            print(f"HALTED (design §9): {why or h}\n{h}\nReview with the owner, then "
+                  f"`runner faults resume {pass_} --note \"...\"`.")
             return 2
         except checklist.NotReady as e:
             print(f"not ready: {e}")

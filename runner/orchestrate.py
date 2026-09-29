@@ -43,6 +43,12 @@ scored all-failed there ("repeat") re-run that step's N.b. Owner-declared faults
 step and every later one (`NN-superseded-<k>/`) and re-runs them from the step's existing snapshot (the hand edit and
 the issue are kept); `--scope retest` re-runs the hidden tests and quality on the step's recorded `sha_after`.
 
+**Records and locking (fix round 1)**: every progress, consistency, suite-resource and evidence record is written
+atomically (`fsutil`: temp file, fsync, `os.replace`). `preflight.lock()` is taken before every pre-check and any
+setup. A run still marked `running` whose stepflow completion record exists (`NN/a/discovery.json`; `NN/run.json`,
+plus `arm-result.json` when stopped) is adopted, not run again. Owner parks on the setup path end setup as parked
+(`checklist.SetupParked`, `00-setup/parked.json`); the next `run-pass` redoes the setup.
+
 **The end of an arm**: `repo.bundle` → `results/<pass>/<arm>/repo.bundle`; `arm-result.json` (`{"completed": true}`;
 a stopped arm's is stepflow's and is never rewritten); `repo.publish` to the arm's PRIVATE repo when the pass has one
 (scan of the tip tree and history first; the owner's confirmation, where a park is never a yes).
@@ -52,7 +58,7 @@ import dataclasses, hashlib, json, random, re, shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from runner import (checklist, config, docker, drive, faults, gitops, handedit, handoff, hidden, owner as owner_mod,
+from runner import (checklist, config, docker, drive, faults, fsutil, gitops, handedit, handoff, hidden, owner as owner_mod,
                     paths, po, preflight, quality, repo, secrets, stepflow, tracker)
 from runner.faults import HarnessFault
 from runner.paths import Paths, REAL_PASSES, REPO_ROOT
@@ -106,8 +112,7 @@ def _sha(p: Path) -> str:
 
 
 def _jw(f: Path, obj) -> None:
-    f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text(json.dumps(obj, indent=2, default=str))
+    fsutil.write_json(f, obj)                     # atomic: temp + fsync + os.replace (fix round 1)
 
 
 def _jr(f: Path, default=None):
@@ -353,6 +358,8 @@ class _Run:
         r = e.get(run) or {}
         if r.get("status") in DONE[run]:
             return self.post(arm_name, step, run, prog)
+        if r.get("status") in ("running", "interrupted") and (done := self._stepflow_finished(p, step, run)):
+            return self._adopt(arm_name, step, run, prog, done)            # never spend another arm session
         if not e.get("started"):
             if self.begin(arm_name, step, prog) == "parked":
                 return "parked"
@@ -415,15 +422,47 @@ class _Run:
         if outcome.status == "parked":
             mark("parked", outcome.park)
             return self.park(arm_name, step, run, "run", outcome.park)
-        needed = (["mentions"] if step == 2 and run == "a" else []) + ["scan"]
-        if run == "b":
-            needed = (["detect"] if step == 2 else []) + ["tracker"] + needed + ["end_snapshot"]
+        needed = self._post_needed(step, run)
         e[run] = {**e[run], "status": outcome.status, "ended_at": _now(), "post": {}, "post_needed": needed}
         if outcome.status == "stopped":
             prog["stopped_at"] = step                   # stepflow wrote arm-result.json: never rewritten here
         _save(p, prog)
         self.log("run-ended", arm=arm_name, step=step, run=run, status=outcome.status)
         return self.post(arm_name, step, run, prog)
+
+    def _stepflow_finished(self, p: Paths, step: int, run: str) -> str | None:
+        """The crash window between `stepflow.run_step` returning and progress being saved (fix round 1): stepflow's
+        own completion record says the run finished. N.a: `NN/a/discovery.json`. N.b: `NN/run.json` (written by
+        `evidence.finalise` once the step is decided) — "stopped" only with stepflow's `arm-result.json` too."""
+        if run == "a":
+            return "discovered" if (p.step(step) / "a" / "discovery.json").is_file() else None
+        rec = _jr(p.step(step) / "run.json", {}) or {}
+        if rec.get("outcome") == "done":
+            return "done"
+        if rec.get("outcome") == "stopped" and (p.results / "arm-result.json").is_file():
+            return "stopped"
+        return None
+
+    def _adopt(self, arm_name: str, step: int, run: str, prog: dict, status: str) -> str:
+        p = Paths(self.pass_, arm_name)
+        e = prog["steps"][str(step)]
+        if run == "a":
+            repo.restore(p, e["snapshot"])               # stepflow may have died before its own reset
+        e["restore_needed"] = False
+        e[run] = {**e[run], "status": status, "adopted": True, "ended_at": _now(), "post": {},
+                  "post_needed": self._post_needed(step, run)}
+        if status == "stopped":
+            prog["stopped_at"] = step
+        _save(p, prog)
+        self.log("run-adopted", arm=arm_name, step=step, run=run, status=status)
+        return self.post(arm_name, step, run, prog)
+
+    @staticmethod
+    def _post_needed(step: int, run: str) -> list[str]:
+        needed = (["mentions"] if step == 2 and run == "a" else []) + ["scan"]
+        if run == "b":
+            needed = (["detect"] if step == 2 else []) + ["tracker"] + needed + ["end_snapshot"]
+        return needed
 
     def post(self, arm_name: str, step: int, run: str, prog: dict) -> str:
         p = Paths(self.pass_, arm_name)
@@ -503,8 +542,7 @@ class _Run:
         f = paths.RESULTS / self.pass_ / "consistency" / f"step-{step:02d}.json"
         rec = _jr(f) or {"pass": self.pass_, "step": step, "rounds": [], "confirmed": [], "status": None}
         brief = paths.brief_path(self.pass_)
-        new = [x for x in _escalations(brief.read_text()) if x["step"] == step and x["pass"] == self.pass_
-               and x["text"] not in rec["confirmed"]]
+        new = self._unconfirmed(_escalations(brief.read_text()), step, rec)
         if not new:
             if rec["status"] is None:
                 rec["status"] = "nothing-new"; _jw(f, rec)
@@ -513,7 +551,7 @@ class _Run:
         rec.setdefault("brief_sha_before", sha0)
         while True:
             entries = _escalations(brief.read_text())
-            new = [x for x in entries if x["step"] == step and x["pass"] == self.pass_ and x["text"] not in rec["confirmed"]]
+            new = self._unconfirmed(entries, step, rec)
             prior = [x for x in entries if x not in new]
             groups = _groups(new, prior)
             items = [(g["id"], _group_text(g)) for g in groups]
@@ -543,6 +581,13 @@ class _Run:
             if not ok:
                 rec["status"] = "declined"; _jw(f, rec)
                 raise _Stop(f"consistency check of step {step} not confirmed")
+
+    def _unconfirmed(self, entries: list[dict], step: int, rec: dict) -> list[dict]:
+        """Answers escalated at step N, and at step N-1 (its N.b ran after N-1's check, fix round 1), that no check
+        has confirmed yet."""
+        prev = _jr(paths.RESULTS / self.pass_ / "consistency" / f"step-{step - 1:02d}.json", {}) or {}
+        done = set(rec["confirmed"]) | set(prev.get("confirmed", []))
+        return [x for x in entries if x["pass"] == self.pass_ and x["step"] in (step - 1, step) and x["text"] not in done]
 
     # -- suite resource exhaustion (design §9) ---------------------------------------------------------------------
     def suite_resource(self, step: int) -> None:
@@ -585,7 +630,8 @@ class _Run:
             prog = _load(p)
             for d in faults.entries(self.pass_):                  # `--scope retest` lives in the ledger
                 key = f"{d.get('at')}|{d.get('signature')}|{d.get('step')}"
-                if d.get("scope") == "retest" and d.get("arm") == a and key not in prog["retests_done"]:
+                if d.get("scope") == "retest" and d.get("arm") == a and d.get("pass") == self.pass_ \
+                        and key not in prog["retests_done"]:
                     self._retest(a, int(d["step"]), d, key)
 
     def _rerun_b(self, arm_name: str, step: int) -> None:
@@ -630,6 +676,8 @@ class _Run:
         keep = {k: e[k] for k in ("started", "snapshot", "sha_before", "hand_edit", "edit", "issue", "issue_fp",
                                   "precheck", "substitute", "started_at") if k in e}
         prog["steps"] = {k: v for k, v in prog["steps"].items() if int(k) < step}
+        if step < 2:                                     # step 2's entry (and its hand edit) is gone: so is its cost
+            prog["teammate_turns"] = []
         if keep.get("started"):
             prog["steps"][str(step)] = {**keep, "restore_needed": True}
         if prog.get("stopped_at") and prog["stopped_at"] >= step:
@@ -646,8 +694,17 @@ class _Run:
         prog = _load(p)
         d = p.step(step)
         sha = (_jr(d / "git.json", {}) or {}).get("sha_after")
-        if not sha:
-            raise NotReady(f"{arm_name} step {step}: no recorded sha_after (git.json) to re-test")
+        if not sha:                                      # refused once, recorded, never a permanent block
+            f = p.results / "retest-refused.json"
+            why = (f"step {step} has no recorded sha_after ({d / 'git.json'}): nothing to re-test. The declaration "
+                   f"is refused and will not be retried; once the step has run, declare it again "
+                   f"(`runner faults declare {self.pass_} {arm_name} {step} <slug> --scope retest`).")
+            _jw(f, (_jr(f, []) or []) + [{"at": _now(), "step": step, "declared": declared, "why": why}])
+            prog["retests_done"].append(key)
+            _save(p, prog)
+            self.log("retest-refused", arm=arm_name, step=step, why=why)
+            print(f"retest refused ({arm_name}): {why}")
+            return
         k = 1
         while (d / f"retest-{k}.json").exists():
             k += 1
@@ -719,8 +776,10 @@ def _result(R: _Run, arms: list[str], **kw) -> dict:
 
 def _run(pass_: str, arms: list[str], cred, owner, *, limits_override: dict | None = None,
          stop_after: int | None = None) -> dict:
-    if (h := faults.halted(pass_)):
-        raise NotReady(f"bake-off halted (design §9): {h}")
+    """The step-major run. The caller holds `preflight.lock()` (fix round 1: the lock comes before every
+    pre-check and before any setup)."""
+    if faults.halted(pass_):
+        raise NotReady(f"bake-off halted (design §9): {faults.halt_reason(pass_)}")
     pins = config.load_pins()
     if limits_override:
         if not all(config.load_arm(a).dry for a in arms):
@@ -732,49 +791,50 @@ def _run(pass_: str, arms: list[str], cred, owner, *, limits_override: dict | No
         p = Paths(pass_, a)
         checklist.require_clean_green(p)                  # design §6: no step before a clean, green setup
         preflight.check_images(a, p)                      # design §2: the locked images, the baked reference
-    with preflight.lock():
-        docker.sweep()
-        R = _Run(pass_, arms, cred, owner, pins, secrets.literals(cred))
-        try:
-            R.pending()
-            for step in range(1, (stop_after or 7) + 1):
-                live = [a for a in arms if not R.stopped_before(a, step)]
-                if not live:
-                    break
-                for run in RUNS:
-                    pending_b = run == "b" and not all(R.is_complete(a, step, "b") for a in live)
-                    if pending_b and R.consistency(step) == "parked":     # only before a scored run is due
-                        return _result(R, arms)
-                    for a in live:
-                        got = R.run_one(a, step, run)
-                        if got == "pause":
-                            return _result(R, arms, paused_after={"arm": a, "step": step})
-                        if run == "b" and got == "complete":
-                            R.suite_resource(step)
-                    if not all(R.is_complete(a, step, run) for a in live):
-                        return _result(R, arms)              # the phase barrier: parked items first
-            if stop_after:
-                return _result(R, arms, stopped_after=stop_after)
-            for a in arms:
-                R.finish(a)
-            return _result(R, arms, completed=all(R.finished(a) for a in arms))
-        except _Stop as s:
-            return _result(R, arms, declined=str(s))
+    docker.sweep()
+    R = _Run(pass_, arms, cred, owner, pins, secrets.literals(cred))
+    try:
+        R.pending()
+        for step in range(1, (stop_after or 7) + 1):
+            live = [a for a in arms if not R.stopped_before(a, step)]
+            if not live:
+                break
+            for run in RUNS:
+                pending_b = run == "b" and not all(R.is_complete(a, step, "b") for a in live)
+                if pending_b and R.consistency(step) == "parked":     # only before a scored run is due
+                    return _result(R, arms)
+                for a in live:
+                    got = R.run_one(a, step, run)
+                    if got == "pause":
+                        return _result(R, arms, paused_after={"arm": a, "step": step})
+                    if run == "b" and got == "complete":
+                        R.suite_resource(step)
+                if not all(R.is_complete(a, step, run) for a in live):
+                    return _result(R, arms)              # the phase barrier: parked items first
+        if stop_after:
+            return _result(R, arms, stopped_after=stop_after)
+        for a in arms:
+            R.finish(a)
+        return _result(R, arms, completed=all(R.finished(a) for a in arms))
+    except _Stop as s:
+        return _result(R, arms, declined=str(s))
 
 
 def _single(res: dict, arm: str) -> dict:
     """run_arm's shape (Task 24): {"completed": True} | {"stopped_at": n} | {"paused_after": n} | {"stopped_after": n}
-    | {"parked": [...]} | {"declined": why}."""
-    for k in ("declined", "stopped_after"):
-        if k in res:
-            return {k: res[k]}
+    | {"parked": [...]} | {"declined": why}. An arm that stopped (design §9) is reported as `stopped_at`, also when a
+    canary's `stop_after` would otherwise end the run (fix round 1)."""
+    if "declined" in res:
+        return {"declined": res["declined"]}
     if "paused_after" in res:
         return {"paused_after": res["paused_after"]["step"]}
     if "parked" in res:
         return {"parked": res["parked"]}
     a = res["arms"][arm]
-    if a["stopped_at"] is not None and res.get("completed"):
+    if a["stopped_at"] is not None and (res.get("completed") or "stopped_after" in res):
         return {"stopped_at": a["stopped_at"]}
+    if "stopped_after" in res:
+        return {"stopped_after": res["stopped_after"]}
     return {"completed": True} if res.get("completed") else {"incomplete": res}
 
 
@@ -784,40 +844,54 @@ def run_arm(pass_: str, arm: str, cred, owner, limits_override: dict | None = No
     arms only, Task 24); refused on the real pass, where `run_pass` keeps every arm in step (N.a, check, N.b)."""
     if pass_ in REAL_PASSES:
         raise NotReady(f"{pass_} is step-major across every arm: use `runner run-pass {pass_}`")
-    return _single(_run(pass_, [arm], cred, owner, limits_override=limits_override, stop_after=stop_after), arm)
+    with preflight.lock():
+        return _single(_run(pass_, [arm], cred, owner, limits_override=limits_override, stop_after=stop_after), arm)
 
 
 def run_pass(pass_: str, cred, owner) -> dict:
-    """Every arm in `results/<pass>/order.json`, step-major. An arm with no state is set up first once the owner
-    confirms (setup runs once per arm)."""
+    """Every arm in `results/<pass>/order.json`, step-major. An arm with no state, or whose setup was parked, is set
+    up first once the owner confirms (setup runs once per arm). The lock is taken before anything else."""
     rec = _jr(paths.RESULTS / pass_ / "order.json")
     if not rec:
         raise NotReady(f"no results/{pass_}/order.json: run `runner order {pass_} [--seed N]` first")
     arms = list(rec["order"])
-    for a in arms:
-        if not Paths(pass_, a).base.exists():
+    with preflight.lock():
+        for a in arms:
+            p = Paths(pass_, a)
+            parked_setup = (p.setup_results / "parked.json").is_file()
+            if p.base.exists() and not parked_setup:
+                continue
             got = owner.confirm(f"Set up {a} for {pass_} now (owner present)?")
             if isinstance(got, owner_mod.Park):
                 return {"parked": [{"arm": a, "step": 0, "run": None, "what": "setup"}]}
             if not got:
                 return {"declined": f"setup of {a}"}
-            r = setup(pass_, a, cred, owner)
+            try:
+                r = _setup(pass_, a, cred, owner, again=parked_setup)
+            except checklist.SetupParked:
+                return {"parked": [{"arm": a, "step": 0, "run": None, "what": "setup"}]}
             if not r.green:
                 raise NotReady(f"{a}: setup is not green — see results/{pass_}/{a}/00-setup")
-    return _run(pass_, arms, cred, owner)
+        return _run(pass_, arms, cred, owner)
 
 
 # ---- setup once per arm -----------------------------------------------------------------------------------------
 
 def setup(pass_: str, arm: str, cred, owner, again: bool = False):
-    """`checklist.run_setup`, once per arm. `again` (after a setup harness fault): the arm's state is moved aside
-    first (`repo.init` refuses an existing base), and its `00-setup` evidence kept as `00-setup-superseded-<k>`;
-    refused once any step has started. A harness fault during setup is recorded (step 0)."""
+    """`checklist.run_setup`, once per arm, under the runner lock. `again` (after a setup harness fault or a parked
+    setup): the arm's state is moved aside first (`repo.init` refuses an existing base), and its `00-setup` evidence
+    kept as `00-setup-superseded-<k>`; refused once any step has started. A harness fault during setup is recorded
+    (step 0); an owner park ends setup as parked (`checklist.SetupParked`, recorded in `00-setup/parked.json`)."""
+    with preflight.lock():
+        return _setup(pass_, arm, cred, owner, again)
+
+
+def _setup(pass_: str, arm: str, cred, owner, again: bool = False):
     p = Paths(pass_, arm)
     if p.base.exists():
         if not again:
             raise NotReady(f"{p.base} exists: setup runs once per arm (`runner setup {pass_} {arm} --again` moves "
-                           f"it aside after a setup fault)")
+                           f"it aside after a setup fault or park)")
         if any(e.get("started") for e in _load(p)["steps"].values()):
             raise NotReady(f"{arm}: a step has started; its state is evidence and is never moved aside")
         p.base.rename(p.base.with_name(f"{arm}.aside-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%f')}"))
@@ -828,6 +902,15 @@ def setup(pass_: str, arm: str, cred, owner, again: bool = False):
             shutil.move(str(p.setup_results), str(p.results / f"00-setup-superseded-{k}"))
     try:
         return checklist.run_setup(pass_, arm, cred, owner)
+    except checklist.SetupParked as x:
+        rec = {"at": _now(), "park": dataclasses.asdict(x.park) if dataclasses.is_dataclass(x.park) else str(x.park)}
+        _jw(p.setup_results / "parked.json", rec)
+        f = paths.RESULTS / pass_ / "run-log.jsonl"
+        f.parent.mkdir(parents=True, exist_ok=True)
+        with open(f, "a") as fh:
+            fh.write(json.dumps({"at": _now(), "event": "parked", "arm": arm, "step": 0, "run": None,
+                                 "what": "setup", "park": rec["park"]}, default=str) + "\n")
+        raise
     except HarnessFault as f:
         action = faults.record(f, pass_, arm, 0, 0)
         if action == "halt":
@@ -882,7 +965,7 @@ def _groups(new: list[dict], prior: list[dict]) -> list[dict]:
     by: dict[str, dict] = {}
     for x in new:
         g = by.setdefault(_norm(x["question"]), {"question": x["question"], "answers": []})
-        g["answers"].append({"arm": x["arm"], "answer": x["answer"]})
+        g["answers"].append({"arm": x["arm"], "answer": x["answer"], "step": x["step"]})
     groups = list(by.values())
     for i, g in enumerate(groups, 1):
         g["id"] = f"Q{i}"
@@ -896,14 +979,15 @@ def _groups(new: list[dict], prior: list[dict]) -> list[dict]:
 
 def _group_text(g: dict) -> str:
     lines = [f"Question: {g['question']}"]
-    lines += [f"  {a['arm']}: {a['answer']}" for a in g["answers"]]
+    lines += [f"  {a['arm']} (step {a.get('step')}): {a['answer']}" for a in g["answers"]]
     if g["conflict"]:
         lines.append("  CONFLICT: different answers to the same question")
     if g["overlaps"]:
         lines.append(f"  OVERLAPS {', '.join(g['overlaps'])} (a similar question this step)")
     for x in g["earlier"]:
         lines.append(f"  OVERLAPS an earlier answer (step {x['step']}, {x['arm']}): {x['question']} → {x['answer']}")
-    lines.append("  Consistent with each other and with the brief?")
+    lines.append("  Consistent with each other? Consistency with the brief's own text (its standing answers in "
+                 "scenario/po-brief.md) is your call: this check compares escalated answers only.")
     return "\n".join(lines)
 
 
@@ -914,14 +998,15 @@ def _md(f: Path, rec: dict) -> None:
         for g in rnd["groups"]:
             lines += [f"### {g['id']}", "", _group_text(g), ""]
         lines += [f"Owner: {json.dumps(rnd.get('owner'))}", ""]
-    f.with_suffix(".md").write_text("\n".join(lines))
+    fsutil.write_text(f.with_suffix(".md"), "\n".join(lines))
 
 
 # ---- close-out and status -----------------------------------------------------------------------------------------
 
 def close_out(pass_: str, owner) -> Path:
     """The end of a run (review S-2): every arm finished, a secret scan of `results/<pass>` and the ledger clean, every
-    bundle present, and every run PAT revoked (the owner confirms each). Written to `results/<pass>/close-out.md`."""
+    bundle present, publishing finished, and every run PAT revoked (the owner confirms each — a park or a "no" is not
+    a confirmation). Written to `results/<pass>/close-out.md`; `NotReady` unless every item holds."""
     rec = _jr(paths.RESULTS / pass_ / "order.json") or {}
     arms = rec.get("order") or (sorted(x.name for x in (paths.STATE / pass_).iterdir()
                                        if (x / "progress.json").exists()) if (paths.STATE / pass_).is_dir() else [])
@@ -935,20 +1020,33 @@ def close_out(pass_: str, owner) -> Path:
                          f"settings → Fine-grained tokens)")
             for a in arms if config.load_arm(a).tracker == "github" and config.github_slug(pass_, a)
             and not config.load_arm(a).dry]
+    unpublished = [a for a in arms if config.github_slug(pass_, a) and not config.load_arm(a).dry
+                   and (_load(Paths(pass_, a))["finished"].get("published") is not True)]
     got = owner.items(pats) if pats else {}
     lines = [f"# Close-out — {pass_} (review S-2)", "", f"- secret scan: {'clean' if not found else 'FINDINGS'}"]
     lines += [f"  - {f.path}:{f.line} {f.kind}" for f in found[:50]]
     lines.append(f"- bundles: {'all present' if not no_bundle else 'MISSING ' + ', '.join(no_bundle)}")
+    lines.append(f"- publish: {'finished' if not unpublished else 'NOT FINISHED ' + ', '.join(unpublished)}")
+    not_revoked: list[str] = []
     if isinstance(got, owner_mod.Park):
         lines.append("- PAT revocation: PARKED — run `runner close-out` again with the owner present")
+        not_revoked = [i for i, _ in pats]
     else:
         for iid, text in pats:
             ok, note, _ = got.get(iid, (False, "", 0.0))
-            lines.append(f"- [{'x' if ok else ' '}] {iid}: {text}{' — ' + note if note else ''}")
+            if ok is not True:
+                not_revoked.append(iid)
+            lines.append(f"- [{'x' if ok is True else ' '}] {iid}: {text}{' — ' + note if note else ''}")
     lines.append(f"- brief at close: sha256 {_sha(paths.brief_path(pass_))}")
+    problems = ([f"secret scan: {len(found)} finding(s)"] if found else []) + \
+        ([f"bundle missing: {no_bundle}"] if no_bundle else []) + \
+        ([f"publish not finished: {unpublished}"] if unpublished else []) + \
+        ([f"PAT revocation not confirmed: {not_revoked}"] if not_revoked else [])
+    lines.append(f"\n**Result: {'CLOSED' if not problems else 'NOT CLOSED — ' + '; '.join(problems)}**")
     f = paths.RESULTS / pass_ / "close-out.md"
-    f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text("\n".join(lines) + "\n")
+    fsutil.write_text(f, "\n".join(lines) + "\n")
+    if problems:                                     # fix round 1: a close-out is all or nothing
+        raise NotReady(f"{pass_} close-out refused: {'; '.join(problems)} (see {f})")
     return f
 
 

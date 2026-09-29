@@ -111,6 +111,22 @@ def halt(pass_: str, reason: str, entry: dict) -> None:
     f.write_text(json.dumps({"reason": reason, "entry": entry, "at": _now()}, indent=2))
 
 
+def halt_reason(pass_: str) -> str | None:
+    """One line naming why the pass is halted (fix round 1): `suite-resource:<step> …` for an owner-review halt, or
+    `same harness fault twice: <kind>:<signature>` for a repeat."""
+    h = halted(pass_)
+    if h is None:
+        return None
+    try:
+        rec = json.loads(h)
+    except json.JSONDecodeError:
+        return h.strip()[:500]
+    if "second" in rec:
+        s = rec["second"]
+        return f"same harness fault twice: {s.get('kind')}:{s.get('signature')} ({s.get('arm')}, step {s.get('step')})"
+    return str(rec.get("reason") or h)[:500]
+
+
 def halted(pass_: str) -> str | None:
     h = ledger_paths(pass_)[1]
     return h.read_text() if h.exists() else None

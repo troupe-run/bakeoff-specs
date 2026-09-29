@@ -18,7 +18,7 @@ Step 5 (binding requirement for Tasks 13/15/23): `step_view` gives the PO CR-A o
 the arm, and the contract with the In-include section only from then on (or from the start in OD6 A mode).
 """
 from __future__ import annotations
-import json, os, re, shutil, tempfile, time
+import json, os, re, shutil, time   # noqa: F401 (os: tests patch os.replace through po)
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -358,16 +358,10 @@ def brief_for_step(text: str, step: int) -> str:
 
 
 def _write_atomic(path: Path, text: str) -> None:
-    """Temp file in the same directory, then rename: a reader or a crash never sees a half-written brief."""
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w") as fh:
-            fh.write(text)
-        os.chmod(tmp, path.stat().st_mode & 0o7777 if path.exists() else 0o644)
-        os.replace(tmp, path)
-    except BaseException:
-        Path(tmp).unlink(missing_ok=True)
-        raise
+    """Temp file in the same directory, fsync, then rename: a reader or a crash never sees a half-written brief
+    (the shared helper, Task 23 fix round 1)."""
+    from runner import fsutil
+    fsutil.write_text(path, text)
 
 
 @dataclass(frozen=True)

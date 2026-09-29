@@ -14,6 +14,7 @@ Host-side git exists only in the helpers at the bottom, and none of them takes a
 what `repo.publish` pushes from. The host never untars an arm tree: extraction happens in containers.
 """
 from __future__ import annotations
+from datetime import datetime, timezone
 import dataclasses, json, os, stat, subprocess, uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -457,12 +458,22 @@ def commit_all(p: Paths, who: tuple[str, str], message: str) -> str:
     return head(p)
 
 
-def set_aside_to_main(p: Paths, message: str) -> dict:
-    """Before the step-2 hand edit (Task 23 ruling): the teammate commits on a clean `main`. An arm that left the
-    tree dirty has its changes stashed (untracked files included, ignored ones such as `.venv` kept) under
-    `message` — kept in the repo, never deleted — and an arm left on another branch is put back on `main`."""
+def set_aside_to_main(p: Paths, message: str, label: str = "02") -> dict:
+    """Before the step-2 hand edit (Task 23 ruling): the teammate commits on a clean `main`.
+
+    - A detached HEAD (fix round 1) first gets a branch, `bakeoff/aside-<label>-<UTC timestamp>`, at that HEAD, so
+      commits reachable only from it stay reachable after `main` is checked out.
+    - A dirty tree has its changes stashed (untracked files included, ignored ones such as `.venv` kept) under
+      `message` — kept in the repo, never deleted.
+    - Any other branch, or the detached HEAD, is left for `main`.
+
+    Nothing the arm made is deleted: its commits stay on their branch (or the aside branch), its edits in the stash."""
     st = state(p)
-    rec = {"branch": st.branch, "dirty": st.dirty, "stashed": False, "checked_out_main": False}
+    rec = {"branch": st.branch, "dirty": st.dirty, "stashed": False, "checked_out_main": False, "aside_branch": None}
+    if not st.branch:                                             # detached HEAD
+        name = f"bakeoff/aside-{label}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+        git(p, "branch", name, "HEAD", write=True)
+        rec["aside_branch"] = name
     if st.dirty:
         git(p, "stash", "push", "--include-untracked", "-m", message, write=True, env=_who_env(IDENTITY))
         rec["stashed"] = True

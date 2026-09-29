@@ -73,14 +73,16 @@ def test_leftovers_are_stashed_with_untracked_files_and_main_checked_out(monkeyp
     assert stash[:4] == ("stash", "push", "--include-untracked", "-m") and "leftovers" in stash[4]
     assert w1 and env1["GIT_COMMITTER_NAME"] == gitops.IDENTITY[0]
     assert checkout == ("checkout", "-q", "main") and w2
-    assert rec == {"branch": "feature", "dirty": True, "stashed": True, "checked_out_main": True}
+    assert rec == {"branch": "feature", "dirty": True, "stashed": True, "checked_out_main": True,
+                   "aside_branch": None}
 
 
 def test_a_clean_tree_on_main_is_left_alone(monkeypatch):
     monkeypatch.setattr(gitops, "git", lambda *a, **k: pytest.fail("no git write expected"))
     monkeypatch.setattr(gitops, "state", lambda p: gitops.RepoState("main", False, "h", "h", True))
     assert gitops.set_aside_to_main(Paths("pass1", "control"), "x") == {"branch": "main", "dirty": False,
-                                                                       "stashed": False, "checked_out_main": False}
+                                                                       "stashed": False, "checked_out_main": False,
+                                                                       "aside_branch": None}
 
 
 # ---- the CLI --------------------------------------------------------------------------------------------------
