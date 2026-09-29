@@ -495,3 +495,11 @@ def test_the_scored_evidence_lists_only_run_b_faults(fake_step):                
     stepflow.run_step(fake_step.ctx, "go")
     assert [e["signature"] for e in fake_step.finalised[-1]["fault_entries"]] == ["in-b"]
 
+
+
+def test_the_scored_evidence_keeps_step_level_faults_that_have_no_run(fake_step):                  # L-5 ruling
+    faults.record(HarnessFault("infra-container", "in-a"), "dry9", "control", 2, 1, run="a")
+    faults.record(HarnessFault("hand-edit", "scope"), "dry9", "control", 2, 0)             # no run: step-level
+    fake_step.progress = [3]
+    stepflow.run_step(fake_step.ctx, "go")
+    assert [e["signature"] for e in fake_step.finalised[-1]["fault_entries"]] == ["scope"]
