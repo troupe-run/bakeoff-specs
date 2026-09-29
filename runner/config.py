@@ -169,5 +169,21 @@ def load_arm(name: str) -> Arm:
     )
 
 
+GITHUB_ORG = "troupe-run"
+
+
+def github_slug(pass_: str, arm: str) -> str | None:
+    """The arm's GitHub repo for a pass; None on dry/probe passes. Single source for repo naming: Task 8's
+    `repo.github_slug` re-exports this, and `credentials.session_env` uses it for GH_REPO (preflight M4).
+    With the owner's local bare origin (B4), `gh` can no longer infer the repo from origin, hence GH_REPO."""
+    if pass_ == "pass1":
+        return f"{GITHUB_ORG}/bakeoff-specs-{arm}-pass1"
+    if pass_ == "pass2":
+        return f"{GITHUB_ORG}/bakeoff-specs-{arm}"
+    if pass_ == "canary":
+        return f"{GITHUB_ORG}/bakeoff-specs-{arm}-canary"
+    return None
+
+
 def all_arms() -> list[str]:
     return list(REAL_ARMS)

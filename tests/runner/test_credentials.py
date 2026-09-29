@@ -157,3 +157,11 @@ def test_built_argv_and_recorded_spec_never_carry_the_token(tmp_path: Path):
         assert got and all(token not in repr(s) for s in got)
         assert "-i" in argv                                  # the token's only route is stdin (→ fd 3)
     assert c.payload() == (FAKE_REAL + "\n").encode()
+
+
+def test_credential_refuses_pickling_but_survives_copy():
+    import copy, pickle
+    c = credentials.Credential(FAKE_REAL)
+    with pytest.raises(TypeError):
+        pickle.dumps(c)
+    assert copy.deepcopy({"c": c})["c"] is c and copy.copy(c) is c
