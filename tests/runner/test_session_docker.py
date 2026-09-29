@@ -2,6 +2,7 @@
 credential — no model calls, no quota. Opt in with --run-docker (preflight M1)."""
 import gzip, pytest
 from runner import config, credentials, docker
+from runner import session
 from runner.session import Turn, run_turn
 from runner.docker import Mount
 
@@ -44,7 +45,11 @@ def test_a_200k_stream_line_passes_through_the_pipe(tmp_path):                 #
     r = run_turn(turn(tmp_path, "FAKE:bigline=200000\nFAKE:reply=ok"), credentials.dummy(), tmp_path / "out", 60)
     assert r.outcome == "ok"
 
-def test_a_chatty_stderr_does_not_block_the_turn(tmp_path):                    # review C-9
+def test_a_chatty_stderr_does_not_block_the_turn(tmp_path, monkeypatch):       # review C-9
+    # asyncio's subprocess transport buffers each pipe itself up to 2 x the reader limit before pausing, so with
+    # the production 64 MiB limit a 500 KB stderr passes even with no drain at all. Shrinking the limit (the
+    # stream lines here are small) makes this test fail if stderr is not drained concurrently.
+    monkeypatch.setattr(session, "STREAM_LINE_LIMIT", 64 * 1024)
     r = run_turn(turn(tmp_path, "FAKE:stderr=500000\nFAKE:reply=ok"), credentials.dummy(), tmp_path / "out", 60)
     assert r.outcome == "ok" and r.wall_seconds < 30 and len(gzip.open(r.stderr_path).read()) == 500000
 
