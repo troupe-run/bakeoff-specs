@@ -78,7 +78,7 @@ def test_bmad_plugins_repo_has_no_v6_12_0_tag_so_bmad_is_parked():
 import ast
 import re
 from pathlib import Path
-from runner import cli, repo
+from runner import cli, config, repo
 from runner.paths import Paths
 
 RUNNER = Path(__file__).resolve().parents[2] / "runner"
@@ -190,12 +190,13 @@ def test_writes_never_sign_so_an_arms_gpg_program_cannot_break_a_harness_commit(
     assert "commit.gpgsign=false" in s.cmd
 
 
-def test_github_plan_prints_private_repos_and_runs_nothing(monkeypatch):     # strengthened (review Q-11)
+def test_github_plan_prints_private_repos_for_the_active_arms_and_runs_nothing(monkeypatch):   # Task 23: parked
     def boom(*a, **k): raise AssertionError("github_plan ran a command")
     monkeypatch.setattr(repo.subprocess, "run", boom)
     monkeypatch.setattr(gitops.subprocess, "run", boom)
     cmds = repo.github_plan("pass1")
-    assert len(cmds) == 7 and all(c.startswith("gh repo create troupe-run/bakeoff-specs-") and "--private" in c for c in cmds)
+    assert len(cmds) == 6 and all(c.startswith("gh repo create troupe-run/bakeoff-specs-") and "--private" in c for c in cmds)
+    assert not any("bakeoff-specs-bmad" in c for c in cmds)                  # bmad is parked (until BMAD 6.13)
 
 
 def test_pass2_uses_the_scored_repo_name_and_other_passes_have_none():
@@ -221,6 +222,19 @@ def test_verify_fails_when_any_troupe_run_repo_is_public(monkeypatch):     # rev
     assert res["_public_repos"] == ["leaky"] and not repo.verify_ok(res)
 
 
+def test_verify_checks_only_the_active_arms_repos(monkeypatch):            # Task 23: bmad is parked
+    seen = []
+    def fake(argv, **k):
+        seen.append(argv)
+        if argv[:3] == ["gh", "repo", "list"]:
+            return type("R", (), {"returncode": 0, "stdout": "[]", "stderr": ""})()
+        return type("R", (), {"returncode": 0, "stderr": "",
+                              "stdout": '{"visibility": "PRIVATE", "hasIssuesEnabled": true, "isEmpty": true}'})()
+    monkeypatch.setattr(repo.subprocess, "run", fake)
+    res = repo.github_verify("pass1")
+    assert "bmad" not in res and set(res) - {"_public_repos"} == set(config.active_arms())
+
+
 def test_verify_passes_only_when_every_repo_is_private_empty_with_issues(monkeypatch):
     def fake(argv, **k):
         if argv[:3] == ["gh", "repo", "list"]:
@@ -231,10 +245,10 @@ def test_verify_passes_only_when_every_repo_is_private_empty_with_issues(monkeyp
     assert repo.verify_ok(repo.github_verify("pass1"))
 
 
-def test_cli_github_plan_prints_the_creates_and_pat_instructions_for_github_tracker_arms(capsys):
+def test_cli_github_plan_prints_the_creates_and_pat_instructions_for_active_github_tracker_arms(capsys):
     assert cli.main(["github-plan", "pass1"]) == 0
     out = capsys.readouterr().out
-    assert out.count("gh repo create") == 7
+    assert out.count("gh repo create") == 6 and "bmad" not in out            # Task 23: bmad is parked
     assert "bakeoff-gh-pass1-control" in out and "expiration: 45 days" in out
     assert "bakeoff-gh-pass1-speckitty" not in out                       # beads tracker: no PAT
 

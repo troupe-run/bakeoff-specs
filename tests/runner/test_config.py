@@ -92,3 +92,20 @@ def test_a_spec_path_without_a_reason_is_refused(tmp_path, monkeypatch):
 def test_the_common_docs_paths_are_pinned_once_each_with_a_reason():
     ps = config.load_pins().discovery_paths
     assert {"docs/", "*.md"} <= {s.path for s in ps} and all(s.why.strip() for s in ps)
+
+
+# ---- Task 23: parked arms (owner: bmad stays parked until BMAD 6.13) -------------------------------------------
+
+def test_bmad_is_parked_and_every_other_real_arm_is_active():
+    assert config.load_arm("bmad").parked is True
+    assert config.active_arms() == [a for a in config.all_arms() if a != "bmad"]
+    assert "bmad" in config.all_arms()                        # the full set stays for checklists
+
+
+def test_parked_is_a_boolean_and_defaults_to_false(tmp_path, monkeypatch):
+    assert config.load_arm("control").parked is False
+    (tmp_path / "control.toml").write_text(
+        (config.ARMS_DIR / "control.toml").read_text().replace('env = {}', 'parked = "yes"\nenv = {}', 1))
+    monkeypatch.setattr(config, "ARMS_DIR", tmp_path)
+    with pytest.raises(config.ConfigError, match="parked"):
+        config.load_arm("control")

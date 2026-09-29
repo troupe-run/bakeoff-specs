@@ -555,6 +555,13 @@ def test_every_github_tracker_keychain_pat_is_a_needle(tmp_state, monkeypatch):
     assert not [l for l in lits if "-speckitty-" in l or "-dry" in l]     # beads/dry arms have no PAT item
 
 
+def test_a_parked_arms_keychain_pat_is_never_queried(tmp_state, monkeypatch):     # Task 23: active arms only
+    asked = []
+    monkeypatch.setattr(credentials, "github_pat", lambda pass_, arm: asked.append(arm) or "")
+    secrets.literals(credentials.Credential(OAUTH))
+    assert "bmad" not in asked and "control" in asked
+
+
 # --- fix round 1 (4): containers by magic bytes ------------------------------------------------------------------
 
 def test_gzip_is_detected_by_magic_whatever_the_name(tmp_path):
