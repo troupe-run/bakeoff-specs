@@ -267,7 +267,7 @@ def test_scripted_owner_substitute_bug_keeps_the_planted_bug_by_default(tmp_path
 def test_scripted_owner_substitute_bug_can_be_scripted_to_substitute_with_its_test(tmp_path):
     (tmp_path / "s.toml").write_text(
         "[substitute]\ndefault = 'substitute'\ntitle = 'Alias handling bug'\nbody = 'Body'\nwhy = 'Because'\n"
-        "test_body = 'def test_x():\\n    assert False'\n")
+        'test_body = "def test_x():\\n    assert False"\n')
     o = owner.ScriptedOwner(tmp_path / "s.toml").bind(config.load_arm("dryrun"))
     choice, title, body, why, test_body, secs = o.substitute_bug(config.load_arm("dryrun"), "precheck passed")
     assert (choice, title, body, why, test_body, secs) == (
