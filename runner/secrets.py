@@ -603,14 +603,40 @@ def scan_snapshot(p: paths.Paths, snapshot: Path, literals: Iterable[str] = (), 
             parent.rmdir()
 
 
-def keychain_pat(pass_: str, arm: str) -> str | None:
-    """The arm's keychain PAT item `bakeoff-gh-<pass>-<arm>` (credentials.github_pat), or None if absent."""
+# Keychain lookups, at most once per process (controller ruling): an absent item is cached as absent too.
+# Values live only in this process's memory, like the Credential itself.
+_KEYCHAIN: dict[tuple[str, ...], object] = {}
+
+
+def clear_keychain_cache() -> None:
+    _KEYCHAIN.clear()
+
+
+def _oauth():
+    """The keychain OAuth Credential (credentials.from_keychain), cached; raises RuntimeError if unusable."""
     from runner import credentials
-    try:
-        v = credentials.github_pat(pass_, arm)
-    except RuntimeError:
-        return None
-    return v or None
+    if ("oauth",) not in _KEYCHAIN:
+        try:
+            _KEYCHAIN[("oauth",)] = credentials.from_keychain()
+        except RuntimeError as e:
+            _KEYCHAIN[("oauth",)] = RuntimeError(str(e))
+    got = _KEYCHAIN[("oauth",)]
+    if isinstance(got, RuntimeError):
+        raise RuntimeError(str(got))
+    return got
+
+
+def keychain_pat(pass_: str, arm: str) -> str | None:
+    """The arm's keychain PAT item `bakeoff-gh-<pass>-<arm>` (credentials.github_pat), or None if absent;
+    cached per process."""
+    from runner import credentials
+    key = ("pat", pass_, arm)
+    if key not in _KEYCHAIN:
+        try:
+            _KEYCHAIN[key] = credentials.github_pat(pass_, arm) or None
+        except RuntimeError:
+            _KEYCHAIN[key] = None
+    return _KEYCHAIN[key]      # type: ignore[return-value]
 
 
 def scan_arm(p: paths.Paths, literals: Iterable[str] = (), *, snapshots: bool = True) -> list[Finding]:
@@ -683,21 +709,25 @@ def _keychain_pats() -> list[str]:
     return out
 
 
-def literals(cred=None, *, require_oauth: bool = False) -> list[str]:
+def literals(cred=None, *, require_oauth: bool = False, keychain: bool = True) -> list[str]:
     """The values to search for: the dry-run dummy token; the Claude OAuth token (`cred`, else the keychain);
-    every keychain PAT item of a GitHub-tracker arm; every arm home's PAT values. A missing keychain OAuth
-    token is skipped — unless `require_oauth` (publish), when it raises RuntimeError: publish fails closed."""
-    from runner import credentials
+    every keychain PAT item of a GitHub-tracker arm; every arm home's PAT values. Keychain lookups are cached
+    per process. A missing keychain OAuth token is skipped — unless `require_oauth` (publish), when it raises
+    RuntimeError: publish fails closed. `keychain=False` (the pre-commit hook, controller ruling) never touches
+    the keychain: `cred` if given, and the arm-home PAT values."""
+    if require_oauth and not keychain:
+        raise ValueError("require_oauth needs the keychain")
     out: dict[str, None] = {DRY_RUN_TOKEN: None}
-    try:
-        c = cred if cred is not None else credentials.from_keychain()
-    except RuntimeError:
-        if require_oauth:
-            raise
-        c = None
+    c = cred
+    if c is None and keychain:
+        try:
+            c = _oauth()
+        except RuntimeError:
+            if require_oauth:
+                raise
     if c is not None:
         out[c.raw_for_scanner()] = None
-    for v in _keychain_pats():
+    for v in (_keychain_pats() if keychain else []):
         out[v] = None
     for home in _arm_homes():
         for v in home_pat_values(home):

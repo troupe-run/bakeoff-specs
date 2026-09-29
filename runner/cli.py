@@ -137,10 +137,10 @@ def register_scan(sub):
         from runner import gitops, secrets
         if not (ns.staged or ns.arm or ns.paths):
             ns.parser.error("nothing to scan: give --staged, --arm PASS ARM or PATH…")
-        lits = secrets.literals()
         found = []
-        if ns.staged:
-            found += secrets.scan_blobs(gitops.staged_blobs(), lits, harness=True)   # the index
+        if ns.staged:            # the hook: never the keychain (controller ruling); shapes + arm-home PAT values
+            found += secrets.scan_blobs(gitops.staged_blobs(), secrets.literals(keychain=False), harness=True)
+        lits = secrets.literals() if (ns.arm or ns.paths) else []   # evidence scans: keychain values too
         if ns.arm:
             found += secrets.scan_arm(paths.Paths(*ns.arm), lits)
         for x in ns.paths:

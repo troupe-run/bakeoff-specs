@@ -194,6 +194,7 @@ def test_a_short_home_value_never_becomes_a_needle(tmp_state):
 def test_a_literal_without_a_credential_falls_back_to_the_keychain(tmp_state, monkeypatch):
     monkeypatch.setattr(credentials, "from_keychain", lambda: credentials.Credential(OAUTH))
     assert OAUTH in secrets.literals()
+    secrets.clear_keychain_cache()                           # lookups are cached per process
     def missing():
         raise RuntimeError("no item")
     monkeypatch.setattr(credentials, "from_keychain", missing)
