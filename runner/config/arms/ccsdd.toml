@@ -11,11 +11,14 @@ env = {}
 setup = []
 run = ['^api\.github\.com$']
 
+# CANDIDATES §1.7a: `npx cc-sdd@latest --claude-skills` → the pinned 3.1.0 bin (same flags); then /kiro-steering.
+# Verified offline in bakeoff-arm-ccsdd:1 (Task 11): non-TTY, 50 files (CLAUDE.md included), byte-identical across runs.
 [setup]
-shell = []
-agent = []
+shell = ["cc-sdd --claude-skills"]
+agent = ["/kiro-steering\n\n{principles}"]
+post_shell = []
 plugins = []
-manifest_paths = [".claude", ".kiro/settings"]
+manifest_paths = [".claude", ".kiro/settings", "CLAUDE.md"]
 
 [drive]
 entry = "/kiro-discovery {handoff}"

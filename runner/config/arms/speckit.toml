@@ -11,9 +11,12 @@ env = {}
 setup = []
 run = ['^api\.github\.com$']
 
+# CANDIDATES §1.2 (existing-repo route: the repo holds only its empty initial commit); `extension add bug` is the
+# documented bug process (§1.2 item 4, used at step 6 — OD5). Both verified offline in bakeoff-arm-speckit:1 (Task 11).
 [setup]
-shell = []
-agent = []
+shell = ["specify init --here --force --integration claude", "specify extension add bug"]
+agent = ["/speckit-constitution {principles}"]
+post_shell = []
 plugins = []
 manifest_paths = [".claude", ".specify"]
 

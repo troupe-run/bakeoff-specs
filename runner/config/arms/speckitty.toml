@@ -11,11 +11,31 @@ env = {}
 setup = []
 run = []
 
+# CANDIDATES §1.4 items 2-3 + beads (§2.1): init, verify-setup, bd init, bd setup claude, then the beads tracker
+# binding with its recorded egress decision (review G1, G2). Verified offline against the pinned 3.2.7 (Task 11):
+# the `tracker` group exists only with SPEC_KITTY_ENABLE_SAAS_SYNC=1 (its ADR 2026-02-27 "CLI tracker surface gated
+# by SaaS sync flag"); a local provider binds with `--provider beads --workspace <id>` (`--credential` is optional:
+# the connector then runs `bd` in the repo); the egress decision is the `tracker.egress` key of .kittify/config.yaml,
+# `refused` | `permitted`, which no command writes: spec-kitty's own remedy text says "record `tracker.egress:
+# permitted` in this project's own .kittify/config.yaml". The last step records it through spec-kitty's own config
+# loader/saver (so it cannot write a shape spec-kitty would not read) and refuses a binding that is not beads.
+# `bd metrics off` (design §6, telemetry off): bd 1.3.0 sends anonymous usage metrics by default (its first-run
+# notice; `bd metrics` names the endpoint) — the opt-out is user-scope, ~/.config/bd/config.yaml, so it runs first.
 [setup]
-shell = []
-agent = []
+shell = ["spec-kitty init . --ai claude",
+         "spec-kitty verify-setup",
+         "bd metrics off",
+         "bd init",
+         "bd setup claude",
+         "SPEC_KITTY_ENABLE_SAAS_SYNC=1 spec-kitty tracker bind --provider beads --workspace beads",
+         '''/opt/venvs/speckitty/bin/python -c 'from pathlib import Path; from specify_cli.tracker.config import load_tracker_config, save_tracker_config, EGRESS_PERMITTED; r = Path("."); c = load_tracker_config(r); assert c.provider == "beads", f"tracker is bound to {c.provider!r}, not beads"; c.egress = EGRESS_PERMITTED; save_tracker_config(r, c)' ''']
+agent = ["/spec-kitty.charter {principles}"]
+post_shell = []
 plugins = []
-manifest_paths = [".claude", ".kittify", ".beads/config.yaml"]
+# spec-kitty installs its /spec-kitty.* commands and most skills user-scope (CLAUDE_CONFIG_DIR), not in the repo;
+# `bd init` writes the beads section of CLAUDE.md
+manifest_paths = [".claude", ".kittify", ".beads/config.yaml", "CLAUDE.md", "~/.claude/commands", "~/.claude/skills",
+                  "~/.config/bd"]
 
 [drive]
 entry = "/spec-kitty.specify {handoff}"

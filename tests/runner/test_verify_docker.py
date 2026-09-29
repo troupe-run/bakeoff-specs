@@ -550,12 +550,16 @@ def test_speckitty_setup_passes_its_checks_and_every_check_fails_when_broken(tmp
     cases = {
         "no charter.yaml": (lambda: (p.repo / ".kittify/charter/charter.yaml").unlink(), {"speckitty.charter"}, *none),
         "empty charter.md": (lambda: (p.repo / ".kittify/charter/charter.md").write_text(""), {"speckitty.charter"}, *none),
+        # verify-setup reinstalls a missing /spec-kitty.* command; on the read-only verify mounts that write is refused,
+        # so it fails too. Measured limits, recorded as cases so they stay visible: it does NOT notice a deleted managed
+        # skill (repo or user scope) nor a managed file whose content was changed
         "no /spec-kitty.accept": (lambda: (p.config_dir / "commands/spec-kitty.accept.md").unlink(),
-                                  {"speckitty.commands"}, *none),
+                                  {"speckitty.commands", "speckitty.verify-setup"}, *none),
         "no /spec-kitty.charter": (lambda: (p.config_dir / "commands/spec-kitty.charter.md").unlink(),
-                                   {"speckitty.commands"}, *none),
-        "a managed skill tampered with": (_tamper(p, ".claude/skills/spec-kitty-runtime-next/SKILL.md"),
-                                          {"speckitty.verify-setup"}, *none),
+                                   {"speckitty.commands", "speckitty.verify-setup"}, *none),
+        "a managed skill deleted (not noticed)": (lambda: (p.repo / ".claude/skills/spec-kitty-runtime-next/SKILL.md").unlink(),
+                                                  set(), *none),
+        "a managed skill's content changed (not noticed)": (_tamper(p, ".claude/skills/spec-kitty-runtime-next/SKILL.md"), set(), *none),
         "spec-kitty's SessionStart hook dropped": (_drop_hook(p, r"^spec-kitty session-start"),
                                                   {"speckitty.session-hook"}, *none),
         "bd prime hook dropped": (_drop_hook(p, r"^bd prime"), {"beads.claude-hook"}, *none),
