@@ -8,8 +8,10 @@ Outcome rules (spike B):
   is_error    a `result` event with `is_error == true`, whatever its subtype (401s come back as "success")
   no_result   the process ended without a `result` (a SIGTERM'd claude emits none)
   auth_failed a `system/api_retry` with `error == "authentication_failed"` (the container is stopped at once),
-              or an `is_error` result whose text has a known auth-failure shape (AUTH_FAILURE_SHAPES): a
-              credential fault is the harness's, never charged to the arm
+              or an `is_error` result whose stripped text STARTS WITH one of Claude Code's own auth messages
+              (AUTH_FAILURE_SHAPES) on a turn that did no work (no tool_use, cost 0 or absent): a credential
+              fault is the harness's, never charged to the arm — but an arm's own failure that merely
+              mentions a 401 stays `is_error` (fix round 2)
   timeout     over `timeout_s` (the caller passes `limits.turn_seconds`); the container is stopped
 """
 from __future__ import annotations
@@ -28,12 +30,12 @@ STREAM_LINE_LIMIT = 64 * 1024 * 1024        # asyncio's 64 KiB default breaks on
 POST_STOP_DRAIN_S = 90                      # docker stop grace (30 s) + rm, with margin
 OVERSIZE_MARKER = "bk_oversize_line"        # written to the stream in place of a line over the reader limit
 
-# Result texts that mean the credential failed, not the arm (fix round 1, item 1). Substring match on an
-# `is_error` result only. Sources: spike FINDINGS.md Evidence 2 ("Not logged in · Please run /login", no
-# token / --bare) and Q3/Q7 ("Failed to authenticate. API Error: 401 ..."); the API's 401 body carries
-# `authentication_error` / "invalid x-api-key".
-AUTH_FAILURE_SHAPES = ("Not logged in", "Failed to authenticate", "API Error: 401", "invalid x-api-key",
-                       "authentication_error")
+# How Claude Code's own credential-failure result texts BEGIN (fix round 2: anchored prefixes, never mid-text
+# substrings). Used only for an `is_error` result on a turn that did no work (see Parsed.outcome).
+#   "Not logged in"          spike FINDINGS.md Evidence 2, verbatim: "Not logged in · Please run /login"
+#   "Failed to authenticate" spike FINDINGS.md Q3/Q7, verbatim: "Failed to authenticate. API Error: 401 ..."
+#   "Invalid API key"        Claude Code's bad-key message ("Invalid API key · ..."); [UNVERIFIED] in the spike
+AUTH_FAILURE_SHAPES = ("Not logged in", "Failed to authenticate", "Invalid API key")
 
 
 @dataclass
@@ -43,6 +45,7 @@ class Parsed:
     result: dict | None = None
     retries: list[dict] = field(default_factory=list)
     auth_failed: bool = False
+    tool_uses: int = 0              # assistant tool_use blocks seen: the turn did work
 
     @property
     def outcome(self) -> Outcome:
@@ -52,8 +55,9 @@ class Parsed:
             return "no_result"
         if not self.result.get("is_error"):
             return "ok"
-        text = str(self.result.get("result") or "")
-        return "auth_failed" if any(s in text for s in AUTH_FAILURE_SHAPES) else "is_error"
+        text = str(self.result.get("result") or "").strip()
+        no_work = self.tool_uses == 0 and not self.result.get("total_cost_usd")
+        return "auth_failed" if no_work and text.startswith(AUTH_FAILURE_SHAPES) else "is_error"
 
     @property
     def final_text(self) -> str:
@@ -80,6 +84,10 @@ def feed(p: Parsed, line: str) -> None:
             p.auth_failed = True
     elif t == "result":
         p.result = ev
+    elif t == "assistant":
+        content = (ev.get("message") or {}).get("content") or []
+        if isinstance(content, list):
+            p.tool_uses += sum(1 for c in content if isinstance(c, dict) and c.get("type") == "tool_use")
 
 
 def parse_stream(lines: Iterable[str]) -> Parsed:
