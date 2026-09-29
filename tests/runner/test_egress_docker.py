@@ -22,3 +22,24 @@ def test_stage_allows_listed_host_and_refuses_others(tmp_path):
         assert curl(st.net, "--noproxy", "*", "https://1.1.1.1/").returncode != 0
     assert egress.decisions(log.read_text()) == [("api.anthropic.com", "allowed"), ("example.com", "refused")]
     assert subprocess.run(["docker", "network", "inspect", st.net], capture_output=True).returncode != 0
+
+
+def test_proxy_sidecar_is_hardened_and_still_works(tmp_path):                 # fix round 1, item 3
+    log = tmp_path / "egress.log"
+    with egress.Stage("t", "hardening", "run", [r"^api\.anthropic\.com$"], log) as st:
+        insp = subprocess.run(
+            ["docker", "inspect", st.proxy, "--format",
+             "{{.HostConfig.ReadonlyRootfs}}|{{.Config.User}}|{{.HostConfig.CapDrop}}|"
+             "{{.HostConfig.SecurityOpt}}|{{.HostConfig.Init}}"],
+            capture_output=True, text=True,
+        ).stdout.strip()
+        readonly, user, cap_drop, sec_opt, init = insp.split("|")
+        assert readonly == "true"
+        assert user == "nobody"
+        assert "ALL" in cap_drop
+        assert "no-new-privileges" in sec_opt
+        assert init == "true"
+        # still functions with the hardening in place: allowlisted host reachable, others refused/blocked
+        assert curl(st.net, "https://api.anthropic.com/").stdout.strip() not in ("", "000")
+        assert curl(st.net, "https://example.com/").returncode != 0
+        assert curl(st.net, "--noproxy", "*", "https://1.1.1.1/").returncode != 0

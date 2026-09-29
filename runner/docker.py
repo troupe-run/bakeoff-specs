@@ -40,6 +40,12 @@ def recording() -> Iterator[list[RunSpec]]:
         _recorder = prev
 
 def run_argv(s: RunSpec) -> list[str]:
+    for m in s.mounts:
+        if ":" in str(m.host) or ":" in m.ctr:
+            raise ValueError(
+                f"mount path contains ':', which the docker -v host:ctr:mode syntax cannot represent "
+                f"unambiguously (fix round 1, item 5): {m.host!r} -> {m.ctr!r}"
+            )
     if _recorder is not None:
         _recorder.append(s)
     a = ["docker", "run", "--rm", "--init", "--name", s.name, "--label", s.label,

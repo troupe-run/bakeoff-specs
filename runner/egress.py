@@ -37,18 +37,35 @@ class Stage:
         Path(self._allow.name).chmod(0o644)
         subprocess.run(["docker", "network", "create", "--internal", "--label", self.label, self.net],
                        check=True, capture_output=True)
+        # Hardened like every other container in this project (fix round 1, item 3): read-only root with a
+        # small noexec tmpfs for tinyproxy's own scratch use, all caps dropped, no-new-privileges, --init,
+        # and an explicit non-root user (the image's own `USER nobody` already does this; passing it again
+        # here makes the guarantee independent of the Dockerfile and assertable from the run argv/inspect).
         subprocess.run(["docker", "run", "-d", "--name", self.proxy, "--label", self.label, "--network", "bridge",
+                        "--init", "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=16m",
+                        "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--user", "nobody",
                         "-v", f"{self._allow.name}:/etc/tinyproxy/allow.txt:ro",
                         config.load_pins().images["proxy"]], check=True, capture_output=True)
         subprocess.run(["docker", "network", "connect", "--alias", "egress", self.net, self.proxy],
                        check=True, capture_output=True)
         return self
 
-    def __exit__(self, *exc) -> None:
+    def _save_log(self) -> None:
         log = subprocess.run(["docker", "logs", self.proxy], capture_output=True, text=True)
         self.log_to.parent.mkdir(parents=True, exist_ok=True)
         with open(self.log_to, "a") as fh:
             fh.write(log.stdout + log.stderr)
-        subprocess.run(["docker", "rm", "-f", self.proxy], capture_output=True)
-        subprocess.run(["docker", "network", "rm", self.net], capture_output=True)
-        Path(self._allow.name).unlink(missing_ok=True)
+
+    def __exit__(self, *exc) -> None:
+        # Fix round 1, item 2: teardown must happen even if fetching/writing the proxy log raises (disk
+        # full, permission error, etc). The log write is best-effort and its failure must never mask
+        # whatever exception (if any) is already propagating out of the `with` body, so it's swallowed
+        # here rather than left to propagate through `finally`.
+        try:
+            self._save_log()
+        except Exception:
+            pass
+        finally:
+            subprocess.run(["docker", "rm", "-f", self.proxy], capture_output=True)
+            subprocess.run(["docker", "network", "rm", self.net], capture_output=True)
+            Path(self._allow.name).unlink(missing_ok=True)

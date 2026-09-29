@@ -1,4 +1,5 @@
 from pathlib import Path
+import pytest
 from runner import config, docker
 from runner.docker import RunSpec, Mount, run_argv, stop_argv
 
@@ -42,6 +43,12 @@ def test_recording_collects_every_spec_built():
     assert [s.name for s in got] == ["bk-pass1-control-01-arm-a1-001", "b"]
     run_argv(spec(name="c"))
     assert len(got) == 2
+
+def test_mount_paths_containing_a_colon_are_rejected():                       # fix round 1, item 5
+    with pytest.raises(ValueError):
+        run_argv(spec(mounts=[Mount(Path("/h/weird:name"), "/inbox/msg.md", False)]))
+    with pytest.raises(ValueError):
+        run_argv(spec(mounts=[Mount(Path("/h/in/msg.md"), "/inbox:weird", False)]))
 
 def test_sweep_removes_labelled_networks_too(monkeypatch):                    # review C-13
     calls = []
