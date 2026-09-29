@@ -71,3 +71,14 @@ def test_a_clean_turn_reports_no_credential_files(tmp_path):                   #
 def test_the_real_credential_is_refused_for_a_dry_arm(tmp_path):              # review C-14
     with pytest.raises(PermissionError):
         run_turn(turn(tmp_path, "x"), credentials.Credential("real"), tmp_path / "out", 60)
+
+
+def test_a_not_logged_in_result_is_an_auth_failure(tmp_path):                  # fix round 1, item 1
+    r = run_turn(turn(tmp_path, "FAKE:not_logged_in"), credentials.dummy(), tmp_path / "out", 60)
+    assert r.outcome == "auth_failed" and r.result["is_error"] is True and r.retries == []
+
+def test_an_oversize_stream_line_is_marked_and_the_turn_ends_normally(tmp_path, monkeypatch):   # fix round 1, item 3
+    monkeypatch.setattr(session, "STREAM_LINE_LIMIT", 64 * 1024)
+    r = run_turn(turn(tmp_path, "FAKE:bigline=200000\nFAKE:reply=ok"), credentials.dummy(), tmp_path / "out", 60)
+    assert r.outcome == "ok" and r.final_text == "ok"
+    assert '"type": "bk_oversize_line"' in gzip.open(r.stream_path, "rt").read()

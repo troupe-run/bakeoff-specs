@@ -48,3 +48,69 @@ def test_credential_is_checked_before_anything_is_written(tmp_path):    # review
     with pytest.raises(PermissionError):
         run_turn(_turn(tmp_path), credentials.Credential("real"), tmp_path / "out", 60)
     assert not (tmp_path / "inbox").exists() and not (tmp_path / "out").exists()
+
+
+# --- Fix round 1 ------------------------------------------------------------------------------------------
+
+import asyncio
+from runner import session
+from runner.session import AUTH_FAILURE_SHAPES, read_lines
+
+@pytest.mark.parametrize("text", [
+    "Not logged in · Please run /login",                                  # spike FINDINGS Evidence 2 (verbatim)
+    "Failed to authenticate. API Error: 401 API key is invalid.",         # spike FINDINGS Q3 (verbatim)
+    'API Error: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}',
+    "invalid x-api-key",
+])
+def test_an_auth_shaped_error_result_is_auth_failed_not_the_arms_error(text):   # fix round 1, item 1
+    p = parse_stream([INIT, j(type="result", subtype="success", is_error=True, result=text)])
+    assert p.outcome == "auth_failed"
+
+def test_every_listed_auth_shape_is_recognised():
+    for shape in AUTH_FAILURE_SHAPES:
+        assert parse_stream([INIT, j(type="result", is_error=True, result=f"x {shape} y")]).outcome == "auth_failed"
+
+def test_an_ordinary_error_result_stays_is_error():
+    assert parse_stream([INIT, j(type="result", is_error=True, result="API Error: 529 overloaded")]).outcome == "is_error"
+
+def test_auth_words_in_a_successful_reply_do_not_make_it_a_fault():
+    p = parse_stream([INIT, j(type="result", is_error=False, result="I fixed the 'Not logged in' message")])
+    assert p.outcome == "ok"
+
+FIXTURE = Path(__file__).parent / "fixtures" / "stream-authenticated-shape.jsonl"
+
+def test_a_realistic_authenticated_stream_parses_to_its_result():          # fix round 1, item 6
+    # Shape of the owner's authenticated run (FINDINGS addendum: init -> assistant(thinking, tool_use) ->
+    # rate_limit_event -> user tool_result -> assistant -> result, $0.0298). The spike did not save that
+    # stream, so the event bodies are reconstructed from Claude Code's stream-json shape, ids scrubbed.
+    p = parse_stream(FIXTURE.read_text().splitlines())
+    assert p.outcome == "ok" and p.final_text == "Done."
+    assert p.session_id == "00000000-0000-4000-8000-000000000000"
+    assert p.init["model"] == "claude-opus-5-5" and p.init["claude_code_version"] == "2.1.281"
+    assert p.cost_usd == 0.0298 and p.retries == []
+    assert p.result["num_turns"] == 2 and p.result["duration_ms"] == 8123 and p.result["duration_api_ms"] == 7011
+    assert p.result["usage"]["output_tokens"] == 66
+    assert list(p.result["modelUsage"]) == ["claude-opus-5-5"]
+
+
+def _lines(data: bytes, limit: int) -> list[bytes]:
+    async def go():
+        r = asyncio.StreamReader(limit=limit)
+        r.feed_data(data); r.feed_eof()
+        return [l async for l in read_lines(r)]
+    return asyncio.run(go())
+
+def test_an_oversize_line_becomes_a_marker_and_reading_continues():       # fix round 1, item 3
+    got = _lines(b'{"a":1}\n' + b"x" * 1000 + b'\n{"b":2}\n{"c":', limit=64)
+    assert got[0] == b'{"a":1}\n'
+    assert json.loads(got[1]) == {"type": "bk_oversize_line", "bytes": 1001}
+    assert got[2:] == [b'{"b":2}\n', b'{"c":']                          # the truncated tail is still delivered
+
+def test_an_oversize_line_at_eof_without_newline_is_a_marker():
+    got = _lines(b'{"a":1}\n' + b"x" * 1000, limit=64)
+    assert got[0] == b'{"a":1}\n' and json.loads(got[1]) == {"type": "bk_oversize_line", "bytes": 1000}
+    assert len(got) == 2
+
+def test_the_marker_does_not_disturb_the_outcome():
+    marker = json.dumps({"type": "bk_oversize_line", "bytes": 10})
+    assert parse_stream([INIT, marker, j(type="result", is_error=False, result="ok")]).outcome == "ok"

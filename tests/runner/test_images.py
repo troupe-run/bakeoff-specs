@@ -121,6 +121,7 @@ def test_build_all_skips_an_unpinned_arm_and_records_the_error_without_failing_t
     monkeypatch.setattr(images, "_build", lambda *a, **k: None)
     monkeypatch.setattr(images, "_save", lambda tag: "tarhash")
     monkeypatch.setattr(images, "current_id", lambda tag: f"id:{tag}")
+    monkeypatch.setattr(images, "content_id", lambda tag: f"content:{tag}")
     monkeypatch.setattr(images, "_versions", lambda tag, extra: {})
 
     lock = images.build_all(["bmad", "control"], rebuild=True)
@@ -129,4 +130,24 @@ def test_build_all_skips_an_unpinned_arm_and_records_the_error_without_failing_t
     assert "unpinned plugin(s)" in lock["arms"]["bmad"]["error"]
     assert "id" not in lock["arms"]["bmad"]
     assert lock["arms"]["control"]["id"] == "id:bakeoff-base:cc2.1.281"
+    assert lock["arms"]["control"]["content"] == "content:bakeoff-base:cc2.1.281"
+    assert all(v["content"] == f"content:{t}" for t, v in lock["images"].items())
     assert "error" not in lock["arms"]["control"]
+
+
+def test_builds_carry_no_provenance_or_sbom_attestations(monkeypatch):        # Task 6 fix round 1, item 7
+    """Attestation manifests carry the build time, so with them every rebuild gets a new image-index id."""
+    calls = []
+    monkeypatch.setattr(images.subprocess, "run", lambda argv, **k: calls.append(argv))
+    images._build("t:1", images.IMAGES / "base", BASE_IMAGE="b")
+    assert "--provenance=false" in calls[0] and "--sbom=false" in calls[0]
+
+
+def test_content_id_is_the_platform_manifest_of_the_image(monkeypatch):       # Task 6 fix round 1, item 7
+    seen = []
+    def sh(*argv):
+        seen.append(argv)
+        return "linux/arm64" if "{{.Os}}/{{.Architecture}}" in argv else "sha256:manifest"
+    monkeypatch.setattr(images, "_sh", sh)
+    assert images.content_id("t:1") == "sha256:manifest"
+    assert seen[1] == ("docker", "image", "inspect", "--platform", "linux/arm64", "--format", "{{.Id}}", "t:1")
