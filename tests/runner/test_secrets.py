@@ -27,6 +27,9 @@ def _no_real_keychain(monkeypatch):
         raise RuntimeError("no keychain in tests")
     monkeypatch.setattr(credentials, "from_keychain", absent)
     monkeypatch.setattr(credentials, "github_pat", absent)
+    secrets.clear_keychain_cache()                     # the per-process cache must not leak between tests
+    yield
+    secrets.clear_keychain_cache()
 
 
 # --- the brief's five ---------------------------------------------------------------------------------------
@@ -635,3 +638,68 @@ def test_the_snapshot_pat_file_exemption_is_the_keychain_pat_only(tmp_state, mon
     none = secrets.scan_snapshot(p, p.snapshots / "step-01.tar", lits, pat=None)
     assert sorted((f.kind, f.line) for f in none) == [("github-pat", 2), ("github-token", 3), ("literal", 2),
                                                       ("literal", 4)]
+
+
+# --- ruling on concern 2: the hook never touches the keychain; lookups are cached per process ---------------------
+
+def _keychain_forbidden(monkeypatch):
+    def boom(*a, **k):
+        raise AssertionError("the keychain was queried")
+    monkeypatch.setattr(credentials, "from_keychain", boom)
+    monkeypatch.setattr(credentials, "github_pat", boom)
+
+
+def test_the_staged_scan_never_queries_the_keychain_but_uses_arm_home_pats(tmp_path, monkeypatch, capsys, tmp_state):
+    _keychain_forbidden(monkeypatch)
+    _home_with_pat(paths.STATE)                                         # a PAT value available without keychain
+    r = _staging_repo(tmp_path, monkeypatch)
+    enc = base64.b64encode(("x:" + HOME_PAT).encode()).decode()
+    (r / "a.txt").write_text(f"auth {enc}\n"); _host_git(r, "add", "a.txt")
+    assert cli.main(["scan", "--staged"]) == 1                          # found via the derived needle
+    assert "a.txt:1 literal" in capsys.readouterr().out
+    (r / "a.txt").write_text("clean\n"); _host_git(r, "add", "a.txt")
+    assert cli.main(["scan", "--staged"]) == 0
+
+
+def test_literals_without_keychain_never_query_it(tmp_state, monkeypatch):
+    _keychain_forbidden(monkeypatch)
+    _home_with_pat(paths.STATE)
+    assert set(secrets.literals(keychain=False)) == {"dry-run-dummy-token", HOME_PAT}
+    with pytest.raises(ValueError):
+        secrets.literals(keychain=False, require_oauth=True)          # publish can never skip the keychain
+
+
+def test_evidence_scans_do_query_the_keychain(tmp_path, monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(credentials, "from_keychain", lambda: calls.append("oauth") or credentials.Credential(OAUTH))
+    (tmp_path / "t.jsonl").write_text(f"{OAUTH}\n")
+    assert cli.main(["scan", str(tmp_path)]) == 1 and calls == ["oauth"]
+
+
+def test_each_keychain_lookup_happens_at_most_once_per_process(tmp_state, monkeypatch):
+    calls = []
+    def oauth():
+        calls.append("oauth"); return credentials.Credential(OAUTH)
+    def pat(pass_, arm):
+        calls.append((pass_, arm))
+        if arm == "control":
+            return f"kcpat-{pass_}-control-" + "7" * 20
+        raise RuntimeError("absent")                                   # an absent item is cached too
+    monkeypatch.setattr(credentials, "from_keychain", oauth)
+    monkeypatch.setattr(credentials, "github_pat", pat)
+    first = secrets.literals()
+    n = len(calls)
+    assert secrets.literals() == first and secrets.scan_arm(Paths("pass1", "control"), first) == []
+    assert len(calls) == n and len(set(map(str, calls))) == n           # nothing looked up twice
+    assert calls.count("oauth") == 1 and ("pass1", "control") in calls
+
+
+def test_a_failed_oauth_lookup_is_cached_and_still_fails_publish(tmp_state, monkeypatch):
+    calls = []
+    def absent():
+        calls.append(1); raise RuntimeError("no usable keychain item")
+    monkeypatch.setattr(credentials, "from_keychain", absent)
+    assert secrets.literals() == ["dry-run-dummy-token"]
+    with pytest.raises(RuntimeError):
+        secrets.literals(require_oauth=True)
+    assert calls == [1]
