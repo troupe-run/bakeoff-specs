@@ -96,9 +96,16 @@ class FakeHiddenSummary:
 
 def finalise_inputs(tmp_path, monkeypatch):
     """Real inputs for `evidence.finalise`; only `gitops` (containers) is faked here. `hidden` is
-    `FakeHiddenSummary`, not `runner.hidden` (not landed on this branch, Task 20 brief)."""
-    from runner import gitops
+    `FakeHiddenSummary`, not `runner.hidden` (not landed on this branch, Task 20 brief).
+
+    Redirects `paths.STATE`/`RESULTS` at `tmp_path` itself (same as the `tmp_state` fixture) — `ctx.paths`
+    (unlike `ctx.out`) is a real `Paths("dry9", "control")` whose `.setup_results` etc. resolve against those
+    module constants; a caller that later writes under `ctx.paths.setup_results` (fix round 1: the
+    owner-shell-commits record) must never land in the real repo's `results/` tree."""
+    from runner import gitops, paths
     from runner.transcripts import PinReport
+    monkeypatch.setattr(paths, "STATE", tmp_path / "state")
+    monkeypatch.setattr(paths, "RESULTS", tmp_path / "results")
     ctx = make_test_ctx(tmp_path, arm="control", step=3)
     (ctx.out / "questions.jsonl").write_text(_json.dumps({"kind": "continue", "arm_message": "Shall I proceed?",
                                                           "n": 1, "owner_seconds": 0.0, "escalated": [],

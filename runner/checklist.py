@@ -640,6 +640,23 @@ def require_clean_green(p: Paths) -> None:
 
 CARRIED = ("setup.agent-turns",)             # turn-based results a re-check cannot re-run without model turns
 
+# Task 20 fix round 1 (MEDIUM): the arm commits under the same neutral `gitops.IDENTITY` as `recheck`'s own
+# commit below and can write any subject line, including a forged copy of the "(owner shell adjustments)"
+# suffix — so a commit's message is never trustworthy evidence that it came from an owner's `runner shell`
+# session. This file is the harness's own record of the shas it actually committed, kept under
+# `p.setup_results` (outside the arm's repo and its home, where the arm has no write access) so
+# `evidence.finalise` can trust it without pattern-matching the arm's own git log.
+OWNER_SHELL_COMMITS_FILE = "owner-shell-commits.json"
+
+
+def record_owner_shell_commit(out: Path, sha: str) -> None:
+    """Appends `sha` (just committed by `recheck` from an owner's `runner shell` edits) to the harness-side
+    record under `out` (`p.setup_results`)."""
+    f = out / OWNER_SHELL_COMMITS_FILE
+    entries = json.loads(f.read_text()) if f.is_file() else []
+    entries.append({"sha": sha, "at": datetime.now(timezone.utc).isoformat()})
+    f.write_text(json.dumps(entries, indent=2))
+
 
 def recheck(pass_: str, arm_name: str, owner=None) -> SetupResult:
     """`runner checklist`: a FULL re-verify after setup — verify script + host checks + missing checks — with the
@@ -657,7 +674,8 @@ def recheck(pass_: str, arm_name: str, owner=None) -> SetupResult:
                for i in (*CARRIED, f"{arm.name}.smoke") if i in prev]
     with egress.Stage(pass_, arm_name, "setup", pins.egress_setup_common + arm.egress_setup, out / "egress.log") as st:
         if gitops.state(p).dirty:
-            gitops.commit_all(p, gitops.IDENTITY, f"Set up {arm.tool} {arm.version} (owner shell adjustments)")
+            sha = gitops.commit_all(p, gitops.IDENTITY, f"Set up {arm.tool} {arm.version} (owner shell adjustments)")
+            record_owner_shell_commit(out, sha)
         checks = verify(p, arm, "setup") + host_checks(p, arm, pass_, None, st, owner) + carried
     checks += missing_checks(md, checks, host_check_ids(arm))
     (out / "checklist.json").write_text(json.dumps([asdict(c) for c in checks], indent=2))

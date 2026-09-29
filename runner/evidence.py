@@ -11,23 +11,28 @@ Tasks 18 (`runner/hidden.py`) and 19 (`runner/quality.py`) are not landed yet: `
 passed in as their finished results (an object and a dict respectively, see their key/attribute names below)
 rather than being computed or imported here.
 
-Ledger ruling 2: `checklist.recheck` (`runner checklist`, run after an owner `runner shell` session) commits
-whatever the owner left dirty under the same neutral identity as every other setup commit
-(`gitops.IDENTITY` — never a distinct author), so the ONLY marker that a commit in the step's git log came
-from an owner's shell edit rather than the arm's own work is the ` (owner shell adjustments)` suffix
-`checklist.py`'s `recheck` always appends to its commit message. `owner_shell_commits` finds those commits so
-they surface as interventions (in both `run.json` and `summary.md`) instead of disappearing into the plain log.
+Ledger ruling 2 (fix round 1): `checklist.recheck` (`runner checklist`, run after an owner `runner shell`
+session) commits whatever the owner left dirty under the same neutral identity as every other setup commit
+(`gitops.IDENTITY` — never a distinct author), and the arm can write any commit message it likes under that
+same identity too. So a commit's subject is NEVER trustworthy evidence of who made it: `evidence` does not
+pattern-match `git log`. Instead `checklist.record_owner_shell_commit` writes every sha `recheck` actually
+commits into a harness-side record under `p.setup_results` (outside the arm's repo and its home, where the
+arm has no write access — `runner/checklist.py`); `owner_shell_shas`/`owner_shell_commit_entries` read and
+cross-reference that record by sha.
+
+Fix round 1 HIGH: a parked attempt (`AttemptResult.park`, an `owner.Park`) must be shown, not silently
+folded into `outcome == "parked"` — the owner has to act on it. `run.json["park"]` and a prominent line near
+the top of `summary.md` carry its `.reason` and `.context`.
 """
 from __future__ import annotations
 import hashlib, json, re
 from datetime import datetime, timezone
 from pathlib import Path
-from runner import egress, gitops, images
+from runner import checklist, egress, gitops, images
 
 SOURCE = ("Claude Code 2.1.281 stream-json result.total_cost_usd — client-side estimate "
           "(OAuth subscription; not a bill)")
 APPROVAL_WORDS = re.compile(r"\b(approve|approval|sign[- ]?off|proceed|go ahead|LGTM|confirm)\b", re.I)
-OWNER_SHELL_MARKER = "(owner shell adjustments)"        # runner/checklist.py:recheck's commit-message suffix
 
 
 def sha256_file(p: Path) -> str:
@@ -71,10 +76,24 @@ def possible_missed_approvals(qa: list[dict]) -> list[dict]:
     return [q for q in qa if q.get("kind") == "continue" and APPROVAL_WORDS.search(q.get("arm_message") or "")]
 
 
-def owner_shell_commits(log: list[dict]) -> list[dict]:
-    """(ledger ruling 2) entries of `gitops.log`'s output whose subject carries `checklist.recheck`'s
-    owner-shell marker — an intervention the runner didn't make itself but must still surface as one."""
-    return [c for c in log if (c.get("subject") or "").endswith(OWNER_SHELL_MARKER)]
+def owner_shell_shas(p) -> set[str]:
+    """(ledger ruling 2, fix round 1) shas `checklist.recheck` actually committed, from the harness-side
+    record under `p.setup_results` — never from the arm's own (forgeable) git log."""
+    f = p.setup_results / checklist.OWNER_SHELL_COMMITS_FILE
+    return {e["sha"] for e in json.loads(f.read_text())} if f.is_file() else set()
+
+
+def owner_shell_commit_entries(log: list[dict], recorded_shas: set[str]) -> list[dict]:
+    """Entries of `gitops.log`'s output whose sha is in `recorded_shas` (fix round 1 MEDIUM: matched by sha,
+    never by pattern-matching the commit subject — the arm commits under the same identity as `recheck` and
+    can write any subject line, including a forged copy of its `" (owner shell adjustments)"` suffix)."""
+    return [c for c in log if c.get("sha") in recorded_shas]
+
+
+def parked_attempt(attempts: list):
+    """The attempt that ended in an owner `Park`, if any. A park ends the run for the step at once (Task 15
+    ruling 1), so at most one attempt ever carries one — the last, when several attempts ran first."""
+    return next((a for a in reversed(attempts) if a.park is not None), None)
 
 
 def _qa(out: Path) -> list[dict]:
@@ -109,9 +128,16 @@ def finalise(ctx, *, attempts, extra_turns, hidden, quality, pin, sha_before, st
 
     lock = images.lock() if images.LOCK.exists() else {"arms": {}, "images": {}}
     overrides_f = p.setup_results / "model-overrides.json"
-    owner_shell = owner_shell_commits(log)
+    owner_shell = owner_shell_commit_entries(log, owner_shell_shas(p))
     interventions = [i for a in attempts for i in a.interventions] + \
         [f"owner-shell-commit:{c_['sha'][:8]}" for c_ in owner_shell]
+
+    pa = parked_attempt(attempts)
+    park = None
+    if pa is not None:
+        pk = pa.park
+        park = {"attempt": attempts.index(pa) + 1, "prompt": pk.prompt, "context": pk.context,
+                "reason": pk.reason, "at": pk.at, "seconds": pk.seconds}
 
     run = {"pass": ctx.pass_, "arm": ctx.arm.name, "step": ctx.step, "outcome": outcome, "attempts": len(attempts),
            "started_at": _iso(started), "ended_at": _iso(ended),               # epoch seconds (time.time())
@@ -128,6 +154,7 @@ def finalise(ctx, *, attempts, extra_turns, hidden, quality, pin, sha_before, st
            "po_brief_sha256_at_end": sha256_file(ctx.brief_path),
            "contract_sha256": shas["contract"], "step_brief_sha256": shas["step_brief"],
            "interventions": interventions,
+           "park": park,
            "breaches": [a.breach for a in attempts if a.breach],
            "research_attempts": research_attempts(arm_turns, egress_log),
            "model_overrides": json.loads(overrides_f.read_text())["declared"] if overrides_f.exists() else [],
@@ -139,14 +166,18 @@ def finalise(ctx, *, attempts, extra_turns, hidden, quality, pin, sha_before, st
     esc = [q for q in qa if q.get("escalated")]
     sig = [q for q in qa if q.get("significant")]
     mut = (quality.get("mutation") or {})
-    lines = [f"# Step {ctx.step} summary — {ctx.arm.name} ({ctx.pass_})", "",
-             f"**Outcome:** {outcome} after {len(attempts)} attempt(s); interventions: {run['interventions'] or 'none'}",
+    lines = [f"# Step {ctx.step} summary — {ctx.arm.name} ({ctx.pass_})", ""]
+    if park:                                    # fix round 1 HIGH: prominent — the owner has to act on this
+        lines += [f"## PARKED — owner action needed (attempt {park['attempt']})",
+                  f"`{park['prompt']}` parked ({park['reason']}): {park['context']}", ""]
+    lines += [f"**Outcome:** {outcome} after {len(attempts)} attempt(s); interventions: {run['interventions'] or 'none'}",
              f"**Hidden tests:** {hidden.passed}/{hidden.total} passed; new at this step {hidden.new_passed}/"
              f"{len(hidden.new_at_step)} (discriminating: {hidden.new_discriminating_passed}); arm flakes: {hidden.flaky_arm}",
              f"**Model pin:** {'ok' if pin.ok else 'VIOLATION'} ({pin.assistant_messages} transcript assistant messages)",
              f"**Cost (estimate):** arm ${c['arm']['usd']:.2f} · PO ${c['po']['usd']:.2f} · harness ${c['harness']['usd']:.2f}",
              f"**Time:** {run['wall_seconds']} s wall, {run['owner_wait_seconds']} s waiting on the owner",
-             f"**Quality:** mypy {quality.get('mypy_errors')} errors · ruff {quality.get('ruff_findings')} · "
+             f"**Quality:** mypy {quality.get('mypy_errors')} errors · "
+             f"ruff {quality.get('ruff_findings')} (arm {quality.get('ruff_arm_findings')}) · "
              f"mutation score {mut.get('score')} ({mut.get('sampling', '')}{', partial' if mut.get('partial') else ''})",
              f"**Research attempts:** {run['research_attempts']}", "", "## Escalations"]
     lines += [f"- {', '.join(q['escalated'])} → {q['reply']}" for q in esc] or ["- none"]
