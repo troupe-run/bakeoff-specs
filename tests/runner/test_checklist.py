@@ -458,3 +458,97 @@ def test_a_broken_arm_toml_does_not_break_importing_checklist(tmp_path):        
                        cwd=checklist.REPO_ROOT)
     assert r.returncode == 0, r.stderr
     assert r.stdout.strip() == "['bmad'] True True"
+
+
+# --- Task 10: the checklists and verify scripts for control, superpowers, openspec, bmad -------------------
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2] / "checklists"
+DONE_ARMS = ["bmad", "control", "openspec", "superpowers"]        # Task 11 extends this to all seven
+SECTIONS = ["## Source", "## Pins", "## Setup (what the runner runs)", "## Machine-verified", "## Owner-verified",
+            "## Known traps"]
+
+
+def md_ids(arm):
+    """The `## Machine-verified` ids of an arm's checklist (only that section: other sections may quote ids)."""
+    return checklist.machine_ids((ROOT / f"{arm}.md").read_text())
+
+
+def script_ids(arm):
+    """Every id a `check <id> …` CALL names in the arm's script and lib.sh (line-start calls only, so prose in a
+    comment such as 'fails its check rather than…' is never read as an id)."""
+    text = (ROOT / "verify" / f"{arm}.sh").read_text() + (ROOT / "verify" / "lib.sh").read_text()
+    return set(re.findall(r"^\s*check ([a-z0-9.-]+) ", text, re.M))
+
+
+@pytest.mark.parametrize("arm", DONE_ARMS)
+def test_every_machine_id_in_the_md_is_named_by_a_check_call_or_host_checks_and_vice_versa(arm):   # m14: added
+    assert md_ids(arm) == script_ids(arm) | checklist.HOST_CHECKS[arm]
+
+
+@pytest.mark.parametrize("arm", DONE_ARMS)
+def test_every_checklist_has_the_six_sections_in_order_with_owner_items(arm):
+    text = (ROOT / f"{arm}.md").read_text()
+    at = [text.find(s + "\n") for s in SECTIONS]
+    assert -1 not in at and at == sorted(at), dict(zip(SECTIONS, at))
+    assert checklist.owner_items(text)
+
+
+@pytest.mark.parametrize("arm", DONE_ARMS)
+def test_every_checklist_lists_the_origin_checks(arm):                                        # preflight B4
+    assert {"common.origin", "setup.origin-push"} <= md_ids(arm)
+
+
+def _section(text, name):
+    m = re.search(rf"^{re.escape(name)}\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+    return m.group(1) if m else ""
+
+
+@pytest.mark.parametrize("arm", DONE_ARMS)
+def test_every_setup_step_cites_its_source_section(arm):
+    steps = [l for l in _section((ROOT / f"{arm}.md").read_text(), "## Setup (what the runner runs)").splitlines()
+             if re.match(r"^\d+\. |^Nothing", l)]
+    assert steps and all("§" in l for l in steps), [l for l in steps if "§" not in l]
+
+
+@pytest.mark.parametrize("arm", ["superpowers", "openspec", "bmad"])
+def test_method_checklists_cite_their_candidates_section(arm):
+    text = (ROOT / f"{arm}.md").read_text()
+    assert config.load_arm(arm).citation in _section(text, "## Source")
+
+
+def test_superpowers_setup_is_the_documented_smoke_test_and_nothing_in_the_repo():   # CANDIDATES §1.1 items 2-3
+    a = config.load_arm("superpowers")
+    assert (a.setup_shell, a.setup_agent, a.setup_post_shell) == ([], [], [])
+    assert a.smoke == config.Smoke("Let's make a react todo list", "brainstorming")
+    assert a.manifest_paths == []            # no init: setup creates nothing in the repo (controller ruling)
+    assert [p.name for p in a.plugins] == ["superpowers"] and a.plugins[0].sha
+
+
+def test_openspec_setup_is_init_telemetry_off_and_the_principles_as_context():        # CANDIDATES §1.3
+    a = config.load_arm("openspec")
+    assert a.setup_shell[:2] == ["openspec init --tools claude", "openspec config set telemetry.enabled false"]
+    assert "/setup/project-principles.md" in a.setup_shell[2] and "context: |" in a.setup_shell[2]
+    assert (a.setup_agent, a.setup_post_shell, a.plugins) == ([], [], [])
+    assert a.manifest_paths == [".claude", "openspec", "~/.config/openspec"]
+
+
+def test_bmad_setup_is_bmad_setup_gh_ticketing_principles_then_script_locks():         # CANDIDATES §1.5
+    a = config.load_arm("bmad")
+    assert a.setup_shell == [] and len(a.setup_agent) == 3
+    assert "`bmad setup`" in a.setup_agent[0] and "gh store" in a.setup_agent[1]
+    assert a.setup_agent[2].endswith("{principles}")
+    assert "uv lock --script" in a.setup_post_shell[0] and "_bmad/*/scripts/*.py" in a.setup_post_shell[0]
+    assert a.manifest_paths == ["_bmad"]
+    assert [p.name for p in a.plugins] == ["bmad-method", "bmad-core-tools"]
+
+
+def test_verify_containers_see_the_principles_read_only(tmp_state, monkeypatch):   # openspec.context compares them
+    seen = []
+    monkeypatch.setattr(checklist.repo, "recover", lambda p: None)
+    monkeypatch.setattr(checklist.docker, "run", lambda s, timeout: seen.append(s) or _cp('{"id":"a","ok":true,"detail":""}\n'))
+    checklist.verify(Paths("dry9", "openspec"), config.load_arm("openspec"), "setup")
+    m = {x.ctr: x for x in seen[0].mounts}
+    assert m["/setup/project-principles.md"].host == checklist.PRINCIPLES and m["/setup/project-principles.md"].ro
+    assert m["/checks"].ro and seen[0].network == "none"
