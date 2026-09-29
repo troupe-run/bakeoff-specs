@@ -10,7 +10,10 @@ DELIVERY = handoff.MESSAGES["delivery"]
 @pytest.mark.parametrize("brief", BRIEFS, ids=lambda p: p.name)
 def test_every_named_section_resolves_to_exactly_one_contract_heading(brief):
     kind, names = handoff.named(brief.read_text())
-    assert names and all(handoff.norm(n) in handoff.contract_sections(C) for n in names)
+    heads = [l[3:] for l in C.splitlines() if l.startswith("## ")]
+    normed = [handoff.norm(h) for h in heads]
+    assert len(set(normed)) == len(heads) == len(handoff.contract_sections(C))   # no two headings share a name
+    assert names and all(normed.count(handoff.norm(n)) == 1 for n in names)
 
 def test_step1_hands_over_the_five_sections_in_force_in_order():
     msg = handoff.compose(1, BRIEFS[0].read_text(), C)
@@ -25,7 +28,8 @@ def test_every_handoff_ends_with_the_one_identical_delivery_sentence(step):     
 
 def test_step3_hands_over_get_and_show_only():
     msg = handoff.compose(3, BRIEFS[2].read_text(), C)
-    assert [l for l in msg.splitlines() if l.startswith("## ")][0].startswith("## `get` and `show`")
+    heads = [l for l in msg.splitlines() if l.startswith("## ")]
+    assert len(heads) == 1 and heads[0].startswith("## `get` and `show`")
     assert msg.startswith(BRIEFS[2].read_text().rstrip("\n"))
 
 def test_step2_handoff_is_exactly_brief_sync_section_and_delivery_with_no_harness_text():
