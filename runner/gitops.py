@@ -10,10 +10,11 @@ runs them — e.g. beads' `bd` hooks — and the sandbox contains them).
 
 Host-side git exists only in the helpers at the bottom, and none of them takes an arm's `Paths`: read-only
 `ls-remote` against public remotes, the harness repo itself, and a bare clone of a bundle made in a container
-(a bundle carries objects and refs only — no config, no hooks), which is what `repo.publish` pushes from.
+(a bundle carries objects and refs only — no config, no hooks; validated before git reads it), which is
+what `repo.publish` pushes from. The host never untars an arm tree: extraction happens in containers.
 """
 from __future__ import annotations
-import dataclasses, json, os, subprocess, tempfile, uuid
+import dataclasses, json, os, stat, subprocess, uuid
 from dataclasses import dataclass
 from pathlib import Path
 from runner import config, docker
@@ -113,18 +114,36 @@ def archive(p: Paths, sha: str) -> bytes:
 
 
 def grep_files(p: Paths, sha: str, pattern: str, pathspec: str = ":!*.py") -> list[str]:
-    r = git(p, "grep", "-l", "-F", pattern, sha, "--", pathspec, check=False)
+    r = git(p, "grep", "-l", "-F", "-e", pattern, sha, "--", pathspec, check=False)
     return sorted(l.split(":", 1)[1] for l in _out(r).splitlines() if ":" in l)
 
 
+def _nul_fields(r: subprocess.CompletedProcess, n: int) -> list[list[str]]:
+    """`git log -z` with NUL between fields: NUL can never occur in a sha, an author name or a message
+    (git truncates messages at NUL), so the split is exact whatever the text contains."""
+    raw = r.stdout.decode(errors="replace")
+    if not raw:
+        return []
+    parts = raw.rstrip("\0").split("\0")
+    if len(parts) % n:
+        raise RuntimeError(f"git log: {len(parts)} NUL-separated fields is not a multiple of {n}")
+    return [parts[i:i + n] for i in range(0, len(parts), n)]
+
+
 def log(p: Paths, a: str, b: str) -> list[dict]:
-    r = git(p, "log", "--format=%H%x1f%an%x1f%s", f"{a}..{b}")
-    return [dict(zip(("sha", "author", "subject"), l.split("\x1f"))) for l in _out(r).splitlines() if l]
+    r = git(p, "log", "-z", "--format=%H%x00%an%x00%s", f"{a}..{b}")
+    return [dict(zip(("sha", "author", "subject"), f)) for f in _nul_fields(r, 3)]
+
+
+_SEPS = str.maketrans({"\x1e": "\ufffd", "\x1f": "\ufffd"})
 
 
 def commits_between(p: Paths, a: str, b: str) -> str:
-    """Records separated by \x1e; sha and message separated by \x1f (unambiguous for any message text)."""
-    return _out(git(p, "log", "--format=%H%x1f%s%n%b%x1e", f"{a}..{b}"))
+    r"""Records `sha\x1fmessage\x1e` (message = subject, newline, body; trailing whitespace stripped), newest
+    first. Parsed exactly from NUL-delimited output; any \x1e or \x1f inside a message is replaced by U+FFFD,
+    so splitting on \x1e then on the first \x1f is always exact."""
+    r = git(p, "log", "-z", "--format=%H%x00%s%n%b", f"{a}..{b}")
+    return "".join(f"{sha}\x1f{msg.rstrip().translate(_SEPS)}\x1e" for sha, msg in _nul_fields(r, 2))
 
 
 def diffstat(p: Paths, a: str, b: str) -> str:
@@ -155,10 +174,66 @@ def ls_files(p: Paths, sha: str) -> list[str]:
     return _out(git(p, "ls-tree", "-r", "--name-only", sha)).splitlines()
 
 
+_EXPORT_SH = r"""set -euo pipefail
+git -C "$1" -c core.hooksPath=/dev/null -c core.fsmonitor=false -c safe.directory='*' archive --format=tar "$2" \
+  | tar -x -f - -C /out --no-same-owner"""
+
+
+def export_tree(p: Paths, sha: str, dest: Path) -> None:
+    """The committed tree at `sha`, extracted INSIDE a read container into `dest` (mounted at /out). The host
+    never untars an arm tree: links in it are just data, written as links, contained by the sandbox."""
+    dest.mkdir(parents=True, exist_ok=True)
+    s = dataclasses.replace(spec(p, [], out_dir=dest), cmd=["bash", "-c", _EXPORT_SH, "export", p.container_repo, sha])
+    r = docker.run(s, timeout=600)
+    if r.returncode != 0:
+        raise RuntimeError(f"export failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
+
+
+_BUNDLE_TREE_SH = r"""set -euo pipefail
+git -c core.hooksPath=/dev/null -c safe.directory='*' clone -q --bare "/out/$1" /tmp/clone.git
+git -C /tmp/clone.git archive --format=tar "$2" | tar -x -f - -C "/out/$3" --no-same-owner"""
+
+
+def bundle_tree(p: Paths, bundle_path: Path, ref: str, dest_name: str) -> Path:
+    """The tree of `ref` in a bundle, extracted INSIDE a network-less container into
+    `bundle_path.parent / dest_name` (publish's scan input: exactly what would be pushed)."""
+    check_bundle(bundle_path)
+    out = bundle_path.parent
+    (out / dest_name).mkdir()
+    s = dataclasses.replace(spec(p, [], out_dir=out), mounts=[Mount(out, "/out", False)],
+                            cmd=["bash", "-c", _BUNDLE_TREE_SH, "bundle-tree", bundle_path.name, ref, dest_name])
+    r = docker.run(s, timeout=600)
+    if r.returncode != 0:
+        raise RuntimeError(f"bundle tree failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:400]}")
+    return out / dest_name
+
+
+BUNDLE_HEADERS = (b"# v2 git bundle\n", b"# v3 git bundle\n")
+
+
+def check_bundle(path: Path) -> None:
+    """Before any git reads it (the host clone above all): a regular file — not a link, directory or device —
+    whose first line is a v2 or v3 git bundle header."""
+    try:
+        st = os.lstat(path)
+    except OSError as e:
+        raise ValueError(f"bundle {path}: {e}") from e
+    if not stat.S_ISREG(st.st_mode):
+        raise ValueError(f"bundle {path}: not a regular file")
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        head_ = os.read(fd, 32)
+    finally:
+        os.close(fd)
+    if not head_.startswith(BUNDLE_HEADERS):
+        raise ValueError(f"bundle {path}: no git bundle header (got {head_[:20]!r})")
+
+
 def bundle(p: Paths, host_dest: Path, refs: tuple[str, ...] = ("--all",)) -> Path:
     """Made in a read container; only `host_dest`'s directory is mounted writable (at /out)."""
     host_dest.parent.mkdir(parents=True, exist_ok=True)
     git(p, "bundle", "create", f"/out/{host_dest.name}", *refs, out_dir=host_dest.parent)
+    check_bundle(host_dest)
     return host_dest
 
 
@@ -253,14 +328,9 @@ def harness_is_clean(path: Path) -> bool:
 def clone_bundle_bare(bundle_path: Path, dest: Path) -> None:
     """Host: bare clone of a bundle made in a container — objects and refs only, no config or hooks. System
     and global config are ignored too, so no template dir or include can add any."""
+    check_bundle(bundle_path)
     subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "clone", "-q", "--bare", str(bundle_path), str(dest)],
                    check=True, env=_host_env(), capture_output=True)
-
-
-def archive_from_bare(bare: Path, ref: str) -> bytes:
-    """No filter/textconv driver can run: the bare clone's config defines none and system/global are ignored."""
-    return subprocess.run(["git", "-C", str(bare), "archive", "--format=tar", ref], capture_output=True,
-                          check=True, env=_host_env()).stdout
 
 
 def push_from_bare(bare: Path, url: str, ref: str = "main") -> None:

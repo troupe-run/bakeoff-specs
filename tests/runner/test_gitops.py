@@ -128,8 +128,7 @@ def test_no_runner_module_but_gitops_builds_a_git_argv():                     # 
     assert offenders == []
 
 
-HOST_HELPERS = {"ls_remote_tag", "commit_harness_file", "harness_is_clean", "clone_bundle_bare",
-                "archive_from_bare", "push_from_bare"}
+HOST_HELPERS = {"ls_remote_tag", "commit_harness_file", "harness_is_clean", "clone_bundle_bare", "push_from_bare"}
 
 
 def test_host_side_git_lives_only_in_helpers_that_never_take_an_arm_repo():   # review S-1
@@ -253,3 +252,132 @@ def test_cli_publish_refuses_while_there_is_no_secret_scanner(monkeypatch, capsy
     monkeypatch.setattr(repo, "publish", lambda *a, **k: (_ for _ in ()).throw(AssertionError("published")))
     assert cli.main(["publish", "pass1", "control"]) != 0
     assert "secret scan" in capsys.readouterr().out
+
+
+# --- fix round 1 ----------------------------------------------------------------------------------------
+
+def test_the_host_never_untars_or_tars_an_arm_tree():                        # fix round 1, items 1+2
+    """snapshot/restore/export/publish extraction runs `tar` in containers; no runner module uses tarfile
+    (CPython's filter="data" has had bypasses, and it rejects the absolute links a venv contains)."""
+    offenders = [f.name for f in RUNNER.glob("*.py") if re.search(r"\btarfile\b|extractall", f.read_text())]
+    assert offenders == []
+
+
+def test_harness_python_is_a_patched_interpreter():                           # fix round 1, item 2
+    root = RUNNER.parent
+    import tomllib
+    assert tomllib.loads((root / "pyproject.toml").read_text())["project"]["requires-python"] == ">=3.12.11"
+    pinned = tuple(int(x) for x in (root / ".python-version").read_text().strip().split("."))
+    assert pinned >= (3, 12, 11)
+    import sys
+    assert sys.version_info[:3] >= (3, 12, 11)
+
+
+def test_check_bundle_accepts_only_a_regular_file_with_a_bundle_header(tmp_path):     # fix round 1, item 4
+    ok2, ok3 = tmp_path / "v2.bundle", tmp_path / "v3.bundle"
+    ok2.write_bytes(b"# v2 git bundle\nabc refs/heads/main\n\n"); ok3.write_bytes(b"# v3 git bundle\n@object-format=sha1\n")
+    gitops.check_bundle(ok2); gitops.check_bundle(ok3)
+    bad = tmp_path / "bad.bundle"; bad.write_bytes(b"[core]\n\tfsmonitor = evil\n")
+    link = tmp_path / "link.bundle"; link.symlink_to(ok2)
+    d = tmp_path / "dir.bundle"; d.mkdir()
+    for b in (bad, link, d, tmp_path / "missing.bundle"):
+        with pytest.raises(ValueError):
+            gitops.check_bundle(b)
+    with pytest.raises(ValueError):
+        gitops.clone_bundle_bare(bad, tmp_path / "clone.git")          # validated before host git reads it
+    assert not (tmp_path / "clone.git").exists()
+
+
+def test_log_parses_exactly_whatever_the_subject_or_author_contains(monkeypatch):    # fix round 1, item 5
+    a, b = "a" * 40, "b" * 40
+    rec = _Rec(stdout=f"{a}\0Eve \x1f Doe\0sub\x1fject\x1e\n\0{b}\0Bob\0plain\0".encode())
+    monkeypatch.setattr(gitops.docker, "run", rec)
+    assert gitops.log(Paths("pass1", "control"), "x", "y") == [
+        {"sha": a, "author": "Eve \x1f Doe", "subject": "sub\x1fject\x1e\n"},
+        {"sha": b, "author": "Bob", "subject": "plain"}]
+    assert "-z" in _git_args(rec.specs[0])
+
+
+def test_commits_between_records_split_exactly_even_with_separators_in_messages(monkeypatch):
+    a, b = "a" * 40, "b" * 40
+    rec = _Rec(stdout=f"{a}\0Fix \x1e alias\n\nbody \x1f x\n\0{b}\0Second\n\0".encode())
+    monkeypatch.setattr(gitops.docker, "run", rec)
+    out = gitops.commits_between(Paths("pass1", "control"), "x", "y")
+    recs = [r.split("\x1f", 1) for r in out.split("\x1e") if r]
+    assert recs == [[a, "Fix \ufffd alias\n\nbody \ufffd x"], [b, "Second"]]
+
+
+def test_grep_passes_the_pattern_as_an_expression_not_an_option(monkeypatch):      # fix round 1, item 6
+    rec = _Rec(stdout=b"")
+    monkeypatch.setattr(gitops.docker, "run", rec)
+    gitops.grep_files(Paths("pass1", "control"), "HEAD", "--open-files-in-pager=sh")
+    args = _git_args(rec.specs[0])
+    i = args.index("-e")
+    assert args[i + 1] == "--open-files-in-pager=sh" and args.index("--") > i + 1
+
+
+def _fake_restore(monkeypatch, fail_on=None):
+    """Stand in for the tar container: write a recognisable tree into the staging mount."""
+    from runner import repo as r
+    def fake_run(s, what):
+        if fail_on == "extract":
+            raise RuntimeError("tar refused")
+        out = next(m.host for m in s.mounts if m.ctr == "/out")
+        for n in ("home", "work"):
+            (out / n).mkdir(); (out / n / "restored").write_text(n)
+    monkeypatch.setattr(r, "_run", fake_run)
+    monkeypatch.setattr(r, "_await_visible_in_containers", lambda p: None)
+
+
+def _live_tree(tmp_state):
+    p = Paths("dry9", "dryrun")
+    for d in (p.home, p.work, p.snapshots):
+        d.mkdir(parents=True)
+    (p.home / "current").write_text("h"); (p.work / "current").write_text("w")
+    (p.snapshots / "step-01.tar").write_bytes(b"x")
+    return p
+
+
+def test_restore_swaps_in_the_extracted_trees_and_leaves_nothing_behind(tmp_state, monkeypatch):   # item 7
+    p = _live_tree(tmp_state); _fake_restore(monkeypatch)
+    repo.restore(p, 1)
+    assert (p.home / "restored").exists() and (p.work / "restored").exists() and not (p.home / "current").exists()
+    assert sorted(x.name for x in p.base.iterdir()) == ["home", "snapshots", "work"]
+
+
+def test_a_failed_extract_leaves_the_current_trees_untouched(tmp_state, monkeypatch):
+    p = _live_tree(tmp_state); _fake_restore(monkeypatch, fail_on="extract")
+    with pytest.raises(RuntimeError):
+        repo.restore(p, 1)
+    assert (p.home / "current").exists() and (p.work / "current").exists()
+    assert sorted(x.name for x in p.base.iterdir()) == ["home", "snapshots", "work"]
+
+
+def test_a_failure_mid_swap_puts_the_previous_trees_back(tmp_state, monkeypatch):
+    p = _live_tree(tmp_state); _fake_restore(monkeypatch)
+    real = Path.rename
+    def flaky(self, target):
+        if self.name == "work" and self.parent.name.startswith(".restore-"):
+            raise OSError("disk full")                            # the second move-in fails
+        return real(self, target)
+    monkeypatch.setattr(Path, "rename", flaky)
+    with pytest.raises(OSError):
+        repo.restore(p, 1)
+    assert (p.home / "current").exists() and (p.work / "current").exists()
+    assert not (p.home / "restored").exists()
+    assert sorted(x.name for x in p.base.iterdir()) == ["home", "snapshots", "work"]
+
+
+def test_restore_wait_is_bounded(tmp_state, monkeypatch):                    # item 8
+    from runner import repo as r
+    p = _live_tree(tmp_state)
+    clock = iter(range(0, 1000, 10))
+    monkeypatch.setattr(r.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(r.time, "sleep", lambda s: None)
+    calls = []
+    monkeypatch.setattr(r.docker, "run", lambda s, timeout=None, input=None:
+                        calls.append(timeout) or subprocess.CompletedProcess([], 1, b"", b""))
+    with pytest.raises(RuntimeError, match="not visible"):
+        r._await_visible_in_containers(p, timeout=30)
+    assert calls and all(t == r.PROBE_SECONDS for t in calls) and len(calls) <= 5
+    assert not [x for x in p.work.iterdir() if x.name.startswith(".bk-restored-")]

@@ -6,10 +6,10 @@ into any container: if any of them ran on the host, that directory would stop be
 second marker into the arm's own home (mounted read-write only for write operations), which proves the vector
 was live and fired *inside* the container, so the empty host directory is not a vacuous pass (preflight M2).
 """
+import os
 import subprocess
-import tarfile
 import pytest
-from runner import docker, gitops, repo
+from runner import docker, gitops, repo, transcripts
 from runner.paths import Paths
 
 pytestmark = pytest.mark.docker
@@ -77,7 +77,7 @@ def test_export_contains_only_committed_files_of_main(P):
     gitops.commit_all(P, gitops.IDENTITY, "a")
     (P.repo / "untracked.py").write_text("2")
     repo.export(P, gitops.main_sha(P), P.scratch / "x")
-    assert sorted(f.name for f in (P.scratch / "x").iterdir()) == ["a.py"]
+    assert [f.name for f in transcripts.safe_files(P.scratch / "x", "*")] == ["a.py"]
 
 
 def test_work_on_a_branch_is_not_in_main(P):                                  # review F-1
@@ -117,12 +117,38 @@ def test_a_hostile_hook_and_fsmonitor_never_run_on_the_host(P, tmp_path_factory)
     assert (P.home / "hook-ran").exists()             # ...and the hook really ran, in the container
 
 
-def test_restore_refuses_a_symlink_that_points_outside(P, tmp_path):          # review S-1 extension
-    (P.repo / "evil").symlink_to("/etc/passwd")
+def test_snapshot_restore_round_trips_absolute_and_escaping_links_as_plain_links(P, tmp_path_factory):
+    """fix round 1: a venv's absolute `bin/python` link must survive a restore (filter="data" refused it), and
+    no link is ever followed: nothing is written outside the arm's trees."""
+    outside = tmp_path_factory.mktemp("outside")
+    depth = len(P.repo.relative_to(outside.parent).parts)
+    escape = "/".join([".."] * depth) + f"/{outside.name}/owned"
+    links = {".venv/bin/python": "/usr/local/bin/python3.12", "abs": "/etc/passwd", "esc": escape,
+             "dir-out": str(outside)}
+    (P.repo / ".venv" / "bin").mkdir(parents=True)
+    for name, target in links.items():
+        (P.repo / name).symlink_to(target)
+    (P.home / "home-esc").symlink_to(escape)
     repo.snapshot(P, 4)
-    with pytest.raises(tarfile.AbsoluteLinkError):
-        repo.restore(P, 4)
-    assert (P.repo / ".git").exists()                   # a refused restore leaves the current state intact
+    for name in links:
+        (P.repo / name).unlink()
+    (P.repo / "later.py").write_text("x")
+    repo.restore(P, 4)
+    for name, target in links.items():
+        assert (P.repo / name).is_symlink() and os.readlink(P.repo / name) == target, name
+    assert os.readlink(P.home / "home-esc") == escape and not (P.repo / "later.py").exists()
+    assert list(outside.iterdir()) == []                  # nothing written through any link
+    assert sorted(x.name for x in P.base.iterdir()) == ["home", "scratch", "snapshots", "work"]
+    assert gitops.main_sha(P)                             # containers see the restored repo straight away
+
+
+def test_export_writes_committed_links_as_links_and_follows_none(P, tmp_path_factory):
+    outside = tmp_path_factory.mktemp("outside-export")
+    (P.repo / "abs").symlink_to(str(outside)); (P.repo / "real.py").write_text("1")
+    sha = gitops.commit_all(P, gitops.IDENTITY, "links")
+    repo.export(P, sha, P.scratch / "x")
+    assert os.readlink(P.scratch / "x" / "abs") == str(outside) and list(outside.iterdir()) == []
+    assert [f.name for f in transcripts.safe_files(P.scratch / "x", "*")] == ["real.py"]   # host reads never follow
 
 
 # --- hostile-repo matrix ----------------------------------------------------------------------------------
@@ -221,7 +247,7 @@ def test_no_planted_git_vector_ever_executes_on_the_host(P, tmp_path_factory, sc
     monkeypatch.setattr(gitops, "push_from_bare", lambda bare, url, ref="main": real_push(bare, str(target), ref))
     scanned = []
     assert repo.publish(P, "dry9", ask=lambda q: True, scan=lambda d: scanned.append(d) or [])
-    assert scanned and sorted(f.name for f in scanned[0].iterdir()) == [".gitattributes", "a.py", "u.py"]
+    assert scanned and [f.name for f in transcripts.safe_files(scanned[0], "*")] == [".gitattributes", "a.py", "u.py"]
     [clone] = (P.scratch / "publish").glob("*/clone.git")
     bare_cfg = (clone / "config").read_text()
     for key in ("fsmonitor", "hooksPath", "credential", "sshCommand", "external", "textconv", "filter",
@@ -237,5 +263,41 @@ def test_no_planted_git_vector_ever_executes_on_the_host(P, tmp_path_factory, sc
     fired = sorted(x.name for x in (P.home / "ran").iterdir())
     print(f"\n[{scenario}] fired in the container: {fired}")
     # the vectors were live: git executed them — inside the container
-    assert {"hook-pre-commit", "hook-commit-msg", "hook-post-commit", "hook-post-checkout",
-            "hook-reference-transaction", "hook-pre-push", "fsmonitor", "filter-clean"} <= set(fired), fired
+    assert set(fired) == FIRE_IN_CONTAINER, fired
+    # These never fire ANYWHERE under gitops — not because a container contains them, but because nothing
+    # triggers them (reads pass --no-textconv/--no-ext-diff and disable the pager; writes never sign or open an
+    # editor; the only push goes to the local origin, so no credential helper, ssh or askpass). Their absence
+    # here is NOT evidence of containment; the negative control shows textconv and diff.external do fire under
+    # host git.
+    assert not NEVER_FIRE & set(fired)
+
+
+FIRE_IN_CONTAINER = {"filter-clean", "filter-smudge", "fsmonitor", "hook-commit-msg", "hook-post-checkout",
+                     "hook-post-commit", "hook-post-index-change", "hook-pre-commit", "hook-pre-push",
+                     "hook-prepare-commit-msg", "hook-reference-transaction"}
+NEVER_FIRE = {"textconv", "diff-external", "credential-helper", "sshCommand", "askPass", "pager", "editor",
+              "sequence-editor", "gpg-program", "packObjectsHook", "remote-uploadpack", "hook-pre-auto-gc",
+              "hook-post-rewrite"}
+
+
+@pytest.mark.host_exec
+@pytest.mark.parametrize("scenario", ["dotgit-hooks", "hooks-path-and-includes"])
+def test_negative_control_host_git_on_the_planted_repo_does_run_the_vectors_on_the_host(P, tmp_path_factory,
+                                                                                         scenario):
+    """Opt-in (`--run-host-exec`): executes the planted payloads ON THE HOST (each only touches a file in a
+    pytest tmp dir). Proves the hostile matrix discriminates: the same repo under host git — what the runner
+    did before S-1 — writes host markers, where gitops writes none."""
+    host = tmp_path_factory.mktemp(f"negctl-{scenario}")
+    (P.repo / ".gitattributes").write_text("* diff=evil filter=evil\n"); (P.repo / "a.py").write_text("one\n")
+    gitops.commit_all(P, gitops.IDENTITY, "attributes")
+    _plant(P, host, scenario)
+    if scenario == "hooks-path-and-includes":               # hooksPath names the container path; use the host one
+        cfg = P.repo / ".git" / "config"
+        cfg.write_text(cfg.read_text().replace(P.container_repo, str(P.repo)))
+    env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
+    g = lambda *a: subprocess.run(["git", "-C", str(P.repo), *a], env=env, capture_output=True)
+    (P.repo / "a.py").write_text("two\n")
+    g("status"); g("diff"); g("log", "-p", "-1"); g("add", "-A")
+    g("-c", "user.name=x", "-c", "user.email=x@x", "commit", "-m", "x"); g("show", "HEAD")
+    on_host = {x.name for x in host.iterdir()}
+    assert {"textconv", "diff-external", "fsmonitor", "filter-clean", "hook-pre-commit"} <= on_host, on_host
