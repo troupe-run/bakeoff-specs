@@ -3,7 +3,9 @@ import os
 import shlex
 from pathlib import Path
 import pytest
-from .driver import Cli
+
+REFERENCE = Path(__file__).resolve().parents[2] / "reference"
+from .driver import Cli, forwarded
 from .theatre import share_with_arm
 
 def pytest_collection_modifyitems(config, items):
@@ -36,9 +38,11 @@ def cli(request) -> Cli:
     # fail on step N-1's reference; an unconditional overwrite would silently defeat that check).
     os.environ.setdefault("TROUPE_REF_STEP", str(request.config.getoption("--step")))
     prefix = request.config.getoption("--cmd-prefix")
+    impl = request.config.getoption("--impl")
+    fwd = forwarded(impl, prefix, request.config.getoption("--forward-ref-step"), REFERENCE)
     if prefix:
-        return Cli(shlex.split(prefix))
-    return Cli(["uv", "run", "--quiet", "--project", request.config.getoption("--impl"), "troupe"])
+        return Cli(shlex.split(prefix), fwd)
+    return Cli(["uv", "run", "--quiet", "--project", impl, "troupe"], fwd)
 
 @pytest.fixture
 def tmp_theatre(tmp_path, tmp_path_factory):

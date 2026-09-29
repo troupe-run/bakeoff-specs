@@ -47,9 +47,20 @@ def ref(state, tmp_path_factory):
     return p, prepared.hidden_copy
 
 
+def _bake_step(copy, step: int) -> None:
+    """The arm gets an allowlisted env without TROUPE_REF_STEP (fix round 2), so the reference-as-an-arm is made
+    to BE the step-N implementation, as an arm's committed step-N tree would be: its default step becomes N
+    (the copy is installed editable, so no re-sync is needed)."""
+    f = copy / "src" / "troupe_ref" / "step.py"
+    text = (hidden.REPO_ROOT / "reference" / "src" / "troupe_ref" / "step.py").read_text()
+    assert 'os.environ.get("TROUPE_REF_STEP", "7")' in text
+    f.write_text(text.replace('"7"', f'"{step}"'))
+
+
 @pytest.mark.parametrize("step", range(1, 8))
 def test_reference_passes_every_step_exactly_in_the_tester_container(ref, step, tmp_path):
     p, copy = ref
+    _bake_step(copy, step)
     s = hidden.run(p, copy, step, tmp_path)
     assert (s.total, s.passed, s.failed, s.flaky, s.flaky_arm) == (EXPECTED[step], EXPECTED[step], 0, 0, 0)
     assert s.exit_code == 0 and s.new_passed == len(s.new_at_step) > 0

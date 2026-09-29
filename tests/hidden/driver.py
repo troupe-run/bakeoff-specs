@@ -10,17 +10,33 @@ class Result:
     out: str
     err: str
 
+# The arm's CLI gets an ALLOWLISTED environment, never the harness's os.environ (Task 18 fix round 2): nothing
+# naming the reference step, pytest or harness paths reaches it. `forward` adds named variables back — only the
+# reference's own TROUPE_REF_STEP, and only when the implementation under test IS the reference (see forwarded()).
+ENV_ALLOW = ("PATH", "HOME", "LANG", "TZ", "TMPDIR", "LOGNAME", "USER", "PYTHONDONTWRITEBYTECODE")
+ENV_ALLOW_PREFIXES = ("LC_", "UV_")
+
+
+def forwarded(impl: str, prefix: str | None, flag: bool, reference: Path) -> tuple[str, ...]:
+    """TROUPE_REF_STEP reaches the CLI only for the reference: when asked (`--forward-ref-step`, the runner's
+    reference-flake runs) or on a plain host run of the repo's own reference (Plan 1)."""
+    if flag or (not prefix and Path(impl).resolve() == reference.resolve()):
+        return ("TROUPE_REF_STEP",)
+    return ()
+
+
 class Cli:
-    def __init__(self, prefix: list[str]):
+    def __init__(self, prefix: list[str], forward: tuple[str, ...] = ()):
         self.prefix = prefix
+        self.forward = forward
 
     def _argv(self, sub: str, args: tuple[str, ...], theatre: Path) -> list[str]:
         return [*self.prefix, "config", sub, "--theatre", str(theatre), *args]
 
     def _env(self, env: dict[str, str] | None) -> dict[str, str]:
-        merged = dict(os.environ)
-        merged.pop("TROUPE_ACTOR", None)  # tests set identity explicitly
-        merged.update(env or {})
+        merged = {k: v for k, v in os.environ.items()
+                  if k in ENV_ALLOW or k.startswith(ENV_ALLOW_PREFIXES) or k in self.forward}
+        merged.update(env or {})           # tests set identity (TROUPE_ACTOR) explicitly
         return merged
 
     def __call__(self, sub: str, *args: str, theatre: Path, env: dict[str, str] | None = None,

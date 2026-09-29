@@ -28,6 +28,7 @@ class RunSpec:
     proxy: bool
     user: str = "1000:1000"          # the tester starts as root only to drop to two uids (hidden.py, fix round 1)
     cap_add: tuple[str, ...] = ()    # added back after --cap-drop ALL
+    tmpfs: tuple[str, ...] = ()      # extra tmpfs mounts ("path:opts"), beside the fixed /tmp
 
 _recorder: list[RunSpec] | None = None
 
@@ -55,7 +56,7 @@ def run_argv(s: RunSpec) -> list[str]:
     if _recorder is not None:
         _recorder.append(s)
     a = ["docker", "run", "--rm", "--init", "--name", s.name, "--label", s.label,
-         "--read-only", "--tmpfs", "/tmp:rw,exec,nosuid,nodev,size=4g",
+         "--read-only", "--tmpfs", "/tmp:rw,exec,nosuid,nodev,size=4g", *[x for t in s.tmpfs for x in ("--tmpfs", t)],
          "--user", s.user, "--cap-drop", "ALL", *[x for c in s.cap_add for x in ("--cap-add", c)],
          "--security-opt", "no-new-privileges",
          "--pids-limit", str(s.limits.pids), "--cpus", s.limits.cpus, "--memory", s.limits.memory,

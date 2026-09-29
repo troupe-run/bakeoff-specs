@@ -8,6 +8,8 @@ def pytest_addoption(parser):
     parser.addoption("--impl", default=str(REPO / "reference"), help="arm repo root (uv project)")
     parser.addoption("--step", type=int, default=7, help="scenario step whose suite to run (1-7)")
     parser.addoption("--cmd-prefix", default=None, help='overrides the command, e.g. "docker exec arm uv run troupe"')
+    parser.addoption("--forward-ref-step", action="store_true",
+                     help="pass TROUPE_REF_STEP to the CLI (the implementation under test is the reference)")
     parser.addoption("--first-step-only", type=int, default=None,
                      help="keep only tests whose first valid step is this one")
     parser.addoption("--run-live", action="store_true", help="allow tests that spend real model quota")
