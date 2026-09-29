@@ -78,6 +78,28 @@ def from_keychain(service: str = "bakeoff-claude-oauth") -> Credential:
     return Credential(token)
 
 
+def github_pat(pass_: str, arm: str) -> str:
+    """The arm's fine-grained GitHub PAT for a pass, from keychain item `bakeoff-gh-<pass>-<arm>` (OD16).
+    Same hygiene as `from_keychain`: absolute `security`, a timeout, and no exception raised while the output
+    is still a frame local. Only `checklist._install_github_pat` calls this; the PAT lands in the arm's home
+    (by design: the arm's own `gh` uses it) and nowhere else."""
+    service, timed_out = f"bakeoff-gh-{pass_}-{arm}", False
+    try:
+        r = subprocess.run([SECURITY, "find-generic-password", "-s", service, "-w"],
+                           capture_output=True, text=True, timeout=KEYCHAIN_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+    if timed_out:
+        raise RuntimeError(f"keychain lookup for {service!r} timed out after {KEYCHAIN_TIMEOUT:.0f}s")
+    code, pat = r.returncode, r.stdout
+    del r
+    if code != 0 or not pat.strip():
+        del pat
+        raise RuntimeError(f"no usable keychain item {service!r} (exit {code}); "
+                           f"run `runner github-plan {pass_}` and follow checklists/README.md step 3")
+    return pat.strip()
+
+
 def dummy() -> Credential:
     return Credential("dry-run-dummy-token", dummy=True)
 

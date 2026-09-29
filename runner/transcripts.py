@@ -473,3 +473,29 @@ def verify_pin(transcript_files: Iterable[Path], stream_files: Iterable[Path], p
     return PinReport(ok=not bad and not no_evidence, assistant_messages=n, stream_assistant_messages=sn,
                      synthetic=s, truncated_lines=trunc, claude_code_versions=sorted(versions),
                      no_evidence=no_evidence, violations=bad, unverified_streams=unverified)
+
+
+def invoked_skills(stream: Path | None) -> set[str]:
+    """Every `skill` named by a `Skill` tool_use in a runner-captured stream (gzip, one JSON event per line).
+    The one reader of Skill invocations (preflight m10): checklist's smoke check uses it, and drive (Task 15)
+    should too. Hostile or odd shapes are skipped, never raised."""
+    found: set[str] = set()
+    if stream is None:
+        return found
+    with gzip.open(stream, "rt", errors="replace") as fh:
+        for line in fh:
+            if '"tool_use"' not in line:
+                continue
+            try:
+                ev = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            msg = ev.get("message") if isinstance(ev, dict) and ev.get("type") == "assistant" else None
+            content = msg.get("content") if isinstance(msg, dict) else None
+            for c in content if isinstance(content, list) else []:
+                if isinstance(c, dict) and c.get("type") == "tool_use" and c.get("name") == "Skill":
+                    inp = c.get("input")
+                    skill = inp.get("skill") if isinstance(inp, dict) else None
+                    if isinstance(skill, str) and skill:
+                        found.add(skill)
+    return found

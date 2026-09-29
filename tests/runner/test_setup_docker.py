@@ -142,11 +142,13 @@ def test_the_pat_is_readable_by_gh_in_the_container_and_gh_repo_is_set(tmp_state
     assert r.stdout.decode() == f"{FAKE_PAT}|troupe-run/bakeoff-specs-control-pass1"
 
 
-def test_the_origin_check_passes_on_the_local_bare_origin_and_fails_elsewhere(tmp_state, checks_dir):
+def test_the_origin_checks_pass_on_the_local_bare_origin_and_fail_elsewhere(tmp_state, checks_dir):
     from runner import repo
     p = Paths(PASS, "dryrun"); repo.init(p, "dryrun", PASS)
     ok = {c.id: c for c in checklist.verify(p, config.load_arm("dryrun"), "setup")}
+    assert checklist._origin_push(p).ok
     assert ok["common.origin"].ok and ok["common.git-identity"].ok and ok["common.claude-version"].ok
     gitops.git(p, "remote", "set-url", "origin", "/tmp/elsewhere.git", write=True)
     bad = {c.id: c for c in checklist.verify(p, config.load_arm("dryrun"), "setup")}
     assert not bad["common.origin"].ok and "/tmp/elsewhere.git" in bad["common.origin"].detail
+    assert not checklist._origin_push(p).ok                        # setup.origin-push fails with it too

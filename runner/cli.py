@@ -68,3 +68,47 @@ def register_github(sub):
     u = sub.add_parser("publish", help="push an arm's main to its GitHub repo (owner-approved, from a bundle clone)")
     u.add_argument("pass_", metavar="pass"); u.add_argument("arm"); u.set_defaults(func=publish)
 REGISTRARS.append(register_github)
+
+
+def _cred_owner(arm: config.Arm):
+    """Real arms: the keychain credential and the owner at the terminal. Dry arms: the dummy credential and the
+    scripted owner (Task 24). `runner.owner` is Task 14; until it lands, tests replace this function."""
+    from runner import credentials, owner as owner_mod
+    if arm.dry:
+        return credentials.dummy(), owner_mod.ScriptedOwner(config.CONFIG_DIR / "dryrun-owner.toml").bind(arm)
+    return credentials.from_keychain(), owner_mod.Owner()
+
+
+def _print_checks(checks) -> None:
+    for c in checks:
+        print(f"{'ok  ' if c.ok else 'FAIL'} {c.id}  {c.detail}")
+
+
+def register_setup(sub):
+    from runner import checklist, repo
+
+    def setup(ns):
+        cred, owner = _cred_owner(config.load_arm(ns.arm))
+        r = checklist.run_setup(ns.pass_, ns.arm, cred, owner)
+        _print_checks(r.checks)
+        for k, v in r.owner.items():
+            print(f"{'ok  ' if v['ok'] else 'FAIL'} {k}  {v['note']}")
+        print("GREEN" if r.green else "NOT GREEN — run-arm refuses step 1 (design §6)")
+        return 0 if r.green else 1
+    s = sub.add_parser("setup", help="set an arm up exactly per its docs, then its checklist (owner present)")
+    s.add_argument("pass_", metavar="pass"); s.add_argument("arm"); s.set_defaults(func=setup)
+
+    def check(ns):
+        p = paths.Paths(ns.pass_, ns.arm)
+        repo.recover(p)
+        checklist.copy_shell_history(p)
+        checks = checklist.verify(p, config.load_arm(ns.arm), "setup")
+        _print_checks(checks)
+        return 0 if checks and all(c.ok for c in checks) else 1
+    c = sub.add_parser("checklist", help="re-run an arm's verify script (setup mode) and print it")
+    c.add_argument("pass_", metavar="pass"); c.add_argument("arm"); c.set_defaults(func=check)
+
+    h = sub.add_parser("shell", help="interactive shell in the arm's container (setup egress; history recorded)")
+    h.add_argument("pass_", metavar="pass"); h.add_argument("arm")
+    h.set_defaults(func=lambda ns: checklist.interactive_shell(ns.pass_, ns.arm))
+REGISTRARS.append(register_setup)
