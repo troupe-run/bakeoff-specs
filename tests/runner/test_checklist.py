@@ -514,8 +514,9 @@ def test_every_setup_step_cites_its_source_section(arm):
 
 @pytest.mark.parametrize("arm", ["superpowers", "openspec", "bmad"])
 def test_method_checklists_cite_their_candidates_section(arm):
-    text = (ROOT / f"{arm}.md").read_text()
-    assert config.load_arm(arm).citation in _section(text, "## Source")
+    src = _section((ROOT / f"{arm}.md").read_text(), "## Source")
+    cite = config.load_arm(arm).citation                                   # e.g. "CANDIDATES §1.1"
+    assert cite.replace("CANDIDATES", "research/CANDIDATES.md") in src
 
 
 def test_superpowers_setup_is_the_documented_smoke_test_and_nothing_in_the_repo():   # CANDIDATES §1.1 items 2-3

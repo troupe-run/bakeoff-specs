@@ -11,13 +11,25 @@ env = {}
 setup = []
 run = ['^api\.github\.com$']
 
+# PARKED (B2): plugin repo has no tags; real subdirs plugins/method, plugins/toolbox; awaiting owner decision.
+# Task 10 (checked 2026-09-29, see checklists/bmad.md "Parked"): bmad-plugins main lists `bmad-method` and
+# `bmad-toolbox` at 6.13.0-next with no .claude-plugin/plugin.json of their own, and BMAD-METHOD v6.12.0 has no
+# `bmad` hub skill and no ticketing skill (both are post-6.12 main). The [setup] below follows CANDIDATES §1.5 as
+# written; revisit it together with the pins when unparking.
+# CANDIDATES §1.5: plugin route; `bmad setup` via the bmad skill; ticketing with the gh store (design §2)
 [setup]
 shell = []
-agent = []
-# PARKED (B2): plugin repo has no tags; real subdirs plugins/method, plugins/toolbox; awaiting owner decision
+agent = ["Use the bmad skill to run `bmad setup`.",
+         "Use bmad-preview-ticketing to configure ticketing with the gh store starter, for this repository's GitHub Issues.",
+         "These are this project's fixed technical constraints. Record them wherever BMAD keeps project-level constraints, and do nothing else with them yet:\n\n{principles}"]
+# review S-5: BMAD skills run `uv run _bmad/scripts/*.py`; PEP 723 inline deps would resolve latest at run time -> lock them now.
+# Module scripts live in _bmad/<module>/scripts/ (BMAD setup.py, checked 2026-09-29) and are locked too.
+post_shell = ['''for f in _bmad/scripts/*.py _bmad/*/scripts/*.py; do [ -e "$f" ] || continue; if grep -q '^# /// script' "$f"; then uv lock --script "$f" || exit 1; fi; done; true''']
 plugins = [{ name = "bmad-method", marketplace = "bmad-code-org/bmad-plugins", install = "bmad-method@bmad-plugins", version = "6.12.0", repo = "bmad-code-org/bmad-plugins", tag = "v6.12.0", sha = "", subdir = "plugins/bmad-method" },
            { name = "bmad-core-tools", marketplace = "", install = "bmad-core-tools@bmad-plugins", version = "6.12.0", repo = "bmad-code-org/bmad-plugins", tag = "v6.12.0", sha = "", subdir = "plugins/bmad-core-tools" }]
-manifest_paths = [".claude", "_bmad"]
+# `bmad setup` creates _bmad/ (the plugin route installs nothing into the repo's .claude, so it is not listed:
+# a listed path setup does not create fails the manifest check). _bmad-output/ is the (empty) output folder.
+manifest_paths = ["_bmad"]
 
 [drive]
 entry = "{handoff}"

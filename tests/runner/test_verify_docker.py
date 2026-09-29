@@ -54,8 +54,12 @@ def script_only_ids(arm: str) -> set[str]:
     return md_ids(arm) - checklist.HOST_CHECKS[arm]
 
 
-def restore(p: Paths, backup: Path) -> None:
-    shutil.rmtree(p.base)
+def fresh(monkeypatch, p: Paths, backup: Path, n) -> None:
+    """Point the state root at a NEW directory holding a copy of `backup` (p's base after setup). Docker Desktop's
+    file sharing serves stale content for a bind-mounted tree that is deleted and rebuilt at the same path, so a
+    case never restores in place: every case gets a never-mounted copy."""
+    from runner import paths
+    monkeypatch.setattr(paths, "STATE", backup.parent / f"state-{n}")
     shutil.copytree(backup, p.base, symlinks=True)
 
 
@@ -124,15 +128,15 @@ def _control_mutations(p: Paths):
     }
 
 
-def test_every_control_check_fails_when_what_it_checks_is_broken(tmp_state, tmp_path):
+def test_every_control_check_fails_when_what_it_checks_is_broken(tmp_state, tmp_path, monkeypatch):
     arm, p = config.load_arm("control"), Paths(PASS, "control"); repo.init(p, "control", PASS)
     backup = tmp_path / "backup"; shutil.copytree(p.base, backup, symlinks=True)
     seen = {}
-    for name, (mutate, want) in _control_mutations(p).items():
-        restore(p, backup)
+    for n, (name, (mutate, want)) in enumerate(_control_mutations(p).items()):
+        fresh(monkeypatch, p, backup, n)
         mutate()
         seen[name] = failing(run(p, arm))
-    restore(p, backup)
+    fresh(monkeypatch, p, backup, "env")
     seen["auto-memory on"] = failing(run(p, arm, env={"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "0"}))
     seen["another Claude Code expected"] = failing(run(p, arm, env={"BK_EXPECT_CLAUDE_VERSION": "2.1.280 (Claude Code)"}))
     want = {n: w for n, (_, w) in _control_mutations(p).items()} | {
@@ -196,7 +200,7 @@ def test_superpowers_route_a_reads_the_installed_plugin(tmp_state, tmp_path):   
 
 
 # ---- 4. openspec: the real [setup] shell steps, offline, then each check broken in turn ------------------------
-def test_openspec_setup_passes_its_checks_and_every_check_fails_when_broken(tmp_state, tmp_path):
+def test_openspec_setup_passes_its_checks_and_every_check_fails_when_broken(tmp_state, tmp_path, monkeypatch):
     arm, p = config.load_arm("openspec"), Paths(PASS, "openspec")
     got = {c.id: c for c in checklist.run_shell_only(PASS, "openspec", offline=True)}   # no network needed at all
     assert set(got) == script_only_ids("openspec") and not failing(got), [got[i] for i in failing(got)]
@@ -211,8 +215,10 @@ def test_openspec_setup_passes_its_checks_and_every_check_fails_when_broken(tmp_
         return lambda: _edit_json(p.home / ".config/openspec/config.json", fn)
 
     def yaml(fn):
-        f = p.repo / "openspec/config.yaml"
-        return lambda: f.write_text(fn(f.read_text()))
+        def edit():
+            f = p.repo / "openspec/config.yaml"        # resolved per case: each case has its own state root
+            f.write_text(fn(f.read_text()))
+        return edit
     principle = "Use the `eventsourcing` library for the event store and projection."
     cases = {
         "sync command missing": (lambda: (p.repo / ".claude/commands/opsx/sync.md").unlink(), {"openspec.commands"}),
@@ -226,9 +232,9 @@ def test_openspec_setup_passes_its_checks_and_every_check_fails_when_broken(tmp_
         "no context": (yaml(lambda t: t[:t.index("\ncontext:")] + "\n"), {"openspec.context"}),
     }
     seen = {}
-    for name, (mutate, _) in cases.items():
-        restore(p, backup); mutate(); seen[name] = failing(run(p, arm))
-    restore(p, backup)
+    for n, (name, (mutate, _)) in enumerate(cases.items()):
+        fresh(monkeypatch, p, backup, n); mutate(); seen[name] = failing(run(p, arm))
+    fresh(monkeypatch, p, backup, "env")
     seen["OPENSPEC_TELEMETRY=1"] = failing(run(p, arm, env={"OPENSPEC_TELEMETRY": "1"}))
     seen["openspec 1.13.1 on PATH"] = failing(run(p, arm, extra=[Mount(fake, "/fakebin", True)],
                                                   env={"PATH": f"/fakebin:{PATH}"}))
@@ -269,35 +275,40 @@ def test_every_bmad_check_fails_when_what_it_checks_is_broken_on_fixtures(tmp_st
     assert set(got) == script_only_ids("bmad") and not failing(got), [got[i] for i in failing(got)]
     backup, pbackup = tmp_path / "backup", tmp_path / "pbackup"
     shutil.copytree(p.base, backup, symlinks=True); shutil.copytree(plugins, pbackup)
-    store = p.repo / "_bmad/custom/ticketing-store-config.toml"
+    cur = {}                                                    # this case's own plugins dir (never re-mounted)
+
+    def store():
+        return p.repo / "_bmad/custom/ticketing-store-config.toml"
+
+    def edit_store(a, b):
+        return lambda: store().write_text(store().read_text().replace(a, b))
     cases = {
-        "bmad-method 6.11.0": (lambda: _edit_json(plugins / "bmad-method/.claude-plugin/plugin.json",
+        "bmad-method 6.11.0": (lambda: _edit_json(cur["plugins"] / "bmad-method/.claude-plugin/plugin.json",
                                                   lambda d: d.update(version="6.11.0")), {"bmad.plugin-version"}, {}),
-        "core tools missing": (lambda: shutil.rmtree(plugins / "bmad-core-tools"),
+        "core tools missing": (lambda: shutil.rmtree(cur["plugins"] / "bmad-core-tools"),
                                {"bmad.plugin-version", "common.no-foreign-plugins"}, {}),
-        "a foreign plugin": (lambda: shutil.copytree(plugins / "bmad-method", plugins / "superpowers"),
+        "a foreign plugin": (lambda: shutil.copytree(cur["plugins"] / "bmad-method", cur["plugins"] / "superpowers"),
                              {"common.no-foreign-plugins"}, {}),
         "no _bmad/config.toml": (lambda: (p.repo / "_bmad/config.toml").unlink(), {"bmad.setup-done"}, {}),
         "no output folder": (lambda: (p.repo / "_bmad-output").rmdir(), {"bmad.setup-done"}, {}),
-        "repo store": (lambda: store.write_text(store.read_text().replace('"github"', '"repo"')), {"bmad.ticketing-gh"}, {}),
-        "no ticketing config": (lambda: store.unlink(), {"bmad.ticketing-gh"}, {}),
-        "another repo": (lambda: store.write_text(store.read_text().replace('repo = ""', 'repo = "someone/else"')),
+        "repo store": (edit_store('"github"', '"repo"'), {"bmad.ticketing-gh"}, {}),
+        "no ticketing config": (lambda: store().unlink(), {"bmad.ticketing-gh"}, {}),
+        "another repo": (edit_store('repo = ""', 'repo = "someone/else"'),
                          {"bmad.ticketing-gh"}, {"GH_REPO": "troupe-run/bakeoff-specs-bmad-pass1"}),
         "hub script unlocked": (lambda: Path(f"{p.repo}/_bmad/scripts/setup_util.py.lock").unlink(),
                                 {"bmad.scripts-locked"}, {}),
         "module script unlocked": (lambda: Path(f"{p.repo}/_bmad/core/scripts/memlog.py.lock").unlink(),
                                    {"bmad.scripts-locked"}, {}),
         "no scripts at all": (lambda: shutil.rmtree(p.repo / "_bmad/scripts"), {"bmad.scripts-locked"}, {}),
+        "the matching repo": (edit_store('repo = ""', 'repo = "troupe-run/bakeoff-specs-bmad-pass1"'),
+                              set(), {"GH_REPO": "troupe-run/bakeoff-specs-bmad-pass1"}),     # accepted
     }
     seen = {}
-    for name, (mutate, _, env) in cases.items():
-        restore(p, backup); shutil.rmtree(plugins); shutil.copytree(pbackup, plugins)
-        mutate(); seen[name] = failing(run(p, arm, extra=mount, env=env))
+    for n, (name, (mutate, _, env)) in enumerate(cases.items()):
+        fresh(monkeypatch, p, backup, n)
+        cur["plugins"] = tmp_path / f"plugins-{n}"; shutil.copytree(pbackup, cur["plugins"])
+        mutate(); seen[name] = failing(run(p, arm, extra=[Mount(cur["plugins"], "/opt/plugins", True)], env=env))
     assert seen == {n: w for n, (_, w, _) in cases.items()}
-    # the matching repo is accepted
-    restore(p, backup); shutil.rmtree(plugins); shutil.copytree(pbackup, plugins)
-    store.write_text(store.read_text().replace('repo = ""', 'repo = "troupe-run/bakeoff-specs-bmad-pass1"'))
-    assert not failing(run(p, arm, extra=mount, env={"GH_REPO": "troupe-run/bakeoff-specs-bmad-pass1"}))
     assert {i for i in script_only_ids("bmad") if i.startswith("bmad.")} <= set().union(*(w for _, w, _ in cases.values()))
 
 

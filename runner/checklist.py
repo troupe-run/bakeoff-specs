@@ -247,11 +247,17 @@ def arm_spec(p: Paths, arm: config.Arm, cmd: list[str], *, network: str = "none"
 _arm_spec = arm_spec            # the plan's Tasks 25/26 text uses the private name (preflight m16)
 
 
+def verify_spec(p: Paths, arm: config.Arm, mode: str) -> RunSpec:
+    """`checklists/verify/<arm>.sh <setup|step>`: arm image, --network none, home and work read-only; the scripts
+    and the principles (openspec.context compares against them, Task 10) mounted read-only."""
+    return arm_spec(p, arm, ["bash", f"/checks/{arm.name}.sh", mode],
+                    extra=[Mount(CHECKS_DIR / "verify", "/checks", True),
+                           Mount(PRINCIPLES, "/setup/project-principles.md", True)])
+
+
 def verify(p: Paths, arm: config.Arm, mode: str) -> list[Check]:
-    """`checklists/verify/<arm>.sh <setup|step>`: arm image, --network none, home and work read-only."""
     repo.recover(p)
-    s = arm_spec(p, arm, ["bash", f"/checks/{arm.name}.sh", mode], extra=[Mount(CHECKS_DIR / "verify", "/checks", True)])
-    return parse_verify(arm.name, docker.run(s, timeout=300))
+    return parse_verify(arm.name, docker.run(verify_spec(p, arm, mode), timeout=300))
 
 
 _MANIFEST_SH = r"""cd "$1"; shift; for x in "$@"; do y="$x"; case "$x" in "~/"*) y="$HOME/${x#\~/}";; esac
