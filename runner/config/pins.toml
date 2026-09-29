@@ -7,7 +7,7 @@ synthetic_models = ["<synthetic>"]           # Claude Code's own non-model messa
 max_retries = 4
 permission_mode = "bypassPermissions"        # OD11
 disallowed_tools = ["WebSearch", "WebFetch", "AskUserQuestion"]   # OD10, OD11
-binary_sha256 = ""                           # written by `runner images pin` (Task 2); build refuses while empty
+binary_sha256 = "dd27b36438a4fed1670cd29bad2fda6a73b628b6da55443e5c2f647fe6ed328f"                           # written by `runner images pin` (Task 2); build refuses while empty
 
 [images]
 base = "bakeoff-base:cc2.1.281"
@@ -19,13 +19,13 @@ gh = "2.101.0"
 node_major = "22"
 python = "3.12"
 alpine = "3.20"                              # proxy sidecar base (review m1: pinned by digest like every other FROM)
-tinyproxy = ""                               # apk package version; written by `runner images pin`
+tinyproxy = "1.11.2-r0"                               # apk package version; written by `runner images pin`
 
 [images.digests]                             # written by `runner images pin` (Task 2); build refuses while empty
-debian = ""
-node = ""
-uv = ""
-alpine = ""
+debian = "sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251"
+node = "sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c"
+uv = "sha256:04d046b13e60d6bcec73cbc5e1cad25d680dea90c8573340950a0ac2d1aef424"
+alpine = "sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc"
 
 [limits]
 turn_seconds = 28800                         # OD14 B (A: 14400)
