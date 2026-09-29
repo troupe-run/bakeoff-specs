@@ -192,7 +192,7 @@ def test_the_in_container_unpacker_rejects_bad_records(blob, why):             #
         bundle_unpack.parse(blob)
 
 
-def test_the_in_container_unpacker_writes_only_under_its_root(tmp_path):
+def test_the_in_container_unpacker_writes_files_with_0700_dirs(tmp_path):     # renamed, fix round 4
     bundle_unpack.write(_rec("tests/hidden/a.py", b"A") + _rec("pyproject.toml", b"P"), tmp_path)
     assert (tmp_path / "tests/hidden/a.py").read_bytes() == b"A" and (tmp_path / "pyproject.toml").read_bytes() == b"P"
     assert (tmp_path / "tests").stat().st_mode & 0o777 == 0o700
@@ -489,24 +489,125 @@ def test_the_cli_result_is_capped_on_both_streams(tmp_path):
     assert len(r.out.encode()) <= driver.CAP + 200 and len(r.err.encode()) <= driver.CAP + 200
 
 
-def test_the_watcher_readiness_failure_message_is_capped():
-    text = (REPO_ROOT / "tests/hidden/watcher.py").read_text()
-    assert "cap(''.join(self.err))" in text
+def test_the_watcher_readiness_failure_message_is_bounded(tmp_path):         # fix round 4: behaviour, not grep
+    from tests.hidden.watcher import Watching
+    cli = driver.Cli([__import__("sys").executable, "-c",
+                      "import sys; sys.stderr.write('e' * 300000 + 'LAST'); sys.exit(2)"])
+    with pytest.raises(AssertionError) as ei:
+        with Watching(cli, tmp_path, ready_timeout=15):
+            pass
+    msg = str(ei.value)
+    assert "never printed its readiness line" in msg and msg.endswith("LAST")
+    assert "bytes truncated" in msg and len(msg.encode()) <= driver.CAP + 300
 
 
-def test_an_oversized_result_is_attributed_to_arm_output_and_scores_all_failed(tmp_state, monkeypatch):
+# --- fix round 4: result classification — a harness problem is never scored against an arm -------------------
+
+def _raised(blob: bytes) -> "hidden.ResultsError":
+    with pytest.raises(hidden.ResultsError) as ei:
+        hidden.unpack_results(blob)
+    return ei.value
+
+
+MARK = driver.cap("z" * (driver.CAP + 5000)).splitlines()[0].encode()       # exactly what Cli writes
+
+
+def test_the_marker_the_classifier_looks_for_is_the_one_cli_writes():
+    assert hidden.TRUNCATION_MARKER.search(MARK) and MARK.startswith(b"[... ")
+    assert not hidden.TRUNCATION_MARKER.search(b"[... many bytes truncated ...]")
+
+
+@pytest.mark.parametrize("blob", [
+    b"exit -1\n",                                                          # negative size
+    _frames({"exit": b"0"}) + b"junit.xml -5\n",                           # negative size, scoreable member
+    b"resources 70000\n" + b"r" * 70000,                                   # harness-only member over its cap
+    b"exit 999\n" + MARK * 40,                                             # harness-only member over its cap, marked
+], ids=["exit-negative", "junit-negative", "resources-70000", "exit-999-marked"])
+def test_a_bad_size_on_a_harness_only_member_or_a_negative_size_is_a_harness_fault(blob):
+    e = _raised(blob)
+    assert hidden._frames_error(e).startswith("harness-fault")
+
+
+def test_an_oversized_junit_with_the_cli_marker_in_its_tail_is_arm_output():
+    cap = hidden.RESULT_CAPS["junit.xml"]
+    body = b"<testsuites>" + b"x" * cap + b"<failure message='" + MARK + b"\ntail'/>"
+    msg = hidden._frames_error(_raised(_frames({"exit": b"1\n"}) + f"junit.xml {len(body)}\n".encode() + body))
+    assert msg.startswith("arm-output"), msg
+    assert "junit.xml" in msg and str(len(body)) in msg and "marker found" in msg
+
+
+def test_an_oversized_junit_without_the_marker_is_a_harness_fault():
+    cap = hidden.RESULT_CAPS["junit.xml"]
+    body = b"<testsuites>" + b"x" * (cap + 10)
+    msg = hidden._frames_error(_raised(f"junit.xml {len(body)}\n".encode() + body))
+    assert msg.startswith("harness-fault"), msg
+    assert "junit.xml" in msg and str(len(body)) in msg and "marker not found" in msg
+
+
+def test_an_oversized_pytest_log_whose_readable_tail_has_the_marker_is_arm_output():
+    size = hidden.RESULT_CAPS["pytest.log"] + 1
+    msg = hidden._frames_error(_raised(f"pytest.log {size}\n".encode() + b"E  AssertionError: " + MARK))
+    assert msg.startswith("arm-output") and "pytest.log" in msg and str(size) in msg and "marker found" in msg
+
+
+def test_arm_output_keeps_its_detail_in_the_attribution_and_the_summary(tmp_state, monkeypatch):
     monkeypatch.setattr(hidden, "_collect", lambda p, step, first_only: ["m::a", "m::b"] if not first_only else [])
-    oversize = hidden._frames_error(hidden.ResultsError("results member junit.xml is 99 bytes (cap 1)", oversize=True))
-    assert oversize.startswith("arm-output")
-    monkeypatch.setattr(hidden, "_pytest", lambda *a, **k: (None, oversize))
+    size = hidden.RESULT_CAPS["junit.xml"] + 7
+    err = hidden._frames_error(_raised(f"junit.xml {size}\n".encode() + MARK))
+    monkeypatch.setattr(hidden, "_pytest", lambda *a, **k: (None, err))
     s = hidden.run(Paths("dryhp", "dryrun"), tmp_state / "c", 1, tmp_state / "out")
-    assert (s.scoreable, s.attribution, s.passed, s.failed) == (True, "arm-output", 0, 2)
+    assert (s.scoreable, s.passed, s.failed) == (True, 0, 2)
+    assert s.attribution.startswith("arm-output") and s.attribution != "arm-output"
+    assert "junit.xml" in s.attribution and str(size) in s.attribution and "marker found" in s.attribution
+    import json
+    assert json.loads((tmp_state / "out" / "hidden" / "summary.json").read_text())["attribution"] == s.attribution
+
+
+def test_an_oversized_result_without_the_marker_is_not_scored(tmp_state, monkeypatch):
+    monkeypatch.setattr(hidden, "_collect", lambda p, step, first_only: ["m::a", "m::b"] if not first_only else [])
+    err = hidden._frames_error(_raised(f"junit.xml {hidden.RESULT_CAPS['junit.xml'] + 1}\n".encode() + b"no mark"))
+    monkeypatch.setattr(hidden, "_pytest", lambda *a, **k: (None, err))
+    s = hidden.run(Paths("dryhp", "dryrun"), tmp_state / "c", 1, tmp_state / "out")
+    assert not s.scoreable and s.attribution.startswith("harness-fault") and s.tests == {}
 
 
 def test_a_malformed_result_is_still_a_harness_fault():
-    assert hidden._frames_error(hidden.ResultsError("malformed results header at byte 0")).startswith("harness-fault")
+    assert hidden._frames_error(_raised(b"not framed at all")).startswith("harness-fault")
 
 
-def test_a_full_results_tmpfs_is_arm_output_too():
-    res = {"exit": b"3\n", "resources": b"oom_kill 0\n--pids\nmax 0\n--tmp\ntmpfs 1 0 1 0% /tmp\n--results\ntmpfs 131072 131072 0 100% /results\n"}
-    assert hidden.assess(["m::a"], res)[2] == "arm-output"
+RES_RESULTS_FULL = b"oom_kill 0\n--pids\nmax 0\n--tmp\ntmpfs 1 0 1 0% /tmp\n--results\ntmpfs 131072 131072 0 100% /results\n"
+
+
+def test_a_full_results_tmpfs_with_the_marker_is_arm_output():
+    res = {"exit": b"3\n", "resources": RES_RESULTS_FULL, "pytest.log": b"F" * 100 + b"\nE  " + MARK + b"\n"}
+    tests, _, attribution = hidden.assess(["m::a"], res)
+    assert tests == {"m::a": "failed"} and attribution.startswith("arm-output")
+    assert "/results full" in attribution and "pytest.log" in attribution and "marker found" in attribution
+
+
+def test_a_full_results_tmpfs_without_the_marker_is_a_harness_fault():
+    tests, _, attribution = hidden.assess(["m::a"], {"exit": b"3\n", "resources": RES_RESULTS_FULL, "pytest.log": b"boom"})
+    assert tests == {} and attribution.startswith("harness-fault") and "marker not found" in attribution
+
+
+def test_pytest_is_pinned_quiet_with_assertion_truncation_on(tmp_state, accounts):
+    argv = hidden._pytest_argv(["tests/hidden", "--step", "1"], "/work/bakeoff-specs-dryrun")
+    assert argv[:7] == ["env", "-u", "CI", "-u", "BUILD_NUMBER", "-u", "PYTEST_ADDOPTS"]   # pytest's CI switch
+    assert argv[7:10] == hidden.PYTEST
+    assert "-q" in argv and not [a for a in argv if a.startswith("-v") or a.startswith("--verbos")]
+    for o in ("truncation_limit_lines=8", "truncation_limit_chars=640", "verbosity_assertions=auto"):
+        assert argv[argv.index(o) - 1] == "-o"
+    for bad in (["-v"], ["-vv"], ["--verbose"], ["--verbosity=2"], ["-o", "verbosity_assertions=2"],
+                ["--override-ini=truncation_limit_lines=0"], ["-c", "x.toml"], ["-p", "x"]):
+        with pytest.raises(ValueError):
+            hidden._pytest_argv(["tests/hidden", *bad], "/work/bakeoff-specs-dryrun")
+    _, _, s = _spec(tmp_state, "harness", cmd=argv)
+    assert not {"CI", "BUILD_NUMBER", "PYTEST_ADDOPTS"} & set(s.env)
+    assert s.cmd[s.cmd.index("entry") + 3:] == argv            # entry <unpacker> <timeout> <this argv>, verbatim
+
+
+def test_the_bundled_pytest_config_does_not_undo_the_pins():
+    import tomllib
+    ini = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["tool"]["pytest"]["ini_options"]
+    assert "-v" not in ini.get("addopts", "") and not {"truncation_limit_lines", "truncation_limit_chars",
+                                                       "verbosity_assertions"} & set(ini)

@@ -281,7 +281,7 @@ def test_a_very_verbose_failing_arm_is_scored_not_a_harness_fault(state, tmp_pat
     p, dst = _skeleton("verbose", _VERBOSE, tmp_path)
     s = hidden.run(p, dst, 1, tmp_path)
     assert s.scoreable and s.passed == 0 and s.total == EXPECTED[1], s.attribution
-    assert s.attribution in (None, "arm-output"), s.attribution
+    assert s.attribution is None or s.attribution.startswith("arm-output"), s.attribution
 
 
 def test_a_skeleton_that_does_nothing_scores_zero(skeleton):
