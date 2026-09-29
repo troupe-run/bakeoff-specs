@@ -88,7 +88,8 @@ def test_mixed_questions_only_escalate_the_uncovered_one(rig):                  
     assert "Yes, per General." in msgs(sent)[1] and ctx.owner.escalation_answer in msgs(sent)[1]
     assert "b?" in ctx.brief_path.read_text()
     q = json.loads((ctx.out / "questions.jsonl").read_text().splitlines()[0])
-    assert q["escalated"] == ["b?"] and q["answered_by"] == "owner+po"
+    assert q["escalated"] == ["b?"] and q["answered_by"] == "po+owner"          # fix round 1 ruling
+    assert q["cited"] == "General"                                              # no stray "; " separators
 
 
 def test_transient_api_error_is_retried_in_place_then_succeeds(rig):            # review C-4
@@ -104,9 +105,12 @@ def test_transient_api_error_is_retried_in_place_then_succeeds(rig):            
 def test_transient_errors_become_a_harness_fault_only_when_retries_run_out(rig):
     sent, script, _, ctx = rig
     script["arm"] = [TR("API Error: 529 overloaded", outcome="is_error")] * 4
+    slept = []
+    ctx.sleep = slept.append
     with pytest.raises(faults.HarnessFault) as e:
         drive.run_attempt(ctx, 1, "go")
     assert e.value.kind == "infra-is_error" and "overloaded" in e.value.signature and len(sent) == 4
+    assert slept == [60, 300, 900]                                              # limits.transient_backoff
 
 
 def test_a_non_transient_api_error_faults_at_once(rig):
@@ -443,3 +447,91 @@ def test_invoked_uses_the_shared_skill_reader(monkeypatch, tmp_path):           
     t = TR(); t.stream_path = tmp_path / "x.gz"
     assert drive._invoked("/speckit-tasks", [t]) and not drive._invoked("/speckit-converge", [t])
     assert not drive._invoked("/speckit-tasks", [TR()])
+
+
+# ---- fix round 1 ------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text", [
+    "API Error: 400 invalid_request_error: max_tokens 512 is too large",       # a number in 500-599, not a status
+    "API Error: 400 {\"type\":\"invalid_request_error\",\"message\":\"prompt is 503 tokens too long\"}",
+])
+def test_a_client_error_mentioning_a_5xx_number_is_not_transient(rig, text):   # item 3
+    sent, script, _, ctx = rig
+    script["arm"] = [TR(text, outcome="is_error")]
+    with pytest.raises(faults.HarnessFault) as e:
+        drive.run_attempt(ctx, 1, "go")
+    assert len(sent) == 1 and e.value.kind == "infra-is_error"
+
+
+@pytest.mark.parametrize("text", ["API Error: 500 Internal server error", "API Error: 529 overloaded",
+                                  "Request failed with status 503", "HTTP 502 Bad Gateway",
+                                  '{"type":"error","error":{"type":"api_error","message":"Internal"}}',
+                                  "API Error: 429 rate_limit_error"])
+def test_real_server_errors_are_transient(rig, text):
+    sent, script, _, ctx = rig
+    ctx.arm = drive.config.load_arm("control")
+    script["arm"] = [TR(text, outcome="is_error"), TR("done")]
+    script["po"] = [D("step_done")]
+    assert drive.run_attempt(ctx, 1, "go").retries == 1
+
+
+def test_a_clear_4xx_is_never_transient_even_after_api_retries(rig):          # item 2
+    sent, script, _, ctx = rig
+    storm = [{"type": "system", "subtype": "api_retry", "error": "overloaded"}]
+    script["arm"] = [TR("API Error: 400 invalid_request_error", outcome="is_error", retries=storm)]
+    with pytest.raises(faults.HarnessFault):
+        drive.run_attempt(ctx, 1, "go")
+    assert len(sent) == 1
+
+
+def test_owner_gates_is_absent_when_there_were_no_approvals(rig):             # item 7
+    sent, script, _, ctx = rig
+    ctx.arm = drive.config.load_arm("control")
+    script["arm"] = [TR("q?"), TR("done")]
+    script["po"] = [D("question", answers=[Answer("q?", "Yes.", False, None)]), D("step_done")]
+    drive.run_attempt(ctx, 1, "go")
+    assert not (ctx.out / "owner-gates.jsonl").exists()
+    q = qlines(ctx)[0]
+    assert q["answered_by"] == "po" and q["cited"] is None                     # item 5: nothing cited
+
+
+class AnswerThenPark(StubOwner):
+    def escalation(self, q, ctx):
+        self.escalations.append(q)
+        if len(self.escalations) == 1:
+            return "First answer.", 1.0
+        return owner.Park("escalation", q, "unattended", 1.0, 0.5)
+
+
+def test_a_partial_park_keeps_the_answers_already_obtained_in_the_brief(rig):  # item 6
+    sent, script, _, ctx = rig
+    ctx.arm = drive.config.load_arm("control"); ctx.owner = AnswerThenPark()
+    script["arm"] = [TR("a? b? c?")]
+    script["po"] = [D("question", answers=[Answer("a?", "Yes.", False, "General"), Answer("b?", None, True, None),
+                                            Answer("c?", None, True, None)])]
+    r = drive.run_attempt(ctx, 1, "go")
+    assert r.outcome == "parked" and ctx.owner.escalations == ["b?", "c?"]
+    brief = ctx.brief_path.read_text()
+    assert "First answer." in brief and "c?" not in brief.split("## Escalated answers")[1]
+    q = qlines(ctx)[-1]
+    assert q["answered_by"] == "po+owner" and q["cited"] == "General" and q["escalated"] == ["b?", "c?"]
+    assert q["park"]["context"] == "c?" and q["reply"] is None
+
+
+def test_a_park_with_no_answers_obtained_is_answered_by_the_runner(rig):       # item 5
+    sent, script, _, ctx = rig
+    ctx.arm = drive.config.load_arm("control"); ctx.owner = ParkingOwner("escalation")
+    script["arm"] = [TR("b?")]
+    script["po"] = [D("question", answers=[Answer("b?", None, True, None)])]
+    drive.run_attempt(ctx, 1, "go")
+    q = qlines(ctx)[-1]
+    assert q["answered_by"] == "runner" and q["cited"] is None
+
+
+def test_a_parked_gate_is_answered_by_the_runner(rig):
+    sent, script, _, ctx = rig
+    ctx.arm = drive.config.load_arm("control"); ctx.owner = ParkingOwner("gate")
+    script["arm"] = [TR("Approve?")]
+    script["po"] = [D("approval", "Approved.", approved=True)]
+    drive.run_attempt(ctx, 1, "go")
+    assert qlines(ctx)[-1]["answered_by"] == "runner"
