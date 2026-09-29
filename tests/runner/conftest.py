@@ -123,3 +123,91 @@ def finalise_inputs(tmp_path, monkeypatch):
               shas={"po_brief_at_handoff": "b", "contract": "c", "step_brief": "s"},
               tests_seconds=3.0, outcome="done")
     return ctx, kw
+
+
+# ---- Task 22 test helpers: the `fake_step` fixture (drive/hidden/quality/evidence faked) ------------------------
+import pytest as _pytest
+
+
+class FakeStep:
+    def __init__(self, ctx):
+        from runner import handoff
+        self.ctx, self.messages, self.restored, self.parked = ctx, [], [], []
+        self.progress, self.raise_on, self.pin_violation_on, self.breach_on = [], {}, {}, {}
+        self.harness_flaky_first, self.hidden_runs, self.prepares, self.calls = [], 0, 0, 0
+        self.no_progress = handoff.MESSAGES["no_progress"]
+        self.outcome_on: dict = {}              # attempt call -> drive outcome other than "done"
+        self.park_on: dict = {}                 # attempt call -> owner.Park carried by a "parked" outcome
+        self.attribution_on: dict = {}          # hidden run -> (attribution, resource_evidence)
+        self.run_attempt_kw: list[dict] = []    # the keyword arguments of every drive.run_attempt call
+        self.verify_calls: list[dict] = []      # every verify_pin call: files, streams and keywords
+        self.later_sent_at_call: list[int] = []
+        self.finalised: list[dict] = []
+        self.quality_runs = 0
+
+
+@_pytest.fixture
+def fake_step(tmp_path, monkeypatch, tmp_state):
+    from runner import stepflow
+    from runner.drive import AttemptResult
+    from runner.faults import HarnessFault
+    from runner.session import TurnResult
+    from runner.transcripts import PinReport
+    ctx = make_test_ctx(tmp_path, arm="control", step=2)
+    fs = FakeStep(ctx)
+
+    def turn(n):
+        return TurnResult("s1", "ok", "x", {}, {}, 0.0, {}, {}, 1.0, [], tmp_path / f"arm-a{n}.stream.jsonl", None)
+
+    def run_attempt(c, attempt, message, resume=None, **kw):
+        fs.messages.append(message); fs.calls += 1; fs.run_attempt_kw.append(kw)
+        fs.later_sent_at_call.append(c.later_sent)
+        c.later_sent += 1                                   # as drive does when it sends a later message
+        if fs.calls in fs.raise_on:
+            f = HarnessFault(*fs.raise_on[fs.calls])
+            f.attempt_result = AttemptResult("stalled", "s1", turns=[turn(fs.calls)])
+            raise f
+        outcome = fs.outcome_on.get(fs.calls, "done")
+        return AttemptResult(outcome, "s1", turns=[turn(fs.calls)], breach=fs.breach_on.get(fs.calls),
+                             park=fs.park_on.get(fs.calls))
+
+    def verify_pin(files, streams, pins, **k):
+        fs.verify_calls.append({"files": files, "streams": list(streams), **k})
+        bad = fs.pin_violation_on.get(fs.calls)
+        return PinReport(not bad, 1, 1, 0, 0, ["2.1.281"], False,
+                         [{"file": "f", "line": 1, "where": "assistant", "model": bad}] if bad else [])
+
+    def hidden_run(p, copy, step, out, install_failed=False):
+        fs.hidden_runs += 1
+        flaky = fs.harness_flaky_first if fs.hidden_runs == 1 else []
+        n = fs.progress[min(fs.calls, len(fs.progress)) - 1] if fs.progress else 0
+        attribution, ev = fs.attribution_on.get(fs.hidden_runs, (None, []))
+        if attribution and attribution.startswith("harness-fault"):
+            return stepflow.hidden.summarise(step, {}, ["m::t"], [], [], -1, collected=["m::t"],
+                                             attribution=attribution, resource_evidence=ev)
+        tests = {"m::t": "passed" if n and not attribution else "failed", **{t: "failed" for t in flaky}}
+        return stepflow.hidden.summarise(step, tests, ["m::t"], flaky, [], 0, attribution=attribution,
+                                         resource_evidence=ev)
+
+    def quality_run_all(*a, **k):
+        fs.quality_runs += 1
+        return {"mutation": {}}
+
+    def finalise(*a, **k):
+        fs.finalised.append(k)
+        return ctx.out / "summary.md"
+
+    monkeypatch.setattr(stepflow.drive, "run_attempt", run_attempt)
+    monkeypatch.setattr(stepflow.transcripts, "verify_pin", verify_pin)
+    monkeypatch.setattr(stepflow.transcripts, "snapshot", lambda d: {})
+    monkeypatch.setattr(stepflow.transcripts, "collect", lambda d, b, dest, **k: [])
+    monkeypatch.setattr(stepflow.gitops, "main_sha", lambda p: "main-sha")
+    monkeypatch.setattr(stepflow.hidden, "prepare", lambda *a, **k: (setattr(fs, "prepares", fs.prepares + 1) or
+                        stepflow.hidden.Prepared(tmp_path, tmp_path, {"hidden": {"ok": True}, "quality": {"ok": True}})))
+    monkeypatch.setattr(stepflow.hidden, "run", hidden_run)
+    monkeypatch.setattr(stepflow.quality, "run_all", quality_run_all)
+    monkeypatch.setattr(stepflow.evidence, "finalise", finalise)
+    monkeypatch.setattr(stepflow.repo, "restore", lambda p, s: fs.restored.append(s))
+    monkeypatch.setattr(stepflow, "park", lambda out, k, label: fs.parked.append((k, label)))
+    monkeypatch.setattr(stepflow, "wait_idle", lambda ctx: None)
+    return fs

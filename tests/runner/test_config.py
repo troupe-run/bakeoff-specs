@@ -63,3 +63,32 @@ def test_must_run_needs_a_citation(tmp_path, monkeypatch):                  # re
     monkeypatch.setattr(config, "ARMS_DIR", tmp_path)
     with pytest.raises(config.ConfigError, match="must_run_source"):
         config.load_arm("control")
+
+
+# ---- Task 22 ruling 6: per-arm spec paths (the N.a discovery stop) ------------------------------------------------
+
+@pytest.mark.parametrize("name", list(config.REAL_ARMS) + ["dryrun"])
+def test_every_arm_names_its_spec_paths_each_with_a_reason(name):
+    a = config.load_arm(name)
+    assert a.spec_paths and all(s.path and s.why.strip() for s in a.spec_paths)
+
+
+def test_the_method_arms_spec_paths_are_their_own_artefact_folders():
+    got = {n: {s.path for s in config.load_arm(n).spec_paths} for n in config.REAL_ARMS}
+    assert "openspec/" in got["openspec"] and "specs/" in got["speckit"] and ".kiro/" in got["ccsdd"]
+    assert "kitty-specs/" in got["speckitty"] and "_bmad-output/" in got["bmad"]
+    assert "docs/superpowers/" in got["superpowers"]
+
+
+def test_a_spec_path_without_a_reason_is_refused(tmp_path, monkeypatch):
+    import re
+    src = (config.ARMS_DIR / "control.toml").read_text()
+    (tmp_path / "control.toml").write_text(re.sub(r'why = "[^"]*"', 'why = " "', src))
+    monkeypatch.setattr(config, "ARMS_DIR", tmp_path)
+    with pytest.raises(config.ConfigError, match="why"):
+        config.load_arm("control")
+
+
+def test_the_common_docs_paths_are_pinned_once_each_with_a_reason():
+    ps = config.load_pins().discovery_paths
+    assert {"docs/", "*.md"} <= {s.path for s in ps} and all(s.why.strip() for s in ps)

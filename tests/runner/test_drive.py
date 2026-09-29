@@ -535,3 +535,74 @@ def test_a_parked_gate_is_answered_by_the_runner(rig):
     script["po"] = [D("approval", "Approved.", approved=True)]
     drive.run_attempt(ctx, 1, "go")
     assert qlines(ctx)[-1]["answered_by"] == "runner"
+
+
+# ---- Task 22 ruling 6: the N.a discovery stop ---------------------------------------------------------------------
+
+@pytest.fixture
+def disc(rig, monkeypatch):
+    sent, script, state, ctx = rig
+    ctx.arm = drive.config.load_arm("openspec")
+    changed = {"paths": []}
+    monkeypatch.setattr(drive.gitops, "changed_paths", lambda p, base: list(changed["paths"]))
+    return sent, script, ctx, changed
+
+
+def test_discovery_stops_at_the_first_approval_request_without_asking_the_owner(disc):
+    sent, script, ctx, _ = disc
+    script["arm"] = [TR("Spec drafted. Do you approve the proposal?")]
+    script["po"] = [D("approval", "Approved.", approved=True)]
+    r = drive.run_attempt(ctx, 1, "go", stop_at_first_gate_or_code=True)
+    assert r.outcome == "discovery-stop" and r.discovery["why"] == "approval" and ctx.owner.gates == []
+    [q] = qlines(ctx)
+    assert q["kind"] == "approval" and q["owner_action"] == "discovery-stop" and q["reply"] is None
+
+
+def test_discovery_stops_at_the_first_turn_that_edits_code_outside_the_spec_and_docs_paths(disc):
+    sent, script, ctx, changed = disc
+    script["arm"] = [TR("Wrote the proposal."), TR("Started implementing.")]
+    script["po"] = [D("continue")]
+    turns = iter([["openspec/changes/x/proposal.md", "docs/notes.md"], ["openspec/changes/x/tasks.md", "src/troupe/cli.py"]])
+    drive.gitops.changed_paths = lambda p, base: next(turns)
+    r = drive.run_attempt(ctx, 1, "go", stop_at_first_gate_or_code=True)
+    assert r.outcome == "discovery-stop" and r.discovery == {"why": "code", "turn": 2, "paths": ["src/troupe/cli.py"]}
+    assert len(sent) == 2 and len(qlines(ctx)) == 1                    # the PO never saw the code turn
+
+
+def test_discovery_answers_questions_and_keeps_going_while_only_specs_change(disc):
+    sent, script, ctx, changed = disc
+    changed["paths"] = ["openspec/changes/x/proposal.md"]
+    script["arm"] = [TR("Which theatre wins?"), TR("Ready: approve?")]
+    script["po"] = [D("question", answers=[drive.po.Answer("Which theatre wins?", "The flag.", False, "General")]),
+                    D("approval", "Approved.", approved=True)]
+    r = drive.run_attempt(ctx, 1, "go", stop_at_first_gate_or_code=True)
+    assert msgs(sent) == ["go", "The flag."] and r.discovery["why"] == "approval"
+
+
+def test_the_code_check_compares_against_the_steps_starting_commit(disc):
+    sent, script, ctx, changed = disc
+    seen = []
+    drive.gitops.changed_paths = lambda p, base: seen.append(base) or ["pyproject.toml"]
+    script["arm"] = [TR("x")]
+    drive.run_attempt(ctx, 1, "go", stop_at_first_gate_or_code=True)
+    assert seen == [ctx.sha_before]
+
+
+def test_without_the_stop_option_an_approval_goes_to_the_owner_and_code_is_never_checked(disc):
+    sent, script, ctx, changed = disc
+    drive.gitops.changed_paths = lambda p, base: pytest.fail("the code check ran outside discovery")
+    script["arm"] = [TR("approve?"), TR("done")]
+    script["po"] = [D("approval", "Approved.", approved=True), D("step_done"), D("step_done")]
+    script["arm"].append(TR("archived"))
+    r = drive.run_attempt(ctx, 1, "go")
+    assert ctx.owner.gates == ["approve?"] and r.outcome == "done" and r.discovery is None
+
+
+@pytest.mark.parametrize("path, spec", [
+    ("openspec/changes/x/proposal.md", True), ("docs/design.md", True), ("README.md", True),
+    ("src/troupe/cli.py", False), ("tests/test_cli.py", False), ("pyproject.toml", False),
+    (".venv/bin/python", True), ("src/troupe/__pycache__/cli.cpython-312.pyc", True),
+])
+def test_outside_spec_sorts_paths_by_the_arms_spec_paths_and_the_common_docs_paths(path, spec):
+    arm, pins = drive.config.load_arm("openspec"), drive.config.load_pins()
+    assert (drive.outside_spec([path], arm, pins) == []) is spec
