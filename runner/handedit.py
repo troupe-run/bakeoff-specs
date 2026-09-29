@@ -25,6 +25,13 @@ prompt's record lives under results. Its cost is HARNESS cost: `HandEdit.turns` 
 included) goes to `evidence.finalise(extra_turns={"teammate": edit.turns})`, never with the arm's or the PO's.
 On a fault the turns so far ride on the exception as `hand_edit_turns`.
 
+Defence in depth (fix round 1): the prompt tells the teammate to ignore project instructions and method
+workflows; the session runs in 2.1.281's safe mode (`CLAUDE_CODE_SAFE_MODE=1`: no CLAUDE.md, skills, plugins or
+hooks); the repo's `.git` is mounted read-only for the turn (the commit happens later, in its own container); and
+the scope plan rejects any change under a dot-directory (tool caches aside) or the arm's own method artefacts
+(`denylist`, from its config). New ignored paths are removed; ignored paths that already existed are kept and
+recorded. Files a commit hook adds are recorded (`hook_added`), never failed.
+
 Fault precedence for a teammate turn (ruling 3): `auth_failed` (infra-auth) > a persisted credential > an off-pin
 model anywhere in the evidence > the session's own outcome (`hand-edit`/`session`) > a pin report without
 evidence. Only `hand-edit` faults with a signature in `RETRIED` get the second try; everything else (infra-auth,
@@ -36,7 +43,7 @@ import gzip, json, os
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
-from runner import config, credentials, egress, faults, gitops, hidden, repo, session, transcripts
+from runner import checklist, config, credentials, egress, faults, gitops, hidden, repo, session, transcripts
 from runner.docker import Mount
 from runner.faults import HarnessFault
 from runner.paths import Paths
@@ -67,17 +74,39 @@ class ScopePlan:
     remove: list[str] = field(default_factory=list)
     restore: list[str] = field(default_factory=list)
     violations: list[str] = field(default_factory=list)
+    removed_ignored: list[str] = field(default_factory=list)        # new ignored paths, removed
+    ignored_preexisting: list[str] = field(default_factory=list)    # ignored before the turn: kept, not checked
+
+
+# Tool caches: dot-directories whose untracked content is a side effect (removed), never a method's area.
+TOOL_CACHES = (".pytest_cache", ".mypy_cache", ".ruff_cache", ".hypothesis", ".tox", ".venv", ".uv-cache")
+
+
+def denylist(arm: config.Arm) -> list[str]:
+    """The arm's method artefacts in the repo, from its config: what its setup checklist hashes as the method's
+    install (`checklist.effective_manifest_paths`), repo-relative entries only (`~/...` and absolute paths live
+    outside the repo)."""
+    return [m.rstrip("/") for m in checklist.effective_manifest_paths(arm) if not m.startswith(("~", "/"))]
+
+
+def _denied(path: str, deny) -> bool:
+    parts = path.rstrip("/").split("/")
+    if any(d.startswith(".") and d not in TOOL_CACHES for d in parts[:-1]):      # a dot-directory
+        return True
+    return any(path == d or path.startswith(d + "/") for d in deny)
 
 
 def _is_lock(path: str) -> bool:
     return path == "uv.lock" or path.endswith("/uv.lock")
 
 
-def scope_plan(porcelain: str) -> ScopePlan:
+def scope_plan(porcelain: str, deny: list[str] | tuple[str, ...] = ()) -> ScopePlan:
     """`git status --porcelain -uall` after the teammate's turn → what is in scope (Python files), what is a side
-    effect (untracked non-Python files: removed; a rewritten `uv.lock`: restored) and what is a violation (any
-    other tracked change, a deletion, a rename/copy, an unmerged path, a quoted path, or no Python change at all;
-    review C-11)."""
+    effect (untracked non-Python files and directories — an untracked nested repository is listed as `dir/` —
+    removed; a rewritten `uv.lock`: restored) and what is a violation (a change of ANY kind, Python included, under
+    a dot-directory other than a tool cache or under a `deny` path — the arm's method artefacts, `denylist`; any
+    other tracked non-Python change, a deletion, a rename/copy, an unmerged path, a quoted path, or no Python
+    change at all; review C-11, fix round 1)."""
     plan = ScopePlan()
     for line in sorted(l for l in porcelain.splitlines() if l.strip()):
         code, path = line[:2], line[3:]
@@ -87,6 +116,8 @@ def scope_plan(porcelain: str) -> ScopePlan:
             plan.violations.append(f"{path} (unmerged)")
         elif "R" in code or "C" in code:
             plan.violations.append(f"{path} (renamed or copied)")
+        elif _denied(path, deny):
+            plan.violations.append(f"{path} (method or tool area)")
         elif "D" in code:
             plan.violations.append(f"{path} (deleted)")
         elif path.endswith(".py"):
@@ -97,19 +128,30 @@ def scope_plan(porcelain: str) -> ScopePlan:
             plan.restore.append(path)                   # `uv run` may rewrite the lock: a side effect, restored
         else:
             plan.violations.append(f"{path} (modified)")
+    plan.violations.sort()
     if not plan.py and not plan.violations:
         plan.violations.append("no Python file changed")
     plan.py.sort(); plan.remove.sort(); plan.restore.sort()
     return plan
 
 
-def clean_side_effects(p: Paths) -> ScopePlan:
+def clean_side_effects(p: Paths, deny: list[str] | tuple[str, ...] = (),
+                       ignored_before: list[str] | None = None) -> ScopePlan:
     """The scope plan of the arm repo as it is now; with no violation, its side effects are cleaned (in
-    containers, via gitops)."""
-    plan = scope_plan(gitops.porcelain(p))
+    containers, via gitops): untracked paths with `clean -ffd` (nested repositories too), the lock restored, and —
+    given `ignored_before` (`gitops.ignored` before the turn) — every ignored path that is new since then removed
+    with `clean -ffdX`. Ignored paths that already existed (e.g. the arm's `.venv`, which the teammate may have
+    re-synced) are kept and recorded: deleting them would destroy the arm's state, and a path diff cannot see
+    changes inside them."""
+    plan = scope_plan(gitops.porcelain(p), deny)
     if not plan.violations:
-        gitops.remove_untracked(p, plan.remove)
+        gitops.remove_untracked(p, plan.remove, dirs=True)
         gitops.checkout_paths(p, plan.restore)
+        if ignored_before is not None:
+            now = gitops.ignored(p)
+            plan.removed_ignored = sorted(set(now) - set(ignored_before))
+            plan.ignored_preexisting = sorted(set(now) & set(ignored_before))
+            gitops.remove_ignored(p, plan.removed_ignored)
     return plan
 
 
@@ -203,6 +245,8 @@ class HandEdit:
     side_effects: dict
     turns: list = field(default_factory=list)     # every teammate turn, all tries: harness cost (Task 20)
     pin: dict = field(default_factory=dict)       # the landing try's pin report
+    commit_files: list[str] = field(default_factory=list)   # what the commit actually holds (hooks may add)
+    hook_added: list[str] = field(default_factory=list)     # commit_files the teammate did not change: recorded only
 
 
 def _precondition(p: Paths) -> None:
@@ -211,6 +255,9 @@ def _precondition(p: Paths) -> None:
     st = gitops.state(p)
     why = [w for w, bad in ((f"on branch {st.branch!r}, not main", st.branch != "main"),
                             ("the working tree is dirty", st.dirty)) if bad]
+    g = p.repo / ".git"
+    if g.is_symlink() or not g.is_dir():            # it is bind-mounted read-only for the turn: never via a link
+        why.append(f"{g.name} is not a plain directory")
     if why:
         raise HarnessFault("hand-edit", "precondition", "; ".join(why))
 
@@ -225,23 +272,38 @@ def _teammate_turn(ctx, k: int, out: Path, turns: list) -> transcripts.PinReport
     home = p.teammate_home(k)
     _fresh(home)
     before = transcripts.snapshot(home / ".claude")
-    env = credentials.session_env(pins, arm, role="teammate", isolated=True) | {"PYTHONDONTWRITEBYTECODE": "1"}
+    # BK_ISOLATED gives `--setting-sources ""`. CLAUDE_CODE_SAFE_MODE=1 is 2.1.281's `--safe-mode` (documented in its
+    # --help: CLAUDE.md, skills, plugins, hooks, custom commands and agents off; auth, model, built-in tools and
+    # permissions unchanged; "Sets CLAUDE_CODE_SAFE_MODE=1", and the binary reads that variable as the switch) — the
+    # env form needs no image rebuild. Whether it holds against a real repo is for the live probe (Task 25).
+    env = credentials.session_env(pins, arm, role="teammate", isolated=True) | {
+        "PYTHONDONTWRITEBYTECODE": "1", "CLAUDE_CODE_SAFE_MODE": "1"}
     image = pins.images["dryrun"] if arm.dry else pins.images["base"]
-    r = None
+    r, primary = None, None
     try:
         with egress.Stage(ctx.pass_, arm.name, "teammate", pins.egress_run_common, out / "egress.log") as st:
             t = session.Turn(ctx.pass_, arm.name, 2, k, 1, image, PROMPT, env,
-                             [Mount(home, p.container_home, False), Mount(p.work, "/work", False)], st.net, True,
+                             [Mount(home, p.container_home, False), Mount(p.work, "/work", False),
+                              Mount(p.repo / ".git", f"{p.container_repo}/.git", True)],   # the commit is later
+                             st.net, True,
                              p.container_repo, p.inbox("teammate"), "teammate", arm.dry, home / ".claude")
             r = session.run_turn(t, ctx.cred, out, pins.limits.turn_seconds)
             turns.append(r)
+    except BaseException as e:
+        primary = e
+        raise
     finally:                                   # the container has exited (run_turn stops it on every path)
-        skipped: list[dict] = []
-        files = transcripts.collect(home / ".claude", before, out / "transcripts" / f"t{k}", skipped=skipped)
-        streams = {r.stream_path: r.outcome} if r is not None and r.stream_path else {}
-        pin = transcripts.verify_pin(files, list(streams), pins, unsafe=skipped, stream_outcomes=streams)
-        (out / f"model-pin-t{k}.json").write_text(pin.to_json())
-        repo.remove_tree(home)                 # throwaway: its transcripts are collected
+        try:
+            skipped: list[dict] = []
+            files = transcripts.collect(home / ".claude", before, out / "transcripts" / f"t{k}", skipped=skipped)
+            streams = {r.stream_path: r.outcome} if r is not None and r.stream_path else {}
+            pin = transcripts.verify_pin(files, list(streams), pins, unsafe=skipped, stream_outcomes=streams)
+            (out / f"model-pin-t{k}.json").write_text(pin.to_json())
+            repo.remove_tree(home)             # throwaway: its transcripts are collected (kept if that failed)
+        except Exception as ce:
+            if primary is None:
+                raise
+            primary.add_note(f"collecting the teammate's evidence failed too: {ce!r}")   # never masks the turn's
     if r.outcome == "auth_failed":             # ruling 3: before anything else about the turn
         raise HarnessFault("infra-auth", "authentication_failed", f"teammate try {k}")
     if r.credential_files:                     # review S-3
@@ -261,9 +323,10 @@ def _work_entries(p: Paths) -> set[str]:
     return set(os.listdir(p.work)) if p.work.is_dir() else set()
 
 
-def _land(ctx, k: int, step1_tests: dict[str, str], out: Path, pin, turns: list, work_before: set[str]) -> HandEdit:
+def _land(ctx, k: int, step1_tests: dict[str, str], out: Path, pin, turns: list, work_before: set[str],
+          ignored_before: list[str]) -> HandEdit:
     p = ctx.paths
-    plan = clean_side_effects(p)
+    plan = clean_side_effects(p, denylist(ctx.arm), ignored_before)
     if plan.violations:
         raise HarnessFault("hand-edit", "scope", "; ".join(plan.violations))
     beside = sorted(_work_entries(p) - work_before)            # /work is the teammate's too: nothing may stay there
@@ -296,11 +359,15 @@ def _land(ctx, k: int, step1_tests: dict[str, str], out: Path, pin, turns: list,
     if diff:
         raise HarnessFault("hand-edit", "changed-hidden-results", json.dumps(diff)[:500])
     ns = gitops.numstat(p, f"{sha}~1", sha)
+    commit_files = sorted(f for _, _, f in ns)
+    hook_added = sorted(set(commit_files) - set(plan.py))          # e.g. beads' hooks: recorded, never failed
     (out / "diff.patch").write_text(gitops.show(p, sha))
-    side = {"removed": plan.remove, "restored": plan.restore, "removed_beside_repo": beside}
-    edit = HandEdit(sha, plan.py, ns, probe, k, side, list(turns), asdict(pin))
+    side = {"removed": plan.remove, "restored": plan.restore, "removed_beside_repo": beside,
+            "removed_ignored": plan.removed_ignored, "ignored_preexisting_not_checked": plan.ignored_preexisting}
+    edit = HandEdit(sha, plan.py, ns, probe, k, side, list(turns), asdict(pin), commit_files, hook_added)
     (out / "edit.json").write_text(json.dumps({                                                   # review F-11
-        "sha": sha, "author": gitops.TEAMMATE[0], "message": MESSAGE, "files": plan.py, "tries": k,
+        "sha": sha, "author": gitops.TEAMMATE[0], "message": MESSAGE, "files": plan.py, "commit_files": commit_files,
+        "hook_added": hook_added, "tries": k,
         "lines_added": sum(a for a, _, _ in ns), "lines_removed": sum(d for _, d, _ in ns), "numstat": ns,
         "side_effects": side, "harness_cost_usd": round(sum(t.cost_usd for t in turns), 6)}, indent=2))
     return edit
@@ -308,8 +375,17 @@ def _land(ctx, k: int, step1_tests: dict[str, str], out: Path, pin, turns: list,
 
 def _try(ctx, k: int, step1_tests: dict[str, str], out: Path, turns: list) -> HandEdit:
     work_before = _work_entries(ctx.paths)
+    ignored_before = gitops.ignored(ctx.paths)
     pin = _teammate_turn(ctx, k, out, turns)
-    return _land(ctx, k, step1_tests, out, pin, turns, work_before)
+    return _land(ctx, k, step1_tests, out, pin, turns, work_before, ignored_before)
+
+
+def _restore_keeping(p: Paths, exc: BaseException) -> None:
+    """Restore the pre-edit state; a failure to do so is noted on `exc`, which the caller re-raises (never masked)."""
+    try:
+        repo.restore(p, PRE_EDIT)
+    except Exception as e:
+        exc.add_note(f"restoring {PRE_EDIT} failed too: {e!r}")
 
 
 def apply(ctx, step1_tests: dict[str, str]) -> HandEdit:
@@ -335,13 +411,13 @@ def apply(ctx, step1_tests: dict[str, str]) -> HandEdit:
             (out / f"try-{k}-failed.json").write_text(json.dumps({"kind": f.kind, "signature": f.signature,
                                                                   "detail": f.detail}, indent=2))
             if k == 2 or f.kind != "hand-edit" or f.signature not in RETRIED:
-                repo.restore(p, PRE_EDIT)
+                _restore_keeping(p, f)
                 raise
             if f.signature == "session" and ctx.pins.limits.transient_backoff:
                 ctx.sleep(ctx.pins.limits.transient_backoff[0])
             continue
-        except BaseException:
-            repo.restore(p, PRE_EDIT)
+        except BaseException as e:
+            _restore_keeping(p, e)
             raise
         repo.snapshot(p, 2)
         return edit

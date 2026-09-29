@@ -187,6 +187,13 @@ def porcelain(p: Paths) -> str:
     return git(p, "status", "--porcelain", "-uall").stdout.decode(errors="replace")
 
 
+def ignored(p: Paths) -> list[str]:
+    """Ignored paths in the worktree, as `status --ignored` lists them (a wholly ignored directory once, as
+    `dir/`), sorted."""
+    out = git(p, "status", "--porcelain", "--ignored=traditional", "--untracked-files=normal").stdout
+    return sorted(l[3:] for l in out.decode(errors="replace").splitlines() if l.startswith("!! "))
+
+
 def ls_files(p: Paths, sha: str) -> list[str]:
     return _out(git(p, "ls-tree", "-r", "--name-only", sha)).splitlines()
 
@@ -311,9 +318,16 @@ def checkout_paths(p: Paths, paths_: list[str]) -> None:
         git(p, "checkout", "--", *paths_, write=True)
 
 
-def remove_untracked(p: Paths, paths_: list[str]) -> None:
+def remove_untracked(p: Paths, paths_: list[str], dirs: bool = False) -> None:
+    """`dirs=True` (`clean -ffd`) also removes untracked directories, nested repositories included."""
     if paths_:
-        git(p, "clean", "-f", "-q", "--", *paths_, write=True)
+        git(p, "clean", "-ffd" if dirs else "-f", "-q", "--", *paths_, write=True)
+
+
+def remove_ignored(p: Paths, paths_: list[str]) -> None:
+    """Remove these ignored paths (`clean -ffdX`: only what .gitignore ignores, directories included)."""
+    if paths_:
+        git(p, "clean", "-ffdX", "-q", "--", *paths_, write=True)
 
 
 # ---- host-side helpers: never an arm repo (public remotes, the harness repo, a bundle's bare clone) --------
