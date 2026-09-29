@@ -96,3 +96,51 @@ of ~150 ms to ~210 ms after spawn (max 0.5 s over 300 runs) — far inside the h
 | after (fix)   | **0/300** | **0/300** |
 
 Pooled: 15/900 failures before vs 0/600 after (Fisher exact p ~ 0.0006).
+
+## 7. Other watcher tests (step 2 and step 4 files)
+
+All 6 `with Watching(...)` uses (5 in step 2, 1 in step 4) were checked for the same mechanism (a file change made right after readiness whose
+detection the test depends on):
+
+| Test | Exposed? | Why |
+|---|---|---|
+| step2 `test_watch_picks_up_an_edit_to_an_included_file` | **yes** | the observed flake (sections 1-6) |
+| step2 `test_include_added_by_hand_is_followed` | **yes** | identical shape: hand edit immediately after readiness, then `wait_for` 5 s. Measured in section 8 |
+| step2 `test_comment_only_edit_while_watching_records_nothing` | vacuous, not flaky | a missed event makes it pass for the wrong reason (the "no event" assertion was never exercised by a reconcile). The fix removes the vacuity: the edit is now always observed |
+| step2 `test_set_while_watching_records_its_change_exactly_once` | no | `set` reconciles and writes itself; a missed watcher event cannot produce the failure it asserts against |
+| step2 `test_watch_exits_0_on_sigterm` | no | no file change |
+| step4 `test_set_while_watching_is_attributed_to_the_cli_not_the_file` | no | as for the step2 `set` test; a missed event can only make it pass. Its own race (write-back vs reconcile attribution) is guarded by the theatre lock and is unrelated |
+
+No harness change is needed; `Watching`'s readiness wait is correct per contract.
+
+## 8. Before / after: the sibling test `test_include_added_by_hand_is_followed` (idle, 300 runs each)
+
+| Reference | Failures |
+|---|---|
+| before (main) | 2/300 (0.7%) |
+| after (fix)   | **0/300** |
+
+Same mechanism confirmed: this test was also a latent fairness defect, just rarer.
+
+## 9. Verification after the fix
+
+- Two watcher files (`test_step2_sync.py`, `test_step4_lineage.py`) at `--step 4`, **20x in a row: 20/20
+  runs, 22/22 tests each, 0 failures**.
+- `uv run python harness/validate_suites.py` -> **Result: PASS** (all positive/negative steps; watcher runs
+  5/5 with 0 not passing).
+- The scratch loop harness was removed from `tests/hidden` (never committed).
+
+## 10. Proposed contract wording (for the controller; contract NOT edited)
+
+The current text — "Once it is watching, it prints one line `watching <dir>` to stdout and flushes" — does
+imply the right thing, but a reasonable implementer can read "once it is watching" as "once it has called
+the watch API", which is exactly the reference's bug. Because a candidate that prints early will fail the
+hidden watcher tests ~1-2% of the time, the obligation should be explicit so such a failure is attributable
+to the candidate, not to an ambiguous spec. Proposed replacement for the first bullet's second sentence:
+
+> Once it is watching, it prints one line `watching <dir>` to stdout and flushes. The line is a promise:
+> it is printed only after `watch` is able to observe changes, so any change made after the line appears
+> is reconciled within 2 seconds. Changes made before the line appears are reconciled too.
+
+(The last sentence is optional; the reference now satisfies it via the reconcile-before-announce step,
+but no hidden test depends on it.)
