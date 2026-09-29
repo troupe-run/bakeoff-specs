@@ -18,7 +18,7 @@ Step 5 (binding requirement for Tasks 13/15/23): `step_view` gives the PO CR-A o
 the arm, and the contract with the In-include section only from then on (or from the start in OD6 A mode).
 """
 from __future__ import annotations
-import json, re, shutil, time
+import json, os, re, shutil, tempfile, time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -82,16 +82,17 @@ class Decision:
 
 
 def _extract(text: str) -> dict:
-    m = re.search(r"\{.*\}", text, re.S)
-    if not m:
-        raise ProtocolError("no JSON object in PO reply")
-    try:
-        o = json.loads(m.group(0))
-    except json.JSONDecodeError as e:
-        raise ProtocolError(f"PO reply is not valid JSON: {e}") from e
-    if not isinstance(o, dict):
-        raise ProtocolError("PO reply is not a JSON object")
-    return o
+    """The first JSON object in `text` with the decision's shape (an object with a "kind" key). Each `{` is tried
+    with `raw_decode`, so braces in prose before it and objects after it do not matter (fix round 1)."""
+    dec = json.JSONDecoder()
+    for m in re.finditer(r"\{", text):
+        try:
+            o, _ = dec.raw_decode(text, m.start())
+        except json.JSONDecodeError:
+            continue
+        if isinstance(o, dict) and "kind" in o:
+            return o
+    raise ProtocolError('no decision JSON object (one with a "kind") in the PO reply')
 
 
 def _opt_str(v, what: str) -> str | None:
@@ -100,23 +101,39 @@ def _opt_str(v, what: str) -> str | None:
     return v
 
 
+def _str(v, what: str) -> str:
+    if not isinstance(v, str):
+        raise ProtocolError(f"{what} must be a string")
+    return v
+
+
+def _bool(o: dict, key: str, what: str) -> bool:
+    v = o.get(key)
+    if not isinstance(v, bool):                   # present and a real bool: never "false", 0 or null
+        raise ProtocolError(f"{what} must be true or false")
+    return v
+
+
 def parse(text: str) -> Decision:
     o = _extract(text)
-    try:
-        raw_answers = o.get("answers") or []
-        if not isinstance(raw_answers, list) or not all(isinstance(a, dict) for a in raw_answers):
-            raise ProtocolError("answers must be a list of objects")
-        answers = [Answer(str(a["question"]), _opt_str(a.get("reply"), "answer reply"), bool(a.get("escalate")),
-                          _opt_str(a.get("cited"), "cited")) for a in raw_answers]
-        approved = o.get("approved")
-        if approved is not None and not isinstance(approved, bool):
-            raise ProtocolError("approved must be true, false or null")
-        d = Decision(o["kind"], _opt_str(o.get("reply"), "reply"), answers, approved,
-                     _opt_str(o.get("command"), "command"), str(o.get("arguments") or ""), bool(o.get("significant")))
-    except (KeyError, TypeError) as e:
-        raise ProtocolError(f"malformed: {e}") from e
+    raw_answers = o.get("answers")
+    if raw_answers is None:
+        raw_answers = []
+    if not isinstance(raw_answers, list) or not all(isinstance(a, dict) for a in raw_answers):
+        raise ProtocolError("answers must be a list of objects")
+    answers = [Answer(_str(a.get("question"), "answer question"), _opt_str(a.get("reply"), "answer reply"),
+                      _bool(a, "escalate", "answer escalate"), _opt_str(a.get("cited"), "cited"))
+               for a in raw_answers]
+    approved = o.get("approved")
+    if approved is not None and not isinstance(approved, bool):
+        raise ProtocolError("approved must be true, false or null")
+    d = Decision(_str(o.get("kind"), "kind"), _opt_str(o.get("reply"), "reply"), answers, approved,
+                 _opt_str(o.get("command"), "command"), _opt_str(o.get("arguments"), "arguments") or "",
+                 _bool(o, "significant", "significant"))
     if d.kind not in KINDS:
         raise ProtocolError(f"unknown kind {d.kind!r}")
+    if d.kind != "question" and d.answers:
+        raise ProtocolError(f"answers belong to kind 'question' only, not {d.kind!r}")
     if d.kind == "question":
         if not d.answers:
             raise ProtocolError("a question needs at least one answer entry")
@@ -142,9 +159,13 @@ def parse(text: str) -> Decision:
 
 def _cr_parts(brief: str) -> tuple[str, str]:
     parts = re.split(r"(?m)^(?=## )", brief)
-    cr_a = next(p for p in parts if p.startswith("## CR-A")).rstrip()
-    cr_b = next(p for p in parts if p.startswith("## CR-B")).rstrip()
-    return cr_a, cr_b
+    cr_a = next((p for p in parts if p.startswith("## CR-A")), None)
+    cr_b = next((p for p in parts if p.startswith("## CR-B")), None)
+    missing = [n for n, v in (("CR-A", cr_a), ("CR-B", cr_b)) if v is None]
+    if missing:
+        raise ValueError(f"the step-5 brief has no {' or '.join('## ' + n for n in missing)} section "
+                         "(two-requests delivery needs both)")
+    return cr_a.rstrip(), cr_b.rstrip()
 
 
 def step_view(step: int, step_brief: str, contract: str, *, crb_sent: bool = False,
@@ -202,18 +223,27 @@ def _qa_md(qa: list[dict]) -> str:
                        for i, q in enumerate(qa, 1)) or "(nothing yet)"
 
 
-def check_mounts(mounts: list[Mount], p: Paths) -> None:
+def check_mounts(mounts: list[Mount], p: Paths, allowed_files: list[Path] = ()) -> None:
     """OD21: the PO sees the arm's /work read-only and nothing of the hidden tests, the reference, the arm's
-    scratch (where hidden-test copies are prepared) or any other arm. Raises PermissionError otherwise."""
+    scratch (where hidden-test copies are prepared), results, or any other arm. Hidden tests are identified by
+    where they live (`tests/`, scratch, results), never by a name. Under `results/` only `allowed_files` (this
+    decision's six /po inputs) may be mounted (fix round 1). Raises PermissionError otherwise."""
     root = paths_mod.REPO_ROOT.resolve()
     forbidden = [root / "tests", root / "reference", p.scratch.resolve(), p.snapshots.resolve()]
     allowed_state = [p.work.resolve(), p.po_home.resolve(), p.inbox("po").resolve()]
-    state = paths_mod.STATE.resolve()
+    state, results = paths_mod.STATE.resolve(), paths_mod.RESULTS.resolve()
+    allowed = {Path(f).resolve() for f in allowed_files}
+
+    def under(h: Path, roots) -> bool:
+        return any(h == r or h.is_relative_to(r) for r in roots)
+
     for m in mounts:
         host = Path(m.host).resolve()
-        if any(host == f or host.is_relative_to(f) for f in forbidden) or "hidden" in m.ctr:
+        if under(host, forbidden):
             raise PermissionError(f"the PO may not see {m.host} (OD21: no hidden tests, reference or scratch)")
-        if host.is_relative_to(state) and not any(host == a or host.is_relative_to(a) for a in allowed_state):
+        if under(host, [results]) and host not in allowed:
+            raise PermissionError(f"the PO may not see {m.host} (OD21: of results, only this decision's /po inputs)")
+        if under(host, [state]) and not under(host, allowed_state):
             raise PermissionError(f"the PO may not see {m.host} (OD21: only this arm's /work)")
         if m.ctr == "/work" and not m.ro:
             raise PermissionError("the PO's /work must be read-only (OD21)")
@@ -235,13 +265,14 @@ def decide(ctx: PoContext, arm_message: str, cred, n: int, brief_path: Path) -> 
     pins = ctx.pins or config.load_pins()
     arm = config.load_arm(ctx.arm)
     d = ctx.out_dir / "po" / f"a{ctx.attempt}-{n:03d}"; d.mkdir(parents=True, exist_ok=True)  # attempts never collide
-    shutil.copy(PROTOCOL, d / "protocol.md"); shutil.copy(brief_path, d / "po-brief.md")
+    shutil.copy(PROTOCOL, d / "protocol.md")
+    (d / "po-brief.md").write_text(brief_for_step(brief_path.read_text(), ctx.step))   # fix round 1
     (d / "contract.md").write_text(ctx.contract_in_force); (d / "step.md").write_text(ctx.step_brief)
     (d / "qa.md").write_text(_qa_md(ctx.qa_so_far)); (d / "message.md").write_text(arm_message)
     home = ctx.paths.po_home; (home / ".claude").mkdir(parents=True, exist_ok=True)
     ctx.paths.work.mkdir(parents=True, exist_ok=True)
     mounts = _mounts(ctx, d)
-    check_mounts(mounts, ctx.paths)
+    check_mounts(mounts, ctx.paths, allowed_files=[d / f for f in PO_FILES])
     env = credentials.session_env(pins, arm, role="po", isolated=True, tools=TOOLS)
     before = transcripts.snapshot(home / ".claude")
     res = PoResult(decision=None)                                    # type: ignore[arg-type]
@@ -290,6 +321,54 @@ def decide(ctx: PoContext, arm_message: str, cred, n: int, brief_path: Path) -> 
 
 
 # --- escalation and brief growth --------------------------------------------------------------------------------
+
+_STEP_TAG = re.compile(r"; first raised by \S+ at step (\d+);")
+
+
+def _section_span(text: str) -> tuple[int, int] | None:
+    """(start, end) of the Escalated answers section's body: after its heading, up to the next `## ` or EOF."""
+    m = re.search(rf"(?m)^{re.escape(SECTION)}[ \t]*$", text)
+    if not m:
+        return None
+    nxt = re.search(r"(?m)^## ", text[m.end():])
+    return m.end(), (m.end() + nxt.start()) if nxt else len(text)
+
+
+def brief_for_step(text: str, step: int) -> str:
+    """The brief as the PO at `step` sees it: escalation entries tagged with a later step are left out, so a PO at
+    step 1 (another arm, or pass 2) never learns a step-5 answer early. Untagged lines are kept. The brief file
+    keeps every entry; only the PO's copy is filtered (fix round 1). An entry is its `- **Q:**` line plus the
+    indented continuation lines `append_escalation` writes."""
+    span = _section_span(text)
+    if span is None:
+        return text
+    a, b = span
+    groups: list[list[str]] = []
+    for line in text[a:b].splitlines(keepends=True):
+        if line.startswith("  ") and groups and groups[-1][0].startswith("- **Q:**"):
+            groups[-1].append(line)
+        else:
+            groups.append([line])
+    body = []
+    for g in groups:
+        m = _STEP_TAG.search("".join(g)) if g[0].startswith("- **Q:**") else None
+        if m is None or int(m.group(1)) <= step:
+            body.extend(g)
+    return text[:a] + "".join(body) + text[b:]
+
+
+def _write_atomic(path: Path, text: str) -> None:
+    """Temp file in the same directory, then rename: a reader or a crash never sees a half-written brief."""
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(text)
+        os.chmod(tmp, path.stat().st_mode & 0o7777 if path.exists() else 0o644)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
 
 @dataclass(frozen=True)
 class Escalation:
@@ -349,19 +428,17 @@ def append_escalation(brief: Path, question: str, answer: str, pass_: str, arm: 
     meta = f" _({today}; {pass_}; first raised by {arm} at step {step}; answered by {SOURCES[source]})_"
     entry = f"- **Q:** {q} **A:** {a_lines[0]}"
     if len(a_lines) > 1:
-        entry += "\n" + "\n".join(("  " + l) if l else "" for l in a_lines[1:])
+        entry += "\n" + "\n".join("  " + l for l in a_lines[1:])   # blank lines too: one bullet, one entry
     entry += meta + "\n"
     text = brief.read_text()
-    m = re.search(rf"(?m)^{re.escape(SECTION)}\s*$", text)
-    if not m:
+    span = _section_span(text)
+    if span is None:
         raise ValueError(f"brief has no '{SECTION}' section")
-    nxt = re.search(r"(?m)^## ", text[m.end():])
-    if nxt is None:
-        brief.write_text(text.rstrip("\n") + "\n" + entry)
+    cut = span[1]
+    if cut == len(text):
+        _write_atomic(brief, text.rstrip("\n") + "\n" + entry)
     else:
-        cut = m.end() + nxt.start()
-        head, tail = text[:cut].rstrip("\n"), text[cut:]
-        brief.write_text(head + "\n" + entry + "\n" + tail)
+        _write_atomic(brief, text[:cut].rstrip("\n") + "\n" + entry + "\n" + text[cut:])
 
 
 def commit_brief(brief: Path, pass_: str, arm: str, step: int) -> None:

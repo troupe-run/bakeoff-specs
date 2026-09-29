@@ -23,7 +23,8 @@ next arm/round. `Owner` implements that "not available" outcome directly, as a `
 Every park is recorded (`Owner.parks`, and returned to the caller) as a
 `Park(prompt, context, reason, at, seconds)` — `prompt` names which method was parked, `context` is a short,
 self-explaining summary of what was being asked (e.g. the question's first line, or which item/gate it was),
-`reason` is one of `"unattended" | "eof" | "timeout" | "owner-choice"`, `at` is a wall-clock timestamp
+`reason` is one of `"unattended" | "eof" | "timeout" | "owner-choice"` (and `"empty-answer"`, which
+`po.escalate` records when an escalation answer comes back empty — never appended to the brief), `at` is a wall-clock timestamp
 (`now_fn`, default `time.time`), and `seconds` is owner time spent before the park (evidence, same as a
 normal answer). Callers (Task 23's `run_arm`) check `isinstance(result, Park)` and park the arm, moving on to
 the next arm/round, rather than trying to make sense of a normal-shaped reply — and can read a park record
@@ -45,10 +46,12 @@ class Park:
     """Recorded whenever a prompt could not (or would not) be answered by the owner. The run parks the arm
     and moves on to the next arm/round rather than blocking. `seconds` is owner time spent before parking —
     it is evidence just like a normal answer's seconds, even when the outcome is "no answer". `context` makes
-    the record understandable on its own (in a log, a ledger, a report) without cross-referencing the run."""
+    the record understandable on its own (in a log, a ledger, a report) without cross-referencing the run.
+    `reason` is "unattended" | "eof" | "timeout" | "owner-choice", or "empty-answer" when `po.escalate` gets an
+    empty escalation answer (recorded as a park, never appended to the brief)."""
     prompt: str    # which Owner method was parked, e.g. "gate", "escalation"
     context: str   # a short summary of what was being asked, e.g. the question's first line or an item id
-    reason: str    # "unattended" | "eof" | "timeout" | "owner-choice"
+    reason: str    # "unattended" | "eof" | "timeout" | "owner-choice" | "empty-answer" (po.escalate)
     at: float      # wall-clock timestamp when the park was recorded (Owner's `now_fn`, default time.time)
     seconds: float
 
