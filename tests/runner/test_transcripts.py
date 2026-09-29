@@ -576,3 +576,41 @@ def test_the_stream_backstop_catches_a_hidden_subagent_even_if_its_transcript_ev
     s = gz(tmp_path / "t.stream.jsonl.gz", INIT_OK, asst("claude-opus-5-5"),
            _result({"claude-opus-5-5": {}, "claude-haiku-4-5": {}}))
     assert not verify_pin([t], [s], config.load_pins(), unsafe=[]).ok
+
+
+# --- ruling: modelUsage is required only when the turn did work ------------------------------------------
+
+NOT_LOGGED_IN = {"type": "result", "subtype": "success", "is_error": True, "result": "Not logged in · Please run /login",
+                 "total_cost_usd": 0, "num_turns": 1, "duration_api_ms": 0}
+
+def test_a_no_work_auth_result_without_model_usage_is_not_a_pin_violation(tmp_path):
+    s = gz(tmp_path / "t.stream.jsonl.gz", INIT_OK, NOT_LOGGED_IN)
+    r = verify_pin([], [s], config.load_pins(), unsafe=[], require_transcripts=False)
+    assert r.violations == []          # (not ok: no evidence — the turn's own outcome carries the failure)
+
+def test_a_no_work_result_with_synthetic_or_empty_usage_is_not_a_violation(tmp_path):
+    for mu in ({}, {"<synthetic>": {}}):
+        s = gz(tmp_path / "t.stream.jsonl.gz", INIT_OK, asst("<synthetic>"), _result(mu, total_cost_usd=0))
+        r = verify_pin([], [s], config.load_pins(), unsafe=[], require_transcripts=False)
+        assert r.violations == [], mu
+
+def test_work_done_without_model_usage_is_a_violation(tmp_path):
+    tool = {"type": "assistant", "message": {"model": "<synthetic>", "content": [{"type": "tool_use", "name": "Bash"}]}}
+    cases = {"real assistant message": [asst("claude-opus-5-5"), _result()],
+             "tool_use": [tool, _result()],
+             "cost": [_result(total_cost_usd=0.01)],
+             "hostile cost": [_result(total_cost_usd="0.01")]}
+    for name, events in cases.items():
+        s = gz(tmp_path / "t.stream.jsonl.gz", INIT_OK, *events)
+        r = verify_pin([], [s], config.load_pins(), unsafe=[], require_transcripts=False)
+        assert ("result.modelUsage", "<missing>") in [(v["where"], v["model"]) for v in r.violations], name
+
+def test_present_model_usage_with_an_off_pin_key_is_a_violation_even_without_work(tmp_path):
+    s = gz(tmp_path / "t.stream.jsonl.gz", INIT_OK, _result({"claude-haiku-4-5": {}}, total_cost_usd=0))
+    r = verify_pin([], [s], config.load_pins(), unsafe=[], require_transcripts=False)
+    assert [(v["where"], v["model"]) for v in r.violations] == [("result.modelUsage", "claude-haiku-4-5")]
+
+def test_malformed_model_usage_is_a_violation_even_without_work(tmp_path):
+    s = gz(tmp_path / "t.stream.jsonl.gz", INIT_OK, _result(["claude-opus-5-5"], total_cost_usd=0))
+    r = verify_pin([], [s], config.load_pins(), unsafe=[], require_transcripts=False)
+    assert [(v["where"], v["model"]) for v in r.violations] == [("result.modelUsage", "<malformed:list>")]
