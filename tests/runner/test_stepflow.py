@@ -272,7 +272,7 @@ def _run_a(fs):
     fs.ctx.out.mkdir(parents=True, exist_ok=True)
 
 
-def test_run_a_stops_at_the_first_gate_or_code_and_restores_the_pre_step_snapshot(fake_step):
+def test_run_a_asks_drive_for_the_discovery_stop_and_restores_the_pre_step_snapshot(fake_step):     # L-6
     _run_a(fake_step)
     fake_step.outcome_on = {1: "discovery-stop"}
     out = stepflow.run_step(fake_step.ctx, "go", run="a")
@@ -414,7 +414,7 @@ def test_a_docker_error_raised_by_the_runner_is_an_infra_container_fault(fake_st
     def boom_once(c, attempt, message, resume=None, **kw):
         calls.append(attempt)
         if len(calls) == 1:
-            raise RuntimeError("docker run failed (125): proxy container exited 42")
+            raise stepflow.docker.ContainerError("docker run failed (125): proxy container exited 42")
         return real(c, attempt, message, resume, **kw)
     monkeypatch.setattr(stepflow.drive, "run_attempt", boom_once)
     fake_step.progress = [3]
@@ -440,3 +440,58 @@ def test_run_a_never_asks_the_owner_about_a_breach(fake_step):
     fake_step.ctx.owner.reclassify = lambda what, detail: pytest.fail("asked in run a")
     stepflow.run_step(fake_step.ctx, "go", run="a")
     assert not (paths.Paths("dry9", "control").results / "breaches.json").exists()
+
+
+# ---- fix round 1 -------------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("exc", [NotImplementedError("todo"), RecursionError("deep"), RuntimeError("a runner bug"),
+                                 PermissionError("the dummy credential may only drive dry-run arms")])
+def test_a_runner_bug_propagates_and_is_not_recorded_as_a_harness_fault(fake_step, monkeypatch, exc):   # L-1
+    def boom(*a, **k):
+        raise exc
+    monkeypatch.setattr(stepflow.drive, "run_attempt", boom)
+    with pytest.raises(type(exc)):
+        stepflow.run_step(fake_step.ctx, "go")
+    assert faults.for_step("dry9", "control", 2) == [] and fake_step.restored == []
+
+
+def test_a_subprocess_timeout_from_the_runner_is_an_infra_container_fault(fake_step, monkeypatch):
+    import subprocess
+    real, calls = stepflow.drive.run_attempt, []
+
+    def once(c, attempt, message, resume=None, **kw):
+        calls.append(attempt)
+        if len(calls) == 1:
+            raise subprocess.TimeoutExpired(["docker", "run"], 600)
+        return real(c, attempt, message, resume, **kw)
+    monkeypatch.setattr(stepflow.drive, "run_attempt", once)
+    fake_step.progress = [3]
+    stepflow.run_step(fake_step.ctx, "go")
+    [e] = faults.for_step("dry9", "control", 2)
+    assert e["kind"] == "infra-container"
+
+
+def test_a_failure_collecting_a_faulted_attempts_evidence_still_records_the_original_fault(fake_step, monkeypatch):  # L-2
+    fake_step.raise_on = {1: ("infra-container", "boom")}
+    fake_step.progress = [3]
+    n = []
+
+    def collect(d, b, dest, **k):
+        n.append(1)
+        if len(n) == 1:
+            raise OSError("transcripts unreadable")
+        return []
+    monkeypatch.setattr(stepflow.transcripts, "collect", collect)
+    out = stepflow.run_step(fake_step.ctx, "go")
+    [e] = faults.for_step("dry9", "control", 2)
+    assert (e["kind"], e["signature"]) == ("infra-container", "boom") and "transcripts unreadable" in e["detail"]
+    assert fake_step.restored == [2] and out.status == "done"
+
+
+def test_the_scored_evidence_lists_only_run_b_faults(fake_step):                                  # L-5
+    faults.record(HarnessFault("infra-container", "in-a"), "dry9", "control", 2, 1, run="a")
+    fake_step.raise_on = {1: ("infra-container", "in-b")}
+    fake_step.progress = [3]
+    stepflow.run_step(fake_step.ctx, "go")
+    assert [e["signature"] for e in fake_step.finalised[-1]["fault_entries"]] == ["in-b"]
+

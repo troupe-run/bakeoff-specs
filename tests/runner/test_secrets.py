@@ -704,3 +704,31 @@ def test_a_failed_oauth_lookup_is_cached_and_still_fails_publish(tmp_state, monk
     with pytest.raises(RuntimeError):
         secrets.literals(require_oauth=True)
     assert calls == [1]
+
+
+# ---- Task 22 fix round 1 L-4: the harness-fault ledger is evidence too ---------------------------------------------
+
+def test_ledger_files_are_the_shared_ledger_for_real_passes_and_the_namespaced_one_otherwise(tmp_state):
+    assert secrets.ledger_files("pass1") == [paths.FAULTS, paths.HALTED,
+                                             paths.RESULTS / "pass1" / "resource-exhaustion.jsonl"]
+    assert secrets.ledger_files("dry3") == [paths.RESULTS / "dry3" / "faults.jsonl", paths.RESULTS / "dry3" / "HALTED",
+                                            paths.RESULTS / "dry3" / "resource-exhaustion.jsonl"]
+
+
+def test_a_secret_in_the_fault_ledger_is_found_by_the_close_out_arm_scan(tmp_state):
+    faults.record(faults.HarnessFault("infra-is_error", "x", f"arm said {ANT}"), "pass1", "control", 2, 1)
+    [f] = secrets.scan_arm(Paths("pass1", "control"), snapshots=False)
+    assert f.kind == "anthropic-token" and "faults.jsonl" in f.path
+
+
+def test_a_secret_in_a_dry_pass_ledger_is_found_by_the_per_step_scan(tmp_state):
+    p = Paths("dry3", "control")
+    p.step(2).mkdir(parents=True)
+    faults.record(faults.HarnessFault("infra-is_error", "x", f"arm said {ANT}"), "dry3", "control", 2, 1)
+    assert [f.kind for f in secrets.scan_step(p, 2)] == ["anthropic-token"]
+
+
+def test_the_per_step_scan_covers_the_step_dir_too(tmp_state):
+    p = Paths("dry3", "control")
+    p.step(2).mkdir(parents=True); (p.step(2) / "run.json").write_text(ANT)
+    assert [f.kind for f in secrets.scan_step(p, 2)] == ["anthropic-token"]

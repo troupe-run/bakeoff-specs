@@ -7,6 +7,7 @@ from runner.faults import HarnessFault
 
 @pytest.fixture(autouse=True)
 def ledger(tmp_state):
+    (paths.RESULTS / "dry3").mkdir(parents=True)          # a dry pass that exists (declare/resume validate it)
     return tmp_state
 
 
@@ -43,8 +44,8 @@ def test_for_step_returns_only_that_steps_entries():
 
 
 def test_declare_records_a_manual_fault_with_its_scope():
-    faults.declare("pass1", "a", 4, "brief-typo", "retest")
-    [e] = faults.for_step("pass1", "a", 4)
+    faults.declare("pass1", "control", 4, "brief-typo", "retest")
+    [e] = faults.for_step("pass1", "control", 4)
     assert e["kind"] == "manual" and e["signature"] == "brief-typo" and e["scope"] == "retest"
 
 
@@ -69,19 +70,56 @@ def test_a_ledger_entry_records_which_run_of_the_step_it_came_from():
 
 
 def test_a_resolution_is_not_returned_as_a_step_entry():
-    faults.record(HarnessFault("x", "1"), "dry3", "a", 2, 1)
+    faults.record(HarnessFault("x", "1"), "dry3", "a", 2, 1); faults.record(HarnessFault("x", "1"), "dry3", "a", 2, 2)
     faults.resume("dry3", "fixed")
-    assert [e["signature"] for e in faults.for_step("dry3", "a", 2)] == ["1"]
+    assert [e["signature"] for e in faults.for_step("dry3", "a", 2)] == ["1", "1"]
 
 
 def test_declare_refuses_an_unknown_scope():
     with pytest.raises(ValueError):
-        faults.declare("pass1", "a", 4, "x", "everything")
+        faults.declare("pass1", "control", 4, "x", "everything")
 
 
-def test_a_declared_fault_counts_towards_the_halt_rule():
-    faults.declare("dry3", "a", 4, "brief-typo", "rerun-step")
-    assert faults.record(HarnessFault("manual", "brief-typo"), "dry3", "b", 4, 1) == "halt"
+def test_a_declared_fault_counts_towards_the_halt_rule():                          # fix round 1 M-1
+    assert faults.declare("dry3", "control", 4, "brief-typo", "rerun-step") == "rerun"
+    assert faults.declare("dry3", "openspec", 5, "brief-typo", "retest") == "halt"
+    h = json.loads(faults.halted("dry3"))
+    assert (h["first"]["arm"], h["second"]["arm"]) == ("control", "openspec")
+
+
+@pytest.mark.parametrize("pass_, arm, step, slug", [
+    ("nosuchpass", "control", 4, "x"),          # not a known pass and nothing on disk
+    ("../evil", "control", 4, "x"),             # would leave the results tree
+    ("Pass1", "control", 4, "x"),
+    ("dry3", "nosucharm", 4, "x"),
+    ("dry3", "../control", 4, "x"),
+    ("dry3", "control", 0, "x"), ("dry3", "control", 8, "x"),
+    ("dry3", "control", 4, ""), ("dry3", "control", 4, "a b/c"),
+])
+def test_declare_refuses_bad_input_and_writes_nothing(pass_, arm, step, slug):                  # fix round 1 M-2
+    with pytest.raises(ValueError):
+        faults.declare(pass_, arm, step, slug, "retest")
+    assert not paths.FAULTS.exists() and not (paths.RESULTS / "dry3" / "faults.jsonl").exists()
+    assert sorted(x.name for x in paths.RESULTS.iterdir()) == ["dry3"]
+
+
+def test_resume_needs_a_note():
+    f = HarnessFault("m", "x"); faults.record(f, "dry3", "a", 1, 1); faults.record(f, "dry3", "a", 1, 2)
+    with pytest.raises(ValueError):
+        faults.resume("dry3", "   ")
+    assert faults.halted("dry3")
+
+
+def test_resume_refuses_a_pass_that_is_not_halted_and_appends_nothing():
+    faults.record(HarnessFault("m", "x"), "dry3", "a", 1, 1)
+    with pytest.raises(ValueError, match="not halted"):
+        faults.resume("dry3", "nothing to resolve")
+    assert [e.get("resolution") for e in faults.entries("dry3")] == [None]
+
+
+def test_resume_refuses_an_unknown_pass():
+    with pytest.raises(ValueError):
+        faults.resume("../../etc", "x")
 
 
 def test_resource_exhaustion_is_recorded_per_pass_step_and_arm_and_is_not_a_ledger_fault():
@@ -147,6 +185,33 @@ def test_cli_faults_resume_records_the_resolution_and_clears_halted():
 def test_cli_faults_resume_needs_a_note():
     with pytest.raises(SystemExit):
         cli.main(["faults", "resume", "dry3"])
+
+
+def test_cli_faults_resume_with_an_empty_note_is_a_clean_error(capsys):
+    f = HarnessFault("m", "x"); faults.record(f, "dry3", "a", 1, 1); faults.record(f, "dry3", "a", 1, 2)
+    assert cli.main(["faults", "resume", "dry3", "--note", ""]) == 2
+    assert "note" in capsys.readouterr().err and faults.halted("dry3")
+
+
+def test_cli_faults_resume_on_a_pass_that_is_not_halted_is_refused(capsys):
+    assert cli.main(["faults", "resume", "dry3", "--note", "x"]) == 2
+    assert "not halted" in capsys.readouterr().err and faults.entries("dry3") == []
+
+
+def test_cli_faults_declare_with_a_bad_arm_is_a_clean_error_and_marks_no_progress(capsys):
+    assert cli.main(["faults", "declare", "dry3", "nosucharm", "4", "x", "--scope", "rerun-step"]) == 2
+    assert "arm" in capsys.readouterr().err
+    assert not paths.Paths("dry3", "nosucharm").progress.exists()
+
+
+def test_cli_faults_declare_the_same_slug_twice_halts(capsys):
+    cli.main(["faults", "declare", "dry3", "control", "4", "x", "--scope", "retest"])
+    assert cli.main(["faults", "declare", "dry3", "control", "4", "x", "--scope", "retest"]) == 1
+    assert "HALTED" in capsys.readouterr().out and faults.halted("dry3")
+
+
+def test_cli_faults_list_refuses_a_pass_outside_the_results_tree(capsys):
+    assert cli.main(["faults", "list", "--pass", "../x"]) == 2
 
 
 def test_every_other_command_refuses_while_halted(capsys):

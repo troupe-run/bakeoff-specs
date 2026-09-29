@@ -543,8 +543,20 @@ def test_a_parked_gate_is_answered_by_the_runner(rig):
 def disc(rig, monkeypatch):
     sent, script, state, ctx = rig
     ctx.arm = drive.config.load_arm("openspec")
-    changed = {"paths": []}
-    monkeypatch.setattr(drive.gitops, "changed_paths", lambda p, base: list(changed["paths"]))
+    changed = {"paths": [], "baselines": []}
+
+    def content_state(p):
+        ctx.calls.append("baseline")
+        b = {"files": {}, "tips": {}, "n": len(changed["baselines"])}
+        changed["baselines"].append(b)
+        return b
+
+    def changed_since(p, baseline):
+        changed.setdefault("seen", []).append(baseline)
+        got = changed["paths"]
+        return list(next(got) if hasattr(got, "__next__") else got)
+    monkeypatch.setattr(drive.gitops, "content_state", content_state)
+    monkeypatch.setattr(drive.gitops, "changed_since", changed_since)
     return sent, script, ctx, changed
 
 
@@ -562,8 +574,8 @@ def test_discovery_stops_at_the_first_turn_that_edits_code_outside_the_spec_and_
     sent, script, ctx, changed = disc
     script["arm"] = [TR("Wrote the proposal."), TR("Started implementing.")]
     script["po"] = [D("continue")]
-    turns = iter([["openspec/changes/x/proposal.md", "docs/notes.md"], ["openspec/changes/x/tasks.md", "src/troupe/cli.py"]])
-    drive.gitops.changed_paths = lambda p, base: next(turns)
+    changed["paths"] = iter([["openspec/changes/x/proposal.md", "docs/notes.md"],
+                             ["openspec/changes/x/tasks.md", "src/troupe/cli.py"]])
     r = drive.run_attempt(ctx, 1, "go", stop_at_first_gate_or_code=True)
     assert r.outcome == "discovery-stop" and r.discovery == {"why": "code", "turn": 2, "paths": ["src/troupe/cli.py"]}
     assert len(sent) == 2 and len(qlines(ctx)) == 1                    # the PO never saw the code turn
@@ -579,23 +591,44 @@ def test_discovery_answers_questions_and_keeps_going_while_only_specs_change(dis
     assert msgs(sent) == ["go", "The flag."] and r.discovery["why"] == "approval"
 
 
-def test_the_code_check_compares_against_the_steps_starting_commit(disc):
+def test_the_code_check_diffs_against_a_baseline_taken_once_at_the_attempts_start_after_recover(disc):  # I-1
     sent, script, ctx, changed = disc
-    seen = []
-    drive.gitops.changed_paths = lambda p, base: seen.append(base) or ["pyproject.toml"]
-    script["arm"] = [TR("x")]
+    script["arm"] = [TR("a"), TR("b")]
+    script["po"] = [D("continue"), D("approval", "Approved.", approved=True)]
     drive.run_attempt(ctx, 1, "go", stop_at_first_gate_or_code=True)
-    assert seen == [ctx.sha_before]
+    assert ctx.calls[:3] == ["clean-green", "recover", "baseline"] and ctx.calls.count("baseline") == 1
+    [b] = changed["baselines"]
+    assert changed["seen"] == [b, b]
 
 
-def test_without_the_stop_option_an_approval_goes_to_the_owner_and_code_is_never_checked(disc):
+def test_without_the_stop_option_an_approval_goes_to_the_owner_and_code_is_never_checked(disc, monkeypatch):
     sent, script, ctx, changed = disc
-    drive.gitops.changed_paths = lambda p, base: pytest.fail("the code check ran outside discovery")
-    script["arm"] = [TR("approve?"), TR("done")]
+    monkeypatch.setattr(drive.gitops, "content_state", lambda p: pytest.fail("a baseline outside discovery"))
+    monkeypatch.setattr(drive.gitops, "changed_since", lambda p, b: pytest.fail("the code check ran outside discovery"))
+    script["arm"] = [TR("approve?"), TR("done"), TR("archived")]
     script["po"] = [D("approval", "Approved.", approved=True), D("step_done"), D("step_done")]
-    script["arm"].append(TR("archived"))
     r = drive.run_attempt(ctx, 1, "go")
     assert ctx.owner.gates == ["approve?"] and r.outcome == "done" and r.discovery is None
+
+
+def test_discovery_at_step_5_lets_the_po_classify_the_turn_cr_b_would_preempt(disc):           # L-3
+    sent, script, ctx, changed = disc
+    ctx.arm = drive.config.load_arm("control"); ctx.later_messages = ["CR-B text"]
+    script["arm"] = [TR("Working."), TR("Plan for CR-A ready. Approve?")]
+    script["po"] = [D("continue"), D("approval", "Approved.", approved=True)]
+    r = drive.run_attempt(ctx, 1, "CR-A text", stop_at_first_gate_or_code=True)
+    assert r.discovery["why"] == "approval" and "CR-B text" not in msgs(sent) and ctx.later_sent == 0
+
+
+def test_discovery_at_step_5_still_preempts_with_cr_b_when_the_po_sees_no_gate(disc):
+    sent, script, ctx, changed = disc
+    ctx.arm = drive.config.load_arm("control"); ctx.later_messages = ["CR-B text"]
+    script["arm"] = [TR("Working."), TR("Still working."), TR("Both planned. Approve?")]
+    script["po"] = [D("continue"), D("continue"), D("approval", "Approved.", approved=True)]
+    r = drive.run_attempt(ctx, 1, "CR-A text", stop_at_first_gate_or_code=True)
+    assert msgs(sent) == ["CR-A text", "Please continue.", "CR-B text"] and r.discovery["why"] == "approval"
+    kinds = [(q["kind"], q.get("po_kind")) for q in qlines(ctx)]
+    assert kinds == [("continue", None), ("preempted", "continue"), ("approval", None)]
 
 
 @pytest.mark.parametrize("path, spec", [
