@@ -43,7 +43,7 @@ def needed_commands(arm: config.Arm) -> list[str]:
     needed = [c.split()[0].lstrip("/") for c in (arm.entry, arm.bug_entry, *arm.must_run) if c.startswith("/")]
     if arm.export_after:
         needed += [arm.export_after.lstrip("/"), "speckit-taskstoissues"]
-    return needed
+    return list(dict.fromkeys(needed))                     # once each, first-seen order (entry == bug_entry is common)
 
 
 def effective_manifest_paths(arm: config.Arm) -> list[str]:
