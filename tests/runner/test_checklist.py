@@ -590,9 +590,12 @@ def test_manifest_check_follows_the_effective_manifest_list(monkeypatch):       
 
 
 def test_entry_commands_is_omitted_when_no_slash_command_is_needed():
-    assert checklist.needed_commands(_arm("openspec")) == []
-    assert "openspec.entry-commands" not in checklist.host_check_ids(_arm("openspec"))
-    a = _arm("openspec", must_run=["/opsx:archive"], must_run_source="CANDIDATES §1.3")
+    # A command arm whose [drive] genuinely needs no slash command (plain entries, empty must_run): check omitted.
+    bare = _arm("openspec", entry="{handoff}", bug_entry="{handoff}", must_run=[], must_run_source="s")
+    assert checklist.needed_commands(bare) == []
+    assert "openspec.entry-commands" not in checklist.host_check_ids(bare)
+    assert checklist.needed_commands(_arm("control")) == []                    # the real arm with nothing needed
+    a = _arm("openspec", entry="{handoff}", bug_entry="{handoff}", must_run=["/opsx:archive"], must_run_source="s")
     assert checklist.needed_commands(a) == ["opsx:archive"]
     assert "openspec.entry-commands" in checklist.host_check_ids(a)
     assert "control.entry-commands" not in checklist.host_check_ids(_arm("control", must_run=["/x"],
@@ -641,11 +644,18 @@ def test_host_checks_omit_the_empty_checks_and_produce_exactly_host_check_ids(tm
 
 
 def test_present_entry_commands_is_falsifiable(tmp_state, monkeypatch):
-    a = _arm("openspec", must_run=["/opsx:archive"], must_run_source="CANDIDATES §1.3")
-    got, _ = _host_checks(tmp_state, monkeypatch, a, names={"opsx:propose"})
-    assert not got["openspec.entry-commands"].ok and "opsx:archive" in got["openspec.entry-commands"].detail
-    got, _ = _host_checks(tmp_state, monkeypatch, a, names={"opsx:archive"})
-    assert got["openspec.entry-commands"].ok
+    a = _arm("superpowers")                                     # real [drive]: must_run is one plugin command
+    [cmd] = checklist.needed_commands(a)
+    got, _ = _host_checks(tmp_state, monkeypatch, a, names={"superpowers:brainstorming"})
+    assert not got["superpowers.entry-commands"].ok and cmd in got["superpowers.entry-commands"].detail
+    got, _ = _host_checks(tmp_state, monkeypatch, a, names={cmd})
+    assert got["superpowers.entry-commands"].ok
+
+
+def test_needed_commands_lists_each_command_once_in_first_seen_order():
+    assert checklist.needed_commands(_arm("openspec")) == ["opsx:propose", "opsx:archive"]   # entry == bug_entry
+    assert checklist.needed_commands(_arm("speckit")) == [
+        "speckit-specify", "speckit-bug-assess", "speckit-converge", "speckit-tasks", "speckit-taskstoissues"]
 
 
 def test_present_manifest_check_on_route_a_is_falsifiable(tmp_state, monkeypatch):
