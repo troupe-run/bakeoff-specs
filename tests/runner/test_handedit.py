@@ -114,7 +114,7 @@ class World:
     """Records every harness call `apply` makes, in order; each try's behaviour is scripted."""
 
     def __init__(self, mp, ctx, *, outcomes=("ok",), pins=None, porcelains=(" M src/cli.py\n",), probes=(GOOD_PROBE,),
-                 rechecks=(STEP1,), state=None, scoreable=True):
+                 rechecks=(STEP1,), state=None, scoreable=True, ignored=(), numstat=((3, 1, "src/cli.py"),)):
         self.ctx, self.calls = ctx, []
         self.outcomes, self.pins = list(outcomes), list(pins or [_pin()] * len(outcomes))
         self.porcelains, self.probes, self.rechecks = list(porcelains), list(probes), list(rechecks)
@@ -122,6 +122,8 @@ class World:
         st = state or gitops.RepoState("main", False, "h0", "h0", True)
         p = ctx.paths
         p.work.mkdir(parents=True, exist_ok=True); p.home.mkdir(parents=True, exist_ok=True)
+        (p.repo / ".git").mkdir(parents=True, exist_ok=True)
+        self.ignored = [list(x) for x in ignored]
         log = self.calls.append
 
         def run_turn(t, cred, out, timeout):
@@ -164,12 +166,14 @@ class World:
         mp.setattr(handedit.transcripts, "verify_pin", verify_pin)
         mp.setattr(handedit.gitops, "state", lambda p_: log(("state",)) or st)
         mp.setattr(handedit.gitops, "porcelain", porcelain)
-        mp.setattr(handedit.gitops, "remove_untracked", lambda p_, x: log(("remove", list(x))))
+        mp.setattr(handedit.gitops, "remove_untracked", lambda p_, x, dirs=False: log(("remove", list(x), dirs)))
+        mp.setattr(handedit.gitops, "ignored", lambda p_: log(("ignored",)) or (self.ignored.pop(0) if self.ignored else []))
+        mp.setattr(handedit.gitops, "remove_ignored", lambda p_, x: log(("remove-ignored", list(x))))
         mp.setattr(handedit.gitops, "checkout_paths", lambda p_, x: log(("checkout", list(x))))
         mp.setattr(handedit.gitops, "commit_all", commit_all)
         mp.setattr(handedit.gitops, "main_sha", lambda p_: "sha1")
         mp.setattr(handedit.gitops, "log", lambda p_, a, b: [{"sha": "sha1", "author": "Sam Teammate", "subject": handedit.MESSAGE}])
-        mp.setattr(handedit.gitops, "numstat", lambda p_, a, b: [(3, 1, "src/cli.py")])
+        mp.setattr(handedit.gitops, "numstat", lambda p_, a, b: [tuple(x) for x in numstat])
         mp.setattr(handedit.gitops, "show", lambda p_, sha: "diff --git a/src/cli.py b/src/cli.py\n")
         mp.setattr(handedit.hidden, "prepare", prepare)
         mp.setattr(handedit.hidden, "run_script", run_script)
@@ -211,7 +215,9 @@ def test_a_good_edit_is_committed_as_sam_teammate_probed_rechecked_and_becomes_s
         assert (out / f).exists()
 
 
-def test_the_teammate_turn_is_isolated_pinned_and_in_its_own_fresh_home_and_inbox(ctx, monkeypatch):
+# What this can check offline is the session's SPEC (env, mounts, paths). Whether Claude Code 2.1.281 then really
+# loads no project settings or CLAUDE.md is a live question for the pending live probe (Task 25).
+def test_the_teammate_turn_spec_has_isolation_env_pinned_model_fresh_home_own_inbox_and_read_only_git(ctx, monkeypatch):
     p = ctx.paths
     stale = p.teammate_home(1) / "leftover.txt"; stale.parent.mkdir(parents=True); stale.write_text("old")
     w = World(monkeypatch, ctx)
@@ -219,6 +225,10 @@ def test_the_teammate_turn_is_isolated_pinned_and_in_its_own_fresh_home_and_inbo
     (t,) = w.turn_specs
     assert t.role == "teammate" and t.step == 2 and t.message == handedit.PROMPT
     assert t.env["BK_ISOLATED"] == "1" and t.env["BK_MODEL"] == ctx.pins.model   # -> --setting-sources "", pinned
+    assert t.env["CLAUDE_CODE_SAFE_MODE"] == "1"          # 2.1.281 --safe-mode: no CLAUDE.md, skills, plugins, hooks
+    git = [m for m in t.mounts if m.ctr == f"{p.container_repo}/.git"]
+    assert [(m.host, m.ro) for m in git] == [(p.repo / ".git", True)]
+    assert [m.ctr for m in t.mounts].index("/work") < [m.ctr for m in t.mounts].index(f"{p.container_repo}/.git")
     assert "BK_RESUME" not in t.env and "BK_PLUGIN_DIRS" not in t.env
     assert t.inbox_dir == p.inbox("teammate") and t.config_dir == p.teammate_home(1) / ".claude"
     homes = [m for m in t.mounts if m.ctr == "/home/actor"]
@@ -293,7 +303,7 @@ def test_two_failed_tries_raise_the_last_fault_and_leave_the_pre_edit_state(ctx,
 def test_side_effects_are_cleaned_and_recorded(ctx, monkeypatch):
     w = World(monkeypatch, ctx, porcelains=(" M src/cli.py\n M uv.lock\n?? .pytest_cache/x\n",))
     edit = handedit.apply(ctx, STEP1)
-    assert ("remove", [".pytest_cache/x"]) in w.calls and ("checkout", ["uv.lock"]) in w.calls
+    assert ("remove", [".pytest_cache/x"], True) in w.calls and ("checkout", ["uv.lock"]) in w.calls
     assert edit.side_effects["removed"] == [".pytest_cache/x"] and edit.side_effects["restored"] == ["uv.lock"]
 
 
@@ -415,3 +425,99 @@ def test_detect_reports_a_removed_teammate_test(ctx, monkeypatch):
     edit = handedit.HandEdit("sha1", ["src/cli.py", "tests/test_env.py"], [], {}, 1, {})
     facts = handedit.detect(ctx, edit, "end")
     assert facts["teammate_test_kept"] is False and facts["mentioned_in_session"] is False
+
+
+# ---- fix round 1 ------------------------------------------------------------------------------------------------
+
+def test_the_prompt_tells_the_teammate_to_ignore_project_instructions_and_method_workflows():
+    for words in ("CLAUDE.md", "project instructions", "workflow", "skills", "tracker", "plain code change"):
+        assert words in handedit.PROMPT, words
+
+
+def test_changes_under_a_dot_directory_are_violations_even_for_python_but_tool_caches_are_side_effects():
+    plan = handedit.scope_plan(" M src/cli.py\n?? .claude/commands/x.md\n M .specify/scripts/check.py\n"
+                               "?? .beads/issues.jsonl\n?? .pytest_cache/v/x\n?? src/__pycache__/a.pyc\n")
+    assert plan.violations == [".beads/issues.jsonl (method or tool area)", ".claude/commands/x.md (method or tool area)",
+                               ".specify/scripts/check.py (method or tool area)"]
+    assert plan.remove == [".pytest_cache/v/x", "src/__pycache__/a.pyc"]
+
+
+def test_changes_under_the_arms_declared_artefact_paths_are_violations():
+    plan = handedit.scope_plan(" M src/cli.py\n?? _bmad/core/new.py\n M openspec/specs/cli.md\n?? _bmadx.py\n",
+                               deny=["_bmad", "openspec"])
+    assert plan.violations == ["_bmad/core/new.py (method or tool area)", "openspec/specs/cli.md (method or tool area)"]
+    assert plan.py == ["_bmadx.py", "src/cli.py"]
+
+
+def test_the_denylist_comes_from_the_arms_checklist_manifest_paths_repo_relative_only():
+    from runner import config
+    assert handedit.denylist(config.load_arm("speckit")) == [".claude", ".specify"]
+    assert handedit.denylist(config.load_arm("openspec")) == [".claude", "openspec"]      # ~/.config/... is not the repo
+    assert handedit.denylist(config.load_arm("ccsdd")) == [".claude", ".kiro/settings", "CLAUDE.md"]
+
+
+def test_apply_uses_the_arms_denylist(ctx, monkeypatch):
+    monkeypatch.setattr(handedit, "denylist", lambda arm: ["docs"])
+    World(monkeypatch, ctx, outcomes=("ok", "ok"), porcelains=(" M a.py\n M docs/cli.md\n",) * 2)
+    with pytest.raises(HarnessFault) as e:
+        handedit.apply(ctx, STEP1)
+    assert e.value.signature == "scope" and "docs/cli.md (method or tool area)" in e.value.detail
+
+
+def test_an_untracked_nested_repo_is_planned_for_removal_as_a_directory():
+    plan = handedit.scope_plan(" M a.py\n?? vendor/lib/\n")
+    assert plan.remove == ["vendor/lib/"] and plan.violations == []
+
+
+def test_new_ignored_paths_are_removed_and_preexisting_ones_are_recorded_untouched(ctx, monkeypatch):
+    w = World(monkeypatch, ctx, ignored=([".venv/"], [".venv/", "build/", "node_modules/"]))
+    edit = handedit.apply(ctx, STEP1)
+    n = w.names()
+    assert n.index("ignored") < n.index("turn") < [i for i, x in enumerate(n) if x == "ignored"][1]
+    assert ("remove-ignored", ["build/", "node_modules/"]) in w.calls
+    assert edit.side_effects["removed_ignored"] == ["build/", "node_modules/"]
+    assert edit.side_effects["ignored_preexisting_not_checked"] == [".venv/"]
+
+
+def test_files_a_hook_added_to_the_commit_are_recorded_not_failed(ctx, monkeypatch):
+    World(monkeypatch, ctx, numstat=((3, 1, "src/cli.py"), (1, 0, ".beads/issues.jsonl")))
+    edit = handedit.apply(ctx, STEP1)
+    assert edit.files == ["src/cli.py"] and edit.commit_files == [".beads/issues.jsonl", "src/cli.py"]
+    assert edit.hook_added == [".beads/issues.jsonl"]
+    rec = json.loads((ctx.out / "hand-edit" / "edit.json").read_text())
+    assert rec["commit_files"] == edit.commit_files and rec["hook_added"] == [".beads/issues.jsonl"]
+
+
+def test_a_failure_while_collecting_evidence_does_not_mask_the_turns_own_exception(ctx, monkeypatch):
+    World(monkeypatch, ctx)
+
+    def dies(*a, **k):
+        raise RuntimeError("docker died mid-turn")
+
+    def collect_fails(*a, **k):
+        raise OSError("disk full while collecting")
+    monkeypatch.setattr(handedit.session, "run_turn", dies)
+    monkeypatch.setattr(handedit.transcripts, "collect", collect_fails)
+    with pytest.raises(RuntimeError, match="docker died mid-turn") as e:
+        handedit.apply(ctx, STEP1)
+    assert any("disk full while collecting" in n for n in getattr(e.value, "__notes__", []))
+
+
+def test_a_failed_restore_does_not_mask_the_original_fault(ctx, monkeypatch):
+    World(monkeypatch, ctx, outcomes=("auth_failed",))
+
+    def restore_fails(p_, s):
+        raise RuntimeError("restore failed")
+    monkeypatch.setattr(handedit.repo, "restore", restore_fails)
+    with pytest.raises(HarnessFault) as e:
+        handedit.apply(ctx, STEP1)
+    assert e.value.kind == "infra-auth" and any("restore failed" in n for n in e.value.__notes__)
+
+
+def test_a_symlinked_git_dir_stops_before_the_teammate_runs(ctx, monkeypatch, tmp_path):
+    w = World(monkeypatch, ctx)
+    g = ctx.paths.repo / ".git"; g.rmdir(); (tmp_path / "elsewhere").mkdir(); g.symlink_to(tmp_path / "elsewhere")
+    with pytest.raises(HarnessFault) as e:
+        handedit.apply(ctx, STEP1)
+    assert (e.value.kind, e.value.signature) == ("hand-edit", "precondition") and ".git" in e.value.detail
+    assert "turn" not in w.names()

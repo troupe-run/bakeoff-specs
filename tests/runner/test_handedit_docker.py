@@ -166,3 +166,35 @@ def test_a_scripted_teammate_edit_lands_on_main_as_sam_teammate_and_becomes_snap
     repo.restore(p, 2)
     assert gitops.main_sha(p) == edit.sha and gitops.porcelain(p) == ""
     assert "TROUPE_THEATRE" in (p.repo / "src" / "troupe_ref" / "cli.py").read_text()
+
+
+# ---- fix round 1 ------------------------------------------------------------------------------------------------
+
+def test_the_teammate_cannot_write_the_repos_git_dir(tmp_state, tmp_path, monkeypatch):
+    p = Paths("dry9", "dryrun"); _small_repo(p)
+    monkeypatch.setattr(handedit, "PROMPT", handedit.PROMPT + "FAKE:sh=touch control-marker; touch .git/teammate-marker\n")
+    monkeypatch.setattr(handedit.repo, "restore", lambda p_, s: None)     # keep what the turn left, to inspect it
+    ctx = _ctx(tmp_path)
+    with pytest.raises(HarnessFault):
+        handedit.apply(ctx, {})
+    assert (p.repo / "control-marker").exists()                         # the scripted command did run, in the repo
+    assert not (p.repo / ".git" / "teammate-marker").exists()
+
+
+def test_new_ignored_paths_and_an_untracked_nested_repo_are_removed_and_a_preexisting_venv_is_kept(tmp_state):
+    p = Paths("dry9", "dryrun"); repo.init(p, "dryrun", "dry9")
+    (p.repo / ".gitignore").write_text(".venv/\nbuild/\n"); (p.repo / "a.py").write_text("x = 1\n")
+    gitops.commit_all(p, gitops.IDENTITY, "base")
+    (p.repo / ".venv").mkdir(); (p.repo / ".venv" / "pyvenv.cfg").write_text("home = /usr\n")
+    before = gitops.ignored(p)
+    assert before == [".venv/"]
+    (p.repo / "a.py").write_text("x = 2\n")
+    (p.repo / "build").mkdir(); (p.repo / "build" / "out.bin").write_bytes(b"\0")
+    gitops.git(p, "init", "-q", "vendor/lib", write=True)                 # a nested repo, made in a container
+    (p.repo / "vendor" / "lib" / "x.txt").write_text("y\n")
+    plan = handedit.clean_side_effects(p, ignored_before=before)
+    assert plan.violations == [] and plan.remove == ["vendor/lib/"]
+    assert plan.removed_ignored == ["build/"] and plan.ignored_preexisting == [".venv/"]
+    assert not (p.repo / "build").exists() and not (p.repo / "vendor" / "lib").exists()
+    assert (p.repo / ".venv" / "pyvenv.cfg").exists()
+    assert gitops.porcelain(p).strip() == "M a.py"
