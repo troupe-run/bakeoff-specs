@@ -384,3 +384,305 @@ def test_run_all_produces_the_exact_keys_evidence_finalise_reads(monkeypatch, tm
     for key in ("score", "sampling", "partial"):
         assert key in out["mutation"]
     assert out["mypy_errors"] == 0 and out["mutation"]["sampling"] == "no tests"
+
+
+# --- fix round 2 -------------------------------------------------------------------------------------------
+
+# item 1: check_interrupted is not a real outcome -- it sets partial; an all-interrupted run is crashed.
+
+def test_mutation_all_check_interrupted_is_crashed_not_score_zero(monkeypatch, tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
+    listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\nm.f__mutmut_2: not checked\n", "", False)
+    run_out = ("m.f__mutmut_1: check was interrupted by user\nm.f__mutmut_2: check was interrupted by user\n"
+               "__run_rc=0\n__results_rc=0\n")
+    main_run = quality.ToolRun(0, run_out, "", False)
+    monkeypatch.setattr(quality, "_run", _fake_run([baseline_ok, listing, main_run]))
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=2))
+    assert r["crashed"] is True and r["score"] is None
+
+
+def test_mutation_some_check_interrupted_sets_partial_not_crashed(monkeypatch, tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
+    listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\nm.f__mutmut_2: not checked\n", "", False)
+    run_out = ("m.f__mutmut_1: killed\nm.f__mutmut_2: check was interrupted by user\n"
+               "__run_rc=0\n__results_rc=0\n")
+    main_run = quality.ToolRun(0, run_out, "", False)
+    monkeypatch.setattr(quality, "_run", _fake_run([baseline_ok, listing, main_run]))
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=2))
+    assert r["crashed"] is False and r["partial"] is True and r["killed"] == 1
+    assert r["check_interrupted"] == 1
+
+
+# item 5: fewer statuses than sampled sets partial and records the shortfall
+
+def test_mutation_missing_results_sets_partial_and_records_the_shortfall(monkeypatch, tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
+    listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\nm.f__mutmut_2: not checked\n"
+                              "m.f__mutmut_3: not checked\n", "", False)
+    # only 2 of the 3 sampled names ever get a status line
+    run_out = "m.f__mutmut_1: killed\nm.f__mutmut_2: survived\n__run_rc=0\n__results_rc=0\n"
+    main_run = quality.ToolRun(0, run_out, "", False)
+    monkeypatch.setattr(quality, "_run", _fake_run([baseline_ok, listing, main_run]))
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=3))
+    assert r["partial"] is True and r["missing_results"] == 1 and r["crashed"] is False
+
+
+# item 4: markers are read from the last anchored line, never spoofable by earlier arm output
+
+def test_last_marker_takes_the_last_anchored_occurrence_not_the_first():
+    text = "some arm output\n__run_rc=0\nmore arm output\n__run_rc=124\n"
+    assert quality._last_marker(text, "__run_rc") == 124
+
+
+def test_last_marker_requires_its_own_line():
+    text = "prefix__run_rc=0 suffix\n__run_rc=1 trailing junk\n__run_rc=7\n"
+    assert quality._last_marker(text, "__run_rc") == 7
+
+
+def test_last_marker_returns_none_when_absent():
+    assert quality._last_marker("no markers here\n", "__run_rc") is None
+
+
+def test_mutation_ignores_a_spoofed_early_marker_in_stdout(monkeypatch, tmp_path):
+    """A hostile arm's own test output could print a line that looks exactly like our success marker before
+    the real one; only the last (our own, always printed last) must be trusted."""
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
+    listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\n", "", False)
+    spoofed = ("__run_rc=0\n"                                    # forged by arm test output, early in the stream
+               "m.f__mutmut_1: survived\n"
+               "__run_rc=124\n__results_rc=0\n")                 # the real markers, always printed last
+    main_run = quality.ToolRun(0, spoofed, "", False)
+    monkeypatch.setattr(quality, "_run", _fake_run([baseline_ok, listing, main_run]))
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=1))
+    assert r["mutmut_run_rc"] == 124                              # not the spoofed 0
+    assert r["partial"] is True and r["crashed"] is False         # 124 is the legitimate inner-timeout marker
+
+
+# item 3: the run_rc crash path -- an rc outside {0, 124}, and a missing marker entirely
+
+def test_mutation_crashed_when_run_rc_is_outside_zero_or_124(monkeypatch, tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
+    listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\n", "", False)
+    run_out = "m.f__mutmut_1: killed\n__run_rc=1\n__results_rc=0\n"
+    main_run = quality.ToolRun(0, run_out, "", False)
+    monkeypatch.setattr(quality, "_run", _fake_run([baseline_ok, listing, main_run]))
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=1))
+    assert r["crashed"] is True and r["score"] is None
+
+
+def test_mutation_crashed_when_a_marker_is_missing_entirely(monkeypatch, tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
+    listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\n", "", False)
+    run_out = "m.f__mutmut_1: killed\n__run_rc=0\n"          # __results_rc never printed at all
+    main_run = quality.ToolRun(0, run_out, "", False)
+    monkeypatch.setattr(quality, "_run", _fake_run([baseline_ok, listing, main_run]))
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=1))
+    assert r["crashed"] is True and r["score"] is None and r["mutmut_results_rc"] is None
+
+
+# item 3: ruff's stderr is kept out of the parse
+
+def test_ruff_findings_ignore_stderr_content_even_when_it_looks_like_json(monkeypatch, tmp_state, tmp_path):
+    a = tmp_path / "a"
+    a.mkdir()
+    (a / "src").mkdir()
+    prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
+
+    def fake_run(p_, copy, cmd, timeout):
+        text = " ".join(cmd)
+        if "mypy" in text:
+            return quality.ToolRun(0, "Success: no issues found in 1 source file\n", "", False)
+        if "ruff" in text:
+            # stderr looks like it could corrupt a naive combined parse; stdout alone is the real, valid array
+            return quality.ToolRun(0, '[{"code": "F401"}]', "not json { garbage from the privilege-drop wrapper",
+                                   False)
+        return quality.ToolRun(0, "", "", False)
+
+    monkeypatch.setattr(quality, "_run", fake_run)
+    out = quality.run_all(_paths(), prep, tmp_path / "out")
+    assert out["ruff_findings"] == 1 and out["ruff_crashed"] is False
+
+
+# item 3 / item 2: _run converts TimeoutExpired; mypy/ruff timeouts propagate through run_all; run_all survives
+# an exception raised by any phase, always writing summary.json with the full key set.
+
+def test_run_converts_timeout_expired(monkeypatch, tmp_state, tmp_path):
+    import subprocess as _subprocess
+    from runner import hidden
+
+    def raises_timeout(spec, timeout):
+        raise _subprocess.TimeoutExpired(cmd="x", timeout=timeout)
+
+    monkeypatch.setattr(hidden, "_run", raises_timeout)
+    monkeypatch.setattr(hidden, "_spec", lambda *a, **k: object())
+    result = quality._run(_paths(), tmp_path, ["bash", "-c", "true"], 5)
+    assert result.timed_out is True and result.rc is None
+
+
+def test_run_all_records_mypy_and_ruff_timeouts(monkeypatch, tmp_state, tmp_path):
+    a = tmp_path / "a"
+    a.mkdir()
+    (a / "src").mkdir()
+    prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
+
+    def fake_run(p_, copy, cmd, timeout):
+        text = " ".join(cmd)
+        if "mypy" in text:
+            return quality.ToolRun(None, "", "", True)
+        if "ruff" in text:
+            return quality.ToolRun(None, "", "", True)
+        return quality.ToolRun(0, "", "", False)
+
+    monkeypatch.setattr(quality, "_run", fake_run)
+    out = quality.run_all(_paths(), prep, tmp_path / "out")
+    assert out["mypy_timed_out"] is True and out["mypy_crashed"] is True and out["mypy_errors"] is None
+    assert out["ruff_timed_out"] is True and out["ruff_crashed"] is True and out["ruff_findings"] is None
+
+
+def test_run_all_survives_an_exception_from_each_phase_and_still_writes_summary_json(monkeypatch, tmp_state, tmp_path):
+    a = tmp_path / "a"
+    a.mkdir()
+    (a / "src").mkdir()
+    prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
+
+    def blows_up(p_, copy, cmd, timeout):
+        raise RuntimeError("simulated tool crash")
+
+    monkeypatch.setattr(quality, "_run", blows_up)
+    out_dir = tmp_path / "out"
+    out = quality.run_all(_paths(), prep, out_dir)
+    assert out["mypy_crashed"] is True and "RuntimeError" in (out["mypy_error"] or "")
+    assert out["ruff_crashed"] is True
+    assert out["mutation"]["crashed"] is True
+    assert (out_dir / "quality" / "summary.json").exists()
+    written = json.loads((out_dir / "quality" / "summary.json").read_text())
+    assert written["mypy_crashed"] is True
+
+
+def test_run_all_survives_an_exception_from_mutation_itself(monkeypatch, tmp_state, tmp_path):
+    a = tmp_path / "a"
+    a.mkdir()
+    (a / "src").mkdir()
+    b = tmp_path / "b"
+    b.mkdir()
+    (a / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    prep = types.SimpleNamespace(hidden_copy=a, quality_copy=b, prep={"quality": {"ok": True}})
+
+    def fake_run(p_, copy, cmd, timeout):
+        text = " ".join(cmd)
+        if "mypy" in text:
+            return quality.ToolRun(0, "Success: no issues found in 1 source file\n", "", False)
+        if "ruff" in text:
+            return quality.ToolRun(0, "[]", "", False)
+        raise RuntimeError("simulated mutation crash")
+
+    monkeypatch.setattr(quality, "_run", fake_run)
+    out = quality.run_all(_paths(), prep, tmp_path / "out")
+    assert out["mutation"]["crashed"] is True and out["mutation"]["score"] is None
+    assert "RuntimeError" in out["mutation"]["sampling"]
+
+
+def test_the_key_set_is_the_same_on_every_mutation_path(monkeypatch, tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    scenarios = {
+        "baseline_failed": [quality.ToolRun(1, "1 failed\n", "", False)],
+        "no_tests": [quality.ToolRun(5, "no tests\n", "", False)],
+        "harness_fault": [quality.ToolRun(137, "", "", False)],
+        "timeout": [quality.ToolRun(None, "", "", True)],
+        "crashed_results": [quality.ToolRun(0, "5 passed\n", "", False),
+                            quality.ToolRun(0, "m.f__mutmut_1: not checked\n", "", False),
+                            quality.ToolRun(0, "__run_rc=0\n__results_rc=1\n", "", False)],
+    }
+    key_sets = []
+    for responses in scenarios.values():
+        monkeypatch.setattr(quality, "_run", _fake_run(responses))
+        r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=1))
+        key_sets.append(set(r.keys()))
+    assert len(set(map(frozenset, key_sets))) == 1, key_sets
+
+
+# item 7: the entry-point module must be a safe dotted-identifier chain, never interpolated raw
+
+def test_entry_point_must_be_a_dotted_identifier_chain(tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project.scripts]\ntroupe = "evil; rm -rf ~:main"\n')
+    with pytest.raises(quality.InvalidEntryPoint):
+        quality.targets(tmp_path)
+
+
+def test_entry_point_dotted_parts_must_each_be_identifiers(tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project.scripts]\ntroupe = "a.b-c.d:main"\n')  # "b-c" not an identifier
+    with pytest.raises(quality.InvalidEntryPoint):
+        quality.targets(tmp_path)
+
+
+def test_entry_point_valid_dotted_chain_is_accepted(tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project.scripts]\ntroupe = "a.b.c:main"\n')
+    (tmp_path / "a").mkdir()
+    assert quality.targets(tmp_path) == ["a"]
+
+
+def test_run_all_records_a_crashed_targets_phase(monkeypatch, tmp_state, tmp_path):
+    a = tmp_path / "a"
+    a.mkdir()
+    (a / "pyproject.toml").write_text('[project.scripts]\ntroupe = "evil; rm -rf:main"\n')
+    prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
+    monkeypatch.setattr(quality, "_run", _fake_run([quality.ToolRun(0, "Success: no issues found\n", "", False),
+                                                    quality.ToolRun(0, "[]", "", False)]))
+    out = quality.run_all(_paths(), prep, tmp_path / "out")
+    assert out["targets_crashed"] is True and out["targets"] == ["."]
+    assert "InvalidEntryPoint" in (out["targets_error"] or "")
+
+
+def test_mypy_command_quotes_targets_rather_than_interpolating_raw(monkeypatch, tmp_state, tmp_path):
+    a = tmp_path / "a"
+    a.mkdir()
+    (a / "weird target").mkdir()
+    prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
+    captured = []
+
+    def fake_run(p_, copy, cmd, timeout):
+        captured.append(cmd)
+        return quality.ToolRun(0, "Success: no issues found\n", "", False) if "mypy" in " ".join(cmd) else \
+            quality.ToolRun(0, "[]", "", False)
+
+    monkeypatch.setattr(quality, "targets", lambda copy: ["weird target"])
+    monkeypatch.setattr(quality, "_run", fake_run)
+    quality.run_all(_paths(), prep, tmp_path / "out")
+    mypy_cmd = next(c for c in captured if "mypy" in " ".join(c))
+    # the target must appear as a single shell-quoted token, not split by its embedded space
+    script = mypy_cmd[-1]
+    assert "'weird target'" in script or shlex_split_ok(script)
+
+
+def shlex_split_ok(script: str) -> bool:
+    import shlex as _shlex
+    try:
+        parts = _shlex.split(script)
+    except ValueError:
+        return False
+    return "weird target" in parts
+
+
+# item 6: _safe_write is atomic (temp file + os.replace) -- no stray temp file left behind either way
+
+def test_safe_write_leaves_no_stray_temp_file_on_success(tmp_path):
+    target = tmp_path / "pyproject.toml"
+    quality._safe_write(target, "hello\n")
+    assert target.read_text() == "hello\n"
+    leftovers = [f for f in tmp_path.iterdir() if f.name != "pyproject.toml"]
+    assert leftovers == []
+
+
+def test_safe_write_replaces_an_existing_regular_file_atomically(tmp_path):
+    target = tmp_path / "pyproject.toml"
+    target.write_text("old\n")
+    quality._safe_write(target, "new\n")
+    assert target.read_text() == "new\n"
+    leftovers = [f for f in tmp_path.iterdir() if f.name != "pyproject.toml"]
+    assert leftovers == []

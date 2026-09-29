@@ -145,3 +145,34 @@ def test_finalise_writes_run_cost_git_pin_and_summary(tmp_path, monkeypatch):   
     git = json.loads((d / "git.json").read_text())
     assert git["sha_after"] == "main-sha" and git["head_in_main"] is True
     assert "Possible missed approvals" in summary.read_text()
+
+
+# ---- fix round 2, item 8: the summary line names the reason when there is no score/count, never "None" ----
+
+def test_mypy_summary_text_names_the_reason_instead_of_none():
+    assert evidence.mypy_summary_text({"mypy_errors": 3}) == "3 errors"
+    assert evidence.mypy_summary_text({"mypy_errors": 0}) == "0 errors"
+    assert evidence.mypy_summary_text({"mypy_errors": None, "mypy_crashed": True}) == "crashed"
+    assert evidence.mypy_summary_text({"mypy_errors": None, "mypy_timed_out": True}) == "timed out"
+
+
+def test_mutation_summary_text_names_the_reason_instead_of_none():
+    assert evidence.mutation_summary_text({"score": 0.5, "sampling": "seeded-sha256"}) == \
+        "0.5 (seeded-sha256)"
+    assert evidence.mutation_summary_text({"score": 0.5, "sampling": "all", "partial": True}) == \
+        "0.5 (all, partial)"
+    assert evidence.mutation_summary_text({"score": None, "crashed": True}) == "crashed"
+    assert evidence.mutation_summary_text({"score": None, "baseline_failed": True}) == "baseline failed"
+    assert evidence.mutation_summary_text({"score": None, "sampling": "no tests"}) == "no tests"
+    assert evidence.mutation_summary_text({"score": None, "timed_out": True}) == "timed out"
+
+
+def test_finalise_summary_names_the_reason_for_a_crashed_mutation_run(tmp_path, monkeypatch):
+    ctx, kw = finalise_inputs(tmp_path, monkeypatch)
+    kw = {**kw, "quality": {"mutation": {"score": None, "crashed": True, "sampling": "n/a"},
+                            "mypy_errors": None, "mypy_crashed": True,
+                            "ruff_findings": 3, "ruff_arm_findings": None}}
+    summary = evidence.finalise(ctx, **kw)
+    text = summary.read_text()
+    assert "mypy crashed" in text and "None errors" not in text
+    assert "mutation score crashed" in text and "mutation score None" not in text
