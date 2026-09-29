@@ -17,6 +17,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     ns = build_parser().parse_args(argv)
+    if ns.cmd != "faults":                   # design §9: halted until `faults resume --note` (Task 22)
+        from runner import faults
+        pass_ = getattr(ns, "pass_", None) or "pass1"      # no pass named: the real bake-off's ledger
+        if (h := faults.halted(pass_)):
+            print(f"HALTED ({faults.ledger_paths(pass_)[1]}): the same harness fault occurred twice (design §9).\n{h}\n"
+                  f"Review with the owner, then `runner faults resume {pass_} --note \"<resolution>\"`.")
+            return 1
     return int(ns.func(ns) or 0)
 
 
@@ -157,3 +164,40 @@ def register_scan(sub):
     p.add_argument("paths", nargs="*", metavar="PATH")
     p.set_defaults(func=scan, parser=p)
 REGISTRARS.append(register_scan)
+
+
+def register_faults(sub):
+    """`faults list [--pass P]`, `faults declare <pass> <arm> <step> <slug> --scope rerun-step|retest`,
+    `faults resume <pass> --note "<text>"` (Task 22, design §9). The only commands that run while HALTED."""
+    from runner import faults
+    p = sub.add_parser("faults", help="the harness-fault ledger: list, declare, resume after a halt")
+    s = p.add_subparsers(dest="faults_cmd", required=True)
+
+    def list_(ns):
+        for e in faults.entries(ns.pass_ or "pass1"):
+            print(json.dumps(e))
+        if (h := faults.halted(ns.pass_ or "pass1")):
+            print(f"HALTED: {h}")
+    ls = s.add_parser("list", help="print the ledger (the real passes' shared ledger unless --pass names another)")
+    ls.add_argument("--pass", dest="pass_", default=None); ls.set_defaults(func=list_)
+
+    def declare(ns):
+        faults.declare(ns.pass_, ns.arm, ns.step, ns.slug, ns.scope)
+        if ns.scope == "rerun-step":                      # Task 23 honours it: supersede the step and re-run it
+            prog = paths.Paths(ns.pass_, ns.arm).progress
+            cur = json.loads(prog.read_text()) if prog.exists() else {}
+            prog.parent.mkdir(parents=True, exist_ok=True)
+            prog.write_text(json.dumps({**cur, "rerun": ns.step}, indent=2))
+        print(f"declared manual:{ns.slug} ({ns.scope}) for {ns.pass_}/{ns.arm} step {ns.step}")
+    d = s.add_parser("declare", help="record an owner-declared harness fault (manual:<slug>)")
+    d.add_argument("pass_", metavar="pass"); d.add_argument("arm"); d.add_argument("step", type=int)
+    d.add_argument("slug"); d.add_argument("--scope", required=True, choices=("rerun-step", "retest"))
+    d.set_defaults(func=declare)
+
+    def resume(ns):
+        faults.resume(ns.pass_, ns.note)
+        print(f"resolution recorded for {ns.pass_}; HALTED cleared")
+    r = s.add_parser("resume", help="record the owner's resolution and clear HALTED")
+    r.add_argument("pass_", metavar="pass"); r.add_argument("--note", required=True)
+    r.set_defaults(func=resume)
+REGISTRARS.append(register_faults)
