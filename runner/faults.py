@@ -109,7 +109,12 @@ def halted(pass_: str) -> str | None:
 
 
 # ---- input from the owner (CLI) is validated: no path may leave the results tree (fix round 1 M-2) -----------------
-NAME = re.compile(r"^[a-z0-9-]+$")
+NAME = re.compile(r"[a-z0-9-]+")
+
+
+def valid_name(name: str | None) -> bool:
+    """`fullmatch`, so a trailing newline is rejected (fix round 2)."""
+    return bool(NAME.fullmatch(name or ""))
 STEPS = range(1, 8)
 
 
@@ -117,7 +122,7 @@ def check_pass(pass_: str) -> str:
     """A real pass, or a lower-case dashed name that already exists under results/ or state/."""
     if pass_ in paths.REAL_PASSES:
         return pass_
-    if not NAME.match(pass_ or ""):
+    if not valid_name(pass_):
         raise ValueError(f"pass {pass_!r}: not a known pass and not a lower-case dashed name")
     if not ((paths.RESULTS / pass_).is_dir() or (paths.STATE / pass_).is_dir()):
         raise ValueError(f"pass {pass_!r}: unknown (no results/{pass_} or state/{pass_})")
@@ -126,7 +131,7 @@ def check_pass(pass_: str) -> str:
 
 def check_arm(arm: str) -> str:
     from runner import config
-    if not NAME.match(arm or ""):
+    if not valid_name(arm):
         raise ValueError(f"arm {arm!r}: not a lower-case dashed name")
     try:
         config.load_arm(arm)
@@ -165,7 +170,7 @@ def declare(pass_: str, arm: str, step: int, slug: str, scope: str) -> Literal["
     check_pass(pass_); check_arm(arm)
     if step not in STEPS:
         raise ValueError(f"step {step}: the scenario has steps 1-7")
-    if not NAME.match(slug or ""):
+    if not valid_name(slug):
         raise ValueError(f"slug {slug!r}: use a lower-case dashed name")
     return _enter(pass_, {"pass": pass_, "arm": arm, "step": step, "run": None, "attempt": None, "kind": "manual",
                           "signature": slug, "detail": "owner-declared", "action": scope, "scope": scope})

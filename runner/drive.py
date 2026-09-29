@@ -14,11 +14,13 @@ What ends an attempt:
   discovery-stop
             (only with `stop_at_first_gate_or_code=True`: the N.a discovery run, design §5 / Task 22 ruling 6)
             the PO classified the arm's message as an approval request (the owner is NOT asked; the entry is
-            logged with `owner_action="discovery-stop"`), or an arm turn left paths changed since `sha_before`
-            outside the arm's spec paths and the pinned docs paths (`outside_spec`; checked before the PO sees
-            the turn). "Changed" is against `gitops.content_state` taken once at the attempt's start, after
-            `recover` (and so after any restore): what an earlier step left behind never counts (fix round 1,
-            I-1). At step 5 the PO classifies every arm message BEFORE a CR-B pre-emption in this mode (fix round
+            logged with `owner_action="discovery-stop"`), or an arm turn authored code outside the arm's spec
+            paths and the pinned docs paths (`outside_spec`; checked before the PO sees the turn). "Authored" is
+            `gitops.changed_since` against `gitops.content_state` taken once at the attempt's start, after
+            `recover` (and so after any restore): a path counts only when its content is a blob that was not at
+            that path then, so what an earlier step left behind never counts (fix rounds 1-2, I-1). If the check
+            cannot run, the attempt goes on: `AttemptResult.code_check` records it as "unavailable" with the
+            reason — never a harness fault, so an arm's own git state can never halt the bake-off. At step 5 the PO classifies every arm message BEFORE a CR-B pre-emption in this mode (fix round
             1, L-3), so a gate on the pre-empted turn still stops the run; CR-B timing is unchanged from N.b.
             `AttemptResult.discovery` says which, at which turn
   parked    an owner prompt (gate or escalation) returned `owner.Park` — recorded, never treated as an answer,
@@ -37,14 +39,14 @@ been sent (`po.step_view(..., crb_sent=...)`, which needs `StepCtx.contract`). T
 transcripts: the caller (Task 22 `stepflow`) does, after `run_attempt` returns, when every container has exited.
 """
 from __future__ import annotations
-import dataclasses, fnmatch, json, re, time
+import dataclasses, fnmatch, json, re, subprocess, time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Literal
 
-from runner import checklist, commands, config, credentials, egress, faults, gitops, handoff, owner as owner_mod, po, \
-    repo, session, transcripts
+from runner import checklist, commands, config, credentials, docker, egress, faults, gitops, handoff, \
+    owner as owner_mod, po, repo, session, transcripts
 from runner.config import Arm, Pins
 from runner.docker import Mount
 from runner.faults import HarnessFault
@@ -99,6 +101,7 @@ class AttemptResult:
     retries: int = 0
     park: owner_mod.Park | None = None
     discovery: dict | None = None        # discovery-stop: {"why": "approval"|"code", "turn": n[, "paths": [...]]}
+    code_check: dict | None = None       # discovery mode: {"status": "ok"|"unavailable", "reasons": [{turn, reason}]}
 
 
 class _Parked(Exception):
@@ -236,11 +239,27 @@ def run_attempt(ctx: StepCtx, attempt: int, message: str, resume: str | None = N
     _po_view(ctx)                                             # ruling 3: refuse a step-5 ctx before any turn
     res = AttemptResult("stalled", resume)
     try:
-        baseline = gitops.content_state(ctx.paths) if stop_at_first_gate_or_code else None    # I-1
+        baseline = None
+        if stop_at_first_gate_or_code:                                                     # I-1
+            res.code_check = {"status": "ok", "reasons": []}
+            baseline = _code_check(res, 0, lambda: gitops.content_state(ctx.paths)) or {}
         return _run(ctx, attempt, message, res, baseline)
     except HarnessFault as f:
         f.attempt_result = res                                # the turns so far are evidence
         raise
+
+
+CODE_CHECK_ERRORS = (docker.ContainerError, subprocess.SubprocessError, ValueError, UnicodeError, KeyError)
+
+
+def _code_check(res: AttemptResult, turn: int, fn):
+    """Run one part of the discovery code check; if it cannot run, record why and return None (fix round 2)."""
+    try:
+        return fn()
+    except CODE_CHECK_ERRORS as e:
+        res.code_check["status"] = "unavailable"
+        res.code_check["reasons"].append({"turn": turn, "reason": f"{type(e).__name__}: {e}"[:500]})
+        return None
 
 
 def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult, baseline: dict | None = None) -> AttemptResult:
@@ -289,7 +308,9 @@ def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult, baseline:
                                    (r.final_text or "")[:500])
             res.session_id = r.session_id or res.session_id
             res.exchanges += 1; turns_ended += 1
-            if baseline is not None and (code := outside_spec(gitops.changed_since(p, baseline), arm, pins)):
+            changed = _code_check(res, len(res.turns), lambda: gitops.changed_since(p, baseline)) \
+                if baseline else None                                                    # {} = no baseline
+            if changed and (code := outside_spec(changed, arm, pins)):
                 res.outcome = "discovery-stop"                                           # N.a: first code edit
                 res.discovery = {"why": "code", "turn": len(res.turns), "paths": code[:50]}
                 return res

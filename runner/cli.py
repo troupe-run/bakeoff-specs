@@ -20,7 +20,7 @@ def main(argv: list[str] | None = None) -> int:
     if ns.cmd != "faults":                   # design §9: halted until `faults resume --note` (Task 22)
         from runner import faults
         pass_ = getattr(ns, "pass_", None) or "pass1"      # no pass named: the real bake-off's ledger
-        if not faults.NAME.match(pass_):                   # never build a ledger path from a bad name (M-2)
+        if not faults.valid_name(pass_):                   # never build a ledger path from a bad name (M-2)
             pass_ = "pass1"
         if (h := faults.halted(pass_)):
             print(f"HALTED ({faults.ledger_paths(pass_)[1]}): the same harness fault occurred twice (design §9).\n{h}\n"

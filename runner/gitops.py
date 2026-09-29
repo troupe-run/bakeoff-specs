@@ -122,65 +122,128 @@ def state(p: Paths) -> RepoState:
     return RepoState(**json.loads(r.stdout))
 
 
-# The repo's CONTENT (Task 22 fix round 1, I-1): every non-ignored file of the working tree (tracked or not) as
-# path -> blob id, and every local branch tip. The read container mounts /work read-only, so `git add -A` goes into a
-# throwaway index and object directory in the container's /tmp (the repo's own objects are its alternate): nothing
-# is written to the arm's repo. Output: `ls-files -s -z` records, a \001 separator, then `refname\tsha` lines; with
-# $2.. (baseline tips), a second \001 and the files changed by commits on any branch that no baseline tip reaches.
-_CONTENT_SH = r"""cd "$1"; shift
+# ---- the N.a discovery run's code check (Task 22, fix rounds 1-2, I-1) ---------------------------------------------
+# Directories that are never authored code: excluded from the content hash (performance) and from the check.
+NEVER_CODE = (".venv", "venv", "__pycache__", ".mypy_cache", ".ruff_cache", ".pytest_cache", "node_modules")
+
+
+def never_code_pathspecs() -> list[str]:
+    return [f":(exclude,glob)**/{d}/**" for d in NEVER_CODE]
+
+
+# Read-only, and nothing an arm can leave in its repo makes it fail: files are hashed with `hash-object --no-filters`
+# (no index, no object writes, no filter drivers run); an untracked entry ending in `/` is an embedded repo (with or
+# without a commit) and is reported as such; baseline tips that no longer exist are dropped (`cat-file -e`) before
+# `log --not`. Sections, \001-separated: [0] mode; [1] NUL paths of regular files; [2] their blob ids, one per line;
+# [3] NUL embedded-repo dirs; [4] NUL `path, link target` pairs; [5] `refname\tsha` lines; then with mode "base"
+# [6] `ls-tree -r -z` of every tip, or with mode "check" [6] `log --raw -z` of every commit reachable from a branch
+# or HEAD that no surviving baseline tip reaches.
+_CONTENT_SH = r"""cd "$1"; mode="$2"; shift 2
 g() { git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false "$@"; }
-set -e
+set -e -o pipefail
+ex=(); while IFS= read -r l; do [ -n "$l" ] && ex+=("$l"); done <<< "$BK_EXCLUDES"
 t=$(mktemp -d)
-export GIT_INDEX_FILE="$t/index" GIT_OBJECT_DIRECTORY="$t/objects" GIT_ALTERNATE_OBJECT_DIRECTORIES="$PWD/.git/objects"
-mkdir -p "$t/objects"
-g read-tree HEAD 2>/dev/null || g read-tree --empty
-g add -A
-g ls-files -s -z
-printf '\001'
-g for-each-ref refs/heads --format='%(refname)%09%(objectname)'
-if [ "$#" -gt 0 ]; then
-  printf '\001'
-  g log --branches --not "$@" --name-only --no-renames --format= -z
+g ls-files -z --cached --others --exclude-standard -- . "${ex[@]}" | sort -zu > "$t/all"
+: > "$t/files0"; : > "$t/filesn"; : > "$t/emb"; : > "$t/links"
+while IFS= read -r -d '' f; do
+  case "$f" in
+    */) printf '%s\0' "$f" >> "$t/emb" ;;
+    *$'\n'*) printf '%s\0' "$f" >> "$t/emb" ;;
+    *) if [ -L "$f" ]; then printf '%s\0%s\0' "$f" "$(readlink -- "$f")" >> "$t/links"
+       elif [ -f "$f" ]; then printf '%s\0' "$f" >> "$t/files0"; printf '%s\n' "$f" >> "$t/filesn"; fi ;;
+  esac
+done < "$t/all"
+printf '%s\001' "$mode"
+cat "$t/files0"; printf '\001'
+if [ -s "$t/filesn" ]; then g hash-object --no-filters --stdin-paths < "$t/filesn"; fi; printf '\001'
+cat "$t/emb"; printf '\001'
+cat "$t/links"; printf '\001'
+g for-each-ref refs/heads --format='%(refname)%09%(objectname)'; printf '\001'
+if [ "$mode" = base ]; then
+  for sha in $(g for-each-ref refs/heads --format='%(objectname)' | sort -u); do g ls-tree -r -z --full-tree "$sha"; done
+else
+  keep=(); for x in "$@"; do if g cat-file -e "$x^{commit}" 2>/dev/null; then keep+=("^$x"); fi; done
+  g log --raw --no-renames --no-abbrev --format= -z --branches HEAD "${keep[@]}" -- . "${ex[@]}"
 fi"""
 
 
-def _content(p: Paths, tips: list[str]) -> tuple[dict[str, str], dict[str, str], list[str]]:
+def _blob_of_link(target: bytes) -> str:
+    import hashlib
+    return hashlib.sha1(b"blob %d\0" % len(target) + target).hexdigest()
+
+
+def _content(p: Paths, mode: str, tips: list[str]) -> tuple[dict[str, set[str]], dict[str, str], dict[str, set[str]]]:
+    """(working-tree pairs, branch tips, mode section pairs), each pairs map `path -> {blob}`."""
     check_trees(p)
-    s = dataclasses.replace(spec(p, []), cmd=["bash", "-c", _CONTENT_SH, "content", p.container_repo, *tips])
+    base = spec(p, [])
+    s = dataclasses.replace(base, cmd=["bash", "-c", _CONTENT_SH, "content", p.container_repo, mode, *tips],
+                            env={**base.env, "BK_EXCLUDES": "\n".join(never_code_pathspecs())})
     r = docker.run(s, timeout=600)
     if r.returncode != 0:
         raise docker.ContainerError(f"git content state failed in container ({r.returncode}): "
                                     f"{r.stderr.decode(errors='replace')[:400]}")
     parts = r.stdout.split(b"\x01")
-    files: dict[str, str] = {}
-    for rec in parts[0].split(b"\0"):
-        if rec:
-            meta, _, path = rec.decode(errors="surrogateescape").partition("\t")
-            files[path] = meta.split()[1]
-    refs = dict(l.split("\t", 1) for l in parts[1].decode(errors="replace").splitlines() if "\t" in l) \
-        if len(parts) > 1 else {}
-    logged = [x for x in parts[2].decode(errors="surrogateescape").replace("\n", "\0").split("\0") if x.strip()] \
-        if len(parts) > 2 else []
-    return files, {k: v.strip() for k, v in refs.items()}, logged
+    if len(parts) != 7 or parts[0].decode() != mode:
+        raise docker.ContainerError(f"git content state: {len(parts)} sections, expected 7")
+    dec = lambda b: b.decode(errors="surrogateescape")
+    wt: dict[str, set[str]] = {}
+    files = [dec(x) for x in parts[1].split(b"\0") if x]
+    blobs = parts[2].decode().split()
+    if len(files) != len(blobs):
+        raise docker.ContainerError(f"git content state: {len(files)} files but {len(blobs)} blob ids")
+    for f, b in zip(files, blobs):
+        wt.setdefault(f, set()).add(b)
+    for d in (x for x in parts[3].split(b"\0") if x):
+        wt.setdefault(dec(d), set()).add("embedded")
+    links = parts[4].split(b"\0")
+    for path, target in zip(links[0::2], links[1::2]):
+        if path:
+            wt.setdefault(dec(path), set()).add(_blob_of_link(target))
+    tips = dict(l.split("\t", 1) for l in parts[5].decode(errors="replace").splitlines() if "\t" in l)
+    more: dict[str, set[str]] = {}
+    recs = parts[6].split(b"\0")
+    if mode == "base":                       # "<mode> <type> <sha>\t<path>"
+        for rec in recs:
+            if b"\t" in rec:
+                meta, _, path = rec.partition(b"\t")
+                more.setdefault(dec(path), set()).add(meta.split()[2].decode())
+    else:                                    # ":<m> <m> <old> <new> <status>" then the path
+        it = iter(recs)
+        for rec in it:
+            rec = rec.lstrip(b"\n")
+            if rec.startswith(b":"):
+                new, path = rec.split()[3].decode(), dec(next(it, b""))
+                if path and set(new) != {"0"}:            # a deletion adds no content
+                    more.setdefault(path, set()).add(new)
+    return wt, {k: v.strip() for k, v in tips.items()}, more
 
 
 def content_state(p: Paths) -> dict:
-    """The N.a discovery run's baseline (Task 22 fix round 1, I-1), taken at the attempt's start: `{"files":
-    {path: blob}, "tips": {ref: sha}}`. Whatever an earlier step left behind (uncommitted or untracked work, an
-    abandoned branch, HEAD on a feature branch) is part of the baseline, so it never reads as this attempt's edit."""
-    files, tips, _ = _content(p, [])
-    return {"files": files, "tips": tips}
+    """The N.a discovery run's baseline, taken at the attempt's start: `{"pairs": {path: [blob, ...]}, "tips":
+    {ref: sha}}` — every blob at every path in the working tree (tracked or untracked, never ignored, never
+    `NEVER_CODE`) and in every local branch tip's tree. Whatever an earlier step left behind is in it."""
+    wt, tips, trees = _content(p, "base", [])
+    pairs = {k: set(v) for k, v in wt.items()}
+    for k, v in trees.items():
+        pairs.setdefault(k, set()).update(v)
+    return {"pairs": {k: sorted(v) for k, v in pairs.items()}, "tips": tips}
 
 
 def changed_since(p: Paths, baseline: dict) -> list[str]:
-    """Paths whose content changed since `baseline` (`content_state`): working-tree files added, removed or with
-    a different blob (ignored files never count), plus every file a commit on any local branch touched that no
-    baseline tip reaches. Sorted. Not seen: uncommitted work in a linked worktree outside the repo directory."""
-    old_tips = sorted(set(baseline["tips"].values()))
-    files, _, logged = _content(p, old_tips)
-    old = baseline["files"]
-    changed = {f for f in set(old) | set(files) if old.get(f) != files.get(f)}
-    return sorted(changed | set(logged))
+    """Paths the arm authored since `baseline` (fix round 2 ruling): a path counts only when its content now — in the
+    working tree, or in a commit reachable from a branch or HEAD that no baseline tip reaches (`log --raw`) — is a
+    blob that was not at that path in the baseline. Committing or checking out leftovers, and touched-then-reverted
+    files, therefore never count; deletions add no content and do not count. A new embedded repo counts as its
+    `dir/`. Gaps: merge-only resolutions (a merge commit's own changes are not in `log --raw`), edits inside an
+    embedded repo that was already there, and work in a linked worktree outside the repo directory."""
+    wt, _, commits = _content(p, "check", sorted(set(baseline["tips"].values())))
+    known = baseline["pairs"]
+    out = set()
+    for src in (wt, commits):
+        for path, blobs in src.items():
+            if any(b not in known.get(path, ()) for b in blobs):
+                out.add(path)
+    return sorted(out)
 
 
 def archive(p: Paths, sha: str) -> bytes:

@@ -276,7 +276,7 @@ def _discovered(ctx, attempt: int, ar, pin, t0: float, extra: dict) -> StepOutco
     (out / "model-pin.json").write_text(pin.to_json())
     (out / "discovery.json").write_text(json.dumps(
         {"run": "a", "pass": ctx.pass_, "arm": ctx.arm.name, "step": ctx.step, "outcome": ar.outcome,
-         "discovery": ar.discovery, "attempt": attempt, "harness_restores": attempt - 1, "breach": ar.breach,
+         "discovery": ar.discovery, "code_check": ar.code_check, "attempt": attempt, "harness_restores": attempt - 1, "breach": ar.breach,
          "exchanges": ar.exchanges, "interventions": ar.interventions, "model_pin_ok": pin.ok,
          "sha_before": ctx.sha_before, "started": t0, "ended": time.time(),
          "harness_faults": [e for e in faults.for_step(ctx.pass_, ctx.arm.name, ctx.step) if e.get("run") == "a"]},
