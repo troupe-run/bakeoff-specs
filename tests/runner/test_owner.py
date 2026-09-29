@@ -188,11 +188,117 @@ def test_step_review_p_still_means_pause_not_park_and_k_parks():
     assert isinstance(result, owner.Park) and result.reason == "owner-choice"
 
 
-def test_park_is_recorded_with_timestamp_reason_and_prompt():
+def test_park_is_recorded_with_timestamp_reason_prompt_and_context():
     o = owner.Owner(input_fn=raise_eof, out=lambda s: None, clock=lambda: 3.0, now_fn=lambda: 42.0)
     result = o.reclassify("turn-seconds breach", "detail")
-    assert result == owner.Park(prompt="reclassify", reason="eof", at=42.0, seconds=0.0)
+    assert result == owner.Park(prompt="reclassify", context="turn-seconds breach", reason="eof",
+                                 at=42.0, seconds=0.0)
     assert o.parks[-1] is result
+
+
+# --- Park.context: a short, self-explaining summary of what was being asked -----------------------------
+
+def test_escalation_park_context_is_the_questions_first_line():
+    o = owner.Owner(input_fn=raise_eof, out=lambda s: None, clock=lambda: 0.0, now_fn=lambda: 1.0)
+    result = o.escalation("Floats?\nmore detail the arm gave", "ctx")
+    assert result.context == "Floats?"
+
+
+def test_gate_park_context_is_the_arm_messages_first_line():
+    o = owner.Owner(input_fn=lambda prompt="": "x", out=lambda s: None, clock=lambda: 0.0,
+                     now_fn=lambda: 1.0, unattended=True)
+    result = o.gate("Please approve step 3\nmore lines follow", D(), "")
+    assert result.context == "Please approve step 3"
+
+
+def test_confirm_park_context_is_the_confirm_text():
+    o = owner.Owner(input_fn=raise_eof, out=lambda s: None, clock=lambda: 0.0, now_fn=lambda: 1.0)
+    result = o.confirm("Push to origin?")
+    assert result.context == "Push to origin?"
+
+
+def test_setup_reply_park_context_is_the_setup_messages_first_line():
+    o = owner.Owner(input_fn=raise_eof, out=lambda s: None, clock=lambda: 0.0, now_fn=lambda: 1.0)
+    result = o.setup_reply("setup says hello\nmore output")
+    assert result.context == "setup says hello"
+
+
+def test_step_review_park_context_is_the_summarys_first_line():
+    o = owner.Owner(input_fn=raise_eof, out=lambda s: None, clock=lambda: 0.0, now_fn=lambda: 1.0)
+    result = o.step_review("# Step 2 summary\nbody text")
+    assert result.context == "# Step 2 summary"
+
+
+def test_substitute_bug_park_context_names_the_arm_and_precheck():
+    o = owner.Owner(input_fn=raise_eof, out=lambda s: None, clock=lambda: 0.0, now_fn=lambda: 1.0)
+    arm = config.load_arm("control")
+    result = o.substitute_bug(arm, "all step-6 tests already pass\nmore detail")
+    assert result.context == "control: all step-6 tests already pass"
+
+
+def test_items_park_context_names_the_current_item_when_parked_mid_loop():
+    o, _ = term(["p", "y"])
+    result = o.items([("OV1", "constitution check")])
+    assert isinstance(result, owner.Park) and result.context == "OV1: constitution check"
+
+
+def test_items_park_context_is_a_summary_when_parked_before_any_item():
+    o = owner.Owner(input_fn=raise_eof, out=lambda s: None, clock=lambda: 0.0, now_fn=lambda: 1.0,
+                     unattended=True)
+    result = o.items([("OV1", "a"), ("OV2", "b")])
+    assert result.context == "2 item(s) to review"
+
+
+# --- items()'s note prompt and substitute_bug()'s title prompt must also offer/honour the park key -------
+
+def test_items_note_prompt_shows_the_park_hint():
+    prompts = []
+    it = iter(["y", ""])
+
+    def input_fn(prompt=""):
+        prompts.append(prompt)
+        return next(it)
+
+    o = owner.Owner(input_fn=input_fn, out=lambda s: None, clock=lambda: 0.0)
+    o.items([("OV1", "a")])
+    assert any("park" in p.lower() for p in prompts if "note" in p.lower())
+
+
+def test_items_note_key_parks_with_confirm():
+    o, _ = term(["y", "p", "y"])
+    result = o.items([("OV1", "a")])
+    assert isinstance(result, owner.Park) and result.reason == "owner-choice" and result.prompt == "items"
+
+
+def test_items_note_key_p_then_no_falls_back_to_a_normal_note():
+    o, _ = term(["y", "p", "n", "actual note"])
+    result = o.items([("OV1", "a")])
+    assert result["OV1"][:2] == (True, "actual note")
+
+
+def test_substitute_bug_title_prompt_shows_the_park_hint():
+    prompts = []
+    it = iter(["s", "AliasBug", "Body", ".", "Why", ".", "Test", "."])
+
+    def input_fn(prompt=""):
+        prompts.append(prompt)
+        return next(it)
+
+    o = owner.Owner(input_fn=input_fn, out=lambda s: None, clock=lambda: 0.0)
+    o.substitute_bug(config.load_arm("control"), "precheck")
+    assert any("park" in p.lower() for p in prompts if "title" in p.lower())
+
+
+def test_substitute_bug_title_key_parks_with_confirm():
+    o, _ = term(["s", "p", "y"])
+    result = o.substitute_bug(config.load_arm("control"), "precheck")
+    assert isinstance(result, owner.Park) and result.reason == "owner-choice" and result.prompt == "substitute_bug"
+
+
+def test_substitute_bug_title_key_p_then_no_falls_back_to_a_normal_title():
+    o, _ = term(["s", "p", "n", "AliasBug", "Body", ".", "Why", ".", "Test", "."])
+    choice, title, *_ = o.substitute_bug(config.load_arm("control"), "precheck")
+    assert choice == "substitute" and title == "AliasBug"
 
 
 # --- ScriptedOwner ----------------------------------------------------------------------------------------
