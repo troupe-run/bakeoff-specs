@@ -6,7 +6,9 @@ common bmad "bmad-core-tools bmad-method"
 bad=""
 for pl in bmad-method bmad-core-tools; do
   if [ "${PLUGIN_ROUTE:-plugin-dir}" = plugin-dir ]; then f=/opt/plugins/$pl/.claude-plugin/plugin.json
-  else f=$(find "$CLAUDE_CONFIG_DIR/plugins" -path "*$pl*/.claude-plugin/plugin.json" 2>/dev/null | head -1); fi
+  else r=$(jq -r --arg k "$pl@bmad-plugins" '.plugins[$k] // [] | if length == 1 then .[0].installPath // empty else empty end' \
+             "$CLAUDE_CONFIG_DIR/plugins/installed_plugins.json" 2>/dev/null)
+       f="${r:-<no installPath for $pl@bmad-plugins>}/.claude-plugin/plugin.json"; fi
   v=$(jq -r .version "$f" 2>/dev/null); case "$v" in 6.12.*) ;; *) bad="$bad $pl=${v:-none}";; esac
 done
 check bmad.plugin-version "$( [ -z "$bad" ]; echo $?)" "bad:${bad:- none}"

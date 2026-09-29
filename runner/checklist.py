@@ -37,18 +37,43 @@ class NotReady(RuntimeError):
     """Setup cannot start: a parked arm (no image in the lock) or no checklist for it."""
 
 
+def needed_commands(arm: config.Arm) -> list[str]:
+    """The slash commands `<arm>.entry-commands` requires installed: from entry, bug_entry, must_run, and for
+    OD24 B the export trigger and the export command itself."""
+    needed = [c.split()[0].lstrip("/") for c in (arm.entry, arm.bug_entry, *arm.must_run) if c.startswith("/")]
+    if arm.export_after:
+        needed += [arm.export_after.lstrip("/"), "speckit-taskstoissues"]
+    return needed
+
+
+def effective_manifest_paths(arm: config.Arm) -> list[str]:
+    """What `manifest_full` hashes: the arm's `manifest_paths`, plus the plugin cache on route A (marketplace)."""
+    extra = ["~/.claude/plugins/cache"] if config.load_pins().plugin_route == "marketplace" and arm.plugins else []
+    return list(arm.manifest_paths) + extra
+
+
+def conditional_ids(arm: config.Arm) -> set[str]:
+    """Host checks that are OMITTED when they would check nothing (Task 10 fix round 1): no setup prompts, an empty
+    effective manifest list, no slash command needed. A checklist md documents them as `- (computed)` bullets,
+    never as static ids, because whether they exist is computed from config (and, for the manifest, the route)."""
+    return ({"setup.agent-turns", "setup.manifest-matches-pass1"}
+            | ({f"{arm.name}.entry-commands"} if arm.name in COMMAND_ARMS else set()))
+
+
 def host_check_ids(arm: config.Arm) -> set[str]:
-    """The ids `host_checks` (and `_smoke`) produce for an arm; every checklist md lists them (Task 10 test)."""
-    return (({f"{arm.name}.entry-commands"} if arm.name in COMMAND_ARMS else set())
-            | {"common.no-foreign-model-ids", "setup.manifest-matches-pass1", "setup.origin-push",   # B4: every arm
-               "setup.agent-turns"}                                                              # fix round 1
+    """The ids `host_checks`, `_smoke` and `agent_turns_check` produce for this arm on the current route: the
+    static ones plus the conditional ones that are not empty."""
+    return ({"common.no-foreign-model-ids", "setup.origin-push"}                               # B4: every arm
+            | ({f"{arm.name}.entry-commands"} if arm.name in COMMAND_ARMS and needed_commands(arm) else set())
+            | ({"setup.manifest-matches-pass1"} if effective_manifest_paths(arm) else set())
+            | ({"setup.agent-turns"} if arm.setup_agent else set())
             | ({"github.issues-access"} if arm.tracker == "github" and not arm.dry else set())
             | ({f"{arm.name}.smoke"} if arm.name in SMOKE_ARMS or arm.smoke else set()))
 
 
 class _HostChecks(Mapping):
-    """Every configured arm, real and dry (B4: dry arms verify origin too); real arms: the plan's table plus
-    `setup.agent-turns`. Loaded lazily per arm (fix round 1): a broken arm toml never breaks importing this module,
+    """Every configured arm, real and dry (B4: dry arms verify origin too): `host_check_ids` on the current route
+    (conditional checks omitted when empty, Task 10 FR1). Loaded lazily per arm (fix round 1): a broken arm toml never breaks importing this module,
     it fails only when that arm is looked up."""
     def __getitem__(self, arm: str) -> set[str]:
         if not (config.ARMS_DIR / f"{arm}.toml").is_file():
@@ -110,11 +135,19 @@ def machine_ids(md: str) -> set[str]:
     return set(re.findall(r"^- `([a-z0-9.-]+)`", m.group(1), re.M)) if m else set()
 
 
-def missing_checks(md: str, checks: list[Check]) -> list[Check]:
+def computed_ids(md: str) -> set[str]:
+    """The `- (computed) <id>` bullets of `## Machine-verified`: documented, but present only when not empty."""
+    m = re.search(r"^## Machine-verified\s*$(.*?)(?=^## |\Z)", md, re.M | re.S)
+    return set(re.findall(r"^- \(computed\) `([a-z0-9.-]+)`", m.group(1), re.M)) if m else set()
+
+
+def missing_checks(md: str, checks: list[Check], expected: set[str] | frozenset = frozenset()) -> list[Check]:
     """A listed machine check that did not run is a failure: setup is never green by omission (e.g. a verify
-    script that stopped half-way, or a host check whose precondition was not configured)."""
+    script that stopped half-way). `expected` adds the ids computed for this arm (`host_check_ids`), so a
+    conditional check that should exist and did not run fails too, while one computed away is not missing."""
     produced = {c.id for c in checks}
-    return [Check(i, False, "listed in the checklist but not produced") for i in sorted(machine_ids(md) - produced)]
+    return [Check(i, False, "listed in the checklist but not produced")
+            for i in sorted((machine_ids(md) | set(expected)) - produced)]
 
 
 def manifest_diff(a: dict[str, str], b: dict[str, str]) -> list[str]:
@@ -185,11 +218,12 @@ def manifest_check(pass_: str, arm_name: str, m: dict[str, str], owner, missing:
     return Check(cid, False, shown)
 
 
-def agent_turns_check(arm: config.Arm, record: list[dict]) -> Check:
-    """Fix round 1: the LAST turn of each configured setup prompt (the prompt, then any owner replies) ended ok."""
+def agent_turns_check(arm: config.Arm, record: list[dict]) -> Check | None:
+    """Fix round 1: the LAST turn of each configured setup prompt (the prompt, then any owner replies) ended ok.
+    No prompts configured → None: the check is omitted, never recorded ok (Task 10 fix round 1)."""
     cid = "setup.agent-turns"
     if not arm.setup_agent:
-        return Check(cid, True, "no setup prompts configured")
+        return None
     last = {r["prompt"]: r for r in record}
     parts, ok = [], True
     for i in range(len(arm.setup_agent)):
@@ -269,9 +303,7 @@ def manifest_full(p: Paths, arm: config.Arm) -> tuple[dict[str, str], list[str]]
     """SHA-256 of every regular file under the arm's `manifest_paths`, hashed in the container (never on the host),
     and the configured paths that do not exist."""
     repo.recover(p)
-    paths_ = list(arm.manifest_paths)
-    if config.load_pins().plugin_route == "marketplace" and arm.plugins:
-        paths_.append("~/.claude/plugins/cache")
+    paths_ = effective_manifest_paths(arm)
     r = docker.run(arm_spec(p, arm, ["bash", "-c", _MANIFEST_SH, "manifest", p.container_repo, *paths_], name="manifest"),
                    timeout=300)
     if r.returncode != 0:
@@ -466,19 +498,20 @@ def host_checks(p: Paths, arm: config.Arm, pass_: str, smoke: Check | None, st: 
          "note": "OD2: every session runs with `env` (and --model BK_MODEL), so every alias resolves to the pinned "
                  "model; the method's own choices are listed under `declared`"}, indent=2))
     out.append(model_ids_check(lst.models, config.load_pins().accepted_models))
-    if arm.name in COMMAND_ARMS:
-        needed = [c.split()[0].lstrip("/") for c in (arm.entry, arm.bug_entry, *arm.must_run) if c.startswith("/")]
-        if arm.export_after:                                     # OD24 B: the trigger and the export command itself
-            needed += [arm.export_after.lstrip("/"), "speckit-taskstoissues"]
+    needed = needed_commands(arm) if arm.name in COMMAND_ARMS else []
+    if needed:                                                   # nothing needed → omitted (Task 10 FR1)
         missing = sorted(set(needed) - lst.names)
-        out.append(Check(f"{arm.name}.entry-commands", not missing, f"missing: {missing or 'none'}"))
+        out.append(Check(f"{arm.name}.entry-commands", not missing, f"needed: {sorted(set(needed))}; missing: {missing or 'none'}"))
     if smoke is not None:
         out.append(smoke)
     if arm.tracker == "github" and not arm.dry:
         out.append(issues_access_check(p, arm, pass_, st))
-    m, missing = manifest_full(p, arm)
+    if effective_manifest_paths(arm):                            # empty list → omitted, no container (Task 10 FR1)
+        m, missing = manifest_full(p, arm)
+        out.append(manifest_check(pass_, arm.name, m, owner, missing))
+    else:
+        m = {}
     (p.setup_results / "manifest.json").write_text(json.dumps(m, indent=2, sort_keys=True))
-    out.append(manifest_check(pass_, arm.name, m, owner, missing))
     out.append(_origin_push(p))
     return out
 
@@ -531,8 +564,10 @@ def run_setup(pass_: str, arm_name: str, cred, owner) -> SetupResult:
         smoke = _smoke(p, arm, pass_, cred, st, out) if arm.smoke else None
         if gitops.state(p).dirty:
             gitops.commit_all(p, gitops.IDENTITY, f"Set up {arm.tool} {arm.version}")
-        checks = verify(p, arm, "setup") + host_checks(p, arm, pass_, smoke, st, owner) + [agent_turns_check(arm, turns)]
-    checks += missing_checks(md, checks)
+        turns_check = agent_turns_check(arm, turns)
+        checks = verify(p, arm, "setup") + host_checks(p, arm, pass_, smoke, st, owner) \
+            + ([turns_check] if turns_check else [])
+    checks += missing_checks(md, checks, host_check_ids(arm))
     rec, item_s = ask_owner(owner, owner_items(md))
     owner_s += item_s
     (out / "checklist.json").write_text(json.dumps([asdict(c) for c in checks], indent=2))
@@ -624,7 +659,7 @@ def recheck(pass_: str, arm_name: str, owner=None) -> SetupResult:
         if gitops.state(p).dirty:
             gitops.commit_all(p, gitops.IDENTITY, f"Set up {arm.tool} {arm.version} (owner shell adjustments)")
         checks = verify(p, arm, "setup") + host_checks(p, arm, pass_, None, st, owner) + carried
-    checks += missing_checks(md, checks)
+    checks += missing_checks(md, checks, host_check_ids(arm))
     (out / "checklist.json").write_text(json.dumps([asdict(c) for c in checks], indent=2))
     repo.snapshot(p, 1)
     rec = json.loads((out / "owner-checklist.json").read_text()) if (out / "owner-checklist.json").is_file() else {}

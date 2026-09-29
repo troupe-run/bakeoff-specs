@@ -3,11 +3,23 @@
 set -u; . /checks/lib.sh; MODE=${1:-setup}
 common control ""
 [ "$MODE" = step ] && exit 0
-# no methodology anywhere Claude Code reads one from: project scope (repo) and user scope (the arm's home)
+# no methodology anywhere Claude Code reads one from: the repo (project scope), every directory above it inside
+# the container (CLAUDE.md files are read from ancestors too), and the arm's user scope (~/.claude)
 found=""
 for f in .claude CLAUDE.md CLAUDE.local.md AGENTS.md .mcp.json \
-         "$HOME/.claude/CLAUDE.md" "$HOME/.claude/skills" "$HOME/.claude/commands" "$HOME/.claude/agents"; do
+         "$HOME/.claude/CLAUDE.md" "$HOME/.claude/skills" "$HOME/.claude/commands" "$HOME/.claude/agents" \
+         "$HOME/.claude/output-styles"; do
   [ -e "$f" ] && found="$found $f"
+done
+d=$(dirname "$PWD")
+while :; do
+  for f in "$d/CLAUDE.md" "$d/CLAUDE.local.md"; do [ -e "$f" ] && found="$found $f"; done
+  [ "$d" = / ] && break; d=$(dirname "$d")
+done
+for s in "$HOME/.claude/settings.json" "$HOME/.claude/settings.local.json"; do
+  [ -e "$s" ] || continue
+  jq -e '((.hooks // {}) | length) == 0 and (has("outputStyle") | not)' "$s" >/dev/null 2>&1 \
+    || found="$found $s(hooks/outputStyle)"
 done
 check control.no-method "$( [ -z "$found" ]; echo $?)" "found:${found:- none}"
 # setup adds nothing: the repo is repo.init's one empty commit, with nothing tracked, untracked or ignored

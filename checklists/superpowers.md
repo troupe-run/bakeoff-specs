@@ -13,21 +13,23 @@ superpowers 6.4.2 at the tag's verified commit `8ca22dba9a94f28898bbce59f2537ff4
 3. Smoke test (§1.1 item 3): a fresh session in `/work/smoke` receives "Let's make a react todo list" and must invoke `brainstorming`; its transcripts are moved out of the arm's home and `/work/smoke` is deleted.
 
 ## Machine-verified
+Ids marked `(computed)` are omitted, never recorded ok, when they would check nothing; whether they exist is computed from the arm config and the plugin route (`checklist.host_check_ids`), and a computed id that should exist but did not run fails.
+
 - `common.claude-version` — `claude --version` is 2.1.281
-- `common.isolation-env` — CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 and CLAUDE_CONFIG_DIR=/home/actor/.claude
+- `common.isolation-env` — CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 and CLAUDE_CONFIG_DIR=/home/actor/.claude in the verify container's env, i.e. the image and runner-injected env; the env each arm session actually gets is verified elsewhere (credentials.session_env tests, `00-setup/model-overrides.json`)
 - `common.git-identity` — repo identity is the neutral `Developer`
 - `common.no-foreign-plugins` — only `superpowers`
 - `common.origin` — `origin` is the local bare repo `/home/actor/origin.git` and its `main` resolves (preflight B4)
-- `superpowers.plugin-version` — the loaded plugin's `.claude-plugin/plugin.json` version is 6.4.2
-- `superpowers.skills` — using-superpowers, brainstorming, writing-plans, subagent-driven-development, test-driven-development, finishing-a-development-branch SKILL.md present (§1.1 "Workflow stages", item 2)
+- `superpowers.plugin-version` — the loaded plugin's `.claude-plugin/plugin.json` version is 6.4.2 (route B: `/opt/plugins/superpowers`; route A: the single `installPath` recorded for `superpowers@claude-plugins-official` in `installed_plugins.json` — never another cached version or marketplace)
+- `superpowers.skills` — SKILL.md present for the eight stage skills of §1.1 "Workflow stages" (brainstorming, using-git-worktrees, writing-plans, subagent-driven-development, executing-plans, test-driven-development, requesting-code-review, finishing-a-development-branch) and using-superpowers (§1.1 item 2); all nine confirmed in the pinned 6.4.2 plugin
 - `superpowers.session-hook` — `hooks/hooks.json` registers a SessionStart hook running `hooks/session-start`, which exists (§1.1 item 2)
 - `superpowers.smoke` — (host) the smoke stream invoked `brainstorming` (§1.1 item 3)
-- `superpowers.entry-commands` — (host) every command in `[drive]` (its `must_run`) is installed
 - `common.no-foreign-model-ids` — (host) no installed file names a full non-pinned model ID (aliases are remapped, OD2)
 - `github.issues-access` — (host) the arm's PAT can list issues and labels of its repo
-- `setup.manifest-matches-pass1` — (host) pass 2's setup files equal pass 1's (route A: the plugin cache in the arm's home)
 - `setup.origin-push` — (host) `git push origin main` to the local bare origin succeeds (preflight B4)
-- `setup.agent-turns` — (host) every configured setup prompt's last turn ended ok (superpowers configures none)
+- (computed) `setup.agent-turns` — (host) present only when setup prompts are configured: every prompt's last turn ended ok
+- (computed) `setup.manifest-matches-pass1` — (host) present only when the effective manifest list (`manifest_paths`, plus `~/.claude/plugins/cache` on route A) is not empty: pass 2's setup files equal pass 1's
+- (computed) `superpowers.entry-commands` — (host) present only when `[drive]` needs a slash command (entry, bug_entry, must_run): every one is installed
 
 ## Owner-verified
 - [ ] OV1: The smoke session asked a brainstorming question before writing any code.

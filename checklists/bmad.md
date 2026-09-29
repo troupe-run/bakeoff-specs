@@ -20,8 +20,10 @@ per OD9; Claude Code 2.1.281; model claude-opus-5-5. The base image carries the 
 7. Commit `Set up bmad-code-org/BMAD-METHOD 6.12.0` (design §6).
 
 ## Machine-verified
+Ids marked `(computed)` are omitted, never recorded ok, when they would check nothing; whether they exist is computed from the arm config and the plugin route (`checklist.host_check_ids`), and a computed id that should exist but did not run fails.
+
 - `common.claude-version` — `claude --version` is 2.1.281
-- `common.isolation-env` — CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 and CLAUDE_CONFIG_DIR=/home/actor/.claude
+- `common.isolation-env` — CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 and CLAUDE_CONFIG_DIR=/home/actor/.claude in the verify container's env, i.e. the image and runner-injected env; the env each arm session actually gets is verified elsewhere (credentials.session_env tests, `00-setup/model-overrides.json`)
 - `common.git-identity` — repo identity is the neutral `Developer`
 - `common.no-foreign-plugins` — only `bmad-core-tools bmad-method`
 - `common.origin` — `origin` is the local bare repo `/home/actor/origin.git` and its `main` resolves (preflight B4)
@@ -31,9 +33,9 @@ per OD9; Claude Code 2.1.281; model claude-opus-5-5. The base image carries the 
 - `bmad.scripts-locked` — at least one `_bmad/scripts/*.py` exists, and every `_bmad/scripts/*.py` and `_bmad/*/scripts/*.py` with a `# /// script` block has a `.lock` beside it
 - `common.no-foreign-model-ids` — (host) no installed file names a full non-pinned model ID
 - `github.issues-access` — (host) the arm's PAT can list issues and labels of its repo
-- `setup.manifest-matches-pass1` — (host) pass 2's setup files (`_bmad`) equal pass 1's
 - `setup.origin-push` — (host) `git push origin main` to the local bare origin succeeds (preflight B4)
-- `setup.agent-turns` — (host) each of the three setup prompts' last turn ended ok
+- (computed) `setup.agent-turns` — (host) present only when setup prompts are configured: every prompt's last turn ended ok
+- (computed) `setup.manifest-matches-pass1` — (host) present only when the effective manifest list (`manifest_paths`, plus `~/.claude/plugins/cache` on route A) is not empty: pass 2's setup files equal pass 1's
 
 ## Owner-verified
 - [ ] OV1: `bmad setup` completed without errors (read the setup turn in 00-setup/turns/).

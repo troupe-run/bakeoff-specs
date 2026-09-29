@@ -15,8 +15,10 @@ https://github.com/Fission-AI/OpenSpec/blob/main/docs/cli.md, https://github.com
 4. Commit `Set up Fission-AI/OpenSpec 1.13.2` (design §6: the setup is part of the arm repo's history).
 
 ## Machine-verified
+Ids marked `(computed)` are omitted, never recorded ok, when they would check nothing; whether they exist is computed from the arm config and the plugin route (`checklist.host_check_ids`), and a computed id that should exist but did not run fails.
+
 - `common.claude-version` — `claude --version` is 2.1.281
-- `common.isolation-env` — CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 and CLAUDE_CONFIG_DIR=/home/actor/.claude
+- `common.isolation-env` — CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 and CLAUDE_CONFIG_DIR=/home/actor/.claude in the verify container's env, i.e. the image and runner-injected env; the env each arm session actually gets is verified elsewhere (credentials.session_env tests, `00-setup/model-overrides.json`)
 - `common.git-identity` — repo identity is the neutral `Developer`
 - `common.no-foreign-plugins` — no plugin installed or vendored
 - `common.origin` — `origin` is the local bare repo `/home/actor/origin.git` and its `main` resolves (preflight B4)
@@ -24,14 +26,14 @@ https://github.com/Fission-AI/OpenSpec/blob/main/docs/cli.md, https://github.com
 - `openspec.skills` — the `core` profile's six skills: `.claude/skills/openspec-{propose,explore,apply-change,update-change,sync-specs,archive-change}/SKILL.md`
 - `openspec.commands` — `.claude/commands/opsx/{propose,apply,archive,update,sync,explore}.md` exist
 - `openspec.tree` — `openspec/specs/` and `openspec/changes/` exist and `openspec/config.yaml` has `schema: spec-driven`
-- `openspec.telemetry-off` — `openspec config get telemetry.enabled` prints false and OPENSPEC_TELEMETRY=0
+- `openspec.telemetry-off` — `openspec config get telemetry.enabled` prints false, and OPENSPEC_TELEMETRY=0 in the verify container's env (the image and runner-injected env; the env each arm session gets is verified elsewhere, via `credentials.session_env` and the arm's `env`)
 - `openspec.context` — `openspec/config.yaml`'s `context`, parsed with OpenSpec's own YAML library, is exactly `project-principles.md`
-- `openspec.entry-commands` — (host) every command in `[drive]` is installed
 - `common.no-foreign-model-ids` — (host) no installed file names a full non-pinned model ID
 - `github.issues-access` — (host) the arm's PAT can list issues and labels of its repo
-- `setup.manifest-matches-pass1` — (host) pass 2's setup files (`.claude`, `openspec`, `~/.config/openspec`) equal pass 1's
 - `setup.origin-push` — (host) `git push origin main` to the local bare origin succeeds (preflight B4)
-- `setup.agent-turns` — (host) every configured setup prompt's last turn ended ok (openspec configures none)
+- (computed) `setup.agent-turns` — (host) present only when setup prompts are configured: every prompt's last turn ended ok
+- (computed) `setup.manifest-matches-pass1` — (host) present only when the effective manifest list (`manifest_paths`, plus `~/.claude/plugins/cache` on route A) is not empty: pass 2's setup files equal pass 1's
+- (computed) `openspec.entry-commands` — (host) present only when `[drive]` needs a slash command (entry, bug_entry, must_run): every one is installed
 
 ## Owner-verified
 - [ ] OV1: `openspec/config.yaml` differs from the `openspec init` template only by the appended `context` block.
