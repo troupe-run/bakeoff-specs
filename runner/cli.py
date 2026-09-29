@@ -35,14 +35,24 @@ def register_images(sub):
     s = p.add_subparsers(dest="images_cmd", required=True)
     s.add_parser("pin").set_defaults(func=lambda ns: print(json.dumps(images.pin(), indent=2)))
     b = s.add_parser("build"); b.add_argument("--rebuild", action="store_true")
+    b.add_argument("--only", nargs="+", metavar="NAME",
+                   help="build only these images (base, proxy, tester, tester_ref, dryrun or an arm name); every "
+                        "other lock entry is kept (Task 23: never rebuild everything)")
     def build(ns):
+        if ns.only:
+            if ns.rebuild:
+                ns.parser.error("--only and --rebuild are exclusive")
+            lock = images.build_only(ns.only)
+            print(json.dumps({k: v for k, v in {**lock.get("images", {}), **lock.get("arms", {})}.items()
+                              if k in ns.only or any(k.startswith(n) for n in ns.only)}, indent=2))
+            return 0
         # During development (before any real pass) --rebuild is routine; once pass 1 has results it needs the owner.
         if ns.rebuild and (paths.RESULTS / "pass1").exists() and \
                 input("Images are built once (review S-5). Type 'rebuild' to rebuild: ").strip() != "rebuild":
             return 1
         lock = images.build_all(config.all_arms(), rebuild=ns.rebuild)
         print(json.dumps(lock["arms"], indent=2))
-    b.set_defaults(func=build)
+    b.set_defaults(func=build, parser=b)
     s.add_parser("load").set_defaults(func=lambda ns: images.load_saved())
 REGISTRARS.append(register_images)
 
@@ -112,15 +122,23 @@ def register_setup(sub):
     from runner import checklist
 
     def setup(ns):
+        from runner import orchestrate
         cred, owner = _cred_owner(config.load_arm(ns.arm))
-        r = checklist.run_setup(ns.pass_, ns.arm, cred, owner)
+        try:
+            r = orchestrate.setup(ns.pass_, ns.arm, cred, owner, again=ns.again)   # once per arm (Task 23)
+        except checklist.NotReady as e:
+            print(e)
+            return 1
         _print_checks(r.checks)
         for k, v in r.owner.items():
             print(f"{'ok  ' if v['ok'] else 'FAIL'} {k}  {v['note']}")
         print("GREEN" if r.green else "NOT GREEN — run-arm refuses step 1 (design §6)")
         return 0 if r.green else 1
     s = sub.add_parser("setup", help="set an arm up exactly per its docs, then its checklist (owner present)")
-    s.add_argument("pass_", metavar="pass"); s.add_argument("arm"); s.set_defaults(func=setup)
+    s.add_argument("pass_", metavar="pass"); s.add_argument("arm")
+    s.add_argument("--again", action="store_true", help="after a setup harness fault: move the arm's state aside "
+                                                         "first (refused once a step has started)")
+    s.set_defaults(func=setup)
 
     def check(ns):
         r = checklist.recheck(ns.pass_, ns.arm, _owner_for(config.load_arm(ns.arm)))
@@ -203,6 +221,7 @@ def register_faults(sub):
             cur = json.loads(prog.read_text()) if prog.exists() else {}
             prog.parent.mkdir(parents=True, exist_ok=True)
             prog.write_text(json.dumps({**cur, "rerun": ns.step}, indent=2))
+        # --scope retest: the orchestrator reads it from the ledger (Task 23) and re-tests the recorded sha_after
         print(f"declared manual:{ns.slug} ({ns.scope}) for {ns.pass_}/{ns.arm} step {ns.step}")
         if action == "halt":
             print(f"HALTED: manual:{ns.slug} was already recorded since the last resolution (design §9).\n"
@@ -220,3 +239,69 @@ def register_faults(sub):
     r.add_argument("pass_", metavar="pass"); r.add_argument("--note", required=True)
     r.set_defaults(func=clean(resume))
 REGISTRARS.append(register_faults)
+
+
+def _real_cred_owner():
+    """The real bake-off (and the canary): the keychain credential and the owner at the terminal."""
+    from runner import credentials, owner as owner_mod
+    return credentials.from_keychain(), owner_mod.Owner()
+
+
+def _real_owner():
+    from runner import owner as owner_mod
+    return owner_mod.Owner()
+
+
+def _orchestrated(fn):
+    """`stepflow.Halt` → the HALTED record, exit 2; `NotReady` → the reason, exit 1; otherwise the result as JSON."""
+    def run(ns):
+        from runner import checklist, stepflow
+        try:
+            res = fn(ns)
+        except stepflow.Halt as h:
+            print(f"HALTED (design §9): {h}\nReview with the owner, then `runner faults resume <pass> --note \"...\"`.")
+            return 2
+        except checklist.NotReady as e:
+            print(f"not ready: {e}")
+            return 1
+        if res is not None:
+            print(json.dumps(res, indent=2, default=str))
+            if isinstance(res, dict) and ("declined" in res or "incomplete" in res):
+                return 1
+        return 0
+    return run
+
+
+def register_orchestrate(sub):
+    """Task 23: `order`, `run-pass`, `run-arm`, `close-out`, `status`. Every one refuses while HALTED (main)."""
+    from runner import orchestrate
+
+    def order(ns):
+        print("\n".join(orchestrate.order(ns.pass_, ns.seed)))
+    o = sub.add_parser("order", help="record the arm order for a pass (pass1: seeded shuffle, control not first)")
+    o.add_argument("pass_", metavar="pass"); o.add_argument("--seed", type=int, default=None)
+    o.set_defaults(func=_orchestrated(lambda ns: order(ns)))
+
+    def run_pass(ns):
+        cred, owner = _real_cred_owner()
+        return orchestrate.run_pass(ns.pass_, cred, owner)
+    rp = sub.add_parser("run-pass", help="run (or resume) every arm step-major: N.a, the consistency check, N.b")
+    rp.add_argument("pass_", metavar="pass"); rp.set_defaults(func=_orchestrated(run_pass))
+
+    def run_arm(ns):
+        cred, owner = _cred_owner(config.load_arm(ns.arm))
+        return orchestrate.run_arm(ns.pass_, ns.arm, cred, owner, stop_after=ns.stop_after)
+    ra = sub.add_parser("run-arm", help="run (or resume) one arm step-major (canary and dry passes only)")
+    ra.add_argument("pass_", metavar="pass"); ra.add_argument("arm")
+    ra.add_argument("--stop-after", type=int, default=None, help="the canary: stop after this step")
+    ra.set_defaults(func=_orchestrated(run_arm))
+
+    def close_out(ns):
+        f = orchestrate.close_out(ns.pass_, _real_owner())
+        print(f)
+    c = sub.add_parser("close-out", help="end of a run: every arm finished, scan clean, bundles, PATs revoked")
+    c.add_argument("pass_", metavar="pass"); c.set_defaults(func=_orchestrated(close_out))
+
+    st = sub.add_parser("status", help="every arm's progress, step by step, run a and b")
+    st.set_defaults(func=lambda ns: print(orchestrate.status()))
+REGISTRARS.append(register_orchestrate)

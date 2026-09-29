@@ -103,6 +103,14 @@ def _enter(pass_: str, fields: dict) -> Literal["rerun", "halt"]:
     return "rerun"
 
 
+def halt(pass_: str, reason: str, entry: dict) -> None:
+    """Halt for owner review without a repeat (Task 23: `suite-resource:<step>`, design §9 — two arms exhausting
+    resources at one step is the suite's fault). Every command except `faults …` refuses until `resume`."""
+    f = ledger_paths(pass_)[1]
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps({"reason": reason, "entry": entry, "at": _now()}, indent=2))
+
+
 def halted(pass_: str) -> str | None:
     h = ledger_paths(pass_)[1]
     return h.read_text() if h.exists() else None

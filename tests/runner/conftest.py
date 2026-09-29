@@ -296,10 +296,13 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
                                                                   env.main.get(p.arm, "sha-0"),
                                                                   env.main.get(p.arm, "sha-0"), True))
 
-    def set_aside(p, message):
-        env.calls.append(("set_aside", p.arm))
+    def set_aside(p, message):                  # as gitops.set_aside_to_main: a clean main is left alone
+        rec = {"branch": env.state["branch"], "dirty": env.state["dirty"], "stashed": env.state["dirty"],
+               "checked_out_main": env.state["branch"] != "main"}
+        if rec["stashed"] or rec["checked_out_main"]:
+            env.calls.append(("set_aside", p.arm))
         env.state.update(branch="main", dirty=False)
-        return {"stashed": True, "checked_out_main": True}
+        return rec
     monkeypatch.setattr(gitops, "set_aside_to_main", set_aside)
     monkeypatch.setattr(repo, "snapshot", lambda p, s: env.calls.append(("snapshot", p.arm, s)))
     monkeypatch.setattr(repo, "restore", lambda p, s: env.calls.append(("restore", p.arm, s)))

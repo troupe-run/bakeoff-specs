@@ -457,6 +457,21 @@ def commit_all(p: Paths, who: tuple[str, str], message: str) -> str:
     return head(p)
 
 
+def set_aside_to_main(p: Paths, message: str) -> dict:
+    """Before the step-2 hand edit (Task 23 ruling): the teammate commits on a clean `main`. An arm that left the
+    tree dirty has its changes stashed (untracked files included, ignored ones such as `.venv` kept) under
+    `message` — kept in the repo, never deleted — and an arm left on another branch is put back on `main`."""
+    st = state(p)
+    rec = {"branch": st.branch, "dirty": st.dirty, "stashed": False, "checked_out_main": False}
+    if st.dirty:
+        git(p, "stash", "push", "--include-untracked", "-m", message, write=True, env=_who_env(IDENTITY))
+        rec["stashed"] = True
+    if st.branch != "main":
+        git(p, "checkout", "-q", "main", write=True)
+        rec["checked_out_main"] = True
+    return rec
+
+
 def checkout_paths(p: Paths, paths_: list[str]) -> None:
     if paths_:
         git(p, "checkout", "--", *paths_, write=True)

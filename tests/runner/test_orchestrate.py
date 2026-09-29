@@ -626,7 +626,9 @@ def test_a_declared_retest_re_tests_the_recorded_commit_without_a_new_session(fa
     assert ("prepare", "dryrun", "02-retest1", "sha-2") in fake_orch.calls and ("quality", "dryrun") in fake_orch.calls
     assert (p.step(2) / "hidden-superseded-1" / "summary.json").exists()
     assert json.loads((p.step(2) / "retest-1.json").read_text())["sha"] == "sha-2"
-    assert progress("dry7", "dryrun")["retest"] is None
+    fake_orch.calls.clear()
+    dry(fake_orch)                                                      # the declaration is honoured once
+    assert not [c for c in fake_orch.calls if c[0] == "prepare"]
 
 
 # ---- setup once per arm; moving state aside after a fault ------------------------------------------------------------

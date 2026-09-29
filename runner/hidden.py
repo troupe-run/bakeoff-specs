@@ -152,15 +152,24 @@ def _bundle_files() -> list[Path]:
     return out
 
 
-def harness_bundle() -> bytes:
+SUBSTITUTE_TEST = "tests/hidden/test_zz_substitute.py"      # a step-6 substitute bug's acceptance test (Task 23)
+_EXTRA_NAME = re.compile(r"tests/hidden/test_[A-Za-z0-9_]+\.py")
+
+
+def harness_bundle(extra: dict[str, bytes] | None = None) -> bytes:
     """The hidden suite + its config as `<path> <size>\n<bytes>` records, streamed on the tester's stdin into the
-    uid-1000 0700 /harness tmpfs (never bind-mounted: Docker Desktop mounts are readable by every uid)."""
+    uid-1000 0700 /harness tmpfs (never bind-mounted: Docker Desktop mounts are readable by every uid). `extra`
+    adds test files (a substitute bug's acceptance test) — only `tests/hidden/test_<name>.py` paths."""
     parts = []
     for f in _bundle_files():
         if f.is_symlink():
             raise ValueError(f"harness bundle refuses a link: {f}")
         data = f.read_bytes()
         parts.append(f"{f.relative_to(REPO_ROOT).as_posix()} {len(data)}\n".encode() + data)
+    for rel, data in (extra or {}).items():
+        if not _EXTRA_NAME.fullmatch(rel):
+            raise ValueError(f"an extra bundle file must be tests/hidden/test_<name>.py, not {rel!r}")
+        parts.append(f"{rel} {len(data)}\n".encode() + data)
     return b"".join(parts)
 
 
@@ -447,9 +456,9 @@ def _spec(p: Paths, copy: Path | None, cmd: list[str], *, mode: str, network: st
                    limits=pins.limits, proxy=proxy, user=user, cap_add=caps, tmpfs=tmpfs)
 
 
-def _run(s: RunSpec, timeout: float):
+def _run(s: RunSpec, timeout: float, extra: dict[str, bytes] | None = None):
     try:
-        return docker.run(s, input=harness_bundle() if s.stdin else None, timeout=timeout)
+        return docker.run(s, input=harness_bundle(extra) if s.stdin else None, timeout=timeout)
     finally:
         for m in s.mounts:
             if m.ctr == "/home/actor":
@@ -511,14 +520,15 @@ def prepare(p: Paths, sha: str, label: str, out_dir: Path, with_quality: bool = 
 
 
 def _pytest(p: Paths, copy: Path | None, args: list[str], *, impl: str | None = None, env: dict | None = None,
-            timeout: int = 600, reference: bool = False) -> tuple[dict[str, bytes] | None, str | None]:
+            timeout: int = 600, reference: bool = False,
+            extra: dict[str, bytes] | None = None) -> tuple[dict[str, bytes] | None, str | None]:
     """pytest in the tester as the harness uid; returns (results members, error). Never raises for what the
     run itself did: a hung container or unreadable results is reported as an error string."""
     impl = impl or (f"/work/{copy.name}" if copy is not None else "/nonexistent")
     s = _spec(p, copy, _pytest_argv(args, impl, reference), mode="harness", env=env, workdir="/harness", reference=reference,
               timeout=timeout)
     try:
-        r = _run(s, timeout=timeout + 30 + OUTER_GRACE)
+        r = _run(s, timeout=timeout + 30 + OUTER_GRACE, **({"extra": extra} if extra else {}))
     except subprocess.TimeoutExpired:
         return None, f"container did not finish within {timeout + 30 + OUTER_GRACE}s"
     try:
@@ -549,6 +559,28 @@ def _single(p: Paths, copy: Path | None, step: int, nodeid: str, junit_id: str, 
         return "failed"
     tests, _, attribution = assess([junit_id], res)
     return "passed" if attribution is None and tests.get(junit_id) == "passed" else "failed"
+
+
+def run_acceptance(p: Paths, copy: Path, step: int, body: str) -> dict:
+    """A step-6 substitute bug's acceptance test (owner, preflight B5; Task 23 ruling): the owner's pytest file body,
+    streamed in the harness bundle as `SUBSTITUTE_TEST` (it may use the hidden suite's `cli`/`tmp_theatre` fixtures
+    and needs `@pytest.mark.steps(...)`), run against the arm's copy like any hidden test. `outcome` is "failed"
+    (what delivery needs: the bug is real on this commit), "passed", or "error" (nothing collected, or the run did
+    not complete) with the detail."""
+    res, err = _pytest(p, copy, [SUBSTITUTE_TEST, "--step", str(step)], timeout=run_timeout(20),
+                       extra={SUBSTITUTE_TEST: body.encode()})
+    if err or res is None:
+        return {"outcome": "error", "detail": err or "no results"}
+    code = res.get("exit", b"").strip().decode(errors="replace")
+    try:
+        tests = parse_junit(res["junit.xml"]) if "junit.xml" in res else {}
+    except ET.ParseError as e:
+        return {"outcome": "error", "detail": f"unparseable junit ({e})", "exit": code}
+    if not tests:
+        log = res.get("pytest.log", b"")[-1500:].decode(errors="replace")
+        return {"outcome": "error", "detail": f"pytest exit {code}, no test ran: {log}", "exit": code}
+    return {"outcome": "failed" if any(o == "failed" for o in tests.values()) else "passed", "tests": tests,
+            "exit": code}
 
 
 def classify_flaky(p: Paths, step: int, nodeid: str) -> str:

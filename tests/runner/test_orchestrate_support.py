@@ -125,12 +125,6 @@ def test_cli_status_and_close_out(tmp_state, monkeypatch, capsys):
     assert cli.main(["close-out", "pass1"]) == 0
 
 
-def test_cli_declare_retest_is_recorded_for_the_orchestrator(tmp_state):
-    Paths("pass1", "control").base.mkdir(parents=True)
-    assert cli.main(["faults", "declare", "pass1", "control", "4", "bad-fixture", "--scope", "retest"]) == 0
-    assert json.loads(Paths("pass1", "control").progress.read_text())["retest"] == 4
-
-
 def test_cli_images_build_only_builds_the_named_images(tmp_state, monkeypatch, capsys):
     from runner import images
     got = []
