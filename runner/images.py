@@ -35,7 +35,15 @@ def _sh(*argv: str) -> str:
 
 
 def current_id(tag: str) -> str:
+    """`{{.Id}}`: on Docker's containerd image store this is the image INDEX digest (Task 6 fix round 1)."""
     return _sh("docker", "image", "inspect", "--format", "{{.Id}}", tag)
+
+
+def content_id(tag: str) -> str:
+    """The image's platform manifest digest (config + layers): the content identity locked alongside the
+    index id (Task 6 fix round 1, item 7). Inspecting with --platform resolves the index to that manifest."""
+    platform = _sh("docker", "image", "inspect", "--format", "{{.Os}}/{{.Architecture}}", tag)
+    return _sh("docker", "image", "inspect", "--platform", platform, "--format", "{{.Id}}", tag)
 
 
 def _existing(arms: list[str]) -> list[str]:
@@ -87,7 +95,9 @@ def proxy_build_args(p: config.Pins) -> dict[str, str]:
 
 
 def _build(tag: str, context: Path, dockerfile: Path | None = None, target: str | None = None, **args: str) -> None:
-    argv = ["docker", "build", "-q", "-t", tag]
+    # No attestations: their manifests carry the build time, so every rebuild got a new index id even when
+    # every layer came from cache (Task 6 fix round 1, item 7).
+    argv = ["docker", "build", "-q", "--provenance=false", "--sbom=false", "-t", tag]
     if dockerfile:
         argv += ["-f", str(dockerfile)]
     if target:
@@ -251,7 +261,7 @@ def build_all(arms: list[str], rebuild: bool = False) -> dict:
     lock: dict = {"digests": p.digests, "binary_sha256": p.binary_sha256, "bd_sha256": p.bd_sha256,
                   "images": {}, "arms": {}}
     for tag in [im["base"], im["proxy"], im["tester"]] + ([im["dryrun"]] if (IMAGES / "dryrun").exists() else []):
-        lock["images"][tag] = {"id": current_id(tag), "tar_sha256": _save(tag)}
+        lock["images"][tag] = {"id": current_id(tag), "content": content_id(tag), "tar_sha256": _save(tag)}
     lock["images"][im["base"]]["versions"] = _versions(im["base"], {})
     for name in _existing(arms):
         arm = config.load_arm(name)
@@ -267,7 +277,7 @@ def build_all(arms: list[str], rebuild: bool = False) -> dict:
             _build(arm.image, IMAGES / "arm" / name, BASE_IMAGE=im["base"], **extra,
                    **{f"PLUGIN_{i}_{k.upper()}": getattr(pl, k) for i, pl in enumerate(arm.plugins)
                       for k in ("name", "repo", "tag", "sha", "subdir")})
-        lock["arms"][name] = {"image": arm.image, "id": current_id(arm.image),
+        lock["arms"][name] = {"image": arm.image, "id": current_id(arm.image), "content": content_id(arm.image),
                               "tar_sha256": _save(arm.image) if df.exists() else lock["images"][im["base"]]["tar_sha256"],
                               "versions": _versions(arm.image, ARM_VERSION_PROBES.get(name, {}))}
     LOCK.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n")

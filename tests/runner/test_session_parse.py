@@ -14,7 +14,7 @@ def test_ok_needs_a_result_that_is_not_an_error():
     assert p.outcome == "ok" and p.final_text == "done" and p.session_id == "s1" and p.cost_usd == 0.5
 
 def test_success_subtype_with_is_error_is_an_error():
-    assert parse_stream([INIT, j(type="result", subtype="success", is_error=True, result="API Error: 401")]).outcome == "is_error"
+    assert parse_stream([INIT, j(type="result", subtype="success", is_error=True, result="API Error: 500 internal error")]).outcome == "is_error"  # 401 is auth (fix round 1)
 
 def test_missing_result_is_no_result():
     assert parse_stream([INIT]).outcome == "no_result"

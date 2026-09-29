@@ -48,6 +48,10 @@ def main():
          tools=["Bash", "Read", "Edit", "Write", "Task"], cwd=os.getcwd())
     if "stderr" in directives:
         sys.stderr.write("e" * int(directives["stderr"])); sys.stderr.flush()
+    if "not_logged_in" in directives:  # the no-token shape, verbatim from spike FINDINGS Evidence 2
+        emit(type="result", subtype="success", is_error=True, result="Not logged in · Please run /login",
+             session_id=sid, total_cost_usd=0, num_turns=1, duration_api_ms=0)
+        return 1
     if "auth_fail" in directives:
         emit(type="system", subtype="api_retry", attempt=1, max_retries=4, error="authentication_failed")
         time.sleep(3600)

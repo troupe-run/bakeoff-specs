@@ -7,14 +7,16 @@ Outcome rules (spike B):
   ok          a `result` event with `is_error == false`
   is_error    a `result` event with `is_error == true`, whatever its subtype (401s come back as "success")
   no_result   the process ended without a `result` (a SIGTERM'd claude emits none)
-  auth_failed a `system/api_retry` with `error == "authentication_failed"`; the container is stopped at once
+  auth_failed a `system/api_retry` with `error == "authentication_failed"` (the container is stopped at once),
+              or an `is_error` result whose text has a known auth-failure shape (AUTH_FAILURE_SHAPES): a
+              credential fault is the harness's, never charged to the arm
   timeout     over `timeout_s` (the caller passes `limits.turn_seconds`); the container is stopped
 """
 from __future__ import annotations
 import asyncio, gzip, json, os, time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Literal
+from typing import AsyncIterator, Iterable, Literal
 from runner import docker
 from runner.credentials import Credential
 from runner.docker import Mount, RunSpec
@@ -24,6 +26,14 @@ Outcome = Literal["ok", "is_error", "no_result", "timeout", "auth_failed"]
 ROLES = ("arm", "po", "teammate", "setup", "probe")
 STREAM_LINE_LIMIT = 64 * 1024 * 1024        # asyncio's 64 KiB default breaks on real stream-json lines (spike B)
 POST_STOP_DRAIN_S = 90                      # docker stop grace (30 s) + rm, with margin
+OVERSIZE_MARKER = "bk_oversize_line"        # written to the stream in place of a line over the reader limit
+
+# Result texts that mean the credential failed, not the arm (fix round 1, item 1). Substring match on an
+# `is_error` result only. Sources: spike FINDINGS.md Evidence 2 ("Not logged in · Please run /login", no
+# token / --bare) and Q3/Q7 ("Failed to authenticate. API Error: 401 ..."); the API's 401 body carries
+# `authentication_error` / "invalid x-api-key".
+AUTH_FAILURE_SHAPES = ("Not logged in", "Failed to authenticate", "API Error: 401", "invalid x-api-key",
+                       "authentication_error")
 
 
 @dataclass
@@ -40,7 +50,10 @@ class Parsed:
             return "auth_failed"
         if self.result is None:
             return "no_result"
-        return "is_error" if self.result.get("is_error") else "ok"
+        if not self.result.get("is_error"):
+            return "ok"
+        text = str(self.result.get("result") or "")
+        return "auth_failed" if any(s in text for s in AUTH_FAILURE_SHAPES) else "is_error"
 
     @property
     def final_text(self) -> str:
@@ -116,7 +129,10 @@ class TurnResult:
 
 
 def stem(t: Turn) -> str:
-    """File/container stem; includes role and attempt so nothing ever overwrites another turn's files."""
+    """File/container stem: role, attempt and turn number. Unique only within one out_dir (the caller gives
+    every step its own out_dir; the container name adds pass, arm and step). The role inbox is shared across
+    steps, so a later step's `<stem>.md` there replaces an earlier one — harmless, as it is only the mount
+    source during its own turn; the record of the prompt is `out_dir/turns/<stem>.prompt.md`."""
     return f"{t.role}-a{t.attempt}-{t.n:03d}"
 
 
@@ -145,6 +161,33 @@ def credential_files(config_dir: Path | None, cred: Credential, since: float) ->
     return sorted(set(hits))
 
 
+async def read_lines(reader: asyncio.StreamReader) -> AsyncIterator[bytes]:
+    """Lines from `reader`; a line longer than the reader's limit is discarded and replaced by one
+    `{"type": "bk_oversize_line", "bytes": N}` marker line, and reading continues (fix round 1, item 3).
+    A final line without a newline (a stopped turn) is delivered as it is."""
+    while True:
+        try:
+            yield await reader.readuntil(b"\n")
+        except asyncio.IncompleteReadError as e:
+            if e.partial:
+                yield e.partial
+            return
+        except asyncio.LimitOverrunError as e:
+            dropped, consumed = 0, e.consumed
+            while True:
+                await reader.readexactly(consumed)
+                dropped += consumed
+                try:
+                    dropped += len(await reader.readuntil(b"\n"))
+                    break
+                except asyncio.IncompleteReadError as e2:
+                    dropped += len(e2.partial)
+                    break
+                except asyncio.LimitOverrunError as e2:
+                    consumed = e2.consumed
+            yield (json.dumps({"type": OVERSIZE_MARKER, "bytes": dropped}) + "\n").encode()
+
+
 def _spec(t: Turn) -> RunSpec:
     msg_file = t.inbox_dir / f"{stem(t)}.md"
     # Only this turn's message file is mounted, read-only — never the inbox directory (review C-12).
@@ -167,7 +210,7 @@ async def _run(t: Turn, cred: Credential, stream_path: Path, stderr_path: Path, 
                     err.write(chunk)
 
             async def pump(stop_on_auth: bool):
-                async for raw in proc.stdout:
+                async for raw in read_lines(proc.stdout):
                     line = raw.decode(errors="replace")
                     out.write(line); feed(parsed, line)
                     if stop_on_auth and parsed.auth_failed:
@@ -193,7 +236,9 @@ async def _run(t: Turn, cred: Credential, stream_path: Path, stderr_path: Path, 
                 await asyncio.wait_for(asyncio.shield(err_task), timeout=POST_STOP_DRAIN_S)
                 await asyncio.wait_for(proc.wait(), timeout=POST_STOP_DRAIN_S)
             except asyncio.TimeoutError:
-                proc.kill()                                        # the docker CLI only; the container is gone
+                # The CLI has not exited: the container may still be alive (fix round 1, item 2).
+                await asyncio.to_thread(docker.stop, spec.name)
+                proc.kill()
                 await proc.wait()
     finally:
         if err_task is not None and not err_task.done():
