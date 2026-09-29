@@ -176,3 +176,42 @@ def test_finalise_summary_names_the_reason_for_a_crashed_mutation_run(tmp_path, 
     text = summary.read_text()
     assert "mypy crashed" in text and "None errors" not in text
     assert "mutation score crashed" in text and "mutation score None" not in text
+
+
+# ---- fix round 3, item 7: ruff_summary_text/ruff_arm_summary_text; placeholder reasons render with their
+# ---- own text instead of collapsing to a generic "crashed" -------------------------------------------------
+
+def test_ruff_summary_text_names_the_reason_instead_of_none():
+    assert evidence.ruff_summary_text({"ruff_findings": 3}) == "3"
+    assert evidence.ruff_summary_text({"ruff_findings": 0}) == "0"
+    assert evidence.ruff_summary_text({"ruff_findings": None, "ruff_crashed": True}) == "crashed"
+    assert evidence.ruff_summary_text({"ruff_findings": None, "ruff_timed_out": True}) == "timed out"
+
+
+def test_ruff_arm_summary_text_distinguishes_no_config_from_crashed():
+    assert evidence.ruff_arm_summary_text({"ruff_arm_findings": 1}) == "1"
+    # the arm simply has no ruff config: run_all leaves ruff_arm_crashed as None (never attempted)
+    assert evidence.ruff_arm_summary_text({"ruff_arm_findings": None, "ruff_arm_crashed": None}) == "no config"
+    # an actual failure trying to find out or run it: run_all sets ruff_arm_crashed True
+    assert evidence.ruff_arm_summary_text({"ruff_arm_findings": None, "ruff_arm_crashed": True}) == "crashed"
+    assert evidence.ruff_arm_summary_text({"ruff_arm_findings": None, "ruff_arm_crashed": None,
+                                           "ruff_arm_timed_out": True}) == "timed out"
+
+
+def test_mutation_summary_text_renders_placeholder_reasons_verbatim():
+    assert evidence.mutation_summary_text({"score": None, "crashed": True, "sampling": "install failed"}) == \
+        "install failed"
+    assert evidence.mutation_summary_text(
+        {"score": None, "crashed": True, "sampling": "error: RuntimeError: simulated mutation crash"}) == \
+        "error: RuntimeError: simulated mutation crash"
+
+
+def test_finalise_summary_shows_ruff_reasons_not_none(tmp_path, monkeypatch):
+    ctx, kw = finalise_inputs(tmp_path, monkeypatch)
+    kw = {**kw, "quality": {"mutation": {}, "mypy_errors": 0,
+                            "ruff_findings": None, "ruff_crashed": True,
+                            "ruff_arm_findings": None, "ruff_arm_crashed": None}}
+    summary = evidence.finalise(ctx, **kw)
+    text = summary.read_text()
+    assert "ruff crashed" in text and "ruff None" not in text
+    assert "arm no config" in text and "arm None" not in text
