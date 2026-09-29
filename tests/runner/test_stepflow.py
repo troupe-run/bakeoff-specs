@@ -403,3 +403,40 @@ def test_a_hand_edit_failing_the_same_way_twice_halts(fake_step, monkeypatch):
     monkeypatch.setattr(stepflow.handedit, "apply", apply)
     with pytest.raises(stepflow.Halt):
         stepflow.hand_edit(fake_step.ctx, {})
+
+
+# ---- errors from the runner itself ------------------------------------------------------------------------------
+
+def test_a_docker_error_raised_by_the_runner_is_an_infra_container_fault(fake_step, monkeypatch):
+    real = stepflow.drive.run_attempt
+    calls = []
+
+    def boom_once(c, attempt, message, resume=None, **kw):
+        calls.append(attempt)
+        if len(calls) == 1:
+            raise RuntimeError("docker run failed (125): proxy container exited 42")
+        return real(c, attempt, message, resume, **kw)
+    monkeypatch.setattr(stepflow.drive, "run_attempt", boom_once)
+    fake_step.progress = [3]
+    out = stepflow.run_step(fake_step.ctx, "go")
+    [e] = faults.for_step("dry9", "control", 2)
+    assert (e["kind"], e["signature"]) == ("infra-container", "docker run failed (): proxy container exited")
+    assert fake_step.restored == [2] and out.status == "done"
+
+
+def test_a_setup_that_is_not_ready_is_refused_not_recorded_as_a_fault(fake_step, monkeypatch):
+    def not_ready(*a, **k):
+        raise stepflow.checklist.NotReady("setup is dirty")
+    monkeypatch.setattr(stepflow.drive, "run_attempt", not_ready)
+    with pytest.raises(stepflow.checklist.NotReady):
+        stepflow.run_step(fake_step.ctx, "go")
+    assert faults.for_step("dry9", "control", 2) == []
+
+
+def test_run_a_never_asks_the_owner_about_a_breach(fake_step):
+    _run_a(fake_step)
+    fake_step.outcome_on = {1: "stalled"}
+    fake_step.breach_on = {1: "exchanges"}
+    fake_step.ctx.owner.reclassify = lambda what, detail: pytest.fail("asked in run a")
+    stepflow.run_step(fake_step.ctx, "go", run="a")
+    assert not (paths.Paths("dry9", "control").results / "breaches.json").exists()

@@ -1,0 +1,366 @@
+"""One step for one arm (design §5, §7, §9; plan Task 22): attempts, scoring, harness faults and the stop rule.
+
+`run_step(ctx, first_message, extra=None, run="b")` drives ONE of the step's two runs (design §5, owner 2026-09-29):
+
+- **run "a" (N.a, discovery):** one attempt with `drive.run_attempt(..., stop_at_first_gate_or_code=True)`, which
+  ends at the arm's first approval request or its first edit to code outside its spec and docs paths. No hidden
+  tests, no quality, no scoring. The evidence stays under `ctx.out`, which must be the step's `a/` directory
+  (`results/<pass>/<arm>/<NN>/a/`): transcripts, questions, `discovery.json`, `cost.json`, `model-pin.json`. The
+  pre-step snapshot is then restored (and `ctx.later_sent` reset) so N.b starts from the same commit.
+- **run "b" (N.b, scored):** attempts to completion, the hidden tests on committed `main` after each, and
+  `evidence.finalise` once the step is decided.
+
+Classification (design §9, brief table, binding rulings):
+
+- An attempt's transcripts are ALWAYS collected and pin-checked, including when it raised a `HarnessFault`
+  (ruling 3: its turns are on `fault.attempt_result`). `verify_pin` always gets the runner-captured streams with
+  their outcomes and collection's skipped entries (ruling 4). Behind a raised fault, an off-pin model is what the
+  ledger records, except under `infra-auth` / `credential-persisted` (the hand edit's precedence).
+- A harness fault (raised by drive, found by the pin check, a docker/proxy error from the runner as
+  `infra-container`, or the owner reclassifying the arm's first runaway breach, OD14 B) goes to the ledger
+  (`faults.record`). The second identical one halts (`Halt`). Otherwise the owner confirms the fix (`Paused` if
+  not, or if they park), every attempt since the last restore is parked under `attempts/<k>-harness-<kind>/`, the
+  step snapshot is restored, `ctx.later_sent` is reset to 0 so CR-B is sent again (ruling 2), and the arm gets
+  its full three attempts again (review C-3).
+- A drive outcome of `parked` is not a fault (ruling 1): `parked.json` records it and the step returns
+  `status="parked"` — no hidden tests, not counted as an arm attempt, and nothing restored: the tree is left for
+  the owner, and the caller (Task 23) restores the pre-step snapshot before it re-runs the step.
+- Hidden tests (run b): a harness flake (flaky on the reference too) is `flaky-test:<nodeid>` and a hidden
+  `harness-fault` attribution is `infra-hidden:<why>`; both are ledger faults that RE-TEST the same commit after
+  the owner's fix (no new arm session). `arm-resource` (re-run once by `hidden`, then all-failed) and `arm-output`
+  (all-failed) are the arm's results, never harness faults; every resource exhaustion is recorded per (pass,
+  step, arm) with `faults.record_resource` for Task 23's cross-arm count (`limits.suite_resource_arms`).
+- `new_discriminating_passed == 0` is no progress: the next attempt gets `messages.no_progress` in the same
+  session; after `limits.attempts_no_progress` (3) the arm stops at this step (`arm-result.json`, OD3).
+
+`hand_edit(ctx, step1_tests)` wraps `handedit.apply` (called once per arm before step 2's first run, Task 23) with
+the same ledger rule; every try's teammate turns are kept on the returned `HandEdit.turns`, which the caller passes
+to `run_step(..., extra={"teammate": edit.turns})` (ruling 7).
+"""
+from __future__ import annotations
+import json, re, shutil, subprocess, time
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+from runner import checklist, drive, evidence, faults, gitops, handedit, handoff, hidden, preflight, quality, repo, \
+    transcripts
+from runner.faults import HarnessFault
+from runner.owner import Park
+
+RUNS = ("a", "b")
+
+
+class Halt(Exception):
+    """The same harness fault twice since the last owner resolution: the whole bake-off halts (design §9)."""
+
+
+class Paused(Exception):
+    """The owner declined (or parked) a harness-fault prompt: the step stops here, the fault is recorded, the tree is
+    left as it is. `park` carries the owner's `Park` when they parked."""
+
+    def __init__(self, reason: str = "", park: Park | None = None):
+        super().__init__(reason)
+        self.park = park
+
+
+@dataclass
+class StepOutcome:
+    status: str                  # run b: "done" | "stopped" | "parked"; run a: "discovered" | "parked"
+    attempts: int                # arm attempts since the last harness restore (run a: 1, or 0 when parked)
+    hidden: hidden.Summary | None = None
+    quality: dict = field(default_factory=dict)
+    park: Park | None = None
+    run: str = "b"
+    attempt_outcome: str | None = None       # drive's outcome of the last attempt
+    discovery: dict | None = None            # run a: why the discovery run stopped (drive's `AttemptResult.discovery`)
+
+
+# ---- evidence moves --------------------------------------------------------------------------------------------
+
+def park(out: Path, k: int, label: str) -> None:
+    """Move attempt k's evidence under attempts/<k>-<label>/. Hidden results always; for a harness label also its
+    turns, transcripts, PO files and its questions / owner-gates lines, so a faulted attempt leaves nothing on top."""
+    dest = out / "attempts" / f"{k}-{label}"; dest.mkdir(parents=True, exist_ok=True)
+    earlier = out / "attempts" / f"{k}-no-progress"
+    if label.startswith("harness-") and earlier.exists():      # a no-progress attempt later discarded by a fault
+        shutil.move(str(earlier), str(dest / "no-progress"))
+    if (out / "hidden").exists():
+        shutil.move(str(out / "hidden"), str(dest / "hidden"))
+    if label.startswith("harness-"):
+        for f in list((out / "turns").glob(f"*-a{k}-*")) if (out / "turns").exists() else []:
+            (dest / "turns").mkdir(exist_ok=True); shutil.move(str(f), str(dest / "turns" / f.name))
+        if (out / "transcripts" / f"a{k}").exists():
+            shutil.move(str(out / "transcripts" / f"a{k}"), str(dest / "transcripts"))
+        for d in list((out / "po").glob(f"a{k}-*")) if (out / "po").exists() else []:
+            (dest / "po").mkdir(exist_ok=True); shutil.move(str(d), str(dest / "po" / d.name))
+        for name in ("questions.jsonl", "owner-gates.jsonl"):
+            f = out / name
+            if f.exists():
+                keep, moved = [], []
+                for l in f.read_text().splitlines():
+                    if l.strip():
+                        (moved if json.loads(l).get("attempt") == k else keep).append(l)
+                f.write_text("".join(x + "\n" for x in keep))
+                if moved:
+                    (dest / name).write_text("".join(x + "\n" for x in moved))
+    (dest / "attempt.json").write_text(json.dumps({"attempt": k, "label": label}))
+
+
+# ---- the owner ------------------------------------------------------------------------------------------------
+
+def _confirm_or_pause(ctx, text: str) -> None:
+    got = ctx.owner.confirm(text)
+    if isinstance(got, Park):
+        raise Paused(f"the owner parked: {text}", park=got)
+    if not got:
+        raise Paused(f"the owner declined: {text}")
+
+
+def wait_idle(ctx) -> None:
+    detail = ""
+    for _ in range(20):
+        ok, detail = preflight.idle()
+        if ok:
+            return
+        time.sleep(30)
+    _confirm_or_pause(ctx, f"The machine is not idle ({detail}). Run the hidden tests anyway?")
+
+
+def _breach_seen(ctx) -> bool:
+    f = ctx.paths.results / "breaches.json"
+    return f.exists() and bool(json.loads(f.read_text()))
+
+
+def _note_breach(ctx, what: str, verdict: str) -> None:
+    f = ctx.paths.results / "breaches.json"; f.parent.mkdir(parents=True, exist_ok=True)
+    prior = json.loads(f.read_text()) if f.exists() else []
+    f.write_text(json.dumps(prior + [{"step": ctx.step, "breach": what, "owner": verdict}], indent=2))
+
+
+# ---- pins -----------------------------------------------------------------------------------------------------
+
+def _evidence_pin(ctx, attempt: int, before: dict, ar) -> transcripts.PinReport:
+    """Collect attempt `attempt`'s transcripts (every container has exited) and pin-check them with the runner's
+    own streams (ruling 4). The report is kept beside the transcripts, so `park` moves it with them."""
+    skipped: list[dict] = []
+    dest = ctx.out / "transcripts" / f"a{attempt}"
+    files = transcripts.collect(ctx.paths.config_dir, before, dest, skipped=skipped)
+    streams = {t.stream_path: t.outcome for t in (ar.turns if ar is not None else []) if t.stream_path}
+    pin = transcripts.verify_pin(files, list(streams), ctx.pins, unsafe=skipped, stream_outcomes=streams)
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / "model-pin.json").write_text(pin.to_json())
+    return pin
+
+
+def _pin_fault(pin) -> HarnessFault | None:
+    """A clean attempt's pin report as a fault: never passes vacuously (as drive's check of the PO's report)."""
+    if (f := faults.classify_pin(pin, "arm")):
+        return f
+    if not pin.ok:
+        return HarnessFault("model-pin", "unverified", f"arm: unverified streams {pin.unverified_streams}")
+    if pin.stream_assistant_messages == 0:
+        return HarnessFault("model-pin", "no-stream-evidence", "arm: no runner-captured stream was inspected")
+    return None
+
+
+def _behind(f: HarnessFault, pin) -> HarnessFault:
+    """The fault to record for an attempt that RAISED `f` (ruling 3). An off-pin model in its evidence wins over
+    everything but a credential fault (the hand edit's precedence); a missing-evidence report does not (the fault
+    may have come before any assistant message)."""
+    if f.kind in ("infra-auth", "credential-persisted") or not pin.violations:
+        return f
+    pf = faults.classify_pin(pin, "arm")
+    if pf is None:
+        return f
+    return HarnessFault(pf.kind, pf.signature, f"{pf.detail}; the attempt raised {f.kind}: {f.signature}")
+
+
+# ---- faults ---------------------------------------------------------------------------------------------------
+
+def _sig(text: str | None) -> str:
+    first = (text or "").removeprefix("harness-fault:").strip().splitlines()
+    return re.sub(r"\d", "", first[0] if first else "").strip()[:80] or "unknown"
+
+
+def _record(ctx, f: HarnessFault, attempt: int, run: str | None) -> None:
+    if faults.record(f, ctx.pass_, ctx.arm.name, ctx.step, attempt, run=run) == "halt":
+        raise Halt(faults.halted(ctx.pass_)) from f
+
+
+def _restore_target(ctx):
+    return ctx.snapshot if ctx.snapshot is not None else ctx.step
+
+
+def _restore(ctx) -> None:
+    repo.restore(ctx.paths, _restore_target(ctx))
+    ctx.later_sent = 0                        # ruling 2: the re-run re-sends the first message, and CR-B with it
+
+
+def _handle_fault(ctx, f: HarnessFault, parked: list[int], run: str) -> None:
+    for k in parked:
+        park(ctx.out, k, f"harness-{f.kind}")
+    _record(ctx, f, parked[-1] if parked else 0, run)
+    _confirm_or_pause(ctx, f"Harness fault {f.kind}: {f.signature}. Fix it, then re-run step {ctx.step} "
+                           f"({run}) from its snapshot now?")
+    _restore(ctx)
+
+
+# ---- hidden tests (run b) ---------------------------------------------------------------------------------------
+
+def _hidden_run(ctx, prep, attempt: int, install_failed: bool) -> hidden.Summary:
+    s = hidden.run(ctx.paths, prep.hidden_copy, ctx.step, ctx.out, install_failed)
+    if s.attribution == "arm-resource":                         # died of resources twice: all-failed
+        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "repeat", s.resource_evidence)
+    elif len(s.resource_evidence) >= 2:                          # died once, the re-run completed
+        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "once", s.resource_evidence)
+    return s
+
+
+def _settle(ctx, prep, summary: hidden.Summary, attempt: int, install_failed: bool) -> hidden.Summary:
+    """Harness problems with the tests themselves: record, let the owner fix, re-test the SAME commit."""
+    while True:
+        if not summary.scoreable:                                # ruling 5: a hidden harness-fault is infra
+            f = HarnessFault("infra-hidden", _sig(summary.attribution), summary.attribution or "")
+            _record(ctx, f, attempt, "b")
+            _confirm_or_pause(ctx, f"Hidden-test harness fault: {summary.attribution}. Fix it, then re-test "
+                                   f"this commit?")
+        elif summary.flaky:                                      # harness flakes only (review C-2)
+            flaky = [t for t, o in summary.tests.items() if o == "flaky"]
+            for t in flaky:
+                _record(ctx, HarnessFault("flaky-test", hidden.to_nodeid(t)), attempt, "b")
+            _confirm_or_pause(ctx, f"Hidden test(s) flaky on the reference too: {flaky}. Fix, then re-test "
+                                   f"this commit?")
+        else:
+            return summary
+        summary = _hidden_run(ctx, prep, attempt, install_failed)          # same SHA, no new session
+
+
+def _arm_result(ctx, summary: hidden.Summary) -> None:
+    f = ctx.paths.results / "arm-result.json"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps({"stopped_at": ctx.step,
+                             "reason": f"no progress in {ctx.pins.limits.attempts_no_progress} attempts",
+                             "last_hidden": asdict(summary)}, indent=2))
+
+
+# ---- outcomes that end the step without scoring ------------------------------------------------------------------
+
+def _parked(ctx, attempt: int, ar, pk: Park, arm_attempts: int, run: str) -> StepOutcome:
+    (ctx.out / "parked.json").write_text(json.dumps(
+        {"run": run, "attempt": attempt, "arm_attempts_before": arm_attempts, "outcome": ar.outcome if ar else None,
+         "park": asdict(pk)}, indent=2))
+    return StepOutcome("parked", arm_attempts, park=pk, run=run, attempt_outcome=ar.outcome if ar else None)
+
+
+def _discovered(ctx, attempt: int, ar, pin, t0: float, extra: dict) -> StepOutcome:
+    out = ctx.out
+    po_turns = [t for r in ar.po_results for t in r.turns]
+    (out / "cost.json").write_text(json.dumps(evidence.cost(
+        {"arm": ar.turns, "po": po_turns, "harness": [t for ts in extra.values() for t in ts]}), indent=2))
+    (out / "model-pin.json").write_text(pin.to_json())
+    (out / "discovery.json").write_text(json.dumps(
+        {"run": "a", "pass": ctx.pass_, "arm": ctx.arm.name, "step": ctx.step, "outcome": ar.outcome,
+         "discovery": ar.discovery, "attempt": attempt, "harness_restores": attempt - 1, "breach": ar.breach,
+         "exchanges": ar.exchanges, "interventions": ar.interventions, "model_pin_ok": pin.ok,
+         "sha_before": ctx.sha_before, "started": t0, "ended": time.time(),
+         "harness_faults": [e for e in faults.for_step(ctx.pass_, ctx.arm.name, ctx.step) if e.get("run") == "a"]},
+        indent=2))
+    _restore(ctx)                                    # N.b starts from the same pre-step commit (design §5)
+    return StepOutcome("discovered", 1, run="a", attempt_outcome=ar.outcome, discovery=ar.discovery)
+
+
+# ---- the step -------------------------------------------------------------------------------------------------
+
+def run_step(ctx, first_message: str, extra: dict | None = None, run: str = "b") -> StepOutcome:
+    if run not in RUNS:
+        raise ValueError(f"run is 'a' (discovery) or 'b' (scored), not {run!r}")
+    if run == "a" and ctx.out.name != "a":
+        raise ValueError(f"run a keeps its evidence under the step's a/ directory, not {ctx.out}")
+    extra, t0 = extra or {}, time.time()
+    attempt, arm_attempts, history, since_restore = 0, 0, [], []
+    message, resume = first_message, None
+    lim = ctx.pins.limits
+    kw = {"stop_at_first_gate_or_code": True} if run == "a" else {}
+    while True:
+        attempt += 1
+        before = transcripts.snapshot(ctx.paths.config_dir)
+        owner_park: Park | None = None
+        try:
+            try:
+                ar = drive.run_attempt(ctx, attempt, message, resume, **kw)
+            except HarnessFault as f:
+                raise _behind(f, _evidence_pin(ctx, attempt, before, getattr(f, "attempt_result", None)))
+            except checklist.NotReady:
+                raise                                # a precondition, never a fault: the caller refuses the arm
+            except (RuntimeError, OSError, subprocess.SubprocessError) as e:     # docker / proxy, from the runner
+                f = HarnessFault("infra-container", _sig(str(e)), repr(e)[:500])
+                raise _behind(f, _evidence_pin(ctx, attempt, before, None)) from e
+            pin = _evidence_pin(ctx, attempt, before, ar)
+            if (pf := _pin_fault(pin)):
+                raise pf
+            if run == "b" and ar.breach and lim.owner_reclassifies_first_breach and not _breach_seen(ctx):  # OD14 B
+                verdict = ctx.owner.reclassify(ar.breach, f"step {ctx.step}, attempt {attempt}")
+                if isinstance(verdict, Park):
+                    owner_park = verdict
+                else:
+                    _note_breach(ctx, ar.breach, verdict)
+                    if verdict == "harness":
+                        raise HarnessFault("runaway", ar.breach,
+                                           f"owner reclassified the first breach (step {ctx.step})")
+        except HarnessFault as f:
+            _handle_fault(ctx, f, since_restore + [attempt], run)
+            since_restore, arm_attempts, history = [], 0, []                                    # review C-3
+            if ctx.on_restore is not None:          # step 6: the old issue is superseded, a new one created
+                first_message = ctx.on_restore() or first_message
+            message, resume = first_message, None
+            continue
+        if owner_park is not None:
+            return _parked(ctx, attempt, ar, owner_park, arm_attempts, run)
+        if ar.outcome == "parked":                                                          # ruling 1
+            return _parked(ctx, attempt, ar, ar.park, arm_attempts, run)
+        if run == "a":
+            return _discovered(ctx, attempt, ar, pin, t0, extra)
+        arm_attempts += 1
+        since_restore.append(attempt)
+        wait_idle(ctx)
+        t_tests = time.time()
+        prep = hidden.prepare(ctx.paths, gitops.main_sha(ctx.paths) or hidden.MAIN, f"{ctx.step:02d}-a{attempt}",
+                              ctx.out, with_quality=True)
+        install_failed = not prep.prep.get("hidden", {}).get("ok", False)
+        summary = _settle(ctx, prep, _hidden_run(ctx, prep, attempt, install_failed), attempt, install_failed)
+        tests_s = time.time() - t_tests
+        progressed = summary.new_discriminating_passed > 0
+        if progressed or arm_attempts >= lim.attempts_no_progress:
+            q = quality.run_all(ctx.paths, prep, ctx.out, ctx.pins)
+            outcome = "done" if progressed else "stopped"
+            evidence.finalise(ctx, attempts=history + [ar], extra_turns=extra, hidden=summary, quality=q, pin=pin,
+                              sha_before=ctx.sha_before, started=t0, ended=time.time(),
+                              fault_entries=faults.for_step(ctx.pass_, ctx.arm.name, ctx.step),
+                              shas=ctx.shas, tests_seconds=tests_s, outcome=outcome)
+            if outcome == "stopped":
+                _arm_result(ctx, summary)
+            return StepOutcome(outcome, arm_attempts, summary, q, attempt_outcome=ar.outcome)
+        park(ctx.out, attempt, "no-progress")
+        history.append(ar)
+        message, resume = handoff.MESSAGES["no_progress"], ar.session_id
+
+
+# ---- the step-2 hand edit ---------------------------------------------------------------------------------------
+
+def hand_edit(ctx, step1_tests: dict[str, str]) -> handedit.HandEdit:
+    """`handedit.apply` under the ledger rule: a fault (after its own second try, where it retries) is recorded;
+    the second identical one halts; otherwise the owner fixes it and the hand edit runs again from `02-pre-edit`
+    (apply restores it on every failure). Every try's teammate turns end up on the returned `HandEdit.turns`."""
+    prior: list = []
+    while True:
+        try:
+            edit = handedit.apply(ctx, step1_tests)
+        except HarnessFault as f:
+            prior += list(getattr(f, "hand_edit_turns", None) or [])
+            f.hand_edit_turns = prior
+            _record(ctx, f, 0, None)
+            _confirm_or_pause(ctx, f"Hand edit failed ({f.kind}: {f.signature}). Fix it, then run it again from "
+                                   f"{handedit.PRE_EDIT}?")
+            continue
+        edit.turns = prior + list(edit.turns)
+        return edit
