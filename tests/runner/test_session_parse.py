@@ -59,16 +59,36 @@ from runner.session import AUTH_FAILURE_SHAPES, read_lines
 @pytest.mark.parametrize("text", [
     "Not logged in · Please run /login",                                  # spike FINDINGS Evidence 2 (verbatim)
     "Failed to authenticate. API Error: 401 API key is invalid.",         # spike FINDINGS Q3 (verbatim)
-    'API Error: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}',
-    "invalid x-api-key",
+    "  Not logged in · Please run /login\n",                              # surrounding whitespace is stripped
 ])
-def test_an_auth_shaped_error_result_is_auth_failed_not_the_arms_error(text):   # fix round 1, item 1
-    p = parse_stream([INIT, j(type="result", subtype="success", is_error=True, result=text)])
+def test_claude_codes_own_auth_message_on_a_turn_that_did_no_work_is_auth_failed(text):   # fix rounds 1+2
+    p = parse_stream([INIT, j(type="result", subtype="success", is_error=True, result=text, total_cost_usd=0)])
     assert p.outcome == "auth_failed"
 
-def test_every_listed_auth_shape_is_recognised():
+def test_every_listed_prefix_is_recognised_at_the_start():
     for shape in AUTH_FAILURE_SHAPES:
-        assert parse_stream([INIT, j(type="result", is_error=True, result=f"x {shape} y")]).outcome == "auth_failed"
+        assert parse_stream([INIT, j(type="result", is_error=True, result=f"{shape} y")]).outcome == "auth_failed"
+
+@pytest.mark.parametrize("text", [                                   # fix round 2: the reviewer's false positives
+    "the mock server returned API Error: 401 because the fixture key was wrong",
+    "Tests fail with authentication_error from the stubbed client",
+    "I could not finish: the test config sends an invalid x-api-key",
+    "Blocked: step 3 Failed to authenticate against the local fixture server",
+])
+def test_an_arm_failure_that_merely_mentions_auth_stays_is_error(text):
+    assert parse_stream([INIT, j(type="result", is_error=True, result=text)]).outcome == "is_error"
+
+TOOL_USE = j(type="assistant", message={"model": "claude-opus-5-5", "content": [
+    {"type": "tool_use", "id": "toolu_1", "name": "Bash", "input": {"command": "uv run pytest"}}]})
+
+def test_an_auth_message_after_tool_use_work_is_the_arms_error():          # fix round 2
+    p = parse_stream([INIT, TOOL_USE, j(type="result", is_error=True, result="Failed to authenticate. API Error: 401")])
+    assert p.outcome == "is_error"
+
+def test_an_auth_message_on_a_turn_that_cost_money_is_the_arms_error():   # fix round 2
+    p = parse_stream([INIT, j(type="result", is_error=True, result="Not logged in · Please run /login",
+                              total_cost_usd=0.12)])
+    assert p.outcome == "is_error"
 
 def test_an_ordinary_error_result_stays_is_error():
     assert parse_stream([INIT, j(type="result", is_error=True, result="API Error: 529 overloaded")]).outcome == "is_error"

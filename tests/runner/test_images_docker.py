@@ -91,3 +91,19 @@ def test_arm_image_has_no_root_owned_debris_under_home_actor(name):             
     debris = run(image, "sh", "-c",
                  'find /home/actor -mindepth 1 \\( -not -user actor -o -not -group actor \\) 2>/dev/null')
     assert debris.stdout.strip() == "", f"{image}: root-owned debris under /home/actor:\n{debris.stdout}"
+
+
+def test_rebuilding_an_unchanged_image_keeps_its_locked_identity(tmp_path):     # Task 6 fix rounds 1+2, item 7
+    """Guards against ID churn returning (e.g. attestations re-enabled): two builds of the same context must
+    give the same index id and the same platform-manifest content id."""
+    import subprocess
+    base = config.load_pins().images["proxy"]                                 # small, always built
+    (tmp_path / "Dockerfile").write_text(f"FROM {base}\nLABEL bakeoff.test=identity\n")
+    tag = "bakeoff-identity-probe:1"
+    try:
+        images._build(tag, tmp_path)
+        first = (images.current_id(tag), images.content_id(tag))
+        images._build(tag, tmp_path)
+        assert (images.current_id(tag), images.content_id(tag)) == first
+    finally:
+        subprocess.run(["docker", "image", "rm", "-f", tag], capture_output=True)
