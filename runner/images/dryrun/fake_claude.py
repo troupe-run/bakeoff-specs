@@ -10,7 +10,7 @@
 #   This keeps the runner's own session tests (test_session_docker.py) valid once roles exist.
 #   A PO session's prompt is fixed ("Read /po/protocol.md ..."), so `/po/message.md` (the arm's message the PO
 #   is deciding on) is appended to the prompt before directives are parsed (Task 13; test_po_docker.py).
-import json, os, sys, time, uuid
+import json, os, subprocess, sys, time, uuid
 from pathlib import Path
 
 def arg(name, default=None):
@@ -60,6 +60,8 @@ def main():
     if "auth_fail" in directives:
         emit(type="system", subtype="api_retry", attempt=1, max_retries=4, error="authentication_failed")
         time.sleep(3600)
+    if "sh" in directives:            # a shell command in the session's cwd: a scripted edit (Task 16's teammate)
+        subprocess.run(directives["sh"], shell=True, check=False)
     text = respond(prompt, directives)
     if "bigline" in directives:
         emit(type="assistant", session_id=sid, message={"model": model, "content": [{"type": "text", "text": "x" * int(directives["bigline"])}]})
