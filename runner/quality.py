@@ -465,8 +465,9 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
     (mutmut's own stdout/stderr redirected to a log file inside it — arm test code executes here and must
     never be able to print a line shaped like `<name>__mutmut_N: killed` and have it counted); container 2 is
     fresh and runs nothing but `mutmut results --all true` against the same host-mounted copy, so its stdout
-    is guaranteed clean of anything the arm could have produced. Status lines are parsed ONLY from container
-    2's stdout. `parse_results` also keeps one status per name — a duplicate line (forged or not) is never
+    cannot carry anything the arm's own test output printed. It still executes the arm-writable
+    `.venv/bin/mutmut`, so the residual-tampering limit below applies to it too. Status lines are parsed ONLY
+    from container 2's stdout. `parse_results` also keeps one status per name — a duplicate line (forged or not) is never
     summed, the last occurrence wins.
 
     Each container gets its own exit-code marker (read from the LAST anchored occurrence on its own line in
@@ -566,8 +567,9 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
                       mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0, **post_sample_common)
     run_rc = _last_marker(run_outcome.stdout, "__run_rc")
 
-    # Container 2: fresh, and runs nothing but `mutmut results` -- no arm code ever executes here, so its
-    # stdout is guaranteed clean by construction, not merely by redirection (fix round 3, item 1). mutmut's own
+    # Container 2: fresh, and runs nothing but `mutmut results` (fix round 3, item 1), so no line the arm's test
+    # output printed during the run can reach its stdout. It does run the arm-writable `.venv/bin/mutmut`, so a
+    # deliberately tampered binary is NOT excluded -- see "what this does not guard against" above. mutmut's own
     # persisted state (the `mutants/` directory) survives on the host-mounted copy between the two containers,
     # so this one sees exactly what the run container just recorded. Status lines are parsed ONLY from here.
     results_outcome = _run(p, copy, ["bash", "-c", ".venv/bin/mutmut results --all true; echo __results_rc=$?"],
