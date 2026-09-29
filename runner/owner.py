@@ -88,7 +88,7 @@ class _SelectLines:
             if self.eof:
                 if self.buf:                                   # a last line without a newline
                     line, self.buf = self.buf, b""
-                    return line.decode(errors="replace")
+                    return line.decode(errors="replace").rstrip("\r")
                 raise _ParkSignal("eof")
             wait = None if deadline is None else max(0.0, deadline - time.monotonic())
             ready, _, _ = select.select([self.fd], [], [], wait)
@@ -101,6 +101,28 @@ class _SelectLines:
                 self.eof = True
         line, self.buf = self.buf.split(b"\n", 1)
         return line.decode(errors="replace").rstrip("\r")
+
+    def discard_pending(self) -> None:
+        """Drop everything typed before the prompt was shown (fix round 1): type-ahead, or a late line meant
+        for a prompt that already timed out, must never answer a prompt the owner has not seen. A tty is
+        flushed with TCIFLUSH; anything else is drained with zero-timeout reads (EOF is remembered)."""
+        self.buf = b""
+        if self.eof:
+            return
+        try:
+            if os.isatty(self.fd):
+                import termios
+                termios.tcflush(self.fd, termios.TCIFLUSH)
+                return
+        except (OSError, ImportError):
+            pass
+        try:
+            while select.select([self.fd], [], [], 0)[0]:
+                if not os.read(self.fd, 65536):
+                    self.eof = True
+                    return
+        except (OSError, ValueError):
+            self.eof = True
 
 
 def _write_prompt(text: str) -> None:
@@ -123,6 +145,29 @@ class Owner:
         self.parks: list[Park] = []
         self._stdin, self._prompt_out, self._lines = stdin, prompt_out, None
 
+    # -- terminal input -----------------------------------------------------------------------------------
+
+    def _reader(self) -> "_SelectLines":
+        """The select-based reader for `stdin`; an unusable stdin (None, no fileno, closed) parks as "eof"."""
+        if self._lines is None:
+            src = self._stdin if self._stdin is not None else sys.stdin
+            try:
+                fd = src.fileno()
+            except (AttributeError, OSError, ValueError):
+                raise _ParkSignal("eof")
+            self._lines = _SelectLines(fd)
+        return self._lines
+
+    def _begin(self) -> None:
+        """At the start of every top-level prompt: discard pending input (fix round 1). A no-op for an injected
+        `input_fn` and for an unusable stdin (the first read then parks as "eof")."""
+        if self._in is not None:
+            return
+        try:
+            self._reader().discard_pending()
+        except _ParkSignal:
+            pass
+
     # -- park machinery -----------------------------------------------------------------------------------
 
     def _park(self, prompt_name: str, reason: str, t0: float, context: str) -> Park:
@@ -138,12 +183,11 @@ class Owner:
         if self.timeout is not None and (self._clock() - t0) > self.timeout:
             raise _ParkSignal("timeout")
         if self._in is None:                                   # the real terminal: select-based (ruling 7)
-            if self._lines is None:
-                self._lines = _SelectLines((self._stdin or sys.stdin).fileno())
+            reader = self._reader()
             if io_prompt:
                 self._prompt_out(io_prompt)
             remaining = None if self.timeout is None else self.timeout - (self._clock() - t0)
-            line = self._lines.readline(remaining)
+            line = reader.readline(remaining)
         else:
             try:
                 line = self._in(io_prompt)
@@ -201,6 +245,7 @@ class Owner:
 
     def escalation(self, question: str, context: str) -> tuple[str, float] | Park:
         t0 = self._clock()
+        self._begin()
         ctx = _first_line(question)
         if self.unattended:
             return self._park("escalation", "unattended", t0, ctx)
@@ -214,6 +259,7 @@ class Owner:
 
     def gate(self, arm_message: str, decision, repo_changes: str) -> tuple[str, str, float] | Park:
         t0 = self._clock()
+        self._begin()
         ctx = _first_line(arm_message)
         if self.unattended:
             return self._park("gate", "unattended", t0, ctx)
@@ -237,6 +283,7 @@ class Owner:
 
     def confirm(self, text: str) -> bool | Park:
         t0 = self._clock()
+        self._begin()
         ctx = _first_line(text)
         if self.unattended:
             return self._park("confirm", "unattended", t0, ctx)
@@ -248,6 +295,7 @@ class Owner:
 
     def items(self, items: list[tuple[str, str]]) -> dict[str, tuple[bool, str, float]] | Park:
         t0 = self._clock()
+        self._begin()
         ctx = f"{len(items)} item(s) to review"
         if self.unattended:
             return self._park("items", "unattended", t0, ctx)
@@ -266,6 +314,7 @@ class Owner:
 
     def setup_reply(self, text: str) -> tuple[str, float] | Park:
         t0 = self._clock()
+        self._begin()
         ctx = _first_line(text)
         if self.unattended:
             return self._park("setup_reply", "unattended", t0, ctx)
@@ -281,6 +330,7 @@ class Owner:
         """Note: "p" here means "pause the run after this step" (a normal outcome, not a Park) — it was
         already in use before this module had a park concept. The park-by-choice key here is "k" instead."""
         t0 = self._clock()
+        self._begin()
         ctx = _first_line(summary_md)
         if self.unattended:
             return self._park("step_review", "unattended", t0, ctx)
@@ -295,6 +345,7 @@ class Owner:
 
     def reclassify(self, what: str, detail: str) -> str | Park:
         t0 = self._clock()
+        self._begin()
         ctx = _first_line(what)
         if self.unattended:
             return self._park("reclassify", "unattended", t0, ctx)
@@ -312,6 +363,7 @@ class Owner:
         either keeps it (plan A still runs) or picks a substitute bug — with its own acceptance test, so
         Task 23 can prove the substitute FAILS on the arm's step-5 commit before it is delivered."""
         t0 = self._clock()
+        self._begin()
         ctx = f"{arm.name}: {_first_line(precheck_summary)}"
         if self.unattended:
             return self._park("substitute_bug", "unattended", t0, ctx)

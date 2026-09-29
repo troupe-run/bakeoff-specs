@@ -12,7 +12,10 @@ What ends an attempt:
   stalled   more than `limits.exchanges_per_attempt` exchanges (OD14; `breach="exchanges"`)
   timeout   an arm turn ran over `limits.turn_seconds` (`breach="turn_seconds"`)
   parked    an owner prompt (gate or escalation) returned `owner.Park` — recorded, never treated as an answer,
-            never appended to the brief (Task 15 ruling 1); the caller parks the arm and moves on
+            never appended to the brief (Task 15 ruling 1); the caller parks the arm and moves on. With several
+            escalations in one message, answers the owner gave BEFORE the park are real answers and stay
+            appended to the brief (and committed on real passes); only the parked question is not. The entry's
+            `answered_by` names who did answer ("po", "owner", "po+owner"; "runner" when nobody did)
 and every harness fault is raised as `faults.HarnessFault` (with `.attempt_result` carrying the turns so far,
 for evidence). Transient API errors are retried in place first (review C-4).
 
@@ -39,7 +42,15 @@ from runner.paths import Paths
 
 MESSAGES = handoff.MESSAGES
 EXPORT_COMMAND = "/speckit-taskstoissues"            # OD24: the only export command; used when arm.export_after is set
-TRANSIENT_RE = re.compile(r"overloaded|\b5\d\d\b|rate.?limit|timed? ?out|ECONNRESET|socket hang up", re.I)
+# Fix round 1: an HTTP status is only read IN CONTEXT ("API Error: 529", "status 503", "HTTP 502",
+# "500 Internal ...") — never any number that happens to lie in 500-599 ("max_tokens 512").
+_STATUS = r"(?:API Error:?|status(?: code)?:?|HTTP(?:/\d(?:\.\d)?)?)\s*"
+_SERVER_REASON = r"(?:Internal|Bad Gateway|Service Unavailable|Gateway Time-?out|overloaded|server error)"
+TRANSIENT_RE = re.compile(rf"{_STATUS}5\d\d\b|\b5\d\d\s+{_SERVER_REASON}|overloaded|\bapi_error\b|rate.?limit|"
+                          r"timed? ?out|ECONNRESET|socket hang up", re.I)
+# A clear client error (4xx other than 408 timeout / 429 rate limit) is the request's fault: never retried,
+# whatever `api_retry` events preceded it.
+CLIENT_ERROR_RE = re.compile(rf"{_STATUS}4(?!08|29)\d\d\b|\binvalid_request_error\b", re.I)
 
 
 @dataclass
@@ -95,11 +106,14 @@ def _sig(text: str) -> str:
 
 def _transient(r: session.TurnResult) -> str | None:
     """Why the turn failed transiently, or None. `no_result`; an `is_error` whose text reads like an API
-    overload/5xx/rate limit/timeout; or an `is_error` after Claude Code's own `api_retry` events (a retry storm
-    it gave up on — `TurnResult.retries`), which is the API's failure, not the arm's."""
+    overload/5xx (in context)/rate limit/timeout; or an `is_error` after Claude Code's own `api_retry` events (a retry storm
+    it gave up on — `TurnResult.retries`), which is the API's failure, not the arm's. A clear 4xx (not 408/429)
+    is never transient, even after `api_retry` events."""
     if r.outcome == "no_result":
         return "no_result"
     if r.outcome != "is_error":
+        return None
+    if CLIENT_ERROR_RE.search(r.final_text or ""):
         return None
     if TRANSIENT_RE.search(r.final_text or ""):
         return _sig(r.final_text)
@@ -115,6 +129,16 @@ def _invoked(cmd: str, turns: list) -> bool:
     want = cmd.split()[0].lstrip("/").split(":")[-1]
     return any(s.split(":")[-1] == want for t in turns if t.stream_path
                for s in transcripts.invoked_skills(t.stream_path))
+
+
+def _answered_by(by: set[str]) -> str:
+    """"po", "owner" or "po+owner" (fix round 1 ruling: the interface's order); "runner" when nobody answered."""
+    return "+".join(w for w in ("po", "owner") if w in by) or "runner"
+
+
+def _cited(answers) -> str | None:
+    """The PO's citations for the entries it answered, "; "-joined; None when nothing was cited."""
+    return "; ".join(a.cited for a in answers if a.cited and a.cited.strip()) or None
 
 
 def _log(qa: list, path: Path, entry: dict) -> None:
@@ -271,6 +295,8 @@ def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult) -> Attemp
             try:
                 reply = _reply(ctx, dec, r, entry, res, sent, source)
             except _Parked as pk:                                                        # ruling 1
+                if dec.kind != "question":
+                    entry["answered_by"] = "runner"      # nothing was answered; the runner parked the attempt
                 entry |= {"owner_action": "park", "park": asdict(pk.park), "reply": None}
                 entry["owner_seconds"] += pk.park.seconds
                 if dec.kind == "approval":
@@ -292,10 +318,16 @@ def _reply(ctx: StepCtx, dec, r: session.TurnResult, entry: dict, res: AttemptRe
     Raises `_Parked` when an owner prompt parks."""
     p, arm = ctx.paths, ctx.arm
     if dec.kind == "question":                                                           # review F-12
+        # PO-answered entries first, then escalations in order. A park on a later escalation ends the attempt,
+        # but answers the owner already gave stay appended to the brief (they are real answers, fix round 1).
         parts, by = [], set()
-        for a in dec.answers:
+        entry["cited"] = _cited([a for a in dec.answers if not a.escalate])
+        for i, a in enumerate(dec.answers):
             if not a.escalate:
-                by.add("po"); parts.append((a.question, a.reply))
+                by.add("po"); parts.append((i, a.question, a.reply))
+        entry["answered_by"] = _answered_by(by)
+        for i, a in enumerate(dec.answers):
+            if not a.escalate:
                 continue
             entry["escalated"].append(a.question)
             got = po.escalate(ctx.owner, a.question, r.final_text, brief_path=ctx.brief_path, pass_=ctx.pass_,
@@ -303,9 +335,10 @@ def _reply(ctx: StepCtx, dec, r: session.TurnResult, entry: dict, res: AttemptRe
             if isinstance(got, owner_mod.Park):
                 raise _Parked(got)
             entry["owner_seconds"] += got.seconds; by.add("owner")
-            parts.append((a.question, got.answer))
-        entry |= {"answered_by": "+".join(sorted(by)), "cited": "; ".join(a.cited or "" for a in dec.answers)}
-        return parts[0][1] if len(parts) == 1 else "\n\n".join(f"On “{q}”: {ans}" for q, ans in parts)
+            entry["answered_by"] = _answered_by(by)
+            parts.append((i, a.question, got.answer))
+        parts.sort()
+        return parts[0][2] if len(parts) == 1 else "\n\n".join(f"On “{q}”: {ans}" for _, q, ans in parts)
     if dec.kind == "approval":                                                           # OD7
         changes = gitops.diffstat(p, ctx.sha_before, "HEAD") + "\n" + gitops.worktree_diffstat(p)
         got = ctx.owner.gate(r.final_text, dec, changes)
