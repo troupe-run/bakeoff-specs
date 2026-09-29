@@ -1,0 +1,16 @@
+# runner/config/scenario.toml — harness-authored text; identical for every arm (owner approved with OD3, OD4, OD6)
+[step6]
+title = "Setting one agent's model changed another agent's model"   # Plan 1 Task 2, ledger ruling
+
+[step5]
+delivery = "two-requests"              # OD6 B (A: "one-message")
+title_a = "# Step 5 — a change request"
+cr_b_intro = "A second change request has arrived while you work on the first one:"
+cr_b_after_turn = 2                    # OD6 B: CR-B preempts the end of the arm's 2nd turn (or its 1st, if it reports done)
+
+[messages]
+continue = "Please continue."
+resume_after_error = "Please continue."                                          # review C-4 in-place retry
+commit_on_main = "Please commit this step's work on the main branch."            # OD4 A ("" = OD4 B: no nudge)
+no_progress = "Acceptance testing found that none of this step's new behaviour works yet. Please continue with the request."   # OD3
+delivery = "Delivery: this request is done when its work is committed on the `main` branch of this repository — the `main` branch is what gets tested. Do not push and do not open pull requests."   # OD4 wording
