@@ -1,4 +1,4 @@
-import io, os, tarfile
+import os
 from pathlib import Path
 import pytest
 from harness import validate_suites
@@ -173,31 +173,29 @@ def test_run_argv_takes_the_user_and_added_caps_from_the_spec_and_defaults_are_u
     assert b[b.index("--cap-drop") + 1] == "ALL" and [b[i + 1] for i, v in enumerate(b) if v == "--cap-add"] == ["KILL", "SETUID"]
 
 
-# --- results come back on stdout as a tar the harness wrote; parsed in memory, never extracted --------------
+# --- results come back on stdout as length-framed records the harness wrote (no tarfile in runner/, see
+# test_gitops.test_the_host_never_untars_or_tars_an_arm_tree); parsed in memory --------------------------------
 
-def _tar(members: dict[str, bytes], links: dict[str, str] | None = None) -> bytes:
-    buf = io.BytesIO()
-    with tarfile.open(fileobj=buf, mode="w") as tf:
-        for name, data in members.items():
-            ti = tarfile.TarInfo(name); ti.size = len(data); tf.addfile(ti, io.BytesIO(data))
-        for name, target in (links or {}).items():
-            ti = tarfile.TarInfo(name); ti.type = tarfile.SYMTYPE; ti.linkname = target; tf.addfile(ti)
-    return buf.getvalue()
+def _frames(members: dict[str, bytes]) -> bytes:
+    return b"".join(f"{n} {len(d)}\n".encode() + d for n, d in members.items())
 
 
-def test_results_are_read_from_regular_members_only():
-    got = hidden.unpack_results(_tar({"./exit": b"1\n", "./junit.xml": b"<x/>", "./pytest.log": b"log"}))
-    assert got == {"exit": b"1\n", "junit.xml": b"<x/>", "pytest.log": b"log"}
+def test_results_are_read_from_exact_length_frames():
+    got = hidden.unpack_results(_frames({"exit": b"1\n", "junit.xml": b"<x/>", "pytest.log": b"log\nmore"}))
+    assert got == {"exit": b"1\n", "junit.xml": b"<x/>", "pytest.log": b"log\nmore"}
 
 
 @pytest.mark.parametrize("blob", [
-    _tar({"exit": b"0"}, links={"junit.xml": "/etc/passwd"}),
-    _tar({"exit": b"0", "../junit.xml": b"<x/>"}),
-    _tar({"exit": b"0", "surprise": b"x"}),
-    _tar({"exit": b"0", "junit.xml": b"x" * (hidden.RESULT_CAPS["junit.xml"] + 1)}),
-    b"not a tar",
+    _frames({"exit": b"0", "../junit.xml": b"<x/>"}),
+    _frames({"exit": b"0", "surprise": b"x"}),
+    _frames({"exit": b"0", "junit.xml": b"x" * (hidden.RESULT_CAPS["junit.xml"] + 1)}),
+    _frames({"exit": b"0"}) + _frames({"exit": b"1"}),                    # duplicate
+    _frames({"exit": b"0"})[:-1],                                          # truncated
+    b"exit 1\n0" + b"trailing",
+    b"",
+    b"not framed at all",
 ])
-def test_links_unknown_names_oversize_and_garbage_are_refused(blob):
+def test_unknown_names_oversize_duplicates_truncation_and_garbage_are_refused(blob):
     with pytest.raises(hidden.ResultsError):
         hidden.unpack_results(blob)
 
