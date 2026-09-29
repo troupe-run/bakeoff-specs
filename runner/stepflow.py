@@ -352,7 +352,7 @@ def run_step(ctx, first_message: str, extra: dict | None = None, run: str = "b")
             evidence.finalise(ctx, attempts=history + [ar], extra_turns=extra, hidden=summary, quality=q, pin=pin,
                               sha_before=ctx.sha_before, started=t0, ended=time.time(),
                               fault_entries=[e for e in faults.for_step(ctx.pass_, ctx.arm.name, ctx.step)
-                                             if e.get("run") == "b"],                          # L-5
+                                             if e.get("run") != "a"],     # L-5: run b and step-level
                               shas=ctx.shas, tests_seconds=tests_s, outcome=outcome)
             if outcome == "stopped":
                 _arm_result(ctx, summary)
