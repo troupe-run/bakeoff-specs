@@ -7,12 +7,12 @@ build verifies against those records (`FROM` by digest; the Dockerfile checks th
 from __future__ import annotations
 import hashlib, json, re, subprocess, tomllib
 from pathlib import Path
-from runner import config, paths
+from runner import config, gitops, paths
 
 IMAGES = Path(__file__).resolve().parent / "images"
 LOCK = config.CONFIG_DIR / "images.lock.json"
 VERSION_PROBES = {"claude": ["claude", "--version"], "uv": ["uv", "--version"], "python3": ["python3", "--version"],
-                  "node": ["node", "--version"], "gh": ["gh", "--version"], "git": ["git", "--version"]}
+                  "node": ["node", "--version"], "gh": ["gh", "--version"], "git": gitops.VERSION_PROBE}
 # `command -v bd` resolves to the 1.3KB JS wrapper (bin/bd.js); the ~143MB native binary @beads/bd's
 # postinstall downloads lives next to it as plain `bd` (fix-round-1 item 1) — `readlink -f "$(command -v bd)"`
 # alone hashes the wrapper, not the binary that actually runs.
@@ -210,8 +210,7 @@ def _pin_plugins(arm_names: list[str]) -> tuple[dict, dict]:
     arm's toml (OD9 B). A plugin whose tag doesn't exist on the remote is parked, not fatal (review B2:
     e.g. bmad-plugins carries no `v6.12.0` tag) — its sha stays empty and the failure is returned in the
     second dict, keyed `<arm>:<plugin>`, instead of raising."""
-    from runner import gitops                                  # Task 8 extends this module; lazy so a
-    got, errors = {}, {}                                        # gitops-free caller need not import it
+    got, errors = {}, {}
     for arm_name in arm_names:
         arm_file = config.ARMS_DIR / f"{arm_name}.toml"
         for pl in config.load_arm(arm_name).plugins:

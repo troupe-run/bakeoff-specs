@@ -222,11 +222,12 @@ def test_no_planted_git_vector_ever_executes_on_the_host(P, tmp_path_factory, sc
     scanned = []
     assert repo.publish(P, "dry9", ask=lambda q: True, scan=lambda d: scanned.append(d) or [])
     assert scanned and sorted(f.name for f in scanned[0].iterdir()) == [".gitattributes", "a.py", "u.py"]
-    bare_cfg = (P.scratch / "publish" / "clone.git" / "config").read_text()
+    [clone] = (P.scratch / "publish").glob("*/clone.git")
+    bare_cfg = (clone / "config").read_text()
     for key in ("fsmonitor", "hooksPath", "credential", "sshCommand", "external", "textconv", "filter",
                 "include", "gpg", "evil", "pager", "editor", "askPass", "uploadpack"):
         assert key not in bare_cfg, key                                   # a bundle carries no config
-    assert not [h for h in (P.scratch / "publish" / "clone.git" / "hooks").iterdir()
+    assert not [h for h in (clone / "hooks").iterdir()
                 if not h.name.endswith(".sample")]                       # ...and no hooks
     pushed = subprocess.run(["git", "-C", str(target), "rev-parse", "main"], capture_output=True, text=True,
                             env=gitops._host_env()).stdout.strip()
@@ -234,6 +235,7 @@ def test_no_planted_git_vector_ever_executes_on_the_host(P, tmp_path_factory, sc
 
     assert sorted(x.name for x in host.iterdir()) == []                  # nothing ran on the host
     fired = sorted(x.name for x in (P.home / "ran").iterdir())
+    print(f"\n[{scenario}] fired in the container: {fired}")
     # the vectors were live: git executed them — inside the container
     assert {"hook-pre-commit", "hook-commit-msg", "hook-post-commit", "hook-post-checkout",
             "hook-reference-transaction", "hook-pre-push", "fsmonitor", "filter-clean"} <= set(fired), fired
