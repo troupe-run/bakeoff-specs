@@ -13,7 +13,7 @@ from runner.docker import Mount, RunSpec
 from runner.paths import Paths
 
 LIST_PY = r'''
-import json, re, sys
+import json, os, re, sys
 from pathlib import Path
 repo, cfg = Path(sys.argv[1]), Path(sys.argv[2])
 roots = [Path(x) for x in sys.argv[3:]]
@@ -41,8 +41,52 @@ def scan(root, plugin, shown_base):
         model_of(f, f"{shown_base}skills/{n}/SKILL.md")
     for f in sorted((root / "agents").glob("*.md")) if (root / "agents").is_dir() else []:
         if not f.is_symlink(): model_of(f, f"{shown_base}agents/{f.name}")
+def load(f):
+    if not f.is_file() or f.is_symlink():
+        return None
+    try:
+        return json.loads(f.read_text(errors="replace"))
+    except Exception:
+        return "<unparseable>"
+settings = [(repo / ".claude" / "settings.json", ".claude/settings.json"),
+            (repo / ".claude" / "settings.local.json", ".claude/settings.local.json"),
+            (cfg / "settings.json", "~/.claude/settings.json"), (cfg / "settings.local.json", "~/.claude/settings.local.json")]
+enabled = {}
+for f, shown in settings:                        # model choices in settings: `model` and every *MODEL* env value
+    s = load(f)
+    if s == "<unparseable>":
+        models.append({"file": shown, "model": "<unparseable settings>"}); continue
+    if not isinstance(s, dict):
+        continue
+    if isinstance(s.get("model"), str):
+        models.append({"file": f"{shown}#model", "model": s["model"]})
+    env = s.get("env")
+    for k, v in sorted(env.items()) if isinstance(env, dict) else []:
+        if "MODEL" in str(k).upper() and isinstance(v, str):
+            models.append({"file": f"{shown}#env.{k}", "model": v})
+    ep = s.get("enabledPlugins")
+    for k, v in ep.items() if isinstance(ep, dict) else []:
+        enabled[k] = enabled.get(k, True) and v is not False
 scan(repo / ".claude", "", ".claude/")
-for base in [cfg / "plugins", *roots]:
+scan(cfg, "", "~/.claude/")                       # user scope
+# Route A: only plugins the installed-plugins record names (not every catalogue or stale cache copy), and not
+# disabled in settings. Record shape: {"plugins": {"name@mkt": {installPath} | [{installPath}, ...]}}.
+rec = load(cfg / "plugins" / "installed_plugins.json")
+real_plugins = os.path.realpath(cfg / "plugins")
+for key, entries in sorted(rec.get("plugins", {}).items()) if isinstance(rec, dict) and isinstance(rec.get("plugins"), dict) else []:
+    if enabled.get(key) is False:
+        continue
+    for e in entries if isinstance(entries, list) else [entries]:
+        ip = e.get("installPath") if isinstance(e, dict) else None
+        if not isinstance(ip, str):
+            continue
+        root = Path(ip)
+        if not root.is_dir() or not os.path.realpath(root).startswith(real_plugins + os.sep):
+            continue
+        m = load(root / ".claude-plugin" / "plugin.json")
+        name = m.get("name") if isinstance(m, dict) and isinstance(m.get("name"), str) else str(key).split("@")[0]
+        scan(root, name, f"{root}/")
+for base in roots:                                # route B: plugins vendored into the image
     if not base.is_dir(): continue
     for man in sorted(base.rglob(".claude-plugin/plugin.json")):
         root = man.parent.parent

@@ -11,10 +11,15 @@ The arm's GitHub PAT lives in `state/<pass>/<arm>/home/.config/gh/hosts.yml` and
 `home/.bk-mcp.json` — both created 0600, never under results/. They also end up inside `snapshots/*.tar`, and
 the arm's own tools and model can read them (accepted, OD16). NOTE for Task 21's secret scanner: those paths,
 plus `00-setup/shell-history.txt` (the owner may type anything in `runner shell`) and every setup transcript.
+
+After setup, any `runner shell` session marks setup dirty; `runner checklist` (a full re-check) clears it only
+when green, and `require_clean_green` is the gate every run start calls (fix round 1).
 """
 from __future__ import annotations
 import dataclasses, json, os, re, stat, subprocess, time, uuid
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, asdict
+from datetime import datetime, timezone
 from pathlib import Path
 from runner import commands, config, credentials, docker, egress, faults, gitops, images, repo, session, transcripts
 from runner.docker import Mount, RunSpec
@@ -35,21 +40,49 @@ class NotReady(RuntimeError):
 def host_check_ids(arm: config.Arm) -> set[str]:
     """The ids `host_checks` (and `_smoke`) produce for an arm; every checklist md lists them (Task 10 test)."""
     return (({f"{arm.name}.entry-commands"} if arm.name in COMMAND_ARMS else set())
-            | {"common.no-foreign-model-ids", "setup.manifest-matches-pass1", "setup.origin-push"}   # B4: every arm
+            | {"common.no-foreign-model-ids", "setup.manifest-matches-pass1", "setup.origin-push",   # B4: every arm
+               "setup.agent-turns"}                                                              # fix round 1
             | ({"github.issues-access"} if arm.tracker == "github" and not arm.dry else set())
             | ({f"{arm.name}.smoke"} if arm.name in SMOKE_ARMS or arm.smoke else set()))
 
 
-# Every configured arm, real and dry (B4: dry arms verify origin too). Real arms: exactly the plan's table.
-HOST_CHECKS: dict[str, set[str]] = {
-    a: host_check_ids(config.load_arm(a)) for a in sorted(f.stem for f in config.ARMS_DIR.glob("*.toml"))}
+class _HostChecks(Mapping):
+    """Every configured arm, real and dry (B4: dry arms verify origin too); real arms: the plan's table plus
+    `setup.agent-turns`. Loaded lazily per arm (fix round 1): a broken arm toml never breaks importing this module,
+    it fails only when that arm is looked up."""
+    def __getitem__(self, arm: str) -> set[str]:
+        if not (config.ARMS_DIR / f"{arm}.toml").is_file():
+            raise KeyError(arm)
+        return host_check_ids(config.load_arm(arm))
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(sorted(f.stem for f in config.ARMS_DIR.glob("*.toml")))
+
+    def __len__(self) -> int:
+        return len(list(config.ARMS_DIR.glob("*.toml")))
+
+
+HOST_CHECKS: Mapping[str, set[str]] = _HostChecks()
+
+STATUSES = ("ok", "fail", "n/a")
 
 
 @dataclass
 class Check:
+    """`status` is ok | fail | n/a (fix round 1). An n/a check is never `ok`; `green` accepts it only for dry arms.
+    Records written before the status existed load with it derived from `ok`."""
     id: str
     ok: bool
     detail: str
+    status: str = ""
+
+    def __post_init__(self):
+        if not self.status or (self.status == "ok" and not self.ok):
+            self.status = "ok" if self.ok else "fail"
+        if self.status not in STATUSES:
+            raise ValueError(f"check {self.id}: unknown status {self.status!r}")
+        if self.status != "ok":
+            self.ok = False
 
 
 @dataclass
@@ -61,8 +94,10 @@ class SetupResult:
 
 
 # ---- pure ------------------------------------------------------------------------------------------------
-def green(checks: list[Check], owner_items_: dict[str, bool]) -> bool:
-    return bool(checks) and all(c.ok for c in checks) and all(owner_items_.values())
+def green(checks: list[Check], owner_items_: dict[str, bool], dry: bool = False) -> bool:
+    """Every machine check ok (n/a counts only for a dry arm) and every owner item ok."""
+    passing = ("ok", "n/a") if dry else ("ok",)
+    return bool(checks) and all(c.status in passing for c in checks) and all(owner_items_.values())
 
 
 def owner_items(md: str) -> list[tuple[str, str]]:
@@ -129,10 +164,13 @@ def parse_verify(arm_name: str, r: subprocess.CompletedProcess) -> list[Check]:
     return out
 
 
-def manifest_check(pass_: str, arm_name: str, m: dict[str, str], owner) -> Check:
+def manifest_check(pass_: str, arm_name: str, m: dict[str, str], owner, missing: list[str] = ()) -> Check:
     """Pass 2 must set up the same files as pass 1 (OD20); a difference is shown to the owner, who may accept
-    it (the acceptance and the files are recorded in the detail) — review G6."""
+    it (the acceptance and the files are recorded in the detail) — review G6. A configured manifest path that
+    does not exist fails, naming it (fix round 1): setup did not create what the method's docs say it creates."""
     cid = "setup.manifest-matches-pass1"
+    if missing:
+        return Check(cid, False, f"manifest path(s) not created by setup: {', '.join(missing)}")
     if pass_ != "pass2":
         return Check(cid, True, f"{pass_}: recorded ({len(m)} files)")
     first_f = Paths("pass1", arm_name).setup_results / "manifest.json"
@@ -145,6 +183,29 @@ def manifest_check(pass_: str, arm_name: str, m: dict[str, str], owner) -> Check
     if owner is not None and owner.confirm(f"{arm_name}: setup files differ from pass 1: {shown}. Accept?"):
         return Check(cid, True, f"owner accepted: {shown}")
     return Check(cid, False, shown)
+
+
+def agent_turns_check(arm: config.Arm, record: list[dict]) -> Check:
+    """Fix round 1: the LAST turn of each configured setup prompt (the prompt, then any owner replies) ended ok."""
+    cid = "setup.agent-turns"
+    if not arm.setup_agent:
+        return Check(cid, True, "no setup prompts configured")
+    last = {r["prompt"]: r for r in record}
+    parts, ok = [], True
+    for i in range(len(arm.setup_agent)):
+        r = last.get(i)
+        if r is None:
+            ok = False; parts.append(f"prompt {i + 1}: never ran")
+        else:
+            ok = ok and r["outcome"] == "ok"
+            parts.append(f"prompt {i + 1}: {r['outcome']} (turn {r['turn']})")
+    return Check(cid, ok, "; ".join(parts))
+
+
+def applied_model_env(pins: config.Pins, arm: config.Arm, pass_: str) -> dict[str, str]:
+    """The model settings every arm session actually gets (OD2): the model-related part of `session_env`."""
+    env = credentials.session_env(pins, arm, role="arm", isolated=False, pass_=pass_)
+    return {k: v for k, v in env.items() if "MODEL" in k}
 
 
 def ask_owner(owner, items: list[tuple[str, str]]) -> tuple[dict[str, dict], float]:
@@ -193,12 +254,14 @@ def verify(p: Paths, arm: config.Arm, mode: str) -> list[Check]:
     return parse_verify(arm.name, docker.run(s, timeout=300))
 
 
-_MANIFEST_SH = r"""cd "$1"; shift; for x in "$@"; do case "$x" in "~/"*) x="$HOME/${x#\~/}";; esac
-  [ -e "$x" ] && find "$x" -type f ! -path '*/__pycache__/*' ! -name '*.pyc' -print0; done | sort -z | xargs -0 -r sha256sum"""
+_MANIFEST_SH = r"""cd "$1"; shift; for x in "$@"; do y="$x"; case "$x" in "~/"*) y="$HOME/${x#\~/}";; esac
+  if [ -e "$y" ]; then find "$y" -type f ! -path '*/__pycache__/*' ! -name '*.pyc' -print0; else echo "$x" >&3; fi
+  done 3>/tmp/missing | sort -z | xargs -0 -r sha256sum; sed 's/^/MISSING /' /tmp/missing >&2"""
 
 
-def manifest(p: Paths, arm: config.Arm) -> dict[str, str]:
-    """SHA-256 of every regular file under the arm's `manifest_paths`, hashed in the container (never on the host)."""
+def manifest_full(p: Paths, arm: config.Arm) -> tuple[dict[str, str], list[str]]:
+    """SHA-256 of every regular file under the arm's `manifest_paths`, hashed in the container (never on the host),
+    and the configured paths that do not exist."""
     repo.recover(p)
     paths_ = list(arm.manifest_paths)
     if config.load_pins().plugin_route == "marketplace" and arm.plugins:
@@ -207,7 +270,12 @@ def manifest(p: Paths, arm: config.Arm) -> dict[str, str]:
                    timeout=300)
     if r.returncode != 0:
         raise RuntimeError(f"manifest failed in container ({r.returncode}): {r.stderr.decode(errors='replace')[:300]}")
-    return {line[66:]: line[:64] for line in r.stdout.decode(errors="replace").splitlines() if len(line) > 66}
+    missing = [l[8:] for l in r.stderr.decode(errors="replace").splitlines() if l.startswith("MISSING ")]
+    return {line[66:]: line[:64] for line in r.stdout.decode(errors="replace").splitlines() if len(line) > 66}, missing
+
+
+def manifest(p: Paths, arm: config.Arm) -> dict[str, str]:
+    return manifest_full(p, arm)[0]
 
 
 def _shell(p: Paths, arm: config.Arm, cmd: str, st: egress.Stage, log: Path) -> int:
@@ -273,22 +341,23 @@ def _verify_pin(files: list[Path], skipped: list[dict], streams: dict[Path, str]
         raise faults.classify_pin(rep, who) or faults.HarnessFault("model-pin", "unverified", f"{who}: see {report}")
 
 
-def _agent_turns(p, arm, pass_, cred, owner, st, out) -> tuple[float, dict[Path, str]]:
+def _agent_turns(p, arm, pass_, cred, owner, st, out) -> tuple[float, dict[Path, str], list[dict]]:
     """The `setup.agent` prompts as `role="setup"` turns in one resumed session; after each, the owner replies
     (sent as the next turn) or moves on. Returns the owner's seconds and {stream: outcome}."""
     pins, text, sid, n, owner_s = config.load_pins(), PRINCIPLES.read_text(), None, 0, 0.0
-    queue = [a.replace("{principles}", text) for a in arm.setup_agent]
+    queue = [(i, a.replace("{principles}", text)) for i, a in enumerate(arm.setup_agent)]
     streams: dict[Path, str] = {}
     record: list[dict] = []
     while queue:
         n += 1
         env = credentials.session_env(pins, arm, role="arm", isolated=False, resume=sid or "", pass_=pass_)
-        t = session.Turn(pass_, arm.name, 0, 1, n, gitops.image_for(arm.name), queue.pop(0), env,
+        prompt, message = queue.pop(0)
+        t = session.Turn(pass_, arm.name, 0, 1, n, gitops.image_for(arm.name), message, env,
                          [Mount(p.home, p.container_home, False), Mount(p.work, "/work", False)], st.net, True,
                          p.container_repo, p.inbox("setup"), "setup", arm.dry, p.config_dir)
         r = session.run_turn(t, cred, out, pins.limits.turn_seconds)
         streams[r.stream_path] = r.outcome
-        record.append({"turn": n, "session_id": r.session_id, "outcome": r.outcome, "cost_usd": r.cost_usd,
+        record.append({"turn": n, "prompt": prompt, "session_id": r.session_id, "outcome": r.outcome, "cost_usd": r.cost_usd,
                        "wall_seconds": round(r.wall_seconds, 1), "stream": str(r.stream_path.relative_to(out))})
         (out / "setup-turns.json").write_text(json.dumps(record, indent=2))
         _check_turn(r, f"setup turn {n}")
@@ -296,10 +365,10 @@ def _agent_turns(p, arm, pass_, cred, owner, st, out) -> tuple[float, dict[Path,
         reply, secs = owner.setup_reply(r.final_text)
         owner_s += secs
         if reply:
-            queue.insert(0, reply)
+            queue.insert(0, (prompt, reply))           # the owner's reply belongs to the prompt it answers
     if not record:
         (out / "setup-turns.json").write_text("[]")
-    return owner_s, streams
+    return owner_s, streams, record
 
 
 def _smoke(p, arm, pass_, cred, st, out) -> Check:
@@ -364,6 +433,20 @@ def _origin_push(p: Paths) -> Check:
     return Check("setup.origin-push", bool(main) and got == main, f"origin/main {got or '<missing>'}, main {main}")
 
 
+def issues_access_check(p: Paths, arm: config.Arm, pass_: str, st: egress.Stage | None) -> Check:
+    """The arm's PAT can read issues and labels of its repo. No repo on this pass → n/a (never green for a real
+    arm, fix round 1); no egress stage → fail."""
+    slug = config.github_slug(pass_, arm.name)
+    if slug is None:
+        return Check("github.issues-access", False, f"not applicable: pass {pass_} has no GitHub repo", "n/a")
+    if st is None:
+        return Check("github.issues-access", False, "not checked: no setup egress stage")
+    s = arm_spec(p, arm, ["bash", "-lc", f"gh issue list --repo {slug} --limit 1 && gh label list --repo {slug} --limit 1"],
+                 network=st.net, proxy=True, name="ghcheck")
+    r = docker.run(s, timeout=120)
+    return Check("github.issues-access", r.returncode == 0, (r.stdout + r.stderr).decode(errors="replace")[-300:])
+
+
 def host_checks(p: Paths, arm: config.Arm, pass_: str, smoke: Check | None, st: egress.Stage | None,
                 owner=None) -> list[Check]:
     repo.recover(p)
@@ -373,7 +456,9 @@ def host_checks(p: Paths, arm: config.Arm, pass_: str, smoke: Check | None, st: 
     (p.setup_results / "installed-commands.json").write_text(json.dumps(sorted(lst.names), indent=2))
     (p.setup_results / "model-overrides.json").write_text(json.dumps(
         {"declared": lst.models, "effective": config.load_pins().model,
-         "note": "OD2: every alias resolves to the pinned model; the method's own choices are listed here"}, indent=2))
+         "env": applied_model_env(config.load_pins(), arm, pass_),
+         "note": "OD2: every session runs with `env` (and --model BK_MODEL), so every alias resolves to the pinned "
+                 "model; the method's own choices are listed under `declared`"}, indent=2))
     out.append(model_ids_check(lst.models, config.load_pins().accepted_models))
     if arm.name in COMMAND_ARMS:
         needed = [c.split()[0].lstrip("/") for c in (arm.entry, arm.bug_entry, *arm.must_run) if c.startswith("/")]
@@ -384,19 +469,10 @@ def host_checks(p: Paths, arm: config.Arm, pass_: str, smoke: Check | None, st: 
     if smoke is not None:
         out.append(smoke)
     if arm.tracker == "github" and not arm.dry:
-        slug = config.github_slug(pass_, arm.name)
-        if slug is None:
-            out.append(Check("github.issues-access", True, f"not applicable: pass {pass_} has no GitHub repo"))
-        elif st is None:
-            out.append(Check("github.issues-access", False, "not checked: no setup egress stage"))
-        else:
-            s = arm_spec(p, arm, ["bash", "-lc", f"gh issue list --repo {slug} --limit 1 && gh label list --repo {slug} --limit 1"],
-                         network=st.net, proxy=True, name="ghcheck")
-            r = docker.run(s, timeout=120)
-            out.append(Check("github.issues-access", r.returncode == 0, (r.stdout + r.stderr).decode(errors="replace")[-300:]))
-    m = manifest(p, arm)
+        out.append(issues_access_check(p, arm, pass_, st))
+    m, missing = manifest_full(p, arm)
     (p.setup_results / "manifest.json").write_text(json.dumps(m, indent=2, sort_keys=True))
-    out.append(manifest_check(pass_, arm.name, m, owner))
+    out.append(manifest_check(pass_, arm.name, m, owner, missing))
     out.append(_origin_push(p))
     return out
 
@@ -439,7 +515,7 @@ def run_setup(pass_: str, arm_name: str, cred, owner) -> SetupResult:
             if _shell(p, arm, cmd, st, out / "shell" / f"{i:02d}.log") != 0:
                 raise RuntimeError(f"setup shell step {i} failed: {cmd} (see {out/'shell'})")
         before = transcripts.snapshot(p.config_dir)                             # M5
-        owner_s, streams = _agent_turns(p, arm, pass_, cred, owner, st, out)
+        owner_s, streams, turns = _agent_turns(p, arm, pass_, cred, owner, st, out)
         if streams:
             files, skipped = _collect(p, before, out / "transcripts")
             _verify_pin(files, skipped, streams, out / "model-pin.json", "setup")
@@ -449,7 +525,7 @@ def run_setup(pass_: str, arm_name: str, cred, owner) -> SetupResult:
         smoke = _smoke(p, arm, pass_, cred, st, out) if arm.smoke else None
         if gitops.state(p).dirty:
             gitops.commit_all(p, gitops.IDENTITY, f"Set up {arm.tool} {arm.version}")
-        checks = verify(p, arm, "setup") + host_checks(p, arm, pass_, smoke, st, owner)
+        checks = verify(p, arm, "setup") + host_checks(p, arm, pass_, smoke, st, owner) + [agent_turns_check(arm, turns)]
     checks += missing_checks(md, checks)
     rec, item_s = ask_owner(owner, owner_items(md))
     owner_s += item_s
@@ -460,7 +536,7 @@ def run_setup(pass_: str, arm_name: str, cred, owner) -> SetupResult:
                                                    "plugin_route": pins.plugin_route,
                                                    "owner_setup_seconds": owner_s}, indent=2))
     repo.snapshot(p, 1)
-    ok = green(checks, {k: v["ok"] for k, v in rec.items()})
+    ok = green(checks, {k: v["ok"] for k, v in rec.items()}, dry=arm.dry)
     return SetupResult(checks, rec, ok, owner_s)
 
 
@@ -480,14 +556,76 @@ def run_shell_only(pass_: str, arm_name: str, offline: bool = False) -> list[Che
     return verify(p, arm, "setup")
 
 
+def _is_dry(arm_name: str) -> bool:
+    try:
+        return config.load_arm(arm_name).dry
+    except Exception:
+        return False                              # unknown or broken config: the strict (real-arm) rule
+
+
 def is_green(p: Paths) -> bool:
-    """The gate: `run-arm` refuses step 1 unless true (design §6)."""
+    """Both records green and setup not dirty (design §6; fix round 1). `require_clean_green` is the gate."""
     d = p.setup_results
-    if not (d / "checklist.json").exists() or not (d / "owner-checklist.json").exists():
+    if is_dirty(p) or not (d / "checklist.json").exists() or not (d / "owner-checklist.json").exists():
         return False
     checks = [Check(**c) for c in json.loads((d / "checklist.json").read_text())]
     owner_ = {k: v["ok"] for k, v in json.loads((d / "owner-checklist.json").read_text()).items()}
-    return green(checks, owner_)
+    return green(checks, owner_, dry=_is_dry(p.arm))
+
+
+# ---- dirty setup (fix round 1): any owner shell after setup needs a full re-check before a run -----------
+def dirty_marker(p: Paths) -> Path:
+    return p.base / "setup-dirty.json"
+
+
+def is_dirty(p: Paths) -> bool:
+    return os.path.lexists(dirty_marker(p))
+
+
+def mark_dirty(p: Paths, why: str) -> None:
+    p.base.mkdir(parents=True, exist_ok=True)
+    dirty_marker(p).write_text(json.dumps({"since": datetime.now(timezone.utc).isoformat(), "why": why}) + "\n")
+
+
+def require_clean_green(p: Paths) -> None:
+    """THE gate for anything that starts a run (`run-arm` step 1, design §6): refuses a dirty or non-green setup."""
+    if is_dirty(p):
+        since = json.loads(dirty_marker(p).read_text()).get("since", "?")
+        raise NotReady(f"{p.arm} ({p.pass_}): setup is dirty since {since} (owner shell); "
+                       f"run `runner checklist {p.pass_} {p.arm}` for a full re-check")
+    if not is_green(p):
+        raise NotReady(f"{p.arm} ({p.pass_}): setup checklist is not green (design §6); run `runner setup`")
+
+
+CARRIED = ("setup.agent-turns",)             # turn-based results a re-check cannot re-run without model turns
+
+
+def recheck(pass_: str, arm_name: str, owner=None) -> SetupResult:
+    """`runner checklist`: a FULL re-verify after setup — verify script + host checks + missing checks — with the
+    turn-based results (setup turns, smoke) carried over from setup. Commits what a shell session left, re-takes
+    snapshot 1, rewrites checklist.json, and clears the dirty marker only when green."""
+    arm, p, pins = config.load_arm(arm_name), Paths(pass_, arm_name), config.load_pins()
+    _refuse_parked(arm)
+    md = _read_md(arm_name)
+    repo.recover(p)
+    out = p.setup_results; out.mkdir(parents=True, exist_ok=True)
+    copy_shell_history(p)
+    prev = {c["id"]: Check(**c) for c in json.loads((out / "checklist.json").read_text())} \
+        if (out / "checklist.json").is_file() else {}
+    carried = [dataclasses.replace(prev[i], detail=f"(from setup) {prev[i].detail}")
+               for i in (*CARRIED, f"{arm.name}.smoke") if i in prev]
+    with egress.Stage(pass_, arm_name, "setup", pins.egress_setup_common + arm.egress_setup, out / "egress.log") as st:
+        if gitops.state(p).dirty:
+            gitops.commit_all(p, gitops.IDENTITY, f"Set up {arm.tool} {arm.version} (owner shell adjustments)")
+        checks = verify(p, arm, "setup") + host_checks(p, arm, pass_, None, st, owner) + carried
+    checks += missing_checks(md, checks)
+    (out / "checklist.json").write_text(json.dumps([asdict(c) for c in checks], indent=2))
+    repo.snapshot(p, 1)
+    rec = json.loads((out / "owner-checklist.json").read_text()) if (out / "owner-checklist.json").is_file() else {}
+    ok = green(checks, {k: v["ok"] for k, v in rec.items()}, dry=arm.dry)
+    if ok:
+        dirty_marker(p).unlink(missing_ok=True)
+    return SetupResult(checks, rec, ok, 0.0)
 
 
 # ---- owner shell -----------------------------------------------------------------------------------------
@@ -498,7 +636,9 @@ def interactive_shell(pass_: str, arm_name: str) -> int:
     """`runner shell`: an interactive bash in the arm image, setup egress, home and work writable. Runs as a
     child (not exec) so the egress stage is always torn down."""
     arm, p, pins = config.load_arm(arm_name), Paths(pass_, arm_name), config.load_pins()
+    _refuse_parked(arm)
     repo.recover(p)
+    mark_dirty(p, "runner shell")                   # before the shell starts: a crash mid-session is dirty too
     out = p.setup_results; out.mkdir(parents=True, exist_ok=True)
     with egress.Stage(pass_, arm_name, "setup", pins.egress_setup_common + arm.egress_setup, out / "egress.log") as st:
         s = arm_spec(p, arm, ["bash", "-l"], network=st.net, proxy=True, ro=False, name="shell",

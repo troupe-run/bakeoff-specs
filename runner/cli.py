@@ -79,13 +79,21 @@ def _cred_owner(arm: config.Arm):
     return credentials.from_keychain(), owner_mod.Owner()
 
 
+def _owner_for(arm: config.Arm):
+    """The owner for a re-check (pass-2 manifest differences ask). `runner.owner` is Task 14."""
+    from runner import owner as owner_mod
+    if arm.dry:
+        return owner_mod.ScriptedOwner(config.CONFIG_DIR / "dryrun-owner.toml").bind(arm)
+    return owner_mod.Owner()
+
+
 def _print_checks(checks) -> None:
     for c in checks:
-        print(f"{'ok  ' if c.ok else 'FAIL'} {c.id}  {c.detail}")
+        print(f"{ {'ok': 'ok  ', 'fail': 'FAIL', 'n/a': 'n/a '}[c.status]} {c.id}  {c.detail}")
 
 
 def register_setup(sub):
-    from runner import checklist, repo
+    from runner import checklist
 
     def setup(ns):
         cred, owner = _cred_owner(config.load_arm(ns.arm))
@@ -99,13 +107,12 @@ def register_setup(sub):
     s.add_argument("pass_", metavar="pass"); s.add_argument("arm"); s.set_defaults(func=setup)
 
     def check(ns):
-        p = paths.Paths(ns.pass_, ns.arm)
-        repo.recover(p)
-        checklist.copy_shell_history(p)
-        checks = checklist.verify(p, config.load_arm(ns.arm), "setup")
-        _print_checks(checks)
-        return 0 if checks and all(c.ok for c in checks) else 1
-    c = sub.add_parser("checklist", help="re-run an arm's verify script (setup mode) and print it")
+        r = checklist.recheck(ns.pass_, ns.arm, _owner_for(config.load_arm(ns.arm)))
+        _print_checks(r.checks)
+        print("GREEN (setup clean)" if r.green else "NOT GREEN — setup stays dirty; run-arm refuses to start")
+        return 0 if r.green else 1
+    c = sub.add_parser("checklist", help="full re-check of an arm's setup (verify script + host checks); "
+                                         "clears the dirty mark a shell session sets, only when green")
     c.add_argument("pass_", metavar="pass"); c.add_argument("arm"); c.set_defaults(func=check)
 
     h = sub.add_parser("shell", help="interactive shell in the arm's container (setup egress; history recorded)")

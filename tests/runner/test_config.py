@@ -40,7 +40,7 @@ def test_unknown_key_in_arm_file_is_rejected(tmp_path, monkeypatch):
 
 def test_smoke_table_is_accepted_from_the_start(tmp_path, monkeypatch):     # review Q-5
     text = (config.ARMS_DIR / "control.toml").read_text().replace(
-        'manifest_paths = [".claude"]', 'manifest_paths = [".claude"]\nsmoke = { prompt = "p", expect_skill = "s" }')
+        '[setup]\n', '[setup]\nsmoke = { prompt = "p", expect_skill = "s" }\n', 1)
     (tmp_path / "control.toml").write_text(text)
     monkeypatch.setattr(config, "ARMS_DIR", tmp_path)
     assert config.load_arm("control").smoke == config.Smoke("p", "s")
