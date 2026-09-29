@@ -134,3 +134,42 @@ def test_an_oversize_line_at_eof_without_newline_is_a_marker():
 def test_the_marker_does_not_disturb_the_outcome():
     marker = json.dumps({"type": "bk_oversize_line", "bytes": 10})
     assert parse_stream([INIT, marker, j(type="result", is_error=False, result="ok")]).outcome == "ok"
+
+
+# --- credential_files reads without following links (Task 8 fix round 2) -----------------------------------
+import os as _os
+import threading as _threading
+from runner import credentials as _credentials, session as _session
+
+
+def _scan_with_deadline(cfg, cred, since, seconds=10):
+    got: list = []
+    t = _threading.Thread(target=lambda: got.append(_session.credential_files(cfg, cred, since)), daemon=True)
+    t.start(); t.join(seconds)
+    assert not t.is_alive(), "credential_files blocked"
+    return got[0]
+
+
+def test_credential_files_finds_the_token_in_a_plain_file(tmp_path):
+    cred = _credentials.dummy()
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "log.txt").write_bytes(b"x" * (1024 * 1024 - 3) + cred.raw_for_scanner().encode())
+    (tmp_path / ".credentials.json").write_text("{}")
+    assert _scan_with_deadline(tmp_path, cred, 0) == [".credentials.json", "sub/log.txt"]
+
+
+def test_credential_files_never_follows_a_symlink(tmp_path):
+    cred = _credentials.dummy()
+    outside = tmp_path / "outside"; outside.mkdir()
+    (outside / "tok").write_text(cred.raw_for_scanner())
+    cfg = tmp_path / "cfg"; cfg.mkdir()
+    (cfg / "link").symlink_to(outside / "tok")
+    (cfg / "dirlink").symlink_to(outside)
+    assert _scan_with_deadline(cfg, cred, 0) == []
+
+
+def test_credential_files_does_not_block_on_a_planted_fifo(tmp_path):
+    cred = _credentials.dummy()
+    _os.mkfifo(tmp_path / "pipe")
+    (tmp_path / "ok.txt").write_text(cred.raw_for_scanner())
+    assert _scan_with_deadline(tmp_path, cred, 0) == ["ok.txt"]

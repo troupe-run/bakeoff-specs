@@ -381,3 +381,184 @@ def test_restore_wait_is_bounded(tmp_state, monkeypatch):                    # i
         r._await_visible_in_containers(p, timeout=30)
     assert calls and all(t == r.PROBE_SECONDS for t in calls) and len(calls) <= 5
     assert not [x for x in p.work.iterdir() if x.name.startswith(".bk-restored-")]
+
+
+# --- fix round 2 ----------------------------------------------------------------------------------------
+
+def test_log_keeps_an_empty_last_subject_and_an_empty_author(monkeypatch):             # item 5a
+    a, b = "a" * 40, "b" * 40
+    rec = _Rec(stdout=f"{a}\0\0first\0{b}\0Bob\0\0".encode())      # -z: every record ends with one NUL
+    monkeypatch.setattr(gitops.docker, "run", rec)
+    assert gitops.log(Paths("pass1", "control"), "x", "y") == [
+        {"sha": a, "author": "", "subject": "first"}, {"sha": b, "author": "Bob", "subject": ""}]
+
+
+def test_commits_between_keeps_an_empty_last_message(monkeypatch):
+    a, b = "a" * 40, "b" * 40
+    rec = _Rec(stdout=f"{a}\0Fix\n\0{b}\0\n\0".encode())
+    monkeypatch.setattr(gitops.docker, "run", rec)
+    out = gitops.commits_between(Paths("pass1", "control"), "x", "y")
+    assert [r.split("\x1f", 1) for r in out.split("\x1e") if r] == [[a, "Fix"], [b, ""]]
+
+
+def test_nul_fields_refuses_output_that_does_not_end_with_the_record_nul(monkeypatch):
+    rec = _Rec(stdout=b"a\0b\0c")
+    monkeypatch.setattr(gitops.docker, "run", rec)
+    with pytest.raises(RuntimeError):
+        gitops.log(Paths("pass1", "control"), "x", "y")
+
+
+def test_log_output_is_forced_to_utf8_whatever_the_repo_config_says(monkeypatch):     # item 5b
+    s = gitops.spec(Paths("pass1", "control"), ["log"])
+    assert "i18n.logOutputEncoding=UTF-8" in s.cmd
+    rec = _Rec(stdout=b"")
+    monkeypatch.setattr(gitops.docker, "run", rec)
+    gitops.log(Paths("pass1", "control"), "x", "y"); gitops.commits_between(Paths("pass1", "control"), "x", "y")
+    assert all("--encoding=UTF-8" in _git_args(s) for s in rec.specs)
+
+
+def test_restore_probes_stop_with_a_short_grace_and_the_bound_says_so(tmp_state, monkeypatch):   # item 8
+    from runner import repo as r
+    p = _live_tree(tmp_state)
+    seen = []
+    def fake_run(s, input=None, timeout=None, stop_grace=30):
+        seen.append((timeout, stop_grace)); return subprocess.CompletedProcess([], 0, b"", b"")
+    monkeypatch.setattr(r.docker, "run", fake_run)
+    r._await_visible_in_containers(p, timeout=30)
+    assert seen == [(r.PROBE_SECONDS, r.PROBE_STOP_GRACE)] and r.PROBE_STOP_GRACE <= 2
+    assert "PROBE_STOP_GRACE" in r._await_visible_in_containers.__doc__
+
+
+def test_docker_run_passes_the_stop_grace_on_timeout(monkeypatch):
+    stops = []
+    monkeypatch.setattr(gitops.docker.subprocess, "run",
+                        lambda argv, **k: (_ for _ in ()).throw(subprocess.TimeoutExpired(argv, 1))
+                        if argv[:2] == ["docker", "run"] else stops.append(argv))
+    s = dataclasses.replace(gitops.spec(Paths("pass1", "control"), ["status"]), mounts=[])
+    with pytest.raises(subprocess.TimeoutExpired):
+        gitops.docker.run(s, timeout=1, stop_grace=2)
+    assert stops[0][:4] == ["docker", "stop", "-t", "2"]
+
+
+import dataclasses
+
+
+def test_bare_tree_mounts_the_bare_clone_read_only_and_only_the_tree_writable(tmp_state, monkeypatch):  # breakage 2
+    p = Paths("dry9", "dryrun")
+    bare, tree = tmp_state / "w" / "clone.git", tmp_state / "w" / "tree"
+    bare.mkdir(parents=True)
+    rec = _Rec(stdout=b"")
+    monkeypatch.setattr(gitops.docker, "run", rec)
+    gitops.bare_tree(p, bare, "main", tree)
+    [s] = rec.specs
+    assert sorted((str(m.host), m.ctr, m.ro) for m in s.mounts) == [(str(bare), "/in/bare.git", True),
+                                                                    (str(tree), "/out", False)]
+    assert s.network == "none"
+
+
+def test_publish_scans_the_tree_of_the_very_clone_it_pushes(tmp_state, monkeypatch):     # breakage 2
+    p = Paths("pass1", "control")
+    p.scratch.mkdir(parents=True)
+    calls = []
+    def fake_bundle(p_, dest, refs=()):
+        dest.write_bytes(b"# v2 git bundle\n"); calls.append("bundle"); return dest
+    monkeypatch.setattr(gitops, "bundle", fake_bundle)
+    monkeypatch.setattr(gitops, "clone_bundle_bare", lambda b, d: (d.mkdir(), calls.append(("clone", d))))
+    monkeypatch.setattr(gitops, "bare_tree", lambda p_, bare, ref, dest: (dest.mkdir(), calls.append(("tree", bare))))
+    monkeypatch.setattr(gitops, "push_from_bare", lambda bare, url, ref="main": calls.append(("push", bare)))
+    assert repo.publish(p, "pass1", ask=lambda q: True, scan=lambda d: calls.append("scan") or [])
+    assert [c if isinstance(c, str) else c[0] for c in calls] == ["bundle", "clone", "tree", "scan", "push"]
+    assert calls[1][1] == calls[2][1] == calls[4][1]
+
+
+# --- restore consistency (item 7 residual, breakage 3) -------------------------------------------------------
+
+def _leftover(p, kind, **trees):
+    d = p.base / f".{kind}-deadbeef0000"
+    d.mkdir()
+    for name, text in trees.items():
+        (d / name).mkdir(); (d / name / "marker").write_text(text)
+    return d
+
+
+def test_gitops_refuses_to_touch_an_arm_with_an_interrupted_restore(tmp_state, monkeypatch):
+    p = _live_tree(tmp_state); _leftover(p, "aside", home="old")
+    monkeypatch.setattr(gitops.docker, "run", lambda *a, **k: pytest.fail("ran a container"))
+    with pytest.raises(gitops.InterruptedRestore):
+        gitops.head(p)
+
+
+def test_recover_rolls_back_a_swap_interrupted_before_anything_moved_in(tmp_state):
+    p = _live_tree(tmp_state)
+    import shutil; shutil.rmtree(p.home)
+    _leftover(p, "aside", home="old"); _leftover(p, "restore", work="half")     # died after home went aside
+    repo.recover(p)
+    assert (p.home / "marker").read_text() == "old" and (p.work / "current").exists()
+    assert sorted(x.name for x in p.base.iterdir()) == ["home", "snapshots", "work"]
+
+
+def test_recover_rolls_back_a_swap_interrupted_between_the_two_moves_in(tmp_state):
+    p = _live_tree(tmp_state)
+    import shutil; shutil.rmtree(p.work)                                          # home is the restored one
+    (p.home / "current").rename(p.home / "restored")
+    _leftover(p, "aside", home="old", work="old-w")
+    repo.recover(p)
+    assert (p.home / "marker").read_text() == "old" and (p.work / "marker").read_text() == "old-w"
+    assert not (p.home / "restored").exists()
+    assert sorted(x.name for x in p.base.iterdir()) == ["home", "snapshots", "work"]
+
+
+def test_recover_finishes_a_swap_that_only_missed_its_cleanup(tmp_state):
+    p = _live_tree(tmp_state); _leftover(p, "aside", home="old", work="old-w")
+    repo.recover(p)
+    assert (p.home / "current").exists() and (p.work / "current").exists()
+    assert sorted(x.name for x in p.base.iterdir()) == ["home", "snapshots", "work"]
+
+
+def test_recover_raises_on_an_ambiguous_state(tmp_state):
+    p = _live_tree(tmp_state); _leftover(p, "aside", home="a")
+    (p.base / ".aside-feedface0000").mkdir(); (p.base / ".aside-feedface0000" / "work").mkdir()
+    with pytest.raises(gitops.InterruptedRestore):
+        repo.recover(p)
+
+
+def test_snapshot_and_restore_recover_first(tmp_state, monkeypatch):
+    from runner import repo as r
+    p = _live_tree(tmp_state); _leftover(p, "restore", work="half")
+    monkeypatch.setattr(r, "_run", lambda s, what: None)
+    r.snapshot(p, 9)
+    assert not list(p.base.glob(".restore-*"))
+
+
+def test_a_restore_that_cannot_create_its_dirs_leaves_nothing_behind(tmp_state, monkeypatch):
+    p = _live_tree(tmp_state); _fake_restore(monkeypatch)
+    real = Path.mkdir
+    def failing(self, *a, **k):
+        if self.name.startswith(".aside-"):
+            raise OSError("no space")
+        return real(self, *a, **k)
+    monkeypatch.setattr(Path, "mkdir", failing)
+    with pytest.raises(OSError):
+        repo.restore(p, 1)
+    assert sorted(x.name for x in p.base.iterdir()) == ["home", "snapshots", "work"]
+
+
+def test_a_failed_rollback_keeps_the_aside_and_reports_both_errors(tmp_state, monkeypatch):
+    p = _live_tree(tmp_state); _fake_restore(monkeypatch)
+    real = Path.rename
+    def flaky(self, target):
+        if self.name == "work" and self.parent.name.startswith(".restore-"):
+            raise OSError("disk full")                                  # the second move-in fails
+        if self.parent.name.startswith(".aside-"):
+            raise OSError("rollback blocked")                           # ...and so does putting things back
+        return real(self, target)
+    monkeypatch.setattr(Path, "rename", flaky)
+    with pytest.raises(OSError, match="disk full") as ei:
+        repo.restore(p, 1)
+    assert any("rollback blocked" in n for n in getattr(ei.value, "__notes__", []))
+    [aside] = p.base.glob(".aside-*")
+    assert (aside / "home" / "current").exists()                        # the only copy of the old home survives
+    monkeypatch.setattr(Path, "rename", real)
+    repo.recover(p)
+    assert (p.home / "current").exists() and (p.work / "current").exists()
+    assert sorted(x.name for x in p.base.iterdir()) == ["home", "snapshots", "work"]

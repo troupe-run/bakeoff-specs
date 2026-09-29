@@ -59,3 +59,10 @@ def test_sweep_removes_labelled_networks_too(monkeypatch):                    # 
     monkeypatch.setattr(docker.subprocess, "run", fake_run)
     assert docker.sweep() == {"containers": ["c1"], "networks": ["n1"]}
     assert ["docker", "network", "rm", "n1"] in calls
+
+
+def test_a_mount_whose_host_source_does_not_exist_is_refused(tmp_path):       # Task 8 fix round 2
+    """Docker would silently create an empty directory in its place (e.g. an arm home lost mid-restore)."""
+    with pytest.raises(FileNotFoundError):
+        run_argv(spec(mounts=[Mount(tmp_path / "missing", "/home/actor", False)]))
+    run_argv(spec(mounts=[Mount(tmp_path, "/home/actor", False)]))

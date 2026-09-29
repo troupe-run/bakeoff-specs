@@ -105,6 +105,27 @@ def test_reads_report_what_the_tree_holds(P):
     assert gitops.porcelain(P) == "" and not gitops.state(P).dirty
 
 
+def test_log_is_exact_for_an_empty_message_an_empty_author_and_a_utf16_log_encoding(P):   # fix round 2, item 5
+    root = gitops.main_sha(P)
+    gitops.git(P, "commit", "-q", "--allow-empty", "--allow-empty-message", "-m", "", write=True,
+               env={"GIT_AUTHOR_NAME": "Dev", "GIT_AUTHOR_EMAIL": "d@x", "GIT_COMMITTER_NAME": "Dev",
+                    "GIT_COMMITTER_EMAIL": "d@x"})
+    empty_msg = gitops.head(P)
+    tree = _out(gitops.git(P, "rev-parse", "HEAD^{tree}"))
+    raw = (f"tree {tree}\nparent {empty_msg}\nauthor  <a@x> 1700000000 +0000\n"
+           f"committer  <a@x> 1700000000 +0000\n\nno author\n").encode()
+    crafted = _out(gitops.git(P, "hash-object", "-t", "commit", "-w", "--literally", "--stdin", input=raw, write=True))
+    gitops.git(P, "update-ref", "refs/heads/main", crafted, write=True)
+    with (P.repo / ".git" / "config").open("a") as f:
+        f.write("[i18n]\n\tlogOutputEncoding = UTF-16LE\n")           # arm-writable: would put NULs in the output
+    assert gitops.log(P, root, "main") == [
+        {"sha": crafted, "author": "", "subject": "no author"},
+        {"sha": empty_msg, "author": "Dev", "subject": ""}]
+    recs = [r.split("\x1f", 1) for r in gitops.commits_between(P, root, "main").split("\x1e") if r]
+    assert recs == [[crafted, "no author"], [empty_msg, ""]]
+    assert gitops.log(P, empty_msg, empty_msg) == [] and gitops.commits_between(P, empty_msg, empty_msg) == ""
+
+
 def test_a_hostile_hook_and_fsmonitor_never_run_on_the_host(P, tmp_path_factory):     # review S-1, M2
     marker = tmp_path_factory.mktemp("host-markers") / "pwned"
     hook = P.repo / ".git" / "hooks" / "pre-commit"
