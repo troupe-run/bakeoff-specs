@@ -5,8 +5,9 @@ Trust on first use: `pin()` records what the Claude installer and the registries
 build verifies against those records (`FROM` by digest; the Dockerfile checks the binary's SHA-256).
 """
 from __future__ import annotations
-import hashlib, json, re, subprocess, tomllib
+import hashlib, json, os, re, subprocess, tomllib
 from pathlib import Path
+from typing import Callable
 from runner import config, gitops, paths
 
 IMAGES = Path(__file__).resolve().parent / "images"
@@ -246,41 +247,118 @@ def _save(tag: str) -> str:
     return hashlib.sha256(out.read_bytes()).hexdigest()
 
 
+REFERENCE = paths.REPO_ROOT / "reference"
+# What the repo-root build context leaves out of `COPY reference` (.dockerignore) and what the tester-ref build
+# itself removes: none of it is part of the answer key.
+REFERENCE_EXCLUDED = (".venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache")
+
+
+def reference_tree(root: Path | None = None) -> str:
+    """SHA-256 over the reference tree `bakeoff-tester-ref` bakes in (Task 23 ruling): every file's relative path
+    and content hash, sorted; build-context exclusions left out. Harness-owned files, read on the host."""
+    root = root or REFERENCE
+    h = hashlib.sha256()
+    for f in sorted(x for x in root.rglob("*") if (x.is_file() or x.is_symlink())
+                    and not any(part in REFERENCE_EXCLUDED for part in x.relative_to(root).parts)
+                    and x.suffix != ".pyc"):
+        rel = f.relative_to(root).as_posix()
+        data = os.readlink(f).encode() if f.is_symlink() else f.read_bytes()
+        h.update(f"{rel}\0{hashlib.sha256(data).hexdigest()}\n".encode())
+    return h.hexdigest()
+
+
+def _image_builders(p: config.Pins) -> dict[str, tuple[str, Callable[[], None]]]:
+    """Logical name -> (tag, build) for every harness image, in dependency order."""
+    im = p.images
+    out = {
+        "base": (im["base"], lambda: _build(im["base"], IMAGES / "base", **base_build_args(p))),
+        "proxy": (im["proxy"], lambda: _build(im["proxy"], IMAGES / "proxy", **proxy_build_args(p))),
+        "tester": (im["tester"], lambda: _build(im["tester"], paths.REPO_ROOT, dockerfile=IMAGES / "tester" / "Dockerfile",
+                                                BASE_IMAGE=im["base"])),
+        "tester_ref": (im["tester_ref"], lambda: _build(im["tester_ref"], paths.REPO_ROOT,
+                                                        dockerfile=IMAGES / "tester-ref" / "Dockerfile",
+                                                        TESTER_IMAGE=im["tester"])),
+    }
+    if (IMAGES / "dryrun" / "Dockerfile").exists():
+        out["dryrun"] = (im["dryrun"], lambda: _build(im["dryrun"], paths.REPO_ROOT,
+                                                      dockerfile=IMAGES / "dryrun" / "Dockerfile", BASE_IMAGE=im["base"]))
+    return out
+
+
+def _image_entry(tag: str) -> dict:
+    return {"id": current_id(tag), "content": content_id(tag), "tar_sha256": _save(tag)}
+
+
+def _arm_entry(p: config.Pins, name: str, base_tar: str) -> dict:
+    """Build one arm's image (if it has a Dockerfile) and return its lock entry; an arm with an unpinned plugin
+    gets an `error` entry instead (review B2: parked, not fatal)."""
+    arm = config.load_arm(name)
+    unpinned = _unpinned_plugins(arm)
+    if unpinned:
+        print(f"WARNING: skipping {name}: unpinned plugin(s) {unpinned} (review B2)")
+        return {"image": arm.image, "error": f"unpinned plugin(s) {unpinned}: tag not resolved by `images pin`"}
+    df = IMAGES / "arm" / name / "Dockerfile"
+    if df.exists():
+        extra = {"BD_SHA256": p.bd_sha256} if name == "speckitty" else {}   # review fix-round-1 item 1
+        _build(arm.image, IMAGES / "arm" / name, BASE_IMAGE=p.images["base"], **extra,
+               **{f"PLUGIN_{i}_{k.upper()}": getattr(pl, k) for i, pl in enumerate(arm.plugins)
+                  for k in ("name", "repo", "tag", "sha", "subdir")})
+    return {"image": arm.image, "id": current_id(arm.image), "content": content_id(arm.image),
+            "tar_sha256": _save(arm.image) if df.exists() else base_tar,
+            "versions": _versions(arm.image, ARM_VERSION_PROBES.get(name, {}))}
+
+
+def _write_lock(lock: dict) -> None:
+    LOCK.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n")
+
+
 def build_all(arms: list[str], rebuild: bool = False) -> dict:
     check_pinned()
     if LOCK.exists() and not rebuild:
         raise RuntimeError("images.lock.json exists: images are built once (review S-5); use --rebuild deliberately")
     p = config.load_pins()
-    im = p.images
-    _build(im["base"], IMAGES / "base", **base_build_args(p))
-    _build(im["proxy"], IMAGES / "proxy", **proxy_build_args(p))
-    _build(im["tester"], paths.REPO_ROOT, dockerfile=IMAGES / "tester" / "Dockerfile", BASE_IMAGE=im["base"])
-    _build(im["tester_ref"], paths.REPO_ROOT, dockerfile=IMAGES / "tester-ref" / "Dockerfile", TESTER_IMAGE=im["tester"])
-    if (IMAGES / "dryrun" / "Dockerfile").exists():
-        _build(im["dryrun"], paths.REPO_ROOT, dockerfile=IMAGES / "dryrun" / "Dockerfile", BASE_IMAGE=im["base"])
+    builders = _image_builders(p)
+    for _tag, build in builders.values():
+        build()
     lock: dict = {"digests": p.digests, "binary_sha256": p.binary_sha256, "bd_sha256": p.bd_sha256,
-                  "images": {}, "arms": {}}
-    for tag in [im["base"], im["proxy"], im["tester"], im["tester_ref"]] + ([im["dryrun"]] if (IMAGES / "dryrun").exists() else []):
-        lock["images"][tag] = {"id": current_id(tag), "content": content_id(tag), "tar_sha256": _save(tag)}
-    lock["images"][im["base"]]["versions"] = _versions(im["base"], {})
+                  "images": {}, "arms": {}, "reference_tree": reference_tree()}
+    for tag, _build_fn in builders.values():
+        lock["images"][tag] = _image_entry(tag)
+    lock["images"][p.images["base"]]["versions"] = _versions(p.images["base"], {})
     for name in _existing(arms):
-        arm = config.load_arm(name)
-        unpinned = _unpinned_plugins(arm)
-        if unpinned:                                            # review B2: park, don't fail the other arms
-            lock["arms"][name] = {"image": arm.image,
-                                   "error": f"unpinned plugin(s) {unpinned}: tag not resolved by `images pin`"}
-            print(f"WARNING: skipping {name}: unpinned plugin(s) {unpinned} (review B2)")
-            continue
-        df = IMAGES / "arm" / name / "Dockerfile"
-        if df.exists():
-            extra = {"BD_SHA256": p.bd_sha256} if name == "speckitty" else {}   # review fix-round-1 item 1
-            _build(arm.image, IMAGES / "arm" / name, BASE_IMAGE=im["base"], **extra,
-                   **{f"PLUGIN_{i}_{k.upper()}": getattr(pl, k) for i, pl in enumerate(arm.plugins)
-                      for k in ("name", "repo", "tag", "sha", "subdir")})
-        lock["arms"][name] = {"image": arm.image, "id": current_id(arm.image), "content": content_id(arm.image),
-                              "tar_sha256": _save(arm.image) if df.exists() else lock["images"][im["base"]]["tar_sha256"],
-                              "versions": _versions(arm.image, ARM_VERSION_PROBES.get(name, {}))}
-    LOCK.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n")
+        lock["arms"][name] = _arm_entry(p, name, lock["images"][p.images["base"]]["tar_sha256"])
+    _write_lock(lock)
+    return lock
+
+
+def build_only(names: list[str]) -> dict:
+    """Task 23 ruling: build only new or changed images, never `--rebuild` everything. `names` are harness images
+    (`base`, `proxy`, `tester`, `tester_ref`, `dryrun`) or arm names; only their lock entries change, every other
+    entry is kept byte for byte. Building `tester_ref` records the reference tree it bakes in (`reference_tree`),
+    which `preflight.check_images` compares with `reference/` before every run. A parked arm is refused. Rebuilding
+    an image others are built FROM (base, tester) does not rebuild them: name them too if they must change."""
+    check_pinned()
+    if not LOCK.exists():
+        raise RuntimeError("no images.lock.json: run the full build (images.build_all) first")
+    p = config.load_pins()
+    builders = _image_builders(p)
+    unknown = [n for n in names if n not in builders and n not in config.all_arms()]
+    if unknown:
+        raise ValueError(f"unknown image name(s) {unknown}: use {sorted(builders)} or an arm name")
+    parked = [n for n in names if n in config.all_arms() and config.load_arm(n).parked]
+    if parked:
+        raise ValueError(f"{parked}: parked arm(s) are not built (unpark in runner/config/arms/<arm>.toml first)")
+    lock = json.loads(LOCK.read_text())
+    for n in [n for n in builders if n in names]:                       # dependency order, not argument order
+        tag, build = builders[n]
+        build()
+        lock["images"][tag] = _image_entry(tag) | ({"versions": _versions(tag, {})} if n == "base" else {})
+        if n == "tester_ref":
+            lock["reference_tree"] = reference_tree()
+    base_tar = lock["images"].get(p.images["base"], {}).get("tar_sha256", "")
+    for n in [n for n in config.all_arms() if n in names]:
+        lock["arms"][n] = _arm_entry(p, n, base_tar)
+    _write_lock(lock)
     return lock
 
 
