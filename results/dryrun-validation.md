@@ -1,9 +1,21 @@
 # Dry-run validation
 
-- results: {"dry1": {"completed": true}, "dry2": {"stopped_at": 2}, "dry3": {"halted": "{\n  \"reason\": \"same harness fault twice (design \\u00a79)\",\n  \"first\": {\n    \"at\": \"2026-09-29T18:29:48+00:00\",\n    \"pass\": \"dry3\",\n    \"arm\": \"dryrun-pinfault\",\n    \"step\": 1,\n    \"run\": \"a\",\n    \"attempt\": 1,\n    \"kind\": \"model-pin\",\n    \"signature\": \"claude-haiku-4-5\",\n    \"detail\": \"arm: assistant /Users/martin/Projects/troupe/bakeoff-specs.wt-t24/results/dry3/dryrun-pinfault/01/a/transcripts/a1/-work-bakeoff-specs-dryrun-pinfault/fa1e8bb0-1130-468d-bdbf-0fea17105c47/subagents/agent-1.jsonl.g"}, "dry4": {"completed": true}}
+- results: {"dry1": {"completed": true}, "dry2": {"stopped_at": 2}, "dry3": {"halted": "{\n  \"reason\": \"same harness fault twice (design \\u00a79)\",\n  \"first\": {\n    \"at\": \"2026-09-29T18:29:48+00:00\",\n    \"pass\": \"dry3\",\n    \"arm\": \"dryrun-pinfault\",\n    \"step\": 1,\n    \"run\": \"a\",\n    \"attempt\": 1,\n    \"kind\": \"model-pin\",\n    \"signature\": \"claude-haiku-4-5\",\n    \"detail\": \"arm: assistant results/dry3/dryrun-pinfault/01/a/transcripts/a1/-work-bakeoff-specs-dryrun-pinfault/fa1e8bb0-1130-468d-bdbf-0fea17105c47/subagents/agent-1.jsonl.g"}, "dry4": {"completed": true}}
 - secret findings (evidence + state, .gz decompressed): 0
 - container specs built: 865; containing the token: 0
 - leftover containers: 0
+
+## What each pass proves (every gate must hold)
+
+- ok: dry1 hidden counts — 1: 101/101 passed, 0 failed (want 101); 2: 109/109 passed, 0 failed (want 109); 3: 121/121 passed, 0 failed (want 121); 4: 135/135 passed, 0 failed (want 135); 5: 146/146 passed, 0 failed (want 146); 6: 151/151 passed, 0 failed (want 151); 7: 161/161 passed, 0 failed (want 161)
+- ok: dry1 N.a/N.b sha_before — 1: ec5a42bee4 = ec5a42bee4; 2: 6b68bb5f6b = 6b68bb5f6b; 3: a98e5af8ec = a98e5af8ec; 4: f61f54ae43 = f61f54ae43; 5: a52c51f143 = a52c51f143; 6: 8e15c1712e = 8e15c1712e; 7: 832e780264 = 832e780264
+- ok: dry1 hand-edit probe — {"env_default": true, "flag_wins": true, "unchanged_without_env": true, "installed": true}
+- ok: dry1 model pin — ok for every N.a and N.b
+- ok: dry2 stop rule — stopped_at 2; reason 'no progress in 3 attempts'
+- ok: dry3 halt rule — ledger [('model-pin', 'claude-haiku-4-5', 'rerun'), ('model-pin', 'claude-haiku-4-5', 'halt')]; HALTED present
+- ok: dry4 transient retry — 1.b interventions ['transient-retry:API Error:  overloaded']
+- ok: dry4 timeout owned by the arm — breaches [{'step': 2, 'breach': 'turn_seconds', 'owner': 'arm'}]
+- ok: dry4 pause and resume — progress step 1 review 'pause'; resume.json {'paused_after': 1}; run-ended 1.b x1; 7.b ended
 
 ## dry1: N.a → reset → consistency check → N.b, per step
 

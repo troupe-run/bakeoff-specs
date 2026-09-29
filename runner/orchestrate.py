@@ -1107,13 +1107,13 @@ def dry_run() -> dict:
             (paths.STATE / pass_).mkdir(parents=True)
             shutil.copy(REPO_ROOT / "scenario" / "po-brief.md", paths.brief_path(pass_))
             o = owner_mod.ScriptedOwner(config.CONFIG_DIR / script).bind(config.load_arm(arm_name))
-            s = setup(pass_, arm_name, cred, o)
-            if not s.green:
-                res[pass_] = {"setup_not_green": [c.id for c in s.checks if c.status != "ok"]}
-                continue
             try:
+                s = setup(pass_, arm_name, cred, o)                 # a Halt here is this pass's result too
+                if not s.green:
+                    res[pass_] = {"setup_not_green": [c.id for c in s.checks if c.status != "ok"]}
+                    continue
                 r = run_arm(pass_, arm_name, cred, o, limits)
-                if "paused_after" in r:                         # dry4: paused by the owner, then resumed
+                if "paused_after" in r or "paused_at" in r:     # dry4: paused by the owner, then resumed
                     _jw(Paths(pass_, arm_name).results / "resume.json", r)
                     r = run_arm(pass_, arm_name, cred, o, limits)
                 res[pass_] = r
@@ -1143,22 +1143,111 @@ def _dry_facts() -> list[str]:
     return lines
 
 
+def dry_results() -> dict:
+    """The four passes' results read back from their evidence (to regenerate the report without re-running):
+    `arm-result.json` (completed / stopped_at), `HALTED` (halted), dry4's `resume.json` counting only when the arm
+    then completed."""
+    out: dict = {}
+    for pass_, arm_name, _, _ in DRY:
+        p = Paths(pass_, arm_name)
+        halted = paths.RESULTS / pass_ / "HALTED"
+        ar = _jr(p.results / "arm-result.json", {}) or {}
+        if halted.is_file():
+            out[pass_] = {"halted": halted.read_text()[:500]}
+        elif ar.get("completed") is True:
+            out[pass_] = {"completed": True}
+        elif ar.get("stopped_at") is not None:
+            out[pass_] = {"stopped_at": ar["stopped_at"]}
+        else:
+            out[pass_] = {"incomplete": True}
+    return out
+
+
+def _gate_dry1() -> list[tuple[str, bool, str]]:
+    p = Paths("dry1", "dryrun")
+    want = {1: 101, 2: 109, 3: 121, 4: 135, 5: 146, 6: 151, 7: 161}
+    counts, shas, pins = [], [], []
+    for n in STEPS:
+        s = _jr(p.step(n) / "hidden" / "summary.json", {}) or {}
+        counts.append((n, s.get("total"), s.get("passed"), s.get("failed"), s.get("flaky"), s.get("flaky_arm")))
+        a = (_jr(p.step(n) / "a" / "discovery.json", {}) or {}).get("sha_before")
+        b = (_jr(p.step(n) / "git.json", {}) or {}).get("sha_before")
+        shas.append((n, a, b))
+        for run, f in (("a", p.step(n) / "a" / "model-pin.json"), ("b", p.step(n) / "model-pin.json")):
+            pin = _jr(f, {}) or {}
+            if not (pin.get("ok") is True and not pin.get("violations")):
+                pins.append(f"{n}.{run}")
+    probe = _jr(p.step(2) / "hand-edit" / "probe.json", {}) or {}
+    return [("dry1 hidden counts", all((t, ps, fl, fk, fa) == (want[n], want[n], 0, 0, 0)
+                                       for n, t, ps, fl, fk, fa in counts),
+             "; ".join(f"{n}: {ps}/{t} passed, {fl} failed (want {want[n]})" for n, t, ps, fl, fk, fa in counts)),
+            ("dry1 N.a/N.b sha_before", all(a and a == b for _, a, b in shas),
+             "; ".join(f"{n}: {str(a)[:10]} {'=' if a and a == b else '!='} {str(b)[:10]}" for n, a, b in shas)),
+            ("dry1 hand-edit probe", bool(probe) and all(v is True for v in probe.values()), json.dumps(probe)),
+            ("dry1 model pin", not pins, f"violations or not ok at: {pins}" if pins else "ok for every N.a and N.b")]
+
+
+def _gate_dry2() -> list[tuple[str, bool, str]]:
+    ar = _jr(Paths("dry2", "dryrun-broken").results / "arm-result.json", {}) or {}
+    ok = ar.get("stopped_at") == 2 and ar.get("reason") == "no progress in 3 attempts"
+    return [("dry2 stop rule", ok, f"stopped_at {ar.get('stopped_at')}; reason {ar.get('reason')!r}")]
+
+
+def _gate_dry3() -> list[tuple[str, bool, str]]:
+    f = paths.RESULTS / "dry3" / "faults.jsonl"
+    led = [json.loads(l) for l in f.read_text().splitlines() if l.strip()] if f.is_file() else []
+    got = [(e.get("kind"), e.get("signature"), e.get("action")) for e in led]
+    want = [("model-pin", "claude-haiku-4-5", "rerun"), ("model-pin", "claude-haiku-4-5", "halt")]
+    ok = got == want and (paths.RESULTS / "dry3" / "HALTED").is_file()
+    return [("dry3 halt rule", ok, f"ledger {got}; HALTED {'present' if (paths.RESULTS / 'dry3' / 'HALTED').is_file() else 'absent'}")]
+
+
+def _gate_dry4() -> list[tuple[str, bool, str]]:
+    p = Paths("dry4", "dryrun-edge")
+    iv = (_jr(p.step(1) / "run.json", {}) or {}).get("interventions") or []
+    br = _jr(p.results / "breaches.json", []) or []
+    rs = _jr(p.results / "resume.json", {}) or {}
+    review = ((_jr(p.progress, {}) or {}).get("steps", {}).get("1") or {}).get("review")
+    f = paths.RESULTS / "dry4" / "run-log.jsonl"
+    log = [json.loads(l) for l in f.read_text().splitlines() if l.strip()] if f.is_file() else []
+    ended = [(e.get("step"), e.get("run")) for e in log if e.get("event") == "run-ended"]
+    one_b = ended.count((1, "b"))
+    paused = rs.get("paused_after", rs.get("paused_at"))
+    pr = review == "pause" and one_b == 1 and paused == 1 and (7, "b") in ended
+    return [("dry4 transient retry", any(str(i).startswith("transient-retry:") for i in iv), f"1.b interventions {iv}"),
+            ("dry4 timeout owned by the arm", any(b.get("breach") == "turn_seconds" and b.get("owner") == "arm" for b in br),
+             f"breaches {br}"),
+            ("dry4 pause and resume", pr, f"progress step 1 review {review!r}; resume.json {rs}; run-ended 1.b x{one_b}; "
+                                          f"7.b {'ended' if (7, 'b') in ended else 'not ended'}")]
+
+
+def _trim(text: str) -> str:
+    """Host paths out of the committed report: the repo root becomes relative."""
+    return text.replace(str(REPO_ROOT) + "/", "").replace(str(REPO_ROOT), ".")
+
+
 def dry_report(res: dict) -> Path:
     """`results/dryrun-validation.md`, ending `**Result: PASS**` only when dry1 and dry4 completed, dry2 stopped at
-    step 2, dry3 halted, no container spec carried the token, no token is anywhere in the four passes' evidence or
+    step 2, dry3 halted, every gate of what a pass proves holds (read from its evidence and listed with its facts:
+    dry1 exact hidden counts, N.a/N.b sha_before, hand-edit probe, model pins; dry2 the no-progress stop at step 2;
+    dry3 the same model-pin fault twice ending in halt; dry4 the transient retry, the arm-owned turn_seconds breach,
+    the pause at step 1's review and the resume), no container spec carried the token, no token is anywhere in the four passes' evidence or
     state (.gz decompressed, tars opened), and no `bakeoff.run` container is left."""
     findings = [f for i in range(1, 5) for root in (paths.RESULTS / f"dry{i}", paths.STATE / f"dry{i}")
                 for f in secrets.scan_tree(root, [DRY_TOKEN])]
     left = docker.running("bakeoff.run")
     spec = _jr(paths.RESULTS / "dryrun-specs.json", {}) or {"specs": 0, "specs_containing_token": None}
+    gates = _gate_dry1() + _gate_dry2() + _gate_dry3() + _gate_dry4()
     ok = (not findings and not left and spec["specs_containing_token"] == 0 and "halted" in res.get("dry3", {})
           and res.get("dry2", {}).get("stopped_at") == 2 and res.get("dry1", {}).get("completed") is True
-          and res.get("dry4", {}).get("completed") is True)
+          and res.get("dry4", {}).get("completed") is True and all(g[1] for g in gates))
     lines = ["# Dry-run validation", "", f"- results: {json.dumps(res)[:2000]}",
              f"- secret findings (evidence + state, .gz decompressed): {len(findings)}",
              *[f"  - {f.path}:{f.line} {f.kind}" for f in findings[:20]],
              f"- container specs built: {spec['specs']}; containing the token: {spec['specs_containing_token']}",
-             f"- leftover containers: {len(left)}", *_dry_facts(), "", f"**Result: {'PASS' if ok else 'FAIL'}**", ""]
+             f"- leftover containers: {len(left)}", "", "## What each pass proves (every gate must hold)", "",
+             *[f"- {'ok' if g else 'FAIL'}: {name} — {facts}" for name, g, facts in gates],
+             *_dry_facts(), "", f"**Result: {'PASS' if ok else 'FAIL'}**", ""]
     out = paths.RESULTS / "dryrun-validation.md"
-    fsutil.write_text(out, "\n".join(lines))
+    fsutil.write_text(out, _trim("\n".join(lines)))
     return out

@@ -159,6 +159,11 @@ def test_dry4_timeout_ended_an_attempt_as_an_arm_outcome_and_the_step_still_comp
     assert J("dry4", "dryrun-edge", "breaches.json")[0]["owner"] == "arm"
 
 
-def test_dry4_paused_after_step1_and_resumed_to_the_end():
-    assert J("dry4", "dryrun-edge", "arm-result.json")["completed"] is True
+def test_dry4_paused_at_step1s_review_and_resumed_without_rerunning_step1_to_the_end():
+    prog = json.loads((STATE / "dry4" / "dryrun-edge" / "progress.json").read_text())
+    assert prog["steps"]["1"]["review"] == "pause"                       # the runner's own record of the pause
+    ended = [(e["step"], e["run"]) for e in lines("dry4", "run-log.jsonl") if e["event"] == "run-ended"]
+    assert ended.count((1, "b")) == 1                                    # the resume adopted 1.b, never re-ran it
+    assert ended[-1] == (7, "b")
     assert J("dry4", "dryrun-edge", "resume.json")["paused_after"] == 1
+    assert J("dry4", "dryrun-edge", "arm-result.json")["completed"] is True

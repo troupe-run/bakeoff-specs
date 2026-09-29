@@ -10,6 +10,7 @@ from runner.config import Limits
 from runner.docker import RunSpec
 from runner.paths import Paths
 
+REAL_LITERALS = secrets.literals                                      # before any fixture fakes it
 DRY_ARMS = ("dryrun", "dryrun-broken", "dryrun-pinfault", "dryrun-edge")
 
 
@@ -69,12 +70,17 @@ def test_the_dry_passes_are_the_four_of_the_brief():
 
 # ---- the keychain is never read on a dry pass -------------------------------------------------------------------
 
-def test_a_dry_pass_gathers_its_scan_literals_without_the_keychain(fake_orch, monkeypatch):
-    seen = []
-    monkeypatch.setattr(secrets, "literals", lambda *a, **k: seen.append(k) or ["dry-run-dummy-token"])
+def test_a_dry_pass_never_reads_the_keychain(fake_orch, monkeypatch):
+    def keychain(*a, **k):
+        raise AssertionError("a dry pass read the keychain")
+    monkeypatch.setattr(secrets, "literals", REAL_LITERALS)             # fake_orch fakes it: the real one here
+    monkeypatch.setattr(credentials, "from_keychain", keychain)
+    monkeypatch.setattr(credentials, "github_pat", keychain)
+    monkeypatch.setattr(secrets, "keychain_pat", keychain)
+    monkeypatch.setattr(secrets, "_KEYCHAIN", {})                        # nothing cached from another test
     fake_orch.make("dryrun", pass_="dry7")
-    orchestrate.run_arm("dry7", "dryrun", fake_orch.cred, fake_orch.owner)
-    assert seen and all(k.get("keychain") is False for k in seen)
+    res = orchestrate.run_arm("dry7", "dryrun", fake_orch.cred, fake_orch.owner)
+    assert res == {"completed": True}
 
 
 def test_a_real_pass_still_gathers_keychain_literals(fake_orch, monkeypatch):
@@ -160,26 +166,162 @@ def test_a_setup_that_is_not_green_is_a_failed_pass_not_a_run(fake_dry):
     assert all("setup_not_green" in r for r in res.values()) and not [c for c in calls if c[0] == "run_arm"]
 
 
-def test_the_report_passes_only_when_every_pass_proved_its_point(fake_dry):
-    res = orchestrate.dry_run()
-    out = orchestrate.dry_report(res)
-    assert out == paths.RESULTS / "dryrun-validation.md" and out.read_text().rstrip().endswith("**Result: PASS**")
-    for bad in ({**res, "dry2": {"completed": True}}, {**res, "dry3": {"completed": True}},
-                {**res, "dry1": {"stopped_at": 4}}, {**res, "dry4": {"paused_after": 1}}):
-        assert orchestrate.dry_report(bad).read_text().rstrip().endswith("**Result: FAIL**")
+# ---- dry_report gates on what each pass proves (fix round 1): faked evidence, no docker ----------------------------
+
+EXPECTED = {1: 101, 2: 109, 3: 121, 4: 135, 5: 146, 6: 151, 7: 161}
+RES = {"dry1": {"completed": True}, "dry2": {"stopped_at": 2}, "dry3": {"halted": "x"}, "dry4": {"completed": True}}
 
 
-def test_the_report_fails_on_a_token_in_evidence_or_state_or_a_leftover_container(fake_dry, monkeypatch):
-    res = orchestrate.dry_run()
-    leak = paths.STATE / "dry2" / "x.log"; leak.write_text("token dry-run-dummy-token here\n")
-    rep = orchestrate.dry_report(res).read_text()
+def W(path, obj):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(obj if isinstance(obj, str) else json.dumps(obj))
+
+
+def evidence():
+    """A faked evidence tree for which every gate holds (the shapes the real runner writes)."""
+    r, s = paths.RESULTS, paths.STATE
+    d1 = r / "dry1" / "dryrun"
+    for n, total in EXPECTED.items():
+        W(d1 / f"{n:02d}" / "hidden" / "summary.json",
+          {"total": total, "passed": total, "failed": 0, "flaky": 0, "flaky_arm": 0, "tests": {}})
+        W(d1 / f"{n:02d}" / "git.json", {"sha_before": f"s{n}", "sha_after": f"s{n + 1}"})
+        W(d1 / f"{n:02d}" / "a" / "discovery.json", {"sha_before": f"s{n}", "discovery": {"why": "approval"}})
+        for pin in (d1 / f"{n:02d}" / "model-pin.json", d1 / f"{n:02d}" / "a" / "model-pin.json"):
+            W(pin, {"ok": True, "violations": [], "assistant_messages": 3})
+    W(d1 / "02" / "hand-edit" / "probe.json",
+      {"env_default": True, "flag_wins": True, "unchanged_without_env": True, "installed": True})
+    W(r / "dry2" / "dryrun-broken" / "arm-result.json", {"stopped_at": 2, "reason": "no progress in 3 attempts"})
+    W(r / "dry3" / "faults.jsonl", "".join(json.dumps({"kind": "model-pin", "signature": "claude-haiku-4-5",
+                                                       "action": a, "detail": f"{paths.REPO_ROOT}/results/x"}) + "\n"
+                                           for a in ("rerun", "halt")))
+    W(r / "dry3" / "HALTED", "{}")
+    d4 = r / "dry4" / "dryrun-edge"
+    W(d4 / "01" / "run.json", {"interventions": ["transient-retry:API Error:  overloaded"]})
+    W(d4 / "breaches.json", [{"step": 2, "breach": "turn_seconds", "owner": "arm"}])
+    W(d4 / "resume.json", {"paused_after": 1})
+    W(s / "dry4" / "dryrun-edge" / "progress.json", {"steps": {"1": {"review": "pause"}, "7": {"review": "continue"}}})
+    W(r / "dry4" / "run-log.jsonl", "".join(json.dumps({"event": "run-ended", "step": n, "run": x}) + "\n"
+                                             for n in range(1, 8) for x in ("a", "b")))
+    W(r / "dryrun-specs.json", {"specs": 865, "specs_containing_token": 0})
+    W(d1.parent / "dryrun" / "arm-result.json", {"completed": True, "last_step": 7})
+    W(d4 / "arm-result.json", {"completed": True, "last_step": 7})
+
+
+@pytest.fixture
+def ev(tmp_state, monkeypatch):
+    monkeypatch.setattr(docker, "running", lambda label="bakeoff.run": [])
+    evidence()
+
+
+def report(res=RES):
+    return orchestrate.dry_report(res).read_text()
+
+
+def test_the_report_passes_on_complete_evidence_and_says_why(ev):
+    rep = report()
+    assert rep.rstrip().endswith("**Result: PASS**")
+    for fact in ("dry1 hidden counts", "dry1 N.a/N.b sha_before", "dry1 hand-edit probe", "dry1 model pin",
+                 "dry2 stop rule", "dry3 halt rule", "dry4 transient retry", "dry4 timeout owned by the arm",
+                 "dry4 pause and resume"):
+        assert f"- ok: {fact}" in rep, fact
+
+
+def _set(rel, key, value):
+    f = paths.RESULTS / rel
+    o = json.loads(f.read_text()); o[key] = value; f.write_text(json.dumps(o))
+
+
+BREAKERS = {
+    "dry1 hidden counts": lambda: _set("dry1/dryrun/04/hidden/summary.json", "passed", 134),
+    "dry1 hidden counts (failed)": lambda: _set("dry1/dryrun/07/hidden/summary.json", "failed", 1),
+    "dry1 hidden counts (total)": lambda: _set("dry1/dryrun/01/hidden/summary.json", "total", 100),
+    "dry1 N.a/N.b sha_before": lambda: _set("dry1/dryrun/03/a/discovery.json", "sha_before", "other"),
+    "dry1 hand-edit probe": lambda: _set("dry1/dryrun/02/hand-edit/probe.json", "flag_wins", False),
+    "dry1 model pin": lambda: _set("dry1/dryrun/05/a/model-pin.json", "violations", [{"model": "x"}]),
+    "dry1 model pin (not ok)": lambda: _set("dry1/dryrun/06/model-pin.json", "ok", False),
+    "dry2 stop rule": lambda: _set("dry2/dryrun-broken/arm-result.json", "reason", "harness"),
+    "dry2 stop rule (step)": lambda: _set("dry2/dryrun-broken/arm-result.json", "stopped_at", 3),
+    "dry3 halt rule": lambda: W(paths.RESULTS / "dry3" / "faults.jsonl", json.dumps(
+        {"kind": "model-pin", "signature": "claude-haiku-4-5", "action": "halt"}) + "\n"),
+    "dry3 halt rule (other fault)": lambda: W(paths.RESULTS / "dry3" / "faults.jsonl", "".join(json.dumps(
+        {"kind": "infra-container", "signature": "x", "action": a}) + "\n" for a in ("rerun", "halt"))),
+    "dry4 transient retry": lambda: _set("dry4/dryrun-edge/01/run.json", "interventions", []),
+    "dry4 timeout owned by the arm": lambda: W(paths.RESULTS / "dry4/dryrun-edge/breaches.json",
+                                               [{"step": 2, "breach": "turn_seconds", "owner": "harness"}]),
+    "dry4 pause and resume (review)": lambda: W(paths.STATE / "dry4/dryrun-edge/progress.json",
+                                                {"steps": {"1": {"review": "continue"}}}),
+    "dry4 pause and resume (1.b twice)": lambda: (paths.RESULTS / "dry4/run-log.jsonl").open("a").write(
+        json.dumps({"event": "run-ended", "step": 1, "run": "b"}) + "\n"),
+    "dry4 pause and resume (no resume record)": lambda: (paths.RESULTS / "dry4/dryrun-edge/resume.json").unlink(),
+}
+
+
+@pytest.mark.parametrize("fact", sorted(BREAKERS))
+def test_each_gate_fails_the_report_when_its_fact_is_wrong(ev, fact):
+    BREAKERS[fact]()
+    rep = report()
+    assert rep.rstrip().endswith("**Result: FAIL**"), fact
+    assert f"- FAIL: {fact.split(' (')[0]}" in rep
+
+
+@pytest.mark.parametrize("bad", [{**RES, "dry2": {"completed": True}}, {**RES, "dry3": {"completed": True}},
+                                 {**RES, "dry1": {"stopped_at": 4}}, {**RES, "dry4": {"paused_after": 1}}])
+def test_the_report_fails_when_a_pass_ended_the_wrong_way(ev, bad):
+    assert report(bad).rstrip().endswith("**Result: FAIL**")
+
+
+def test_the_report_fails_on_a_token_in_evidence_or_state_or_a_leftover_container(ev, monkeypatch):
+    leak = paths.STATE / "dry2" / "x.log"; W(leak, "token dry-run-dummy-token here\n")
+    rep = report()
     assert "secret findings (evidence + state, .gz decompressed): 1" in rep and rep.rstrip().endswith("FAIL**")
     leak.unlink()
     monkeypatch.setattr(docker, "running", lambda label="bakeoff.run": ["abc"])
-    assert orchestrate.dry_report(res).read_text().rstrip().endswith("**Result: FAIL**")
+    assert report().rstrip().endswith("**Result: FAIL**")
 
 
-def test_cli_dry_run_exits_1_unless_the_report_says_pass(fake_dry, monkeypatch, capsys):
+def test_the_committed_report_carries_no_host_paths(ev):
+    res = {**RES, "dry3": {"halted": f"same fault: {paths.REPO_ROOT}/results/dry3/x.jsonl.gz"}}
+    rep = report(res)
+    assert str(paths.REPO_ROOT) not in rep and "results/dry3/x.jsonl.gz" in rep
+
+
+def test_the_report_can_be_regenerated_from_existing_evidence(ev, capsys):
+    assert orchestrate.dry_results() == RES | {"dry3": {"halted": "{}"}}
+    assert cli.main(["dry-run", "--report-only"]) == 0
+    assert (paths.RESULTS / "dryrun-validation.md").read_text().rstrip().endswith("**Result: PASS**")
+    _set("dry2/dryrun-broken/arm-result.json", "stopped_at", 3)
+    assert cli.main(["dry-run", "--report-only"]) == 1
+
+
+# ---- dry_run: a halt during setup, a pause reported as paused_at, no keychain -----------------------------------
+
+def test_a_halt_during_setup_is_that_passs_result_and_the_run_goes_on(fake_dry, monkeypatch):
+    real = orchestrate.setup
+
+    def halting(pass_, arm, cred, o, again=False):
+        if pass_ == "dry2":
+            raise stepflow.Halt("setup fault twice")
+        return real(pass_, arm, cred, o, again)
+    monkeypatch.setattr(orchestrate, "setup", halting)
+    res = orchestrate.dry_run()
+    assert res["dry2"] == {"halted": "setup fault twice"} and res["dry4"] == {"completed": True}
+
+
+def test_a_pause_reported_as_paused_at_is_resumed_too(fake_dry, monkeypatch):
+    real, seen = orchestrate.run_arm, {}
+
+    def at(pass_, *a, **k):
+        if pass_ == "dry1" and not seen:
+            seen["x"] = 1
+            return {"paused_at": 3}
+        return real(pass_, *a, **k)
+    monkeypatch.setattr(orchestrate, "run_arm", at)
+    assert orchestrate.dry_run()["dry1"] == {"completed": True}
+    assert json.loads((Paths("dry1", "dryrun").results / "resume.json").read_text()) == {"paused_at": 3}
+
+
+def test_cli_dry_run_exits_1_unless_the_report_says_pass(ev, monkeypatch, capsys):
+    monkeypatch.setattr(orchestrate, "dry_run", lambda: dict(RES))       # the passes' evidence is faked (ev)
     assert cli.main(["dry-run", "--report"]) == 0
     assert "PASS" in capsys.readouterr().out
     def failing(res):
