@@ -1,0 +1,26 @@
+name = "openspec"
+tool = "Fission-AI/OpenSpec"
+version = "1.13.2"
+citation = "CANDIDATES §1.3"
+image = "bakeoff-arm-openspec:1"
+tracker = "github"
+repo_name = "bakeoff-specs-openspec"
+env = { OPENSPEC_TELEMETRY = "0" }
+
+[egress]
+setup = []
+run = ['^api\.github\.com$']
+
+[setup]
+shell = []
+agent = []
+plugins = []
+manifest_paths = [".claude", "openspec"]
+
+[drive]
+entry = "{handoff}"
+bug_entry = "{handoff}"
+must_run = []
+must_run_source = ""
+fresh_session_before = []
+export_after = ""

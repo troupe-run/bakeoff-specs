@@ -11,8 +11,10 @@ def run(image, *cmd, user="1000:1000"):
 
 
 def all_arm_images():
+    """Every arm image the lock says actually built — not every arm whose toml exists (review B2: a
+    parked arm, e.g. bmad while its plugin tag is unresolved, has a lock entry with no built image)."""
     from runner import images
-    return sorted({config.load_arm(a).image for a in images._existing(config.all_arms())})
+    return sorted({v["image"] for v in images.lock()["arms"].values() if "error" not in v})
 
 
 def test_base_image_has_the_pinned_claude_code():

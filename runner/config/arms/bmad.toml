@@ -1,0 +1,27 @@
+name = "bmad"
+tool = "bmad-code-org/BMAD-METHOD"
+version = "6.12.0"
+citation = "CANDIDATES §1.5"
+image = "bakeoff-arm-bmad:1"
+tracker = "github"
+repo_name = "bakeoff-specs-bmad"
+env = {}
+
+[egress]
+setup = []
+run = ['^api\.github\.com$']
+
+[setup]
+shell = []
+agent = []
+plugins = [{ name = "bmad-method", marketplace = "bmad-code-org/bmad-plugins", install = "bmad-method@bmad-plugins", version = "6.12.0", repo = "bmad-code-org/bmad-plugins", tag = "v6.12.0", sha = "", subdir = "plugins/bmad-method" },
+           { name = "bmad-core-tools", marketplace = "", install = "bmad-core-tools@bmad-plugins", version = "6.12.0", repo = "bmad-code-org/bmad-plugins", tag = "v6.12.0", sha = "", subdir = "plugins/bmad-core-tools" }]
+manifest_paths = [".claude", "_bmad"]
+
+[drive]
+entry = "{handoff}"
+bug_entry = "{handoff}"
+must_run = []
+must_run_source = ""
+fresh_session_before = []
+export_after = ""

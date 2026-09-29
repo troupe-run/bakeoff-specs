@@ -1,0 +1,26 @@
+name = "superpowers"
+tool = "obra/superpowers"
+version = "6.4.2"
+citation = "CANDIDATES §1.1"
+image = "bakeoff-arm-superpowers:1"
+tracker = "github"
+repo_name = "bakeoff-specs-superpowers"
+env = {}
+
+[egress]
+setup = []
+run = ['^api\.github\.com$']
+
+[setup]
+shell = []
+agent = []
+plugins = [{ name = "superpowers", marketplace = "anthropics/claude-plugins-official", install = "superpowers@claude-plugins-official", version = "6.4.2", repo = "obra/superpowers", tag = "v6.4.2", sha = "8ca22dba9a94f28898bbce59f2537ff4d87c747d", subdir = "" }]
+manifest_paths = [".claude"]
+
+[drive]
+entry = "{handoff}"
+bug_entry = "{handoff}"
+must_run = []
+must_run_source = ""
+fresh_session_before = []
+export_after = ""

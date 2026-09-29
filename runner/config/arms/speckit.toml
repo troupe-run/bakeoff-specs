@@ -1,0 +1,26 @@
+name = "speckit"
+tool = "github/spec-kit"
+version = "1.0.12"
+citation = "CANDIDATES §1.2"
+image = "bakeoff-arm-speckit:1"
+tracker = "github"
+repo_name = "bakeoff-specs-speckit"
+env = {}
+
+[egress]
+setup = []
+run = ['^api\.github\.com$']
+
+[setup]
+shell = []
+agent = []
+plugins = []
+manifest_paths = [".claude", ".specify"]
+
+[drive]
+entry = "{handoff}"
+bug_entry = "{handoff}"
+must_run = []
+must_run_source = ""
+fresh_session_before = []
+export_after = ""

@@ -43,6 +43,16 @@ def npm_version(json_text: str, pkg: str) -> str:
     return json.loads(json_text)["dependencies"][pkg]["version"]
 
 
+def specify_version(text: str) -> str:
+    """`specify version` always prints an ASCII banner and a boxed info panel before the version — the
+    version-probe's usual `text.splitlines()[0]` would capture a banner line instead (found building the
+    speckit image for real, review C-15 sibling)."""
+    m = re.search(r"CLI Version\s+(\S+)", text)
+    if not m:
+        raise RuntimeError(f"could not find 'CLI Version' in `specify version` output: {text!r}")
+    return m.group(1)
+
+
 def check_pinned() -> None:
     p = config.load_pins()
     missing = ([k for k, v in p.digests.items() if not v]
@@ -137,17 +147,43 @@ def pin() -> dict:
     tinyproxy = _apk_version(f"alpine:{im['alpine']}@{got['alpine']}", "tinyproxy")
     _set_toml_value(pins_file, "tinyproxy", tinyproxy)
     got["tinyproxy"] = tinyproxy
-    for arm_name in _existing(config.all_arms()):              # OD9 B: tag -> commit SHA, recorded per plugin
+    plugin_shas, plugin_errors = _pin_plugins(_existing(config.all_arms()))
+    got.update(plugin_shas)
+    if plugin_errors:
+        got["errors"] = plugin_errors
+        for key, msg in plugin_errors.items():
+            print(f"WARNING: parked {key}: {msg} (review B2 — build_all skips this arm)")
+    print("Pinned. Review `git diff runner/config` and commit it.")
+    return got
+
+
+def _unpinned_plugins(arm: config.Arm) -> list[str]:
+    """Names of `arm`'s plugins with no recorded commit yet — `images pin` couldn't resolve their tag on
+    the remote and parked them instead of raising (review B2). `build_all` refuses to build an image for
+    an arm with any unpinned plugin."""
+    return [pl.name for pl in arm.plugins if not pl.sha]
+
+
+def _pin_plugins(arm_names: list[str]) -> tuple[dict, dict]:
+    """For every plugin in every named arm: resolve its pinned tag to a commit SHA and write it into the
+    arm's toml (OD9 B). A plugin whose tag doesn't exist on the remote is parked, not fatal (review B2:
+    e.g. bmad-plugins carries no `v6.12.0` tag) — its sha stays empty and the failure is returned in the
+    second dict, keyed `<arm>:<plugin>`, instead of raising."""
+    from runner import gitops                                  # Task 8 extends this module; lazy so a
+    got, errors = {}, {}                                        # gitops-free caller need not import it
+    for arm_name in arm_names:
         arm_file = config.ARMS_DIR / f"{arm_name}.toml"
         for pl in config.load_arm(arm_name).plugins:
-            from runner import gitops                          # Task 8; imported lazily so Task 2 stands alone
-            commit = gitops.ls_remote_tag(pl.repo, pl.tag)
+            try:
+                commit = gitops.ls_remote_tag(pl.repo, pl.tag)
+            except gitops.TagNotFound as e:
+                errors[f"{arm_name}:{pl.name}"] = str(e)
+                continue
             text = arm_file.read_text()
             text = text.replace(f'tag = "{pl.tag}", sha = "{pl.sha}"', f'tag = "{pl.tag}", sha = "{commit}"', 1)
             arm_file.write_text(text)
             got[f"{arm_name}:{pl.name}"] = commit
-    print("Pinned. Review `git diff runner/config` and commit it.")
-    return got
+    return got, errors
 
 
 def _versions(tag: str, extra: dict[str, list[str]]) -> dict[str, str]:
@@ -157,6 +193,8 @@ def _versions(tag: str, extra: dict[str, list[str]]) -> dict[str, str]:
         text = (r.stdout or r.stderr).strip()
         if name == "cc-sdd" and r.returncode == 0:
             text = npm_version(r.stdout, "cc-sdd")
+        if name == "specify" and r.returncode == 0:
+            text = specify_version(r.stdout)
         out[name] = text.splitlines()[0] if text else f"exit {r.returncode}"
     return out
 
@@ -185,6 +223,12 @@ def build_all(arms: list[str], rebuild: bool = False) -> dict:
     lock["images"][im["base"]]["versions"] = _versions(im["base"], {})
     for name in _existing(arms):
         arm = config.load_arm(name)
+        unpinned = _unpinned_plugins(arm)
+        if unpinned:                                            # review B2: park, don't fail the other arms
+            lock["arms"][name] = {"image": arm.image,
+                                   "error": f"unpinned plugin(s) {unpinned}: tag not resolved by `images pin`"}
+            print(f"WARNING: skipping {name}: unpinned plugin(s) {unpinned} (review B2)")
+            continue
         df = IMAGES / "arm" / name / "Dockerfile"
         if df.exists():
             _build(arm.image, IMAGES / "arm" / name, BASE_IMAGE=im["base"],

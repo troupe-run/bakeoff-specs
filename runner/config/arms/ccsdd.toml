@@ -1,0 +1,26 @@
+name = "ccsdd"
+tool = "gotalab/cc-sdd"
+version = "3.1.0"
+citation = "CANDIDATES §1.7a"
+image = "bakeoff-arm-ccsdd:1"
+tracker = "github"
+repo_name = "bakeoff-specs-ccsdd"
+env = {}
+
+[egress]
+setup = []
+run = ['^api\.github\.com$']
+
+[setup]
+shell = []
+agent = []
+plugins = []
+manifest_paths = [".claude", ".kiro/settings"]
+
+[drive]
+entry = "{handoff}"
+bug_entry = "{handoff}"
+must_run = []
+must_run_source = ""
+fresh_session_before = []
+export_after = ""
