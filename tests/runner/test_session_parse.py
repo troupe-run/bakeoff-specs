@@ -97,19 +97,19 @@ def test_auth_words_in_a_successful_reply_do_not_make_it_a_fault():
     p = parse_stream([INIT, j(type="result", is_error=False, result="I fixed the 'Not logged in' message")])
     assert p.outcome == "ok"
 
-FIXTURE = Path(__file__).parent / "fixtures" / "stream-authenticated-shape.jsonl"
+FIXTURE = Path(__file__).parent / "fixtures" / "stream-probe-p1.jsonl"
 
-def test_a_realistic_authenticated_stream_parses_to_its_result():          # fix round 1, item 6
-    # Shape of the owner's authenticated run (FINDINGS addendum: init -> assistant(thinking, tool_use) ->
-    # rate_limit_event -> user tool_result -> assistant -> result, $0.0298). The spike did not save that
-    # stream, so the event bodies are reconstructed from Claude Code's stream-json shape, ids scrubbed.
+def test_the_real_probe_stream_parses_to_its_result():
+    # The real stream of probe P1 (results/probe/P1-stream.jsonl.gz, gunzipped, 2026-09-30): Claude Code 2.1.281,
+    # a "Reply with the word ok" turn on the control arm: init -> assistant(text) -> rate_limit_event -> result.
+    # Byte-for-byte as recorded; nothing scrubbed (the secret scanner found nothing, and the only path is /work/...).
     p = parse_stream(FIXTURE.read_text().splitlines())
-    assert p.outcome == "ok" and p.final_text == "Done."
-    assert p.session_id == "00000000-0000-4000-8000-000000000000"
+    assert p.outcome == "ok" and p.final_text == "ok"
+    assert p.session_id == "fe8a40e9-0fa9-4f2a-bfc6-4744ad59449a"
     assert p.init["model"] == "claude-opus-5-5" and p.init["claude_code_version"] == "2.1.281"
-    assert p.cost_usd == 0.0298 and p.retries == []
-    assert p.result["num_turns"] == 2 and p.result["duration_ms"] == 8123 and p.result["duration_api_ms"] == 7011
-    assert p.result["usage"]["output_tokens"] == 66
+    assert p.cost_usd == 0.0376834 and p.retries == []
+    assert p.result["num_turns"] == 1 and p.result["duration_ms"] == 2393 and p.result["duration_api_ms"] == 2268
+    assert p.result["usage"]["output_tokens"] == 4
     assert list(p.result["modelUsage"]) == ["claude-opus-5-5"]
 
 
