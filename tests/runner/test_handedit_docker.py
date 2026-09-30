@@ -175,7 +175,9 @@ def test_new_ignored_paths_and_an_untracked_nested_repo_are_removed_and_a_preexi
     (p.repo / ".venv").mkdir(); (p.repo / ".venv" / "pyvenv.cfg").write_text("home = /usr\n")
     before = gitops.ignored(p)
     assert before == [".venv/"]
-    (p.repo / "a.py").write_text("x = 2\n")
+    # follow-up 11: a different SIZE (not just content), so git sees the change even when the write lands in the
+    # same second as the index entry (racy-git: same size and mtime look unchanged from inside the container)
+    (p.repo / "a.py").write_text("x = 20\n")
     (p.repo / "build").mkdir(); (p.repo / "build" / "out.bin").write_bytes(b"\0")
     gitops.git(p, "init", "-q", "vendor/lib", write=True)                 # a nested repo, made in a container
     (p.repo / "vendor" / "lib" / "x.txt").write_text("y\n")
