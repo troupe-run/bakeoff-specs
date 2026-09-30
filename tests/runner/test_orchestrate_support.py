@@ -143,3 +143,23 @@ def test_cli_setup_again_goes_through_orchestration(tmp_state, monkeypatch, caps
                         got.append((pass_, arm, again)) or checklist.SetupResult([], {}, True, 0.0))
     assert cli.main(["setup", "pass1", "control", "--again"]) == 0
     assert got == [("pass1", "control", True)]
+
+
+# ---- parked: run-log.jsonl readers tolerate a partial trailing line ---------------------------------------------------
+
+def test_a_partial_trailing_run_log_line_is_skipped_and_recorded(tmp_state):
+    import json
+    f = paths.RESULTS / "dry4" / "run-log.jsonl"
+    f.parent.mkdir(parents=True)
+    f.write_text(json.dumps({"event": "run-ended", "step": 1, "run": "b"}) + "\n" + '{"event": "run-en')
+    entries, skipped = orchestrate.read_log("dry4")
+    assert entries == [{"event": "run-ended", "step": 1, "run": "b"}] and skipped == [{"line": 2, "bytes": 17}]
+
+
+def test_a_log_write_after_a_partial_line_starts_a_new_line(tmp_state):
+    f = paths.RESULTS / "dry4" / "run-log.jsonl"
+    f.parent.mkdir(parents=True)
+    f.write_text('{"event": "run-en')
+    orchestrate._Run("dry4", [], None, None, None, []).log("parked", arm="x")
+    entries, skipped = orchestrate.read_log("dry4")
+    assert [e["event"] for e in entries] == ["parked"] and skipped == [{"line": 1, "bytes": 17}]

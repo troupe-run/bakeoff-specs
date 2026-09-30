@@ -106,6 +106,41 @@ class _Guard:
         return getattr(self._o, name)
 
 
+def _log_line(pass_: str, rec: dict) -> None:
+    """Append one record to `results/<pass>/run-log.jsonl`. A crash can leave a partial last line: the next record
+    starts on a new line, so it is never glued onto it."""
+    f = paths.RESULTS / pass_ / "run-log.jsonl"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    with open(f, "ab+") as fh:
+        fh.seek(0, 2)
+        lead = b""
+        if fh.tell():
+            fh.seek(-1, 2)
+            lead = b"" if fh.read(1) == b"\n" else b"\n"
+        fh.write(lead + (json.dumps(rec, default=str) + "\n").encode())
+
+
+def read_log(pass_: str) -> tuple[list[dict], list[dict]]:
+    """(entries, skipped): the run log's records; a line that is not a whole JSON object (a partial line left by a
+    crash) is skipped and recorded as {"line", "bytes"}, never fatal."""
+    f = paths.RESULTS / pass_ / "run-log.jsonl"
+    entries, skipped = [], []
+    if not f.is_file():
+        return entries, skipped
+    for i, line in enumerate(f.read_bytes().split(b"\n"), 1):
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            rec = None
+        if isinstance(rec, dict):
+            entries.append(rec)
+        else:
+            skipped.append({"line": i, "bytes": len(line)})
+    return entries, skipped
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -192,10 +227,7 @@ class _Run:
 
     # -- records ------------------------------------------------------------------------------------------------
     def log(self, event: str, **kw) -> None:
-        f = paths.RESULTS / self.pass_ / "run-log.jsonl"
-        f.parent.mkdir(parents=True, exist_ok=True)
-        with open(f, "a") as fh:
-            fh.write(json.dumps({"at": _now(), "event": event, **kw}, default=str) + "\n")
+        _log_line(self.pass_, {"at": _now(), "event": event, **kw})
 
     def park(self, arm: str | None, step: int | None, run: str | None, what: str, park=None) -> str:
         item = {"arm": arm, "step": step, "run": run, "what": what}
@@ -1076,11 +1108,8 @@ def _setup(pass_: str, arm: str, cred, owner, again: bool = False):
     except checklist.SetupParked as x:
         rec = {"at": _now(), "park": dataclasses.asdict(x.park) if dataclasses.is_dataclass(x.park) else str(x.park)}
         _jw(p.setup_results / "parked.json", rec)
-        f = paths.RESULTS / pass_ / "run-log.jsonl"
-        f.parent.mkdir(parents=True, exist_ok=True)
-        with open(f, "a") as fh:
-            fh.write(json.dumps({"at": _now(), "event": "parked", "arm": arm, "step": 0, "run": None,
-                                 "what": "setup", "park": rec["park"]}, default=str) + "\n")
+        _log_line(pass_, {"at": _now(), "event": "parked", "arm": arm, "step": 0, "run": None, "what": "setup",
+                          "park": rec["park"]})
         raise
     except HarnessFault as f:
         action = faults.record(f, pass_, arm, 0, 0)
@@ -1378,17 +1407,17 @@ def _gate_dry4() -> list[tuple[str, bool, str]]:
     br = _jr(p.results / "breaches.json", []) or []
     rs = _jr(p.results / "resume.json", {}) or {}
     review = ((_jr(p.progress, {}) or {}).get("steps", {}).get("1") or {}).get("review")
-    f = paths.RESULTS / "dry4" / "run-log.jsonl"
-    log = [json.loads(l) for l in f.read_text().splitlines() if l.strip()] if f.is_file() else []
+    log, skipped = read_log("dry4")
     ended = [(e.get("step"), e.get("run")) for e in log if e.get("event") == "run-ended"]
     one_b = ended.count((1, "b"))
     paused = rs.get("paused_after", rs.get("paused_at"))
-    pr = review == "pause" and one_b == 1 and paused == 1 and (7, "b") in ended
+    last = ended[-1] if ended else None
+    pr = review == "pause" and one_b == 1 and paused == 1 and last == (7, "b")      # the run ended at 7.b
     return [("dry4 transient retry", any(str(i).startswith("transient-retry:") for i in iv), f"1.b interventions {iv}"),
             ("dry4 timeout owned by the arm", any(b.get("breach") == "turn_seconds" and b.get("owner") == "arm" for b in br),
              f"breaches {br}"),
             ("dry4 pause and resume", pr, f"progress step 1 review {review!r}; resume.json {rs}; run-ended 1.b x{one_b}; "
-                                          f"7.b {'ended' if (7, 'b') in ended else 'not ended'}")]
+                                          f"last run-ended {last}; run-log lines skipped: {len(skipped)}")]
 
 
 def _trim(text: str) -> str:

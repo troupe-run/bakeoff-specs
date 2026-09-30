@@ -253,6 +253,8 @@ BREAKERS = {
     "dry4 pause and resume (1.b twice)": lambda: (paths.RESULTS / "dry4/run-log.jsonl").open("a").write(
         json.dumps({"event": "run-ended", "step": 1, "run": "b"}) + "\n"),
     "dry4 pause and resume (no resume record)": lambda: (paths.RESULTS / "dry4/dryrun-edge/resume.json").unlink(),
+    "dry4 pause and resume (7.b not the last run)": lambda: (paths.RESULTS / "dry4/run-log.jsonl").open("a").write(
+        json.dumps({"event": "run-ended", "step": 3, "run": "a"}) + "\n"),
 }
 
 
@@ -330,3 +332,19 @@ def test_cli_dry_run_exits_1_unless_the_report_says_pass(ev, monkeypatch, capsys
     monkeypatch.setattr(orchestrate, "dry_report", failing)
     assert cli.main(["dry-run", "--report"]) == 1
     assert cli.main(["dry-run"]) == 0                                    # no report asked: the results, as JSON
+
+
+# ---- parked Task 24 items ---------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("missing", ["dry1/dryrun/04/hidden/summary.json", "dry1/dryrun/03/a/discovery.json",
+                                     "dry2/dryrun-broken/arm-result.json", "dry4/run-log.jsonl"])
+def test_report_only_with_a_missing_evidence_file_fails(ev, missing):
+    (paths.RESULTS / missing).unlink()
+    assert cli.main(["dry-run", "--report-only"]) == 1
+    assert (paths.RESULTS / "dryrun-validation.md").read_text().rstrip().endswith("**Result: FAIL**")
+
+
+def test_a_partial_trailing_run_log_line_does_not_break_the_dry4_gate_and_is_reported(ev):
+    (paths.RESULTS / "dry4/run-log.jsonl").open("a").write('{"event": "run-en')
+    rep = report()
+    assert rep.rstrip().endswith("**Result: PASS**") and "run-log lines skipped: 1" in rep
