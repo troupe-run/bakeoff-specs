@@ -349,3 +349,13 @@ def test_the_owner_is_told_the_brief_body_is_their_call(fake_orch):
     real(fake_orch)
     [items] = fake_orch.owner.item_calls
     assert "po-brief.md" in items[0][1] and "your call" in items[0][1]
+
+
+def test_close_out_asks_for_every_discovery_pat_to_be_revoked_too(finished):              # final fix batch A3
+    asked = []
+    finished.orch.owner.items_answer = lambda items: asked.extend(i for i, _ in items) or \
+        {i: (True, "", 0.0) for i, _ in items}
+    orchestrate.close_out("pass1", finished.orch.owner)
+    assert {"pat-control", "pat-disc-control", "pat-openspec", "pat-disc-openspec"} <= set(asked)
+    text = (paths.RESULTS / "pass1" / "close-out.md").read_text()
+    assert "bakeoff-gh-pass1-disc-control" in text

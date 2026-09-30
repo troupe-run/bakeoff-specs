@@ -641,6 +641,18 @@ def keychain_pat(pass_: str, arm: str) -> str | None:
     return _KEYCHAIN[key]      # type: ignore[return-value]
 
 
+def keychain_disc_pat(pass_: str, arm: str) -> str | None:
+    """The arm's N.a discovery-repo PAT item `bakeoff-gh-<pass>-disc-<arm>` (A3), or None; cached per process."""
+    from runner import credentials
+    key = ("disc", pass_, arm)
+    if key not in _KEYCHAIN:
+        try:
+            _KEYCHAIN[key] = credentials.github_disc_pat(pass_, arm) or None
+        except RuntimeError:
+            _KEYCHAIN[key] = None
+    return _KEYCHAIN[key]      # type: ignore[return-value]
+
+
 def ledger_files(pass_: str) -> list[Path]:
     """The pass's harness-fault ledger, its HALTED record and its resource-exhaustion record (Task 22): real passes
     share `results/faults.jsonl`; every other pass has its own under `results/<pass>/`. Details quote arm and API
@@ -723,6 +735,8 @@ def _keychain_pats() -> list[str]:
             continue
         for pass_ in PAT_PASSES:
             if config.github_slug(pass_, arm) and (v := keychain_pat(pass_, arm)):
+                out.append(v)
+            if config.github_disc_slug(pass_, arm) and (v := keychain_disc_pat(pass_, arm)):
                 out.append(v)
     return out
 

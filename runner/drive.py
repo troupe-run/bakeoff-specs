@@ -88,6 +88,8 @@ class StepCtx:
     contract: str | None = None  # the FULL contract: the PO's view is then `po.step_view` (required at step 5)
     later_sent: int = 0          # how many `later_messages` were sent (drive state across attempts; a harness
                                  # restore that re-sends the first message must reset it to 0)
+    run: str = "b"               # "a" (N.a discovery) | "b" (N.b scored): N.a's GitHub tracker is the arm's
+                                 # discovery repo (final fix batch A3; set by stepflow.run_step)
 
 
 @dataclass
@@ -195,7 +197,7 @@ def _turn(ctx: StepCtx, st, attempt: int, n: int, message: str, resume: str | No
     p, pins, arm = ctx.paths, ctx.pins, ctx.arm
     image = pins.images["dryrun"] if arm.dry else arm.image
     env = credentials.session_env(pins, arm, role="arm", isolated=False, resume=resume or "",
-                                  mcp=(p.home / ".bk-mcp.json").exists(), pass_=ctx.pass_)
+                                  mcp=(p.home / ".bk-mcp.json").exists(), pass_=ctx.pass_, disc=ctx.run == "a")
     t = session.Turn(ctx.pass_, arm.name, ctx.step, attempt, n, image, message, env,
                      [Mount(p.home, p.container_home, False), Mount(p.work, "/work", False)], st.net, True,
                      p.container_repo, p.inbox("arm"), "arm", arm.dry, p.config_dir)
@@ -237,6 +239,8 @@ def run_attempt(ctx: StepCtx, attempt: int, message: str, resume: str | None = N
                 stop_at_first_gate_or_code: bool = False) -> AttemptResult:
     checklist.require_clean_green(ctx.paths)                  # ruling 8: never drive a dirty or non-green setup
     repo.recover(ctx.paths)                                   # ruling 6: before the arm's home/work is touched
+    if ctx.run == "a":                                        # A3: N.a's tracker is the arm's discovery repo
+        checklist.install_disc_pat(ctx.paths, ctx.arm, ctx.pass_)
     _po_view(ctx)                                             # ruling 3: refuse a step-5 ctx before any turn
     res = AttemptResult("stalled", resume)
     try:

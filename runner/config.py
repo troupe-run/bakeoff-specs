@@ -246,6 +246,17 @@ def github_slug(pass_: str, arm: str) -> str | None:
     return None
 
 
+def github_disc_slug(pass_: str, arm: str) -> str | None:
+    """The arm's private DISCOVERY repo for N.a (final fix batch A3, owner): `troupe-run/bakeoff-specs-<arm>-<pass>-disc`,
+    only for GitHub-tracker arms on passes with a repo. N.a's GH_REPO and PAT point here, so nothing an arm files,
+    comments or closes during discovery reaches the tracker N.b starts from. Beads (speckitty) keeps its issues in
+    the work tree, so the pre-step snapshot restore already resets them; the dry tracker lives beside the arm."""
+    a = load_arm(arm)
+    if a.tracker != "github" or a.dry or github_slug(pass_, arm) is None:
+        return None
+    return f"{GITHUB_ORG}/bakeoff-specs-{arm}-{pass_}-disc"
+
+
 def all_arms() -> list[str]:
     """Every real arm, parked ones included (setup checklists, config tests)."""
     return list(REAL_ARMS)

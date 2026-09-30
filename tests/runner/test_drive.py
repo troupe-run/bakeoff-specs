@@ -687,3 +687,38 @@ def test_the_never_code_directories_are_one_named_constant_turned_into_exclude_p
     assert set(gitops.NEVER_CODE) == {".venv", "venv", "__pycache__", ".mypy_cache", ".ruff_cache", ".pytest_cache",
                                       "node_modules"}
     assert ":(exclude,glob)**/node_modules/**" in gitops.never_code_pathspecs()
+
+
+# ---- final fix batch A3: N.a uses the arm's discovery tracker ---------------------------------------------------------
+
+def test_an_na_attempt_installs_the_discovery_pat_and_points_gh_at_the_discovery_repo(rig, monkeypatch):
+    import dataclasses
+    from runner.paths import Paths
+    sent, script, _, ctx = rig
+    ctx = dataclasses.replace(ctx, pass_="pass1", arm=drive.config.load_arm("control"),
+                              paths=Paths("pass1", "control"), run="a")
+    envs, installed = [], []
+    monkeypatch.setattr(drive.checklist, "install_disc_pat", lambda p, arm, pass_: installed.append((arm.name, pass_)))
+    real = drive.session.run_turn
+    monkeypatch.setattr(drive.session, "run_turn", lambda t, *a: envs.append(t.env) or real(t, *a))
+    monkeypatch.setattr(drive.gitops, "content_state", lambda p: {})
+    script["arm"] = [TR("done")]
+    script["po"] = [D("step_done")]
+    drive.run_attempt(ctx, 1, "go", stop_at_first_gate_or_code=True)
+    assert installed == [("control", "pass1")]
+    assert envs[0]["GH_REPO"] == "troupe-run/bakeoff-specs-control-pass1-disc"
+
+
+def test_an_nb_attempt_keeps_the_normal_repo_and_pat(rig, monkeypatch):
+    import dataclasses
+    from runner.paths import Paths
+    sent, script, _, ctx = rig
+    ctx = dataclasses.replace(ctx, pass_="pass1", arm=drive.config.load_arm("control"), paths=Paths("pass1", "control"))
+    envs = []
+    monkeypatch.setattr(drive.checklist, "install_disc_pat", lambda *a: pytest.fail("N.b got the discovery PAT"))
+    real = drive.session.run_turn
+    monkeypatch.setattr(drive.session, "run_turn", lambda t, *a: envs.append(t.env) or real(t, *a))
+    script["arm"] = [TR("done")]
+    script["po"] = [D("step_done")]
+    drive.run_attempt(ctx, 1, "go")
+    assert envs[0]["GH_REPO"] == "troupe-run/bakeoff-specs-control-pass1"

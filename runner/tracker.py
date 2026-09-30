@@ -23,7 +23,9 @@ SUPERSEDED = "Superseded by a harness re-run"
 
 # Whether a backend's issues survive `repo.restore` (preflight M9). GitHub lives off-host; dry files live in the
 # arm base beside (not inside) the snapshotted home/work trees; beads lives in the work tree, so a restore to a
-# snapshot taken before the issue was filed removes it.
+# snapshot taken before the issue was filed removes it. N.a (final fix batch A3): a GitHub arm's discovery run uses
+# its own discovery repo (`config.github_disc_slug`), so N.b starts from a clean tracker; beads (speckitty) lives in
+# git, so the restore at the end of N.a already resets whatever N.a did to it.
 SURVIVES_RESTORE = {"github": True, "dry": True, "beads": False}
 
 # Who files the harness's issues (fix round 1): beads records the actor; GitHub records the owner's own login,
@@ -176,7 +178,9 @@ def _gh(argv: list[str]) -> str:
 
 
 def _slug(ctx) -> str:
-    slug = config.github_slug(ctx.pass_, ctx.arm.name)
+    """The arm's repo; in N.a (`ctx.run == "a"`) its discovery repo (final fix batch A3)."""
+    disc = getattr(ctx, "run", "b") == "a"
+    slug = (config.github_disc_slug if disc else config.github_slug)(ctx.pass_, ctx.arm.name)
     if not slug:
         raise RuntimeError(f"no GitHub repo for {ctx.arm.name} on pass {ctx.pass_!r}; the github tracker needs one")
     return slug

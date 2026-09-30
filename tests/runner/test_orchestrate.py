@@ -714,7 +714,7 @@ def test_close_out_scans_checks_bundles_and_asks_for_every_pat_revocation(fake_o
     text = f.read_text()
     assert "secret scan: clean" in text and "bundles: all present" in text
     ids = [i for i, _ in fake_orch.owner.item_calls[-1]]
-    assert ids == ["pat-openspec", "pat-control"]
+    assert ids == ["pat-openspec", "pat-control", "pat-disc-openspec", "pat-disc-control"]      # A3: + discovery
     assert "- [x] pat-openspec" in text
 
 
@@ -784,3 +784,44 @@ def test_a_tracker_fault_filing_the_step6_issue_is_recorded_in_the_ledger(fake_o
         dry(fake_orch)
     [e] = faults.entries("dry7")
     assert (e["kind"], e["signature"], e["step"]) == ("infra-tracker", "create", 6)
+
+
+# ---- final fix batch A3: N.a's discovery tracker ----------------------------------------------------------------------
+
+def test_a_github_arms_6a_gets_its_bug_in_the_discovery_repo_and_6b_the_normal_one(fake_orch):
+    real(fake_orch)
+    runs = [(a, run) for a, n, run, _ in fake_orch.bug_runs if n == 6]
+    assert sorted(runs) == sorted([(a, r) for a in ARMS for r in ("a", "b")])
+    num = {(a, run): k for a, n, run, k in fake_orch.bug_runs if n == 6}
+    for a in ARMS:
+        assert f"troupe-run/x#{num[(a, 'a')]}." in fake_orch.firsts[(a, 6, "a")]
+        assert f"troupe-run/x#{num[(a, 'b')]}." in fake_orch.firsts[(a, 6, "b")]
+    assert fake_orch.ctxs[("openspec", 6, "a")].run == "a" and fake_orch.ctxs[("openspec", 6, "b")].run == "b"
+
+
+def test_a_dry_arms_6a_and_6b_share_the_one_issue(fake_orch):
+    dry(fake_orch)
+    assert [(n, run) for _, n, run, _ in fake_orch.bug_runs] == [(6, "b")]
+
+
+def test_a_declared_rerun_of_an_earlier_step_closes_the_stale_step6_issue(fake_orch):
+    dry(fake_orch)
+    assert cli.main(["faults", "declare", "dry7", "dryrun", "3", "wrong-brief", "--scope", "rerun-step"]) == 0
+    fake_orch.calls.clear()
+    dry(fake_orch)
+    c = fake_orch.calls
+    assert ("supersede", "dryrun", "troupe-run/x#1") in c
+    assert c.index(("supersede", "dryrun", "troupe-run/x#1")) < c.index(("create_bug", "dryrun", None))
+    assert progress("dry7", "dryrun").get("stale_issues") == []
+
+
+def test_a_parked_close_of_a_stale_issue_is_retried_on_the_next_run(fake_orch):
+    dry(fake_orch)
+    assert cli.main(["faults", "declare", "dry7", "dryrun", "3", "wrong-brief", "--scope", "rerun-step"]) == 0
+    fake_orch.owner.confirm_answer = lambda text: PARK if text.startswith("Close") else True
+    r = dry(fake_orch)
+    assert "parked" in r and progress("dry7", "dryrun")["stale_issues"]
+    fake_orch.owner.confirm_answer = lambda text: True
+    fake_orch.calls.clear()
+    dry(fake_orch)
+    assert ("supersede", "dryrun", "troupe-run/x#1") in fake_orch.calls

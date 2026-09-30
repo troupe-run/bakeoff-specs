@@ -493,6 +493,35 @@ def _install_github_pat(p: Paths, arm: config.Arm, pass_: str) -> bool:
     return True
 
 
+def install_disc_pat(p: Paths, arm: config.Arm, pass_: str) -> bool:
+    """N.a (final fix batch A3): the arm's discovery-repo PAT (keychain `bakeoff-gh-<pass>-disc-<arm>`) replaces the
+    normal one in `home/.config/gh/hosts.yml` (and `home/.bk-mcp.json` for an MCP arm), created 0600 in one step.
+    The home comes back from the pre-step snapshot at the end of N.a, so N.b has the normal PAT again. The files are
+    arm-writable: a link, or a non-regular file, is refused rather than written through."""
+    if config.github_disc_slug(pass_, arm.name) is None:
+        return False
+    targets = [p.home / ".config" / "gh" / "hosts.yml"]
+    mcp = MCP_DIR / f"{arm.name}.json"
+    if mcp.exists():
+        targets.append(p.home / ".bk-mcp.json")
+    for d in (p.home / ".config", p.home / ".config" / "gh"):
+        if os.path.lexists(d) and (os.path.islink(d) or not d.is_dir()):
+            raise NotReady(f"{d} is a link or not a directory: the arm changed its home; not writing the N.a PAT")
+    for f in targets:
+        if os.path.lexists(f) and (os.path.islink(f) or not stat.S_ISREG(os.lstat(f).st_mode)):
+            raise NotReady(f"{f} is a link or not a regular file: the arm changed its home; not writing the N.a PAT")
+    pat = credentials.github_disc_pat(pass_, arm.name)
+    gh = p.home / ".config" / "gh"
+    for d in (gh.parent, gh):
+        d.mkdir(mode=0o700, exist_ok=True)
+    for f in targets:
+        f.unlink(missing_ok=True)
+    _write_new_private(targets[0], gh_hosts_yml(pat))
+    if len(targets) > 1:
+        _write_new_private(targets[1], mcp.read_text().replace("${GITHUB_PAT}", pat))
+    return True
+
+
 # ---- host checks -----------------------------------------------------------------------------------------
 def _origin_push(p: Paths) -> Check:
     """Preflight B4 (owner answer): `git push origin main` to the local bare origin succeeds and lands main."""

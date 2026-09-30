@@ -263,6 +263,7 @@ class FakeOrch:
         self.owner = OrchOwner()
         self.issues = 0
         self.turns_written: dict = {}
+        self.bug_runs: list = []              # (arm, step, ctx.run, issue number) for every create_bug
 
 
 @_pytest.fixture
@@ -331,6 +332,7 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
             raise RuntimeError("declined")
         env.issues += 1
         env.calls.append(("create_bug", ctx.arm.name, title))
+        env.bug_runs.append((ctx.arm.name, ctx.step, getattr(ctx, "run", "b"), env.issues))
         return tracker.IssueRef("github", f"troupe-run/x#{env.issues}", None, str(env.issues))
     monkeypatch.setattr(tracker, "create_bug", create_bug)
 

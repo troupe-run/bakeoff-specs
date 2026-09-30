@@ -406,6 +406,7 @@ def run_step(ctx, first_message: str, extra: dict | None = None, run: str = "b")
     if run == "a" and ctx.out.name != "a":
         raise ValueError(f"run a keeps its evidence under the step's a/ directory, not {ctx.out}")
     extra, t0 = extra or {}, time.time()
+    ctx.run = run                                    # A3: drive and the tracker use N.a's discovery repo
     attempt, arm_attempts, history, since_restore = 0, 0, [], []
     message, resume = first_message, None
     lim = ctx.pins.limits

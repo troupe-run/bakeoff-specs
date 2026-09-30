@@ -5,7 +5,7 @@ Spike B showed anything inside the actor container is readable by the model's to
 """
 from __future__ import annotations
 import hashlib, subprocess
-from runner.config import Arm, Pins, github_slug
+from runner.config import Arm, Pins, github_disc_slug, github_slug
 
 
 class Credential:
@@ -83,7 +83,17 @@ def github_pat(pass_: str, arm: str) -> str:
     Same hygiene as `from_keychain`: absolute `security`, a timeout, and no exception raised while the output
     is still a frame local. Callers: `checklist._install_github_pat` (the PAT lands in the arm's home, by design:
     the arm's own `gh` uses it) and `secrets.keychain_pat` (a needle for the secret scan, never written)."""
-    service, timed_out = f"bakeoff-gh-{pass_}-{arm}", False
+    return _pat_item(f"bakeoff-gh-{pass_}-{arm}", pass_)
+
+
+def github_disc_pat(pass_: str, arm: str) -> str:
+    """The PAT for the arm's N.a discovery repo (final fix batch A3), keychain item `bakeoff-gh-<pass>-disc-<arm>`;
+    same hygiene as `github_pat`. Callers: `checklist.install_disc_pat` and `secrets` (a needle)."""
+    return _pat_item(f"bakeoff-gh-{pass_}-disc-{arm}", pass_)
+
+
+def _pat_item(service: str, pass_: str) -> str:
+    timed_out = False
     try:
         r = subprocess.run([SECURITY, "find-generic-password", "-s", service, "-w"],
                            capture_output=True, text=True, timeout=KEYCHAIN_TIMEOUT)
@@ -105,9 +115,10 @@ def dummy() -> Credential:
 
 
 def session_env(pins: Pins, arm: Arm, *, role: str, isolated: bool, tools: str = "", resume: str = "",
-                mcp: bool = False, pass_: str = "") -> dict[str, str]:
+                mcp: bool = False, pass_: str = "", disc: bool = False) -> dict[str, str]:
     """Non-secret environment for one Claude session. `pass_` only feeds GH_REPO (preflight M4); it is
-    required for arm sessions so a forgotten pass cannot silently drop GH_REPO (controller ruling)."""
+    required for arm sessions so a forgotten pass cannot silently drop GH_REPO (controller ruling). `disc` (an N.a
+    arm session, final fix batch A3): GH_REPO is the arm's discovery repo, `config.github_disc_slug`."""
     if role == "arm" and not pass_:
         raise ValueError("session_env(role='arm') needs pass_ (it decides GH_REPO, preflight M4)")
     m = pins.model
@@ -126,7 +137,7 @@ def session_env(pins: Pins, arm: Arm, *, role: str, isolated: bool, tools: str =
     if role == "arm" and mcp:
         env["BK_MCP_CONFIG"] = "/home/actor/.bk-mcp.json"        # OD24 B with MCP only (speckit)
     if role == "arm" and arm.tracker == "github" and not arm.dry:
-        slug = github_slug(pass_, arm.name)
+        slug = (github_disc_slug if disc else github_slug)(pass_, arm.name)
         if slug:
             env["GH_REPO"] = slug                                 # M4: origin is local (B4), so gh needs this
     if isolated:

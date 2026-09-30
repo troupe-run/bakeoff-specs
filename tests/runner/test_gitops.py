@@ -195,7 +195,8 @@ def test_github_plan_prints_private_repos_for_the_active_arms_and_runs_nothing(m
     monkeypatch.setattr(repo.subprocess, "run", boom)
     monkeypatch.setattr(gitops.subprocess, "run", boom)
     cmds = repo.github_plan("pass1")
-    assert len(cmds) == 6 and all(c.startswith("gh repo create troupe-run/bakeoff-specs-") and "--private" in c for c in cmds)
+    assert all(c.startswith("gh repo create troupe-run/bakeoff-specs-") and "--private" in c for c in cmds)
+    assert len([c for c in cmds if "-disc " not in c]) == 6 and len(cmds) == 11      # + 5 N.a discovery repos (A3)
     assert not any("bakeoff-specs-bmad" in c for c in cmds)                  # bmad is parked (until BMAD 6.13)
 
 
@@ -232,7 +233,8 @@ def test_verify_checks_only_the_active_arms_repos(monkeypatch):            # Tas
                               "stdout": '{"visibility": "PRIVATE", "hasIssuesEnabled": true, "isEmpty": true}'})()
     monkeypatch.setattr(repo.subprocess, "run", fake)
     res = repo.github_verify("pass1")
-    assert "bmad" not in res and set(res) - {"_public_repos"} == set(config.active_arms())
+    assert "bmad" not in res and "bmad-disc" not in res
+    assert {k for k in res if not k.startswith("_") and not k.endswith("-disc")} == set(config.active_arms())
 
 
 def test_verify_passes_only_when_every_repo_is_private_empty_with_issues(monkeypatch):
@@ -248,7 +250,7 @@ def test_verify_passes_only_when_every_repo_is_private_empty_with_issues(monkeyp
 def test_cli_github_plan_prints_the_creates_and_pat_instructions_for_active_github_tracker_arms(capsys):
     assert cli.main(["github-plan", "pass1"]) == 0
     out = capsys.readouterr().out
-    assert out.count("gh repo create") == 6 and "bmad" not in out            # Task 23: bmad is parked
+    assert out.count("gh repo create") == 11 and "bmad" not in out           # Task 23: bmad is parked; A3: + disc
     assert "bakeoff-gh-pass1-control" in out and "expiration: 45 days" in out
     assert "bakeoff-gh-pass1-speckitty" not in out                       # beads tracker: no PAT
 

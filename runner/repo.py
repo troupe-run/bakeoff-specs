@@ -231,18 +231,23 @@ def bundle(p: Paths, dest: Path) -> Path:
 
 
 def github_plan(pass_: str) -> list[str]:
-    """The `gh repo create` commands for the owner to run, for the active arms (parked ones have no repo). Runs
-    nothing."""
+    """The `gh repo create` commands for the owner to run, for the active arms (parked ones have no repo), plus each
+    GitHub-tracker arm's private N.a discovery repo (final fix batch A3). Runs nothing."""
     out = []
     for arm in config.active_arms():
         a = config.load_arm(arm)
         out.append(f'gh repo create {github_slug(pass_, arm)} --private '
                    f'--description "bakeoff-specs arm: {a.tool} {a.version} ({pass_})"')
+    for arm in config.active_arms():
+        if (disc := config.github_disc_slug(pass_, arm)):
+            a = config.load_arm(arm)
+            out.append(f'gh repo create {disc} --private '
+                       f'--description "bakeoff-specs arm: {a.tool} {a.version} ({pass_}, N.a discovery tracker)"')
     return out
 
 
 def pat_instructions(pass_: str) -> list[str]:
-    """One fine-grained PAT per GitHub-tracker arm (OD16)."""
+    """One fine-grained PAT per GitHub-tracker arm (OD16), and one for its N.a discovery repo (A3)."""
     out = []
     for arm in config.active_arms():
         if config.load_arm(arm).tracker != "github":
@@ -251,15 +256,23 @@ def pat_instructions(pass_: str) -> list[str]:
                    f"`{github_slug(pass_, arm)}`; permissions: Issues read/write, Metadata read; "
                    f"**expiration: 45 days**. Store it with `security add-generic-password "
                    f"-s bakeoff-gh-{pass_}-{arm} -a \"$USER\" -w`.")
+        if (disc := config.github_disc_slug(pass_, arm)):
+            out.append(f"{arm} (N.a discovery): Create a fine-grained token: resource owner {ORG}; repository "
+                       f"access: only `{disc}`; permissions: Issues read/write, Metadata read; **expiration: 45 "
+                       f"days**. Store it with `security add-generic-password -s bakeoff-gh-{pass_}-disc-{arm} "
+                       f"-a \"$USER\" -w`.")
     return out
 
 
 def github_verify(pass_: str) -> dict:
+    """Every active arm's repo, and every GitHub-tracker arm's N.a discovery repo as `<arm>-disc` (A3)."""
     res: dict = {}
-    for arm in config.active_arms():
-        r = subprocess.run(["gh", "repo", "view", github_slug(pass_, arm), "--json",
+    repos = [(arm, github_slug(pass_, arm)) for arm in config.active_arms()]
+    repos += [(f"{arm}-disc", d) for arm in config.active_arms() if (d := config.github_disc_slug(pass_, arm))]
+    for key, slug in repos:
+        r = subprocess.run(["gh", "repo", "view", slug, "--json",
                             "visibility,hasIssuesEnabled,isEmpty"], capture_output=True, text=True)
-        res[arm] = json.loads(r.stdout) if r.returncode == 0 else {"error": r.stderr.strip()}
+        res[key] = json.loads(r.stdout) if r.returncode == 0 else {"error": r.stderr.strip()}
     r = subprocess.run(["gh", "repo", "list", ORG, "--visibility", "public", "--json", "name", "--limit", "500"],
                        capture_output=True, text=True)
     res["_public_repos"] = [x["name"] for x in json.loads(r.stdout)] if r.returncode == 0 else ["<gh error>"]

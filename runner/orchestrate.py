@@ -221,13 +221,13 @@ class _Run:
                        f"{what} failed; fix it, then run again")
 
     # -- the step context ----------------------------------------------------------------------------------------
-    def ctx(self, arm_name: str, step: int, out: Path, e: dict) -> drive.StepCtx:
+    def ctx(self, arm_name: str, step: int, out: Path, e: dict, run: str = "b") -> drive.StepCtx:
         arm, p = config.load_arm(arm_name), Paths(self.pass_, arm_name)
         return drive.StepCtx(pass_=self.pass_, arm=arm, step=step, paths=p, pins=self.pins, out=out,
                              contract_in_force=handoff.in_force(step, self.contract),
                              step_brief=BRIEFS[step - 1].read_text(), brief_path=paths.brief_path(self.pass_),
                              cred=self.cred, owner=self.owner, sha_before=e.get("sha_before") or "",
-                             snapshot=e.get("snapshot"), contract=self.contract)
+                             snapshot=e.get("snapshot"), contract=self.contract, run=run)
 
     # -- before a step starts (once) ----------------------------------------------------------------------------
     def begin(self, arm_name: str, step: int, prog: dict) -> str | None:
@@ -238,6 +238,8 @@ class _Run:
             if self._hand_edit(arm_name, p, prog, e, out) == "parked":
                 return "parked"
         elif step == 6:
+            if self._close_stale(arm_name, prog) == "parked":        # never two bug reports in front of the arm
+                return "parked"
             if not e.get("issue"):
                 got = self._file_issue(arm_name, p, prog, e, out)
                 if got == "parked":
@@ -352,21 +354,66 @@ class _Run:
                       or i.get("ref") == ref.ref), None)
         return hashlib.sha256(json.dumps(match, sort_keys=True, default=str).encode()).hexdigest() if match else "absent"
 
-    def _fresh_issue(self, ctx, e: dict, prog: dict) -> str | None:
-        """Before any run of step 6 and on a harness restore inside it: an issue the arm touched (or that is gone) is
-        superseded and a new one filed (GitHub issues cannot be rolled back). Returns the new bug message, or None."""
-        ref = tracker.IssueRef(**e["issue"])
-        if self._issue_fp(ctx, ref) == e.get("issue_fp"):
-            return None
+    @staticmethod
+    def _bug(e: dict) -> tuple[str | None, str | None]:
         sub = e.get("substitute") or {}
-        title, body = (sub["title"], sub["body"]) if sub.get("choice") == "substitute" else (None, None)
-        new = tracker.create_bug(dataclasses.replace(ctx, out=ctx.paths.step(6)), self.guard, title=title, body=body)
-        tracker.supersede(dataclasses.replace(ctx, out=ctx.paths.step(6)), ref, self.guard, new)
-        e["issue"], e["issue_fp"] = dataclasses.asdict(new), self._issue_fp(ctx, new)
+        return (sub["title"], sub["body"]) if sub.get("choice") == "substitute" else (None, None)
+
+    def _fresh_issue(self, ctx, e: dict, prog: dict, key: str = "issue") -> str | None:
+        """Before any run of step 6 and on a harness restore inside it: an issue the arm touched (or that is gone) is
+        superseded and a new one filed (GitHub issues cannot be rolled back). Returns the new bug message, or None.
+        `key` "issue_a": the copy in a GitHub arm's N.a discovery repo (A3), recorded under `06/a/`."""
+        ref = tracker.IssueRef(**e[key])
+        if self._issue_fp(ctx, ref) == e.get(f"{key}_fp"):
+            return None
+        title, body = self._bug(e)
+        out = ctx.paths.step(6) / "a" if key == "issue_a" else ctx.paths.step(6)
+        new = tracker.create_bug(dataclasses.replace(ctx, out=out), self.guard, title=title, body=body)
+        tracker.supersede(dataclasses.replace(ctx, out=out), ref, self.guard, new)
+        e[key], e[f"{key}_fp"] = dataclasses.asdict(new), self._issue_fp(ctx, new)
         e.setdefault("superseded_issues", []).append(ref.ref)
         _save(ctx.paths, prog)
         self.log("issue-superseded", arm=ctx.arm.name, old=ref.ref, new=new.ref)
         return handoff.entry_message(ctx.arm, 6, handoff.bug_message(new.ref, self.contract))
+
+    def _issue_for_run(self, ctx, e: dict, prog: dict, run: str) -> str:
+        """The key of the step-6 issue this run sees. A GitHub arm's N.a gets the same bug filed in its discovery
+        repo (A3: its PAT reaches only that repo); every other run and backend shares the one issue."""
+        if run != "a" or not config.github_disc_slug(self.pass_, ctx.arm.name):
+            self.infra("infra-tracker", ctx.arm.name, 6, run, "checking the step-6 issue",
+                       lambda: self._fresh_issue(ctx, e, prog))
+            return "issue"
+        if not e.get("issue_a"):
+            title, body = self._bug(e)
+            ref = self.infra("infra-tracker", ctx.arm.name, 6, run, "filing the N.a step-6 issue",
+                             lambda: tracker.create_bug(ctx, self.guard, title=title, body=body))
+            e["issue_a"] = dataclasses.asdict(ref)
+            e["issue_a_fp"] = self.infra("infra-tracker", ctx.arm.name, 6, run, "reading the N.a step-6 issue",
+                                         lambda: self._issue_fp(ctx, ref))
+            _save(ctx.paths, prog)
+        else:
+            self.infra("infra-tracker", ctx.arm.name, 6, run, "checking the N.a step-6 issue",
+                       lambda: self._fresh_issue(ctx, e, prog, "issue_a"))
+        return "issue_a"
+
+    def _close_stale(self, arm_name: str, prog: dict) -> str | None:
+        """Step-6 issues left behind by `faults declare … --scope rerun-step` of an earlier step (A3): closed with
+        "Superseded by a harness re-run" before step 6 files a new one. A park keeps them for the next run."""
+        p = Paths(self.pass_, arm_name)
+        left = list(prog.get("stale_issues") or [])
+        while left:
+            item = left[0]
+            ctx = self.ctx(arm_name, 6, p.results / "06-stale-issues", {}, item.get("run", "b"))
+            try:
+                rec = self.infra("infra-tracker", arm_name, 6, None, "closing a stale step-6 issue",
+                                 lambda: tracker.supersede(ctx, tracker.IssueRef(**item["ref"]), self.guard, None))
+            except _OwnerParked as x:
+                prog["stale_issues"] = left; _save(p, prog)
+                return self.park(arm_name, 6, None, "close-stale-issue", x.park)
+            self.log("stale-issue", arm=arm_name, ref=item["ref"]["ref"], action=rec.get("action"))
+            left.pop(0)
+            prog["stale_issues"] = left; _save(p, prog)
+        return None
 
     # -- one run of one step for one arm ---------------------------------------------------------------------------
     def run_one(self, arm_name: str, step: int, run: str) -> str:
@@ -399,16 +446,15 @@ class _Run:
                            "the arm's setup drifted (checklists/verify, step mode); the owner fixes it")
         out = p.step(step) / "a" if run == "a" else p.step(step)
         out.mkdir(parents=True, exist_ok=True)
-        ctx = self.ctx(arm_name, step, out, e)
+        ctx = self.ctx(arm_name, step, out, e, run)
         try:
             if step == 6:
-                self.infra("infra-tracker", arm_name, 6, run, "checking the step-6 issue",
-                           lambda: self._fresh_issue(ctx, e, prog))
-                issue = tracker.IssueRef(**e["issue"])
+                key = self._issue_for_run(ctx, e, prog, run)
+                issue = tracker.IssueRef(**e[key])
                 messages = [handoff.bug_message(issue.ref, self.contract)]
 
-                def on_restore(ctx=ctx, e=e, prog=prog):
-                    return self._fresh_issue(ctx, e, prog)
+                def on_restore(ctx=ctx, e=e, prog=prog, key=key):
+                    return self._fresh_issue(ctx, e, prog, key)
                 ctx.on_restore = on_restore
             elif step == 5:
                 messages = handoff.step5(ctx.step_brief, self.contract)
@@ -495,7 +541,7 @@ class _Run:
         r = e[run]
         done = r.setdefault("post", {})
         out = p.step(step) / "a" if run == "a" else p.step(step)
-        ctx = self.ctx(arm_name, step, out, e)
+        ctx = self.ctx(arm_name, step, out, e, run)
         for k in r.get("post_needed", []):
             if done.get(k):
                 continue
@@ -655,6 +701,9 @@ class _Run:
             if prog.get("rerun"):
                 self._rerun_step(a, int(prog["rerun"]))
             prog = _load(p)
+            if prog.get("stale_issues"):
+                self._close_stale(a, prog)
+            prog = _load(p)
             for d in faults.entries(self.pass_):                  # `--scope retest` lives in the ledger
                 key = f"{d.get('at')}|{d.get('signature')}|{d.get('step')}"
                 if d.get("scope") == "retest" and d.get("arm") == a and d.get("pass") == self.pass_ \
@@ -700,8 +749,13 @@ class _Run:
                 if n == step and (p.results / "arm-result.json").exists():
                     shutil.move(str(p.results / "arm-result.json"), str(sup / "arm-result.json"))
         e = prog["steps"].get(str(step)) or {}
+        if step < 6:                                     # A3: step 6's issues are dropped here; close them later
+            e6 = prog["steps"].get("6") or {}
+            prog.setdefault("stale_issues", [])
+            prog["stale_issues"] += [{"ref": e6[k], "run": "a" if k == "issue_a" else "b"}
+                                     for k in ("issue", "issue_a") if e6.get(k)]
         keep = {k: e[k] for k in ("started", "snapshot", "sha_before", "hand_edit", "edit", "issue", "issue_fp",
-                                  "precheck", "substitute", "started_at") if k in e}
+                                  "issue_a", "issue_a_fp", "precheck", "substitute", "started_at") if k in e}
         prog["steps"] = {k: v for k, v in prog["steps"].items() if int(k) < step}
         if step < 2:                                     # step 2's entry (and its hand edit) is gone: so is its cost
             prog["teammate_turns"] = []
@@ -1055,6 +1109,8 @@ def close_out(pass_: str, owner) -> Path:
                          f"settings → Fine-grained tokens)")
             for a in arms if config.load_arm(a).tracker == "github" and config.github_slug(pass_, a)
             and not config.load_arm(a).dry]
+    pats += [(f"pat-disc-{a}", f"The fine-grained PAT bakeoff-gh-{pass_}-disc-{a} (the N.a discovery repo) is revoked")
+             for a in arms if config.github_disc_slug(pass_, a)]
     unpublished = [a for a in arms if config.github_slug(pass_, a) and not config.load_arm(a).dry
                    and (_load(Paths(pass_, a))["finished"].get("published") is not True)]
     got = owner.items(pats) if pats else {}
