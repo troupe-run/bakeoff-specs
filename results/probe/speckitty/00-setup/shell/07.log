@@ -1,0 +1,5 @@
+$ /opt/venvs/speckitty/bin/python -c 'from pathlib import Path; from specify_cli.tracker.config import load_tracker_config, save_tracker_config, EGRESS_PERMITTED; r = Path("."); c = load_tracker_config(r); assert c.provider == "beads", f"tracker is bound to {c.provider!r}, not beads"; c.egress = EGRESS_PERMITTED; save_tracker_config(r, c)' 
+
+--- stderr ---
+
+exit 0

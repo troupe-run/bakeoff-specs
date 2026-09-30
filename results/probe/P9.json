@@ -1,0 +1,431 @@
+{
+  "help": {
+    "bd create --help": {
+      "output": "criteria\n      --allow-empty-description   Allow empty description input from stdin or file\n      --append-notes string       Append to existing notes (with newline separator)\n  -a, --assignee string           Assignee\n      --body-file string          Read description from file (use - for stdin)\n      --context string            Additional context for the issue\n      --defer string              Defer until date (issue hidden from bd ready until then). Same formats as --due\n      --deps strings              Dependencies as 'type:id' or bare 'id'. Bare 'id', 'depends-on:id', and 'blocked-by:id' all make THIS issue depend on id; 'blocks:id' reverses direction (id depends on this issue). E.g. 'blocked-by:bd-20,discovered-from:bd-15'\n  -d, --description string        Issue description\n      --design string             Design notes\n      --design-file string        Read design from file (use - for stdin)\n      --dry-run                   Preview what would be created without actually creating\n      --due string                Due date/time. Formats: +6h, +1d, +2w, tomorrow, next monday, 2025-01-15\n      --ephemeral                 Create as ephemeral (short-lived, subject to TTL compaction)\n  -e, --estimate int              Time estimate in minutes (e.g., 60 for 1 hour)\n      --event-actor string        Entity URI who caused this event (requires --type=event)\n      --event-category string     Event category (e.g., patrol.muted, agent.started) (requires --type=event)\n      --event-payload string      Event-specific JSON data (requires --type=event)\n      --event-target string       Entity URI or bead ID affected (requires --type=event)\n      --external-ref string       External reference (e.g., 'gh-9', 'jira-ABC', Linear URL)\n  -f, --file string               Create multiple issues from markdown file\n      --force                     Force creation even if prefix doesn't match database prefix\n      --graph string              Create a graph of issues with dependencies from JSON plan file\n  -h, --help                      help for create\n      --id string                 Explicit issue ID (e.g., 'bd-42' for partitioning)\n  -l, --labels strings            Labels (comma-separated)\n      --metadata string           Set custom metadata (JSON string or @file.json to read from file)\n      --mol-type string           Molecule type: swarm (multi-agent), patrol (recurring ops), work (default)\n      --no-history                Skip Dolt commit history without making GC-eligible (for permanent agent beads)\n      --no-inherit-labels         Don't inherit labels from parent issue\n      --notes string              Additional notes\n      --parent string             Parent issue ID for hierarchical child (e.g., 'bd-a3f8e9')\n  -p, --priority string           Priority (0-4 or P0-P4, 0=highest) (default \"2\")\n      --repo string               Target repository for issue (overrides auto-routing)\n      --silent                    Output only the issue ID (for scripting)\n      --skills string             Required skills for this issue\n      --spec-id string            Link to specification document\n  -s, --status string             Initial status\n      --stdin                     Read description from stdin (alias for --body-file -)\n      --storage-class string      Storage class: versioned, unversioned, or ephemeral (default: storage-class.<type> config, else versioned)\n      --title string              Issue title (alternative to positional argument)\n  -t, --type string               Issue type (bug|feature|task|epic|chore|decision|spike|story|milestone); custom types require types.custom config; aliases: enhancement/feat\u2192feature, dec/adr\u2192decision (default \"task\")\n      --validate                  Validate description contains required sections for issue type\n      --waits-for string          Spawner issue ID to wait for (creates waits-for dependency for fanout gate)\n      --waits-for-gate string     Gate type: all-children (wait for all) or any-children (wait for first) (default \"all-children\")\n      --wisp-type string          Wisp type for TTL-based compaction: heartbeat, ping, patrol, gc_report, recovery, error, escalation\n\nGlobal Flags:\n      --actor string              Actor name for audit trail (default: $BEADS_ACTOR, git user.name, $USER)\n      --cpu-profile               Generate CPU profile for performance analysis\n      --database string           Run against a different server database for this invocation, without changing the project's configured database (proxied-server mode only)\n      --db string                 Database path (default: auto-discover .beads/*.db). In proxied-server mode, a value that isn't an existing path is treated as a database name override (see --database)\n  -C, --directory string          Change to this directory before running the command (like git -C)\n      --dolt-auto-commit string   Dolt auto-commit policy (off|on|batch). 'on': commit after each write. 'batch': defer commits to bd dolt commit; uncommitted changes persist in the working set until then (a live batch-mode bd process also flushes on SIGTERM/SIGHUP). Applies to embedded and direct SQL-server modes; proxied-server routes are unaffected. Default: on. Override via config key dolt.auto-commit\n      --global                    Use the global shared-server database (beads_global)\n      --ignore-schema-skew        Proceed despite forward schema drift (some queries may fail)\n      --json                      Output in JSON format\n      --mem-profile string        Write heap profile to FILE on exit (also respects BEADS_MEM_PROFILE)\n      --no-color                  Disable color output (also: NO_COLOR=1 or CLICOLOR=0)\n  -q, --quiet                     Suppress non-essential output (errors only)\n      --readonly                  Read-only mode: block write operations (for worker sandboxes)\n      --sandbox                   Sandbox mode: disables Dolt auto-push\n  -v, --verbose                   Enable verbose/debug output\n",
+      "telemetry": []
+    },
+    "spec-kitty --help": {
+      "output": "Usage: spec-kitty [OPTIONS] COMMAND [ARGS]...\n\nSetup tool for Spec Kitty spec-driven development projects.\n\nSet SPEC_KITTY_NO_UPGRADE_CHECK=1 to disable the upgrade-check notice.\n\nOptions:\n  -v, --version         Show version and exit\n  --install-completion  Install completion for the current shell.\n  --show-completion     Show completion for the current shell, to copy it or\n                        customize the installation.\n  -h, --help            Show this message and exit.\n\nCommands:\n  accept              Validate mission readiness before merging...\n  agent               Commands for AI agents to execute...\n  archive             Archive a terminal mission...\n  auth                Authentication commands\n  charter             Charter management commands\n  config              Display project configuration and asset...\n  context             Query workspace context information\n  cutover-guard       Diff-scoped fail-closed cut-over gate...\n  dashboard           Open or stop the Spec Kitty dashboard.\n  dispatch            Dispatch a request to a governed Op...\n  docs                Common Docs retrieval commands\n  doctor              Project health diagnostics\n  glossary            Glossary management commands\n  implement           Internal \u2014 allocate or reuse the lane...\n  init                Initialize a new Spec Kitty project.\n  intake              Ingest a plan document as a mission brief...\n  invocations         Query local invocation records.\n  issue-matrix        Issue-matrix commands (structured...\n  lint                Run ruff and mypy on a file and report...\n  materialize         Regenerate all derived views from the...\n  merge               Merge a lane-based mission into its target...\n  migrate             Migration commands: update .kittify/...\n  mission             Inspect mission types for this project.\n  mission-type        Inspect mission types for this project.\n  next                Decide and emit the next agent action for...\n  ops                 Operation history (git reflog)\n  orchestrator-api    Machine-contract API for external...\n  plan                Scaffold plan.md for a feature.\n  plugin              Plugin bundle commands\n  profile-invocation  Manage invocation records.\n  profiles            Manage and list agent profiles.\n  reconcile           Reconcile a mission dossier against its...\n  regen               Regenerate the committed generated...\n  research            Execute Phase 0 research workflow to...\n  retrospect          Retrospective authoring and summary...\n  review              Validate a merged mission: WP lane check,...\n  safe-commit         Commit only the requested files via Spec...\n  session-start       Emit spec-kitty orientation for the Claude...\n  session-stop        Emit the open-Ops reminder for the Claude...\n  spec-commit         Commit spec artifacts to the mission's...\n  specify             Create a feature scaffold in kitty-specs/.\n  sync                Synchronization commands\n  tasks               Finalize tasks metadata after task...\n  upgrade             Upgrade a Spec Kitty project to the...\n  validate-encoding   Validate and optionally fix file encoding...\n  validate-tasks      LEGACY: Validate and repair...\n  verify-setup        Verify that the current environment...\n  workflow            Manage mission workflow definitions\n",
+      "telemetry": []
+    },
+    "spec-kitty tracker --help": {
+      "output": "Usage: spec-kitty [OPTIONS] COMMAND [ARGS]...\nTry 'spec-kitty --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 No such command 'tracker'. Did you mean 'intake'?                            \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+      "telemetry": []
+    },
+    "openspec config --help": {
+      "output": "Usage: openspec config [options] [command]\n\nView and modify global OpenSpec configuration\n\nOptions:\n  --scope <scope>              Config scope (only \"global\" supported currently)\n  -h, --help                   display help for command\n\nCommands:\n  path                         Show config file location\n  list [options]               Show all current settings\n  get <key>                    Get a specific value (raw, scriptable)\n  set [options] <key> <value>  Set a value (auto-coerce types)\n  unset <key>                  Remove a key (revert to default)\n  reset [options]              Reset configuration to defaults\n  edit                         Open config in $EDITOR\n  profile [preset]             Configure workflow profile (interactive picker or\n                               preset shortcut)\n  help [command]               display help for command\n",
+      "telemetry": []
+    }
+  },
+  "telemetry_install_tree": {
+    "bmad": "parked",
+    "ccsdd": "/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/site-packages/pip/_internal/metadata/base.py\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/tk9.0/choosedir.tcl\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/include/python3.12/cpython/frameobject.h\n/usr/local/lib/node_modules/corepack/dist/lib/corepack.cjs\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/index.min.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/pack.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/parse.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/index.min.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/pack.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/parse.js\n/usr/local/lib/node_modules/npm/node_modules/@sigstore/protobuf-specs/dist/__generated__/events.js\n",
+    "control": "/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/site-packages/pip/_internal/metadata/base.py\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/tk9.0/choosedir.tcl\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/include/python3.12/cpython/frameobject.h\n/usr/local/lib/node_modules/corepack/dist/lib/corepack.cjs\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/index.min.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/pack.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/parse.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/index.min.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/pack.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/parse.js\n/usr/local/lib/node_modules/npm/node_modules/@sigstore/protobuf-specs/dist/__generated__/events.js\n",
+    "openspec": "/opt/openspec/node_modules/@fission-ai/openspec/dist/telemetry/config.js\n/opt/openspec/node_modules/@fission-ai/openspec/dist/telemetry/index.d.ts\n/opt/openspec/node_modules/@fission-ai/openspec/dist/telemetry/opt-out.d.ts\n/opt/openspec/node_modules/@fission-ai/openspec/dist/telemetry/opt-out.js\n/opt/openspec/node_modules/@fission-ai/openspec/dist/telemetry/config.d.ts\n/opt/openspec/node_modules/@fission-ai/openspec/dist/telemetry/index.js\n/opt/openspec/node_modules/@fission-ai/openspec/dist/core/completion-tip.js\n/opt/openspec/node_modules/@fission-ai/openspec/dist/core/config-schema.d.ts\n/opt/openspec/node_modules/@fission-ai/openspec/dist/core/global-config.d.ts\n/opt/openspec/node_modules/@fission-ai/openspec/dist/core/config-schema.js\n/opt/openspec/node_modules/@fission-ai/openspec/dist/core/global-config.js\n/opt/openspec/node_modules/@fission-ai/openspec/dist/core/version-check.js\n/opt/openspec/node_modules/@fission-ai/openspec/dist/cli/index.d.ts\n/opt/openspec/node_modules/@fission-ai/openspec/dist/cli/index.js\n/opt/openspec/node_modules/@fission-ai/openspec/dist/utils/ci.d.ts\n/opt/openspec/node_modules/@fission-ai/openspec/dist/utils/ci.js\n/opt/openspec/node_modules/@fission-ai/openspec/README.md\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/site-packages/pip/_internal/metadata/base.py\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/tk9.0/choosedir.tcl\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/include/python3.12/cpython/frameobject.h\n/usr/local/lib/node_modules/corepack/dist/lib/corepack.cjs\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/index.min.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/pack.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/parse.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/index.min.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/pack.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/parse.js\n/usr/local/lib/node_modules/npm/node_modules/@sigstore/protobuf-specs/dist/__generated__/events.js\n",
+    "speckit": "/opt/venvs/speckit/lib/python3.12/site-packages/pygments/lexers/macaulay2.py\n/opt/venvs/speckit/lib/python3.12/site-packages/pygments/lexers/_lasso_builtins.py\n/opt/venvs/speckit/lib/python3.12/site-packages/pygments/lexers/_cocoa_builtins.py\n/opt/venvs/speckit/lib/python3.12/site-packages/pygments/lexers/perl.py\n/opt/venvs/speckit/lib/python3.12/site-packages/specify_cli/events/__init__.py\n/opt/venvs/speckit/lib/python3.12/site-packages/specify_cli/core_pack/extensions/bug/commands/speckit.bug.assess.md\n/opt/venvs/speckit/lib/python3.12/site-packages/specify_cli/core_pack/commands/specify.md\n/opt/venvs/speckit/lib/python3.12/site-packages/shellingham/nt.py\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/site-packages/pip/_internal/metadata/base.py\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/tk9.0/choosedir.tcl\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/include/python3.12/cpython/frameobject.h\n/usr/local/lib/node_modules/corepack/dist/lib/corepack.cjs\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/index.min.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/pack.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/parse.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/index.min.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/pack.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/parse.js\n/usr/local/lib/node_modules/npm/node_modules/@sigstore/protobuf-specs/dist/__generated__/events.js\n",
+    "speckitty": "/opt/venvs/speckitty/lib/python3.12/site-packages/packs/built-in/tactics/semantic-compression/semantic-compression-semantic-consolidation.tactic.yaml\n/opt/venvs/speckitty/lib/python3.12/site-packages/packs/built-in/tactics/semantic-compression/semantic-compression-behavioral-boundary-mapping.tactic.yaml\n/opt/venvs/speckitty/lib/python3.12/site-packages/packs/built-in/tactics/analysis/split-brain-authority-detection.tactic.yaml\n/opt/venvs/speckitty/lib/python3.12/site-packages/packs/built-in/tactics/communication/glossary-curation-interview.tactic.yaml\n/opt/venvs/speckitty/lib/python3.12/site-packages/packs/built-in/tactics/occurrence-classification-workflow.tactic.yaml\n/opt/venvs/speckitty/lib/python3.12/site-packages/packs/built-in/missions/documentation/templates/release-template.md\n/opt/venvs/speckitty/lib/python3.12/site-packages/packs/built-in/missions/documentation/templates/documentation-spec-template.md\n/opt/venvs/speckitty/lib/python3.12/site-packages/packs/built-in/missions/mission-steps/software-dev/plan/prompt.md\n/opt/venvs/speckitty/lib/python3.12/site-packages/pygments/lexers/macaulay2.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/pygments/lexers/_lasso_builtins.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/pygments/lexers/_cocoa_builtins.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/pygments/lexers/perl.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/lifecycle.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/__init__.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/models.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/analytics.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/schemas/generate.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/schemas/event.schema.json\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/conformance/loader.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/conformance/validators.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/conformance/fixtures/glossary/valid/glossary_clarification_requested.json\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/conformance/fixtures/glossary/valid/glossary_sense_updated.json\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/conformance/fixtures/glossary/valid/glossary_clarification_resolved.json\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/conformance/fixtures/glossary/invalid/clarification_missing_check_ref.json\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/conformance/fixtures/analytics/valid/token_usage_recorded_valid.json\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/conformance/fixtures/analytics/valid/diff_summary_recorded_valid.json\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/conformance/fixtures/analytics/invalid/token_usage_recorded_invalid_total.json\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/conformance/fixtures/analytics/invalid/diff_summary_recorded_missing_base_ref.json\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events/conformance/fixtures/manifest.json\n/opt/venvs/speckitty/lib/python3.12/site-packages/specify_cli/status/emit.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/specify_cli/sync/emitter.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/specify_cli/compat/__init__.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/specify_cli/compat/provider.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/specify_cli/compat/doctor.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/specify_cli/missions/documentation/templates/spec-template.md\n/opt/venvs/speckitty/lib/python3.12/site-packages/specify_cli/missions/documentation/templates/release-template.md\n/opt/venvs/speckitty/lib/python3.12/site-packages/specify_cli/tool_surface/status.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/specify_cli/.contextive/system-events.yml\n/opt/venvs/speckitty/lib/python3.12/site-packages/glossary/chokepoint.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/charter/offering/schemas/occurrence-map.schema.yaml\n/opt/venvs/speckitty/lib/python3.12/site-packages/charter/offering/templates/architecture/user-journey-template.md\n/opt/venvs/speckitty/lib/python3.12/site-packages/charter/offering/templates/occurrence-map-template.yaml\n/opt/venvs/speckitty/lib/python3.12/site-packages/charter/offering/skills/spec-kitty-bulk-edit-classification/SKILL.md\n/opt/venvs/speckitty/lib/python3.12/site-packages/charter/activation/synthesizer/evidence.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/charter/activation/evidence/corpus_loader.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/shellingham/nt.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/h11/_abnf.py\n/opt/venvs/speckitty/lib/python3.12/site-packages/spec_kitty_events-6.1.0.dist-info/RECORD\n/opt/beads/node_modules/@beads/bd/bin/CHANGELOG.md\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/site-packages/pip/_internal/metadata/base.py\n",
+    "superpowers": "/opt/plugins/superpowers/docs/testing.md\n/opt/plugins/superpowers/docs/superpowers/specs/2026-07-30-codex-efficiency-fixes-design.md\n/opt/plugins/superpowers/docs/porting-to-a-new-harness.md\n/opt/plugins/superpowers/tests/brainstorm-server/branding.test.js\n/opt/plugins/superpowers/tests/hermes/test_plugin.py\n/opt/plugins/superpowers/tests/claude-code/test-subagent-driven-development-integration.sh\n/opt/plugins/superpowers/README.md\n/opt/plugins/superpowers/skills/brainstorming/SKILL.md\n/opt/plugins/superpowers/skills/brainstorming/scripts/server.cjs\n/opt/plugins/superpowers/skills/writing-skills/anthropic-best-practices.md\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/site-packages/pip/_internal/metadata/base.py\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/tk9.0/choosedir.tcl\n/opt/python/cpython-3.12.14-linux-aarch64-gnu/include/python3.12/cpython/frameobject.h\n/usr/local/lib/node_modules/corepack/dist/lib/corepack.cjs\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/index.min.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/pack.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/commonjs/parse.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/index.min.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/pack.js\n/usr/local/lib/node_modules/npm/node_modules/tar/dist/esm/parse.js\n/usr/local/lib/node_modules/npm/node_modules/@sigstore/protobuf-specs/dist/__generated__/events.js\n"
+  },
+  "setup": {
+    "bmad": "parked",
+    "ccsdd": {
+      "online": {
+        "common.claude-version": "ok",
+        "common.isolation-env": "ok",
+        "common.git-identity": "ok",
+        "common.no-foreign-plugins": "ok",
+        "common.origin": "ok",
+        "ccsdd.version": "ok",
+        "ccsdd.skills": "ok",
+        "ccsdd.settings": "ok",
+        "ccsdd.project-memory": "ok",
+        "ccsdd.steering": "fail",
+        "ccsdd.no-legacy": "ok"
+      },
+      "commands": {
+        "names": [
+          "kiro-debug",
+          "kiro-discovery",
+          "kiro-impl",
+          "kiro-review",
+          "kiro-spec-batch",
+          "kiro-spec-design",
+          "kiro-spec-init",
+          "kiro-spec-quick",
+          "kiro-spec-requirements",
+          "kiro-spec-status",
+          "kiro-spec-tasks",
+          "kiro-steering",
+          "kiro-steering-custom",
+          "kiro-validate-design",
+          "kiro-validate-gap",
+          "kiro-validate-impl",
+          "kiro-verify-completion"
+        ],
+        "models": []
+      },
+      "manifest_not_created": [],
+      "issues_access": {
+        "status": "ok",
+        "ok": true,
+        "detail": "accessibility\tBarrier affecting people with disabilities\t#f143ab\n",
+        "runs": [
+          [
+            "bash",
+            "-lc",
+            "gh issue list --repo troupe-run/bakeoff-specs-ccsdd-pass1 --limit 1 && gh label list --repo troupe-run/bakeoff-specs-ccsdd-pass1 --limit 1"
+          ]
+        ]
+      },
+      "offline": {
+        "common.claude-version": "ok",
+        "common.isolation-env": "ok",
+        "common.git-identity": "ok",
+        "common.no-foreign-plugins": "ok",
+        "common.origin": "ok",
+        "ccsdd.version": "ok",
+        "ccsdd.skills": "ok",
+        "ccsdd.settings": "ok",
+        "ccsdd.project-memory": "ok",
+        "ccsdd.steering": "fail",
+        "ccsdd.no-legacy": "ok"
+      }
+    },
+    "control": {
+      "online": {
+        "common.claude-version": "ok",
+        "common.isolation-env": "ok",
+        "common.git-identity": "ok",
+        "common.no-foreign-plugins": "ok",
+        "common.origin": "ok",
+        "control.no-method": "ok",
+        "control.empty-repo": "ok"
+      },
+      "commands": {
+        "names": [],
+        "models": []
+      },
+      "manifest_not_created": [],
+      "issues_access": {
+        "status": "ok",
+        "ok": true,
+        "detail": "accessibility\tBarrier affecting people with disabilities\t#f143ab\n",
+        "runs": [
+          [
+            "bash",
+            "-lc",
+            "gh issue list --repo troupe-run/bakeoff-specs-control-pass1 --limit 1 && gh label list --repo troupe-run/bakeoff-specs-control-pass1 --limit 1"
+          ]
+        ]
+      },
+      "offline": {
+        "common.claude-version": "ok",
+        "common.isolation-env": "ok",
+        "common.git-identity": "ok",
+        "common.no-foreign-plugins": "ok",
+        "common.origin": "ok",
+        "control.no-method": "ok",
+        "control.empty-repo": "ok"
+      }
+    },
+    "openspec": {
+      "online": {
+        "common.claude-version": "ok",
+        "common.isolation-env": "ok",
+        "common.git-identity": "ok",
+        "common.no-foreign-plugins": "ok",
+        "common.origin": "ok",
+        "openspec.version": "ok",
+        "openspec.skills": "ok",
+        "openspec.commands": "ok",
+        "openspec.tree": "ok",
+        "openspec.telemetry-off": "ok",
+        "openspec.context": "ok"
+      },
+      "commands": {
+        "names": [
+          "openspec-apply-change",
+          "openspec-archive-change",
+          "openspec-explore",
+          "openspec-propose",
+          "openspec-sync-specs",
+          "openspec-update-change",
+          "opsx:apply",
+          "opsx:archive",
+          "opsx:explore",
+          "opsx:propose",
+          "opsx:sync",
+          "opsx:update"
+        ],
+        "models": []
+      },
+      "manifest_not_created": [],
+      "issues_access": {
+        "status": "ok",
+        "ok": true,
+        "detail": "accessibility\tBarrier affecting people with disabilities\t#f143ab\n",
+        "runs": [
+          [
+            "bash",
+            "-lc",
+            "gh issue list --repo troupe-run/bakeoff-specs-openspec-pass1 --limit 1 && gh label list --repo troupe-run/bakeoff-specs-openspec-pass1 --limit 1"
+          ]
+        ]
+      },
+      "offline": {
+        "common.claude-version": "ok",
+        "common.isolation-env": "ok",
+        "common.git-identity": "ok",
+        "common.no-foreign-plugins": "ok",
+        "common.origin": "ok",
+        "openspec.version": "ok",
+        "openspec.skills": "ok",
+        "openspec.commands": "ok",
+        "openspec.tree": "ok",
+        "openspec.telemetry-off": "ok",
+        "openspec.context": "ok"
+      }
+    },
+    "speckit": {
+      "online": {
+        "common.claude-version": "ok",
+        "common.isolation-env": "ok",
+        "common.git-identity": "ok",
+        "common.no-foreign-plugins": "ok",
+        "common.origin": "ok",
+        "speckit.version": "ok",
+        "speckit.skills": "ok",
+        "speckit.bug-skills": "ok",
+        "speckit.constitution": "fail"
+      },
+      "commands": {
+        "names": [
+          "speckit-analyze",
+          "speckit-bug-assess",
+          "speckit-bug-fix",
+          "speckit-bug-test",
+          "speckit-checklist",
+          "speckit-clarify",
+          "speckit-constitution",
+          "speckit-converge",
+          "speckit-implement",
+          "speckit-plan",
+          "speckit-specify",
+          "speckit-tasks",
+          "speckit-taskstoissues"
+        ],
+        "models": []
+      },
+      "manifest_not_created": [],
+      "issues_access": {
+        "status": "ok",
+        "ok": true,
+        "detail": "accessibility\tBarrier affecting people with disabilities\t#f143ab\n",
+        "runs": [
+          [
+            "bash",
+            "-lc",
+            "gh issue list --repo troupe-run/bakeoff-specs-speckit-pass1 --limit 1 && gh label list --repo troupe-run/bakeoff-specs-speckit-pass1 --limit 1"
+          ]
+        ]
+      },
+      "offline": {
+        "common.claude-version": "ok",
+        "common.isolation-env": "ok",
+        "common.git-identity": "ok",
+        "common.no-foreign-plugins": "ok",
+        "common.origin": "ok",
+        "speckit.version": "ok",
+        "speckit.skills": "ok",
+        "speckit.bug-skills": "ok",
+        "speckit.constitution": "fail"
+      }
+    },
+    "speckitty": {
+      "online": {
+        "common.claude-version": "ok",
+        "common.isolation-env": "ok",
+        "common.git-identity": "ok",
+        "common.no-foreign-plugins": "ok",
+        "common.origin": "ok",
+        "speckitty.version": "ok",
+        "beads.version": "ok",
+        "speckitty.verify-setup": "ok",
+        "speckitty.charter": "fail",
+        "speckitty.commands": "ok",
+        "speckitty.session-hook": "ok",
+        "speckitty.tracker-binding": "ok",
+        "speckitty.tracker-egress": "ok",
+        "speckitty.hosted-egress-refused": "ok",
+        "beads.init": "ok",
+        "beads.claude-hook": "ok",
+        "beads.metrics-off": "ok"
+      },
+      "commands": {
+        "names": [
+          "ad-hoc-profile-load",
+          "adversarial-squad",
+          "spec-kitty",
+          "spec-kitty-bulk-edit-classification",
+          "spec-kitty-charter-doctrine",
+          "spec-kitty-git-workflow",
+          "spec-kitty-glossary-context",
+          "spec-kitty-implement-review",
+          "spec-kitty-mission-review",
+          "spec-kitty-mission-system",
+          "spec-kitty-orchestrator-api-operator",
+          "spec-kitty-program-orchestrate",
+          "spec-kitty-runtime-next",
+          "spec-kitty-runtime-review",
+          "spec-kitty-setup-doctor",
+          "spec-kitty-spdd-reasons",
+          "spec-kitty.accept",
+          "spec-kitty.analyze",
+          "spec-kitty.charter",
+          "spec-kitty.dashboard",
+          "spec-kitty.implement",
+          "spec-kitty.merge",
+          "spec-kitty.plan",
+          "spec-kitty.research",
+          "spec-kitty.review",
+          "spec-kitty.specify",
+          "spec-kitty.status",
+          "spec-kitty.tasks",
+          "spec-kitty.tasks-finalize",
+          "spec-kitty.tasks-outline",
+          "spec-kitty.tasks-packages",
+          "spk-admin-agent-config",
+          "spk-admin-dashboard",
+          "spk-admin-git-workflow",
+          "spk-admin-setup-doctor",
+          "spk-admin-upgrade",
+          "spk-doctrine-bulk-edit",
+          "spk-doctrine-charter",
+          "spk-doctrine-glossary",
+          "spk-doctrine-profile-load",
+          "spk-doctrine-semantic-compression",
+          "spk-doctrine-show-me",
+          "spk-doctrine-spdd-reasons",
+          "spk-gate-accept",
+          "spk-gate-merge",
+          "spk-gate-mission-review",
+          "spk-gate-retrospective",
+          "spk-integrate-orchestrator-api",
+          "spk-meta-skill-authoring",
+          "spk-meta-skill-map",
+          "spk-mission-documentation",
+          "spk-mission-plan",
+          "spk-mission-research",
+          "spk-mission-specify",
+          "spk-mission-tasks",
+          "spk-mission-types",
+          "spk-run-blocked-recovery",
+          "spk-run-implement-review",
+          "spk-run-next",
+          "spk-run-program-orchestrate",
+          "spk-run-review-wp",
+          "spk-run-verdict-capture",
+          "spk-start-agent-surface",
+          "spk-start-command-map",
+          "spk-start-first-feature",
+          "spk-start-here",
+          "spk-team-auth",
+          "spk-team-connectors",
+          "spk-team-sync",
+          "spk-team-tracker"
+        ],
+        "models": []
+      },
+      "manifest_not_created": [],
+      "offline": {
+        "common.claude-version": "ok",
+        "common.isolation-env": "ok",
+        "common.git-identity": "ok",
+        "common.no-foreign-plugins": "ok",
+        "common.origin": "ok",
+        "speckitty.version": "ok",
+        "beads.version": "ok",
+        "speckitty.verify-setup": "ok",
+        "speckitty.charter": "fail",
+        "speckitty.commands": "ok",
+        "speckitty.session-hook": "ok",
+        "speckitty.tracker-binding": "ok",
+        "speckitty.tracker-egress": "ok",
+        "speckitty.hosted-egress-refused": "ok",
+        "beads.init": "ok",
+        "beads.claude-hook": "ok",
+        "beads.metrics-off": "ok"
+      }
+    },
+    "superpowers": {
+      "online": {
+        "common.claude-version": "ok",
+        "common.isolation-env": "ok",
+        "common.git-identity": "ok",
+        "common.no-foreign-plugins": "ok",
+        "common.origin": "ok",
+        "superpowers.plugin-version": "ok",
+        "superpowers.skills": "ok",
+        "superpowers.session-hook": "ok"
+      },
+      "commands": {
+        "names": [
+          "brainstorming",
+          "diagnosing-superpowers",
+          "dispatching-parallel-agents",
+          "executing-plans",
+          "finishing-a-development-branch",
+          "receiving-code-review",
+          "requesting-code-review",
+          "subagent-driven-development",
+          "superpowers:brainstorming",
+          "superpowers:diagnosing-superpowers",
+          "superpowers:dispatching-parallel-agents",
+          "superpowers:executing-plans",
+          "superpowers:finishing-a-development-branch",
+          "superpowers:receiving-code-review",
+          "superpowers:requesting-code-review",
+          "superpowers:subagent-driven-development",
+          "superpowers:systematic-debugging",
+          "superpowers:test-driven-development",
+          "superpowers:using-git-worktrees",
+          "superpowers:using-superpowers",
+          "superpowers:verification-before-completion",
+          "superpowers:writing-plans",
+          "superpowers:writing-skills",
+          "systematic-debugging",
+          "test-driven-development",
+          "using-git-worktrees",
+          "using-superpowers",
+          "verification-before-completion",
+          "writing-plans",
+          "writing-skills"
+        ],
+        "models": []
+      },
+      "manifest_not_created": [],
+      "issues_access": {
+        "status": "ok",
+        "ok": true,
+        "detail": "accessibility\tBarrier affecting people with disabilities\t#f143ab\n",
+        "runs": [
+          [
+            "bash",
+            "-lc",
+            "gh issue list --repo troupe-run/bakeoff-specs-superpowers-pass1 --limit 1 && gh label list --repo troupe-run/bakeoff-specs-superpowers-pass1 --limit 1"
+          ]
+        ]
+      },
+      "offline": {
+        "common.claude-version": "ok",
+        "common.isolation-env": "ok",
+        "common.git-identity": "ok",
+        "common.no-foreign-plugins": "ok",
+        "common.origin": "ok",
+        "superpowers.plugin-version": "ok",
+        "superpowers.skills": "ok",
+        "superpowers.session-hook": "ok"
+      }
+    }
+  }
+}
