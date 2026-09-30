@@ -326,3 +326,32 @@ def register_orchestrate(sub):
                    help="no run: regenerate the report from the passes' existing evidence; exit 1 unless PASS")
     d.set_defaults(func=dry_run)
 REGISTRARS.append(register_orchestrate)
+
+
+def register_probe(sub):
+    def probe_cmd(ns):
+        """Task 25 (owner-run): the live probe. Without --no-model the owner confirms first (a park or a no spends
+        nothing), then the keychain credential drives P1–P8/P10 and P9/P11 follow; --no-model runs only P9/P11 and
+        needs neither a confirm nor a credential. One runner at a time (`preflight.lock`)."""
+        from runner import credentials, owner as owner_mod, preflight, probe
+        from runner.checklist import NotReady
+        try:
+            with preflight.lock():
+                if ns.no_model:
+                    res = probe.no_model(pats=False)
+                else:
+                    ok = owner_mod.Owner().confirm("Run the live probe (spends a little quota)?")
+                    if ok is not True:
+                        print("Not confirmed: nothing run, nothing spent.")
+                        return 1
+                    res = probe.with_model(credentials.from_keychain())
+                    res |= probe.no_model(pats=True)
+                print(probe.report(res))
+        except NotReady as e:
+            print(e)
+            return 1
+        return 0
+    p = sub.add_parser("probe", help="owner-run live probe of the headless assumptions (spends a little quota)")
+    p.add_argument("--no-model", action="store_true", help="only the no-model probes (P9, P11); no credential")
+    p.set_defaults(func=probe_cmd)
+REGISTRARS.append(register_probe)

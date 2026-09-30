@@ -301,18 +301,23 @@ def _git_dir(p: Paths) -> Path:
     return g
 
 
+def teammate_env(pins: config.Pins, arm: config.Arm) -> dict[str, str]:
+    """The teammate session's environment — the one `_teammate_turn` sends and the live probe (Task 25, P7) tests.
+    BK_ISOLATED gives `--setting-sources ""`. CLAUDE_CODE_SAFE_MODE=1 is 2.1.281's `--safe-mode` (documented in its
+    --help: CLAUDE.md, skills, plugins, hooks, custom commands and agents off; auth, model, built-in tools and
+    permissions unchanged; "Sets CLAUDE_CODE_SAFE_MODE=1", and the binary reads that variable as the switch) — the
+    env form needs no image rebuild. Whether it holds against a real repo is for the live probe (Task 25, P7)."""
+    return credentials.session_env(pins, arm, role="teammate", isolated=True) | {
+        "PYTHONDONTWRITEBYTECODE": "1", "CLAUDE_CODE_SAFE_MODE": "1"}
+
+
 def _teammate_turn(ctx, k: int, out: Path, turns: list) -> transcripts.PinReport:
     p, pins, arm = ctx.paths, ctx.pins, ctx.arm
     git_dir = _git_dir(p)                      # before any mount is built (m-2)
     home = p.teammate_home(k)
     _fresh(home)
     before = transcripts.snapshot(home / ".claude")
-    # BK_ISOLATED gives `--setting-sources ""`. CLAUDE_CODE_SAFE_MODE=1 is 2.1.281's `--safe-mode` (documented in its
-    # --help: CLAUDE.md, skills, plugins, hooks, custom commands and agents off; auth, model, built-in tools and
-    # permissions unchanged; "Sets CLAUDE_CODE_SAFE_MODE=1", and the binary reads that variable as the switch) — the
-    # env form needs no image rebuild. Whether it holds against a real repo is for the live probe (Task 25).
-    env = credentials.session_env(pins, arm, role="teammate", isolated=True) | {
-        "PYTHONDONTWRITEBYTECODE": "1", "CLAUDE_CODE_SAFE_MODE": "1"}
+    env = teammate_env(pins, arm)
     image = pins.images["dryrun"] if arm.dry else pins.images["base"]
     r, primary = None, None
     try:

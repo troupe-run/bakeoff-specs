@@ -256,6 +256,13 @@ def _mounts(ctx: PoContext, d: Path) -> list[Mount]:
             *(Mount(d / f, f"/po/{f}", True) for f in PO_FILES)]
 
 
+def po_env(pins: Pins, arm: config.Arm) -> dict[str, str]:
+    """The PO session's environment — the one `decide` sends and the live probe (Task 25, P7) tests.
+    m-1: the PO's cwd is the arm's repo, so it runs in 2.1.281's safe mode too (`CLAUDE_CODE_SAFE_MODE=1`, as the
+    teammate: no CLAUDE.md, skills, plugins or hooks), beside `--setting-sources ""`; the live probe (P7) checks it."""
+    return credentials.session_env(pins, arm, role="po", isolated=True, tools=TOOLS) | {"CLAUDE_CODE_SAFE_MODE": "1"}
+
+
 def decide(ctx: PoContext, arm_message: str, cred, n: int, brief_path: Path) -> PoResult:
     """One PO decision on the arm's latest message. A fresh session per try: a second one after an unusable reply
     (then `ProtocolError`); a non-ok session is retried in place with `limits.transient_backoff`, then
@@ -273,9 +280,7 @@ def decide(ctx: PoContext, arm_message: str, cred, n: int, brief_path: Path) -> 
     ctx.paths.work.mkdir(parents=True, exist_ok=True)
     mounts = _mounts(ctx, d)
     check_mounts(mounts, ctx.paths, allowed_files=[d / f for f in PO_FILES])
-    # m-1: the PO's cwd is the arm's repo, so it runs in 2.1.281's safe mode too (`CLAUDE_CODE_SAFE_MODE=1`, as the
-    # teammate: no CLAUDE.md, skills, plugins or hooks), beside `--setting-sources ""`; the live probe (P7) checks it.
-    env = credentials.session_env(pins, arm, role="po", isolated=True, tools=TOOLS) | {"CLAUDE_CODE_SAFE_MODE": "1"}
+    env = po_env(pins, arm)
     before = transcripts.snapshot(home / ".claude")
     res = PoResult(decision=None)                                    # type: ignore[arg-type]
     backoff = list(pins.limits.transient_backoff)
