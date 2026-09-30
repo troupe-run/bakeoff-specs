@@ -73,7 +73,7 @@ def files_containing(root: Path, needle: bytes) -> list[str]:
 
 def export_route(skill_text: str) -> str:
     """P11 (OD24): does speckit's taskstoissues skill use the GitHub MCP server or `gh`?"""
-    if "mcp__github" in skill_text or "github-mcp" in skill_text.lower():
+    if "mcp__github" in skill_text or "github-mcp" in skill_text.lower() or re.search(r"github mcp server", skill_text, re.I):
         return "mcp"
     if re.search(r"\bgh issue create\b", skill_text):
         return "gh"

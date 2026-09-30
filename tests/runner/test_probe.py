@@ -27,6 +27,13 @@ def test_od24_route_is_read_from_the_skill_text():
     assert probe.export_route("nothing relevant") == "unknown"
 
 
+def test_export_route_reads_the_github_mcp_server_phrasing_as_mcp():
+    # Verbatim from Spec Kit 1.0.12's speckit-taskstoissues SKILL.md (probe P11, 2026-09-30).
+    assert probe.export_route("For each task in the list, use the GitHub MCP server to create a new issue in the "
+                              "repository that is representative of the Git remote.") == "mcp"
+    assert probe.export_route("use the github mcp server's `list_issues` tool") == "mcp"
+
+
 # ---- P1: layout, models, hard links, the saved stream --------------------------------------------------------------
 def test_a_transcript_elsewhere_is_reported_where_it_really_is(tmp_path):
     cfg = tmp_path / ".claude"
