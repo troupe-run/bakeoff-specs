@@ -343,6 +343,7 @@ def test_the_po_session_mounts_work_read_only_and_no_hidden_tests(ctx, brief, mo
     assert t.role == "po" and t.inbox_dir == ctx.paths.inbox("po") and t.workdir == ctx.paths.container_repo
     assert t.message == "Read /po/protocol.md and follow it."
     assert t.env["BK_ISOLATED"] == "1" and t.env["BK_TOOLS"] == "Read,Glob,Grep" and t.dry is True
+    assert t.env["CLAUDE_CODE_SAFE_MODE"] == "1"          # m-1: no CLAUDE.md, skills, plugins or hooks of the arm's repo
     assert FakeStage.made[0][:4] == ("dry9", "dryrun", "po", config.load_pins().egress_po)
 
 

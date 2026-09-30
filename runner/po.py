@@ -273,7 +273,9 @@ def decide(ctx: PoContext, arm_message: str, cred, n: int, brief_path: Path) -> 
     ctx.paths.work.mkdir(parents=True, exist_ok=True)
     mounts = _mounts(ctx, d)
     check_mounts(mounts, ctx.paths, allowed_files=[d / f for f in PO_FILES])
-    env = credentials.session_env(pins, arm, role="po", isolated=True, tools=TOOLS)
+    # m-1: the PO's cwd is the arm's repo, so it runs in 2.1.281's safe mode too (`CLAUDE_CODE_SAFE_MODE=1`, as the
+    # teammate: no CLAUDE.md, skills, plugins or hooks), beside `--setting-sources ""`; the live probe (P7) checks it.
+    env = credentials.session_env(pins, arm, role="po", isolated=True, tools=TOOLS) | {"CLAUDE_CODE_SAFE_MODE": "1"}
     before = transcripts.snapshot(home / ".claude")
     res = PoResult(decision=None)                                    # type: ignore[arg-type]
     backoff = list(pins.limits.transient_backoff)
