@@ -60,3 +60,18 @@ def test_the_session_container_is_kept_until_it_is_inspected():
     import runner.docker as d
     argv = d.run_argv(__import__("dataclasses").replace(s, mounts=[]))
     assert "--rm" not in argv and "--rm" in d.run_argv(__import__("dataclasses").replace(s, mounts=[], remove=True))
+
+
+# ---- follow-up 1: a session OOM is a turn that did NOT complete ---------------------------------------------------
+
+def test_a_child_oom_kill_in_a_turn_that_returned_a_result_is_not_a_session_oom(tmp_path, monkeypatch):
+    child = [sys.executable, "-c",
+             "import json; print(json.dumps({'type':'system','subtype':'init','session_id':'s'})); "
+             "print(json.dumps({'type':'result','subtype':'success','is_error':False,'result':'done'}), flush=True)"]
+    monkeypatch.setattr(docker, "run_argv", lambda spec: child)
+    monkeypatch.setattr(docker, "stop", lambda name: None)
+    monkeypatch.setattr(docker, "exit_state", lambda name: (True, 0))     # cgroup v2: a child was OOM-killed
+    monkeypatch.setattr(docker, "remove", lambda name: None)
+    t = Turn("t", "dryrun", 1, 1, 1, "img", "m", {}, [], "none", False, "/w", tmp_path / "inbox", "arm", True, None)
+    r = run_turn(t, credentials.dummy(), tmp_path / "out", 30)
+    assert r.outcome == "ok" and not r.oom_killed and r.exit_code == 0

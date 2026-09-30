@@ -747,3 +747,10 @@ def test_an_oom_killed_turn_twice_ends_the_attempt_as_arm_resource_never_a_harne
     script["arm"] = [OOM(), OOM()]
     r = drive.run_attempt(ctx, 1, "go")
     assert r.outcome == "arm-resource" and len(r.resource_events) == 2 and len(sent) == 2
+
+
+def test_an_oom_on_a_transient_retry_resend_is_arm_resource_too(rig):          # follow-up 1
+    sent, script, _, ctx = rig
+    script["arm"] = [TR("", outcome="no_result"), OOM(), OOM()]
+    r = drive.run_attempt(ctx, 1, "go")
+    assert r.outcome == "arm-resource" and len(r.resource_events) == 2 and len(sent) == 3

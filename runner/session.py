@@ -134,7 +134,7 @@ class TurnResult:
     stderr_path: Path | None = None
     permission_denials: list[dict] = field(default_factory=list)
     credential_files: list[str] = field(default_factory=list)
-    oom_killed: bool = False        # A5: the session container was killed for memory (OOMKilled, or exit 137)
+    oom_killed: bool = False        # A5: the turn did not complete and its container was OOM-killed (or exit 137)
     exit_code: int | None = None    # the session container's exit code, when it exited by itself
 
 
@@ -267,6 +267,9 @@ def run_turn(t: Turn, cred: Credential, out_dir: Path, timeout_s: float) -> Turn
     stderr = turns / f"{stem(t)}.stderr.gz"
     wall0, start = time.time(), time.monotonic()
     parsed, how, (oom, code) = asyncio.run(_run(t, cred, stream, stderr, timeout_s))
+    # A session OOM is a turn that did NOT complete (no result event) whose container was OOM-killed or exited 137:
+    # on cgroup v2 a child killed for memory sets OOMKilled while Claude still returns a result (follow-up 1).
+    oom = oom and parsed.result is None
     wall = time.monotonic() - start
     outcome: Outcome = "timeout" if how == "timeout" else parsed.outcome
     r = parsed.result or {}

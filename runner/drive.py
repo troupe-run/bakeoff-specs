@@ -305,25 +305,24 @@ def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult,
                 res.session_id = None
                 res.interventions.append(f"fresh-session:{lead}")
             r = send(message, res.session_id)
-            if r.oom_killed:                             # A5: the arm's own workload, never infra-no_result
-                res.resource_events.append({"turn": len(res.turns), "exit": r.exit_code})
-                if len(res.resource_events) >= 2:        # re-run once, then the attempt is all-failed
-                    res.outcome = "arm-resource"
-                    return res
-                res.interventions.append("resource-rerun")
-                sid = r.session_id or res.session_id
-                r = send(MESSAGES["resume_after_error"] if sid else message, sid)
-                if r.oom_killed:
-                    res.resource_events.append({"turn": len(res.turns), "exit": r.exit_code})
-                    res.outcome = "arm-resource"
-                    return res
             backoff = list(pins.limits.transient_backoff)
-            while (why := _transient(r)) and backoff:                                    # review C-4
-                res.retries += 1
-                res.interventions.append(f"transient-retry:{why}")
-                ctx.sleep(backoff.pop(0))
+            while True:
                 sid = r.session_id or res.session_id
-                r = send(MESSAGES["resume_after_error"] if sid else message, sid)
+                if r.oom_killed:                         # A5: the arm's own workload, never infra-no_result
+                    res.resource_events.append({"turn": len(res.turns), "exit": r.exit_code})
+                    if len(res.resource_events) >= 2:    # re-run once (per attempt), then all-failed
+                        res.outcome = "arm-resource"
+                        return res
+                    res.interventions.append("resource-rerun")
+                    r = send(MESSAGES["resume_after_error"] if sid else message, sid)
+                    continue
+                if (why := _transient(r)) and backoff:                                   # review C-4
+                    res.retries += 1
+                    res.interventions.append(f"transient-retry:{why}")
+                    ctx.sleep(backoff.pop(0))
+                    r = send(MESSAGES["resume_after_error"] if sid else message, sid)
+                    continue                             # a resend is checked for OOM too (follow-up 1)
+                break
             if r.outcome == "timeout":
                 res.outcome, res.breach = "timeout", "turn_seconds"
                 return res
