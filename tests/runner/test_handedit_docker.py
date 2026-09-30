@@ -24,6 +24,20 @@ EDIT = ("FAKE:sh=sed -i 's/default=\"[.]\"/default=__import__(\"os\").environ.ge
 
 
 
+def _until_git_sees(p, *paths_):
+    """Host writes reach a container's bind mount a little late on Docker Desktop (the Task 8 smudge control had
+    the same race). In production the teammate writes INSIDE its container, so only these host-written test edits
+    need this: wait (up to 30 s) until containerised git reports every path as changed."""
+    import time
+    deadline = time.monotonic() + 30
+    while True:
+        seen = gitops.porcelain(p)
+        if all(x in seen for x in paths_):
+            return
+        assert time.monotonic() < deadline, f"git in a container never saw the edit to {paths_}: {seen!r}"
+        time.sleep(0.5)
+
+
 @pytest.fixture(autouse=True)
 def no_leftovers():
     yield
@@ -39,6 +53,7 @@ def test_side_effects_are_removed_and_the_lockfile_restored(tmp_state):
     gitops.commit_all(p, gitops.IDENTITY, "base")
     (p.repo / "cli.py").write_text("x = 2\n"); (p.repo / "uv.lock").write_text("v2\n")
     (p.repo / "__pycache__").mkdir(); (p.repo / "__pycache__" / "cli.cpython-312.pyc").write_bytes(b"\0")
+    _until_git_sees(p, "cli.py", "uv.lock")
     plan = handedit.clean_side_effects(p)
     assert plan.violations == [] and plan.restore == ["uv.lock"]
     assert (p.repo / "uv.lock").read_text() == "v1\n" and not (p.repo / "__pycache__" / "cli.cpython-312.pyc").exists()
@@ -175,12 +190,11 @@ def test_new_ignored_paths_and_an_untracked_nested_repo_are_removed_and_a_preexi
     (p.repo / ".venv").mkdir(); (p.repo / ".venv" / "pyvenv.cfg").write_text("home = /usr\n")
     before = gitops.ignored(p)
     assert before == [".venv/"]
-    # follow-up 11: a different SIZE (not just content), so git sees the change even when the write lands in the
-    # same second as the index entry (racy-git: same size and mtime look unchanged from inside the container)
     (p.repo / "a.py").write_text("x = 20\n")
     (p.repo / "build").mkdir(); (p.repo / "build" / "out.bin").write_bytes(b"\0")
     gitops.git(p, "init", "-q", "vendor/lib", write=True)                 # a nested repo, made in a container
     (p.repo / "vendor" / "lib" / "x.txt").write_text("y\n")
+    _until_git_sees(p, "a.py")
     plan = handedit.clean_side_effects(p, ignored_before=before)
     assert plan.violations == [] and plan.remove == ["vendor/lib/"]
     assert plan.removed_ignored == ["build/"] and plan.ignored_preexisting == [".venv/"]
