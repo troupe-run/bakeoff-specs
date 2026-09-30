@@ -21,6 +21,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture(autouse=True)
+def _keychain_items_absent(monkeypatch):
+    """Follow-up round 2, item 1: in these tests every keychain item is ABSENT unless a test fakes it — the real
+    keychain (which may hold the owner's real PATs) is never read (the runner conftest's guard backs this up)."""
+    def absent(*a, **k):
+        raise RuntimeError("no usable keychain item (test)")
+    for name in ("from_keychain", "github_pat", "github_disc_pat"):
+        monkeypatch.setattr(credentials, name, absent)
+
+
+@pytest.fixture(autouse=True)
 def _no_real_keychain(monkeypatch):
     """No test reads the real keychain: every lookup fails unless a test installs a fake."""
     def absent(*a, **k):

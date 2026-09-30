@@ -489,3 +489,35 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
     env.make = arms
     env.runs = lambda: [c[1:] for c in env.calls if c[0] == "run_step"]
     return env
+
+
+# ---- no test ever reads the real keychain (follow-up round 2, item 1) -------------------------------------------------
+class KeychainBlocked(AssertionError):
+    """Raised when a test reaches the real `/usr/bin/security`. An AssertionError, never a RuntimeError, so no reader
+    can mistake it for an absent item: the test fails loudly, and no keychain value is ever read or printed."""
+
+
+class _GuardedSubprocess:
+    """`credentials.subprocess` for tests: every call delegates to the real module except `run` of the keychain
+    binary, which raises. A test that fakes `credentials.subprocess.run` overrides it explicitly."""
+
+    def __init__(self, real, security: str):
+        self._real, self._security = real, security
+
+    def run(self, argv, *a, **k):
+        if argv and str(argv[0]).endswith("security"):
+            raise KeychainBlocked("a test reached the real keychain; fake credentials.* or secrets.keychain_* instead")
+        return self._real.run(argv, *a, **k)
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_keychain(monkeypatch):
+    import subprocess as _sp
+    from runner import credentials, secrets
+    monkeypatch.setattr(credentials, "subprocess", _GuardedSubprocess(_sp, credentials.SECURITY))
+    secrets.clear_keychain_cache()                      # nothing cached from an earlier test (or a real read)
+    yield
+    secrets.clear_keychain_cache()
