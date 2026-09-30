@@ -40,7 +40,8 @@ Classification (design §9, brief table, binding rulings):
   `harness-fault` attribution is `infra-hidden:<why>`; both are ledger faults that RE-TEST the same commit after
   the owner's fix (no new arm session). `arm-resource` (re-run once by `hidden`, then all-failed) and `arm-output`
   (all-failed) are the arm's results, never harness faults; every resource exhaustion is recorded per (pass,
-  step, arm) with `faults.record_resource` for Task 23's cross-arm count (`limits.suite_resource_arms`).
+  step, arm, run) with `faults.record_resource`; only N.b records feed Task 23's cross-arm count
+  (`limits.suite_resource_arms`).
 - `new_discriminating_passed == 0` is no progress: the next attempt gets `messages.no_progress` in the same
   session; after `limits.attempts_no_progress` (3) the arm stops at this step (`arm-result.json`, OD3).
 
@@ -370,7 +371,8 @@ def _arm_checks(ctx, attempt: int, run: str) -> list[dict]:
 
 def _resource(ctx, attempt: int, ar) -> None:
     """A5: an arm session killed for memory is the owner's resource rule (`hidden`'s, for the session): re-run once
-    by drive, then all-failed; every occurrence counts towards `suite_resource_arms`."""
+    by drive, then all-failed. Every occurrence is recorded with its run; only N.b records count towards
+    `suite_resource_arms` (follow-up 8)."""
     ev = [[f"session-oom:turn {e.get('turn')} exit {e.get('exit')}"] for e in ar.resource_events]
     if ar.outcome == "arm-resource":
         faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "repeat", ev, run=ctx.run)

@@ -40,7 +40,8 @@ next run of step 6 and on a harness restore inside it (`ctx.on_restore`).
 **Faults** (design §9): stepflow records its own. Here: `setup-drift:<check id>` (the step-mode verify script before
 each run), `secret-in-evidence` (`secrets.scan_step` after each run; the run is not repeated, the scan is), the
 `secret-in-publish` of `repo.publish`, a setup's harness fault (step 0), and `suite-resource:<step>` — after each
-arm's N.b, the arms with ANY resource-exhaustion record at that step since the last resolution are counted; at
+arm's N.b, the arms with ANY N.b resource-exhaustion record at that step since the last resolution are counted (N.a's
+records are evidence only, follow-up 8); at
 `limits.suite_resource_arms` the bake-off halts for owner review (`faults.halt`), and after `faults resume` the arms
 scored all-failed there ("repeat") re-run that step's N.b. Owner-declared faults: `--scope rerun-step` supersedes the
 step and every later one (`NN-superseded-<k>/`) and re-runs them from the step's existing snapshot (the hand edit and
