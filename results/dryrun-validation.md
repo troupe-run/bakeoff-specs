@@ -1,14 +1,14 @@
 # Dry-run validation
 
-- results: {"dry1": {"completed": true}, "dry2": {"stopped_at": 2}, "dry3": {"halted": "{\n  \"reason\": \"same harness fault twice (design \\u00a79)\",\n  \"first\": {\n    \"at\": \"2026-09-30T15:20:22+00:00\",\n    \"pass\": \"dry3\",\n    \"arm\": \"dryrun-pinfault\",\n    \"step\": 1,\n    \"run\": \"a\",\n    \"attempt\": 1,\n    \"kind\": \"model-pin\",\n    \"signature\": \"claude-haiku-4-5\",\n    \"detail\": \"arm: assistant results/dry3/dryrun-pinfault/01/a/transcripts/a1/-work-bakeoff-specs-dryrun-pinfault/3578939f-b438-4d9b-b39a-7b639cb57cda/subagents/agent-1.jsonl.g"}, "dry4": {"completed": true}}
+- results: {"dry1": {"completed": true}, "dry2": {"stopped_at": 2}, "dry3": {"halted": "{\n  \"reason\": \"same harness fault twice (design \\u00a79)\",\n  \"first\": {\n    \"at\": \"2026-09-30T18:44:49+00:00\",\n    \"pass\": \"dry3\",\n    \"arm\": \"dryrun-pinfault\",\n    \"step\": 1,\n    \"run\": \"a\",\n    \"attempt\": 1,\n    \"kind\": \"model-pin\",\n    \"signature\": \"claude-haiku-4-5\",\n    \"detail\": \"arm: assistant results/dry3/dryrun-pinfault/01/a/transcripts/a1/-work-bakeoff-specs-dryrun-pinfault/86ec001a-aad9-48c5-a4cf-d8ac2d283f83/subagents/agent-1.jsonl.g"}, "dry4": {"completed": true}}
 - secret findings (evidence + state, .gz decompressed): 0
-- container specs built: 919; containing the token: 0
+- container specs built: 924; containing the token: 0
 - leftover containers: 0
 
 ## What each pass proves (every gate must hold)
 
 - ok: dry1 hidden counts — 1: 101/101 passed, 0 failed (want 101); 2: 109/109 passed, 0 failed (want 109); 3: 121/121 passed, 0 failed (want 121); 4: 135/135 passed, 0 failed (want 135); 5: 146/146 passed, 0 failed (want 146); 6: 151/151 passed, 0 failed (want 151); 7: 161/161 passed, 0 failed (want 161)
-- ok: dry1 N.a/N.b sha_before — 1: e1845eecd8 = e1845eecd8; 2: bf61edc45d = bf61edc45d; 3: 183c75cb61 = 183c75cb61; 4: eb8f6a43c3 = eb8f6a43c3; 5: deeae615bc = deeae615bc; 6: e4cd8f0755 = e4cd8f0755; 7: f3d133a263 = f3d133a263
+- ok: dry1 N.a/N.b sha_before — 1: 35a10f10cd = 35a10f10cd; 2: 8dad90d8c4 = 8dad90d8c4; 3: aba507dbd5 = aba507dbd5; 4: 687a633ad3 = 687a633ad3; 5: c311f9768b = c311f9768b; 6: 58ea08a061 = 58ea08a061; 7: 916a320b81 = 916a320b81
 - ok: dry1 hand-edit probe — {"env_default": true, "flag_wins": true, "unchanged_without_env": true, "installed": true}
 - ok: dry1 model pin — ok for every N.a and N.b
 - ok: dry2 stop rule — stopped_at 2; reason 'no progress in 3 attempts'
