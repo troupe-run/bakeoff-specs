@@ -950,3 +950,34 @@ def test_the_arms_own_token_found_by_the_step_scan_is_redacted_not_a_fault(fake_
     p = Paths("dry7", "dryrun")
     assert own not in (p.step(3) / "egress.log").read_text()
     assert [v["kind"] for v in _viol(p)][:1] == ["own-token-in-evidence"]
+
+
+# ---- m-7: setup evidence is secret-scanned at the end of setup -------------------------------------------------------
+
+def test_setup_evidence_is_scanned_when_setup_ends(fake_orch, monkeypatch):
+    from runner import checklist, secrets
+    def run_setup(pass_, arm, cred, owner):
+        p = Paths(pass_, arm); p.base.mkdir(parents=True)
+        p.setup_results.mkdir(parents=True, exist_ok=True)
+        (p.setup_results / "shell-history.txt").write_text("echo dry-run-dummy-token\n")
+        return checklist.SetupResult([], {}, True, 0.0)
+    monkeypatch.setattr(checklist, "run_setup", run_setup)
+    (paths.STATE / "dry7").mkdir(parents=True, exist_ok=True)
+    with pytest.raises(orchestrate.NotReady, match="secret-in-evidence"):
+        orchestrate.setup("dry7", "dryrun", fake_orch.cred, fake_orch.owner)
+    [e] = faults.entries("dry7")
+    assert (e["kind"], e["step"]) == ("secret-in-evidence", 0)
+    rec = json.loads((Paths("dry7", "dryrun").setup_results / "secret-scan.json").read_text())
+    assert rec["clean"] is False and "shell-history.txt" in rec["findings"][0]
+
+
+def test_a_run_refuses_an_arm_whose_setup_scan_found_a_secret_until_it_is_clean(fake_orch):
+    fake_orch.make("dryrun", pass_="dry7")
+    p = Paths("dry7", "dryrun")
+    p.setup_results.mkdir(parents=True, exist_ok=True)
+    (p.setup_results / "leak.txt").write_text("dry-run-dummy-token")
+    with pytest.raises(orchestrate.NotReady, match="secret"):
+        orchestrate.run_arm("dry7", "dryrun", fake_orch.cred, fake_orch.owner)
+    (p.setup_results / "leak.txt").write_text("scrubbed")
+    assert orchestrate.run_arm("dry7", "dryrun", fake_orch.cred, fake_orch.owner) == {"completed": True}
+    assert json.loads((p.setup_results / "secret-scan.json").read_text())["clean"] is True

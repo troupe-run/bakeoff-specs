@@ -933,7 +933,10 @@ def _run(pass_: str, arms: list[str], cred, owner, *, limits_override: dict | No
     # A dry pass never touches the keychain (Task 24): its only credential is the dummy, so the dummy token (and any
     # arm-home PAT value) is what its scans look for; a real pass adds every keychain value.
     dry = all(config.load_arm(a).dry for a in arms)
-    R = _Run(pass_, arms, cred, owner, pins, secrets.literals(cred, keychain=not dry))
+    lits = secrets.literals(cred, keychain=not dry)
+    for a in arms:
+        _scan_setup(pass_, a, lits)                       # m-7: no step before a clean setup scan
+    R = _Run(pass_, arms, cred, owner, pins, lits)
     try:
         R.pending()
         for step in range(1, (stop_after or 7) + 1):
@@ -1027,6 +1030,26 @@ def setup(pass_: str, arm: str, cred, owner, again: bool = False):
         return _setup(pass_, arm, cred, owner, again)
 
 
+def _scan_setup(pass_: str, arm: str, lits: list[str]) -> None:
+    """m-7: `00-setup` (shell logs, setup transcripts, shell history) is secret-scanned when setup ends, not only
+    at close-out; recorded in `00-setup/secret-scan.json`. The arm's own PAT is redacted first (A5); anything left
+    is `secret-in-evidence` at step 0 (the owner scrubs it; a repeat halts). A clean record is not scanned again."""
+    p = Paths(pass_, arm)
+    f = p.setup_results / "secret-scan.json"
+    if (_jr(f) or {}).get("clean") is True or not p.setup_results.is_dir():
+        return
+    redacted = secrets.redact([p.setup_results], secrets.own_pat_values(p, config.load_arm(arm)))
+    found = secrets.scan_tree(p.setup_results, lits) + secrets.scan_files(secrets.ledger_files(pass_), lits)
+    _jw(f, {"at": _now(), "clean": not found, "findings": [f"{x.path}:{x.line} {x.kind}" for x in found[:50]],
+            "redacted_own_token": redacted[:50]})
+    if found:
+        sf = secrets.SecretFound("secret-in-evidence", found)
+        if faults.record(sf, pass_, arm, 0, 0) == "halt":
+            raise stepflow.Halt(faults.halted(pass_)) from sf
+        raise NotReady(f"harness fault secret-in-evidence:{sf.signature} in {p.setup_results} "
+                       f"({secrets.describe(found)}); scrub it, then run again")
+
+
 def _setup(pass_: str, arm: str, cred, owner, again: bool = False):
     p = Paths(pass_, arm)
     if p.base.exists():
@@ -1042,7 +1065,9 @@ def _setup(pass_: str, arm: str, cred, owner, again: bool = False):
                 k += 1
             shutil.move(str(p.setup_results), str(p.results / f"00-setup-superseded-{k}"))
     try:
-        return checklist.run_setup(pass_, arm, cred, owner)
+        r = checklist.run_setup(pass_, arm, cred, owner)
+        _scan_setup(pass_, arm, secrets.literals(cred, keychain=not config.load_arm(arm).dry))     # m-7
+        return r
     except checklist.SetupParked as x:
         rec = {"at": _now(), "park": dataclasses.asdict(x.park) if dataclasses.is_dataclass(x.park) else str(x.park)}
         _jw(p.setup_results / "parked.json", rec)
