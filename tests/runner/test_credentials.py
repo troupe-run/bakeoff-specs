@@ -24,7 +24,9 @@ def test_session_env_carries_isolation_and_retry_settings():
     e = env("openspec")
     assert e["CLAUDE_CODE_DISABLE_AUTO_MEMORY"] == "1" and e["CLAUDE_CODE_MAX_RETRIES"] == "4"
     assert e["CLAUDE_CONFIG_DIR"] == "/home/actor/.claude" and e["OPENSPEC_TELEMETRY"] == "0"
-    assert e["BK_DISALLOWED"] == "WebSearch,WebFetch,AskUserQuestion"
+    assert e["BK_DISALLOWED"] == ",".join(config.load_pins().disallowed_tools)      # one source: pins.toml
+    assert e["BK_DISALLOWED"].split(",") == ["WebSearch", "WebFetch", "AskUserQuestion", "RemoteTrigger", "CronCreate",
+                                             "CronDelete", "CronList", "ScheduleWakeup"]
 
 
 def test_isolated_sessions_request_empty_setting_sources():                # renamed (review Q-11); P7 probes behaviour

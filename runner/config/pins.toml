@@ -6,7 +6,10 @@ accepted_models = ["claude-opus-5-5"]        # probe P1 confirms the exact trans
 synthetic_models = ["<synthetic>"]           # Claude Code's own non-model messages; counted, not faults
 max_retries = 4
 permission_mode = "bypassPermissions"        # OD11
-disallowed_tools = ["WebSearch", "WebFetch", "AskUserQuestion"]   # OD10, OD11
+# OD10, OD11. RemoteTrigger, CronCreate, CronDelete, CronList and ScheduleWakeup create work outside the session's
+# container and lifetime (design §6; final review I-2, controller ruling); the owner kept `Workflow` allowed (2026-09-30).
+disallowed_tools = ["WebSearch", "WebFetch", "AskUserQuestion",
+                    "RemoteTrigger", "CronCreate", "CronDelete", "CronList", "ScheduleWakeup"]
 binary_sha256 = "dd27b36438a4fed1670cd29bad2fda6a73b628b6da55443e5c2f647fe6ed328f"                           # written by `runner images pin` (Task 2); build refuses while empty
 
 [beads]

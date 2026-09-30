@@ -13,6 +13,15 @@ def test_web_tools_and_ask_user_question_are_disallowed_for_every_session():
     assert set(config.load_pins().disallowed_tools) >= {"WebSearch", "WebFetch", "AskUserQuestion"}
 
 
+OUT_OF_SESSION_TOOLS = {"RemoteTrigger", "CronCreate", "CronDelete", "CronList", "ScheduleWakeup"}
+
+
+def test_tools_that_create_work_outside_the_session_are_disallowed_but_workflow_is_not():   # final review I-2
+    got = set(config.load_pins().disallowed_tools)
+    assert got >= OUT_OF_SESSION_TOOLS
+    assert "Workflow" not in got                                  # owner kept Workflow allowed (2026-09-30)
+
+
 def test_beads_native_binary_is_pinned_by_a_real_sha256():                 # review fix-round-1 item 1
     assert len(config.load_pins().bd_sha256) == 64
 
