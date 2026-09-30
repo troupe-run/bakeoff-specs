@@ -1045,9 +1045,9 @@ def run_arm(pass_: str, arm: str, cred, owner, limits_override: dict | None = No
     if pass_ == CANARY:                                    # final review I-1: the canary never runs past step 2
         if stop_after is None:
             stop_after = CANARY_STOP_AFTER
-        elif stop_after > CANARY_STOP_AFTER:
-            raise NotReady(f"the canary runs steps 1-{CANARY_STOP_AFTER} only (OD25); --stop-after {stop_after} "
-                           f"would run past them")
+        elif not 1 <= stop_after <= CANARY_STOP_AFTER:   # re-review N-1: 0 is falsy downstream (= run all 7)
+            raise NotReady(f"the canary runs steps 1-{CANARY_STOP_AFTER} only (OD25): --stop-after must be 1 to "
+                           f"{CANARY_STOP_AFTER}, not {stop_after}")
     brief = paths.brief_path(pass_)
     if pass_ == "canary" and not brief.exists():           # m-8: the canary's own copy (Task 26), made once
         brief.parent.mkdir(parents=True, exist_ok=True)

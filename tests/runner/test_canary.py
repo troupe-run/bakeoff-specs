@@ -675,10 +675,11 @@ def test_cli_canary_resume_without_a_previous_canary_exits_non_zero(world, monke
     assert cli.main(["canary", "--resume"]) == 1
 
 
-def test_cli_canary_check_and_resume_are_exclusive():
+def test_cli_canary_check_and_resume_are_exclusive(capsys):
     from runner import cli
     with pytest.raises(SystemExit):
         cli.main(["canary", "--check", "--resume"])
+    assert "argument --resume: not allowed with argument --check" in capsys.readouterr().err
 
 
 # ---- run-arm never takes the canary past step 2 ---------------------------------------------------------------------
@@ -702,10 +703,25 @@ def test_run_arm_on_the_canary_accepts_stop_after_up_to_2(run_seen, n):
     assert run_seen == [n]
 
 
-def test_run_arm_on_the_canary_refuses_stop_after_past_2(run_seen):
+@pytest.mark.parametrize("n", [3, 7, 0, -1])
+def test_run_arm_on_the_canary_refuses_stop_after_outside_1_to_2(run_seen, n):
     with pytest.raises(orchestrate.NotReady, match="steps 1-2 only"):
-        orchestrate.run_arm("canary", ARM, credentials.dummy(), RecOwner(), stop_after=3)
+        orchestrate.run_arm("canary", ARM, credentials.dummy(), RecOwner(), stop_after=n)
     assert run_seen == []
+
+
+def test_cli_run_arm_canary_with_stop_after_0_is_refused_and_runs_nothing(run_seen, monkeypatch, capsys):
+    from runner import cli
+    monkeypatch.setattr(cli, "_cred_owner", lambda arm: (credentials.dummy(), RecOwner()))
+    assert cli.main(["run-arm", "canary", ARM, "--stop-after", "0"]) == 1
+    assert run_seen == [] and "steps 1-2 only" in capsys.readouterr().out
+
+
+def test_canary_and_resume_pass_run_arm_a_stop_after_of_exactly_2(world):
+    orchestrate.canary(world.cred_of, RecOwner())
+    Paths("canary", ARM).base.mkdir(parents=True, exist_ok=True)      # what the real setup leaves (faked here)
+    orchestrate.canary_resume(world.cred_of, RecOwner())
+    assert [e[3] for e in world.events if isinstance(e, tuple) and e[0] == "run_arm"] == [2, 2]
 
 
 def test_cli_run_arm_canary_without_stop_after_stops_after_2(run_seen, monkeypatch):
