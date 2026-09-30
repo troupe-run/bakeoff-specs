@@ -422,7 +422,11 @@ def register_canary(sub):
                 print(f"Not confirmed ({res.get('why')}): nothing run, nothing spent.")
             return res
         return _orchestrated(run)(ns)
-    p = sub.add_parser("canary", help="owner-run canary: control, steps 1-2, real model/PO/GitHub (OD25; spends quota)")
+    p = sub.add_parser("canary", help="owner-run canary: control, steps 1-2, real model/PO/GitHub (OD25; spends quota)",
+                       description="Owner-run canary: control, steps 1-2, real model/PO/GitHub (OD25; spends quota). "
+                                   "An owner stop declared with `runner faults declare canary control <step> <slug> "
+                                   "--scope record` is a harness fault, so `canary --check`'s no-harness-fault row "
+                                   "fails: after an owner stop, run a fresh canary.")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--check", action="store_true", help="write results/canary/canary.md; exit 1 unless it ends PASS")
     g.add_argument("--resume", action="store_true", help="complete an interrupted canary: no wipe, no setup; "
@@ -449,7 +453,9 @@ def register_watch(sub):
                     "run it in a second terminal beside run-pass / run-arm / canary / dry-run. Ctrl-C here stops "
                     "watching only. To stop the RUN: Ctrl-C in the runner's terminal (the step is left interrupted), "
                     "then `runner faults declare <pass> <arm> <step> <slug> --scope record` (ledgered as "
-                    "manual:<slug>) — an owner stop is a harness fault, not the arm's (design §9).")
+                    "manual:<slug>), then resume — an owner stop is a harness fault, not the arm's (design §9), so a "
+                    "declared stop fails a canary's no-harness-fault row (run a fresh canary). A stop during setup "
+                    "(step 0) has no ledger entry: rerun the setup.")
     p.add_argument("--pass", dest="pass_", metavar="PASS", default=None, help="only this pass (default: any)")
     p.add_argument("--arm", default=None, help="only this arm (default: any)")
     p.add_argument("--poll", type=float, default=0.5, help=argparse.SUPPRESS)

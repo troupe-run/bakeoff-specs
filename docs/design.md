@@ -203,8 +203,12 @@ recognisable by their artefact shapes — and the report says so.
   after seeing a turn go off the rails in `runner watch`) is a **harness** fault, not an arm fault. The step is
   left `interrupted`; the owner records it with `runner faults declare <pass> <arm> <step> <slug> --scope
   record` (ledgered as `manual:<slug>`; `record` supersedes nothing, so finished work is not re-run); resuming
-  moves the interrupted attempt aside and re-runs it from the step's snapshot. The arm is not penalised. Like
-  every harness fault, the same `manual:<slug>` twice halts the bake-off.
+  moves the interrupted attempt aside and re-runs it from the step's snapshot — except a stop during the scored
+  run's tests phase, where the attempt is kept and only the tests resume on the same commit. The arm is not
+  penalised. Like every harness fault, the same `manual:<slug>` twice halts the bake-off, and a declared stop
+  appears in the step's N.b `harness_faults`, so a canary with one fails its no-harness-fault check: after an
+  owner stop, run a fresh canary. A stop during setup (step 0) has no ledger entry (`faults declare` takes steps
+  1-7); setup is attended, so the owner reruns the setup.
 
 ## 10. Repos and naming
 

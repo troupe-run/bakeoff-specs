@@ -926,7 +926,7 @@ def _cmd_lines(log_text):
     return [ln for ln in log_text.splitlines() if ln.startswith("$ ")]
 
 
-def test_mutmut_log_command_lines_are_the_argv_each_container_was_given(monkeypatch, tmp_path):
+def test_mutmut_log_command_lines_are_what_the_baseline_run_and_results_containers_were_given(monkeypatch, tmp_path):
     (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
     seen: list[list[str]] = []
     responses = [quality.ToolRun(0, "5 passed\n", "", False),
@@ -935,12 +935,13 @@ def test_mutmut_log_command_lines_are_the_argv_each_container_was_given(monkeypa
                  quality.ToolRun(0, "m.f__mutmut_1: killed\nm.f__mutmut_2: survived\n__results_rc=0\n", "", False)]
     monkeypatch.setattr(quality, "_run", _recording_run(responses, seen))
     quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=2, mutation_seconds=600))
-    baseline_cmd, _listing_cmd, run_cmd, results_cmd = seen
+    baseline_cmd, _listing_cmd, run_cmd, results_cmd = seen      # the listing container is not logged
     lines = _cmd_lines((tmp_path / "out/quality/mutmut.log").read_text())
     assert len(lines) == 3, lines
     # baseline: the exact script bash was handed
     assert lines[0].startswith("$ " + baseline_cmd[2] + " ")
-    # the mutation run: the venv binary and every argument after it, exactly as passed, plus the count and cap
+    # the mutation run: the mutmut argv exactly as passed (the `bash -c ... timeout N` wrapper is not spelled out;
+    # the line names the cap instead), plus the sample count
     mutmut_argv = run_cmd[run_cmd.index(".venv/bin/mutmut"):]
     assert mutmut_argv[:4] == [".venv/bin/mutmut", "run", "--max-children", "4"]
     assert lines[1].startswith("$ " + " ".join(mutmut_argv) + " ")

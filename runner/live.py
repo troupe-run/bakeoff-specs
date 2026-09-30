@@ -25,7 +25,7 @@ The feed is a convenience: any failure to write it disables it for the rest of t
 """
 from __future__ import annotations
 
-import json, os, time
+import json, os, re, time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,9 +39,19 @@ TEXT_MAX = 200                  # assistant text
 SUBAGENT_TOOLS = ("Agent", "Task")      # Claude Code 2.1.281 calls it Agent (probe P3/P3b); Task is the old name
 STOP_HINT = ("To stop the run: Ctrl-C in the runner's terminal (the step is left `interrupted`), then record it as "
              "a harness fault: `runner faults declare <pass> <arm> <step> <slug> --scope record` (ledgered "
-             "as manual:<slug>). Ctrl-C here only stops watching.")
+             "as manual:<slug>), then resume. A declared stop fails a canary's no-harness-fault row: after one, run a "
+             "fresh canary. A stop during setup (step 0) has no ledger entry (declare takes steps 1-7): rerun the "
+             "setup. Ctrl-C here only stops watching.")
 
 Redact = Callable[[str], str]
+_CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
+def visible(text: str) -> str:
+    """Every C0/C1 control character and DEL as a visible `\\xNN` (fix round 1, I-1): model text, tool inputs and
+    arm file contents can carry ESC sequences, backspaces or OSC strings that would erase or rewrite what the
+    owner's terminal shows. Applied when the feed is written AND when watch prints it."""
+    return _CONTROL.sub(lambda m: f"\\x{ord(m.group()):02x}", text)
 
 
 # ---- pure: stream events -> feed lines ---------------------------------------------------------------------------
@@ -216,12 +226,26 @@ class Feed:
         if self._fh is None:
             return
         try:
-            safe = _trim(_one_line(self.redact(body)), _limit_for(body))
+            safe = _trim(visible(_one_line(self.redact(body))), _limit_for(body))
             now = self.clock()
             self._fh.write(f"{_stamp(now)} +{_elapsed(now - self.started)} [{self.turn_id}] {safe}\n")
             self._fh.flush()
-        except Exception:                        # noqa: BLE001
-            self._close()
+        except Exception as e:                   # noqa: BLE001
+            self._disable(e)
+
+    def _disable(self, e: BaseException) -> None:
+        """Stop writing, and say so in the pointer (fix round 1, m-1): a silent feed would look like a hung arm."""
+        self._close()
+        try:
+            cur = self.p.live / CURRENT
+            info = json.loads(cur.read_text())
+            if info.get("file") == self.path.name:
+                info["feed"] = f"disabled: {type(e).__name__}"
+                tmp = self.p.live / f".{CURRENT}.{os.getpid()}.tmp"
+                tmp.write_text(json.dumps(info))
+                os.replace(tmp, cur)
+        except Exception:                        # noqa: BLE001 -- best effort
+            pass
 
     def event(self, line: str) -> None:
         if self._fh is None:
@@ -304,9 +328,9 @@ def find_current(pass_: str | None = None, arm: str | None = None, *,
 
 def header(c: Current, now: float) -> str:
     i = c.info
-    return (f"=== {i.get('pass')}/{i.get('arm')}  step {i.get('step')}  run {i.get('run')}  "
-            f"{i.get('role')} attempt {i.get('attempt')} turn {i.get('n')}  "
-            f"elapsed {_elapsed(now - float(i.get('started') or now))}  (evidence: {i.get('evidence')}) ===")
+    return visible(f"=== {i.get('pass')}/{i.get('arm')}  step {i.get('step')}  run {i.get('run')}  "
+                   f"{i.get('role')} attempt {i.get('attempt')} turn {i.get('n')}  "
+                   f"elapsed {_elapsed(now - float(i.get('started') or now))}  (evidence: {i.get('evidence')}) ===")
 
 
 def follow(out: TextIO, pass_: str | None = None, arm: str | None = None, *, poll: float = 0.5,
@@ -316,7 +340,7 @@ def follow(out: TextIO, pass_: str | None = None, arm: str | None = None, *, pol
     running turn, say so once and wait. Returns when `until()` is true (tests); the CLI ends it with Ctrl-C."""
     out.write(f"runner watch: {pass_ or 'any pass'}/{arm or 'any arm'}. {STOP_HINT}\n")
     out.flush()
-    fh, following, buf, waiting = None, None, "", False
+    fh, following, buf, waiting, disabled_said = None, None, "", False, False
 
     def drain() -> None:
         nonlocal buf
@@ -327,7 +351,7 @@ def follow(out: TextIO, pass_: str | None = None, arm: str | None = None, *, pol
             buf += chunk
             *lines, buf = buf.split("\n")
             for ln in lines:
-                out.write(ln + "\n")
+                out.write(visible(ln) + "\n")
             out.flush()
 
     while until is None or not until():
@@ -335,7 +359,7 @@ def follow(out: TextIO, pass_: str | None = None, arm: str | None = None, *, pol
         if fh is not None and (cur is None or cur.path != following):
             drain()
             if buf:
-                out.write(buf + "\n")
+                out.write(visible(buf) + "\n")
                 buf = ""
             fh.close()
             fh, following = None, None
@@ -345,13 +369,20 @@ def follow(out: TextIO, pass_: str | None = None, arm: str | None = None, *, pol
             try:
                 fd = os.open(cur.path, os.O_RDONLY | os.O_NOFOLLOW)
                 fh = os.fdopen(fd, "r", encoding="utf-8", errors="replace")
-                following, waiting = cur.path, False
+                following, waiting, disabled_said = cur.path, False, False
                 out.write(header(cur, clock()) + "\n")
                 out.flush()
             except OSError:
                 fh = None
         if fh is not None:
             drain()
+            why = cur.info.get("feed") if cur is not None else None
+            if why and not disabled_said:
+                out.write(visible(f"!!! live feed disabled ({str(why).removeprefix('disabled: ')}): this view stops "
+                                  f"updating here, but the turn itself is still running (evidence: "
+                                  f"{cur.info.get('evidence') if cur else '?'})") + "\n")
+                out.flush()
+                disabled_said = True
         elif not waiting:
             out.write("no running turn; waiting for one to start (Ctrl-C to stop watching)\n")
             out.flush()

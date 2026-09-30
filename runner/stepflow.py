@@ -453,7 +453,7 @@ def _discovered(ctx, attempt: int, ar, pin, t0: float, extra: dict, violations: 
          "exchanges": ar.exchanges, "interventions": ar.interventions, "model_pin_ok": pin.ok,
          "sha_before": ctx.sha_before, "started": t0, "ended": time.time(), "arm_violations": violations or [],
          "resource_events": ar.resource_events,
-         "harness_faults": [e for e in faults.for_step(ctx.pass_, ctx.arm.name, ctx.step) if e.get("run") == "a"]},
+         "harness_faults": faults.for_run(ctx.pass_, ctx.arm.name, ctx.step, "a")},
         indent=2))
     _restore(ctx)                                    # N.b starts from the same pre-step commit (design §5)
     return StepOutcome("discovered", 1, run="a", attempt_outcome=ar.outcome, discovery=ar.discovery)
@@ -591,8 +591,7 @@ def _decide(ctx, attempt, arm_attempts, history, ar, pin, t0, extra, pend) -> St
     _phase(ctx, "infra-evidence", attempt, "write the step's evidence", lambda: evidence.finalise(
         ctx, attempts=history + [ar], extra_turns=extra, hidden=summary, quality=q, pin=pin,
         sha_before=ctx.sha_before, started=t0, ended=time.time(),
-        fault_entries=[e for e in faults.for_step(ctx.pass_, ctx.arm.name, ctx.step)
-                       if e.get("run") != "a"],     # L-5: run b and step-level
+        fault_entries=faults.for_run(ctx.pass_, ctx.arm.name, ctx.step, "b"),     # L-5: run b and step-level
         shas=ctx.shas, tests_seconds=tests_s, outcome=outcome))
     if outcome == "stopped":
         _arm_result(ctx, summary)

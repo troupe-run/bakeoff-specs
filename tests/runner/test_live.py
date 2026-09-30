@@ -274,3 +274,53 @@ def test_the_cli_watch_neither_takes_the_lock_nor_refuses_while_halted(tmp_state
     monkeypatch.setattr(live, "follow", fake_follow)
     assert cli.main(["watch", "--pass", "pass1", "--arm", "control"]) == 0
     assert got == {"pass_": "pass1", "arm": "control"}
+
+
+# ---- fix round 1 ------------------------------------------------------------------------------------------------
+
+CONTROLS = "\x1b[1A\x1b[2K\x08\x07\x9b\x7f\x00"          # ESC sequences, BS, BEL, C1 CSI, DEL, NUL
+
+
+def _has_control(text):
+    return any(ord(c) < 0x20 and c != "\n" or 0x7f <= ord(c) <= 0x9f for c in text)
+
+
+def test_control_characters_in_model_text_and_tool_input_reach_the_feed_visibly_escaped(tmp_state):
+    p = Paths("t", "dryrun")
+    f = _feed(p)
+    assert f.start()
+    f.event(json.dumps(assistant_with({"type": "text", "text": f"before{CONTROLS}after"})))
+    f.event(json.dumps(assistant_with({"type": "tool_use", "id": "t1", "name": "Bash",
+                                       "input": {"command": f"echo {CONTROLS}x"}})))
+    f.end("ok")
+    text = f.path.read_text()
+    assert not _has_control(text)
+    assert "text: before\\x1b[1A\\x1b[2K\\x08\\x07\\x9b\\x7f\\x00after" in text
+    assert "tool Bash: echo \\x1b[1A" in text
+
+
+def test_watch_escapes_control_characters_from_a_feed_it_did_not_write(tmp_state):
+    p = Paths("t", "dryrun")
+    f = _feed(p)
+    assert f.start()
+    with open(f.path, "a") as fh:                                   # an older build's, or a tampered, feed line
+        fh.write(f"raw {CONTROLS} line\n")
+    out = io.StringIO()
+    ticks = iter(range(2))
+    live.follow(out, "t", "dryrun", sleep=lambda _: None, until=lambda: next(ticks, None) is None)
+    assert "raw \\x1b[1A" in out.getvalue() and not _has_control(out.getvalue())
+
+
+def test_a_feed_that_disables_itself_says_so_in_the_pointer_and_watch_prints_it(tmp_state):
+    p = Paths("t", "dryrun")
+    f = _feed(p)
+    assert f.start()
+    f.event(json.dumps(INIT))
+    f._fh.close()                                                   # the next write fails (as on a full disk)
+    f.event(json.dumps(ASSISTANT))
+    assert json.loads((p.live / live.CURRENT).read_text())["feed"] == "disabled: ValueError"
+    out = io.StringIO()
+    ticks = iter(range(2))
+    live.follow(out, "t", "dryrun", sleep=lambda _: None, until=lambda: next(ticks, None) is None)
+    assert "live feed disabled (ValueError)" in out.getvalue()
+    assert "the turn itself is still running" in out.getvalue()

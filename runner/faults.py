@@ -181,6 +181,13 @@ def entries(pass_: str) -> list[dict]:
     return _entries(pass_)
 
 
+def for_run(pass_: str, arm: str, step: int, run: str) -> list[dict]:
+    """The step's unresolved entries that belong in a run's evidence: N.a (`run == "a"`) gets only its own; N.b
+    gets its own and every step-level one (`run` None: owner declarations, `--scope record` included — so a
+    declared owner stop shows as a harness fault in N.b's run.json; L-5)."""
+    return [e for e in for_step(pass_, arm, step) if (e.get("run") == "a") == (run == "a")]
+
+
 def for_step(pass_: str, arm: str, step: int) -> list[dict]:
     return [e for e in _entries(pass_) if e.get("arm") == arm and e.get("step") == step and not e.get("resolution")
             and e.get("pass", pass_) == pass_]

@@ -761,3 +761,15 @@ def test_a_tracker_check_that_held_leaves_no_failure_and_the_cli_exits_zero(worl
     monkeypatch.setattr(owner_mod, "Owner", lambda *a, **k: RecOwner())
     assert "tracker_check_failed" not in orchestrate.canary(world.cred_of, RecOwner())
     assert cli.main(["canary"]) == 0
+
+
+def test_an_owner_stop_declared_with_scope_record_fails_the_canarys_no_harness_fault_rows(tree):
+    """Controller ruling (fix round 1, I-2): a declared owner stop IS a harness fault, so the canary is not clean
+    (run a fresh one). Pinned through the real filters stepflow uses to fill run.json / discovery.json."""
+    from runner import faults
+    faults.declare("canary", "control", 1, "owner-stop", "record")
+    p = Paths("canary", "control")
+    _rw(p.step(1) / "run.json", harness_faults=faults.for_run("canary", "control", 1, "b"))
+    _rw(p.step(1) / "a" / "discovery.json", harness_faults=faults.for_run("canary", "control", 1, "a"))
+    assert _failing(orchestrate.canary_check()) == {"step 1: no harness fault (N.b run.json)",
+                                                    "no harness fault in the canary ledger (setup included)"}
