@@ -50,6 +50,11 @@ class Stage:
                        check=True, capture_output=True)
         return self
 
+    def log_text(self) -> str:
+        """The proxy's log so far (final fix batch A2: a failed install is classified from it)."""
+        log = subprocess.run(["docker", "logs", self.proxy], capture_output=True, text=True, timeout=60)
+        return log.stdout + log.stderr
+
     def _save_log(self) -> None:
         log = subprocess.run(["docker", "logs", self.proxy], capture_output=True, text=True)
         self.log_to.parent.mkdir(parents=True, exist_ok=True)

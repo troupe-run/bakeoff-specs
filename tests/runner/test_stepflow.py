@@ -687,3 +687,16 @@ def test_an_arm_with_no_main_is_scored_all_failed_as_one_attempt(fake_step, monk
     assert out.status == "stopped" and out.attempts == 3 and fake_step.prepares == 0
     assert got == [stepflow.hidden.NO_MAIN] * 3 and faults.for_step("dry9", "control", 2) == []
     assert fake_step.quality_runs == 0 and fake_step.finalised[-1]["quality"] == {"skipped": stepflow.hidden.NO_MAIN}
+
+
+# ---- final fix batch A2: a network failure installing the arm's project is not the arm's ----------------------------
+
+def test_an_infra_sync_fault_is_retested_on_the_same_commit_and_never_counts_as_an_arm_attempt(fake_step, monkeypatch):
+    fake_step.progress = [3]
+    _fail_first(monkeypatch, stepflow.hidden, "prepare",
+                HarnessFault("infra-sync", "dns error: failed to lookup address", "hidden copy: dns error"))
+    out = stepflow.run_step(fake_step.ctx, "go")
+    [e] = faults.for_step("dry9", "control", 2)
+    assert e["kind"] == "infra-sync" and fake_step.calls == 1 and out.attempts == 1 and out.status == "done"
+    got = json.loads((fake_step.ctx.out / "hidden" / "summary.json").read_text())
+    assert [r["kind"] for r in got["harness_retests"]] == ["infra-sync"]

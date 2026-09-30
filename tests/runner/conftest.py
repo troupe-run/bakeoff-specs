@@ -177,7 +177,7 @@ def fake_step(tmp_path, monkeypatch, tmp_state):
         return PinReport(not bad, 1, 1, 0, 0, ["2.1.281"], False,
                          [{"file": "f", "line": 1, "where": "assistant", "model": bad}] if bad else [])
 
-    def hidden_run(p, copy, step, out, install_failed=False):
+    def hidden_run(p, copy, step, out, install_failed=False, **k):
         fs.hidden_runs += 1
         flaky = fs.harness_flaky_first if fs.hidden_runs == 1 else []
         n = fs.progress[min(fs.calls, len(fs.progress)) - 1] if fs.progress else 0
@@ -358,7 +358,7 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
         return hidden.Prepared(tmp_path / "copy", None, {"hidden": {"ok": True}})
     monkeypatch.setattr(hidden, "prepare", prepare)
 
-    def hrun(p, copy, step, out_dir, install_failed=False):
+    def hrun(p, copy, step, out_dir, install_failed=False, **k):
         env.calls.append(("hidden.run", p.arm, step))
         ok = env.precheck_passes
         return hidden.summarise(step, {"m::new": "passed" if ok else "failed", "m::old": "passed"}, ["m::new"], [],

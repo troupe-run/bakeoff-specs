@@ -38,6 +38,7 @@ import functools, json, os, re, shutil, stat, subprocess, time, uuid, xml.etree.
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from runner import config, docker, egress, gitops, repo
+from runner.faults import HarnessFault
 from runner.docker import Mount, RunSpec
 from runner.paths import Paths, REPO_ROOT
 from harness.validate_suites import allowlisted   # single source for allowlist matching (review m10)
@@ -340,6 +341,8 @@ class Summary:
     attribution: str | None = None
     skipped: int = 0
     resource_evidence: list = field(default_factory=list)   # one list per full-suite attempt
+    install: dict | None = None      # A2: the sync's outcome and cause per try (`install_record`), logs in prep-*.json
+    harness_retests: list = field(default_factory=list)      # A1/A2: harness faults re-tested on this commit
 
     def write(self, out_dir: Path) -> None:
         (out_dir / "hidden").mkdir(parents=True, exist_ok=True)
@@ -348,7 +351,7 @@ class Summary:
 
 def summarise(step, tests, new_at_step, flaky, flaky_arm, exit_code, install_failed=False,
               collected: list[str] | None = None, attribution: str | None = None,
-              resource_evidence: list | None = None) -> Summary:
+              resource_evidence: list | None = None, install: dict | None = None) -> Summary:
     """Harness flakes (`flaky`: flaky on the reference too) are neither passed nor failed; arm flakes
     (`flaky_arm`: stable on the reference) count as failed for the arm and are recorded (review C-2).
     `install_failed` (prep failed twice): every test counts as failed. Skipped tests (none in the hidden suite
@@ -359,7 +362,7 @@ def summarise(step, tests, new_at_step, flaky, flaky_arm, exit_code, install_fai
         final = {t: "failed" for t in (tests or collected or [])}
     elif attribution is not None and attribution.startswith("harness-fault"):
         return Summary(step, len(collected or []), 0, 0, 0, 0, {}, [], 0, 0, exit_code, install_failed,
-                       scoreable=False, attribution=attribution, resource_evidence=ev)
+                       scoreable=False, attribution=attribution, resource_evidence=ev, install=install)
     else:
         final = {t: ("flaky" if t in flaky else "failed" if t in flaky_arm else o) for t, o in tests.items()}
     new = [t for t in new_at_step if t in final]
@@ -367,7 +370,8 @@ def summarise(step, tests, new_at_step, flaky, flaky_arm, exit_code, install_fai
                    sum(o == "failed" for o in final.values()), sum(o == "flaky" for o in final.values()),
                    len([t for t in flaky_arm if t in final]), final, new, sum(final[t] == "passed" for t in new),
                    sum(final[t] == "passed" and not allowlisted(t) for t in new),
-                   exit_code, install_failed, True, attribution, sum(o == "skipped" for o in final.values()), ev)
+                   exit_code, install_failed, True, attribution, sum(o == "skipped" for o in final.values()), ev,
+                   install)
 
 
 @dataclass
@@ -476,20 +480,77 @@ def _run(s: RunSpec, timeout: float, extra: dict[str, bytes] | None = None):
                 _rmtree(m.host)
 
 
+# ---- installing the arm's project (final fix batch A2) ---------------------------------------------------------
+# A failed `uv sync` is retried with backoff. The LAST failure is classified from uv's output and the proxy log:
+# a network or proxy error (DNS, connection refused/reset, a 5xx from the index, the proxy refusing an allowlisted
+# host) is the harness's — `prepare_copy` raises `infra-sync`, stepflow re-tests the same commit, and it is never an
+# arm attempt; a resolution, build or packaging error (or anything unrecognised) is the arm's `install_failed`.
+SYNC_BACKOFF = (10, 30, 90)
+_sleep = time.sleep
+NETWORK_ERRORS = re.compile(
+    r"dns error|failed to lookup address|Name or service not known|Temporary failure in name resolution|"
+    r"nodename nor servname|Connection refused|Connection reset|connection closed before message completed|"
+    r"error sending request|tcp connect error|operation timed out|timed out|Request failed after \d+ retries|"
+    r"server error \(5\d\d|status(?: code)?:? 5\d\d|\b5\d\d (?:Internal Server Error|Bad Gateway|"
+    r"Service Unavailable|Gateway Time-?out)|Network is unreachable|No route to host|CONNECT tunnel failed|"
+    r"unsuccessful tunnel|proxy error", re.I)
+
+
+def classify_sync(log: str, proxy_log: str, hosts: list[str]) -> tuple[str, str]:
+    """("network" | "arm", why) for a failed sync. A host the proxy refused that the prep allowlist allows is the
+    proxy's fault; one it does not allow is the arm's project reaching off the allowlist."""
+    refused = sorted({h for h, v in egress.decisions(proxy_log) if v == "refused"})
+    ours = [h for h in refused if any(re.fullmatch(pat.strip("^$"), h) or re.match(pat, h) for pat in hosts)]
+    if ours:
+        return "network", f"the proxy refused allowlisted host(s) {ours}"
+    if refused:
+        return "arm", f"the project needs host(s) off the prep allowlist: {refused}"
+    if (m := NETWORK_ERRORS.search(log)):
+        line = next((l.strip() for l in log.splitlines() if m.group(0) in l), m.group(0))
+        return "network", line[:200]
+    lines = [l.strip() for l in log.splitlines() if l.strip()]
+    return "arm", (next((l for l in lines if l.startswith(("×", "error", "error:"))), lines[-1] if lines else
+                        "sync failed with no output"))[:200]
+
+
+def install_record(rec: dict | None) -> dict | None:
+    """The sync record without its logs, for `hidden/summary.json` (the logs stay in `prep-<label>.json`)."""
+    if not rec:
+        return None
+    return {"ok": rec.get("ok"), "cause": rec.get("cause"), "why": rec.get("why"),
+            "tries": [{k: t.get(k) for k in ("exit", "cause", "why")} for t in rec.get("tries", [])]}
+
+
+def _proxy_log(st) -> str:
+    try:
+        return st.log_text()
+    except Exception:                  # the classification then rests on uv's own output
+        return ""
+
+
 def _sync(p: Paths, copy: Path, st: egress.Stage, with_mutmut: bool) -> dict:
     lock = _lockfile(copy)
     cmd = "uv sync --frozen" if lock else "uv sync"
     if with_mutmut:       # mutmut only in copy B (review C-1)
         cmd += " && uv pip install --python .venv/bin/python --require-hashes -r /opt/mutmut-requirements.txt"
     rec: dict = {"lockfile": lock, "command": cmd, "tries": []}
-    for _ in (1, 2):      # a failed sync is retried once; a second failure is install_failed (the arm's result)
+    seen = 0
+    for i in range(1 + len(SYNC_BACKOFF)):
+        if i:
+            _sleep(SYNC_BACKOFF[i - 1])
         r = _run(_spec(p, copy, ["bash", "-c", cmd], mode="prep", network=st.net, proxy=True,
                        env={"UV_OFFLINE": "0", "UV_NO_SYNC": "0"}, name="prep"), timeout=1800)
-        rec["tries"].append({"exit": r.returncode, "log": (r.stdout + r.stderr).decode(errors="replace")[-4000:]})
+        log = (r.stdout + r.stderr).decode(errors="replace")
+        t = {"exit": r.returncode, "log": log[-4000:]}
         if r.returncode == 0:
-            rec["ok"] = True
+            rec["tries"].append(t)
+            rec.update(ok=True, cause=None, why=None)
             return rec
-    rec["ok"] = False
+        plog = _proxy_log(st)
+        t["cause"], t["why"] = classify_sync(log, plog[seen:], st.hosts)
+        seen = len(plog)
+        rec["tries"].append(t)
+    rec.update(ok=False, cause=rec["tries"][-1]["cause"], why=rec["tries"][-1]["why"])
     return rec
 
 
@@ -504,6 +565,11 @@ def prepare_copy(p: Paths, copy: Path, out_dir: Path, label: str, quality_copy: 
             rec["quality"] = _sync(p, quality_copy, st, True)
     (out_dir / "hidden").mkdir(parents=True, exist_ok=True)
     (out_dir / "hidden" / f"prep-{label}.json").write_text(json.dumps(rec, indent=2))
+    net = [(k, rec[k]) for k in ("hidden", "quality") if isinstance(rec.get(k), dict) and rec[k].get("cause") == "network"]
+    if net:                            # A2: the harness's network, never the arm's install
+        k, r = net[0]
+        raise HarnessFault("infra-sync", re.sub(r"\d", "", str(r.get("why")))[:80] or "network",
+                           f"{k} copy: {r.get('why')} (after {len(r['tries'])} tries; prep-{label}.json)")
     return Prepared(copy, quality_copy, rec)
 
 
@@ -618,7 +684,8 @@ def all_failed(p: Paths, step: int, out_dir: Path, why: str) -> Summary:
     return s
 
 
-def run(p: Paths, copy: Path, step: int, out_dir: Path, install_failed: bool = False) -> Summary:
+def run(p: Paths, copy: Path, step: int, out_dir: Path, install_failed: bool = False,
+        install: dict | None = None) -> Summary:
     """Collect (no arm code), run the step's suite as the harness uid with the arm as its own uid, re-run each
     failure twice alone in fresh containers, classify flakes against the reference. Host records
     (`hidden/{summary,flake}.json`, `pytest.log`, `junit.xml`) are written only here, never in a mounted dir."""
@@ -658,6 +725,7 @@ def run(p: Paths, copy: Path, step: int, out_dir: Path, install_failed: bool = F
                 (flaky if classify_flaky(p, step, to_nodeid(t)) == "harness" else flaky_arm).append(t)
     (hd / "flake.json").write_text(json.dumps({"reruns": reruns, "harness_flaky": flaky, "arm_flaky": flaky_arm,
                                                "report": [f"flaky-test:{to_nodeid(t)}" for t in flaky]}, indent=2))
-    s = summarise(step, tests, new_at_step, flaky, flaky_arm, code, install_failed, collected, attribution, evidence)
+    s = summarise(step, tests, new_at_step, flaky, flaky_arm, code, install_failed, collected, attribution, evidence,
+                  install)
     s.write(out_dir)
     return s

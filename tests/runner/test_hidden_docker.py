@@ -290,15 +290,19 @@ def test_a_skeleton_that_does_nothing_scores_zero(skeleton):
         [t for t, o in skeleton.tests.items() if o != "failed"]
 
 
-def test_an_uninstallable_arm_is_install_failed_and_scores_zero_without_reruns(state, tmp_path):
+def test_an_uninstallable_arm_is_install_failed_and_scores_zero_without_reruns(state, tmp_path, monkeypatch):
+    monkeypatch.setattr(hidden, "_sleep", lambda s: None)          # the backoff itself is tested offline (A2)
     p = Paths("dryhidden", "dryrun")
     dst = p.scratch / "broken" / "a" / "bakeoff-specs-dryrun"
     dst.mkdir(parents=True)
     (dst / "pyproject.toml").write_text('[project]\nname = "broken"\nversion = "0"\n'
                                         'dependencies = ["no-such-package-bakeoff-xyz==9.9.9"]\n')
     prep = hidden.prepare_copy(p, dst, tmp_path, "broken")
-    assert prep.prep["hidden"]["ok"] is False and len(prep.prep["hidden"]["tries"]) == 2   # retried once
-    s = hidden.run(p, dst, 1, tmp_path, install_failed=True)
+    h = prep.prep["hidden"]
+    assert h["ok"] is False and len(h["tries"]) == 1 + len(hidden.SYNC_BACKOFF)          # A2: retried with backoff
+    assert h["cause"] == "arm" and all(t["cause"] == "arm" for t in h["tries"]), h      # a resolution error: the arm's
+    s = hidden.run(p, dst, 1, tmp_path, install_failed=True, install=hidden.install_record(h))
+    assert json.loads((tmp_path / "hidden" / "summary.json").read_text())["install"]["cause"] == "arm"
     assert s.install_failed and s.passed == 0 and s.failed == s.total == EXPECTED[1]
     assert json.loads((tmp_path / "hidden" / "flake.json").read_text())["reruns"] == {}
 

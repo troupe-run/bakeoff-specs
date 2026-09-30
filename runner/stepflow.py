@@ -232,7 +232,8 @@ def _handle_fault(ctx, f: HarnessFault, parked: list[int], run: str) -> None:
 # ---- hidden tests (run b) ---------------------------------------------------------------------------------------
 
 def _hidden_run(ctx, prep, attempt: int, install_failed: bool) -> hidden.Summary:
-    s = hidden.run(ctx.paths, prep.hidden_copy, ctx.step, ctx.out, install_failed)
+    s = hidden.run(ctx.paths, prep.hidden_copy, ctx.step, ctx.out, install_failed,
+                   install=hidden.install_record(prep.prep.get("hidden")))
     if s.attribution == "arm-resource":                         # died of resources twice: all-failed
         faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "repeat", s.resource_evidence)
     elif len(s.resource_evidence) >= 2:                          # died once, the re-run completed
@@ -326,7 +327,7 @@ def _clear_pending(ctx) -> None:
     (ctx.out / PENDING).unlink(missing_ok=True)
 
 
-def _phase(ctx, kind: str, attempt: int, what: str, fn):
+def _phase(ctx, kind: str, attempt: int, what: str, fn, pend: dict | None = None):
     """`fn()` under the tests-phase fault rule: a harness fault (or a container/git/subprocess error, as `kind`)
     is recorded (a repeat halts), the owner fixes it and `fn` runs again on the same commit. An owner park or
     decline raises `Paused`, which `run_step` turns into a parked step (park) or lets through (decline)."""
@@ -337,6 +338,10 @@ def _phase(ctx, kind: str, attempt: int, what: str, fn):
             fault = f
         except INFRA_ERRORS as e:
             fault = HarnessFault(kind, _sig(str(e)), repr(e)[:500])
+        if pend is not None:                           # recorded in hidden/summary.json (A2)
+            pend.setdefault("retests", []).append({"kind": fault.kind, "signature": fault.signature,
+                                                   "detail": fault.detail[:300]})
+            _save_pending(ctx, pend)
         _record(ctx, fault, attempt, "b")
         _confirm_or_pause(ctx, f"Harness fault {fault.kind}: {fault.signature} ({what}). Fix it, then {what} again "
                                f"on the same commit (no new arm session)?")
@@ -352,13 +357,17 @@ def _tests(ctx, attempt: int, pend: dict):
     sha = pend["sha"]
     if sha is None:                                    # no committed main: the arm's own outcome, all-failed
         return _phase(ctx, "infra-hidden", attempt, "score the attempt",
-                      lambda: hidden.all_failed(ctx.paths, ctx.step, ctx.out, hidden.NO_MAIN)), None
+                      lambda: hidden.all_failed(ctx.paths, ctx.step, ctx.out, hidden.NO_MAIN), pend), None
 
     def go():
         prep = hidden.prepare(ctx.paths, sha, f"{ctx.step:02d}-a{attempt}", ctx.out, with_quality=True)
         install_failed = not prep.prep.get("hidden", {}).get("ok", False)
         return _settle(ctx, prep, _hidden_run(ctx, prep, attempt, install_failed), attempt, install_failed), prep
-    return _phase(ctx, "infra-hidden", attempt, "run the hidden tests", go)
+    summary, prep = _phase(ctx, "infra-hidden", attempt, "run the hidden tests", go, pend)
+    if pend.get("retests"):
+        summary.harness_retests = list(pend["retests"])
+        summary.write(ctx.out)
+    return summary, prep
 
 
 # ---- outcomes that end the step without scoring ------------------------------------------------------------------

@@ -738,9 +738,14 @@ class _Run:
         for name in ("hidden", "quality"):
             if (d / name).exists():
                 shutil.move(str(d / name), str(d / f"{name}-superseded-{k}"))
-        prep = hidden.prepare(p, sha, f"{step:02d}-retest{k}", d, with_quality=True, require_main=False)
-        s = hidden.run(p, prep.hidden_copy, step, d, install_failed=not prep.prep.get("hidden", {}).get("ok"))
-        q = quality.run_all(p, prep, d, self.pins)
+        def retest():
+            prep = hidden.prepare(p, sha, f"{step:02d}-retest{k}", d, with_quality=True, require_main=False)
+            return prep, hidden.run(p, prep.hidden_copy, step, d,
+                                    install_failed=not prep.prep.get("hidden", {}).get("ok"),
+                                    install=hidden.install_record(prep.prep.get("hidden")))
+        prep, s = self.infra("infra-hidden", arm_name, step, "b", "the declared re-test", retest)
+        q = self.infra("infra-quality", arm_name, step, "b", "the declared re-test's quality",
+                       lambda: quality.run_all(p, prep, d, self.pins))
         _jw(d / f"retest-{k}.json", {"sha": sha, "at": _now(), "passed": s.passed, "total": s.total,
                                     "attribution": s.attribution, "quality": q, "declared": declared})
         prog["retests_done"].append(key)
