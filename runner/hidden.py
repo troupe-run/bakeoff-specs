@@ -343,6 +343,8 @@ class Summary:
     resource_evidence: list = field(default_factory=list)   # one list per full-suite attempt
     install: dict | None = None      # A2: the sync's outcome and cause per try (`install_record`), logs in prep-*.json
     harness_retests: list = field(default_factory=list)      # A1/A2: harness faults re-tested on this commit
+    acceptance: dict | None = None   # A4: a substitute step-6 bug's acceptance test on this commit, its hidden-suite
+                                     # regressions against the precheck baseline, and `progress` (what decides)
 
     def write(self, out_dir: Path) -> None:
         (out_dir / "hidden").mkdir(parents=True, exist_ok=True)

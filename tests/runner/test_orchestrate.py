@@ -825,3 +825,67 @@ def test_a_parked_close_of_a_stale_issue_is_retried_on_the_next_run(fake_orch):
     fake_orch.calls.clear()
     dry(fake_orch)
     assert ("supersede", "dryrun", "troupe-run/x#1") in fake_orch.calls
+
+
+# ---- final fix batch A4 / m-3: the substitute is scored; an unscoreable precheck parks ---------------------------------
+
+def test_a_substitute_arms_6b_carries_the_acceptance_test_and_the_precheck_baseline(fake_orch):
+    fake_orch.precheck_passes = True
+    fake_orch.owner.substitute_answers = [("substitute", "Sub title", "Sub body", "why", "def test_x(): 0", 1.0)]
+    fake_orch.acceptance = [{"outcome": "failed", "tests": {"m::x": "failed"}}]
+    dry(fake_orch)
+    acc = fake_orch.ctxs[("dryrun", 6, "b")].acceptance
+    assert acc["body"] == "def test_x(): 0" and acc["baseline"] == {"m::new": "passed", "m::old": "passed"}
+    assert fake_orch.ctxs[("dryrun", 6, "a")].acceptance is None                       # N.a is never scored
+    p = Paths("dry7", "dryrun")
+    assert not [f for d in (p.home, p.work) if d.exists() for f in d.rglob("*") if f.is_file()
+                and "def test_x(): 0" in f.read_text(errors="replace")]           # never where the arm can read it
+
+
+def test_no_acceptance_test_without_a_substitute(fake_orch):
+    dry(fake_orch)
+    assert fake_orch.ctxs[("dryrun", 6, "b")].acceptance is None
+
+
+def test_an_unscoreable_precheck_parks_for_the_owner_instead_of_delivering_the_planted_bug(fake_orch, monkeypatch):
+    from runner import hidden
+    real_run = hidden.run
+    monkeypatch.setattr(hidden, "run", lambda p, copy, step, out, install_failed=False, **k: hidden.summarise(
+        6, {}, ["m::new"], [], [], -1, collected=["m::new"], attribution="harness-fault: pytest exit 2")
+        if out.name == "precheck" else real_run(p, copy, step, out, install_failed, **k))
+    r = dry(fake_orch)
+    assert r["parked"][0]["what"] == "precheck-unscoreable"
+    assert not [c for c in fake_orch.calls if c[0] == "create_bug"]
+    assert (progress("dry7", "dryrun")["steps"].get("6") or {}).get("precheck") is None   # checked again next time
+    monkeypatch.setattr(hidden, "run", real_run)
+    fake_orch.calls.clear()
+    dry(fake_orch)
+    assert ("create_bug", "dryrun", None) in fake_orch.calls
+
+
+def test_a_substitute_is_refused_when_the_step5_commit_does_not_install(fake_orch, monkeypatch):
+    from runner import hidden
+    fake_orch.precheck_passes = True
+    fake_orch.owner.substitute_answers = [("substitute", "A", "a", "w", "t1", 1.0), ("planted", "", "", "", "", 0.0)]
+    real_prepare = hidden.prepare
+    monkeypatch.setattr(hidden, "prepare", lambda p, sha, label, out, **k: hidden.Prepared(out, None, {"hidden": {"ok": False}})
+                        if label == "06-substitute" else real_prepare(p, sha, label, out, **k))
+    dry(fake_orch)
+    assert ("create_bug", "dryrun", "A") not in fake_orch.calls and ("create_bug", "dryrun", None) in fake_orch.calls
+    assert "does not install" in fake_orch.owner.substitutes[1]
+    assert not [c for c in fake_orch.calls if c[0] == "acceptance"]
+
+
+def test_a_precheck_of_an_arm_with_no_main_delivers_the_planted_bug(fake_orch, monkeypatch):
+    from runner import hidden
+    real_prepare = hidden.prepare
+
+    def prepare(p, sha, label, out_dir, **k):
+        if label == "06-precheck":
+            raise hidden.NoMain("no main")
+        return real_prepare(p, sha, label, out_dir, **k)
+    monkeypatch.setattr(hidden, "prepare", prepare)
+    dry(fake_orch)
+    pc = json.loads((Paths("dry7", "dryrun").step(6) / "precheck" / "precheck.json").read_text())
+    assert pc["planted_already_passes"] is False and pc["attribution"] == hidden.NO_MAIN
+    assert ("create_bug", "dryrun", None) in fake_orch.calls

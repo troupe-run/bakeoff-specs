@@ -356,13 +356,21 @@ def _tests(ctx, attempt: int, pend: dict):
         _save_pending(ctx, pend)
     sha = pend["sha"]
     if sha is None:                                    # no committed main: the arm's own outcome, all-failed
-        return _phase(ctx, "infra-hidden", attempt, "score the attempt",
-                      lambda: hidden.all_failed(ctx.paths, ctx.step, ctx.out, hidden.NO_MAIN), pend), None
+        s = _phase(ctx, "infra-hidden", attempt, "score the attempt",
+                   lambda: hidden.all_failed(ctx.paths, ctx.step, ctx.out, hidden.NO_MAIN), pend)
+        if ctx.acceptance is not None:
+            s.acceptance = {"outcome": "failed", "detail": hidden.NO_MAIN, "regressions": [], "progress": False}
+            s.write(ctx.out)
+        return s, None
 
     def go():
         prep = hidden.prepare(ctx.paths, sha, f"{ctx.step:02d}-a{attempt}", ctx.out, with_quality=True)
         install_failed = not prep.prep.get("hidden", {}).get("ok", False)
-        return _settle(ctx, prep, _hidden_run(ctx, prep, attempt, install_failed), attempt, install_failed), prep
+        s = _settle(ctx, prep, _hidden_run(ctx, prep, attempt, install_failed), attempt, install_failed)
+        if ctx.acceptance is not None:
+            s.acceptance = _acceptance(ctx, prep, s, install_failed)
+            s.write(ctx.out)
+        return s, prep
     summary, prep = _phase(ctx, "infra-hidden", attempt, "run the hidden tests", go, pend)
     if pend.get("retests"):
         summary.harness_retests = list(pend["retests"])
@@ -479,13 +487,30 @@ def run_step(ctx, first_message: str, extra: dict | None = None, run: str = "b")
         message, resume = handoff.MESSAGES["no_progress"], ar.session_id
 
 
+def _acceptance(ctx, prep, s: hidden.Summary, install_failed: bool) -> dict:
+    """A4 (owner): a substitute step-6 bug is scored by the owner's acceptance test on this commit, beside the
+    standard suite. Progress = the test passes AND no hidden test that passed on the step-5 commit (the precheck
+    baseline) fails now. The test reaches the tester like the hidden suite (streamed into the uid-1000 0700
+    /harness, never mounted, never in the arm's home or work). An install failure is the arm's: the test fails,
+    unrun. A run that did not complete is the harness's (`infra-hidden`, re-tested on the same commit)."""
+    base = ctx.acceptance.get("baseline") or {}
+    regressions = sorted(t for t, o in base.items() if o == "passed" and s.tests.get(t) not in ("passed", "flaky"))
+    if install_failed:
+        return {"outcome": "failed", "detail": "install failed", "regressions": regressions, "progress": False}
+    r = hidden.run_acceptance(ctx.paths, prep.hidden_copy, ctx.step, ctx.acceptance["body"])
+    if r.get("outcome") == "error":
+        raise HarnessFault("infra-hidden", "acceptance test did not complete", str(r.get("detail"))[:500])
+    return {**r, "regressions": regressions, "progress": r.get("outcome") == "passed" and not regressions}
+
+
 def _decide(ctx, attempt, arm_attempts, history, ar, pin, t0, extra, pend) -> StepOutcome | None:
     """The tests phase of one arm attempt and the step's decision; None = no progress, the next attempt follows."""
     lim = ctx.pins.limits
     t_tests = time.time()
     summary, prep = _tests(ctx, attempt, pend)
     tests_s = time.time() - t_tests
-    progressed = summary.new_discriminating_passed > 0
+    progressed = summary.acceptance["progress"] if summary.acceptance is not None \
+        else summary.new_discriminating_passed > 0                 # A4: a substitute is scored by its test
     if not (progressed or arm_attempts >= lim.attempts_no_progress):
         _clear_pending(ctx)
         return None

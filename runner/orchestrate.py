@@ -288,13 +288,20 @@ class _Run:
         pc_dir = out / "precheck"
         if e.get("precheck") is None:
             def precheck():
-                prep = hidden.prepare(p, hidden.MAIN, "06-precheck", pc_dir)
+                try:
+                    prep = hidden.prepare(p, hidden.MAIN, "06-precheck", pc_dir)
+                except hidden.NoMain:                # nothing committed: the planted bug cannot already pass
+                    return hidden.summarise(6, {}, [], [], [], -1, attribution=hidden.NO_MAIN)
                 return hidden.run(p, prep.hidden_copy, 6, pc_dir,
                                   install_failed=not prep.prep.get("hidden", {}).get("ok"))
             s = self.infra("infra-hidden", arm_name, 6, None, "the step-6 precheck", precheck)
-            passes = bool(s.scoreable and s.new_at_step and all(s.tests.get(t) == "passed" for t in s.new_at_step))
-            e["precheck"] = {"planted_already_passes": passes, "scoreable": s.scoreable, "attribution": s.attribution,
-                             "new_at_step": s.new_at_step, "new_passed": s.new_passed, "sha": gitops.main_sha(p)}
+            rec = {"scoreable": s.scoreable, "attribution": s.attribution, "new_at_step": s.new_at_step,
+                   "new_passed": s.new_passed, "sha": gitops.main_sha(p), "tests": s.tests}
+            if not s.scoreable:                      # m-3: never deliver the planted bug on an unread precheck
+                _jw(pc_dir / "precheck-unscoreable.json", {**rec, "at": _now()})
+                return self.park(arm_name, 6, None, "precheck-unscoreable")
+            passes = bool(s.new_at_step and all(s.tests.get(t) == "passed" for t in s.new_at_step))
+            e["precheck"] = {"planted_already_passes": passes, **rec}
             _jw(pc_dir / "precheck.json", e["precheck"])
             _save(p, prog)
         title = body = None
@@ -335,8 +342,16 @@ class _Run:
             d.mkdir(parents=True, exist_ok=True)
             (d / "test_substitute.py").write_text(test_body)
             (d / "why.md").write_text(f"# Why this substitute\n\n{why}\n")
-            prep = hidden.prepare(p, hidden.MAIN, "06-substitute", d)
-            r = hidden.run_acceptance(p, prep.hidden_copy, 6, test_body)
+            prep = self.infra("infra-hidden", arm.name, 6, None, "installing the step-5 commit for the substitute",
+                              lambda: hidden.prepare(p, hidden.MAIN, "06-substitute", d))
+            if not prep.prep.get("hidden", {}).get("ok"):          # m-3: an install failure is not "the test fails"
+                r = {"outcome": "not-run", "detail": "the step-5 commit does not install (see prep-06-substitute.json)"}
+                _jw(d / "acceptance.json", r)
+                summary += (f"\n\nREJECTED: {title!r} cannot be checked: the step-5 commit does not install, so its "
+                            f"acceptance test cannot genuinely fail. Keep the planted bug, or fix the harness first.")
+                continue
+            r = self.infra("infra-hidden", arm.name, 6, None, "the substitute's acceptance test",
+                           lambda: hidden.run_acceptance(p, prep.hidden_copy, 6, test_body))
             _jw(d / "acceptance.json", r)
             if r.get("outcome") == "failed":
                 e["substitute"] = {"choice": "substitute", "title": title, "body": body, "why": why,
@@ -462,6 +477,10 @@ class _Run:
                 messages = [handoff.compose(step, ctx.step_brief, self.contract)]
         except _OwnerParked as x:
             return self.park(arm_name, step, run, "issue", x.park)
+        sub = e.get("substitute") or {}
+        if step == 6 and run == "b" and sub.get("choice") == "substitute":             # A4: scored by its test
+            ctx.acceptance = {"body": Path(sub["test"]).read_text(),
+                              "baseline": (e.get("precheck") or {}).get("tests") or {}}
         ctx.later_messages = messages[1:]
         ctx.shas = {"po_brief_at_handoff": _sha(ctx.brief_path), "contract": _sha(CONTRACT),
                     "step_brief": _sha(BRIEFS[step - 1])}

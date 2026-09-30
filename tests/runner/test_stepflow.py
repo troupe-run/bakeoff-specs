@@ -700,3 +700,70 @@ def test_an_infra_sync_fault_is_retested_on_the_same_commit_and_never_counts_as_
     assert e["kind"] == "infra-sync" and fake_step.calls == 1 and out.attempts == 1 and out.status == "done"
     got = json.loads((fake_step.ctx.out / "hidden" / "summary.json").read_text())
     assert [r["kind"] for r in got["harness_retests"]] == ["infra-sync"]
+
+
+# ---- final fix batch A4: a substitute step-6 bug is scored by its acceptance test ------------------------------------
+
+def _substitute(fs, monkeypatch, outcomes, baseline=None):
+    """Step 6 with a substitute: `outcomes` are successive run_acceptance results ("passed"/"failed"/"error")."""
+    fs.ctx.step = 6
+    fs.ctx.acceptance = {"body": "def test_sub(): ...", "baseline": baseline or {"m::t": "passed"}}
+    got = []
+
+    def run_acceptance(p, copy, step, body):
+        got.append(body)
+        o = outcomes.pop(0)
+        return {"outcome": o, "tests": {"tests.hidden.test_zz_substitute::test_sub": o}} if o != "error" else \
+            {"outcome": "error", "detail": "container did not finish"}
+    monkeypatch.setattr(stepflow.hidden, "run_acceptance", run_acceptance)
+    return got
+
+
+def test_a_substitute_step_is_not_done_until_its_acceptance_test_passes(fake_step, monkeypatch):
+    fake_step.progress = [3, 3, 3]                   # the standard step-6 tests already pass (why it was substituted)
+    got = _substitute(fake_step, monkeypatch, ["failed", "passed"])
+    out = stepflow.run_step(fake_step.ctx, "go")
+    assert out.status == "done" and out.attempts == 2 and got == ["def test_sub(): ..."] * 2
+    assert fake_step.messages == ["go", fake_step.no_progress]
+    s = json.loads((fake_step.ctx.out / "hidden" / "summary.json").read_text())
+    assert s["acceptance"]["outcome"] == "passed" and s["acceptance"]["progress"] is True
+
+
+def test_a_substitute_arm_that_never_fixes_it_stops_after_three_attempts(fake_step, monkeypatch):
+    fake_step.progress = [3, 3, 3]
+    _substitute(fake_step, monkeypatch, ["failed"] * 3)
+    out = stepflow.run_step(fake_step.ctx, "go")
+    assert out.status == "stopped" and out.attempts == 3
+
+
+def test_a_substitute_fix_that_breaks_a_passing_hidden_test_is_no_progress(fake_step, monkeypatch):
+    fake_step.progress = [0, 3]                      # attempt 1: m::t now fails (a regression)
+    _substitute(fake_step, monkeypatch, ["passed", "passed"])
+    out = stepflow.run_step(fake_step.ctx, "go")
+    assert out.attempts == 2
+    [(k, label)] = fake_step.parked
+    assert label == "no-progress"
+
+
+def test_an_acceptance_run_that_did_not_complete_is_infra_hidden_retested(fake_step, monkeypatch):
+    fake_step.progress = [3]
+    _substitute(fake_step, monkeypatch, ["error", "passed"])
+    out = stepflow.run_step(fake_step.ctx, "go")
+    [e] = faults.for_step("dry9", "control", 6)
+    assert e["kind"] == "infra-hidden" and out.status == "done" and fake_step.calls == 1
+
+
+def test_an_install_failure_is_the_substitutes_failure_without_running_it(fake_step, monkeypatch):
+    fake_step.progress = [3, 3, 3]
+    got = _substitute(fake_step, monkeypatch, [])
+    monkeypatch.setattr(stepflow.hidden, "prepare", lambda *a, **k: stepflow.hidden.Prepared(
+        fake_step.ctx.out, None, {"hidden": {"ok": False}}))
+    out = stepflow.run_step(fake_step.ctx, "go")
+    assert out.status == "stopped" and got == []
+    assert json.loads((fake_step.ctx.out / "hidden" / "summary.json").read_text())["acceptance"]["outcome"] == "failed"
+
+
+def test_without_a_substitute_step6_progress_is_the_standard_rule(fake_step):
+    fake_step.ctx.step = 6
+    fake_step.progress = [3]
+    assert stepflow.run_step(fake_step.ctx, "go").status == "done"

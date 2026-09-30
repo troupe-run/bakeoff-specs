@@ -88,6 +88,8 @@ class StepCtx:
     contract: str | None = None  # the FULL contract: the PO's view is then `po.step_view` (required at step 5)
     later_sent: int = 0          # how many `later_messages` were sent (drive state across attempts; a harness
                                  # restore that re-sends the first message must reset it to 0)
+    acceptance: dict | None = None  # N.b at step 6 with a substitute bug (A4): {"body": the owner's acceptance test,
+                                 # "baseline": the precheck's hidden outcomes on the step-5 commit}
     run: str = "b"               # "a" (N.a discovery) | "b" (N.b scored): N.a's GitHub tracker is the arm's
                                  # discovery repo (final fix batch A3; set by stepflow.run_step)
 
