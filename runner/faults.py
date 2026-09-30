@@ -186,11 +186,17 @@ def for_step(pass_: str, arm: str, step: int) -> list[dict]:
             and e.get("pass", pass_) == pass_]
 
 
+SCOPES = ("rerun-step", "retest", "record")
+
+
 def declare(pass_: str, arm: str, step: int, slug: str, scope: str) -> Literal["rerun", "halt"]:
     """An owner-declared harness fault (wrong brief, allowlist too narrow, runner bug): `manual:<slug>`. It counts
-    towards the halt rule like any other; the scope says what re-runs (`rerun-step` or `retest`, Task 23)."""
-    if scope not in ("rerun-step", "retest"):
-        raise ValueError("scope is rerun-step or retest")
+    towards the halt rule like any other; the scope says what re-runs (`rerun-step` or `retest`, Task 23) — or
+    `record` (owner, 2026-10-01): nothing. It is for an owner stop mid-flight (Ctrl-C in the runner): the stop is
+    a harness fault on the record, and a plain resume already moves only the interrupted run aside and restores
+    the step's snapshot, so no finished work is superseded or re-run."""
+    if scope not in SCOPES:
+        raise ValueError("scope is rerun-step, retest or record")
     check_pass(pass_); check_arm(arm)
     if step not in STEPS:
         raise ValueError(f"step {step}: the scenario has steps 1-7")

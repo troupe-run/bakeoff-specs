@@ -1154,3 +1154,20 @@ def test_a_real_pass_records_a_commit_made_now_and_one_made_before_a_crash(fake_
     real(fake_orch)
     rec = json.loads((paths.RESULTS / "pass1" / "consistency" / "step-01.json").read_text())
     assert (rec["committed"], rec["committed_now"]) == (True, False)      # in HEAD, by the run that crashed
+
+
+def test_a_declared_record_is_ledgered_but_the_next_run_supersedes_and_retests_nothing(fake_orch):
+    """`--scope record` (owner stop, 2026-10-01): orchestrate's pending() switches on the declared scope
+    (`rerun` in progress.json for rerun-step, `scope == "retest"` in the ledger); record must trigger neither."""
+    dry(fake_orch)
+    p = Paths("dry7", "dryrun")
+    (p.step(2) / "git.json").write_text(json.dumps({"sha_after": "sha-2"}))
+    prog_before = json.loads(p.progress.read_text())
+    assert cli.main(["faults", "declare", "dry7", "dryrun", "2", "owner-stop", "--scope", "record"]) == 0
+    fake_orch.calls.clear()
+    dry(fake_orch)
+    assert fake_orch.runs() == []
+    assert not [c for c in fake_orch.calls if c[0] == "prepare"]
+    assert not list(p.results.glob("*-superseded-*")) and not (p.step(2) / "retest-1.json").exists()
+    assert json.loads(p.progress.read_text())["steps"] == prog_before["steps"]
+    assert [e["scope"] for e in faults.entries("dry7")] == ["record"]

@@ -187,7 +187,7 @@ REGISTRARS.append(register_scan)
 
 
 def register_faults(sub):
-    """`faults list [--pass P]`, `faults declare <pass> <arm> <step> <slug> --scope rerun-step|retest`,
+    """`faults list [--pass P]`, `faults declare <pass> <arm> <step> <slug> --scope rerun-step|retest|record`,
     `faults resume <pass> --note "<text>"` (Task 22, design §9). The only commands that run while HALTED. Bad input
     (unknown pass or arm, step outside 1-7, an empty note, resuming a pass that is not halted) is a clean error,
     exit 2, and writes nothing (fix round 1 M-2)."""
@@ -222,6 +222,7 @@ def register_faults(sub):
             from runner import fsutil
             fsutil.write_json(prog, {**cur, "rerun": ns.step})          # atomic (Task 23 fix round 1)
         # --scope retest: the orchestrator reads it from the ledger (Task 23) and re-tests the recorded sha_after
+        # --scope record: the ledger entry only (an owner stop); a plain resume handles the interrupted run
         print(f"declared manual:{ns.slug} ({ns.scope}) for {ns.pass_}/{ns.arm} step {ns.step}")
         if action == "halt":
             print(f"HALTED: manual:{ns.slug} was already recorded since the last resolution (design §9).\n"
@@ -229,7 +230,11 @@ def register_faults(sub):
             return 1
     d = s_.add_parser("declare", help="record an owner-declared harness fault (manual:<slug>)")
     d.add_argument("pass_", metavar="pass"); d.add_argument("arm"); d.add_argument("step", type=int)
-    d.add_argument("slug"); d.add_argument("--scope", required=True, choices=("rerun-step", "retest"))
+    d.add_argument("slug")
+    d.add_argument("--scope", required=True, choices=faults.SCOPES,
+                   help="rerun-step: supersede this step and every later one and re-run them; retest: re-run the "
+                        "hidden tests and quality on the recorded sha_after; record: the ledger entry only (an owner "
+                        "stop: Ctrl-C the runner, declare, then resume)")
     d.set_defaults(func=clean(declare))
 
     def resume(ns):
@@ -443,7 +448,7 @@ def register_watch(sub):
                     "each new turn as it starts; with no running turn, wait for one. Read-only: no lock, no writes; "
                     "run it in a second terminal beside run-pass / run-arm / canary / dry-run. Ctrl-C here stops "
                     "watching only. To stop the RUN: Ctrl-C in the runner's terminal (the step is left interrupted), "
-                    "then `runner faults declare <pass> <arm> <step> <slug> --scope rerun-step` (ledgered as "
+                    "then `runner faults declare <pass> <arm> <step> <slug> --scope record` (ledgered as "
                     "manual:<slug>) — an owner stop is a harness fault, not the arm's (design §9).")
     p.add_argument("--pass", dest="pass_", metavar="PASS", default=None, help="only this pass (default: any)")
     p.add_argument("--arm", default=None, help="only this arm (default: any)")

@@ -45,7 +45,8 @@ records are evidence only, follow-up 8); at
 `limits.suite_resource_arms` the bake-off halts for owner review (`faults.halt`), and after `faults resume` the arms
 scored all-failed there ("repeat") re-run that step's N.b. Owner-declared faults: `--scope rerun-step` supersedes the
 step and every later one (`NN-superseded-<k>/`) and re-runs them from the step's existing snapshot (the hand edit and
-the issue are kept); `--scope retest` re-runs the hidden tests and quality on the step's recorded `sha_after`.
+the issue are kept); `--scope retest` re-runs the hidden tests and quality on the step's recorded `sha_after`;
+`--scope record` (an owner stop, 2026-10-01) is the ledger entry only: nothing here acts on it.
 
 **Records and locking (fix round 1)**: every progress, consistency, suite-resource and evidence record is written
 atomically (`fsutil`: temp file, fsync, `os.replace`). `preflight.lock()` is taken before every pre-check and any

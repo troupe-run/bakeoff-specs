@@ -239,3 +239,23 @@ def test_a_resource_record_must_say_which_run_it_came_from():                  #
         faults.record_resource("dry3", "a", 3, 1, "repeat", [])
     with pytest.raises(ValueError):
         faults.record_resource("dry3", "a", 3, 1, "repeat", [], run="c")
+
+
+# ---- --scope record (owner, 2026-10-01): an owner stop, recorded as a harness fault, superseding nothing -----------
+
+def test_declare_record_adds_the_ledger_entry_and_changes_no_step_state(tmp_state):
+    prog = paths.Paths("dry3", "control").progress
+    prog.parent.mkdir(parents=True)
+    prog.write_text(json.dumps({"steps": {"4": {"b": {"status": "interrupted"}}}}))
+    before = prog.read_text()
+    assert cli.main(["faults", "declare", "dry3", "control", "4", "owner-stop-1", "--scope", "record"]) == 0
+    [e] = faults.for_step("dry3", "control", 4)
+    assert (e["kind"], e["signature"], e["scope"], e["action"]) == ("manual", "owner-stop-1", "record", "record")
+    assert prog.read_text() == before                              # no `rerun` mark, nothing superseded
+    assert not faults.halted("dry3")
+
+
+def test_declare_record_with_the_same_slug_twice_halts(capsys):
+    assert cli.main(["faults", "declare", "dry3", "control", "4", "owner-stop", "--scope", "record"]) == 0
+    assert cli.main(["faults", "declare", "dry3", "control", "5", "owner-stop", "--scope", "record"]) == 1
+    assert "HALTED" in capsys.readouterr().out and faults.halted("dry3")

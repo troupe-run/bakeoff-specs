@@ -38,7 +38,7 @@ TOOL_MAX = 160                  # a tool call's argument summary
 TEXT_MAX = 200                  # assistant text
 SUBAGENT_TOOLS = ("Agent", "Task")      # Claude Code 2.1.281 calls it Agent (probe P3/P3b); Task is the old name
 STOP_HINT = ("To stop the run: Ctrl-C in the runner's terminal (the step is left `interrupted`), then record it as "
-             "a harness fault: `runner faults declare <pass> <arm> <step> <slug> --scope rerun-step` (ledgered "
+             "a harness fault: `runner faults declare <pass> <arm> <step> <slug> --scope record` (ledgered "
              "as manual:<slug>). Ctrl-C here only stops watching.")
 
 Redact = Callable[[str], str]

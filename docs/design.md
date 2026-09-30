@@ -202,8 +202,9 @@ recognisable by their artefact shapes — and the report says so.
 - **Owner stop mid-flight (owner, 2026-10-01):** the owner stopping a run (Ctrl-C in the runner's terminal, e.g.
   after seeing a turn go off the rails in `runner watch`) is a **harness** fault, not an arm fault. The step is
   left `interrupted`; the owner records it with `runner faults declare <pass> <arm> <step> <slug> --scope
-  rerun-step` (ledgered as `manual:<slug>`); resuming moves the attempt aside and re-runs the step from its
-  snapshot. The arm is not penalised. Like every harness fault, the same `manual:<slug>` twice halts the bake-off.
+  record` (ledgered as `manual:<slug>`; `record` supersedes nothing, so finished work is not re-run); resuming
+  moves the interrupted attempt aside and re-runs it from the step's snapshot. The arm is not penalised. Like
+  every harness fault, the same `manual:<slug>` twice halts the bake-off.
 
 ## 10. Repos and naming
 
