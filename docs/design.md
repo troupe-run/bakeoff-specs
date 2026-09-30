@@ -45,6 +45,8 @@ Research and citations: [`research/CANDIDATES.md`](../research/CANDIDATES.md) (2
   Tracker quality is recorded but scored separately, so a built-in board does not earn double credit.
   A dedicated tracker bake-off (`bakeoff-trackers-*`) is parked until this one concludes.
 - **Excluded:** GSD (above), Kiro (not drivable from Claude Code), Tessl spec tile (too thin and stale).
+- **bmad is parked (owner, 2026-09-29)** until BMAD 6.13: it keeps its setup checklist but is not run, has no
+  repo or PAT, and is left out of the order (`parked = true`, `config.active_arms()`). Six arms run.
 
 Versions are pinned at setup and recorded; an upgrade mid-bake-off is not allowed.
 
@@ -93,10 +95,16 @@ every earlier step's still-valid tests, so regressions count.
   request or the first edit to code outside its spec and docs paths, whichever comes first. Every escalated
   answer is added to the brief, recording which arm first raised it. The arm repo is then reset to its
   pre-step commit.
-- **Consistency check:** before N.b, the answers gathered in N.a are checked to be consistent with each other
-  and with the brief, so the same question always gets the same answer.
+- **Consistency check:** before N.b, the answers escalated in N.a are compared with each other (the same or an
+  overlapping question must get the same answer), so the same question always gets the same answer. Whether an
+  answer is consistent with the brief's own standing text is the owner's call when confirming: the check itself
+  compares escalated answers only.
 - **N.b (scored):** each arm, one at a time, re-runs step N from the same starting commit, to completion, with
   the brief as it stands after the check. N.b is scored and is what step N+1 builds on.
+- **Discovery tracker (owner, 2026-09-30):** a GitHub-tracker arm's N.a works against its own private discovery
+  repo, `troupe-run/bakeoff-specs-<arm>-<pass>-disc` (its own `GH_REPO` and PAT, keychain
+  `bakeoff-gh-<pass>-disc-<arm>`; the local origin is untouched), so nothing N.a files, comments on or closes
+  reaches the tracker N.b starts from. Beads (speckitty) lives in git and is reset with the arm repo.
 
 **Consistent, not identical (owner, 2026-09-29).** Arms get the same answer to the same question, but only
 what they ask for: the product owner never volunteers brief content an arm did not ask about. Asking tougher or
@@ -117,7 +125,9 @@ This is not an unattended run: arms go **one at a time**, pausing at the owner's
 ## 6. Setup and isolation
 
 **One repo per arm**, `troupe/bakeoff-specs-<arm>/`, fresh, with clean history, never containing hidden tests
-or harness code. Pushed public to GitHub when complete.
+or harness code. Private during the bake-off (`troupe-run/bakeoff-specs-<arm>-<pass>`, and the N.a discovery repo);
+at close-out the arm's history is published to `troupe-run/bakeoff-specs-<arm>`, created **private**; the owner
+changes its visibility later (owner, 2026-09-30).
 
 **Isolation per arm:**
 - its own `CLAUDE_CONFIG_DIR`, so no plugin, skill, memory or setting from another arm (or from the
@@ -138,7 +148,8 @@ schema upgrades from one designated clone only).
 The runner (in this repo) prepares an arm, hands it each step brief, stands up the product-owner agent,
 pauses for owner gates, and after each step runs the hidden tests from outside against the arm's CLI.
 
-Evidence stored per arm per step, in this repo under `results/<arm>/<step>/`:
+Evidence stored per arm per step, in this repo under `results/<pass>/<arm>/<NN>/` (N.b, the scored run), with
+the step's N.a discovery run under `results/<pass>/<arm>/<NN>/a/`:
 full session transcripts; cost with its unit and source, and wall-clock time; every question asked, who
 answered, and whether it was escalated; hidden-test results; mutation score, `mypy --strict` and lint output;
 the arm repo's git SHA at the end of the step.
@@ -177,13 +188,17 @@ recognisable by their artefact shapes — and the report says so.
 `bakeoff-<topic>[-<arm>]`, so future bake-offs have their own namespace:
 - `bakeoff-specs` — this harness: `docs/`, `research/`, `scenario/` (step briefs, contract, PO brief),
   `tests/hidden/`, `checklists/`, `runner/`, `results/`.
-- `bakeoff-specs-<arm>` — one per arm.
+- `bakeoff-specs-<arm>` — one per arm, created private at close-out; the owner sets its visibility later.
+- `bakeoff-specs-<arm>-<pass>` and `bakeoff-specs-<arm>-<pass>-disc` — the private per-pass repo and the N.a
+  discovery tracker used during the bake-off.
 
-All public.
+All private during the bake-off (owner, 2026-09-30).
 
 ## 11. Open items
 
-1. ~~GitHub org~~ — decided: public repos under `troupe-run` (issue types Task/Bug/Feature are enabled there).
+1. ~~GitHub org~~ — decided: repos under `troupe-run` (issue types Task/Bug/Feature are enabled there), private
+   during the bake-off; published at close-out to `troupe-run/bakeoff-specs-<arm>`, created private, with the owner
+   adjusting visibility later (owner, 2026-09-30).
 2. ~~Containers for every arm~~ — decided: **yes**, every arm runs in the spike B container stage
    (see `../spike-claude-docker/FINDINGS.md`), with its own `CLAUDE_CONFIG_DIR` mounted in and the
    credential supplied the same way for every arm.
