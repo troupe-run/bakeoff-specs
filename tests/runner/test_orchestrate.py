@@ -1089,3 +1089,18 @@ def test_the_check_never_commits_a_brief_identical_to_head(fake_orch, monkeypatc
     monkeypatch.setattr(gitops, "harness_differs_from_head", lambda path: False)
     real(fake_orch)
     assert commits == []
+
+
+def test_arm_drift_checks_are_skipped_when_the_tests_phase_resumes(fake_orch, monkeypatch):   # follow-up 7
+    from runner import checklist
+    from runner.checklist import Check
+    fake_orch.outcome[("dryrun", 3, "b")] = ["tests-parked"]
+    dry(fake_orch)
+    fake_orch.calls.clear()
+    pending = Paths("dry7", "dryrun").step(3) / stepflow.PENDING
+    # stepflow already judged this attempt's drift (its pending record); the check still reports it meanwhile
+    monkeypatch.setattr(checklist, "verify", lambda p, arm, mode: [Check("common.origin", False, "x")]
+                        if pending.exists() else [])
+    dry(fake_orch)
+    assert ("run_step", "dryrun", 3, "b") in fake_orch.calls and ("restore", "dryrun", 3) not in fake_orch.calls
+    assert _viol(Paths("dry7", "dryrun")) == []

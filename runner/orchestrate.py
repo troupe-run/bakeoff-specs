@@ -487,7 +487,7 @@ class _Run:
                 self._aside(p, step, run, "interrupted")
             e["restore_needed"] = False
             _save(p, prog)
-        self._verify(arm_name, step, run, e, prog, restorable=not tests_pending)
+        self._verify(arm_name, step, run, e, prog, restorable=not tests_pending, arm_drift=not tests_pending)
         out = p.step(step) / "a" if run == "a" else p.step(step)
         out.mkdir(parents=True, exist_ok=True)
         ctx = self.ctx(arm_name, step, out, e, run)
@@ -557,7 +557,8 @@ class _Run:
             fh.write(json.dumps({"at": _now(), **rec}) + "\n")
         self.log("arm-violation", arm=p.arm, **{k: v for k, v in rec.items() if k != "files"})
 
-    def _verify(self, arm_name: str, step: int, run: str, e: dict, prog: dict, restorable: bool) -> None:
+    def _verify(self, arm_name: str, step: int, run: str, e: dict, prog: dict, restorable: bool,
+                arm_drift: bool = True) -> None:
         """The step-mode verify before a run. A failing check the ARM can cause (stepflow.ARM_DRIFT) is an arm
         violation (A5): the step's existing snapshot is restored to repair it and the verify runs again; if that
         cannot repair it, the run stops for the owner — never a ledger entry. Any other failure is `setup-drift`."""
@@ -569,7 +570,8 @@ class _Run:
                 c = other[0]
                 self.fault(HarnessFault("setup-drift", c.id, c.detail), arm_name, step, run,
                            "the arm's setup drifted (checklists/verify, step mode); the owner fixes it")
-            drift = [c for c in fails if c.id in stepflow.ARM_DRIFT]
+            # follow-up 7: resuming a tests phase, stepflow's pending record already judged the attempt's drift
+            drift = [c for c in fails if c.id in stepflow.ARM_DRIFT] if arm_drift else []
             if not drift:
                 return
             for c in drift:
