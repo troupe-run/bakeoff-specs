@@ -435,11 +435,31 @@ def _smoke(p, arm, pass_, cred, st, out) -> Check:
 
 
 # ---- GitHub PAT (M4) -------------------------------------------------------------------------------------
-def _write_new_private(path: Path, text: str) -> None:
-    """Created 0600 in one step (never write-then-chmod); refuses an existing file or link."""
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-    with os.fdopen(fd, "w") as fh:
-        fh.write(text)
+def write_private_under(root: Path, rel: tuple[str, ...], text: str, *, replace: bool = True) -> None:
+    """Write `root/rel...` 0600, walking every parent BY FD (round 2, item 3): each directory is opened with
+    O_DIRECTORY|O_NOFOLLOW relative to the one before (made 0700 if absent), and the file is replaced and created
+    with `dir_fd` — so a symlinked parent, even one swapped in after the checks, can never redirect the write."""
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    fd = os.open(root, flags)
+    try:
+        for part in rel[:-1]:
+            try:
+                os.mkdir(part, 0o700, dir_fd=fd)
+            except FileExistsError:
+                pass
+            nxt = os.open(part, flags, dir_fd=fd)
+            os.close(fd)
+            fd = nxt
+        if replace:                                   # never followed: unlink removes a link itself
+            try:
+                os.unlink(rel[-1], dir_fd=fd)
+            except FileNotFoundError:
+                pass
+        out = os.open(rel[-1], os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd)
+        with os.fdopen(out, "w") as fh:
+            fh.write(text)
+    finally:
+        os.close(fd)
 
 
 def _install_github_pat(p: Paths, arm: config.Arm, pass_: str) -> bool:
@@ -448,13 +468,10 @@ def _install_github_pat(p: Paths, arm: config.Arm, pass_: str) -> bool:
     if arm.tracker != "github" or arm.dry or not config.github_slug(pass_, arm.name):
         return False
     pat = credentials.github_pat(pass_, arm.name)
-    gh = p.home / ".config" / "gh"
-    for d in (gh.parent, gh):
-        d.mkdir(mode=0o700, exist_ok=True)
-    _write_new_private(gh / "hosts.yml", gh_hosts_yml(pat))
+    write_private_under(p.home, (".config", "gh", "hosts.yml"), gh_hosts_yml(pat), replace=False)   # fd walk
     mcp = MCP_DIR / f"{arm.name}.json"
     if mcp.exists():
-        _write_new_private(p.home / ".bk-mcp.json", mcp.read_text().replace("${GITHUB_PAT}", pat))
+        write_private_under(p.home, (".bk-mcp.json",), mcp.read_text().replace("${GITHUB_PAT}", pat), replace=False)
     return True
 
 
@@ -503,14 +520,9 @@ def install_disc_pat(p: Paths, arm: config.Arm, pass_: str) -> bool:
             record_arm_violation(p, {"kind": "link-in-home", "path": str(f), "repaired": "unlinked, real file written"})
         elif os.path.lexists(f) and not stat.S_ISREG(os.lstat(f).st_mode):
             raise NotReady(f"{f} is not a regular file (nor a link): the arm changed its home; not writing the N.a PAT")
-    gh = p.home / ".config" / "gh"
-    for d in (gh.parent, gh):
-        d.mkdir(mode=0o700, exist_ok=True)
-    for f in targets:
-        f.unlink(missing_ok=True)
-    _write_new_private(targets[0], gh_hosts_yml(pat))
+    write_private_under(p.home, (".config", "gh", "hosts.yml"), gh_hosts_yml(pat))
     if len(targets) > 1:
-        _write_new_private(targets[1], mcp.read_text().replace("${GITHUB_PAT}", pat))
+        write_private_under(p.home, (".bk-mcp.json",), mcp.read_text().replace("${GITHUB_PAT}", pat))
     return True
 
 

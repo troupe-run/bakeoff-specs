@@ -160,3 +160,34 @@ def test_a_run_with_a_missing_discovery_pat_is_refused_before_any_step(fake_orch
     with pytest.raises(orchestrate.NotReady, match="bakeoff-gh-pass1-disc-"):
         real(fake_orch)
     assert fake_orch.runs() == []
+
+
+# ---- follow-up round 2, item 3: the PAT write can never be redirected by a symlinked parent ---------------------------
+
+def test_the_private_write_walks_parents_by_fd_and_refuses_a_linked_parent(tmp_path):
+    home = tmp_path / "home"; home.mkdir()
+    elsewhere = tmp_path / "elsewhere"; elsewhere.mkdir()
+    (home / ".config").symlink_to(elsewhere)                   # e.g. swapped in after the checks
+    with pytest.raises(OSError):
+        checklist.write_private_under(home, (".config", "gh", "hosts.yml"), "secret")
+    assert list(elsewhere.iterdir()) == []                     # nothing created through the link
+
+
+def test_the_private_write_creates_0700_parents_and_a_0600_file(tmp_path):
+    home = tmp_path / "home"; home.mkdir()
+    checklist.write_private_under(home, (".config", "gh", "hosts.yml"), "x")
+    f = home / ".config" / "gh" / "hosts.yml"
+    assert f.read_text() == "x" and oct(f.stat().st_mode & 0o777) == "0o600"
+    assert oct((home / ".config" / "gh").stat().st_mode & 0o777) == "0o700"
+    checklist.write_private_under(home, (".config", "gh", "hosts.yml"), "y")      # replaces the file
+    assert f.read_text() == "y"
+
+
+def test_install_disc_pat_writes_through_the_fd_walk(tmp_state, monkeypatch):
+    p = _home_with_pat(tmp_state)
+    monkeypatch.setattr(credentials, "github_disc_pat", lambda pass_, arm: "github_pat_" + "D" * 40)
+    seen = []
+    real = checklist.write_private_under
+    monkeypatch.setattr(checklist, "write_private_under", lambda root, rel, text: seen.append(rel) or real(root, rel, text))
+    checklist.install_disc_pat(p, config.load_arm("control"), "pass1")
+    assert seen == [(".config", "gh", "hosts.yml")]
