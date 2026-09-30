@@ -267,8 +267,25 @@ def _fresh(home: Path) -> None:
     (home / ".claude").mkdir(parents=True)
 
 
+def _git_dir(p: Paths) -> Path:
+    """m-2: the teammate's `.git` bind-mount source is arm-writable work: Docker resolves it on the HOST, so a link
+    (or a `gitdir:` file) left by the arm could mount any host directory. lstat it: only a real directory directly
+    in the repo is mounted; anything else stops for the owner (not a harness fault: the arm made it)."""
+    g = p.repo / ".git"
+    try:
+        st = os.lstat(g)
+    except FileNotFoundError:
+        raise checklist.NotReady(f"{g} is missing: nothing to mount for the teammate") from None
+    import stat as _stat
+    if not _stat.S_ISDIR(st.st_mode) or os.path.realpath(g) != os.path.join(os.path.realpath(p.repo), ".git"):
+        raise checklist.NotReady(f"{g} is not a real directory in the repo (a link or a file the arm left); "
+                                 f"refusing to mount it for the teammate — repair it (`runner shell`)")
+    return g
+
+
 def _teammate_turn(ctx, k: int, out: Path, turns: list) -> transcripts.PinReport:
     p, pins, arm = ctx.paths, ctx.pins, ctx.arm
+    git_dir = _git_dir(p)                      # before any mount is built (m-2)
     home = p.teammate_home(k)
     _fresh(home)
     before = transcripts.snapshot(home / ".claude")
@@ -284,7 +301,7 @@ def _teammate_turn(ctx, k: int, out: Path, turns: list) -> transcripts.PinReport
         with egress.Stage(ctx.pass_, arm.name, "teammate", pins.egress_run_common, out / "egress.log") as st:
             t = session.Turn(ctx.pass_, arm.name, 2, k, 1, image, PROMPT, env,
                              [Mount(home, p.container_home, False), Mount(p.work, "/work", False),
-                              Mount(p.repo / ".git", f"{p.container_repo}/.git", True)],   # the commit is later
+                              Mount(git_dir, f"{p.container_repo}/.git", True)],   # the commit is later
                              st.net, True,
                              p.container_repo, p.inbox("teammate"), "teammate", arm.dry, home / ".claude")
             r = session.run_turn(t, ctx.cred, out, pins.limits.turn_seconds)

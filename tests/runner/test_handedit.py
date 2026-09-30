@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from runner import handedit, gitops, session
+from runner import checklist, handedit, gitops, session
 from runner.faults import HarnessFault
 from runner.transcripts import PinReport
 from tests.runner.conftest import make_test_ctx
@@ -521,3 +521,23 @@ def test_a_symlinked_git_dir_stops_before_the_teammate_runs(ctx, monkeypatch, tm
         handedit.apply(ctx, STEP1)
     assert (e.value.kind, e.value.signature) == ("hand-edit", "precondition") and ".git" in e.value.detail
     assert "turn" not in w.names()
+
+
+# ---- final fix batch m-2: the teammate's .git mount source is checked on the host first -------------------------------
+
+@pytest.mark.parametrize("make", ["symlink", "file"])
+def test_a_git_dir_the_arm_replaced_is_refused_before_any_mount_is_built(ctx, monkeypatch, tmp_path, make):
+    import shutil
+    p = ctx.paths
+    w = World(monkeypatch, ctx)
+    g = p.repo / ".git"
+    if g.is_dir() and not g.is_symlink():
+        shutil.rmtree(g)
+    g.parent.mkdir(parents=True, exist_ok=True)
+    if make == "symlink":
+        target = tmp_path / "elsewhere"; target.mkdir(); g.symlink_to(target)
+    else:
+        g.write_text("gitdir: ../../../../tests\n")
+    with pytest.raises(checklist.NotReady, match=".git"):
+        handedit._teammate_turn(ctx, 1, ctx.out / "hand-edit", [])
+    assert w.turn_specs == []
