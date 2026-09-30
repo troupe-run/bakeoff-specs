@@ -243,6 +243,12 @@ def github_slug(pass_: str, arm: str) -> str | None:
     return None
 
 
+def github_final_slug(arm: str) -> str:
+    """Where close-out publishes the arm's history (owner, 2026-09-30): `troupe-run/bakeoff-specs-<arm>`, created
+    PRIVATE if absent; the owner changes its visibility later. Never made public by the runner."""
+    return f"{GITHUB_ORG}/bakeoff-specs-{arm}"
+
+
 def github_disc_slug(pass_: str, arm: str) -> str | None:
     """The arm's private DISCOVERY repo for N.a (final fix batch A3, owner): `troupe-run/bakeoff-specs-<arm>-<pass>-disc`,
     only for GitHub-tracker arms on passes with a repo. N.a's GH_REPO and PAT point here, so nothing an arm files,

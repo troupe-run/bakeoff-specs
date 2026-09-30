@@ -15,7 +15,7 @@ def tmp_state(tmp_path, monkeypatch):
 
 
 # ---- Task 15 test helpers (review Q-9: test helpers live here, never in production modules) --------------------
-import dataclasses, shutil
+import dataclasses, json, shutil, subprocess
 
 
 class StubOwner:
@@ -334,8 +334,23 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
     monkeypatch.setattr(repo, "snapshot", lambda p, s: env.calls.append(("snapshot", p.arm, s)))
     monkeypatch.setattr(repo, "restore", lambda p, s: env.calls.append(("restore", p.arm, s)))
     monkeypatch.setattr(repo, "bundle", lambda p, d: env.calls.append(("bundle", p.arm)) or d)
-    monkeypatch.setattr(repo, "publish", lambda p, pass_, ask, scan: env.calls.append(("publish", p.arm))
-                        or ask(f"Push main of {p.arm}? ") is True)
+    monkeypatch.setattr(repo, "publish", lambda p, pass_, ask, scan, slug=None: env.calls.append(
+        ("publish", p.arm) if slug is None else ("publish", p.arm, slug)) or ask(f"Push main of {p.arm}? ") is True)
+    env.gh_repos: dict = {}                     # slug -> visibility: the fake gh's repos (close-out, OWNER)
+
+    def gh(argv, **k):                          # a fake `gh` (never GitHub): repo view / repo create only
+        env.calls.append(("gh", *argv[1:4]))
+        slug = argv[3]
+        if argv[1:3] == ["repo", "view"]:
+            if slug in env.gh_repos:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({"visibility": env.gh_repos[slug]}), "")
+            return subprocess.CompletedProcess(argv, 1, "", "GraphQL: Could not resolve to a Repository")
+        if argv[1:3] == ["repo", "create"]:
+            assert "--private" in argv and "--public" not in argv
+            env.gh_repos[slug] = "PRIVATE"
+            return subprocess.CompletedProcess(argv, 0, f"https://github.com/{slug}\n", "")
+        raise AssertionError(f"unexpected gh call {argv}")
+    monkeypatch.setattr(repo, "_gh", gh)
 
     def turn(cost):
         return TurnResult("t", "ok", "", {}, None, cost, {"input_tokens": 1}, {}, 1.0, [], None)

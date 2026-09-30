@@ -14,7 +14,7 @@ from runner.config import GITHUB_ORG as ORG, github_slug     # single source; re
 from runner.docker import Mount, RunSpec
 from runner.paths import Paths
 
-__all__ = ["ORG", "github_slug", "init", "head", "snapshot", "restore", "recover", "export", "bundle", "github_plan",
+__all__ = ["ORG", "github_slug", "ensure_private_repo", "init", "head", "snapshot", "restore", "recover", "export", "bundle", "github_plan",
            "github_verify", "verify_ok", "publish", "pat_instructions", "extract_snapshot", "remove_tree"]
 
 
@@ -286,14 +286,40 @@ def verify_ok(res: dict) -> bool:
         v.get("visibility") == "PRIVATE" and v.get("hasIssuesEnabled") and v.get("isEmpty") for v in arms)
 
 
-def publish(p: Paths, pass_: str, ask, scan) -> bool:
+GH_ENV_STRIP = ("GH_TOKEN", "GITHUB_TOKEN", "GH_HOST", "GH_REPO", "GH_ENTERPRISE_TOKEN")
+
+
+def _gh(argv: list[str]) -> subprocess.CompletedProcess:
+    """`gh` on the host with the owner's own login (as tracker._gh): no token/host/repo overrides from the
+    environment and a neutral empty cwd."""
+    import tempfile
+    env = {k: v for k, v in os.environ.items() if k not in GH_ENV_STRIP}
+    with tempfile.TemporaryDirectory(prefix="bakeoff-gh-") as cwd:
+        return subprocess.run(argv, capture_output=True, text=True, env=env, cwd=cwd, timeout=120)
+
+
+def ensure_private_repo(slug: str, description: str) -> str:
+    """OWNER (2026-09-30): the close-out repo exists and is private. "created" (made with `--private`) or
+    "exists"; an existing repo that is not private is reported as "exists-<visibility>" and left alone — the
+    runner never changes a visibility and never publishes to a public repo."""
+    r = _gh(["gh", "repo", "view", slug, "--json", "visibility"])
+    if r.returncode == 0:
+        vis = str(json.loads(r.stdout or "{}").get("visibility", "")).upper()
+        return "exists" if vis == "PRIVATE" else f"exists-{vis.lower() or 'unknown'}"
+    c = _gh(["gh", "repo", "create", slug, "--private", "--description", description])
+    if c.returncode != 0:
+        raise RuntimeError(f"gh repo create {slug} failed ({c.returncode}): {c.stderr.strip()[:300]}")
+    return "created"
+
+
+def publish(p: Paths, pass_: str, ask, scan, slug: str | None = None) -> bool:
     """Push refs/heads/main via a host bare clone of a bundle made in a container (review S-1).
     `scan(tree, history) -> list[Finding]` is `secrets.scan_publish` (Task 21, review S-2): `tree` is the tip
     tree of THIS clone's main and `history` the `git fast-export` stream of everything reachable from it
     (None if the export failed — the scanner fails closed), both made in network-less containers. Any finding
     raises `secrets.SecretFound` ("secret-in-publish") naming where, never what, and nothing is pushed."""
     from runner import secrets
-    slug = github_slug(pass_, p.arm)
+    slug = slug or github_slug(pass_, p.arm)          # close-out passes the final repo (OWNER)
     if not slug:
         return False
     # A fresh directory per attempt: the bundle is written through a bind mount, and a replaced mount source

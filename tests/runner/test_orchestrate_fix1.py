@@ -349,3 +349,46 @@ def test_close_out_asks_for_every_discovery_pat_to_be_revoked_too(finished):    
     assert {"pat-control", "pat-disc-control", "pat-openspec", "pat-disc-openspec"} <= set(asked)
     text = (paths.RESULTS / "pass1" / "close-out.md").read_text()
     assert "bakeoff-gh-pass1-disc-control" in text
+
+
+# ---- OWNER: close-out publishes each arm to a PRIVATE troupe-run/bakeoff-specs-<arm>; step-7 escalations shown --------
+
+def test_close_out_creates_the_final_repo_private_and_publishes_the_arms_history(finished):
+    orchestrate.close_out("pass1", finished.orch.owner)
+    for a in ARMS:
+        slug = f"troupe-run/bakeoff-specs-{a}"
+        assert finished.orch.gh_repos[slug] == "PRIVATE"
+        assert ("gh", "repo", "create", slug) in finished.orch.calls and ("publish", a, slug) in finished.orch.calls
+    text = (paths.RESULTS / "pass1" / "close-out.md").read_text()
+    assert "troupe-run/bakeoff-specs-control: created private, published" in text
+
+
+def test_close_out_reuses_an_existing_private_repo_and_never_publishes_to_a_public_one(finished):
+    finished.orch.gh_repos.update({"troupe-run/bakeoff-specs-control": "PRIVATE",
+                                   "troupe-run/bakeoff-specs-openspec": "PUBLIC"})
+    with pytest.raises(orchestrate.NotReady, match="public"):
+        orchestrate.close_out("pass1", finished.orch.owner)
+    assert ("gh", "repo", "create", "troupe-run/bakeoff-specs-control") not in finished.orch.calls
+    assert ("publish", "control", "troupe-run/bakeoff-specs-control") in finished.orch.calls
+    assert not [c for c in finished.orch.calls if c[:2] == ("publish", "openspec") and len(c) == 3]
+    assert finished.orch.gh_repos["troupe-run/bakeoff-specs-openspec"] == "PUBLIC"      # never changed by us
+
+
+def test_close_out_publishes_each_arm_once(finished):
+    orchestrate.close_out("pass1", finished.orch.owner)
+    orchestrate.close_out("pass1", finished.orch.owner)
+    assert len([c for c in finished.orch.calls if c[:2] == ("publish", "control") and len(c) == 3]) == 1
+
+
+def test_close_out_shows_the_step7_nb_escalations_for_the_owner(finished):
+    q = Paths("pass1", "control").step(7) / "questions.jsonl"
+    q.write_text(json.dumps({"escalated": ["Remote include timeout?"], "reply": "30 seconds."}) + "\n")
+    asked = []
+    finished.orch.owner.items_answer = lambda items: asked.extend(items) or {i: (True, "", 0.0) for i, _ in items}
+    orchestrate.close_out("pass1", finished.orch.owner)
+    esc = [t for i, t in asked if i.startswith("esc7-")]
+    assert esc and "Remote include timeout? → 30 seconds." in esc[0] and "control" in esc[0]
+    assert "Remote include timeout?" in (paths.RESULTS / "pass1" / "close-out.md").read_text()
+    finished.orch.owner.items_answer = lambda items: {i: (not i.startswith("esc7-"), "", 0.0) for i, _ in items}
+    with pytest.raises(orchestrate.NotReady, match="esc7-control"):
+        orchestrate.close_out("pass1", finished.orch.owner)

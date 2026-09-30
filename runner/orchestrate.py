@@ -1067,7 +1067,7 @@ def setup(pass_: str, arm: str, cred, owner, again: bool = False):
         return _setup(pass_, arm, cred, owner, again)
 
 
-def _scan_setup(pass_: str, arm: str, lits: list[str]) -> None:
+def _scan_setup(pass_: str, arm: str, lits) -> None:
     """m-7: `00-setup` (shell logs, setup transcripts, shell history) is secret-scanned when setup ends, not only
     at close-out; recorded in `00-setup/secret-scan.json`. The arm's own PAT is redacted first (A5); anything left
     is `secret-in-evidence` at step 0 (the owner scrubs it; a repeat halts). A clean record is not scanned again."""
@@ -1075,6 +1075,7 @@ def _scan_setup(pass_: str, arm: str, lits: list[str]) -> None:
     f = p.setup_results / "secret-scan.json"
     if (_jr(f) or {}).get("clean") is True or not p.setup_results.is_dir():
         return
+    lits = lits() if callable(lits) else lits        # the setup path computes them only when there is evidence
     redacted = secrets.redact([p.setup_results], secrets.own_pat_values(p, config.load_arm(arm)))
     found = secrets.scan_tree(p.setup_results, lits) + secrets.scan_files(secrets.ledger_files(pass_), lits)
     _jw(f, {"at": _now(), "clean": not found, "findings": [f"{x.path}:{x.line} {x.kind}" for x in found[:50]],
@@ -1103,7 +1104,7 @@ def _setup(pass_: str, arm: str, cred, owner, again: bool = False):
             shutil.move(str(p.setup_results), str(p.results / f"00-setup-superseded-{k}"))
     try:
         r = checklist.run_setup(pass_, arm, cred, owner)
-        _scan_setup(pass_, arm, secrets.literals(cred, keychain=not config.load_arm(arm).dry))     # m-7
+        _scan_setup(pass_, arm, lambda: secrets.literals(cred, keychain=not config.load_arm(arm).dry))   # m-7
         return r
     except checklist.SetupParked as x:
         rec = {"at": _now(), "park": dataclasses.asdict(x.park) if dataclasses.is_dataclass(x.park) else str(x.park)}
@@ -1224,32 +1225,84 @@ def close_out(pass_: str, owner) -> Path:
              for a in arms if config.github_disc_slug(pass_, a)]
     unpublished = [a for a in arms if config.github_slug(pass_, a) and not config.load_arm(a).dry
                    and (_load(Paths(pass_, a))["finished"].get("published") is not True)]
-    got = owner.items(pats) if pats else {}
+    esc7 = []                                        # no later consistency check covers step 7's N.b answers
+    for a in arms:
+        qa = [json.loads(l) for l in (Paths(pass_, a).step(7) / "questions.jsonl").read_text().splitlines()
+              if l.strip()] if (Paths(pass_, a).step(7) / "questions.jsonl").is_file() else []
+        esc7 += [(f"esc7-{a}-{k}", f"{a}: step 7 N.b escalation (no later consistency check covers it): "
+                                   f"{', '.join(q['escalated'])} → {q.get('reply')}. Consistent with the brief and "
+                                   f"the earlier answers?")
+                 for k, q in enumerate([q for q in qa if q.get("escalated")], 1)]
+    asks = pats + esc7
+    got = owner.items(asks) if asks else {}
     lines = [f"# Close-out — {pass_} (review S-2)", "", f"- secret scan: {'clean' if not found else 'FINDINGS'}"]
     lines += [f"  - {f.path}:{f.line} {f.kind}" for f in found[:50]]
     lines.append(f"- bundles: {'all present' if not no_bundle else 'MISSING ' + ', '.join(no_bundle)}")
     lines.append(f"- publish: {'finished' if not unpublished else 'NOT FINISHED ' + ', '.join(unpublished)}")
     not_revoked: list[str] = []
+    not_confirmed: list[str] = []
     if isinstance(got, owner_mod.Park):
-        lines.append("- PAT revocation: PARKED — run `runner close-out` again with the owner present")
+        lines.append("- PAT revocation and step-7 escalations: PARKED — run `runner close-out` again with the owner "
+                     "present")
         not_revoked = [i for i, _ in pats]
+        not_confirmed = [i for i, _ in esc7]
     else:
-        for iid, text in pats:
+        for iid, text in asks:
             ok, note, _ = got.get(iid, (False, "", 0.0))
             if ok is not True:
-                not_revoked.append(iid)
+                (not_revoked if iid.startswith("pat-") else not_confirmed).append(iid)
             lines.append(f"- [{'x' if ok is True else ' '}] {iid}: {text}{' — ' + note if note else ''}")
+    if not esc7:
+        lines.append("- step 7 N.b escalations: none")
     lines.append(f"- brief at close: sha256 {_sha(paths.brief_path(pass_))}")
     problems = ([f"secret scan: {len(found)} finding(s)"] if found else []) + \
         ([f"bundle missing: {no_bundle}"] if no_bundle else []) + \
         ([f"publish not finished: {unpublished}"] if unpublished else []) + \
-        ([f"PAT revocation not confirmed: {not_revoked}"] if not_revoked else [])
+        ([f"PAT revocation not confirmed: {not_revoked}"] if not_revoked else []) + \
+        ([f"step-7 escalations not confirmed: {not_confirmed}"] if not_confirmed else [])
+    if not problems and pass_ in REAL_PASSES:            # OWNER: the arm's history to its final PRIVATE repo
+        problems += _publish_final(pass_, arms, owner, lines)
     lines.append(f"\n**Result: {'CLOSED' if not problems else 'NOT CLOSED — ' + '; '.join(problems)}**")
     f = paths.RESULTS / pass_ / "close-out.md"
     fsutil.write_text(f, "\n".join(lines) + "\n")
     if problems:                                     # fix round 1: a close-out is all or nothing
         raise NotReady(f"{pass_} close-out refused: {'; '.join(problems)} (see {f})")
     return f
+
+
+def _publish_final(pass_: str, arms: list[str], owner, lines: list[str]) -> list[str]:
+    """OWNER (2026-09-30): each real arm's history goes to `troupe-run/bakeoff-specs-<arm>`, created PRIVATE via the
+    owner's `gh` if absent (the owner changes visibility later). A repo that exists and is not private is never
+    published to, and never changed. Recorded in progress (`finished.final`), so each arm is published once."""
+    problems, guard = [], _Guard(owner)
+    lits = None
+    for a in arms:
+        arm, p = config.load_arm(a), Paths(pass_, a)
+        if arm.dry:
+            continue
+        prog = _load(p)
+        slug = config.github_final_slug(a)
+        if (prog["finished"].get("final") or {}).get("published"):
+            lines.append(f"- {slug}: published earlier")
+            continue
+        state = repo.ensure_private_repo(slug, f"bakeoff-specs arm: {arm.tool} {arm.version} (the bake-off's result)")
+        if state not in ("created", "exists"):
+            problems.append(f"{slug} is {state.removeprefix('exists-')} (public or unknown): not published")
+            lines.append(f"- {slug}: {state} — NOT published (the runner never publishes to a non-private repo)")
+            continue
+        lits = lits if lits is not None else secrets.literals(require_oauth=True)
+        try:
+            ok = repo.publish(p, pass_, guard.confirm, lambda tree, history: secrets.scan_publish(tree, history, lits),
+                              slug=slug)
+        except _OwnerParked:
+            ok = False
+        prog["finished"]["final"] = {"slug": slug, "repo": state, "published": bool(ok), "at": _now()}
+        _save(p, prog)
+        lines.append(f"- {slug}: {'created private' if state == 'created' else 'exists (private)'}, "
+                     f"{'published' if ok else 'NOT published (declined or parked)'}")
+        if not ok:
+            problems.append(f"{slug}: not published")
+    return problems
 
 
 def status() -> str:
