@@ -1657,7 +1657,8 @@ def _canary_after_run(ran: dict, owner) -> dict:
         return {"run": ran, "tracker_check": prev, "tracker_check_kept": True}      # never a second issue
     with preflight.lock():                               # one runner at a time, Docker and gh included
         tc = canary_tracker_check(owner)
-    return {"run": ran, "tracker_check": tc}
+    failed = _tracker_failures(tc)                       # final review m-1: the command fails, naming what
+    return {"run": ran, "tracker_check": tc, **({"tracker_check_failed": failed} if failed else {})}
 
 
 def _write_tracker_check(out: Path, rec: dict) -> None:

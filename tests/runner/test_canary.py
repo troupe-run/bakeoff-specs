@@ -718,3 +718,30 @@ def test_cli_run_arm_canary_without_stop_after_stops_after_2(run_seen, monkeypat
 def test_run_arm_on_a_dry_pass_keeps_no_default_stop(run_seen):
     orchestrate.run_arm("dry1", "dryrun", credentials.dummy(), RecOwner())
     assert run_seen == [None]
+
+
+# ---- final review m-1: a failed tracker check fails the command ----------------------------------------------------
+
+@pytest.mark.parametrize("setup,what", [
+    (lambda w, mp: setattr(w, "read_rc", 1), "read with the arm's PAT failed"),
+    (lambda w, mp: mp.setattr(tracker, "supersede", lambda ctx, old, owner, new=None: {"action": "declined"}),
+     "not closed again"),
+    (lambda w, mp: mp.setattr(tracker, "create_bug", lambda ctx, owner, **k: (_ for _ in ()).throw(
+        RuntimeError("owner declined the step-6 issue"))), "issue not created"),
+], ids=["read", "close", "create"])
+def test_cli_canary_exits_non_zero_naming_what_of_the_tracker_check_failed(world, monkeypatch, capsys, setup, what):
+    from runner import cli
+    setup(world, monkeypatch)
+    monkeypatch.setattr(credentials, "from_keychain", lambda *a, **k: credentials.dummy())
+    monkeypatch.setattr(owner_mod, "Owner", lambda *a, **k: RecOwner())
+    assert cli.main(["canary"]) == 1
+    out = capsys.readouterr().out
+    assert "tracker check failed" in out and what in out
+
+
+def test_a_tracker_check_that_held_leaves_no_failure_and_the_cli_exits_zero(world, monkeypatch):
+    from runner import cli
+    monkeypatch.setattr(credentials, "from_keychain", lambda *a, **k: credentials.dummy())
+    monkeypatch.setattr(owner_mod, "Owner", lambda *a, **k: RecOwner())
+    assert "tracker_check_failed" not in orchestrate.canary(world.cred_of, RecOwner())
+    assert cli.main(["canary"]) == 0
