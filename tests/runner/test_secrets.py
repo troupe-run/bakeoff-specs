@@ -767,7 +767,7 @@ def test_redact_never_follows_a_link(tmp_path):
     assert secrets.redact([root], [OWN]) == [] and outside.read_text() == OWN
 
 
-def test_the_arms_own_pat_values_are_its_home_files_and_its_keychain_items(tmp_state, monkeypatch):
+def test_a_real_arms_own_pat_values_are_its_keychain_items_not_its_home_files(tmp_state, monkeypatch):   # follow-up 2
     from runner import config
     from runner.paths import Paths
     p = Paths("pass1", "control")
@@ -778,6 +778,46 @@ def test_the_arms_own_pat_values_are_its_home_files_and_its_keychain_items(tmp_s
     secrets.clear_keychain_cache()
     got = secrets.own_pat_values(p, config.load_arm("control"))
     secrets.clear_keychain_cache()
-    assert set(got) == {OWN, "kc-" + "1" * 30, "kd-" + "2" * 30}
+    assert set(got) == {"kc-" + "1" * 30, "kd-" + "2" * 30}
     monkeypatch.setattr(credentials, "github_pat", lambda *a: pytest.fail("keychain read for a dry arm"))
     assert secrets.own_pat_values(Paths("dry1", "dryrun"), config.load_arm("dryrun")) == []
+
+
+# ---- follow-up 2: the arm's "own" token is what it was given, never a harness literal ---------------------------------
+
+OAUTH_FU = "sk-ant-oat01-" + "Z" * 60
+
+
+def _home(p, text):
+    (p.home / ".config" / "gh").mkdir(parents=True)
+    (p.home / ".config" / "gh" / "hosts.yml").write_text(text)
+
+
+def test_a_real_arms_own_tokens_are_only_its_keychain_and_discovery_pats(tmp_state, monkeypatch):
+    from runner import config
+    from runner.paths import Paths
+    p = Paths("pass1", "control")
+    _home(p, f"github.com:\n    oauth_token: {OWN}\n")                   # an arm-written home value: not "given"
+    monkeypatch.setattr(credentials, "github_pat", lambda pass_, arm: "github_pat_" + "K" * 50)
+    monkeypatch.setattr(credentials, "github_disc_pat", lambda pass_, arm: "github_pat_" + "D" * 50)
+    secrets.clear_keychain_cache()
+    got = secrets.own_pat_values(p, config.load_arm("control"), credentials.Credential(OAUTH_FU))
+    secrets.clear_keychain_cache()
+    assert set(got) == {"github_pat_" + "K" * 50, "github_pat_" + "D" * 50}
+
+
+def test_a_dry_arms_home_values_count_only_in_github_token_shapes(tmp_state):
+    from runner import config
+    from runner.paths import Paths
+    p = Paths("dry1", "dryrun")
+    _home(p, f"github.com:\n    oauth_token: {OWN}\nother:\n    oauth_token: {'n' * 40}\n")
+    assert secrets.own_pat_values(p, config.load_arm("dryrun"), credentials.dummy()) == [OWN]
+
+
+def test_the_oauth_token_in_hosts_yml_is_never_the_arms_own(tmp_state):
+    from runner import config
+    from runner.paths import Paths
+    p = Paths("dry1", "dryrun")
+    tok = "gho_" + "O" * 40                                                  # GitHub-shaped, but it is the harness's
+    _home(p, f"github.com:\n    oauth_token: {tok}\n    x: {secrets.DRY_RUN_TOKEN}\n")
+    assert secrets.own_pat_values(p, config.load_arm("dryrun"), credentials.Credential(tok)) == []

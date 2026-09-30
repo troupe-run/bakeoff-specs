@@ -646,7 +646,7 @@ class _Run:
                             ctx, tracker.IssueRef(**e["issue"]), e["sha_before"], gitops.main_sha(p) or "", snap))
                 self.infra("infra-tracker", arm_name, step, run, "the tracker snapshot", track)
             elif k == "scan":                            # review S-2: before the step counts as done
-                own = secrets.own_pat_values(p, ctx.arm)                          # A5: the arm's own token
+                own = secrets.own_pat_values(p, ctx.arm, self.cred)                         # A5: the arm's own token
                 if (files := secrets.redact([p.step(step)], own)):
                     self._violation(p, {"step": step, "run": run, "kind": "own-token-in-evidence", "files": files[:50]})
                 if (found := secrets.scan_step(p, step, self.lits)):
@@ -968,7 +968,7 @@ def _run(pass_: str, arms: list[str], cred, owner, *, limits_override: dict | No
     dry = all(config.load_arm(a).dry for a in arms)
     lits = secrets.literals(cred, keychain=not dry)
     for a in arms:
-        _scan_setup(pass_, a, lits)                       # m-7: no step before a clean setup scan
+        _scan_setup(pass_, a, lits, cred)                 # m-7: no step before a clean setup scan
     R = _Run(pass_, arms, cred, owner, pins, lits)
     try:
         R.pending()
@@ -1067,7 +1067,7 @@ def setup(pass_: str, arm: str, cred, owner, again: bool = False):
         return _setup(pass_, arm, cred, owner, again)
 
 
-def _scan_setup(pass_: str, arm: str, lits) -> None:
+def _scan_setup(pass_: str, arm: str, lits, cred=None) -> None:
     """m-7: `00-setup` (shell logs, setup transcripts, shell history) is secret-scanned when setup ends, not only
     at close-out; recorded in `00-setup/secret-scan.json`. The arm's own PAT is redacted first (A5); anything left
     is `secret-in-evidence` at step 0 (the owner scrubs it; a repeat halts). A clean record is not scanned again."""
@@ -1076,7 +1076,7 @@ def _scan_setup(pass_: str, arm: str, lits) -> None:
     if (_jr(f) or {}).get("clean") is True or not p.setup_results.is_dir():
         return
     lits = lits() if callable(lits) else lits        # the setup path computes them only when there is evidence
-    redacted = secrets.redact([p.setup_results], secrets.own_pat_values(p, config.load_arm(arm)))
+    redacted = secrets.redact([p.setup_results], secrets.own_pat_values(p, config.load_arm(arm), cred))
     found = secrets.scan_tree(p.setup_results, lits) + secrets.scan_files(secrets.ledger_files(pass_), lits)
     _jw(f, {"at": _now(), "clean": not found, "findings": [f"{x.path}:{x.line} {x.kind}" for x in found[:50]],
             "redacted_own_token": redacted[:50]})
@@ -1104,7 +1104,7 @@ def _setup(pass_: str, arm: str, cred, owner, again: bool = False):
             shutil.move(str(p.setup_results), str(p.results / f"00-setup-superseded-{k}"))
     try:
         r = checklist.run_setup(pass_, arm, cred, owner)
-        _scan_setup(pass_, arm, lambda: secrets.literals(cred, keychain=not config.load_arm(arm).dry))   # m-7
+        _scan_setup(pass_, arm, lambda: secrets.literals(cred, keychain=not config.load_arm(arm).dry), cred)   # m-7
         return r
     except checklist.SetupParked as x:
         rec = {"at": _now(), "park": dataclasses.asdict(x.park) if dataclasses.is_dataclass(x.park) else str(x.park)}

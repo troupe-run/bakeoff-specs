@@ -12,6 +12,7 @@ import pytest
 from runner import checklist, cli, config, faults, orchestrate, paths, stepflow
 from runner.owner import Park
 from runner.paths import Paths
+from runner.secrets import own_pat_values as REAL_OWN            # before fake_orch replaces it
 
 PARK = Park("x", "context", "unattended", 0.0, 0.0)
 ARMS = ("openspec", "control")
@@ -1039,3 +1040,21 @@ def test_a_crash_while_committing_the_edit_leaves_the_check_unconfirmed_so_it_ru
     assert json.loads(f.read_text())["status"] != "confirmed"
     real(fake_orch)
     assert len(calls) == 2 and json.loads(f.read_text())["status"] == "confirmed"
+
+
+def test_the_oauth_token_left_in_hosts_yml_and_printed_is_still_a_harness_fault(fake_orch, monkeypatch):   # follow-up 2
+    from runner import credentials, secrets
+    oauth = "gho_" + "O" * 40
+    cred = credentials.Credential(oauth)
+    monkeypatch.setattr(secrets, "own_pat_values", REAL_OWN)
+    monkeypatch.setattr(secrets, "scan_step", lambda p, n, lits=(): secrets.scan_tree(p.step(n), [oauth]))
+    fake_orch.make("dryrun", pass_="dry7")
+    p = Paths("dry7", "dryrun")
+    (p.home / ".config" / "gh").mkdir(parents=True)
+    (p.home / ".config" / "gh" / "hosts.yml").write_text(f"github.com:\n    oauth_token: {oauth}\n")
+    p.step(1).mkdir(parents=True)
+    (p.step(1) / "egress.log").write_text(f"leaked {oauth}\n")
+    with pytest.raises(orchestrate.NotReady, match="secret-in-evidence"):
+        orchestrate.run_arm("dry7", "dryrun", cred, fake_orch.owner)
+    assert oauth in (p.step(1) / "egress.log").read_text()                 # never redacted as the arm's own
+    assert faults.entries("dry7")[0]["kind"] == "secret-in-evidence"

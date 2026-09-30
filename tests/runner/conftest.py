@@ -219,7 +219,7 @@ def fake_step(tmp_path, monkeypatch, tmp_state):
     from runner.checklist import Check
     monkeypatch.setattr(stepflow.checklist, "verify", lambda p, arm, mode: [
         Check(i, False, f"{i} changed") for i in fs.drift_on.get(fs.calls, [])])
-    monkeypatch.setattr(stepflow.secrets, "own_pat_values", lambda p, arm: ["github_pat_" + "Q" * 60])
+    monkeypatch.setattr(stepflow.secrets, "own_pat_values", lambda p, arm, cred=None: ["github_pat_" + "Q" * 60])
     monkeypatch.setattr(stepflow.secrets, "redact", lambda roots, values: [str(ctx.out / "questions.jsonl")]
                         if fs.calls in fs.leak_on else [])
 
@@ -308,7 +308,7 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
     monkeypatch.setattr(docker, "sweep", lambda *a, **k: env.calls.append(("sweep",)) or {})
     monkeypatch.setattr(secrets, "literals", lambda *a, **k: ["dry-run-dummy-token"])
     env.own = []                                # the arm's own token values (A5); never the keychain in tests
-    monkeypatch.setattr(secrets, "own_pat_values", lambda p, arm: list(env.own))
+    monkeypatch.setattr(secrets, "own_pat_values", lambda p, arm, cred=None: list(env.own))
 
     def scan_step(p, n, lits=()):
         left = env.findings.get((p.arm, n), 0)
