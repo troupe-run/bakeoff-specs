@@ -910,3 +910,69 @@ def test_safe_read_fstat_recheck_catches_a_fifo_even_when_lstat_is_fooled(tmp_pa
     finally:
         signal.alarm(0)
         signal.signal(signal.SIGALRM, old_handler)
+
+
+# --- mutmut.log records the commands that really ran (the e2e copy-B test greps for the venv binary) --------
+
+def _recording_run(responses, seen):
+    it = iter(responses)
+    def fake(p, copy, cmd, timeout):
+        seen.append(list(cmd))
+        return next(it)
+    return fake
+
+
+def _cmd_lines(log_text):
+    return [ln for ln in log_text.splitlines() if ln.startswith("$ ")]
+
+
+def test_mutmut_log_command_lines_are_the_argv_each_container_was_given(monkeypatch, tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    seen: list[list[str]] = []
+    responses = [quality.ToolRun(0, "5 passed\n", "", False),
+                 quality.ToolRun(0, "m.f__mutmut_1: not checked\nm.f__mutmut_2: not checked\n", "", False),
+                 quality.ToolRun(0, "__run_rc=0\n", "", False),
+                 quality.ToolRun(0, "m.f__mutmut_1: killed\nm.f__mutmut_2: survived\n__results_rc=0\n", "", False)]
+    monkeypatch.setattr(quality, "_run", _recording_run(responses, seen))
+    quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=2, mutation_seconds=600))
+    baseline_cmd, _listing_cmd, run_cmd, results_cmd = seen
+    lines = _cmd_lines((tmp_path / "out/quality/mutmut.log").read_text())
+    assert len(lines) == 3, lines
+    # baseline: the exact script bash was handed
+    assert lines[0].startswith("$ " + baseline_cmd[2] + " ")
+    # the mutation run: the venv binary and every argument after it, exactly as passed, plus the count and cap
+    mutmut_argv = run_cmd[run_cmd.index(".venv/bin/mutmut"):]
+    assert mutmut_argv[:4] == [".venv/bin/mutmut", "run", "--max-children", "4"]
+    assert lines[1].startswith("$ " + " ".join(mutmut_argv) + " ")
+    assert "(sampled 2" in lines[1] and "timeout 600s" in lines[1] and str(600) == run_cmd[4]
+    # results: the command, without our own rc-marker echo
+    assert lines[2].startswith("$ .venv/bin/mutmut results --all true ")
+    assert results_cmd[2].startswith(".venv/bin/mutmut results --all true;")
+
+
+def test_mutmut_log_shows_a_count_not_every_name_for_a_long_sample(monkeypatch, tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    names = [f"m.f__mutmut_{i}" for i in range(1, 21)]
+    seen: list[list[str]] = []
+    responses = [quality.ToolRun(0, "5 passed\n", "", False),
+                 quality.ToolRun(0, "".join(f"{n}: not checked\n" for n in names), "", False),
+                 quality.ToolRun(0, "__run_rc=0\n", "", False),
+                 quality.ToolRun(0, "".join(f"{n}: killed\n" for n in names) + "__results_rc=0\n", "", False)]
+    monkeypatch.setattr(quality, "_run", _recording_run(responses, seen))
+    quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=20))
+    run_line = _cmd_lines((tmp_path / "out/quality/mutmut.log").read_text())[1]
+    assert run_line.startswith("$ .venv/bin/mutmut run --max-children 4 ")
+    assert "(sampled 20" in run_line
+    assert sum(n in run_line.split() for n in names) < 20           # not all twenty names spelled out
+    assert len(seen[2]) - seen[2].index(".venv/bin/mutmut") == 4 + 20  # ...though all twenty were passed
+
+
+def test_mutmut_log_unsampled_run_says_all(monkeypatch, tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    responses = [quality.ToolRun(0, "5 passed\n", "", False),
+                 quality.ToolRun(0, "__run_rc=0\n", "", False),
+                 quality.ToolRun(0, "m.f__mutmut_1: killed\n__results_rc=0\n", "", False)]
+    monkeypatch.setattr(quality, "_run", _recording_run(responses, []))
+    quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=0))
+    run_line = _cmd_lines((tmp_path / "out/quality/mutmut.log").read_text())[1]
+    assert run_line.startswith("$ .venv/bin/mutmut run --max-children 4 ") and "(all;" in run_line

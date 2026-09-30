@@ -453,6 +453,26 @@ def list_mutants(p: Paths, copy: Path, tg: list[str]) -> list[str]:
     return parse_results(out.combined)[0]
 
 
+_BASELINE_SCRIPT = ".venv/bin/python -m pytest -q -p no:cacheprovider -x"
+_RESULTS_SCRIPT = ".venv/bin/mutmut results --all true"
+_LOG_NAMES_MAX = 5          # a sample longer than this is shown in mutmut.log as a count, not every name
+
+
+def mutmut_run_log_line(mutmut_argv: list[str], n_chosen: int, timeout_s: int) -> str:
+    """The `$ ` line mutmut.log records for container 1: the argv mutmut really received (venv binary, flags,
+    the chosen mutant names -- elided to a count past `_LOG_NAMES_MAX`), then the sample size and the inner
+    `timeout` it ran under. Built from the same list `run_cmd` is, so the evidence cannot drift from what ran
+    (the e2e copy-B check greps this line for `.venv/bin/mutmut run`). Names are shlex-quoted."""
+    fixed, names = mutmut_argv[:len(mutmut_argv) - n_chosen], mutmut_argv[len(mutmut_argv) - n_chosen:]
+    shown = [shlex.quote(a) for a in fixed]
+    if len(names) > _LOG_NAMES_MAX:
+        shown += [shlex.quote(n) for n in names[:2]] + [f"... <{len(names) - 2} more>"]
+    else:
+        shown += [shlex.quote(n) for n in names]
+    what = f"sampled {n_chosen}" if n_chosen else "all"
+    return f"$ {' '.join(shown)}  ({what}; under timeout {timeout_s}s)"
+
+
 def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.Pins) -> dict[str, object]:
     """Mutation testing runs only on copy B (review C-1). The arm's own tests are the baseline: only the arm's
     pytest actually failing (rc 1) is `baseline_failed` — the arm's own result, not ours, and never scored.
@@ -510,8 +530,8 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
 
     common = dict(sampled=False, sample_size=0, mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0)
 
-    baseline = _run(p, copy, ["bash", "-c", ".venv/bin/python -m pytest -q -p no:cacheprovider -x"], 1800)
-    log.append("$ baseline: pytest\n" + baseline.combined[-4000:])
+    baseline = _run(p, copy, ["bash", "-c", _BASELINE_SCRIPT], 1800)
+    log.append(f"$ {_BASELINE_SCRIPT}  (baseline)\n" + baseline.combined[-4000:])
     if baseline.timed_out:
         return finish(dict(ZERO_MUTATION), partial=False, baseline_failed=False, crashed=True,
                       sampling="n/a", baseline_rc=None, timed_out=True, **common)
@@ -528,7 +548,7 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
     try:
         set_mutmut_paths(copy, tg)
     except UnsafeFile as e:
-        log.append(f"$ set_mutmut_paths refused: {e}")
+        log.append(f"# set_mutmut_paths refused: {e}")
         return finish(dict(ZERO_MUTATION), partial=False, baseline_failed=False, crashed=True,
                       sampling="n/a", baseline_rc=baseline.rc, timed_out=False, **common)
 
@@ -537,7 +557,7 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
         try:
             names = list_mutants(p, copy, tg)
         except UnsafeFile as e:
-            log.append(f"$ list_mutants refused: {e}")
+            log.append(f"# list_mutants refused: {e}")
             names = []
         if names:
             chosen, sampling = sample(names, lim.mutation_sample), "seeded-sha256"
@@ -556,10 +576,10 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
     # handling quotes each one safely regardless of content, with no shell-injection surface.
     run_script = ('timeout "$1" "${@:2}" >mutmut-run.log 2>&1; rc=$?; tail -c 20000 mutmut-run.log; '
                   'echo __run_rc=$rc')
-    run_cmd = ["bash", "-c", run_script, "_", str(lim.mutation_seconds),
-              ".venv/bin/mutmut", "run", "--max-children", "4", *chosen]
+    mutmut_argv = [".venv/bin/mutmut", "run", "--max-children", "4", *chosen]
+    run_cmd = ["bash", "-c", run_script, "_", str(lim.mutation_seconds), *mutmut_argv]
     run_outcome = _run(p, copy, run_cmd, lim.mutation_seconds + 300)
-    log.append(f"$ mutmut run ({'sampled ' + str(len(chosen)) if chosen else 'all'})\n"
+    log.append(mutmut_run_log_line(mutmut_argv, len(chosen), lim.mutation_seconds) + "\n"
               + run_outcome.combined[-20000:])
     if run_outcome.timed_out:
         return finish(dict(ZERO_MUTATION), partial=False, baseline_failed=False, crashed=True,
@@ -572,9 +592,8 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
     # deliberately tampered binary is NOT excluded -- see "what this does not guard against" above. mutmut's own
     # persisted state (the `mutants/` directory) survives on the host-mounted copy between the two containers,
     # so this one sees exactly what the run container just recorded. Status lines are parsed ONLY from here.
-    results_outcome = _run(p, copy, ["bash", "-c", ".venv/bin/mutmut results --all true; echo __results_rc=$?"],
-                           300)
-    log.append("$ mutmut results (fresh container)\n" + results_outcome.combined[-20000:])
+    results_outcome = _run(p, copy, ["bash", "-c", _RESULTS_SCRIPT + "; echo __results_rc=$?"], 300)
+    log.append(f"$ {_RESULTS_SCRIPT}  (fresh container)\n" + results_outcome.combined[-20000:])
     if results_outcome.timed_out:
         return finish(dict(ZERO_MUTATION), partial=False, baseline_failed=False, crashed=True,
                       sampling=sampling, baseline_rc=baseline.rc, timed_out=True,
