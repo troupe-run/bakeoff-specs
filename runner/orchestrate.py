@@ -391,9 +391,14 @@ class _Run:
                                    "test": str(d / "test_substitute.py"), "acceptance": r, "owner_seconds": secs}
                 _jw(d / "decision.json", e["substitute"])
                 return None
-            summary += (f"\n\nREJECTED: the acceptance test for {title!r} did not fail on the step-5 commit "
-                        f"(outcome {r.get('outcome')}: {str(r.get('detail') or r.get('tests'))[:400]}). A substitute "
-                        f"must be a bug this commit really has.")
+            if r.get("attribution"):                  # it "failed" only because the run died (round 2, item 5)
+                summary += (f"\n\nREJECTED: the acceptance run for {title!r} died ({r['attribution']}) on the "
+                            f"step-5 commit instead of reaching the test's own assertion, so it proves nothing "
+                            f"about the bug. A substitute must be a bug this commit really has.")
+            else:
+                summary += (f"\n\nREJECTED: the acceptance test for {title!r} passed or did not run on the step-5 "
+                            f"commit (outcome {r.get('outcome')}: {str(r.get('detail') or r.get('tests'))[:400]}), "
+                            f"so the bug is not there. A substitute must be a bug this commit really has.")
 
     def _issue_fp(self, ctx, ref) -> str:
         probe = dataclasses.replace(ctx, out=ctx.paths.scratch / "tracker-probe")

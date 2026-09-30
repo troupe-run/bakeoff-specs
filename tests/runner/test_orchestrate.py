@@ -240,7 +240,7 @@ def test_a_substitute_whose_test_already_passes_is_refused_and_the_owner_asked_a
     fake_orch.acceptance = [{"outcome": "passed", "tests": {}}, {"outcome": "failed", "tests": {}}]
     dry(fake_orch)
     assert ("create_bug", "dryrun", "B") in fake_orch.calls and ("create_bug", "dryrun", "A") not in fake_orch.calls
-    assert "did not fail" in fake_orch.owner.substitutes[1]
+    assert "the bug is not there" in fake_orch.owner.substitutes[1]
 
 
 def test_keeping_the_planted_bug_files_it_as_usual(fake_orch):
@@ -1111,3 +1111,14 @@ def test_resource_exhaustion_in_na_never_counts_towards_the_suite_halt_or_the_re
     fake_orch.resource[("openspec", 3)] = "repeat"
     real(fake_orch)
     assert not faults.halted("pass1")
+
+
+def test_a_substitute_whose_acceptance_run_died_is_refused_and_says_so(fake_orch):        # round 2, item 5
+    fake_orch.precheck_passes = True
+    fake_orch.owner.substitute_answers = [("substitute", "A", "a", "w", "t1", 1.0), ("planted", "", "", "", "", 0.0)]
+    fake_orch.acceptance = [{"outcome": "failed", "attribution": "arm-resource",
+                             "resource_evidence": [["oom-kill:1"], ["oom-kill:1"]]}]
+    dry(fake_orch)
+    assert ("create_bug", "dryrun", "A") not in fake_orch.calls and ("create_bug", "dryrun", None) in fake_orch.calls
+    msg = fake_orch.owner.substitutes[1]
+    assert "died (arm-resource)" in msg and "did not fail" not in msg
