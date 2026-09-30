@@ -1082,7 +1082,7 @@ def setup(pass_: str, arm: str, cred, owner, again: bool = False):
         return _setup(pass_, arm, cred, owner, again)
 
 
-def _scan_setup(pass_: str, arm: str, lits, cred=None) -> None:
+def _scan_setup(pass_: str, arm: str, lits, cred) -> None:
     """m-7: `00-setup` (shell logs, setup transcripts, shell history) is secret-scanned when setup ends, not only
     at close-out; recorded in `00-setup/secret-scan.json`. The arm's own PAT is redacted first (A5); anything left
     is `secret-in-evidence` at step 0 (the owner scrubs it; a repeat halts). A clean record is not scanned again."""

@@ -786,11 +786,11 @@ def test_a_real_arms_own_pat_values_are_its_keychain_items_not_its_home_files(tm
     monkeypatch.setattr(credentials, "github_pat", lambda pass_, arm: "kc-" + "1" * 30)
     monkeypatch.setattr(credentials, "github_disc_pat", lambda pass_, arm: "kd-" + "2" * 30)
     secrets.clear_keychain_cache()
-    got = secrets.own_pat_values(p, config.load_arm("control"))
+    got = secrets.own_pat_values(p, config.load_arm("control"), credentials.dummy())
     secrets.clear_keychain_cache()
     assert set(got) == {"kc-" + "1" * 30, "kd-" + "2" * 30}
     monkeypatch.setattr(credentials, "github_pat", lambda *a: pytest.fail("keychain read for a dry arm"))
-    assert secrets.own_pat_values(Paths("dry1", "dryrun"), config.load_arm("dryrun")) == []
+    assert secrets.own_pat_values(Paths("dry1", "dryrun"), config.load_arm("dryrun"), credentials.dummy()) == []
 
 
 # ---- follow-up 2: the arm's "own" token is what it was given, never a harness literal ---------------------------------
@@ -855,3 +855,11 @@ def test_a_keychain_pat_is_never_a_dry_arms_own_when_the_keychain_is_allowed(tmp
     secrets.clear_keychain_cache()
     monkeypatch.setattr(credentials, "github_pat", lambda *a: pytest.fail("keychain read without permission"))
     assert secrets.own_pat_values(p, config.load_arm("dryrun"), credentials.dummy()) == [DRY_SEEN_PAT]
+
+
+def test_the_arms_own_values_need_the_credential_to_subtract(tmp_state):               # round 2, item 8
+    from runner import config, orchestrate
+    with pytest.raises(TypeError):
+        secrets.own_pat_values(Paths("dry1", "dryrun"), config.load_arm("dryrun"))
+    with pytest.raises(TypeError):
+        orchestrate._scan_setup("dry1", "dryrun", [])

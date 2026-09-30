@@ -691,7 +691,7 @@ REDACTION = "[REDACTED:arm-own-token]"
 REDACT_MAX_BYTES = 256 << 20
 
 
-def own_pat_values(p: paths.Paths, arm, cred=None, *, keychain: bool = False) -> list[str]:
+def own_pat_values(p: paths.Paths, arm, cred, *, keychain: bool = False) -> list[str]:
     """The tokens this arm was GIVEN (follow-up 2): a real arm's keychain PAT and N.a discovery PAT, nothing else
     (its home is arm-writable, so a value found there proves nothing); a dry arm (no keychain) the GitHub-SHAPED
     values in its home's PAT files, minus every other arm home's values and (with `keychain`) every keychain PAT —
