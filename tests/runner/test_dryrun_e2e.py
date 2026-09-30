@@ -110,7 +110,13 @@ def test_dry1_step6_bug_went_to_the_tracker():
     assert J("dry1", "dryrun", "06", "precheck", "precheck.json")["planted_already_passes"] is False
 
 
-def test_dry1_mutation_score_was_measured_on_copy_b():
+def test_dry1_mutation_score_was_measured_on_copy_b():                           # m-10: asserts copy B
+    prep = J("dry1", "dryrun", "07", "hidden", "prep-07-a1.json")
+    # copy B is the only copy with mutmut installed (review C-1): its own sync record, ok, installs it; copy A's not
+    assert prep["quality"]["ok"] is True and "mutmut-requirements.txt" in prep["quality"]["command"]
+    assert "mutmut" not in prep["hidden"]["command"]
+    # and the mutation run used that copy's venv mutmut (absent from copy A, so it cannot have run there)
+    assert "$ .venv/bin/mutmut run" in (RESULTS / "dry1/dryrun/07/quality/mutmut.log").read_text()
     assert J("dry1", "dryrun", "07", "quality", "summary.json")["mutation"]["total"] > 0
 
 
