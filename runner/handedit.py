@@ -270,7 +270,7 @@ def _fresh(home: Path) -> None:
 def _git_dir(p: Paths) -> Path:
     """m-2: the teammate's `.git` bind-mount source is arm-writable work: Docker resolves it on the HOST, so a link
     (or a `gitdir:` file) left by the arm could mount any host directory. lstat it: only a real directory directly
-    in the repo is mounted. Follow-up 9: a link to a real directory INSIDE the repo is repaired — the link is removed
+    in the repo that has a HEAD file is mounted. Follow-up 9: a link to a real git directory INSIDE the repo is repaired — the link is removed
     (never followed) and that directory moved into place as `.git` — and recorded as an arm violation; a link out of
     the repo, a file, or anything else stops for the owner (not a harness fault: the arm made it)."""
     import stat as _stat
@@ -283,7 +283,8 @@ def _git_dir(p: Paths) -> Path:
     if _stat.S_ISLNK(st.st_mode):
         target = os.path.realpath(g)
         inside = os.path.dirname(target) == repo_real and not os.path.islink(target)
-        if not (inside and os.path.isdir(target)):
+        looks_git = os.path.isfile(os.path.join(target, "HEAD")) and not os.path.islink(os.path.join(target, "HEAD"))
+        if not (inside and os.path.isdir(target) and looks_git):                          # round 2, item 4
             raise checklist.NotReady(f"{g} is a link out of the repo (or to no directory); refusing to mount or "
                                      f"follow it for the teammate — repair it (`runner shell`)")
         os.unlink(g)
@@ -294,6 +295,9 @@ def _git_dir(p: Paths) -> Path:
     if not _stat.S_ISDIR(st.st_mode) or os.path.realpath(g) != os.path.join(repo_real, ".git"):
         raise checklist.NotReady(f"{g} is not a real directory in the repo (a file the arm left); "
                                  f"refusing to mount it for the teammate — repair it (`runner shell`)")
+    head = g / "HEAD"
+    if os.path.islink(head) or not head.is_file():            # round 2, item 4: it must look like a git dir
+        raise checklist.NotReady(f"{g} has no HEAD file: not a git directory; refusing to mount it for the teammate")
     return g
 
 

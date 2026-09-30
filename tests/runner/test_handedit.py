@@ -122,7 +122,7 @@ class World:
         st = state or gitops.RepoState("main", False, "h0", "h0", True)
         p = ctx.paths
         p.work.mkdir(parents=True, exist_ok=True); p.home.mkdir(parents=True, exist_ok=True)
-        (p.repo / ".git").mkdir(parents=True, exist_ok=True)
+        (p.repo / ".git").mkdir(parents=True, exist_ok=True); (p.repo / ".git" / "HEAD").write_text("ref: refs/heads/main\n")
         self.ignored = [list(x) for x in ignored]
         log = self.calls.append
 
@@ -516,7 +516,7 @@ def test_a_failed_restore_does_not_mask_the_original_fault(ctx, monkeypatch):
 
 def test_a_symlinked_git_dir_stops_before_the_teammate_runs(ctx, monkeypatch, tmp_path):
     w = World(monkeypatch, ctx)
-    g = ctx.paths.repo / ".git"; g.rmdir(); (tmp_path / "elsewhere").mkdir(); g.symlink_to(tmp_path / "elsewhere")
+    g = ctx.paths.repo / ".git"; __import__("shutil").rmtree(g); (tmp_path / "elsewhere").mkdir(); g.symlink_to(tmp_path / "elsewhere")
     with pytest.raises(HarnessFault) as e:
         handedit.apply(ctx, STEP1)
     assert (e.value.kind, e.value.signature) == ("hand-edit", "precondition") and ".git" in e.value.detail
@@ -562,3 +562,22 @@ def test_a_git_link_to_a_directory_in_the_repo_is_replaced_by_the_real_directory
     assert g.is_dir() and not g.is_symlink() and (g / "HEAD").exists() and not real.exists()
     [v] = [_j.loads(l) for l in (p.results / "arm-violations.jsonl").read_text().splitlines()]
     assert v["kind"] == "link-in-repo" and v["path"].endswith(".git")
+
+
+def test_a_git_link_to_an_in_repo_directory_that_is_not_a_git_dir_is_refused(ctx, monkeypatch):   # round 2, item 4
+    p = ctx.paths
+    w = World(monkeypatch, ctx)
+    g = _clear_git(p)
+    (p.repo / "src").mkdir(exist_ok=True)
+    g.symlink_to("src")                                       # a real in-repo directory, but not a git dir
+    with pytest.raises(checklist.NotReady, match=".git"):
+        handedit._git_dir(p)
+    assert g.is_symlink() and (p.repo / "src").is_dir() and w.turn_specs == []
+
+
+def test_a_real_git_directory_without_head_is_refused(ctx, monkeypatch):
+    p = ctx.paths
+    g = _clear_git(p)
+    g.mkdir()
+    with pytest.raises(checklist.NotReady, match="HEAD"):
+        handedit._git_dir(p)
