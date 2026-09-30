@@ -231,8 +231,12 @@ def test_owner_answers_cover_every_item_and_a_missing_answer_is_not_ok():
     assert secs == 2.0
 
 
-def test_cli_setup_prints_each_check_and_exits_nonzero_unless_green(monkeypatch, capsys):
-    from runner import cli
+def test_cli_setup_prints_each_check_and_exits_nonzero_unless_green(tmp_state, monkeypatch, capsys):
+    from runner import cli, paths, preflight
+    taken = []
+    real_lock = preflight.lock
+    monkeypatch.setattr(preflight, "lock", lambda: taken.append(paths.LOCK) or real_lock())
+    # follow-up 12: isolated (tmp_state), so it never takes the real state/runner.lock a running dry run holds
     monkeypatch.setattr(cli, "_cred_owner", lambda arm: ("cred", "owner"))
     res = checklist.SetupResult([checklist.Check("a", True, "fine"), checklist.Check("b", False, "bad")], {}, False, 0.0)
     got = []
@@ -240,6 +244,7 @@ def test_cli_setup_prints_each_check_and_exits_nonzero_unless_green(monkeypatch,
     assert cli.main(["setup", "dry9", "dryrun"]) == 1
     out = capsys.readouterr().out
     assert got == [("dry9", "dryrun", "cred", "owner")] and "FAIL b" in out and "ok   a" in out
+    assert taken and all(l.is_relative_to(tmp_state) for l in taken)
 
 
 def test_cli_shell_runs_an_interactive_container_inside_the_setup_egress_stage(tmp_state, monkeypatch):
