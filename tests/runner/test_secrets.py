@@ -23,7 +23,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 @pytest.fixture(autouse=True)
 def _keychain_items_absent(monkeypatch):
     """Follow-up round 2, item 1: in these tests every keychain item is ABSENT unless a test fakes it — the real
-    keychain (which may hold the owner's real PATs) is never read (the runner conftest's guard backs this up)."""
+    keychain (which may hold the owner's real PATs) is never read;
+    the runner conftest's `_no_real_keychain` guard also applies here (checked below)."""
     def absent(*a, **k):
         raise RuntimeError("no usable keychain item (test)")
     for name in ("from_keychain", "github_pat", "github_disc_pat"):
@@ -31,15 +32,17 @@ def _keychain_items_absent(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def _no_real_keychain(monkeypatch):
-    """No test reads the real keychain: every lookup fails unless a test installs a fake."""
-    def absent(*a, **k):
-        raise RuntimeError("no keychain in tests")
-    monkeypatch.setattr(credentials, "from_keychain", absent)
-    monkeypatch.setattr(credentials, "github_pat", absent)
-    secrets.clear_keychain_cache()                     # the per-process cache must not leak between tests
+def _keychain_cache_cleared():
+    """The per-process keychain cache must not leak between tests. Named so it never shadows the runner conftest's
+    `_no_real_keychain` guard, which must stay active in this file too."""
+    secrets.clear_keychain_cache()
     yield
     secrets.clear_keychain_cache()
+
+
+def test_the_conftest_keychain_guard_is_active_in_this_file():
+    from tests.runner import conftest
+    assert isinstance(credentials.subprocess, conftest._GuardedSubprocess)
 
 
 # --- the brief's five ---------------------------------------------------------------------------------------
