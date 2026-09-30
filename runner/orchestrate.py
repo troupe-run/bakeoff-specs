@@ -988,6 +988,10 @@ def run_arm(pass_: str, arm: str, cred, owner, limits_override: dict | None = No
     arms only, Task 24); refused on the real pass, where `run_pass` keeps every arm in step (N.a, check, N.b)."""
     if pass_ in REAL_PASSES:
         raise NotReady(f"{pass_} is step-major across every arm: use `runner run-pass {pass_}`")
+    brief = paths.brief_path(pass_)
+    if pass_ == "canary" and not brief.exists():           # m-8: the canary's own copy (Task 26), made once
+        brief.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(REPO_ROOT / "scenario" / "po-brief.md", brief)
     with preflight.lock():
         return _single(_run(pass_, [arm], cred, owner, limits_override=limits_override, stop_after=stop_after), arm)
 

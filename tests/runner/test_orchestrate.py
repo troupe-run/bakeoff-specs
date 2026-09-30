@@ -981,3 +981,16 @@ def test_a_run_refuses_an_arm_whose_setup_scan_found_a_secret_until_it_is_clean(
     (p.setup_results / "leak.txt").write_text("scrubbed")
     assert orchestrate.run_arm("dry7", "dryrun", fake_orch.cred, fake_orch.owner) == {"completed": True}
     assert json.loads((p.setup_results / "secret-scan.json").read_text())["clean"] is True
+
+
+# ---- m-8: the canary gets its own copy of the PO brief when it starts ------------------------------------------------
+
+def test_the_canary_start_copies_the_po_brief_once_and_never_overwrites_it(tmp_state, monkeypatch):
+    monkeypatch.setattr(orchestrate, "_run", lambda pass_, arms, cred, owner, **k: {"arms": {a: {} for a in arms}})
+    monkeypatch.setattr(orchestrate, "_single", lambda res, arm: res)
+    b = paths.STATE / "canary" / "po-brief.md"
+    orchestrate.run_arm("canary", "control", None, None, stop_after=1)
+    assert b.read_text() == (paths.REPO_ROOT / "scenario" / "po-brief.md").read_text()
+    b.write_text(b.read_text() + "\n- **Q:** grown **A:** kept\n")
+    orchestrate.run_arm("canary", "control", None, None, stop_after=1)
+    assert "grown" in b.read_text()
