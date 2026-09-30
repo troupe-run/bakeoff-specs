@@ -241,7 +241,7 @@ def test_no_planted_git_vector_ever_executes_on_the_host(P, tmp_path_factory, sc
     base = gitops.head(P)
     (P.repo / ".gitattributes").write_text("* diff=evil filter=evil\n")   # committed: reaches publish's clone too
     (P.repo / "a.py").write_text("one\n")
-    gitops.commit_all(P, gitops.IDENTITY, "attributes")
+    first = gitops.commit_all(P, gitops.IDENTITY, "attributes")          # a.py "one"
     _plant(P, host, scenario)
 
     # every read
@@ -255,6 +255,12 @@ def test_no_planted_git_vector_ever_executes_on_the_host(P, tmp_path_factory, sc
     gitops.git(P, "push", "-q", "origin", "main", write=True)
     (P.repo / "a.py").write_text("three\n"); (P.repo / "v.py").write_text("v\n")
     gitops.checkout_paths(P, ["a.py"]); gitops.remove_untracked(P, ["v.py"])
+    # A checkout that MUST smudge (final fix batch, Task 8): an older blob of a.py into index and worktree, then
+    # back. Both replace the index entry with a different blob, so git writes the file whatever the worktree's
+    # stat looks like from inside the container; the host write above may not be visible there yet (Docker
+    # Desktop), which made `checkout_paths` alone a nondeterministic positive control for filter-smudge.
+    gitops.git(P, "checkout", "-q", first, "--", "a.py", write=True)
+    gitops.git(P, "checkout", "-q", sha, "--", "a.py", write=True)
     # more reads over history
     gitops.diffstat(P, base, sha); gitops.numstat(P, base, sha); gitops.show(P, sha)
     gitops.log(P, base, sha); gitops.commits_between(P, base, sha); gitops.ls_files(P, sha)
