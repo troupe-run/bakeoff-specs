@@ -161,11 +161,18 @@ the arm repo's git SHA at the end of the step.
 | 30% | Coping with change | Hidden tests still green after each change step; amount of rework; whether spec, code and tests agree after steps 3 and 5; whether step 2's hand edit was detected |
 | 20% | Correctness | Hidden acceptance tests passed per step |
 | 15% | Traceability | Requirement → test → code, and change → reason, can be followed |
-| 15% | Quality of human interaction | Number and value of questions; whether gates fall at sensible points; owner review time |
+| 15% | Quality of human interaction | Number and value of questions; whether the arm researched before asking (see below); whether gates fall at sensible points; owner review time |
 | 10% | Code and test quality | Mutation score, `mypy --strict`, lint, test names checked against what the tests assert |
 | 10% | Setup and ergonomics | Setup effort; fit with Claude Code and with the arm's tracking |
 
 Cost is reported alongside, not scored. Tracker quality is reported separately.
+
+**Research before asking (owner, 2026-09-30).** Within *Quality of human interaction*, each question put to the
+product owner is judged on whether the arm first used what it could reach (the repo, the scenario documents,
+package docs, and for GitHub-tracker arms their issues) and whether the question arrived as an informed choice
+(options, what was found, a recommendation) rather than a bare problem. Judged from the step transcripts and the
+question log. The run-phase egress allowlist bounds what an arm can research, and it differs slightly by arm
+(GitHub-tracker arms can reach `api.github.com`); the report says so. Weights are unchanged.
 
 **Judging:** measured dimensions come from the evidence directly. Judgement dimensions (question quality,
 traceability, test naming) are scored by LLM judges working on **anonymised copies** (repo name, tool-specific
