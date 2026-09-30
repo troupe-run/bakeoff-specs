@@ -691,10 +691,11 @@ REDACTION = "[REDACTED:arm-own-token]"
 REDACT_MAX_BYTES = 256 << 20
 
 
-def own_pat_values(p: paths.Paths, arm, cred=None) -> list[str]:
+def own_pat_values(p: paths.Paths, arm, cred=None, *, keychain: bool = False) -> list[str]:
     """The tokens this arm was GIVEN (follow-up 2): a real arm's keychain PAT and N.a discovery PAT, nothing else
     (its home is arm-writable, so a value found there proves nothing); a dry arm (no keychain) the GitHub-SHAPED
-    values in its home's PAT files. The harness's own literals — the OAuth token (`cred.raw_for_scanner()`) and
+    values in its home's PAT files, minus every other arm home's values and (with `keychain`) every keychain PAT —
+    a dry arm is given nothing real, so a real PAT in its evidence stays `secret-in-evidence`. The harness's own literals — the OAuth token (`cred.raw_for_scanner()`) and
     the dry-run dummy — are never the arm's, wherever they turn up: their leak stays `secret-in-evidence`."""
     from runner import config
     out: dict[str, None] = {}
@@ -708,6 +709,11 @@ def own_pat_values(p: paths.Paths, arm, cred=None) -> list[str]:
         if config.github_disc_slug(p.pass_, arm.name) and (v := keychain_disc_pat(p.pass_, arm.name)):
             out[v] = None
     harness = {DRY_RUN_TOKEN, *([cred.raw_for_scanner()] if cred is not None else [])}
+    if arm.dry:                     # round 2, item 2: a dry arm is given nothing real — any real PAT is a leak
+        own_home = os.path.realpath(p.home)
+        harness |= {v for h in _arm_homes() if os.path.realpath(h) != own_home for v in home_pat_values(h)}
+        if keychain:
+            harness |= set(_keychain_pats())
     return [v for v in out if len(v) >= MIN_HOME_NEEDLE and v not in harness]
 
 

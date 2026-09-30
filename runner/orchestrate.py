@@ -224,6 +224,7 @@ class _Run:
         self.guard = _Guard(owner)
         self.contract = CONTRACT.read_text()
         self.parked: list[dict] = []
+        self.keychain = False                            # whether this run may read the keychain (set by _run)
 
     # -- records ------------------------------------------------------------------------------------------------
     def log(self, event: str, **kw) -> None:
@@ -648,7 +649,7 @@ class _Run:
                             ctx, tracker.IssueRef(**e["issue"]), e["sha_before"], gitops.main_sha(p) or "", snap))
                 self.infra("infra-tracker", arm_name, step, run, "the tracker snapshot", track)
             elif k == "scan":                            # review S-2: before the step counts as done
-                own = secrets.own_pat_values(p, ctx.arm, self.cred)                         # A5: the arm's own token
+                own = secrets.own_pat_values(p, ctx.arm, self.cred, keychain=self.keychain)                         # A5: the arm's own token
                 if (files := secrets.redact([p.step(step)], own)):
                     self._violation(p, {"step": step, "run": run, "kind": "own-token-in-evidence", "files": files[:50]})
                 if (found := secrets.scan_step(p, step, self.lits)):
@@ -977,6 +978,7 @@ def _run(pass_: str, arms: list[str], cred, owner, *, limits_override: dict | No
     for a in arms:
         _scan_setup(pass_, a, lits, cred)                 # m-7: no step before a clean setup scan
     R = _Run(pass_, arms, cred, owner, pins, lits)
+    R.keychain = not dry                                  # a dry pass never touches the keychain (Task 24)
     try:
         R.pending()
         for step in range(1, (stop_after or 7) + 1):

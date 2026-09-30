@@ -831,3 +831,27 @@ def test_the_oauth_token_in_hosts_yml_is_never_the_arms_own(tmp_state):
     tok = "gho_" + "O" * 40                                                  # GitHub-shaped, but it is the harness's
     _home(p, f"github.com:\n    oauth_token: {tok}\n    x: {secrets.DRY_RUN_TOKEN}\n")
     assert secrets.own_pat_values(p, config.load_arm("dryrun"), credentials.Credential(tok)) == []
+
+
+# ---- follow-up round 2, item 2: a dry arm is given nothing — a real PAT in its evidence is never "its own" ------------
+
+DRY_SEEN_PAT = "github_pat_" + "".join("aB3" for _ in range(20))
+
+
+def test_a_pat_also_found_in_another_arms_home_is_never_a_dry_arms_own(tmp_state):
+    from runner import config
+    _home(Paths("pass1", "control"), f"github.com:\n    oauth_token: {DRY_SEEN_PAT}\n")      # a real arm's PAT
+    p = Paths("dry1", "dryrun")
+    _home(p, f"github.com:\n    oauth_token: {DRY_SEEN_PAT}\n")                           # copied into the dry home
+    assert secrets.own_pat_values(p, config.load_arm("dryrun"), credentials.dummy()) == []
+
+
+def test_a_keychain_pat_is_never_a_dry_arms_own_when_the_keychain_is_allowed(tmp_state, monkeypatch):
+    from runner import config
+    p = Paths("dry1", "dryrun")
+    _home(p, f"github.com:\n    oauth_token: {DRY_SEEN_PAT}\n")
+    monkeypatch.setattr(credentials, "github_pat", lambda pass_, arm: DRY_SEEN_PAT if arm == "control" else "")
+    assert secrets.own_pat_values(p, config.load_arm("dryrun"), credentials.dummy(), keychain=True) == []
+    secrets.clear_keychain_cache()
+    monkeypatch.setattr(credentials, "github_pat", lambda *a: pytest.fail("keychain read without permission"))
+    assert secrets.own_pat_values(p, config.load_arm("dryrun"), credentials.dummy()) == [DRY_SEEN_PAT]
