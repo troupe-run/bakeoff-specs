@@ -17,7 +17,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     ns = build_parser().parse_args(argv)
-    if ns.cmd != "faults":                   # design §9: halted until `faults resume --note` (Task 22)
+    if ns.cmd not in ("faults", "watch"):    # design §9: halted until `faults resume --note` (Task 22); watch reads only
         from runner import faults
         pass_ = getattr(ns, "pass_", None) or "pass1"      # no pass named: the real bake-off's ledger
         if not faults.valid_name(pass_):                   # never build a ledger path from a bad name (M-2)
@@ -424,3 +424,29 @@ def register_canary(sub):
                                                          "steps 1-2 resumed, then the tracker check")
     p.set_defaults(func=canary_cmd, pass_="canary")    # main's HALTED check reads the canary's own ledger
 REGISTRARS.append(register_canary)
+
+
+def register_watch(sub):
+    """`runner watch [--pass P] [--arm A]`: follow the running turn's live feed (runner.live) from a second terminal.
+    Read-only: never takes the runner lock, never writes, and works while HALTED."""
+    def watch(ns):
+        import sys
+        from runner import live
+        try:
+            live.follow(sys.stdout, ns.pass_, ns.arm, poll=ns.poll)
+        except KeyboardInterrupt:
+            print("\nstopped watching (the run itself is unaffected)")
+        return 0
+    p = sub.add_parser(
+        "watch", help="follow the running turn live (tool calls, text, subagents, result); read-only",
+        description="Follow the running turn's live feed (state/<pass>/<arm>/live/, secret-redacted), switching to "
+                    "each new turn as it starts; with no running turn, wait for one. Read-only: no lock, no writes; "
+                    "run it in a second terminal beside run-pass / run-arm / canary / dry-run. Ctrl-C here stops "
+                    "watching only. To stop the RUN: Ctrl-C in the runner's terminal (the step is left interrupted), "
+                    "then `runner faults declare <pass> <arm> <step> <slug> --scope rerun-step` (ledgered as "
+                    "manual:<slug>) — an owner stop is a harness fault, not the arm's (design §9).")
+    p.add_argument("--pass", dest="pass_", metavar="PASS", default=None, help="only this pass (default: any)")
+    p.add_argument("--arm", default=None, help="only this arm (default: any)")
+    p.add_argument("--poll", type=float, default=0.5, help=argparse.SUPPRESS)
+    p.set_defaults(func=watch)
+REGISTRARS.append(register_watch)

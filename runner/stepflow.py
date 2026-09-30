@@ -360,7 +360,8 @@ def _arm_checks(ctx, attempt: int, run: str) -> list[dict]:
     caller fails the attempt. Other step checks stay orchestrate's (`setup-drift` harness faults)."""
     found = [{"kind": "setup-drift", "check": c.id, "detail": c.detail[:300]}
              for c in checklist.verify(ctx.paths, ctx.arm, "step") if c.status == "fail" and c.id in ARM_DRIFT]
-    files = secrets.redact([ctx.out, ctx.paths.config_dir], secrets.own_pat_values(ctx.paths, ctx.arm, ctx.cred))
+    files = secrets.redact([ctx.out, ctx.paths.config_dir, ctx.paths.live],
+                           secrets.own_pat_values(ctx.paths, ctx.arm, ctx.cred))
     if files:
         found.append({"kind": "own-token-in-evidence", "files": files[:50]})
     with open(ctx.out / VIOLATIONS, "a") as fh:

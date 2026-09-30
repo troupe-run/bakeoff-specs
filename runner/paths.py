@@ -41,6 +41,8 @@ class Paths:
     @property
     def scratch(self) -> Path: return self.base / "scratch"
     @property
+    def live(self) -> Path: return self.base / "live"      # `runner watch`'s per-turn feeds (state, not evidence)
+    @property
     def po_home(self) -> Path: return STATE / self.pass_ / "po-home" / self.arm
     def teammate_home(self, attempt: int) -> Path: return self.base / f"teammate-home-{attempt}"
     @property

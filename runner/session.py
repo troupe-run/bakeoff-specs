@@ -19,7 +19,7 @@ import asyncio, gzip, json, os, time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import AsyncIterator, Iterable, Literal
-from runner import docker, transcripts
+from runner import docker, live, paths, transcripts
 from runner.credentials import Credential
 from runner.docker import Mount, RunSpec
 from runner.config import load_pins
@@ -194,7 +194,7 @@ def _spec(t: Turn) -> RunSpec:
 
 
 async def _run(t: Turn, cred: Credential, stream_path: Path, stderr_path: Path,
-               timeout_s: float) -> tuple[Parsed, str, tuple[bool, int | None]]:
+               timeout_s: float, feed_: live.Feed | None = None) -> tuple[Parsed, str, tuple[bool, int | None]]:
     spec = _spec(t)
     proc = await asyncio.create_subprocess_exec(*docker.run_argv(spec), stdin=asyncio.subprocess.PIPE,
                                                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
@@ -210,6 +210,8 @@ async def _run(t: Turn, cred: Credential, stream_path: Path, stderr_path: Path,
                 async for raw in read_lines(proc.stdout):
                     line = raw.decode(errors="replace")
                     out.write(line); feed(parsed, line)
+                    if feed_ is not None:
+                        feed_.event(line)                          # the live feed (`runner watch`)
                     if stop_on_auth and parsed.auth_failed:
                         return
 
@@ -253,8 +255,22 @@ async def _run(t: Turn, cred: Credential, stream_path: Path, stderr_path: Path,
     return parsed, how, state
 
 
+def _live_feed(t: Turn, cred: Credential, out_dir: Path) -> live.Feed | None:
+    """The turn's live feed, started; None if it could not be (the feed never fails a turn)."""
+    from runner import secrets                                  # the only reader of the raw token (Task 21)
+    try:
+        p = paths.Paths(t.pass_, t.arm)
+        homes = [p.home, *([t.config_dir.parent] if t.config_dir is not None else [])]
+        f = live.Feed(p, step=t.step, run=live.run_label(p, out_dir), stem=stem(t), role=t.role,
+                      attempt=t.attempt, n=t.n, evidence=out_dir, redact=secrets.live_redactor(cred, homes))
+    except Exception:                                           # noqa: BLE001
+        return None
+    return f if f.start() else None
+
+
 def run_turn(t: Turn, cred: Credential, out_dir: Path, timeout_s: float) -> TurnResult:
-    """Run one turn. Writes out_dir/turns/<stem>.prompt.md, .stream.jsonl.gz and .stderr.gz."""
+    """Run one turn. Writes out_dir/turns/<stem>.prompt.md, .stream.jsonl.gz and .stderr.gz — and, for
+    `runner watch`, a redacted, line-buffered live feed under `state/<pass>/<arm>/live/` (`runner.live`)."""
     cred.check_turn(t.dry)                                     # review C-14: before anything is written
     if t.role not in ROLES:
         raise ValueError(f"unknown role {t.role!r}; expected one of {ROLES}")
@@ -266,13 +282,21 @@ def run_turn(t: Turn, cred: Credential, out_dir: Path, timeout_s: float) -> Turn
     stream = turns / f"{stem(t)}.stream.jsonl.gz"
     stderr = turns / f"{stem(t)}.stderr.gz"
     wall0, start = time.time(), time.monotonic()
-    parsed, how, (oom, code) = asyncio.run(_run(t, cred, stream, stderr, timeout_s))
+    feed_ = _live_feed(t, cred, out_dir)
+    try:
+        parsed, how, (oom, code) = asyncio.run(_run(t, cred, stream, stderr, timeout_s, feed_))
+    except BaseException as e:
+        if feed_ is not None:
+            feed_.end(f"stopped by the runner ({type(e).__name__}) after {time.monotonic() - start:.0f}s")
+        raise
     # A session OOM is a turn that did NOT complete (no result event) whose container was OOM-killed or exited 137:
     # on cgroup v2 a child killed for memory sets OOMKilled while Claude still returns a result (follow-up 1).
     oom = oom and parsed.result is None
     wall = time.monotonic() - start
     outcome: Outcome = "timeout" if how == "timeout" else parsed.outcome
     r = parsed.result or {}
+    if feed_ is not None:
+        feed_.end(f"{outcome}, cost ${parsed.cost_usd:.4f}, {wall:.0f}s" + (" (OOM-killed)" if oom else ""))
     return TurnResult(parsed.session_id, outcome, parsed.final_text, parsed.init, parsed.result, parsed.cost_usd,
                       r.get("usage", {}), r.get("modelUsage", {}), wall, parsed.retries,
                       stream, stderr, list(r.get("permission_denials") or []),

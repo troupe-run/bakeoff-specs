@@ -656,7 +656,7 @@ class _Run:
                 self.infra("infra-tracker", arm_name, step, run, "the tracker snapshot", track)
             elif k == "scan":                            # review S-2: before the step counts as done
                 own = secrets.own_pat_values(p, ctx.arm, self.cred, keychain=self.keychain)                         # A5: the arm's own token
-                if (files := secrets.redact([p.step(step)], own)):
+                if (files := secrets.redact([p.step(step), p.live], own)):              # + `runner watch`'s feeds
                     self._violation(p, {"step": step, "run": run, "kind": "own-token-in-evidence", "files": files[:50]})
                 if (found := secrets.scan_step(p, step, self.lits)):
                     self.fault(secrets.SecretFound("secret-in-evidence", found), arm_name, step, run,
@@ -1103,8 +1103,9 @@ def _scan_setup(pass_: str, arm: str, lits, cred) -> None:
     if (_jr(f) or {}).get("clean") is True or not p.setup_results.is_dir():
         return
     lits = lits() if callable(lits) else lits        # the setup path computes them only when there is evidence
-    redacted = secrets.redact([p.setup_results], secrets.own_pat_values(p, config.load_arm(arm), cred))
-    found = secrets.scan_tree(p.setup_results, lits) + secrets.scan_files(secrets.ledger_files(pass_), lits)
+    redacted = secrets.redact([p.setup_results, p.live], secrets.own_pat_values(p, config.load_arm(arm), cred))
+    found = secrets.scan_tree(p.setup_results, lits) + secrets.scan_files(secrets.live_files(p, 0), lits) + \
+        secrets.scan_files(secrets.ledger_files(pass_), lits)
     _jw(f, {"at": _now(), "clean": not found, "findings": [f"{x.path}:{x.line} {x.kind}" for x in found[:50]],
             "redacted_own_token": redacted[:50]})
     if found:
@@ -1232,7 +1233,7 @@ def _md(f: Path, rec: dict) -> None:
 # ---- close-out and status -----------------------------------------------------------------------------------------
 
 def close_out(pass_: str, owner) -> Path:
-    """The end of a run (review S-2): every arm finished, a secret scan of `results/<pass>` and the ledger clean, every
+    """The end of a run (review S-2): every arm finished, a secret scan of `results/<pass>`, the arms' live feeds and the ledger clean, every
     bundle present, publishing finished, and every run PAT revoked (the owner confirms each — a park or a "no" is not
     a confirmation). Written to `results/<pass>/close-out.md`; `NotReady` unless every item holds."""
     rec = _jr(paths.RESULTS / pass_ / "order.json") or {}
@@ -1243,6 +1244,7 @@ def close_out(pass_: str, owner) -> Path:
         raise NotReady(f"{pass_}: not finished: {missing}")
     lits = secrets.literals()
     found = secrets.scan_tree(paths.RESULTS / pass_, lits) + secrets.scan_files(secrets.ledger_files(pass_), lits)
+    found += [f for a in arms if Paths(pass_, a).live.is_dir() for f in secrets.scan_tree(Paths(pass_, a).live, lits)]
     no_bundle = [a for a in arms if not (Paths(pass_, a).results / "repo.bundle").is_file()]
     pats = [(f"pat-{a}", f"The fine-grained PAT bakeoff-gh-{pass_}-{a} is revoked (GitHub → Settings → Developer "
                          f"settings → Fine-grained tokens)")

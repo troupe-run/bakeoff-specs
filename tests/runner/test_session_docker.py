@@ -18,7 +18,7 @@ def turn(tmp_path, message, n=1, role="arm"):
                 "none", False, "/work/bakeoff-specs-dryrun", tmp_path / "inbox" / role, role, True, home / ".claude")
 
 @pytest.fixture(autouse=True)
-def no_leftovers():
+def no_leftovers(tmp_state):             # tmp_state: each turn's live feed (runner watch) is written under STATE
     yield
     assert not docker.running("bakeoff.run=t/dryrun")
 
@@ -28,6 +28,9 @@ def test_ok_turn_records_stream_and_session(tmp_path):
     assert r.result["token_seen"] is True                      # fd 3 hand-off works
     assert "dry-run-dummy-token" not in gzip.open(r.stream_path, "rt").read()
     assert (tmp_path / "out" / "turns" / "arm-a1-001.prompt.md").read_text() == "hello\nFAKE:reply=done"
+    (feed,) = (tmp_path / "state" / "t" / "dryrun" / "live").glob("01-*-arm-a1-001-*.log")   # runner watch's feed
+    text = feed.read_text()
+    assert "text: done" in text and "turn end: ok" in text.splitlines()[-1] and "dry-run-dummy-token" not in text
 
 def test_the_pinned_model_is_passed_explicitly(tmp_path):     # controller ruling: never rely on the default
     r = run_turn(turn(tmp_path, "FAKE:reply=ok"), credentials.dummy(), tmp_path / "out", 60)

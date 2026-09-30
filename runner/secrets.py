@@ -661,20 +661,32 @@ def ledger_files(pass_: str) -> list[Path]:
     return [ledger, halted, faults.resource_path(pass_)]
 
 
+def live_files(p: paths.Paths, step: int) -> list[Path]:
+    """The step's live per-turn feeds (`state/<pass>/<arm>/live/NN-*.log`, written by `runner.live` for
+    `runner watch`). They are state, not evidence, but they carry the same model text and tool inputs as the
+    step's streams, so every scan of a step's streams scans them too. Never through a link."""
+    d = p.live
+    if os.path.islink(d) or not d.is_dir():
+        return []
+    return sorted(f for f in d.glob(f"{step:02d}-*.log"))
+
+
 def scan_step(p: paths.Paths, step: int, literals: Iterable[str] = ()) -> list[Finding]:
-    """The per-step scan: the step's evidence dir (`results/<pass>/<arm>/NN`, its `a/` run included) and the pass's
-    ledger files, with the arm home's PAT values added to the needles."""
+    """The per-step scan: the step's evidence dir (`results/<pass>/<arm>/NN`, its `a/` run included), the step's
+    live feeds (`live_files`) and the pass's ledger files, with the arm home's PAT values added to the needles."""
     lits = [*literals, *home_pat_values(p.home)]
-    return scan_tree(p.step(step), lits) + scan_files(ledger_files(p.pass_), lits)
+    return scan_tree(p.step(step), lits) + scan_files(live_files(p, step), lits) + \
+        scan_files(ledger_files(p.pass_), lits)
 
 
 def scan_arm(p: paths.Paths, literals: Iterable[str] = (), *, snapshots: bool = True) -> list[Finding]:
     """One arm: its whole results tree (every step's evidence, `00-setup` with shell-history.txt and the setup
-    transcripts) and, with `snapshots`, every `snapshots/*.tar`. The arm home's PAT values and its keychain PAT
+    transcripts), its live feeds (`state/<pass>/<arm>/live/`) and, with `snapshots`, every `snapshots/*.tar`. The arm home's PAT values and its keychain PAT
     are added to the needles; the keychain PAT is the snapshot PAT-file exemption."""
     pat = keychain_pat(p.pass_, p.arm)
     lits = [*literals, *home_pat_values(p.home), *([pat] if pat else [])]
     found = scan_tree(p.results, lits) if p.results.is_dir() else []
+    found += scan_tree(p.live, lits) if p.live.is_dir() or os.path.islink(p.live) else []
     found += scan_files(ledger_files(p.pass_), lits)
     if snapshots and p.snapshots.is_dir() and not p.snapshots.is_symlink():
         for snap in sorted(p.snapshots.glob("*.tar")):
@@ -762,6 +774,38 @@ def redact(roots: Iterable[Path], values: Iterable[str]) -> list[str]:
             os.replace(tmp, f)
             changed.append(str(f))
     return changed
+
+
+# ---- the live feed's write-time redaction (`runner watch`) -------------------------------------------------------
+# Same GitHub shapes as tracker._TOKEN (shorter than PATTERNS' minimums: redacting more is the safe direction).
+_SHORT_GITHUB = re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})")
+_TEXT_SHAPES = [re.compile(k.pattern.decode()) for n, k in PATTERNS.items() if n != "private-key"] + [_SHORT_GITHUB]
+_PRIVATE_KEY_BLOCK = re.compile(r"-----BEGIN (?:RSA |OPENSSH |EC |DSA |ENCRYPTED )?PRIVATE KEY-----"
+                                r"(?:.*?-----END (?:RSA |OPENSSH |EC |DSA |ENCRYPTED )?PRIVATE KEY-----|.*\Z)", re.S)
+
+
+def live_redactor(cred=None, homes: Iterable[Path] = ()):
+    """A `str -> str` for text the runner itself writes outside evidence (the live per-turn feed that
+    `runner watch` follows): every token SHAPE (`PATTERNS`, tracker's shorter GitHub shape, a whole private-key
+    block) and every KNOWN value — the dry-run dummy, the OAuth token (`cred`; this module is the only reader of
+    it), the PAT values of `homes` — with its base64/hex encodings, becomes `<redacted>`. It never touches the
+    keychain: a keychain-only PAT that is none of these is left to the per-step scan (`scan_step` covers the
+    live files), which fails closed exactly as it does for the stream."""
+    values = {DRY_RUN_TOKEN, *([cred.raw_for_scanner()] if cred is not None else [])}
+    for h in homes:
+        values.update(home_pat_values(Path(h)))
+    needles = sorted({n.decode("ascii", "replace") for v in values if len(v) >= MIN_LITERAL
+                      for n in _derived(v.encode())}, key=len, reverse=True)
+
+    def redact_text(text: str) -> str:
+        for n in needles:
+            if n in text:
+                text = text.replace(n, REDACTED)
+        text = _PRIVATE_KEY_BLOCK.sub(REDACTED, text)
+        for rx in _TEXT_SHAPES:
+            text = rx.sub(REDACTED, text)
+        return text
+    return redact_text
 
 
 # ---- literal values ---------------------------------------------------------------------------------------------

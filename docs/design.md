@@ -154,6 +154,16 @@ full session transcripts; cost with its unit and source, and wall-clock time; ev
 answered, and whether it was escalated; hidden-test results; mutation score, `mypy --strict` and lint output;
 the arm repo's git SHA at the end of the step.
 
+**Watching a run live.** A turn's stream is stored gzipped, which cannot be followed while it is written, so each
+turn also writes a plain, line-buffered feed — tool calls with a short argument summary, assistant text (trimmed),
+subagent start and stop, retries, tool errors and the result with its outcome and cost — to
+`state/<pass>/<arm>/live/NN-<run>-<turn>-<started>.log`, with `live/current.json` naming the running turn.
+`runner watch [--pass P] [--arm A]` follows it from a second terminal (read-only: no lock, no writes), switching
+to each new turn as it starts. The feed is state, not evidence: it is never committed or scored. It holds model
+text and tool inputs, so every line has token shapes and the known credential values redacted before it is
+written, and the feeds are secret-scanned with the step's evidence after every run (`secrets.scan_step`, also
+`scan_arm`, the setup scan, close-out, and the dry-run report's scan of `state/`).
+
 ## 8. Scoring
 
 | Weight | Dimension | Measured by |
@@ -189,6 +199,11 @@ recognisable by their artefact shapes — and the report says so.
   as a harness fault (the suite, not the framework) and the bake-off halts for review.
 - **Arm faults:** if an arm makes no progress on the hidden tests for three attempts at one step, the arm
   stops at that step and that is recorded as its result.
+- **Owner stop mid-flight (owner, 2026-10-01):** the owner stopping a run (Ctrl-C in the runner's terminal, e.g.
+  after seeing a turn go off the rails in `runner watch`) is a **harness** fault, not an arm fault. The step is
+  left `interrupted`; the owner records it with `runner faults declare <pass> <arm> <step> <slug> --scope
+  rerun-step` (ledgered as `manual:<slug>`); resuming moves the attempt aside and re-runs the step from its
+  snapshot. The arm is not penalised. Like every harness fault, the same `manual:<slug>` twice halts the bake-off.
 
 ## 10. Repos and naming
 
