@@ -298,6 +298,22 @@ def _gh(argv: list[str]) -> subprocess.CompletedProcess:
         return subprocess.run(argv, capture_output=True, text=True, env=env, cwd=cwd, timeout=120)
 
 
+def repo_gaps(slug: str) -> list[str]:
+    """What stops `slug` being used as an arm tracker repo (Task 26 pre-flight), by the owner's own `gh`: not found
+    (or not visible to the owner's login), not private, issues disabled. [] when it is ready. Reads only."""
+    r = _gh(["gh", "repo", "view", slug, "--json", "visibility,hasIssuesEnabled"])
+    if r.returncode != 0:
+        return [f"GitHub repo {slug}: not found (or not visible to your gh login): {r.stderr.strip()[:200]}"]
+    v = json.loads(r.stdout or "{}")
+    out = []
+    vis = str(v.get("visibility", "")).upper()
+    if vis != "PRIVATE":
+        out.append(f"GitHub repo {slug}: is {vis or 'of unknown visibility'}, must be PRIVATE")
+    if not v.get("hasIssuesEnabled"):
+        out.append(f"GitHub repo {slug}: issues are disabled")
+    return out
+
+
 def ensure_private_repo(slug: str, description: str) -> str:
     """OWNER (2026-09-30): the close-out repo exists and is private. "created" (made with `--private`) or
     "exists"; an existing repo that is not private is reported as "exists-<visibility>" and left alone — the

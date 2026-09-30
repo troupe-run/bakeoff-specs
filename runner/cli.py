@@ -270,7 +270,8 @@ def _orchestrated(fn):
             return 1
         if res is not None:
             print(json.dumps(res, indent=2, default=str))
-            if isinstance(res, dict) and ("declined" in res or "incomplete" in res):
+            if isinstance(res, dict) and any(k in res for k in ("declined", "incomplete", "skipped", "preflight_missing",
+                                                                 "setup_green")):
                 return 1
         return 0
     return run
@@ -380,3 +381,34 @@ def register_probe(sub):
     p.add_argument("--no-model", action="store_true", help="only the no-model probes (P9, P11); no credential")
     p.set_defaults(func=probe_cmd)
 REGISTRARS.append(register_probe)
+
+
+def register_canary(sub):
+    def canary_cmd(ns):
+        """Task 26 (OD25, owner-run): `canary` — pre-flight (repos and keychain items; any gap: printed, nothing
+        spent, exit 1), the owner's confirm (a no or a park spends nothing), then control steps 1-2 and the tracker
+        check. `canary --check` writes results/canary/canary.md and exits 1 unless it ends PASS."""
+        from runner import orchestrate
+        if ns.check:
+            orchestrate.canary_check()
+            text = (paths.RESULTS / "canary" / "canary.md").read_text()
+            print(text)
+            return 0 if text.rstrip().endswith("**Result: PASS**") else 1
+
+        def run(ns):
+            from runner import credentials, owner as owner_mod
+            res = orchestrate.canary(credentials.from_keychain, owner_mod.Owner())
+            if "preflight_missing" in res:
+                print("The canary cannot start; missing:")
+                for m in res["preflight_missing"]:
+                    print(f"  - {m}")
+                print(res["hint"])
+                print("Nothing was run and nothing was spent.")
+            elif res.get("skipped"):
+                print(f"Not confirmed ({res.get('why')}): nothing run, nothing spent.")
+            return res
+        return _orchestrated(run)(ns)
+    p = sub.add_parser("canary", help="owner-run canary: control, steps 1-2, real model/PO/GitHub (OD25; spends quota)")
+    p.add_argument("--check", action="store_true", help="write results/canary/canary.md; exit 1 unless it ends PASS")
+    p.set_defaults(func=canary_cmd, pass_="canary")    # main's HALTED check reads the canary's own ledger
+REGISTRARS.append(register_canary)

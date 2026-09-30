@@ -57,7 +57,10 @@ SECURITY = "/usr/bin/security"      # absolute: a PATH-shadowed `security` must 
 KEYCHAIN_TIMEOUT = 60.0             # generous: the first access may show a keychain approval prompt
 
 
-def from_keychain(service: str = "bakeoff-claude-oauth") -> Credential:
+OAUTH_ITEM = "bakeoff-claude-oauth"
+
+
+def from_keychain(service: str = OAUTH_ITEM) -> Credential:
     # Fix round 1: no exception is raised while a CompletedProcess/TimeoutExpired (carrying stdout) is a
     # frame local or a chained __context__, so a locals-showing traceback cannot print the token (review S-6).
     timed_out = False
@@ -83,13 +86,35 @@ def github_pat(pass_: str, arm: str) -> str:
     Same hygiene as `from_keychain`: absolute `security`, a timeout, and no exception raised while the output
     is still a frame local. Callers: `checklist._install_github_pat` (the PAT lands in the arm's home, by design:
     the arm's own `gh` uses it) and `secrets.keychain_pat` (a needle for the secret scan, never written)."""
-    return _pat_item(f"bakeoff-gh-{pass_}-{arm}", pass_)
+    return _pat_item(github_pat_item(pass_, arm), pass_)
+
+
+def github_pat_item(pass_: str, arm: str) -> str:
+    """The keychain item name of the arm's PAT for a pass (single source for `github_pat` and the canary)."""
+    return f"bakeoff-gh-{pass_}-{arm}"
+
+
+def github_disc_pat_item(pass_: str, arm: str) -> str:
+    """The keychain item name of the arm's N.a discovery PAT for a pass."""
+    return f"bakeoff-gh-{pass_}-disc-{arm}"
+
+
+def keychain_item_exists(service: str) -> bool:
+    """Whether keychain item `service` exists (Task 26 pre-flight). EXISTENCE ONLY: `security find-generic-password`
+    without `-w` (so no secret is requested) and its output discarded unread; only the exit code is used. A timeout
+    reads as absent."""
+    try:
+        r = subprocess.run([SECURITY, "find-generic-password", "-s", service], stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=KEYCHAIN_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return False
+    return r.returncode == 0
 
 
 def github_disc_pat(pass_: str, arm: str) -> str:
     """The PAT for the arm's N.a discovery repo (final fix batch A3), keychain item `bakeoff-gh-<pass>-disc-<arm>`;
     same hygiene as `github_pat`. Callers: `checklist.install_disc_pat` and `secrets` (a needle)."""
-    return _pat_item(f"bakeoff-gh-{pass_}-disc-{arm}", pass_)
+    return _pat_item(github_disc_pat_item(pass_, arm), pass_)
 
 
 def _pat_item(service: str, pass_: str) -> str:

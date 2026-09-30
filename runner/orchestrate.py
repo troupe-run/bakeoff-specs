@@ -62,8 +62,8 @@ import dataclasses, hashlib, json, random, re, shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from runner import (checklist, config, docker, drive, faults, fsutil, gitops, handedit, handoff, hidden, owner as owner_mod,
-                    paths, po, preflight, quality, repo, secrets, stepflow, tracker)
+from runner import (checklist, config, credentials, docker, drive, egress, faults, fsutil, gitops, handedit, handoff,
+                    hidden, owner as owner_mod, paths, po, preflight, quality, repo, secrets, stepflow, tracker)
 from runner.faults import HarnessFault
 from runner.paths import Paths, REAL_PASSES, REPO_ROOT
 
@@ -1524,3 +1524,245 @@ def dry_report(res: dict) -> Path:
     out = paths.RESULTS / "dryrun-validation.md"
     fsutil.write_text(out, _trim("\n".join(lines)))
     return out
+
+
+# ---- the canary (Task 26, OD25): one real arm, steps 1-2, before go/no-go -------------------------------------------
+# Built here, run by the owner (`runner canary`, then `runner canary --check`). Namespace `canary`: its own brief copy
+# (`paths.brief_path`), ledger, state and results; arm control; steps 1 and 2 (N.a and N.b each; step 2 carries the
+# hand edit); the real credential, model, PO, owner and GitHub tracker; real limits.
+
+CANARY, CANARY_ARM, CANARY_STOP_AFTER = "canary", "control", 2
+GITHUB_API = r"^api\.github\.com$"
+CANARY_HINT = "run `uv run python -m runner github-plan canary` for the create commands"
+
+
+def canary_preflight() -> list[str]:
+    """Everything the canary will use that is not there yet, one line each — before any confirm or spend
+    (controller ruling 1): the canary repo and its N.a discovery repo (the owner's `gh`: exists, private, issues
+    on), and the keychain items for the OAuth credential and both PATs (existence only: no value is read)."""
+    gaps: list[str] = []
+    for what, slug in (("canary repo", config.github_slug(CANARY, CANARY_ARM)),
+                       ("N.a discovery repo", config.github_disc_slug(CANARY, CANARY_ARM))):
+        gaps += repo.repo_gaps(slug) if slug else [f"{what}: no slug configured for {CANARY}/{CANARY_ARM}"]
+    for what, item in (("the Claude OAuth credential", credentials.OAUTH_ITEM),
+                       ("the arm's PAT", credentials.github_pat_item(CANARY, CANARY_ARM)),
+                       ("the arm's N.a discovery PAT", credentials.github_disc_pat_item(CANARY, CANARY_ARM))):
+        if not credentials.keychain_item_exists(item):
+            gaps.append(f"keychain item {item} ({what}): missing")
+    return gaps
+
+
+def canary(cred_of, owner) -> dict:
+    """Pre-flight → the owner's confirm → a fresh canary (state and results replaced, the brief copied, the order
+    recorded) → setup → `run_arm(stop_after=2)` → the tracker check. `cred_of` returns the real credential; it is
+    called only after the confirm, so a declined or parked canary reads nothing from the keychain. Returns
+    {"preflight_missing": [...], "hint"} | {"skipped": True, "why"} | {"setup_green": False, ...} |
+    {"run": <run_arm's result>, "tracker_check": <result.json>}."""
+    gaps = canary_preflight()
+    if gaps:
+        return {"preflight_missing": gaps, "hint": CANARY_HINT}
+    state, results = paths.STATE / CANARY, paths.RESULTS / CANARY
+    previous = [str(d) for d in (state, results) if d.exists()]
+    text = ("Run the canary: arm control, steps 1-2 (step 2 includes the hand edit), the real model, the real PO and "
+            "the real GitHub tracker; spends real quota (OD25)?")
+    if previous:
+        text += (f" A previous canary run exists ({', '.join(previous)}): it will be REPLACED (its state and evidence "
+                 f"are deleted).")
+    got = owner.confirm(text)
+    if got is not True:
+        return {"skipped": True, "why": "parked" if isinstance(got, owner_mod.Park) else "declined"}
+    try:
+        cred = cred_of()
+    except RuntimeError as e:
+        raise NotReady(f"the canary needs the keychain credential: {e}") from None
+    with preflight.lock():
+        for d in (state, results):
+            repo.remove_tree(d)                          # never follows links; read-only dirs made writable first
+        state.mkdir(parents=True)
+        shutil.copy(REPO_ROOT / "scenario" / "po-brief.md", paths.brief_path(CANARY))    # never the real brief
+        order(CANARY)
+    r = setup(CANARY, CANARY_ARM, cred, owner)
+    if not r.green:
+        return {"setup_green": False, "see": str(Paths(CANARY, CANARY_ARM).setup_results)}
+    ran = run_arm(CANARY, CANARY_ARM, cred, owner, stop_after=CANARY_STOP_AFTER)
+    return {"run": ran, "tracker_check": canary_tracker_check(owner)}
+
+
+def _write_tracker_check(out: Path, rec: dict) -> None:
+    _jw(out / "result.json", rec)
+
+
+def canary_tracker_check(owner) -> dict:
+    """The real GitHub write/read path (controller ruling 3): the step-6 issue created by `tracker.create_bug` with
+    the owner's `gh` after their confirm; read back with the ARM's PAT (its home's hosts.yml) in the arm image behind
+    an egress stage of `run_common` + api.github.com; then superseded (closed) after the owner confirms. Recorded in
+    `results/canary/control/tracker-check/result.json`; nothing token-shaped is kept from any output."""
+    arm, p = config.load_arm(CANARY_ARM), Paths(CANARY, CANARY_ARM)
+    out = p.results / "tracker-check"
+    out.mkdir(parents=True, exist_ok=True)
+    ctx = type("CanaryTrackerCtx", (), {})()
+    ctx.pass_, ctx.arm, ctx.paths, ctx.out, ctx.run = CANARY, arm, p, out, "b"      # "b": the canary repo, not disc
+    guard = _Guard(owner)
+    rec: dict = {"at": _now(), "issue": None, "title": None, "arm_pat_read_ok": False, "read_title": None,
+                 "read_detail": "", "superseded": None}
+    try:
+        issue = tracker.create_bug(ctx, guard)
+    except _OwnerParked:
+        rec["error"] = "the owner parked the issue creation: nothing created, nothing read"
+        _write_tracker_check(out, rec)
+        return rec
+    except Exception as e:
+        rec["error"] = f"issue not created: {type(e).__name__}: {tracker._summary(str(e))}"
+        _write_tracker_check(out, rec)
+        return rec
+    rec["issue"] = issue.ref
+    rec["title"] = (_jr(out / "issue.json", {}) or {}).get("title")
+    try:
+        slug = config.github_slug(CANARY, arm.name)
+        s = checklist.arm_spec(p, arm, ["gh", "issue", "view", issue.id, "--repo", slug, "--json", "title"],
+                               name="ghread")
+        hosts = list(config.load_pins().egress_run_common) + [GITHUB_API]
+        with egress.Stage(CANARY, arm.name, "ghread", hosts, out / "egress.log") as st:
+            r = docker.run(dataclasses.replace(s, network=st.net, proxy=True), timeout=120)
+        got = None
+        if r.returncode == 0:
+            try:
+                got = json.loads(r.stdout.decode(errors="replace")).get("title")
+            except (ValueError, AttributeError):
+                got = None
+        rec["read_title"] = got
+        rec["arm_pat_read_ok"] = r.returncode == 0 and got is not None and got == rec["title"]
+        rec["read_detail"] = f"exit {r.returncode}" + \
+            (f": {tracker._summary(r.stderr.decode(errors='replace'))}" if r.returncode else "")
+    except Exception as e:
+        rec["read_detail"] = f"read failed: {type(e).__name__}: {tracker._summary(str(e))}"
+    finally:
+        try:
+            rec["superseded"] = tracker.supersede(ctx, issue, guard).get("action")
+        except _OwnerParked:
+            rec["superseded"] = "parked"
+        except Exception as e:
+            rec["superseded"] = f"failed: {type(e).__name__}: {tracker._summary(str(e))}"
+        _write_tracker_check(out, rec)
+    return rec
+
+
+def _pin_ok(f: Path) -> tuple[bool, str]:
+    d = _jr(f)
+    if not isinstance(d, dict):
+        return False, f"missing {f.name}"
+    n = d.get("assistant_messages") or 0
+    return d.get("ok") is True and n > 0, f"ok={d.get('ok')}, {n} messages, versions {d.get('claude_code_versions')}"
+
+
+def _pins_ok(files: list[Path], need_one: bool) -> tuple[bool, str]:
+    reps = [_jr(f) for f in files]
+    bad = [f.parent.name if f.name == "model-pin.json" else f.name for f, r in zip(files, reps)
+           if not (isinstance(r, dict) and r.get("ok") is True and (r.get("assistant_messages") or 0) > 0)]
+    ok = not bad and (bool(files) or not need_one)
+    return ok, f"{len(files)} pin report(s)" + (f"; not verified: {bad}" if bad else "") + \
+        ("" if files or not need_one else "; none (at least one is required)")
+
+
+def _no_faults(f: Path) -> tuple[bool, str]:
+    d = _jr(f)
+    if not isinstance(d, dict) or "harness_faults" not in d:
+        return False, f"missing {f.name} (or no harness_faults in it)"
+    return not d["harness_faults"], str(d["harness_faults"])[:200]
+
+
+def _canary_rows(lits: list[str]) -> list[tuple[str, object]]:
+    """(row, check) in report order; each check returns (ok, detail) and reads only what the runner writes:
+    N.b `NN/{model-pin,run}.json`, `NN/po/a<k>-NNN/model-pin.json`, `NN/hidden/summary.json` (evidence.finalise,
+    po.py, hidden.Summary); N.a `NN/a/{model-pin,discovery}.json`, `NN/a/po/…` (stepflow); step 2's `hand-edit/`
+    (`edit.json`, `model-pin-t<k>.json`, `detection.json`: handedit); `tracker-check/result.json` (canary)."""
+    p = Paths(CANARY, CANARY_ARM)
+    rows: list[tuple[str, object]] = []
+    for n in (1, 2):
+        d = p.step(n)
+        rows += [
+            (f"step {n}: arm pin verified from real transcripts (N.b)", lambda d=d: _pin_ok(d / "model-pin.json")),
+            (f"step {n}: arm pin verified from real transcripts (N.a)", lambda d=d: _pin_ok(d / "a" / "model-pin.json")),
+            (f"step {n}: every PO decision pin-verified (N.b)",
+             lambda d=d: _pins_ok(sorted((d / "po").glob("*/model-pin.json")), need_one=True)),
+            (f"step {n}: every PO decision pin-verified (N.a)",
+             lambda d=d: _pins_ok(sorted((d / "a" / "po").glob("*/model-pin.json")), need_one=False)
+             if (d / "a" / "discovery.json").is_file() else (False, "no N.a run recorded (a/discovery.json)")),
+            (f"step {n}: no harness fault (N.b run.json)", lambda d=d: _no_faults(d / "run.json")),
+            (f"step {n}: no harness fault (N.a discovery.json)", lambda d=d: _no_faults(d / "a" / "discovery.json")),
+            (f"step {n}: evidence scan clean", lambda n=n, d=d: _scan_row(d, lambda: secrets.scan_step(p, n, lits))),
+            (f"step {n}: hidden tests ran in the tester container", lambda d=d: _hidden_row(d)),
+        ]
+    he = p.step(2) / "hand-edit"
+    rows += [
+        ("step 2: hand edit applied (hand-edit/edit.json)",
+         lambda: (isinstance(e := _jr(he / "edit.json"), dict) and bool(e.get("sha")),
+                  f"sha {(_jr(he / 'edit.json') or {}).get('sha')}" if (he / "edit.json").is_file() else "missing")),
+        ("step 2: teammate turns pin-verified", lambda: _pins_ok(sorted(he.glob("model-pin-t*.json")), need_one=True)),
+        ("step 2: hand-edit detection recorded",
+         lambda: ((he / "detection.json").is_file(), (he / "detection.json").read_text()[:200]
+                  if (he / "detection.json").is_file() else "missing")),
+    ]
+    tc = p.results / "tracker-check"
+    rows += [
+        ("GitHub issue created by the owner and read with the arm's PAT",
+         lambda: (bool((r := _jr(tc / "result.json") or {}).get("issue")) and r.get("arm_pat_read_ok") is True,
+                  f"{r.get('issue')}: {r.get('read_detail') or r.get('error') or 'missing result.json'}")),
+        ("canary issue closed again (superseded)",
+         lambda: ((r := _jr(tc / "result.json") or {}).get("superseded") == "closed", str(r.get("superseded")))),
+        ("tracker-check evidence scan clean",
+         lambda: _scan_row(tc, lambda: secrets.scan_tree(tc, [*lits, *secrets.home_pat_values(p.home)]))),
+        ("no credential file in the arm's home", lambda: _creds_row(p.home)),
+        ("no harness fault in the canary ledger (setup included)",
+         lambda: (not (es := faults.entries(CANARY)) and not faults.halted(CANARY),
+                  f"{len(es)} entr{'y' if len(es) == 1 else 'ies'}; halted: {bool(faults.halted(CANARY))}")),
+    ]
+    return rows
+
+
+def _scan_row(d: Path, scan) -> tuple[bool, str]:
+    if not d.is_dir():
+        return False, f"no evidence at {d.name} (a scan of nothing proves nothing)"
+    found = scan()
+    return not found, secrets.describe(found) if found else "clean"
+
+
+def _hidden_row(d: Path) -> tuple[bool, str]:
+    s = _jr(d / "hidden" / "summary.json")
+    if not isinstance(s, dict):
+        return False, "missing hidden/summary.json"
+    return (s.get("total") or 0) > 0, f"{s.get('passed')}/{s.get('total')}"
+
+
+def _creds_row(home: Path) -> tuple[bool, str]:
+    import os
+    hits = []
+    if home.is_dir() and not home.is_symlink():
+        for root, _dirs, files in os.walk(home, followlinks=False):
+            if ".credentials.json" in files:
+                hits.append(str((Path(root) / ".credentials.json").relative_to(home)))
+    return not hits, ", ".join(hits[:10])
+
+
+def canary_row_names() -> list[str]:
+    return [name for name, _ in _canary_rows([])]
+
+
+def canary_check() -> list[tuple[str, bool, str]]:
+    """Every canary row, read from the evidence the runner wrote; `results/canary/canary.md` ends `**Result: PASS**`
+    only when every row holds. A row whose evidence is missing or unreadable FAILS (never crashes the check)."""
+    lits = secrets.literals()                             # the keychain OAuth token and every keychain PAT
+    rows: list[tuple[str, bool, str]] = []
+    for name, check in _canary_rows(lits):
+        try:
+            ok, detail = check()
+        except Exception as e:
+            ok, detail = False, f"unreadable: {type(e).__name__}: {e}"[:300]
+        rows.append((name, bool(ok), str(detail)))
+    lines = ["# Canary check", "", f"- pass `{CANARY}`, arm `{CANARY_ARM}`, steps 1-{CANARY_STOP_AFTER}", ""]
+    lines += [f"- [{'x' if ok else ' '}] {what} — {detail}" for what, ok, detail in rows]
+    lines += ["", f"**Result: {'PASS' if all(ok for _, ok, _ in rows) else 'FAIL'}**", ""]
+    out = paths.RESULTS / CANARY / "canary.md"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fsutil.write_text(out, _trim("\n".join(lines)))
+    return rows

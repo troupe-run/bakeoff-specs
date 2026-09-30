@@ -15,8 +15,9 @@ from tests.runner.conftest import KeychainBlocked
     lambda: secrets.keychain_disc_pat("pass1", "control"),
     lambda: secrets._oauth(),
     lambda: secrets.literals(),
+    lambda: credentials.keychain_item_exists("bakeoff-gh-canary-control"),
 ], ids=["from_keychain", "github_pat", "github_disc_pat", "_pat_item", "keychain_pat", "keychain_disc_pat",
-        "oauth", "literals"])
+        "oauth", "literals", "keychain_item_exists"])
 def test_every_keychain_reader_is_blocked_in_tests(read):
     with pytest.raises(KeychainBlocked):
         read()
