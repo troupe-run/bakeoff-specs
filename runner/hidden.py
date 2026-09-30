@@ -505,6 +505,29 @@ NETWORK_ERRORS = re.compile(
     r"unsuccessful tunnel|proxy error", re.I)
 
 
+_UV_LINE = ("error:", "Caused by:", "×", "├─▶", "╰─▶", "│")
+
+
+def uv_lines(log: str) -> list[str]:
+    """uv's OWN error lines (follow-up 3): `error:`, `Caused by:` and its `×`/`├─▶`/`╰─▶` chain — never the
+    arm's build-backend output, which uv prints indented under `[stdout]`/`[stderr]` headers (anything the arm's
+    setup.py prints, "Connection refused" included, is the arm's)."""
+    out, block = [], None
+    for raw in log.splitlines():
+        text = raw.strip()
+        indent = len(raw) - len(raw.lstrip())
+        if block is not None:
+            if not text or indent >= block:
+                continue                                  # inside the backend's output
+            block = None
+        if text in ("[stdout]", "[stderr]"):
+            block = indent
+            continue
+        if text.startswith(_UV_LINE):
+            out.append(text)
+    return out
+
+
 def classify_sync(log: str, proxy_log: str, hosts: list[str]) -> tuple[str, str]:
     """("network" | "arm", why) for a failed sync. A host the proxy refused that the prep allowlist allows is the
     proxy's fault; one it does not allow is the arm's project reaching off the allowlist."""
@@ -514,10 +537,10 @@ def classify_sync(log: str, proxy_log: str, hosts: list[str]) -> tuple[str, str]
         return "network", f"the proxy refused allowlisted host(s) {ours}"
     if refused:
         return "arm", f"the project needs host(s) off the prep allowlist: {refused}"
-    if (m := NETWORK_ERRORS.search(log)):
-        line = next((l.strip() for l in log.splitlines() if m.group(0) in l), m.group(0))
+    own = uv_lines(log)
+    if (line := next((l for l in own if NETWORK_ERRORS.search(l)), None)):
         return "network", line[:200]
-    lines = [l.strip() for l in log.splitlines() if l.strip()]
+    lines = own or [l.strip() for l in log.splitlines() if l.strip()]
     return "arm", (next((l for l in lines if l.startswith(("×", "error", "error:"))), lines[-1] if lines else
                         "sync failed with no output"))[:200]
 

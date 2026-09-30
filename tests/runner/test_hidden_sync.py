@@ -92,3 +92,30 @@ def test_the_install_record_reaches_the_hidden_summary(tmp_path):
     got = json.loads((tmp_path / "hidden" / "summary.json").read_text())["install"]
     assert got == {"ok": False, "cause": "arm", "why": "No solution found",
                    "tries": [{"exit": 1, "cause": "arm", "why": "No solution found"}]}
+
+
+# ---- follow-up 3: only uv's own error lines decide "network"; the arm's build output never does -----------------------
+
+BUILD_SAYS_REFUSED = """\
+  × Failed to build `troupe @ file:///work/bakeoff-specs-x`
+  ├─▶ The build backend returned an error
+  ╰─▶ Call to `setuptools.build_meta.build_wheel` failed (exit status: 1)
+
+      [stderr]
+      Traceback (most recent call last):
+        File "setup.py", line 3, in <module>
+      ConnectionRefusedError: [Errno 111] Connection refused
+      error: tcp connect error while fetching the arm's own thing
+
+      hint: This usually indicates a problem with the package or the build environment.
+"""
+
+
+def test_a_broken_build_that_prints_connection_refused_is_the_arms():
+    got, why = hidden.classify_sync(BUILD_SAYS_REFUSED, "", HOSTS)
+    assert got == "arm" and "Failed to build" in why
+
+
+def test_uvs_own_caused_by_line_after_a_backend_block_is_still_read():
+    log = BUILD_SAYS_REFUSED + "error: Request failed after 3 retries\n  Caused by: Connection reset by peer\n"
+    assert hidden.classify_sync(log, "", HOSTS)[0] == "network"
