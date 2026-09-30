@@ -37,6 +37,17 @@ NO_BEADS_DB = "no beads database found"
 GH_ENV_STRIP = ("GH_TOKEN", "GITHUB_TOKEN", "GH_HOST", "GH_REPO", "GH_ENTERPRISE_TOKEN")
 _TOKEN = re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})")
 
+# The live probe's write test (Task 25, owner): one plain issue per arm repo (pass-1 and N.a discovery), closed at
+# once. Single source of its title and body; `snapshot` never lists an issue with exactly this title.
+PROBE_ISSUE = {"title": "test issue - please ignore",
+               "body": "Created by the bake-off harness to check that this repository's token can write issues. "
+                       "It was closed at once. Please ignore it."}
+
+
+def drop_probe_issues(issues: list) -> list:
+    """The GitHub issue list without the live probe's write-test issues (exact title match only)."""
+    return [i for i in issues if not (isinstance(i, dict) and i.get("title") == PROBE_ISSUE["title"])]
+
 
 @dataclass(frozen=True)
 class IssueRef:
@@ -297,7 +308,7 @@ def snapshot(ctx) -> dict:
         issues = _json_in(_bd(ctx, "bd", *BD_READ, "show", *ids, "--json", "--include-comments").stdout) if ids else []
         issues = issues if isinstance(issues, list) else [issues]
     elif backend == "github":
-        issues = json.loads(_gh(gh_list_argv(_slug(ctx))) or "[]")
+        issues = drop_probe_issues(json.loads(_gh(gh_list_argv(_slug(ctx))) or "[]"))   # Task 25 write test
     else:
         raise ValueError(f"unknown tracker backend {backend!r}")
     snap = {"backend": backend, "survives_restore": SURVIVES_RESTORE[backend], "initialised": initialised,

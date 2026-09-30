@@ -338,15 +338,23 @@ def register_probe(sub):
         try:
             with preflight.lock():
                 if ns.no_model:
+                    cred = None
                     res = probe.no_model(pats=False)
                 else:
                     ok = owner_mod.Owner().confirm("Run the live probe (spends a little quota)?")
                     if ok is not True:
                         print("Not confirmed: nothing run, nothing spent.")
                         return 1
-                    res = probe.with_model(credentials.from_keychain())
+                    cred = credentials.from_keychain()
+                    res = probe.with_model(cred)
                     res |= probe.no_model(pats=True)
+                # Every file under results/probe* is scanned before anything is reported (fix round 1): --no-model
+                # never touches the keychain; the full probe also searches for the keychain PAT values.
+                res["results_scan"] = probe.scan_results(cred, keychain=not ns.no_model)
                 print(probe.report(res))
+                if res["results_scan"]["count"]:
+                    print(f"STOP: secret findings under results/probe*: {res['results_scan']['findings']}")
+                    return 1
         except NotReady as e:
             print(e)
             return 1
