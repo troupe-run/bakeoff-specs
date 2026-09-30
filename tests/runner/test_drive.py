@@ -197,9 +197,9 @@ def test_fresh_session_before_a_cited_command(rig):                             
     assert sent[1] == ("/opsx:apply", "") and "fresh-session:/opsx:apply" in r.interventions
 
 
-def test_speckit_export_is_sent_once_after_tasks_ran(rig, monkeypatch):         # OD24 B
+def test_configured_export_is_sent_once_after_its_trigger_ran(rig, monkeypatch):  # OD24 B path, on a fixture arm
     sent, script, _, ctx = rig
-    ctx.arm = drive.config.load_arm("speckit")
+    ctx.arm = drive.dataclasses.replace(drive.config.load_arm("speckit"), export_after="/speckit-tasks")
     script["arm"] = [TR("run /speckit-tasks"), TR("tasks done"), TR("exported"), TR("converged")]
     script["po"] = [D("next_command", command="/speckit-tasks"), D("step_done"), D("step_done"), D("step_done")]
     monkeypatch.setattr(drive.commands, "installed", lambda p, arm: {"speckit-tasks", "speckit-taskstoissues", "speckit-converge"})

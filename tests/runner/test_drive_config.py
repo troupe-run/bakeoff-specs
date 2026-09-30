@@ -12,6 +12,5 @@ def test_must_run_is_cited_or_empty_with_a_reason(name):
 def test_fresh_session_entries_are_cited(name):                                   # OD19
     assert all(x["command"].startswith("/") and x["source"] for x in config.load_arm(name).fresh_session_before)
 
-def test_speckit_is_the_one_arm_with_an_export_step_after_tasks():                # OD24 B (preflight m8: ==, not <=)
-    assert {n for n in config.all_arms() if config.load_arm(n).export_after} == {"speckit"}
-    assert config.load_arm("speckit").export_after == "/speckit-tasks"
+def test_no_shipped_arm_forces_an_export_step():                                  # OD24 A (owner, 2026-09-30, after probe P11)
+    assert {n for n in config.all_arms() if config.load_arm(n).export_after} == set()

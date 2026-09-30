@@ -31,7 +31,7 @@ Research and citations: [`research/CANDIDATES.md`](../research/CANDIDATES.md) (2
 |---|---|---|---|
 | openspec | Fission-AI/OpenSpec | v1.13.2 | GitHub Issues (baseline) |
 | bmad | bmad-code-org/BMAD-METHOD | v6.12 | BMAD ticketing (preview), GitHub backend |
-| speckit | github/spec-kit | v1.0.12 | Spec Kit export to GitHub Issues |
+| speckit | github/spec-kit | v1.0.12 | Spec Kit export to GitHub Issues (the method's own optional, one-way step; not forced, OD24 A — §11) |
 | speckitty | spec-kitty/spec-kitty | 3.2.7 (stable, not 4.0 RC) | beads |
 | superpowers | obra/superpowers | v6.4.2 | GitHub Issues (baseline) |
 | ccsdd | gotalab/cc-sdd | v3.1.0 | GitHub Issues (baseline) |
@@ -209,6 +209,13 @@ All private during the bake-off (owner, 2026-09-30).
 2. ~~Containers for every arm~~ — decided: **yes**, every arm runs in the spike B container stage
    (see `../spike-claude-docker/FINDINGS.md`), with its own `CLAUDE_CONFIG_DIR` mounted in and the
    credential supplied the same way for every arm.
+
+Decided 2026-09-30 (owner, OD24 A, after probe P11): the runner does not force Spec Kit's `/speckit-taskstoissues`
+export. In 1.0.12 the skill needs the GitHub MCP server and refuses unless `remote.origin.url` is a GitHub URL (arm
+origins are local bare repos). The export is one-way (tasks.md to issues; its only read is a dedup check, and no other
+Spec Kit skill reads GitHub issues), so forcing it would add an arm-only MCP server and a remote workaround just to
+fill a tracker column that is reported, not scored. The method may still choose the export itself; without MCP it
+cannot create issues, and the transcript will show that.
 
 Decided 2026-09-28: step 1 is held to the **byte-surgical** bar spike A achieved (only the changed value's bytes
 differ), with files containing a tab before an end-of-line comment and multi-document files out of contract.

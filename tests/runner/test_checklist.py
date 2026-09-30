@@ -613,7 +613,9 @@ def test_present_entry_commands_is_falsifiable(tmp_state, monkeypatch):
 
 def test_needed_commands_lists_each_command_once_in_first_seen_order():
     assert checklist.needed_commands(_arm("openspec")) == ["opsx:propose", "opsx:archive"]   # entry == bug_entry
-    assert checklist.needed_commands(_arm("speckit")) == [
+    assert checklist.needed_commands(_arm("speckit")) == ["speckit-specify", "speckit-bug-assess", "speckit-converge"]   # OD24 A
+    forced = dataclasses.replace(_arm("speckit"), export_after="/speckit-tasks")                                        # OD24 B path
+    assert checklist.needed_commands(forced) == [
         "speckit-specify", "speckit-bug-assess", "speckit-converge", "speckit-tasks", "speckit-taskstoissues"]
 
 
@@ -674,7 +676,7 @@ def test_speckit_setup_is_the_existing_repo_init_the_bug_extension_and_the_const
     assert a.setup_agent == ["/speckit-constitution {principles}"]
     assert (a.setup_post_shell, a.plugins) == ([], [])
     assert a.manifest_paths == [".claude", ".specify"]
-    assert a.export_after == "/speckit-tasks"                                  # Task 12's OD24 = B, unchanged
+    assert a.export_after == ""                                                # OD24 A (owner, 2026-09-30): not forced
 
 
 def test_speckitty_setup_is_init_verify_beads_then_the_tracker_binding_with_its_egress_decision():  # §1.4, §2.1
@@ -710,7 +712,7 @@ def test_the_three_arms_get_every_computed_host_check(arm):
 def test_speckitty_entry_commands_need_the_charter_driven_workflow():
     assert checklist.needed_commands(config.load_arm("speckitty")) == ["spec-kitty.specify", "spec-kitty.accept",
                                                                        "spec-kitty.merge"]
-    assert "speckit-taskstoissues" in checklist.needed_commands(config.load_arm("speckit"))     # OD24 B export
+    assert "speckit-taskstoissues" not in checklist.needed_commands(config.load_arm("speckit"))     # OD24 A: not forced
 
 
 # --- Task 11 fix round 1 ---------------------------------------------------------------------------------------
