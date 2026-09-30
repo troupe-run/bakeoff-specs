@@ -125,15 +125,15 @@ def test_resume_refuses_an_unknown_pass():
 
 
 def test_resource_exhaustion_is_recorded_per_pass_step_and_arm_and_is_not_a_ledger_fault():
-    faults.record_resource("dry3", "a", 3, 1, "repeat", [["oom-kill:1"], ["oom-kill:2"]])
-    faults.record_resource("dry3", "b", 3, 2, "once", [["pids-max:4"], []])
-    faults.record_resource("dry3", "a", 4, 1, "repeat", [["tmp-full"], ["tmp-full"]])
+    faults.record_resource("dry3", "a", 3, 1, "repeat", [["oom-kill:1"], ["oom-kill:2"]], run="b")
+    faults.record_resource("dry3", "b", 3, 2, "once", [["pids-max:4"], []], run="b")
+    faults.record_resource("dry3", "a", 4, 1, "repeat", [["tmp-full"], ["tmp-full"]], run="b")
     assert [(r["arm"], r["exhausted"]) for r in faults.resource_records("dry3", 3)] == [("a", "repeat"), ("b", "once")]
     assert faults.for_step("dry3", "a", 3) == [] and not faults.halted("dry3")
 
 
 def test_resource_records_of_dry_passes_never_mix_with_real_ones():
-    faults.record_resource("dry3", "a", 3, 1, "repeat", [])
+    faults.record_resource("dry3", "a", 3, 1, "repeat", [], run="b")
     assert faults.resource_records("pass1", 3) == []
 
 
@@ -232,3 +232,10 @@ def test_a_trailing_newline_is_not_a_valid_name(pass_, arm, slug):
     with pytest.raises(ValueError):
         faults.declare(pass_, arm, 4, slug, "retest")
     assert not (paths.RESULTS / "dry3" / "faults.jsonl").exists()
+
+
+def test_a_resource_record_must_say_which_run_it_came_from():                  # follow-up round 2, item 7
+    with pytest.raises(TypeError):
+        faults.record_resource("dry3", "a", 3, 1, "repeat", [])
+    with pytest.raises(ValueError):
+        faults.record_resource("dry3", "a", 3, 1, "repeat", [], run="c")

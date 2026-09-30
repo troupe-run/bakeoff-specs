@@ -206,13 +206,15 @@ def resource_path(pass_: str) -> Path:
     return paths.RESULTS / pass_ / "resource-exhaustion.jsonl"
 
 
-def record_resource(pass_: str, arm: str, step: int, attempt: int, exhausted: str, evidence: list,
-                    run: str | None = None) -> None:
+def record_resource(pass_: str, arm: str, step: int, attempt: int, exhausted: str, evidence: list, *,
+                    run: str) -> None:
     """`exhausted`: "repeat" (the hidden run died of resources twice: the step scored all-failed) or "once" (the
     re-run completed and was scored). `evidence` is `hidden.Summary.resource_evidence`. `run` is "a"/"b": only N.b
     records count towards `limits.suite_resource_arms` and its re-runs (follow-up 8); N.a's are evidence."""
     if exhausted not in ("once", "repeat"):
         raise ValueError("exhausted is once or repeat")
+    if run not in ("a", "b"):                           # round 2, item 7: required, and only N.b counts
+        raise ValueError("run is a (N.a) or b (N.b)")
     _append_to(resource_path(pass_), {"at": _now(), "pass": pass_, "arm": arm, "step": step, "attempt": attempt,
                                       "exhausted": exhausted, "evidence": evidence, "run": run})
 
