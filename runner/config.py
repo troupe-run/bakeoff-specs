@@ -236,8 +236,6 @@ def github_slug(pass_: str, arm: str) -> str | None:
     With the owner's local bare origin (B4), `gh` can no longer infer the repo from origin, hence GH_REPO."""
     if pass_ == "pass1":
         return f"{GITHUB_ORG}/bakeoff-specs-{arm}-pass1"
-    if pass_ == "pass2":
-        return f"{GITHUB_ORG}/bakeoff-specs-{arm}"
     if pass_ == "canary":
         return f"{GITHUB_ORG}/bakeoff-specs-{arm}-canary"
     return None

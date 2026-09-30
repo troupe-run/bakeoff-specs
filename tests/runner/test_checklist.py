@@ -46,7 +46,7 @@ def test_lib_sh_names_the_origin_check():                                      #
 
 
 @pytest.mark.parametrize("pass_,arm,want", [("pass1", "control", "troupe-run/bakeoff-specs-control-pass1"),
-                                            ("pass2", "openspec", "troupe-run/bakeoff-specs-openspec"),
+                                            ("pass2", "openspec", None),        # follow-up 10: retired
                                             ("pass1", "speckitty", None), ("dry9", "control", None),
                                             ("pass1", "dryrun", None)])
 def test_setup_containers_get_gh_repo_only_for_github_arms_with_a_repo(pass_, arm, want):   # preflight M4

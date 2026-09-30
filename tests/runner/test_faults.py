@@ -17,7 +17,7 @@ def test_first_occurrence_reruns_second_identical_one_halts():
     f = HarnessFault("model-pin", "claude-haiku-4-5")
     assert faults.record(f, "pass1", "superpowers", 3, 1) == "rerun"
     assert faults.record(f, "pass1", "openspec", 1, 1) == "halt"        # same fault, any arm
-    assert faults.halted("pass1") and faults.halted("pass2")          # real passes share one ledger
+    assert faults.halted("pass1") and faults.ledger_paths("pass1")[0] == paths.FAULTS   # the real run's ledger
 
 
 def test_dry_passes_have_their_own_ledger():
@@ -52,7 +52,9 @@ def test_declare_records_a_manual_fault_with_its_scope():
 # ---- additions ------------------------------------------------------------------------------------------------
 
 def test_ledger_paths_are_the_shared_files_for_real_passes_and_namespaced_otherwise():
-    assert faults.ledger_paths("pass1") == (paths.FAULTS, paths.HALTED) == faults.ledger_paths("pass2")
+    assert faults.ledger_paths("pass1") == (paths.FAULTS, paths.HALTED)
+    assert faults.ledger_paths("pass2") == (paths.RESULTS / "pass2" / "faults.jsonl", paths.RESULTS / "pass2" / "HALTED")
+    assert paths.REAL_PASSES == ("pass1",)                                # follow-up 10: pass 2 is retired
     assert faults.ledger_paths("dry3") == (paths.RESULTS / "dry3" / "faults.jsonl", paths.RESULTS / "dry3" / "HALTED")
 
 

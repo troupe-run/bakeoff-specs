@@ -99,7 +99,7 @@ def test_credential_is_opaque_to_attribute_introspection():
 # --- M4 (preflight ruling): GH_REPO for github-tracker arms, only when a slug exists ------------------
 
 def test_github_slug_per_pass():
-    assert config.github_slug("pass2", "openspec") == "troupe-run/bakeoff-specs-openspec"
+    assert config.github_slug("pass2", "openspec") is None               # follow-up 10: pass 2 is retired
     assert config.github_slug("pass1", "openspec") == "troupe-run/bakeoff-specs-openspec-pass1"
     assert config.github_slug("canary", "control") == "troupe-run/bakeoff-specs-control-canary"
     assert config.github_slug("dry1", "dryrun") is None
@@ -108,7 +108,7 @@ def test_github_slug_per_pass():
 
 def test_gh_repo_present_for_github_arms_with_a_slug():
     assert env("control", pass_="pass1")["GH_REPO"] == "troupe-run/bakeoff-specs-control-pass1"
-    assert env("openspec", pass_="pass2")["GH_REPO"] == "troupe-run/bakeoff-specs-openspec"
+    assert "GH_REPO" not in env("openspec", pass_="pass2")                # follow-up 10: no pass-2 repo
 
 
 def test_gh_repo_absent_for_beads_dry_slugless_and_non_arm_sessions():

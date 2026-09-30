@@ -13,7 +13,7 @@ from runner.paths import Paths
 
 def test_an_owner_review_halt_blocks_everything_until_resolved(tmp_state):
     faults.halt("pass1", "suite-resource at step 3 (design §9)", {"kind": "suite-resource", "signature": "3"})
-    assert "suite-resource" in faults.halted("pass1") and faults.halted("pass2")      # real passes share it
+    assert "suite-resource" in faults.halted("pass1")
     assert cli.main(["status"]) == 1
     faults.resume("pass1", "memory limit raised")
     assert faults.halted("pass1") is None

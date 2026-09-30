@@ -10,7 +10,7 @@ LOCK = STATE / "runner.lock"
 FAULTS = RESULTS / "faults.jsonl"          # real passes; dry passes are namespaced (Task 22)
 HALTED = RESULTS / "HALTED"
 IMAGES_SAVE = STATE / "images"             # `docker save` tars (Task 2)
-REAL_PASSES = ("pass1", "pass2")
+REAL_PASSES = ("pass1",)                   # the real run (owner, 2026-09-29: pass 2 is retired; follow-up 10)
 
 
 def brief_path(pass_: str) -> Path:

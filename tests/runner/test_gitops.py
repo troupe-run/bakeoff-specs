@@ -200,8 +200,8 @@ def test_github_plan_prints_private_repos_for_the_active_arms_and_runs_nothing(m
     assert not any("bakeoff-specs-bmad" in c for c in cmds)                  # bmad is parked (until BMAD 6.13)
 
 
-def test_pass2_uses_the_scored_repo_name_and_other_passes_have_none():
-    assert repo.github_slug("pass2", "openspec") == "troupe-run/bakeoff-specs-openspec"
+def test_only_pass1_and_the_canary_have_a_repo():                        # follow-up 10: pass 2 is retired
+    assert repo.github_slug("pass2", "openspec") is None
     assert repo.github_slug("pass1", "openspec") == "troupe-run/bakeoff-specs-openspec-pass1"
     assert repo.github_slug("dry1", "dryrun") is None
     assert repo.github_slug("canary", "control") == "troupe-run/bakeoff-specs-control-canary"

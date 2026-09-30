@@ -222,7 +222,9 @@ def test_a_rerun_from_step1_drops_the_old_hand_edits_teammate_cost(fake_orch):
 def test_a_retest_is_honoured_only_for_its_own_pass(fake_orch):
     real(fake_orch)
     (Paths("pass1", "control").step(2) / "git.json").write_text(json.dumps({"sha_after": "sha-2"}))
-    faults.declare("pass2", "control", 2, "other-pass", "retest")         # shared ledger, other pass
+    faults._enter("pass1", {"pass": "canary", "arm": "control", "step": 2, "run": None, "attempt": None,
+                            "kind": "manual", "signature": "other-pass", "detail": "x", "action": "retest",
+                            "scope": "retest"})                         # a ledger line naming another pass
     fake_orch.calls.clear()
     real(fake_orch)
     assert not [c for c in fake_orch.calls if c[0] == "prepare"]
