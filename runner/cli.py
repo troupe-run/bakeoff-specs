@@ -298,7 +298,7 @@ def register_orchestrate(sub):
         return orchestrate.run_arm(ns.pass_, ns.arm, cred, owner, stop_after=ns.stop_after)
     ra = sub.add_parser("run-arm", help="run (or resume) one arm step-major (canary and dry passes only)")
     ra.add_argument("pass_", metavar="pass"); ra.add_argument("arm")
-    ra.add_argument("--stop-after", type=int, default=None, help="the canary: stop after this step")
+    ra.add_argument("--stop-after", type=int, default=None, help="stop after this step (the canary: default and maximum 2)")
     ra.set_defaults(func=_orchestrated(run_arm))
 
     def close_out(ns):
@@ -397,7 +397,8 @@ def register_canary(sub):
 
         def run(ns):
             from runner import credentials, owner as owner_mod
-            res = orchestrate.canary(credentials.from_keychain, owner_mod.Owner())
+            go = orchestrate.canary_resume if ns.resume else orchestrate.canary
+            res = go(credentials.from_keychain, owner_mod.Owner())
             if "preflight_missing" in res:
                 print("The canary cannot start; missing:")
                 for m in res["preflight_missing"]:
@@ -406,12 +407,15 @@ def register_canary(sub):
                 print("Nothing was run and nothing was spent.")
             elif "not_finished" in res:
                 print(f"The arm did not finish steps 1-2 ({res['not_finished']}): no GitHub issue was created; "
-                      f"nothing was written to the tracker.")
+                      f"nothing was written to the tracker. Complete it with `{res['resume']}` (no wipe, no setup).")
             elif res.get("skipped"):
                 print(f"Not confirmed ({res.get('why')}): nothing run, nothing spent.")
             return res
         return _orchestrated(run)(ns)
     p = sub.add_parser("canary", help="owner-run canary: control, steps 1-2, real model/PO/GitHub (OD25; spends quota)")
-    p.add_argument("--check", action="store_true", help="write results/canary/canary.md; exit 1 unless it ends PASS")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--check", action="store_true", help="write results/canary/canary.md; exit 1 unless it ends PASS")
+    g.add_argument("--resume", action="store_true", help="complete an interrupted canary: no wipe, no setup; "
+                                                         "steps 1-2 resumed, then the tracker check")
     p.set_defaults(func=canary_cmd, pass_="canary")    # main's HALTED check reads the canary's own ledger
 REGISTRARS.append(register_canary)

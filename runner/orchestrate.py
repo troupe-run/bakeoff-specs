@@ -1042,6 +1042,12 @@ def run_arm(pass_: str, arm: str, cred, owner, limits_override: dict | None = No
     arms only, Task 24); refused on the real pass, where `run_pass` keeps every arm in step (N.a, check, N.b)."""
     if pass_ in REAL_PASSES:
         raise NotReady(f"{pass_} is step-major across every arm: use `runner run-pass {pass_}`")
+    if pass_ == CANARY:                                    # final review I-1: the canary never runs past step 2
+        if stop_after is None:
+            stop_after = CANARY_STOP_AFTER
+        elif stop_after > CANARY_STOP_AFTER:
+            raise NotReady(f"the canary runs steps 1-{CANARY_STOP_AFTER} only (OD25); --stop-after {stop_after} "
+                           f"would run past them")
     brief = paths.brief_path(pass_)
     if pass_ == "canary" and not brief.exists():           # m-8: the canary's own copy (Task 26), made once
         brief.parent.mkdir(parents=True, exist_ok=True)
@@ -1534,12 +1540,18 @@ def dry_report(res: dict) -> Path:
 CANARY, CANARY_ARM, CANARY_STOP_AFTER = "canary", "control", 2
 GITHUB_API = r"^api\.github\.com$"
 CANARY_HINT = "run `uv run python -m runner github-plan canary` for the create commands"
+CANARY_RESUME = "uv run python -m runner canary --resume"
+# The canary's finishes (final review I-1): the normal stop after step 2, or the owner's pause at step 2's review —
+# step 2 is complete either way.
+CANARY_FINISHED = ({"stopped_after": CANARY_STOP_AFTER}, {"paused_after": CANARY_STOP_AFTER})
 
 
-def canary_preflight() -> list[str]:
+def canary_preflight(resume: bool = False) -> list[str]:
     """Everything the canary will use that is not there yet, one line each — before any confirm or spend
     (controller ruling 1): the canary repo and its N.a discovery repo (the owner's `gh`: exists, private, issues
-    on), and the keychain items for the OAuth credential and both PATs (existence only: no value is read)."""
+    on), and the keychain items for the OAuth credential and both PATs (existence only: no value is read).
+    `resume`: the issue check is skipped — the run being resumed may have filed issues of its own (the confirm says
+    so); a fresh canary refuses any issue but the probe's write test."""
     gaps: list[str] = []
     for what, slug in (("canary repo", config.github_slug(CANARY, CANARY_ARM)),
                        ("N.a discovery repo", config.github_disc_slug(CANARY, CANARY_ARM))):
@@ -1549,7 +1561,7 @@ def canary_preflight() -> list[str]:
         found = repo.repo_gaps(slug)
         # Fix round 1 (review I-2): the replacement wipes state/ and results/, never GitHub; a repo that already holds
         # issues (the probe's closed write test excepted) would hand the arm a non-empty tracker (and a step-6 spoiler)
-        gaps += found or repo.issue_gaps(slug, ignore_title=tracker.PROBE_ISSUE["title"])
+        gaps += found or ([] if resume else repo.issue_gaps(slug, ignore_title=tracker.PROBE_ISSUE["title"]))
     for what, item in (("the Claude OAuth credential", credentials.OAUTH_ITEM),
                        ("the arm's PAT", credentials.github_pat_item(CANARY, CANARY_ARM)),
                        ("the arm's N.a discovery PAT", credentials.github_disc_pat_item(CANARY, CANARY_ARM))):
@@ -1592,12 +1604,58 @@ def canary(cred_of, owner) -> dict:
     if not r.green:
         return {"setup_green": False, "see": str(Paths(CANARY, CANARY_ARM).setup_results)}
     ran = run_arm(CANARY, CANARY_ARM, cred, owner, stop_after=CANARY_STOP_AFTER)
-    if ran != {"stopped_after": CANARY_STOP_AFTER}:
-        # Fix round 1 (review I-1): only the canary's normal finish goes on to the GitHub write; anything else is
-        # reported at the top level (the CLI exits 1) and the tracker is left untouched for a resume
-        return {**ran, "not_finished": ran,
+    return _canary_after_run(ran, owner)
+
+
+def canary_resume(cred_of, owner) -> dict:
+    """`runner canary --resume` (final review I-1): an interrupted canary (a park, a pause, a decline) is completed
+    without a wipe and without setup — pre-flight (the issue check skipped: the run's own issues are expected), the
+    owner's confirm, `run_arm(stop_after=2)` (resumable), then the tracker check once steps 1-2 are finished. A
+    tracker check that already succeeded is kept (never a second GitHub issue)."""
+    if not Paths(CANARY, CANARY_ARM).base.is_dir():
+        raise NotReady(f"no canary to resume ({Paths(CANARY, CANARY_ARM).base} does not exist): run `runner canary`")
+    gaps = canary_preflight(resume=True)
+    if gaps:
+        return {"preflight_missing": gaps, "hint": CANARY_HINT}
+    got = owner.confirm("Resume the canary: arm control continues steps 1-2 from where it stopped (no wipe, no "
+                        "setup), with the real model, the real PO and the real GitHub tracker; spends real quota "
+                        "(OD25)? The GitHub issue check is skipped on resume: the run's own issues are expected in the "
+                        "canary repos.")
+    if got is not True:
+        return {"skipped": True, "why": "parked" if isinstance(got, owner_mod.Park) else "declined"}
+    try:
+        cred = cred_of()
+    except RuntimeError as e:
+        raise NotReady(f"the canary needs the keychain credential: {e}") from None
+    ran = run_arm(CANARY, CANARY_ARM, cred, owner, stop_after=CANARY_STOP_AFTER)
+    return _canary_after_run(ran, owner)
+
+
+def _tracker_failures(rec) -> list[str]:
+    """What of the tracker check did not hold: created, read with the arm's PAT, closed again ([] = all held)."""
+    if not isinstance(rec, dict):
+        return ["no tracker-check record"]
+    out = []
+    if not rec.get("issue"):
+        out.append(f"issue not created ({rec.get('error') or 'no issue'})")
+    else:
+        if rec.get("arm_pat_read_ok") is not True:
+            out.append(f"read with the arm's PAT failed ({rec.get('read_detail') or 'no detail'})")
+        if rec.get("superseded") != "closed":
+            out.append(f"issue {rec.get('issue')} not closed again ({rec.get('superseded')})")
+    return out
+
+
+def _canary_after_run(ran: dict, owner) -> dict:
+    if ran not in CANARY_FINISHED:
+        # Only a finish goes on to the GitHub write; anything else is reported at the top level (the CLI exits 1) and
+        # the tracker is left untouched for `runner canary --resume`
+        return {**ran, "not_finished": ran, "resume": CANARY_RESUME,
                 "tracker_check": f"not run: the arm did not finish steps 1-{CANARY_STOP_AFTER}"}
-    with preflight.lock():                               # review m-1: one runner at a time, Docker and gh included
+    prev = _jr(Paths(CANARY, CANARY_ARM).results / "tracker-check" / "result.json")
+    if prev is not None and not _tracker_failures(prev):
+        return {"run": ran, "tracker_check": prev, "tracker_check_kept": True}      # never a second issue
+    with preflight.lock():                               # one runner at a time, Docker and gh included
         tc = canary_tracker_check(owner)
     return {"run": ran, "tracker_check": tc}
 

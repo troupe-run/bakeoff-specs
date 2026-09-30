@@ -356,7 +356,8 @@ def test_cli_canary_exits_non_zero_and_says_why_when_the_run_did_not_finish(worl
     monkeypatch.setattr(credentials, "from_keychain", lambda *a, **k: credentials.dummy())
     monkeypatch.setattr(owner_mod, "Owner", lambda *a, **k: RecOwner())
     assert cli.main(["canary"]) == 1
-    assert "did not finish steps 1-2" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "did not finish steps 1-2" in out and "runner canary --resume" in out
     assert not any(isinstance(e, tuple) and e[0] == "create_bug" for e in world.events)
 
 
@@ -578,3 +579,142 @@ def test_cli_canary_check_prints_the_report_and_exits_by_its_result(tree, capsys
     assert cli.main(["canary", "--check"]) == code
     out = capsys.readouterr().out
     assert out.rstrip().endswith("**Result: PASS**" if ok else "**Result: FAIL**")
+
+
+# ---- final review I-1: an interrupted canary is completable ---------------------------------------------------------
+
+def test_a_pause_at_step_2s_review_counts_as_finished_and_the_tracker_check_runs(world):
+    world.ran = {"paused_after": 2}
+    res = orchestrate.canary(world.cred_of, RecOwner())
+    assert "not_finished" not in res and res["tracker_check"]["arm_pat_read_ok"] is True
+    assert ("create_bug", "canary", ARM, "b") in world.events
+
+
+def _previous_canary():
+    marker = paths.STATE / "canary" / ARM / "keep"
+    marker.parent.mkdir(parents=True); marker.write_text("evidence")
+    return marker
+
+
+def test_resume_keeps_the_state_runs_no_setup_and_finishes_with_the_tracker_check(world):
+    marker = _previous_canary()
+    own = RecOwner()
+    res = orchestrate.canary_resume(world.cred_of, own)
+    assert marker.read_text() == "evidence"                                   # no wipe
+    kinds = [e[0] if isinstance(e, tuple) else e for e in world.events]
+    assert "setup" not in kinds
+    assert kinds[:3] == ["cred", "run_arm", "create_bug"]
+    assert ("run_arm", "canary", ARM, 2) in world.events
+    assert res["tracker_check"]["superseded"] == "closed"
+    assert "skipped on resume" in own.confirms[0] and len(own.confirms) == 2   # the resume confirm + the issue confirm
+
+
+def test_resume_skips_the_issue_check_but_not_the_repo_and_keychain_checks(world):
+    _previous_canary()
+    world.issues[SLUG] = [{"number": 5, "title": "an issue the arm filed in step 1"}]
+    assert orchestrate.canary_preflight(resume=True) == []
+    assert orchestrate.canary_preflight() != []
+    del world.repos[DISC]
+    world.items.discard("bakeoff-claude-oauth")
+    own = RecOwner()
+    res = orchestrate.canary_resume(world.cred_of, own)
+    assert len(res["preflight_missing"]) == 2 and own.confirms == [] and world.events == []
+
+
+def test_resume_without_a_previous_canary_is_refused(world):
+    with pytest.raises(orchestrate.NotReady, match="no canary to resume"):
+        orchestrate.canary_resume(world.cred_of, RecOwner())
+    assert world.events == []
+
+
+@pytest.mark.parametrize("answer", [False, owner_mod.Park("confirm", "canary", "owner-choice", 0.0, 0.0)],
+                         ids=["no", "park"])
+def test_declining_the_resume_spends_nothing(world, answer):
+    _previous_canary()
+    res = orchestrate.canary_resume(world.cred_of, RecOwner(answer))
+    assert res.get("skipped") is True and world.events == []
+
+
+def test_a_resume_that_still_does_not_finish_writes_nothing_to_github(world):
+    _previous_canary()
+    world.ran = {"parked": [{"arm": ARM, "step": 2}]}
+    res = orchestrate.canary_resume(world.cred_of, RecOwner())
+    assert res["not_finished"] == world.ran and res["resume"].endswith("runner canary --resume")
+    assert not any(isinstance(e, tuple) and e[0] == "create_bug" for e in world.events)
+
+
+def test_a_resume_keeps_a_tracker_check_that_already_held_and_files_no_second_issue(world):
+    _previous_canary()
+    tc = Paths("canary", ARM).results / "tracker-check"; tc.mkdir(parents=True)
+    orchestrate._write_tracker_check(tc, {"issue": f"{SLUG}#7", "arm_pat_read_ok": True, "superseded": "closed"})
+    res = orchestrate.canary_resume(world.cred_of, RecOwner())
+    assert res["tracker_check_kept"] is True
+    assert not any(isinstance(e, tuple) and e[0] == "create_bug" for e in world.events)
+
+
+def test_a_resume_reruns_a_tracker_check_that_failed(world):
+    _previous_canary()
+    tc = Paths("canary", ARM).results / "tracker-check"; tc.mkdir(parents=True)
+    orchestrate._write_tracker_check(tc, {"issue": f"{SLUG}#7", "arm_pat_read_ok": False, "superseded": "closed"})
+    res = orchestrate.canary_resume(world.cred_of, RecOwner())
+    assert ("create_bug", "canary", ARM, "b") in world.events and res["tracker_check"]["arm_pat_read_ok"] is True
+
+
+def test_cli_canary_resume_calls_the_resume_path(world, monkeypatch):
+    from runner import cli
+    marker = _previous_canary()
+    monkeypatch.setattr(credentials, "from_keychain", lambda *a, **k: credentials.dummy())
+    monkeypatch.setattr(owner_mod, "Owner", lambda *a, **k: RecOwner())
+    assert cli.main(["canary", "--resume"]) == 0
+    assert marker.exists() and not any(isinstance(e, tuple) and e[0] == "setup" for e in world.events)
+
+
+def test_cli_canary_resume_without_a_previous_canary_exits_non_zero(world, monkeypatch):
+    from runner import cli
+    monkeypatch.setattr(owner_mod, "Owner", lambda *a, **k: RecOwner())
+    assert cli.main(["canary", "--resume"]) == 1
+
+
+def test_cli_canary_check_and_resume_are_exclusive():
+    from runner import cli
+    with pytest.raises(SystemExit):
+        cli.main(["canary", "--check", "--resume"])
+
+
+# ---- run-arm never takes the canary past step 2 ---------------------------------------------------------------------
+
+@pytest.fixture
+def run_seen(tmp_state, monkeypatch):
+    seen = []
+    monkeypatch.setattr(orchestrate, "_run", lambda pass_, arms, cred, owner, **kw: seen.append(kw["stop_after"]) or
+                        {"stopped_after": kw["stop_after"], "arms": {a: {"stopped_at": None} for a in arms}})
+    return seen
+
+
+def test_run_arm_on_the_canary_defaults_to_stop_after_2(run_seen):
+    orchestrate.run_arm("canary", ARM, credentials.dummy(), RecOwner())
+    assert run_seen == [2]
+
+
+@pytest.mark.parametrize("n", [1, 2])
+def test_run_arm_on_the_canary_accepts_stop_after_up_to_2(run_seen, n):
+    orchestrate.run_arm("canary", ARM, credentials.dummy(), RecOwner(), stop_after=n)
+    assert run_seen == [n]
+
+
+def test_run_arm_on_the_canary_refuses_stop_after_past_2(run_seen):
+    with pytest.raises(orchestrate.NotReady, match="steps 1-2 only"):
+        orchestrate.run_arm("canary", ARM, credentials.dummy(), RecOwner(), stop_after=3)
+    assert run_seen == []
+
+
+def test_cli_run_arm_canary_without_stop_after_stops_after_2(run_seen, monkeypatch):
+    from runner import cli
+    monkeypatch.setattr(cli, "_cred_owner", lambda arm: (credentials.dummy(), RecOwner()))
+    assert cli.main(["run-arm", "canary", ARM]) == 0
+    assert run_seen == [2]
+
+
+def test_run_arm_on_a_dry_pass_keeps_no_default_stop(run_seen):
+    orchestrate.run_arm("dry1", "dryrun", credentials.dummy(), RecOwner())
+    assert run_seen == [None]
