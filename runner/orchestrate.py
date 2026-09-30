@@ -722,7 +722,9 @@ class _Run:
             rec["rounds"].append(rnd)
             if all(v[0] for v in got.values()):
                 edited = _sha(brief) != rec["brief_sha_before"]
-                if edited:                   # m-9: committed BEFORE the check is recorded, so a crash re-runs it
+                # m-9: committed BEFORE the check is recorded, so a crash re-runs it; only when the brief really
+                # differs from HEAD (follow-up 5: a crash just after the commit resumes without an empty commit)
+                if edited and self.pass_ in REAL_PASSES and gitops.harness_differs_from_head(brief):
                     po.commit_brief(brief, self.pass_, "consistency-check", step)
                 rec["confirmed"] += [x["text"] for x in new]
                 rec.update(status="confirmed", brief_sha_after=_sha(brief), edited=edited, committed=edited)

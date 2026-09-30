@@ -128,7 +128,7 @@ def test_no_runner_module_but_gitops_builds_a_git_argv():                     # 
     assert offenders == []
 
 
-HOST_HELPERS = {"ls_remote_tag", "commit_harness_file", "harness_is_clean", "clone_bundle_bare", "push_from_bare",
+HOST_HELPERS = {"ls_remote_tag", "commit_harness_file", "harness_is_clean", "harness_differs_from_head", "clone_bundle_bare", "push_from_bare",
                 "staged_files", "staged_blobs"}
 
 

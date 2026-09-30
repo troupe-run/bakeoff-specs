@@ -298,6 +298,7 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
     env.brief = brief
     monkeypatch.setattr(paths, "brief_path", lambda pass_: brief)
     monkeypatch.setattr(gitops, "commit_harness_file", lambda path, msg: env.calls.append(("commit-brief", msg)))
+    monkeypatch.setattr(gitops, "harness_differs_from_head", lambda path: True, raising=False)
     monkeypatch.setattr(checklist, "require_clean_green", lambda p: None)
     from runner.checklist import Check
 

@@ -1058,3 +1058,34 @@ def test_the_oauth_token_left_in_hosts_yml_and_printed_is_still_a_harness_fault(
         orchestrate.run_arm("dry7", "dryrun", cred, fake_orch.owner)
     assert oauth in (p.step(1) / "egress.log").read_text()                 # never redacted as the arm's own
     assert faults.entries("dry7")[0]["kind"] == "secret-in-evidence"
+
+
+def test_a_crash_after_the_brief_commit_resumes_without_committing_it_again(fake_orch, monkeypatch):   # follow-up 5
+    from runner import gitops
+    _conflict_then_edit(fake_orch)
+    head = {"text": fake_orch.brief.read_text()}
+    commits = []
+
+    def commit(path, msg):
+        commits.append(msg)
+        head["text"] = path.read_text()                  # committed: HEAD now has the edit
+        if len(commits) == 1:
+            raise KeyboardInterrupt("killed right after the commit")
+    monkeypatch.setattr(gitops, "commit_harness_file", commit)
+    monkeypatch.setattr(gitops, "harness_differs_from_head", lambda path: path.read_text() != head["text"])
+    with pytest.raises(KeyboardInterrupt):
+        real(fake_orch)
+    real(fake_orch)
+    f = paths.RESULTS / "pass1" / "consistency" / "step-01.json"
+    rec = json.loads(f.read_text())
+    assert len(commits) == 1 and rec["status"] == "confirmed" and rec["edited"] is True
+
+
+def test_the_check_never_commits_a_brief_identical_to_head(fake_orch, monkeypatch):
+    from runner import gitops
+    _conflict_then_edit(fake_orch)
+    commits = []
+    monkeypatch.setattr(gitops, "commit_harness_file", lambda path, msg: commits.append(msg))
+    monkeypatch.setattr(gitops, "harness_differs_from_head", lambda path: False)
+    real(fake_orch)
+    assert commits == []

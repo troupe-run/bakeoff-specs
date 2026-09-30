@@ -559,6 +559,13 @@ def commit_harness_file(path: Path, message: str) -> None:
     subprocess.run(["git", "-C", str(REPO_ROOT), "commit", "-q", "-m", message, "--", str(path)], check=True)
 
 
+def harness_differs_from_head(path: Path) -> bool:
+    """`git diff --quiet HEAD -- path` in the harness repo: whether `path` differs from its committed version
+    (follow-up 5: never make an empty commit, e.g. on a resume after a crash just after the commit)."""
+    r = subprocess.run(["git", "-C", str(REPO_ROOT), "diff", "--quiet", "HEAD", "--", str(path)])
+    return r.returncode != 0
+
+
 def harness_is_clean(path: Path) -> bool:
     r = subprocess.run(["git", "-C", str(REPO_ROOT), "diff", "--quiet", "--", str(path)])
     return r.returncode == 0
