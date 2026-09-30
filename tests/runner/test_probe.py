@@ -532,7 +532,7 @@ def _pat_files(root):
     return sorted(str(f) for f in Path(root).rglob("*") if f.name in ("hosts.yml", ".bk-mcp.json"))
 
 
-def test_no_model_without_pats_reads_and_installs_no_pat_and_writes_nothing(setup_world):
+def test_no_model_without_pats_reads_no_pat_installs_none_and_opens_no_issue(setup_world):
     from runner import paths
     res = probe.no_model(pats=False)
     assert setup_world["pat_reads"] == [] and _pat_files(paths.STATE) == []
@@ -556,7 +556,9 @@ def test_the_write_test_touches_only_each_arms_two_repos_with_their_own_pats_and
         for target, slug in (("pass1", config.github_slug("pass1", a)), ("disc", config.github_disc_slug("pass1", a))):
             pat = PATS[target].format(arm=a)
             expected += [(probe.write_argv(slug), pat), (probe.close_argv(slug, "7"), pat)]
-            assert res["P9-write"][a][target] == {"slug": slug, "created": 7, "closed": True}
+            assert res["P9-write"][a][target] == {"slug": slug, "created": 7, "closed": True,
+                                                  "create_output": f"https://github.com/{slug}/issues/7\n",
+                                                  "may_have_open_issue": False}
     assert [(s.cmd, h and h.split("oauth_token: ")[1].split()[0]) for s, h in gh] == expected
     assert all(s.network.startswith("bk-net-probe-write-") and s.proxy and
                [m.ro for m in s.mounts] == [True] for s, _ in gh)
@@ -589,6 +591,7 @@ def test_a_failed_create_records_the_error_without_the_pat_and_closes_nothing(se
     slug = config.github_slug("pass1", "control")
     assert not [s for s in setup_world["specs"] if s.cmd == probe.close_argv(slug, "7")]    # nothing to close
     assert res["P9-write"]["control"]["disc"]["closed"] is True                              # the others still ran
+    assert rec["may_have_open_issue"] is False and probe.open_issue_suspects(res["P9-write"]) == []
 
 
 def test_pat_copies_are_removed_even_when_a_step_raises(setup_world, monkeypatch):
@@ -614,3 +617,76 @@ def test_remove_pat_copies_unlinks_a_link_without_following_it(tmp_path):
     (home / ".bk-mcp.json").write_text("{}")
     rec = probe.remove_pat_copies([home, home])
     assert rec["remaining"] == [] and len(rec["removed"]) == 2 and target.read_text() == "not a PAT"
+
+
+def test_a_create_without_a_parseable_url_keeps_its_output_and_is_flagged_as_maybe_open(setup_world, monkeypatch):
+    from runner import docker
+    inner = docker.run
+    slug = config.github_slug("pass1", "openspec")
+    pat = PATS["pass1"].format(arm="openspec")
+
+    def run(spec, input=None, timeout=None, stop_grace=30):
+        if spec.cmd == probe.write_argv(slug):
+            inner(spec)
+            return subprocess.CompletedProcess(spec.cmd, 0, f"Created (token {pat})\n".encode(), b"")
+        return inner(spec)
+    monkeypatch.setattr(docker, "run", run)
+    res = probe.no_model(pats=True)
+    rec = res["P9-write"]["openspec"]["pass1"]
+    assert rec["created"] is None and rec["closed"] is False and rec["may_have_open_issue"] is True
+    assert rec["create_output"] == "Created (token <redacted>)\n" and "no issue URL" in rec["error"]
+    assert not [s_ for s_ in setup_world["specs"] if s_.cmd[:3] == ["gh", "issue", "close"] and slug in s_.cmd]
+    assert probe.open_issue_suspects(res["P9-write"]) == [f"openspec/pass1 ({slug})"]
+    text = probe.report(res).read_text()
+    assert f"may hold an OPEN probe issue — close it by hand: openspec/pass1 ({slug})" in text
+    assert "`may_have_open_issue` true" in text
+
+
+def test_a_close_that_raises_keeps_the_created_number_and_is_flagged_as_maybe_open(setup_world, monkeypatch):
+    from runner import docker
+    inner = docker.run
+    slug = config.github_disc_slug("pass1", "speckit")
+
+    def run(spec, input=None, timeout=None, stop_grace=30):
+        if spec.cmd == probe.close_argv(slug, "7"):
+            raise subprocess.TimeoutExpired(spec.cmd, 120)
+        return inner(spec)
+    monkeypatch.setattr(docker, "run", run)
+    res = probe.no_model(pats=True)
+    rec = res["P9-write"]["speckit"]["disc"]
+    assert rec["created"] == 7 and rec["closed"] is False and rec["may_have_open_issue"] is True
+    assert "TimeoutExpired" in rec["error"] and rec["create_output"].startswith("https://github.com/")
+    assert probe.open_issue_suspects(res["P9-write"]) == [f"speckit/disc ({slug})"]
+    assert res["PAT-cleanup"]["remaining"] == []
+
+
+def test_cli_probe_scans_results_even_when_a_half_raises_and_the_error_surfaces(probe_calls, monkeypatch, tmp_state):
+    from runner import cli
+    _owner(monkeypatch, True)
+
+    def boom(cred):
+        raise RuntimeError("with_model broke")
+    monkeypatch.setattr(probe, "with_model", boom)
+    with pytest.raises(RuntimeError, match="with_model broke"):
+        cli.main(["probe"])
+    assert probe_calls == [("keychain",), ("scan", "CRED", True)]
+
+
+def test_cli_probe_no_model_failure_still_records_the_real_scan_in_p10(tmp_state, monkeypatch):
+    from runner import cli
+    monkeypatch.setattr(probe, "no_model", lambda pats: (_ for _ in ()).throw(RuntimeError("no_model broke")))
+    (probe.out_dir()).mkdir(parents=True)
+    (probe.out_dir() / "leak.txt").write_text("sk-ant-oat01-" + "Ab3x" * 10)
+    with pytest.raises(RuntimeError, match="no_model broke"):
+        cli.main(["probe", "--no-model"])
+    rec = json.loads((probe.out_dir() / "P10.json").read_text())["results_scan"]
+    assert rec["count"] == 1 and "anthropic-token" in rec["findings"]
+
+
+def test_a_failing_scan_never_hides_the_original_error(probe_calls, monkeypatch):
+    from runner import cli
+    monkeypatch.setattr(probe, "no_model", lambda pats: (_ for _ in ()).throw(RuntimeError("no_model broke")))
+    monkeypatch.setattr(probe, "scan_results", lambda cred, keychain: (_ for _ in ()).throw(OSError("disk")))
+    with pytest.raises(RuntimeError, match="no_model broke") as ei:
+        cli.main(["probe", "--no-model"])
+    assert any("secret scan failed too" in n for n in ei.value.__notes__)

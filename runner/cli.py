@@ -337,23 +337,40 @@ def register_probe(sub):
         from runner.checklist import NotReady
         try:
             with preflight.lock():
-                if ns.no_model:
-                    cred = None
-                    res = probe.no_model(pats=False)
-                else:
+                cred, res, started = None, {}, False
+                if not ns.no_model:
                     ok = owner_mod.Owner().confirm("Run the live probe (spends a little quota)?")
                     if ok is not True:
                         print("Not confirmed: nothing run, nothing spent.")
                         return 1
-                    cred = credentials.from_keychain()
-                    res = probe.with_model(cred)
-                    res |= probe.no_model(pats=True)
-                # Every file under results/probe* is scanned before anything is reported (fix round 1): --no-model
-                # never touches the keychain; the full probe also searches for the keychain PAT values.
-                res["results_scan"] = probe.scan_results(cred, keychain=not ns.no_model)
+                failed: BaseException | None = None
+                try:
+                    started = True
+                    if ns.no_model:
+                        res = probe.no_model(pats=False)
+                    else:
+                        cred = credentials.from_keychain()
+                        res = probe.with_model(cred)
+                        res |= probe.no_model(pats=True)
+                except BaseException as e:
+                    failed = e
+                    raise
+                finally:
+                    # Fix rounds 1–2: every file under results/probe* is scanned before anything is reported, even
+                    # when a half raised (recorded in P10.json). --no-model never touches the keychain; the full probe
+                    # also searches for the keychain PAT values. A failing scan never hides the original error.
+                    if started:
+                        try:
+                            res["results_scan"] = probe.scan_results(cred, keychain=not ns.no_model)
+                        except Exception as se:
+                            if failed is None:
+                                raise
+                            failed.add_note(f"the results/probe* secret scan failed too: {se!r}")
+                        else:
+                            if res["results_scan"]["count"]:
+                                print(f"STOP: secret findings under results/probe*: {res['results_scan']['findings']}")
                 print(probe.report(res))
                 if res["results_scan"]["count"]:
-                    print(f"STOP: secret findings under results/probe*: {res['results_scan']['findings']}")
                     return 1
         except NotReady as e:
             print(e)

@@ -5,7 +5,9 @@ built on. `runner probe` asks the owner, reads the keychain credential and runs 
 
 Namespaces: the model probes use `probe-model` (so P9's setup runs, which start from nothing, never wipe their
 evidence); P9 uses `probe` (online) and `probe-offline` (the brief's names). Every model turn runs inside an egress
-stage built exactly as production builds it (run stage = `pins.egress_run_common` + the arm's `egress_run`).
+stage (ruling 5): the P1–P7 turns in a run stage of exactly `pins.egress_run_common`; P5 route B in the arm's
+production run stage (`pins.egress_run_common` + the arm's `egress_run`). Setup-time work (P5 route A, P9, the write
+test) uses setup stages.
 
 The raw token is never read here: token searches go through `runner.secrets` (its only reader, enforced by a test).
 """
@@ -610,26 +612,54 @@ def _write_one(arm: config.Arm, target: str, slug: str | None, pat_of: Callable[
     p.home.mkdir(parents=True, exist_ok=True)
     installed.append(p.home)
     checklist.write_private_under(p.home, (".config", "gh", "hosts.yml"), checklist.gh_hosts_yml(pat))
-    entry: dict[str, Any] = {"slug": slug, "created": None, "closed": False}
+    entry: dict[str, Any] = {"slug": slug, "created": None, "closed": False, "create_output": None,
+                              "may_have_open_issue": False}
     pins = config.load_pins()
-    with egress.Stage(p.pass_, arm.name, "ghwrite", pins.egress_setup_common,
-                      out_dir() / "P9" / f"egress-ghwrite-{target}-{arm.name}.log") as st:
-        code, text = _gh_in(arm, p, st, write_argv(slug))
-        text = redact_text(text, [pat])
-        if code != 0:
-            entry["error"] = text[-1000:]
-            return entry
-        try:
-            number = tracker.parse_gh_url(text).id
-        except ValueError as e:
-            entry["error"] = str(e)[:500]
-            return entry
-        entry["created"] = int(number)
-        code, text = _gh_in(arm, p, st, close_argv(slug, number))
-        entry["closed"] = code == 0
-        if code != 0:
-            entry["close_error"] = redact_text(text, [pat])[-1000:]
+    try:
+        with egress.Stage(p.pass_, arm.name, "ghwrite", pins.egress_setup_common,
+                          out_dir() / "P9" / f"egress-ghwrite-{target}-{arm.name}.log") as st:
+            _create_and_close(arm, p, st, slug, pat, entry)
+    except Exception as e:                        # whatever is known so far stays in `entry`
+        entry["error"] = redact_text(f"{type(e).__name__}: {e}", [pat])[:500]
     return entry
+
+
+def _create_and_close(arm: config.Arm, p: Paths, st: egress.Stage, slug: str, pat: str,
+                      entry: dict[str, Any]) -> None:
+    """Fills `entry` as it goes, so a failure at any point keeps what is known. `may_have_open_issue` is set
+    BEFORE the create and cleared only when the outcome is certain: the create failed with no issue URL in its
+    output, or the close succeeded (review round 2)."""
+    entry["may_have_open_issue"] = True
+    code, text = _gh_in(arm, p, st, write_argv(slug))
+    text = redact_text(text, [pat])
+    entry["create_output"] = text[-1000:]
+    try:
+        number: str | None = tracker.parse_gh_url(text).id
+    except ValueError:
+        number = None
+    if number is not None:
+        entry["created"] = int(number)
+    if code != 0:
+        entry["error"] = text[-1000:]
+        entry["may_have_open_issue"] = number is not None
+        return
+    if number is None:                            # gh said it worked, but no URL: an issue may exist, number unknown
+        entry["error"] = "create succeeded but its output has no issue URL (see create_output)"
+        return
+    code, ctext = _gh_in(arm, p, st, close_argv(slug, number))
+    entry["closed"] = code == 0
+    if code != 0:
+        entry["close_error"] = redact_text(ctext, [pat])[-1000:]
+        return
+    entry["may_have_open_issue"] = False
+
+
+def open_issue_suspects(write_rec: Any) -> list[str]:
+    """`<arm>/<target> (<slug>)` for every write-test repo that may hold an open probe issue."""
+    if not isinstance(write_rec, dict):
+        return []
+    return [f"{a}/{t} ({e.get('slug')})" for a, targets in sorted(write_rec.items()) if isinstance(targets, dict)
+            for t, e in sorted(targets.items()) if isinstance(e, dict) and e.get("may_have_open_issue")]
 
 
 def write_tests(installed: list[Path]) -> dict[str, Any]:
@@ -640,8 +670,8 @@ def write_tests(installed: list[Path]) -> dict[str, Any]:
         for target, slug, pat_of in write_targets(a):
             try:
                 rec[a][target] = _write_one(arm, target, slug, pat_of, installed)
-            except Exception as e:
-                rec[a][target] = {"slug": slug, **_err(e)}
+            except Exception as e:                # before any create (e.g. installing the PAT): nothing opened
+                rec[a][target] = {"slug": slug, "may_have_open_issue": False, **_err(e)}
     return rec
 
 
@@ -738,8 +768,9 @@ CORRECTIONS = [
     "P9 `manifest_not_created`: manifest paths setup never creates — owner decides (observation only).",
     "P9 `issues_access`: the existing read-only check's verdict (it runs `runs`), kept beside the write test.",
     "If any write test failed: that arm's token lacks issue write access — fix the PAT before any arm runs.",
-    "P9-write: any `created` issue with `closed` false: close it by hand (title "
-    f"\"{tracker.PROBE_ISSUE['title']}\"; the tracker snapshot already ignores it).",
+    "P9-write: any repo with `may_have_open_issue` true (an uncertain create, or a close that failed or never ran): "
+    f"look for an open issue titled \"{tracker.PROBE_ISSUE['title']}\" (number in `created` when known) and close "
+    "it by hand; the tracker snapshot already ignores it.",
     "P10: any file listed → stop; the owner decides before any arm runs.",
     "P11: `mcp` → apply Task 12 Step 5 if OD24 = B; `gh` → nothing to add.",
 ]
@@ -758,6 +789,10 @@ def report(res: dict[str, Any]) -> Path:
         else:
             lines += [f"PAT copies: every PAT file the probe installed was removed at the end "
                       f"({len(cleanup.get('removed', []))} file(s)).", ""]
+    suspects = open_issue_suspects(res.get("P9-write"))
+    if suspects:
+        lines += [f"**Write test: these repos may hold an OPEN probe issue — close it by hand: {', '.join(suspects)}.**",
+                  ""]
     lines += [f"## {k}\n```json\n{json.dumps(v, indent=2, default=str)[:4000]}\n```" for k, v in sorted(res.items())]
     lines += ["", "## Corrections to apply (owner)", "", *[f"- {c}" for c in CORRECTIONS]]
     o = out_dir()
