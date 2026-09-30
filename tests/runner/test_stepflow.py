@@ -208,6 +208,19 @@ def test_the_scored_evidence_carries_only_the_attempts_since_the_last_restore(fa
     assert len(fake_step.finalised[-1]["attempts"]) == 2
 
 
+def test_a_resumed_tests_phase_keeps_the_later_messages_already_sent(fake_step):
+    fake_step.progress = [0, 3]
+    fake_step.ctx.later_messages = ["CR-B"]
+    fake_step.attribution_on = {1: ("harness-fault: pytest exit 137", [])}
+    answers = [PARK]
+    fake_step.ctx.owner.confirm = lambda text: answers.pop(0) if answers else True
+    stepflow.run_step(fake_step.ctx, "go")                              # attempt 1 sent CR-B, parked in its tests
+    fake_step.ctx.later_sent = 0                                        # a new process: a fresh StepCtx
+    fake_step.attribution_on = {}
+    stepflow.run_step(fake_step.ctx, "go")
+    assert fake_step.later_sent_at_call == [0, 1]
+
+
 # ---- the owner's side of a harness fault -----------------------------------------------------------------------
 
 def test_a_second_identical_fault_halts(fake_step):
@@ -532,3 +545,145 @@ def test_run_a_records_the_code_check_when_it_ends_parked(fake_step, monkeypatch
     monkeypatch.setattr(stepflow.drive, "run_attempt", parked)
     stepflow.run_step(fake_step.ctx, "go", run="a")
     assert json.loads((fake_step.ctx.out / "parked.json").read_text())["code_check"]["status"] == "unavailable"
+
+
+# ---- final fix batch A1: the tests phase (after the arm's attempt) is fault-handled too ------------------------------
+
+def _fail_first(monkeypatch, target, name, exc, n=1):
+    """`target.name` raises `exc` on its first `n` calls, then behaves as before."""
+    real, calls = getattr(target, name), []
+
+    def f(*a, **k):
+        calls.append(1)
+        if len(calls) <= n:
+            raise exc
+        return real(*a, **k)
+    monkeypatch.setattr(target, name, f)
+    return calls
+
+
+@pytest.mark.parametrize("exc", [stepflow.docker.ContainerError("export failed in container (1): boom"),
+                                 __import__("subprocess").TimeoutExpired(["docker", "run"], 600)])
+def test_a_container_error_preparing_the_hidden_tests_is_infra_hidden_and_retests_the_same_commit(
+        fake_step, monkeypatch, exc):
+    fake_step.progress = [3]
+    _fail_first(monkeypatch, stepflow.hidden, "prepare", exc)
+    out = stepflow.run_step(fake_step.ctx, "go")
+    [e] = faults.for_step("dry9", "control", 2)
+    assert e["kind"] == "infra-hidden" and e["run"] == "b" and e["attempt"] == 1
+    assert fake_step.calls == 1 and fake_step.restored == []          # no new arm session, nothing restored
+    assert out.status == "done" and out.attempts == 1
+
+
+def test_a_hidden_collection_failure_is_infra_hidden_and_retests_the_same_commit(fake_step, monkeypatch):
+    fake_step.progress = [3]
+    _fail_first(monkeypatch, stepflow.hidden, "run", stepflow.hidden.HiddenError("hidden collection failed: x"))
+    out = stepflow.run_step(fake_step.ctx, "go")
+    [e] = faults.for_step("dry9", "control", 2)
+    assert (e["kind"], e["signature"]) == ("infra-hidden", "hidden collection failed: x")
+    assert fake_step.calls == 1 and fake_step.prepares == 2 and out.status == "done"
+
+
+def test_a_container_error_in_quality_is_infra_quality_and_reruns_quality_only(fake_step, monkeypatch):
+    fake_step.progress = [3]
+    _fail_first(monkeypatch, stepflow.quality, "run_all", stepflow.docker.ContainerError("mypy container died"))
+    out = stepflow.run_step(fake_step.ctx, "go")
+    [e] = faults.for_step("dry9", "control", 2)
+    assert e["kind"] == "infra-quality" and fake_step.calls == 1 and fake_step.hidden_runs == 1
+    assert fake_step.quality_runs == 1 and out.status == "done"
+
+
+def test_a_git_error_writing_the_evidence_is_infra_evidence_and_rewrites_it(fake_step, monkeypatch):
+    fake_step.progress = [3]
+    _fail_first(monkeypatch, stepflow.evidence, "finalise", stepflow.docker.ContainerError("git state failed"))
+    out = stepflow.run_step(fake_step.ctx, "go")
+    [e] = faults.for_step("dry9", "control", 2)
+    assert e["kind"] == "infra-evidence" and fake_step.calls == 1 and len(fake_step.finalised) == 1
+    assert out.status == "done"
+
+
+def test_the_same_tests_phase_fault_twice_halts(fake_step, monkeypatch):
+    fake_step.progress = [3]
+    _fail_first(monkeypatch, stepflow.hidden, "prepare", stepflow.docker.ContainerError("export failed"), n=2)
+    with pytest.raises(stepflow.Halt):
+        stepflow.run_step(fake_step.ctx, "go")
+    assert [e["action"] for e in faults.entries("dry9")] == ["rerun", "halt"] and fake_step.calls == 1
+
+
+def test_a_runner_bug_in_the_tests_phase_still_propagates(fake_step, monkeypatch):
+    fake_step.progress = [3]
+    _fail_first(monkeypatch, stepflow.hidden, "run", KeyError("a runner bug"))
+    with pytest.raises(KeyError):
+        stepflow.run_step(fake_step.ctx, "go")
+    assert faults.for_step("dry9", "control", 2) == []
+
+
+def test_an_owner_park_at_the_idle_prompt_returns_a_parked_step(fake_step, monkeypatch):
+    fake_step.progress = [3]
+
+    def busy(ctx):
+        stepflow._confirm_or_pause(ctx, "The machine is not idle. Run the hidden tests anyway?")
+    monkeypatch.setattr(stepflow, "wait_idle", busy)
+    fake_step.ctx.owner.confirm = lambda text: PARK
+    out = stepflow.run_step(fake_step.ctx, "go")
+    assert out.status == "parked" and out.park == PARK and out.attempts == 1
+    rec = json.loads((fake_step.ctx.out / "parked.json").read_text())
+    assert rec["phase"] == "tests" and rec["attempt"] == 1
+
+
+def test_an_owner_park_at_the_retest_prompt_returns_a_parked_step(fake_step):
+    fake_step.progress = [3]
+    fake_step.attribution_on = {1: ("harness-fault: pytest exit 137", [])}
+    fake_step.ctx.owner.confirm = lambda text: PARK
+    out = stepflow.run_step(fake_step.ctx, "go")
+    assert out.status == "parked" and out.park == PARK
+    assert json.loads((fake_step.ctx.out / "parked.json").read_text())["phase"] == "tests"
+
+
+def test_a_step_parked_in_its_tests_phase_resumes_at_the_tests_without_a_new_arm_session(fake_step):
+    fake_step.progress = [3]
+    fake_step.attribution_on = {1: ("harness-fault: pytest exit 137", [])}
+    answers = [PARK, True]
+    fake_step.ctx.owner.confirm = lambda text: answers.pop(0) if answers else True
+    assert stepflow.run_step(fake_step.ctx, "go").status == "parked"
+    assert (fake_step.ctx.out / stepflow.PENDING).is_file()
+    fake_step.attribution_on = {}
+    out = stepflow.run_step(fake_step.ctx, "go")                        # the caller runs the step again
+    assert out.status == "done" and out.attempts == 1 and fake_step.calls == 1
+    assert not (fake_step.ctx.out / stepflow.PENDING).exists()
+    [k] = fake_step.finalised
+    assert len(k["attempts"]) == 1 and k["attempts"][0].turns[0].stream_path is not None
+
+
+def test_a_crash_in_the_tests_phase_resumes_at_the_tests(fake_step, monkeypatch):
+    fake_step.progress = [0, 3]
+    real = stepflow.hidden.run
+    n = []
+
+    def run(*a, **k):
+        n.append(1)
+        if len(n) == 2:
+            raise KeyboardInterrupt("killed")
+        return real(*a, **k)
+    monkeypatch.setattr(stepflow.hidden, "run", run)
+    with pytest.raises(KeyboardInterrupt):
+        stepflow.run_step(fake_step.ctx, "go")                          # attempt 1 no progress, attempt 2 crashed
+    assert json.loads((fake_step.ctx.out / stepflow.PENDING).read_text())["attempt"] == 2
+    out = stepflow.run_step(fake_step.ctx, "go")
+    assert fake_step.calls == 2 and out.status == "done" and out.attempts == 2
+    assert len(fake_step.finalised[-1]["attempts"]) == 2
+
+
+def test_an_arm_with_no_main_is_scored_all_failed_as_one_attempt(fake_step, monkeypatch):
+    fake_step.progress = [0, 0, 0]
+    monkeypatch.setattr(stepflow.gitops, "main_sha", lambda p: None)
+    got = []
+
+    def all_failed(p, step, out, why):
+        got.append(why)
+        return stepflow.hidden.summarise(step, {"m::t": "failed"}, ["m::t"], [], [], -1, attribution=why)
+    monkeypatch.setattr(stepflow.hidden, "all_failed", all_failed, raising=False)
+    out = stepflow.run_step(fake_step.ctx, "go")
+    assert out.status == "stopped" and out.attempts == 3 and fake_step.prepares == 0
+    assert got == [stepflow.hidden.NO_MAIN] * 3 and faults.for_step("dry9", "control", 2) == []
+    assert fake_step.quality_runs == 0 and fake_step.finalised[-1]["quality"] == {"skipped": stepflow.hidden.NO_MAIN}

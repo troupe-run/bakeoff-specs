@@ -24,6 +24,13 @@ Classification (design §9, brief table, binding rulings):
   not, or if they park), every attempt since the last restore is parked under `attempts/<k>-harness-<kind>/`, the
   step snapshot is restored, `ctx.later_sent` is reset to 0 so CR-B is sent again (ruling 2), and the arm gets
   its full three attempts again (review C-3).
+- **The tests phase (run b, final fix batch A1)**: everything after the attempt — idle wait, export and install,
+  hidden tests, quality, evidence — is fault-handled like the attempt: a container, git or subprocess error there
+  is `infra-hidden` / `infra-quality` / `infra-evidence` (the prep's network failure is `infra-sync`, A2), ledgered
+  (a repeat halts), and after the owner's fix the SAME commit is tested again, never a new arm session. The attempt
+  is persisted in `tests-pending.json` first, so an owner park there returns a parked step (`parked.json` phase
+  "tests") and a park, decline, halt or crash resumes at the tests on the next `run_step` (the caller must not
+  restore while the file exists). An arm with no committed `main` is its own outcome: all-failed, one attempt.
 - A drive outcome of `parked` is not a fault (ruling 1): `parked.json` records it and the step returns
   `status="parked"` — no hidden tests, not counted as an arm attempt.
 - **On `Halt`, `Paused` or a `parked` result, stepflow leaves the tree mid-step** (nothing is restored, so the
@@ -260,12 +267,107 @@ def _arm_result(ctx, summary: hidden.Summary) -> None:
                              "last_hidden": asdict(summary)}, indent=2))
 
 
+# ---- the tests phase (run b, after the arm's attempt): faults, parks, resume (final fix batch A1) -----------------
+# Everything after the arm's attempt — waiting for an idle machine, exporting and installing `main`, the hidden tests,
+# quality, the evidence — is the harness's own work. A container, git or subprocess error there is a harness fault
+# of that phase (`infra-hidden`, `infra-quality`, `infra-evidence`; `infra-sync` is raised by `hidden` itself, A2):
+# recorded in the ledger (the second identical one halts), and after the owner's fix the SAME commit is tested
+# again — never a new arm session. The attempt is persisted in `tests-pending.json` before the tests phase starts,
+# so a park, a pause, a halt or a crash there resumes at the tests: the caller must NOT restore the snapshot when
+# the file exists (orchestrate), and the next `run_step` goes straight back to the tests.
+INFRA_ERRORS = (docker.ContainerError, subprocess.SubprocessError, hidden.HiddenError, gitops.GitError)
+PENDING = "tests-pending.json"
+
+
+def _turn_out(t) -> dict:
+    return {"session_id": t.session_id, "outcome": t.outcome, "cost_usd": t.cost_usd, "usage": t.usage,
+            "model_usage": t.model_usage, "wall_seconds": t.wall_seconds,
+            "stream_path": str(t.stream_path) if t.stream_path else None,
+            "permission_denials": list(t.permission_denials or [])}
+
+
+def _turn_in(d: dict):
+    from runner.session import TurnResult
+    return TurnResult(d.get("session_id"), d.get("outcome", "ok"), "", {}, None, float(d.get("cost_usd") or 0.0),
+                      d.get("usage") or {}, d.get("model_usage") or {}, float(d.get("wall_seconds") or 0.0), [],
+                      Path(d["stream_path"]) if d.get("stream_path") else None, None,
+                      list(d.get("permission_denials") or []))
+
+
+def _attempt_out(ar) -> dict:
+    """What `evidence.finalise` and the next attempt need from an attempt, as JSON."""
+    return {"outcome": ar.outcome, "session_id": ar.session_id, "turns": [_turn_out(t) for t in ar.turns],
+            "po_turns": [[_turn_out(t) for t in r.turns] for r in ar.po_results], "exchanges": ar.exchanges,
+            "interventions": list(ar.interventions), "breach": ar.breach, "retries": ar.retries,
+            "park": asdict(ar.park) if ar.park is not None else None}
+
+
+def _attempt_in(d: dict):
+    from types import SimpleNamespace
+    return drive.AttemptResult(d["outcome"], d.get("session_id"), turns=[_turn_in(t) for t in d.get("turns", [])],
+                               po_results=[SimpleNamespace(turns=[_turn_in(t) for t in ts])
+                                           for ts in d.get("po_turns", [])],
+                               exchanges=int(d.get("exchanges") or 0), interventions=list(d.get("interventions") or []),
+                               breach=d.get("breach"), retries=int(d.get("retries") or 0),
+                               park=Park(**d["park"]) if d.get("park") else None)
+
+
+def _save_pending(ctx, rec: dict) -> None:
+    from runner import fsutil
+    fsutil.write_json(ctx.out / PENDING, rec)
+
+
+def _load_pending(ctx) -> dict | None:
+    f = ctx.out / PENDING
+    return json.loads(f.read_text()) if f.is_file() else None
+
+
+def _clear_pending(ctx) -> None:
+    (ctx.out / PENDING).unlink(missing_ok=True)
+
+
+def _phase(ctx, kind: str, attempt: int, what: str, fn):
+    """`fn()` under the tests-phase fault rule: a harness fault (or a container/git/subprocess error, as `kind`)
+    is recorded (a repeat halts), the owner fixes it and `fn` runs again on the same commit. An owner park or
+    decline raises `Paused`, which `run_step` turns into a parked step (park) or lets through (decline)."""
+    while True:
+        try:
+            return fn()
+        except HarnessFault as f:
+            fault = f
+        except INFRA_ERRORS as e:
+            fault = HarnessFault(kind, _sig(str(e)), repr(e)[:500])
+        _record(ctx, fault, attempt, "b")
+        _confirm_or_pause(ctx, f"Harness fault {fault.kind}: {fault.signature} ({what}). Fix it, then {what} again "
+                               f"on the same commit (no new arm session)?")
+
+
+def _tests(ctx, attempt: int, pend: dict):
+    """wait for idle, then the hidden tests on the attempt's commit. Returns (summary, prep or None)."""
+    wait_idle(ctx)
+    if "sha" not in pend:
+        pend["sha"] = _phase(ctx, "infra-hidden", attempt, "read the arm's main",
+                             lambda: gitops.main_sha(ctx.paths))
+        _save_pending(ctx, pend)
+    sha = pend["sha"]
+    if sha is None:                                    # no committed main: the arm's own outcome, all-failed
+        return _phase(ctx, "infra-hidden", attempt, "score the attempt",
+                      lambda: hidden.all_failed(ctx.paths, ctx.step, ctx.out, hidden.NO_MAIN)), None
+
+    def go():
+        prep = hidden.prepare(ctx.paths, sha, f"{ctx.step:02d}-a{attempt}", ctx.out, with_quality=True)
+        install_failed = not prep.prep.get("hidden", {}).get("ok", False)
+        return _settle(ctx, prep, _hidden_run(ctx, prep, attempt, install_failed), attempt, install_failed), prep
+    return _phase(ctx, "infra-hidden", attempt, "run the hidden tests", go)
+
+
 # ---- outcomes that end the step without scoring ------------------------------------------------------------------
 
-def _parked(ctx, attempt: int, ar, pk: Park, arm_attempts: int, run: str) -> StepOutcome:
+def _parked(ctx, attempt: int, ar, pk: Park, arm_attempts: int, run: str, phase: str = "attempt") -> StepOutcome:
     (ctx.out / "parked.json").write_text(json.dumps(
-        {"run": run, "attempt": attempt, "arm_attempts_before": arm_attempts, "outcome": ar.outcome if ar else None,
-         "park": asdict(pk), "code_check": getattr(ar, "code_check", None) if run == "a" else None}, indent=2))
+        {"run": run, "phase": phase, "attempt": attempt, "arm_attempts_before": arm_attempts,
+         "outcome": ar.outcome if ar else None, "park": asdict(pk),
+         "code_check": getattr(ar, "code_check", None) if run == "a" else None}, indent=2))
     return StepOutcome("parked", arm_attempts, park=pk, run=run, attempt_outcome=ar.outcome if ar else None)
 
 
@@ -299,69 +401,98 @@ def run_step(ctx, first_message: str, extra: dict | None = None, run: str = "b")
     message, resume = first_message, None
     lim = ctx.pins.limits
     kw = {"stop_at_first_gate_or_code": True} if run == "a" else {}
+    pend = _load_pending(ctx) if run == "b" else None
     while True:
-        attempt += 1
-        before = transcripts.snapshot(ctx.paths.config_dir)
-        owner_park: Park | None = None
-        try:
+        if pend is not None:                         # resume at the tests: the attempt already ran (A1)
+            attempt, arm_attempts, t0 = pend["attempt"], pend["arm_attempts"], pend["t0"]
+            since_restore = list(pend["since_restore"])
+            history = [_attempt_in(d) for d in pend["history"]]
+            ar = _attempt_in(pend["ar"])
+            pin = transcripts.PinReport(**pend["pin"])
+            ctx.later_sent = int(pend.get("later_sent", ctx.later_sent))
+        else:
+            attempt += 1
+            before = transcripts.snapshot(ctx.paths.config_dir)
+            owner_park: Park | None = None
             try:
-                ar = drive.run_attempt(ctx, attempt, message, resume, **kw)
+                try:
+                    ar = drive.run_attempt(ctx, attempt, message, resume, **kw)
+                except HarnessFault as f:
+                    raise _faulted(ctx, f, attempt, before, getattr(f, "attempt_result", None))
+                except checklist.NotReady:
+                    raise                                # a precondition, never a fault: the caller refuses the arm
+                except (docker.ContainerError, subprocess.SubprocessError) as e:     # a failed container (L-1)
+                    f = HarnessFault("infra-container", _sig(str(e)), repr(e)[:500])
+                    raise _faulted(ctx, f, attempt, before, None) from e
+                pin = _evidence_pin(ctx, attempt, before, ar)
+                if (pf := _pin_fault(pin)):
+                    raise pf
+                if run == "b" and ar.breach and lim.owner_reclassifies_first_breach and not _breach_seen(ctx):  # OD14 B
+                    verdict = ctx.owner.reclassify(ar.breach, f"step {ctx.step}, attempt {attempt}")
+                    if isinstance(verdict, Park):
+                        owner_park = verdict
+                    else:
+                        _note_breach(ctx, ar.breach, verdict)
+                        if verdict == "harness":
+                            raise HarnessFault("runaway", ar.breach,
+                                               f"owner reclassified the first breach (step {ctx.step})")
             except HarnessFault as f:
-                raise _faulted(ctx, f, attempt, before, getattr(f, "attempt_result", None))
-            except checklist.NotReady:
-                raise                                # a precondition, never a fault: the caller refuses the arm
-            except (docker.ContainerError, subprocess.SubprocessError) as e:     # a failed container (L-1)
-                f = HarnessFault("infra-container", _sig(str(e)), repr(e)[:500])
-                raise _faulted(ctx, f, attempt, before, None) from e
-            pin = _evidence_pin(ctx, attempt, before, ar)
-            if (pf := _pin_fault(pin)):
-                raise pf
-            if run == "b" and ar.breach and lim.owner_reclassifies_first_breach and not _breach_seen(ctx):  # OD14 B
-                verdict = ctx.owner.reclassify(ar.breach, f"step {ctx.step}, attempt {attempt}")
-                if isinstance(verdict, Park):
-                    owner_park = verdict
-                else:
-                    _note_breach(ctx, ar.breach, verdict)
-                    if verdict == "harness":
-                        raise HarnessFault("runaway", ar.breach,
-                                           f"owner reclassified the first breach (step {ctx.step})")
-        except HarnessFault as f:
-            _handle_fault(ctx, f, since_restore + [attempt], run)
-            since_restore, arm_attempts, history = [], 0, []                                    # review C-3
-            if ctx.on_restore is not None:          # step 6: the old issue is superseded, a new one created
-                first_message = ctx.on_restore() or first_message
-            message, resume = first_message, None
-            continue
-        if owner_park is not None:
-            return _parked(ctx, attempt, ar, owner_park, arm_attempts, run)
-        if ar.outcome == "parked":                                                          # ruling 1
-            return _parked(ctx, attempt, ar, ar.park, arm_attempts, run)
-        if run == "a":
-            return _discovered(ctx, attempt, ar, pin, t0, extra)
-        arm_attempts += 1
-        since_restore.append(attempt)
-        wait_idle(ctx)
-        t_tests = time.time()
-        prep = hidden.prepare(ctx.paths, gitops.main_sha(ctx.paths) or hidden.MAIN, f"{ctx.step:02d}-a{attempt}",
-                              ctx.out, with_quality=True)
-        install_failed = not prep.prep.get("hidden", {}).get("ok", False)
-        summary = _settle(ctx, prep, _hidden_run(ctx, prep, attempt, install_failed), attempt, install_failed)
-        tests_s = time.time() - t_tests
-        progressed = summary.new_discriminating_passed > 0
-        if progressed or arm_attempts >= lim.attempts_no_progress:
-            q = quality.run_all(ctx.paths, prep, ctx.out, ctx.pins)
-            outcome = "done" if progressed else "stopped"
-            evidence.finalise(ctx, attempts=history + [ar], extra_turns=extra, hidden=summary, quality=q, pin=pin,
-                              sha_before=ctx.sha_before, started=t0, ended=time.time(),
-                              fault_entries=[e for e in faults.for_step(ctx.pass_, ctx.arm.name, ctx.step)
-                                             if e.get("run") != "a"],     # L-5: run b and step-level
-                              shas=ctx.shas, tests_seconds=tests_s, outcome=outcome)
-            if outcome == "stopped":
-                _arm_result(ctx, summary)
-            return StepOutcome(outcome, arm_attempts, summary, q, attempt_outcome=ar.outcome)
+                _handle_fault(ctx, f, since_restore + [attempt], run)
+                since_restore, arm_attempts, history = [], 0, []                                    # review C-3
+                if ctx.on_restore is not None:          # step 6: the old issue is superseded, a new one created
+                    first_message = ctx.on_restore() or first_message
+                message, resume = first_message, None
+                continue
+            if owner_park is not None:
+                return _parked(ctx, attempt, ar, owner_park, arm_attempts, run)
+            if ar.outcome == "parked":                                                          # ruling 1
+                return _parked(ctx, attempt, ar, ar.park, arm_attempts, run)
+            if run == "a":
+                return _discovered(ctx, attempt, ar, pin, t0, extra)
+            arm_attempts += 1
+            since_restore.append(attempt)
+            pend = {"attempt": attempt, "arm_attempts": arm_attempts, "since_restore": since_restore, "t0": t0,
+                    "history": [_attempt_out(a) for a in history], "ar": _attempt_out(ar),
+                    "pin": json.loads(pin.to_json()), "later_sent": ctx.later_sent}
+            _save_pending(ctx, pend)
+        try:
+            got = _decide(ctx, attempt, arm_attempts, history, ar, pin, t0, extra, pend)
+        except Paused as x:
+            if x.park is None:
+                raise                                    # the owner declined: the tests resume when run again
+            return _parked(ctx, attempt, ar, x.park, arm_attempts, run, phase="tests")
+        pend = None
+        if got is not None:
+            return got
         park(ctx.out, attempt, "no-progress")
         history.append(ar)
         message, resume = handoff.MESSAGES["no_progress"], ar.session_id
+
+
+def _decide(ctx, attempt, arm_attempts, history, ar, pin, t0, extra, pend) -> StepOutcome | None:
+    """The tests phase of one arm attempt and the step's decision; None = no progress, the next attempt follows."""
+    lim = ctx.pins.limits
+    t_tests = time.time()
+    summary, prep = _tests(ctx, attempt, pend)
+    tests_s = time.time() - t_tests
+    progressed = summary.new_discriminating_passed > 0
+    if not (progressed or arm_attempts >= lim.attempts_no_progress):
+        _clear_pending(ctx)
+        return None
+    q = _phase(ctx, "infra-quality", attempt, "run quality",
+               lambda: quality.run_all(ctx.paths, prep, ctx.out, ctx.pins)) if prep is not None \
+        else {"skipped": summary.attribution}
+    outcome = "done" if progressed else "stopped"
+    _phase(ctx, "infra-evidence", attempt, "write the step's evidence", lambda: evidence.finalise(
+        ctx, attempts=history + [ar], extra_turns=extra, hidden=summary, quality=q, pin=pin,
+        sha_before=ctx.sha_before, started=t0, ended=time.time(),
+        fault_entries=[e for e in faults.for_step(ctx.pass_, ctx.arm.name, ctx.step)
+                       if e.get("run") != "a"],     # L-5: run b and step-level
+        shas=ctx.shas, tests_seconds=tests_s, outcome=outcome))
+    if outcome == "stopped":
+        _arm_result(ctx, summary)
+    _clear_pending(ctx)
+    return StepOutcome(outcome, arm_attempts, summary, q, attempt_outcome=ar.outcome)
 
 
 # ---- the step-2 hand edit ---------------------------------------------------------------------------------------

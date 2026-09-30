@@ -307,3 +307,11 @@ def test_idle_reports_the_real_docker_vm_load():                            # re
     ok, detail = preflight.idle()
     fields = dict(kv.split("=", 1) for kv in detail.split())
     assert float(fields["vm_load1"]) >= 0 and int(fields["vm_cpus"]) >= 1, detail
+
+
+def test_all_failed_scores_every_collected_test_failed_without_arm_code(state, tmp_path):     # final fix batch A1
+    p = Paths("dryhidden", "dryrun")
+    s = hidden.all_failed(p, 2, tmp_path, hidden.NO_MAIN)
+    assert (s.total, s.passed, s.failed) == (EXPECTED[2], 0, EXPECTED[2]) and s.new_discriminating_passed == 0
+    assert s.scoreable and s.attribution == hidden.NO_MAIN
+    assert json.loads((tmp_path / "hidden" / "summary.json").read_text())["attribution"] == "arm-no-main"

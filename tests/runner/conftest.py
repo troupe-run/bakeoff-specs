@@ -388,6 +388,9 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
         if run == "b" and (a, n) in env.escalate_b:
             q, ans = env.escalate_b[(a, n)]
             po.append_escalation(ctx.brief_path, q, ans, ctx.pass_, a, n, source="scripted")
+        if behaviour.startswith("tests-"):              # the attempt ran; the tests phase parked or crashed (A1)
+            (ctx.out / stepflow.PENDING).write_text(J.dumps({"attempt": 1}))
+            behaviour = behaviour.removeprefix("tests-")
         if behaviour == "halt":
             raise stepflow.Halt("HALTED")
         if behaviour == "paused":
@@ -412,6 +415,7 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
                 raise KeyboardInterrupt("killed after stepflow returned")
             return stepflow.StepOutcome("discovered", 1, run="a")
         env.main[a] = f"sha-{n}"
+        (ctx.out / stepflow.PENDING).unlink(missing_ok=True)          # as stepflow does once the step is decided
         if (a, n) in env.resource:
             faults.record_resource(ctx.pass_, a, n, 1, env.resource[(a, n)], [["oom"]])
         (ctx.out / "summary.md").write_text(f"# Step {n} summary — {a} ({ctx.pass_})\n")

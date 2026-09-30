@@ -724,3 +724,63 @@ def test_status_shows_every_arm_and_both_runs_of_each_step(fake_orch):
     s = orchestrate.status()
     assert "pass1" in s and "openspec" in s and "control" in s
     assert "2:a=parked" in s and "1:a=discovered,b=done" in s
+
+
+# ---- final fix batch A1: a run parked or crashed in its tests phase resumes at the tests, never restored ------------
+
+@pytest.mark.parametrize("behaviour", ["tests-parked", "tests-paused-park", "tests-halt", "tests-boom"])
+def test_a_run_stopped_in_its_tests_phase_is_resumed_without_a_restore(fake_orch, behaviour):
+    fake_orch.outcome[("dryrun", 3, "b")] = [behaviour]
+    try:
+        dry(fake_orch)
+    except (stepflow.Halt, RuntimeError):
+        pass
+    assert (Paths("dry7", "dryrun").step(3) / stepflow.PENDING).is_file()
+    fake_orch.calls.clear()
+    if behaviour == "tests-halt":
+        faults.halt("dry7", "test", {}); faults.resume("dry7", "fixed")
+    dry(fake_orch)
+    c = fake_orch.calls
+    assert ("run_step", "dryrun", 3, "b") in c and ("restore", "dryrun", 3) not in c
+    assert not (Paths("dry7", "dryrun").step(3) / "b-interrupted-1").exists()     # the attempt's evidence stays
+
+
+def test_a_tracker_fault_after_a_run_is_recorded_in_the_ledger_and_a_repeat_halts(fake_orch, monkeypatch):
+    from runner import tracker
+
+    def broken(ctx):
+        raise faults.HarnessFault("infra-tracker", "list", "exit 1: HTTP 502")
+    monkeypatch.setattr(tracker, "snapshot", broken)
+    with pytest.raises(orchestrate.NotReady, match="infra-tracker"):
+        dry(fake_orch)
+    [e] = faults.entries("dry7")
+    assert (e["kind"], e["signature"], e["step"], e["run"]) == ("infra-tracker", "list", 1, "b")
+    with pytest.raises(stepflow.Halt):
+        dry(fake_orch)
+
+
+def test_a_container_error_in_the_step6_precheck_is_recorded_in_the_ledger(fake_orch, monkeypatch):
+    from runner import hidden
+    real_prepare = hidden.prepare
+
+    def prepare(p, sha, label, out_dir, **k):
+        if label == "06-precheck":
+            raise stepflow.docker.ContainerError("export failed in container (1): boom")
+        return real_prepare(p, sha, label, out_dir, **k)
+    monkeypatch.setattr(hidden, "prepare", prepare)
+    with pytest.raises(orchestrate.NotReady, match="infra-hidden"):
+        dry(fake_orch)
+    [e] = faults.entries("dry7")
+    assert (e["kind"], e["step"]) == ("infra-hidden", 6)
+
+
+def test_a_tracker_fault_filing_the_step6_issue_is_recorded_in_the_ledger(fake_orch, monkeypatch):
+    from runner import tracker
+
+    def broken(ctx, owner, *, title=None, body=None):
+        raise faults.HarnessFault("infra-tracker", "create", "exit 1")
+    monkeypatch.setattr(tracker, "create_bug", broken)
+    with pytest.raises(orchestrate.NotReady, match="infra-tracker"):
+        dry(fake_orch)
+    [e] = faults.entries("dry7")
+    assert (e["kind"], e["signature"], e["step"]) == ("infra-tracker", "create", 6)

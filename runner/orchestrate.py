@@ -27,7 +27,10 @@ keeps the issue for beads); every other step snapshots. The step's snapshot and 
 
 **Resume** (`state/<pass>/<arm>/progress.json`): a run that ended `parked`, `paused`, `halted`, `interrupted` or was
 still `running` (a crash) has left the tree mid-step: the EXISTING pre-step snapshot is restored and that run's
-evidence moved aside (`NN/a-interrupted-<k>/`, `NN/b-interrupted-<k>/`) before it runs again. A completed run is
+evidence moved aside (`NN/a-interrupted-<k>/`, `NN/b-interrupted-<k>/`) before it runs again — except a scored run stopped in its tests phase (stepflow's `NN/tests-pending.json`, final fix
+batch A1): the arm's attempt is kept, nothing is restored, and stepflow resumes at the tests on the same commit. A
+tracker or precheck fault here (the step-6 issue, the tracker snapshot) is recorded in the ledger (`infra-tracker`,
+`infra-hidden`) and stops the run for the owner; a repeat halts. A completed run is
 never run again; its remaining post actions (secret scan, detection, tracker snapshot, end snapshot, the owner's
 review) are. Every `owner.*` answer is checked for `owner.Park`: a park parks that arm (recorded in
 `results/<pass>/run-log.jsonl`) and the run moves on to the next arm; the phase barrier then stops the run until the
@@ -206,6 +209,17 @@ class _Run:
             raise stepflow.Halt(faults.halted(self.pass_)) from f
         raise NotReady(f"harness fault {f.kind}:{f.signature} ({arm}, step {step}): {why}") from f
 
+    def infra(self, kind: str, arm: str, step: int, run: str | None, what: str, fn):
+        """`fn()`, with a harness fault or a container/git/subprocess error recorded in the ledger as `kind` (final
+        fix batch A1: tracker and precheck faults here never escape unrecorded). An owner park passes through."""
+        try:
+            return fn()
+        except HarnessFault as f:
+            self.fault(f, arm, step, run, f"{what} failed; fix it, then run again")
+        except stepflow.INFRA_ERRORS as e:
+            self.fault(HarnessFault(kind, stepflow._sig(str(e)), repr(e)[:500]), arm, step, run,
+                       f"{what} failed; fix it, then run again")
+
     # -- the step context ----------------------------------------------------------------------------------------
     def ctx(self, arm_name: str, step: int, out: Path, e: dict) -> drive.StepCtx:
         arm, p = config.load_arm(arm_name), Paths(self.pass_, arm_name)
@@ -271,8 +285,11 @@ class _Run:
         arm = config.load_arm(arm_name)
         pc_dir = out / "precheck"
         if e.get("precheck") is None:
-            prep = hidden.prepare(p, hidden.MAIN, "06-precheck", pc_dir)
-            s = hidden.run(p, prep.hidden_copy, 6, pc_dir, install_failed=not prep.prep.get("hidden", {}).get("ok"))
+            def precheck():
+                prep = hidden.prepare(p, hidden.MAIN, "06-precheck", pc_dir)
+                return hidden.run(p, prep.hidden_copy, 6, pc_dir,
+                                  install_failed=not prep.prep.get("hidden", {}).get("ok"))
+            s = self.infra("infra-hidden", arm_name, 6, None, "the step-6 precheck", precheck)
             passes = bool(s.scoreable and s.new_at_step and all(s.tests.get(t) == "passed" for t in s.new_at_step))
             e["precheck"] = {"planted_already_passes": passes, "scoreable": s.scoreable, "attribution": s.attribution,
                              "new_at_step": s.new_at_step, "new_passed": s.new_passed, "sha": gitops.main_sha(p)}
@@ -288,11 +305,13 @@ class _Run:
             title, body = e["substitute"]["title"], e["substitute"]["body"]
         ctx = self.ctx(arm_name, 6, out, e)
         try:
-            ref = tracker.create_bug(ctx, self.guard, title=title, body=body)
+            ref = self.infra("infra-tracker", arm_name, 6, None, "filing the step-6 issue",
+                             lambda: tracker.create_bug(ctx, self.guard, title=title, body=body))
         except _OwnerParked as x:
             return self.park(arm_name, 6, None, "issue", x.park)
         e["issue"] = dataclasses.asdict(ref)
-        e["issue_fp"] = self._issue_fp(ctx, ref)
+        e["issue_fp"] = self.infra("infra-tracker", arm_name, 6, None, "reading the step-6 issue",
+                                   lambda: self._issue_fp(ctx, ref))
         _save(p, prog)
         return None
 
@@ -363,7 +382,12 @@ class _Run:
         if not e.get("started"):
             if self.begin(arm_name, step, prog) == "parked":
                 return "parked"
-        if e.get("restore_needed") or r.get("status") in INTERRUPTED:
+        tests_pending = run == "b" and (p.step(step) / stepflow.PENDING).is_file()
+        if tests_pending:                        # A1: the attempt ran; its tests resume on the same commit
+            e["restore_needed"] = False
+            _save(p, prog)
+            self.log("tests-resumed", arm=arm_name, step=step, run=run, status=r.get("status"))
+        elif e.get("restore_needed") or r.get("status") in INTERRUPTED:
             repo.restore(p, e["snapshot"])                                   # the EXISTING snapshot (I-2)
             if r.get("status") in INTERRUPTED:
                 self._aside(p, step, run, "interrupted")
@@ -378,7 +402,8 @@ class _Run:
         ctx = self.ctx(arm_name, step, out, e)
         try:
             if step == 6:
-                self._fresh_issue(ctx, e, prog)
+                self.infra("infra-tracker", arm_name, 6, run, "checking the step-6 issue",
+                           lambda: self._fresh_issue(ctx, e, prog))
                 issue = tracker.IssueRef(**e["issue"])
                 messages = [handoff.bug_message(issue.ref, self.contract)]
 
@@ -487,10 +512,12 @@ class _Run:
                 files = sorted((out / "turns").glob("arm-*.stream.jsonl.gz")) + sorted((out / "transcripts").rglob("*.jsonl.gz"))
                 handedit.detect(ctx, edit, gitops.main_sha(p) or "", arm_files=files)
             elif k == "tracker":
-                snap = tracker.snapshot(ctx)
-                if step == 6 and e.get("issue"):
-                    _jw(out / "tracker-round-trip.json", tracker.round_trip_facts(
-                        ctx, tracker.IssueRef(**e["issue"]), e["sha_before"], gitops.main_sha(p) or "", snap))
+                def track():
+                    snap = tracker.snapshot(ctx)
+                    if step == 6 and e.get("issue"):
+                        _jw(out / "tracker-round-trip.json", tracker.round_trip_facts(
+                            ctx, tracker.IssueRef(**e["issue"]), e["sha_before"], gitops.main_sha(p) or "", snap))
+                self.infra("infra-tracker", arm_name, step, run, "the tracker snapshot", track)
             elif k == "scan":                            # review S-2: before the step counts as done
                 if (found := secrets.scan_step(p, step, self.lits)):
                     self.fault(secrets.SecretFound("secret-in-evidence", found), arm_name, step, run,

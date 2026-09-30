@@ -232,6 +232,7 @@ def finalise(ctx, *, attempts, extra_turns, hidden, quality, pin, sha_before, st
              f"**Model pin:** {'ok' if pin.ok else 'VIOLATION'} ({pin.assistant_messages} transcript assistant messages)",
              f"**Cost (estimate):** arm ${c['arm']['usd']:.2f} · PO ${c['po']['usd']:.2f} · harness ${c['harness']['usd']:.2f}",
              f"**Time:** {run['wall_seconds']} s wall, {run['owner_wait_seconds']} s waiting on the owner",
+             f"**Quality:** not run ({quality['skipped']})" if quality.get("skipped") else
              f"**Quality:** mypy {mypy_summary_text(quality)} · "
              f"ruff {ruff_summary_text(quality)} (arm {ruff_arm_summary_text(quality)}) · "
              f"mutation score {mutation_summary_text(mut)}",

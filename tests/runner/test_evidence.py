@@ -215,3 +215,11 @@ def test_finalise_summary_shows_ruff_reasons_not_none(tmp_path, monkeypatch):
     text = summary.read_text()
     assert "ruff crashed" in text and "ruff None" not in text
     assert "arm no config" in text and "arm None" not in text
+
+
+def test_finalise_summary_says_quality_was_not_run_and_why(tmp_path, monkeypatch):      # final fix batch A1
+    ctx, kw = finalise_inputs(tmp_path, monkeypatch)
+    kw["quality"] = {"skipped": "arm-no-main"}
+    evidence.finalise(ctx, **kw)
+    md = (ctx.out / "summary.md").read_text()
+    assert "**Quality:** not run (arm-no-main)" in md and "crashed" not in md

@@ -53,6 +53,7 @@ PYTEST_PINS = ["-q", "-o", "verbosity_assertions=auto", "-o", "truncation_limit_
                "-o", "truncation_limit_chars=640"]
 PYTEST_FORBIDDEN = ("-v", "--verbos", "-o", "--override-ini", "-c", "--config-file", "-p", "-q", "--quiet")
 MAIN = "refs/heads/main"
+NO_MAIN = "arm-no-main"      # the arm left no committed main: its step attempt is all-failed (final fix batch A1)
 HARNESS_UID, ARM_UID = 1000, 1001
 HARNESS_CAPS = ("SETUID", "SETGID", "KILL", "DAC_OVERRIDE", "SETPCAP", "SYS_RESOURCE")
 # SETPCAP: drop the arm's bounding set; SYS_RESOURCE: pin the arm's oom_score_adj at 1000 so it cannot lower it.
@@ -67,6 +68,15 @@ ARM_OOM_SCORE_ADJ = 1000
 PER_COMMAND = 60       # driver.Cli's per-command timeout: the whole-run budget scales with it
 MARGIN = 300
 OUTER_GRACE = 120      # docker's own timeout: after the in-container one, so it only fires if the container hangs
+
+
+class HiddenError(RuntimeError):
+    """A tester container could not do the harness's own part (collection, reading the image's accounts): a
+    harness fault (`infra-hidden`, final fix batch A1), never the arm's result and never a runner bug."""
+
+
+class NoMain(RuntimeError):
+    """The arm repo has no `refs/heads/main`: the arm's own outcome (all-failed), never a harness fault."""
 
 
 # --- pure ----------------------------------------------------------------------------------------------------
@@ -324,7 +334,8 @@ class Summary:
     install_failed: bool = False
     scoreable: bool = True
     # None (scored normally) | "arm-timeout" | "arm-resource" (both all-failed, scoreable) | "arm-output: <member,
-    # size, marker found>" (results overflow corroborated by the Cli marker; all-failed, scoreable) |
+    # size, marker found>" (results overflow corroborated by the Cli marker; all-failed, scoreable) | "arm-no-main"
+    # (no committed main, `all_failed`) |
     # "harness-fault: <why>" (not scoreable, no outcomes)
     attribution: str | None = None
     skipped: int = 0
@@ -400,7 +411,7 @@ def _image_accounts(image: str) -> tuple[str, str]:
         r = subprocess.run(["docker", "run", "--rm", "--network", "none", "--label", "bakeoff.accounts=1", image,
                             "cat", f], capture_output=True, text=True, timeout=120)
         if r.returncode != 0:
-            raise RuntimeError(f"cannot read {f} from {image}: {r.stderr[:300]}")
+            raise HiddenError(f"cannot read {f} from {image}: {r.stderr[:300]}")
         return r.stdout
     return cat("/etc/passwd"), cat("/etc/group")
 
@@ -505,7 +516,7 @@ def prepare(p: Paths, sha: str, label: str, out_dir: Path, with_quality: bool = 
     main = gitops.main_sha(p)
     commit = main if sha == MAIN else sha
     if commit is None:
-        raise RuntimeError(f"{p.pass_}/{p.arm}: the arm repo has no {MAIN}")
+        raise NoMain(f"{p.pass_}/{p.arm}: the arm repo has no {MAIN}")
     if require_main and commit != main:
         raise ValueError(f"{p.pass_}/{p.arm}: hidden tests run on {MAIN} ({main}), not {sha}")
     base = p.scratch / label
@@ -542,7 +553,7 @@ def _collect(p: Paths, step: int, first_only: bool) -> list[str]:
     args = ["tests/hidden", "--step", str(step), "--collect-only"] + (["--first-step-only", str(step)] if first_only else [])
     res, err = _pytest(p, None, args)
     if err or res is None or res.get("exit", b"").strip() != b"0":
-        raise RuntimeError(f"hidden collection failed: {err or (res or {}).get('pytest.log', b'')[-800:]!r}")
+        raise HiddenError(f"hidden collection failed: {err or (res or {}).get('pytest.log', b'')[-800:]!r}")
     return parse_collected(res["pytest.log"].decode(errors="replace"))
 
 
@@ -593,6 +604,18 @@ def classify_flaky(p: Paths, step: int, nodeid: str) -> str:
                    reference=True) != "passed":
             return "harness"
     return "arm"
+
+
+def all_failed(p: Paths, step: int, out_dir: Path, why: str) -> Summary:
+    """The step's suite scored all-failed without running arm code (final fix batch A1: an arm with no committed
+    `main`; A5: an attempt failed for an arm violation). Collection runs with no arm code, as in `run`; `why` is
+    the attribution recorded in `hidden/summary.json`."""
+    collected = _collect(p, step, first_only=False)
+    new_at_step = _collect(p, step, first_only=True)
+    s = summarise(step, {t: "failed" for t in collected}, new_at_step, [], [], -1, collected=collected,
+                  attribution=why)
+    s.write(out_dir)
+    return s
 
 
 def run(p: Paths, copy: Path, step: int, out_dir: Path, install_failed: bool = False) -> Summary:

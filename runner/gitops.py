@@ -53,6 +53,11 @@ def spec(p: Paths, argv: list[str], *, write: bool = False, env: dict | None = N
                    stdin=False, limits=config.load_pins().limits, proxy=False)
 
 
+class GitError(RuntimeError):
+    """git's own output did not have the shape the runner reads (final fix batch A1): a git fault, recorded by
+    stepflow as a harness fault of the phase it happened in, never a runner bug."""
+
+
 class InterruptedRestore(RuntimeError):
     """An arm's base holds a leftover `.aside-*`/`.restore-*` from an interrupted `repo.restore`: its home or
     work may be the wrong tree, or missing. Nothing may touch it until `repo.recover(p)` has run."""
@@ -285,10 +290,10 @@ def _nul_fields(r: subprocess.CompletedProcess, n: int) -> list[list[str]]:
     if not raw:
         return []
     if not raw.endswith("\0"):
-        raise RuntimeError("git log -z: output does not end with a record NUL")
+        raise GitError("git log -z: output does not end with a record NUL")
     parts = raw[:-1].split("\0")
     if len(parts) % n:
-        raise RuntimeError(f"git log: {len(parts)} NUL-separated fields is not a multiple of {n}")
+        raise GitError(f"git log: {len(parts)} NUL-separated fields is not a multiple of {n}")
     return [parts[i:i + n] for i in range(0, len(parts), n)]
 
 
@@ -593,7 +598,7 @@ def staged_blobs() -> list[tuple[str, str, bytes]]:
         nl = out.index(b"\n", i)
         head = out[i:nl].split(b" ")
         if len(head) != 3 or head[0].decode() != sha:
-            raise RuntimeError(f"git cat-file --batch: unexpected header for {path}")
+            raise GitError(f"git cat-file --batch: unexpected header for {path}")
         size = int(head[2])
         blobs.append((path, mode, out[nl + 1:nl + 1 + size]))
         i = nl + 1 + size + 1
