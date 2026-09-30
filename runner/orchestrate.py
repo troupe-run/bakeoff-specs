@@ -689,11 +689,12 @@ class _Run:
             rnd["owner"] = {k: {"ok": v[0], "note": v[1], "seconds": v[2]} for k, v in got.items()}
             rec["rounds"].append(rnd)
             if all(v[0] for v in got.values()):
-                rec["confirmed"] += [x["text"] for x in new]
-                rec.update(status="confirmed", brief_sha_after=_sha(brief), edited=_sha(brief) != rec["brief_sha_before"])
-                _jw(f, rec); _md(f, rec)
-                if rec["edited"]:
+                edited = _sha(brief) != rec["brief_sha_before"]
+                if edited:                   # m-9: committed BEFORE the check is recorded, so a crash re-runs it
                     po.commit_brief(brief, self.pass_, "consistency-check", step)
+                rec["confirmed"] += [x["text"] for x in new]
+                rec.update(status="confirmed", brief_sha_after=_sha(brief), edited=edited, committed=edited)
+                _jw(f, rec); _md(f, rec)     # atomic (fsutil)
                 self.log("consistency-confirmed", step=step, groups=len(groups), edited=rec["edited"])
                 return None
             rec["status"] = "editing"; _jw(f, rec); _md(f, rec)

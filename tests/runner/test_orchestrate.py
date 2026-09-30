@@ -994,3 +994,48 @@ def test_the_canary_start_copies_the_po_brief_once_and_never_overwrites_it(tmp_s
     b.write_text(b.read_text() + "\n- **Q:** grown **A:** kept\n")
     orchestrate.run_arm("canary", "control", None, None, stop_after=1)
     assert "grown" in b.read_text()
+
+
+# ---- m-9: the consistency check is crash-safe: the brief edit is committed before the check is recorded -------------
+
+def _conflict_then_edit(env):
+    env.escalate[("openspec", 1)] = (Q, "Yes.")
+    env.escalate[("control", 1)] = (Q, "No.")
+    answers = iter([False, True, True])
+    env.owner.items_answer = lambda items: {i: (next(answers, True), "", 0.0) for i, _ in items}
+
+    def edit(text):
+        if "Edit" in text:
+            env.brief.write_text(env.brief.read_text().replace("**A:** No.", "**A:** Yes."))
+        return True
+    env.owner.confirm_answer = edit
+
+
+def test_the_brief_edit_is_committed_before_the_check_is_recorded_as_confirmed(fake_orch, monkeypatch):
+    from runner import gitops
+    _conflict_then_edit(fake_orch)
+    f = paths.RESULTS / "pass1" / "consistency" / "step-01.json"
+    at_commit = []
+    monkeypatch.setattr(gitops, "commit_harness_file",
+                        lambda path, msg: at_commit.append((json.loads(f.read_text()) if f.exists() else {}).get("status")))
+    real(fake_orch)
+    assert at_commit and at_commit[0] != "confirmed"
+    assert json.loads(f.read_text())["committed"] is True
+
+
+def test_a_crash_while_committing_the_edit_leaves_the_check_unconfirmed_so_it_runs_again(fake_orch, monkeypatch):
+    from runner import gitops
+    _conflict_then_edit(fake_orch)
+    calls = []
+
+    def commit(path, msg):
+        calls.append(msg)
+        if len(calls) == 1:
+            raise KeyboardInterrupt("killed while committing")
+    monkeypatch.setattr(gitops, "commit_harness_file", commit)
+    with pytest.raises(KeyboardInterrupt):
+        real(fake_orch)
+    f = paths.RESULTS / "pass1" / "consistency" / "step-01.json"
+    assert json.loads(f.read_text())["status"] != "confirmed"
+    real(fake_orch)
+    assert len(calls) == 2 and json.loads(f.read_text())["status"] == "confirmed"
