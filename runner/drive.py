@@ -24,6 +24,10 @@ What ends an attempt:
             At step 5 the PO classifies every arm message BEFORE a CR-B pre-emption in this mode (fix round
             1, L-3), so a gate on the pre-empted turn still stops the run; CR-B timing is unchanged from N.b.
             `AttemptResult.discovery` says which, at which turn
+  arm-resource
+            (A5, owner resource rule) an arm turn's session container was killed for memory (OOMKilled or exit
+            137) a second time in the attempt; the first is re-run once in the same session. The caller records
+            it (`faults.record_resource`) and scores the attempt all-failed — never a harness fault
   parked    an owner prompt (gate or escalation) returned `owner.Park` — recorded, never treated as an answer,
             never appended to the brief (Task 15 ruling 1); the caller parks the arm and moves on. With several
             escalations in one message, answers the owner gave BEFORE the park are real answers and stay
@@ -96,7 +100,7 @@ class StepCtx:
 
 @dataclass
 class AttemptResult:
-    outcome: Literal["done", "stalled", "timeout", "parked", "discovery-stop"]
+    outcome: Literal["done", "stalled", "timeout", "parked", "discovery-stop", "arm-resource"]
     session_id: str | None
     turns: list = field(default_factory=list)
     po_results: list = field(default_factory=list)
@@ -107,6 +111,7 @@ class AttemptResult:
     park: owner_mod.Park | None = None
     discovery: dict | None = None        # discovery-stop: {"why": "approval"|"code", "turn": n[, "paths": [...]]}
     code_check: dict | None = None       # discovery mode: {"status": "ok"|"unavailable", "reasons": [{turn, reason}]}
+    resource_events: list = field(default_factory=list)   # A5: arm turns whose container was killed for memory
 
 
 class _Parked(Exception):
@@ -300,6 +305,18 @@ def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult,
                 res.session_id = None
                 res.interventions.append(f"fresh-session:{lead}")
             r = send(message, res.session_id)
+            if r.oom_killed:                             # A5: the arm's own workload, never infra-no_result
+                res.resource_events.append({"turn": len(res.turns), "exit": r.exit_code})
+                if len(res.resource_events) >= 2:        # re-run once, then the attempt is all-failed
+                    res.outcome = "arm-resource"
+                    return res
+                res.interventions.append("resource-rerun")
+                sid = r.session_id or res.session_id
+                r = send(MESSAGES["resume_after_error"] if sid else message, sid)
+                if r.oom_killed:
+                    res.resource_events.append({"turn": len(res.turns), "exit": r.exit_code})
+                    res.outcome = "arm-resource"
+                    return res
             backoff = list(pins.limits.transient_backoff)
             while (why := _transient(r)) and backoff:                                    # review C-4
                 res.retries += 1

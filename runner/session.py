@@ -134,6 +134,8 @@ class TurnResult:
     stderr_path: Path | None = None
     permission_denials: list[dict] = field(default_factory=list)
     credential_files: list[str] = field(default_factory=list)
+    oom_killed: bool = False        # A5: the session container was killed for memory (OOMKilled, or exit 137)
+    exit_code: int | None = None    # the session container's exit code, when it exited by itself
 
 
 def stem(t: Turn) -> str:
@@ -188,15 +190,16 @@ def _spec(t: Turn) -> RunSpec:
     return RunSpec(name=container_name(t), image=t.image, label=f"bakeoff.run={t.pass_}/{t.arm}",
                    network=t.network, mounts=[*t.mounts, Mount(msg_file, "/inbox/msg.md", True)], env=t.env,
                    workdir=t.workdir, cmd=["bk-claude-turn", "/inbox/msg.md"], stdin=True,
-                   limits=load_pins().limits, proxy=t.proxy)
+                   limits=load_pins().limits, proxy=t.proxy, remove=False)   # inspected, then removed (A5)
 
 
-async def _run(t: Turn, cred: Credential, stream_path: Path, stderr_path: Path, timeout_s: float) -> tuple[Parsed, str]:
+async def _run(t: Turn, cred: Credential, stream_path: Path, stderr_path: Path,
+               timeout_s: float) -> tuple[Parsed, str, tuple[bool, int | None]]:
     spec = _spec(t)
     proc = await asyncio.create_subprocess_exec(*docker.run_argv(spec), stdin=asyncio.subprocess.PIPE,
                                                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
                                                 start_new_session=True, limit=STREAM_LINE_LIMIT)
-    parsed, how, err_task = Parsed(), "exited", None
+    parsed, how, err_task, state = Parsed(), "exited", None, (False, None)
     try:
         with gzip.open(stream_path, "wt") as out, gzip.open(stderr_path, "wb") as err:
             async def drain_stderr():                              # review C-9: never blocks the container
@@ -234,6 +237,10 @@ async def _run(t: Turn, cred: Credential, stream_path: Path, stderr_path: Path, 
                 await asyncio.to_thread(docker.stop, spec.name)
                 proc.kill()
                 await proc.wait()
+        if how == "exited":                                        # A5: why did it end? (kept until now)
+            oom, code = await asyncio.to_thread(docker.exit_state, spec.name)
+            code = code if code is not None else proc.returncode
+            state = (oom or code == 137, code)
     finally:
         if err_task is not None and not err_task.done():
             err_task.cancel()
@@ -242,7 +249,8 @@ async def _run(t: Turn, cred: Credential, stream_path: Path, stderr_path: Path, 
             await asyncio.to_thread(docker.stop, spec.name)
             proc.kill()
             await proc.wait()
-    return parsed, how
+        await asyncio.to_thread(docker.remove, spec.name)          # not --rm: removed once inspected
+    return parsed, how, state
 
 
 def run_turn(t: Turn, cred: Credential, out_dir: Path, timeout_s: float) -> TurnResult:
@@ -258,11 +266,11 @@ def run_turn(t: Turn, cred: Credential, out_dir: Path, timeout_s: float) -> Turn
     stream = turns / f"{stem(t)}.stream.jsonl.gz"
     stderr = turns / f"{stem(t)}.stderr.gz"
     wall0, start = time.time(), time.monotonic()
-    parsed, how = asyncio.run(_run(t, cred, stream, stderr, timeout_s))
+    parsed, how, (oom, code) = asyncio.run(_run(t, cred, stream, stderr, timeout_s))
     wall = time.monotonic() - start
     outcome: Outcome = "timeout" if how == "timeout" else parsed.outcome
     r = parsed.result or {}
     return TurnResult(parsed.session_id, outcome, parsed.final_text, parsed.init, parsed.result, parsed.cost_usd,
                       r.get("usage", {}), r.get("modelUsage", {}), wall, parsed.retries,
                       stream, stderr, list(r.get("permission_denials") or []),
-                      credential_files(t.config_dir, cred, wall0 - 1))
+                      credential_files(t.config_dir, cred, wall0 - 1), oom, code)

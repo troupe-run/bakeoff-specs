@@ -455,10 +455,7 @@ class _Run:
                 self._aside(p, step, run, "interrupted")
             e["restore_needed"] = False
             _save(p, prog)
-        for c in checklist.verify(p, config.load_arm(arm_name), "step"):
-            if c.status == "fail":
-                self.fault(HarnessFault("setup-drift", c.id, c.detail), arm_name, step, run,
-                           "the arm's setup drifted (checklists/verify, step mode); the owner fixes it")
+        self._verify(arm_name, step, run, e, prog, restorable=not tests_pending)
         out = p.step(step) / "a" if run == "a" else p.step(step)
         out.mkdir(parents=True, exist_ok=True)
         ctx = self.ctx(arm_name, step, out, e, run)
@@ -519,6 +516,39 @@ class _Run:
         _save(p, prog)
         self.log("run-ended", arm=arm_name, step=step, run=run, status=outcome.status)
         return self.post(arm_name, step, run, prog)
+
+    def _violation(self, p: Paths, rec: dict) -> None:
+        """An arm violation found here (final fix batch A5): `results/<pass>/<arm>/arm-violations.jsonl`, never
+        the harness ledger."""
+        p.results.mkdir(parents=True, exist_ok=True)
+        with open(p.results / stepflow.VIOLATIONS, "a") as fh:
+            fh.write(json.dumps({"at": _now(), **rec}) + "\n")
+        self.log("arm-violation", arm=p.arm, **{k: v for k, v in rec.items() if k != "files"})
+
+    def _verify(self, arm_name: str, step: int, run: str, e: dict, prog: dict, restorable: bool) -> None:
+        """The step-mode verify before a run. A failing check the ARM can cause (stepflow.ARM_DRIFT) is an arm
+        violation (A5): the step's existing snapshot is restored to repair it and the verify runs again; if that
+        cannot repair it, the run stops for the owner — never a ledger entry. Any other failure is `setup-drift`."""
+        p, arm = Paths(self.pass_, arm_name), config.load_arm(arm_name)
+        for again in (False, True):
+            fails = [c for c in checklist.verify(p, arm, "step") if c.status == "fail"]
+            other = [c for c in fails if c.id not in stepflow.ARM_DRIFT]
+            if other:
+                c = other[0]
+                self.fault(HarnessFault("setup-drift", c.id, c.detail), arm_name, step, run,
+                           "the arm's setup drifted (checklists/verify, step mode); the owner fixes it")
+            drift = [c for c in fails if c.id in stepflow.ARM_DRIFT]
+            if not drift:
+                return
+            for c in drift:
+                self._violation(p, {"step": step, "run": run, "kind": "setup-drift", "check": c.id,
+                                    "detail": c.detail[:300], "before_run": True, "after_restore": again})
+            if again or not restorable or not e.get("started") or e.get("snapshot") is None:
+                raise NotReady(f"{arm_name} step {step}{run}: the arm's own setup drift "
+                               f"({', '.join(c.id for c in drift)}) is still there"
+                               f"{' after restoring the step snapshot' if again else ''}; an arm violation, not a "
+                               f"harness fault — repair it (`runner shell`), then run again")
+            repo.restore(p, e["snapshot"])
 
     def _stepflow_finished(self, p: Paths, step: int, run: str) -> str | None:
         """The crash window between `stepflow.run_step` returning and progress being saved (fix round 1): stepflow's
@@ -584,6 +614,9 @@ class _Run:
                             ctx, tracker.IssueRef(**e["issue"]), e["sha_before"], gitops.main_sha(p) or "", snap))
                 self.infra("infra-tracker", arm_name, step, run, "the tracker snapshot", track)
             elif k == "scan":                            # review S-2: before the step counts as done
+                own = secrets.own_pat_values(p, ctx.arm)                          # A5: the arm's own token
+                if (files := secrets.redact([p.step(step)], own)):
+                    self._violation(p, {"step": step, "run": run, "kind": "own-token-in-evidence", "files": files[:50]})
                 if (found := secrets.scan_step(p, step, self.lits)):
                     self.fault(secrets.SecretFound("secret-in-evidence", found), arm_name, step, run,
                                f"secret in {p.step(step)} ({secrets.describe(found)}); scrub it, then run again")

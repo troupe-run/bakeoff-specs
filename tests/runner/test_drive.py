@@ -722,3 +722,28 @@ def test_an_nb_attempt_keeps_the_normal_repo_and_pat(rig, monkeypatch):
     script["po"] = [D("step_done")]
     drive.run_attempt(ctx, 1, "go")
     assert envs[0]["GH_REPO"] == "troupe-run/bakeoff-specs-control-pass1"
+
+
+# ---- final fix batch A5: an arm session killed for memory is the owner's resource rule, not infra-no_result ----------
+
+def OOM(sid="s1"):
+    r = TR("", outcome="no_result", sid=sid)
+    r.oom_killed, r.exit_code = True, 137
+    return r
+
+
+def test_an_oom_killed_turn_is_rerun_once_in_the_same_session(rig):
+    sent, script, _, ctx = rig
+    script["arm"] = [OOM(), TR("done"), TR("archived")]
+    script["po"] = [D("step_done"), D("step_done")]
+    r = drive.run_attempt(ctx, 1, "go")
+    assert r.outcome == "done" and len(r.resource_events) == 1
+    assert msgs(sent)[:2] == ["go", handoff.MESSAGES["resume_after_error"]] and sent[1][1] == "s1"
+    assert not [i for i in r.interventions if i.startswith("transient-retry")]
+
+
+def test_an_oom_killed_turn_twice_ends_the_attempt_as_arm_resource_never_a_harness_fault(rig):
+    sent, script, _, ctx = rig
+    script["arm"] = [OOM(), OOM()]
+    r = drive.run_attempt(ctx, 1, "go")
+    assert r.outcome == "arm-resource" and len(r.resource_events) == 2 and len(sent) == 2

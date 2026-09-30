@@ -54,7 +54,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from runner import checklist, docker, drive, evidence, faults, gitops, handedit, handoff, hidden, preflight, quality, \
-    repo, transcripts
+    repo, secrets, transcripts
 from runner.faults import HarnessFault
 from runner.owner import Park
 
@@ -347,8 +347,57 @@ def _phase(ctx, kind: str, attempt: int, what: str, fn, pend: dict | None = None
                                f"on the same commit (no new arm session)?")
 
 
+# ---- arm-caused events (final fix batch A5, owner): arm violations, never the harness ledger, never a halt ---------
+ARM_DRIFT = ("common.git-identity", "common.origin", "common.no-foreign-plugins")   # checks the arm itself can break
+VIOLATIONS = "arm-violations.jsonl"
+
+
+def _arm_checks(ctx, attempt: int, run: str) -> list[dict]:
+    """After the arm's attempt: setup drift the arm caused (git identity or origin changed, a plugin installed —
+    the step-mode verify's ARM_DRIFT checks) and the arm's OWN GitHub token in the evidence (redacted in place,
+    in the step's evidence and the arm's transcripts). Each is an arm violation in `arm-violations.jsonl`; the
+    caller fails the attempt. Other step checks stay orchestrate's (`setup-drift` harness faults)."""
+    found = [{"kind": "setup-drift", "check": c.id, "detail": c.detail[:300]}
+             for c in checklist.verify(ctx.paths, ctx.arm, "step") if c.status == "fail" and c.id in ARM_DRIFT]
+    files = secrets.redact([ctx.out, ctx.paths.config_dir], secrets.own_pat_values(ctx.paths, ctx.arm))
+    if files:
+        found.append({"kind": "own-token-in-evidence", "files": files[:50]})
+    with open(ctx.out / VIOLATIONS, "a") as fh:
+        for v in found:
+            fh.write(json.dumps({"at": time.time(), "run": run, "attempt": attempt, **v}) + "\n")
+    return found
+
+
+def _resource(ctx, attempt: int, ar) -> None:
+    """A5: an arm session killed for memory is the owner's resource rule (`hidden`'s, for the session): re-run once
+    by drive, then all-failed; every occurrence counts towards `suite_resource_arms`."""
+    ev = [[f"session-oom:turn {e.get('turn')} exit {e.get('exit')}"] for e in ar.resource_events]
+    if ar.outcome == "arm-resource":
+        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "repeat", ev)
+    elif ev:
+        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "once", ev)
+
+
+def _failed_why(pend: dict) -> str | None:
+    if pend["ar"]["outcome"] == "arm-resource":
+        return "arm-resource: session"
+    kinds = sorted({v["kind"] for v in pend.get("violations") or []})
+    return f"arm-violation: {','.join(kinds)}" if kinds else None
+
+
 def _tests(ctx, attempt: int, pend: dict):
     """wait for idle, then the hidden tests on the attempt's commit. Returns (summary, prep or None)."""
+    if "violations" not in pend:
+        pend["violations"] = _phase(ctx, "infra-verify", attempt, "check the arm's setup and evidence",
+                                    lambda: _arm_checks(ctx, attempt, "b"), pend)
+        _save_pending(ctx, pend)
+    if (why := _failed_why(pend)):                     # A5: the attempt fails, all-failed, arm code never run
+        s = _phase(ctx, "infra-hidden", attempt, "score the attempt",
+                   lambda: hidden.all_failed(ctx.paths, ctx.step, ctx.out, why), pend)
+        if ctx.acceptance is not None:
+            s.acceptance = {"outcome": "failed", "detail": why, "regressions": [], "progress": False}
+            s.write(ctx.out)
+        return s, None
     wait_idle(ctx)
     if "sha" not in pend:
         pend["sha"] = _phase(ctx, "infra-hidden", attempt, "read the arm's main",
@@ -388,7 +437,7 @@ def _parked(ctx, attempt: int, ar, pk: Park, arm_attempts: int, run: str, phase:
     return StepOutcome("parked", arm_attempts, park=pk, run=run, attempt_outcome=ar.outcome if ar else None)
 
 
-def _discovered(ctx, attempt: int, ar, pin, t0: float, extra: dict) -> StepOutcome:
+def _discovered(ctx, attempt: int, ar, pin, t0: float, extra: dict, violations: list | None = None) -> StepOutcome:
     out = ctx.out
     po_turns = [t for r in ar.po_results for t in r.turns]
     (out / "cost.json").write_text(json.dumps(evidence.cost(
@@ -399,7 +448,8 @@ def _discovered(ctx, attempt: int, ar, pin, t0: float, extra: dict) -> StepOutco
          "discovery": ar.discovery, "code_check": ar.code_check, "attempt": attempt,
          "harness_restores": attempt - 1, "breach": ar.breach,
          "exchanges": ar.exchanges, "interventions": ar.interventions, "model_pin_ok": pin.ok,
-         "sha_before": ctx.sha_before, "started": t0, "ended": time.time(),
+         "sha_before": ctx.sha_before, "started": t0, "ended": time.time(), "arm_violations": violations or [],
+         "resource_events": ar.resource_events,
          "harness_faults": [e for e in faults.for_step(ctx.pass_, ctx.arm.name, ctx.step) if e.get("run") == "a"]},
         indent=2))
     _restore(ctx)                                    # N.b starts from the same pre-step commit (design §5)
@@ -465,8 +515,13 @@ def run_step(ctx, first_message: str, extra: dict | None = None, run: str = "b")
                 return _parked(ctx, attempt, ar, owner_park, arm_attempts, run)
             if ar.outcome == "parked":                                                          # ruling 1
                 return _parked(ctx, attempt, ar, ar.park, arm_attempts, run)
+            _resource(ctx, attempt, ar)
             if run == "a":
-                return _discovered(ctx, attempt, ar, pin, t0, extra)
+                try:
+                    violations = _arm_checks(ctx, attempt, "a")
+                except INFRA_ERRORS as e:              # N.a is unscored: record that the check could not run
+                    violations = [{"kind": "check-unavailable", "detail": repr(e)[:300]}]
+                return _discovered(ctx, attempt, ar, pin, t0, extra, violations)
             arm_attempts += 1
             since_restore.append(attempt)
             pend = {"attempt": attempt, "arm_attempts": arm_attempts, "since_restore": since_restore, "t0": t0,
@@ -479,12 +534,19 @@ def run_step(ctx, first_message: str, extra: dict | None = None, run: str = "b")
             if x.park is None:
                 raise                                    # the owner declined: the tests resume when run again
             return _parked(ctx, attempt, ar, x.park, arm_attempts, run, phase="tests")
+        drift = any(v.get("kind") == "setup-drift" for v in pend.get("violations") or [])
         pend = None
+        if drift:                                        # A5: the arm's drift is repaired by the step's restore
+            _restore(ctx)
         if got is not None:
             return got
         park(ctx.out, attempt, "no-progress")
         history.append(ar)
         message, resume = handoff.MESSAGES["no_progress"], ar.session_id
+        if drift:                                        # a fresh session from the restored tree
+            if ctx.on_restore is not None:
+                first_message = ctx.on_restore() or first_message
+            message, resume = first_message, None
 
 
 def _acceptance(ctx, prep, s: hidden.Summary, install_failed: bool) -> dict:

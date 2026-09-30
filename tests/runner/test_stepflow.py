@@ -767,3 +767,83 @@ def test_without_a_substitute_step6_progress_is_the_standard_rule(fake_step):
     fake_step.ctx.step = 6
     fake_step.progress = [3]
     assert stepflow.run_step(fake_step.ctx, "go").status == "done"
+
+
+# ---- final fix batch A5: arm-caused events are arm violations and never halt ------------------------------------------
+
+def _violations(fs):
+    f = fs.ctx.out / "arm-violations.jsonl"
+    return [json.loads(l) for l in f.read_text().splitlines()] if f.exists() else []
+
+
+@pytest.mark.parametrize("check", ["common.git-identity", "common.origin", "common.no-foreign-plugins"])
+def test_setup_drift_caused_by_the_arm_fails_the_attempt_and_is_repaired_by_restore(fake_step, check):
+    fake_step.progress = [3, 3]
+    fake_step.drift_on = {1: [check]}
+    out = stepflow.run_step(fake_step.ctx, "go")
+    [v] = _violations(fake_step)
+    assert (v["kind"], v["check"], v["attempt"], v["run"]) == ("setup-drift", check, 1, "b")
+    assert faults.for_step("dry9", "control", 2) == [] and not faults.halted("dry9")      # never the ledger
+    assert fake_step.all_failed == ["arm-violation: setup-drift"] and fake_step.restored == [2]
+    assert fake_step.messages == ["go", "go"] and fake_step.hidden_runs == 1          # a fresh session after the repair
+    assert out.status == "done" and out.attempts == 2
+
+
+def test_the_same_drift_twice_never_halts(fake_step):
+    fake_step.progress = [0, 0, 0]
+    fake_step.drift_on = {1: ["common.origin"], 2: ["common.origin"], 3: ["common.origin"]}
+    out = stepflow.run_step(fake_step.ctx, "go")
+    assert out.status == "stopped" and out.attempts == 3 and len(_violations(fake_step)) == 3
+    assert faults.entries("dry9") == []
+
+
+def test_a_drift_on_the_last_attempt_is_still_repaired(fake_step):
+    fake_step.progress = [0, 0, 0]
+    fake_step.drift_on = {3: ["common.origin"]}
+    out = stepflow.run_step(fake_step.ctx, "go")
+    assert out.status == "stopped" and fake_step.restored == [2]
+
+
+def test_other_step_checks_are_not_arm_violations_here(fake_step):
+    fake_step.progress = [3]
+    fake_step.drift_on = {1: ["common.clean-green"]}
+    out = stepflow.run_step(fake_step.ctx, "go")
+    assert _violations(fake_step) == [] and out.status == "done"
+
+
+def test_the_arm_printing_its_own_token_is_redacted_and_fails_the_attempt_without_halting(fake_step):
+    fake_step.progress = [3, 3]
+    fake_step.leak_on = {1}
+    out = stepflow.run_step(fake_step.ctx, "go")
+    [v] = _violations(fake_step)
+    assert v["kind"] == "own-token-in-evidence" and v["files"] and faults.entries("dry9") == []
+    assert fake_step.all_failed == ["arm-violation: own-token-in-evidence"]
+    assert fake_step.messages == ["go", fake_step.no_progress] and fake_step.restored == []
+    assert out.status == "done" and out.attempts == 2
+
+
+def test_an_oom_killed_session_twice_is_arm_resource_all_failed_and_counted(fake_step):
+    fake_step.progress = [3, 3]
+    fake_step.oom_on = {1: 2}
+    out = stepflow.run_step(fake_step.ctx, "go")
+    [r] = faults.resource_records("dry9", 2)
+    assert (r["exhausted"], r["attempt"]) == ("repeat", 1) and faults.entries("dry9") == []
+    assert fake_step.all_failed == ["arm-resource: session"] and out.attempts == 2 and out.status == "done"
+
+
+def test_an_oom_killed_session_that_recovered_is_recorded_once(fake_step):
+    fake_step.progress = [3]
+    fake_step.oom_on = {1: 1}
+    stepflow.run_step(fake_step.ctx, "go")
+    [r] = faults.resource_records("dry9", 2)
+    assert r["exhausted"] == "once" and fake_step.all_failed == []
+
+
+def test_run_a_records_arm_violations_and_resource_and_still_discovers(fake_step):
+    _run_a(fake_step)
+    fake_step.outcome_on = {1: "discovery-stop"}
+    fake_step.drift_on = {1: ["common.origin"]}
+    fake_step.leak_on = {1}
+    out = stepflow.run_step(fake_step.ctx, "go", run="a")
+    assert {v["kind"] for v in _violations(fake_step)} == {"setup-drift", "own-token-in-evidence"}
+    assert out.status == "discovered" and faults.entries("dry9") == []

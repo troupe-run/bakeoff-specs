@@ -683,6 +683,74 @@ def scan_arm(p: paths.Paths, literals: Iterable[str] = (), *, snapshots: bool = 
     return found
 
 
+# ---- the arm's own token (final fix batch A5) --------------------------------------------------------------------
+# An arm printing its OWN GitHub token (`gh auth token`, `cat ~/.config/gh/hosts.yml`) is an arm violation, not a
+# harness fault: the token is redacted from the evidence (and the arm's transcripts), the attempt fails, and nothing
+# halts. A leak of the OAuth token, or of any credential the arm was not given, stays `secret-in-evidence`.
+REDACTION = "[REDACTED:arm-own-token]"
+REDACT_MAX_BYTES = 256 << 20
+
+
+def own_pat_values(p: paths.Paths, arm) -> list[str]:
+    """The tokens this arm was GIVEN: the PAT values in its home's PAT files, and (real arms) its keychain PAT and
+    N.a discovery PAT. A dry arm never touches the keychain."""
+    from runner import config
+    out = dict.fromkeys(home_pat_values(p.home))
+    if not arm.dry and arm.tracker == "github":
+        if config.github_slug(p.pass_, arm.name) and (v := keychain_pat(p.pass_, arm.name)):
+            out[v] = None
+        if config.github_disc_slug(p.pass_, arm.name) and (v := keychain_disc_pat(p.pass_, arm.name)):
+            out[v] = None
+    return [v for v in out if len(v) >= MIN_HOME_NEEDLE]
+
+
+def _redact_bytes(data: bytes, needles: list[bytes]) -> bytes:
+    for n in needles:
+        data = data.replace(n, REDACTION.encode())
+    return data
+
+
+def redact(roots: Iterable[Path], values: Iterable[str]) -> list[str]:
+    """Replace every value (and its base64/hex encodings) in the plain and gzip files under `roots` with
+    REDACTION, in place (a temp file, then `os.replace`); links are never followed. Returns the files changed.
+    Anything it cannot rewrite is left for the scan that follows, which fails closed."""
+    needles = sorted({n for v in values if len(v) >= MIN_HOME_NEEDLE for n in _derived(v.encode())},
+                     key=len, reverse=True)
+    changed: list[str] = []
+    if not needles:
+        return changed
+    for root in roots:
+        if os.path.islink(root) or not Path(root).is_dir():
+            continue
+        real = os.path.realpath(root)
+        for f in transcripts.safe_files(Path(root), "*"):
+            got = transcripts.open_regular(f, real, max_bytes=REDACT_MAX_BYTES, allow_hardlinked=False)
+            if isinstance(got, str):
+                continue
+            try:
+                raw = b"".join(transcripts.read_chunks(got, REDACT_MAX_BYTES))
+            except transcripts.Oversize:
+                continue
+            finally:
+                os.close(got)
+            gz = raw[:2] == _GZIP
+            import gzip as _gz
+            try:
+                data = _gz.decompress(raw) if gz else raw          # every member
+            except (OSError, EOFError, zlib.error):
+                continue
+            new = _redact_bytes(data, needles)
+            if new == data:
+                continue
+            tmp = f.with_name(f".{f.name}.redact-{uuid.uuid4().hex[:8]}")
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(_gz.compress(new) if gz else new)
+            os.replace(tmp, f)
+            changed.append(str(f))
+    return changed
+
+
 # ---- literal values ---------------------------------------------------------------------------------------------
 _OAUTH_TOKEN = re.compile(rb"oauth_token:\s*['\"]?([^\s'\"]+)")
 

@@ -157,6 +157,10 @@ def _qa(out: Path) -> list[dict]:
     return [json.loads(l) for l in f.read_text().splitlines()] if f.exists() else []
 
 
+def _lines(f: Path) -> list[dict]:
+    return [json.loads(l) for l in f.read_text().splitlines() if l.strip()] if f.exists() else []
+
+
 def _gates(out: Path) -> list[dict]:
     f = out / "owner-gates.jsonl"
     return [json.loads(l) for l in f.read_text().splitlines()] if f.exists() else []
@@ -215,7 +219,8 @@ def finalise(ctx, *, attempts, extra_turns, hidden, quality, pin, sha_before, st
            "research_attempts": research_attempts(arm_turns, egress_log),
            "model_overrides": json.loads(overrides_f.read_text())["declared"] if overrides_f.exists() else [],
            "pass2_addendum": ctx.pass_ == "pass2" and shas["po_brief_at_handoff"] != sha256_file(ctx.brief_path),
-           "harness_faults": fault_entries}
+           "harness_faults": fault_entries,
+           "arm_violations": _lines(out / "arm-violations.jsonl")}
     (out / "run.json").write_text(json.dumps(run, indent=2))
 
     missed = possible_missed_approvals(qa)
@@ -244,6 +249,9 @@ def finalise(ctx, *, attempts, extra_turns, hidden, quality, pin, sha_before, st
         ([f"- {g['owner_action']}: {str(g['final_reply'])[:200]}" for g in gates] or ["- none"])
     lines += ["", "## Possible missed approvals (PO said `continue`, the arm used approval wording)"]
     lines += [f"- turn {q['n']}: {q['arm_message'][:200]!r}" for q in missed] or ["- none"]
+    lines += ["", "## Arm violations (A5: the attempt failed; never a harness fault)"]
+    lines += [f"- attempt {v.get('attempt')} ({v.get('run')}): {v.get('kind')} {v.get('check') or ''}".rstrip()
+              for v in run["arm_violations"]] or ["- none"]
     lines += ["", "## Egress refusals"] + ([f"- {h}" for h in run["research_attempts"]["refused_hosts"]] or ["- none"])
     if run["model_overrides"]:
         lines += ["", "## Method's own model choices (overridden, OD2)"] + \

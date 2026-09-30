@@ -84,3 +84,35 @@ def test_running_lists_only_containers_carrying_the_label():
         assert actual_name == name
     finally:
         subprocess.run(["docker", "rm", "-f", name], capture_output=True)
+
+
+# ---- final fix batch A5: a kept container's exit state (the arm session's OOM detection) -------------------------
+
+def _kept(name: str, cmd: list[str], memory: str = "512m") -> RunSpec:
+    import dataclasses
+    pins = config.load_pins()
+    return RunSpec(name=name, image=pins.images["tester"], label="bakeoff.run=t/exit-state", network="none",
+                   mounts=[], env={}, workdir="/", cmd=cmd, stdin=False,
+                   limits=dataclasses.replace(pins.limits, memory=memory), proxy=False, remove=False)
+
+
+def test_exit_state_reads_an_oom_kill_of_a_kept_container_and_remove_removes_it():
+    name = "bk-exit-state-oom"
+    try:
+        r = docker.run(_kept(name, ["python3", "-c", "b = bytearray(1 << 30); print(len(b))"], memory="64m"),
+                       timeout=120)
+        oom, code = docker.exit_state(name)
+        assert oom is True and code == 137 and r.returncode == 137
+    finally:
+        docker.remove(name)
+    assert _container_names(f"^{name}$") == []
+
+
+def test_exit_state_of_a_normal_exit_is_not_oom():
+    name = "bk-exit-state-ok"
+    try:
+        docker.run(_kept(name, ["true"]), timeout=120)
+        assert docker.exit_state(name) == (False, 0)
+    finally:
+        docker.remove(name)
+    assert docker.exit_state(name) == (False, None)                    # gone: nothing to read

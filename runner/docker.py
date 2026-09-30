@@ -32,6 +32,7 @@ class RunSpec:
                                      # 1001 alone)
     cap_add: tuple[str, ...] = ()    # added back after --cap-drop ALL
     tmpfs: tuple[str, ...] = ()      # extra tmpfs mounts ("path:opts"), beside the fixed /tmp
+    remove: bool = True              # --rm; an arm session container is kept until its exit state is read (A5)
 
 _recorder: list[RunSpec] | None = None
 
@@ -58,7 +59,7 @@ def run_argv(s: RunSpec) -> list[str]:
             raise FileNotFoundError(f"mount source does not exist: {m.host} -> {m.ctr}")
     if _recorder is not None:
         _recorder.append(s)
-    a = ["docker", "run", "--rm", "--init", "--name", s.name, "--label", s.label,
+    a = ["docker", "run", *(["--rm"] if s.remove else []), "--init", "--name", s.name, "--label", s.label,
          "--read-only", "--tmpfs", "/tmp:rw,exec,nosuid,nodev,size=4g", *[x for t in s.tmpfs for x in ("--tmpfs", t)],
          "--user", s.user, "--cap-drop", "ALL", *[x for c in s.cap_add for x in ("--cap-add", c)],
          "--security-opt", "no-new-privileges",
@@ -92,6 +93,20 @@ def stop(name: str, grace: int = 30) -> None:
     """Graceful then hard; never relies on killing the local docker CLI (spike B Q5)."""
     subprocess.run(stop_argv(name, grace), capture_output=True)
     subprocess.run(rm_argv(name), capture_output=True)
+
+def exit_state(name: str) -> tuple[bool, int | None]:
+    """(OOMKilled, exit code) of an exited container kept for inspection (A5); (False, None) if it cannot be read."""
+    r = subprocess.run(["docker", "inspect", "-f", "{{.State.OOMKilled}} {{.State.ExitCode}}", name],
+                       capture_output=True, text=True, timeout=60)
+    parts = r.stdout.split()
+    if r.returncode != 0 or len(parts) != 2 or not parts[1].lstrip("-").isdigit():
+        return False, None
+    return parts[0] == "true", int(parts[1])
+
+
+def remove(name: str) -> None:
+    subprocess.run(rm_argv(name), capture_output=True)
+
 
 def run(spec: RunSpec, input: bytes | None = None, timeout: float | None = None,
         stop_grace: int = 30) -> subprocess.CompletedProcess:

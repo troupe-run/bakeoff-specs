@@ -739,3 +739,44 @@ def test_the_per_step_scan_covers_the_step_dir_too(tmp_state):
     p = Paths("dry3", "control")
     p.step(2).mkdir(parents=True); (p.step(2) / "run.json").write_text(ANT)
     assert [f.kind for f in secrets.scan_step(p, 2)] == ["anthropic-token"]
+
+
+# ---- final fix batch A5: the arm printing its OWN GitHub token is redacted, not a harness fault -----------------------
+
+OWN = "github_pat_" + "Q" * 60
+
+
+def test_redact_removes_the_arms_own_token_and_its_encodings_from_plain_and_gzip_files(tmp_path):
+    import base64
+    (tmp_path / "turns").mkdir()
+    (tmp_path / "questions.jsonl").write_text(f'{{"arm_message": "my token is {OWN}"}}\n')
+    (tmp_path / "turns" / "arm-a1-001.stream.jsonl.gz").write_bytes(gzip.compress(f"x {OWN} y\n".encode()))
+    (tmp_path / "b64.txt").write_text(base64.b64encode(f"x-access-token:{OWN}".encode()).decode())
+    (tmp_path / "clean.txt").write_text("nothing here")
+    changed = secrets.redact([tmp_path], [OWN])
+    assert sorted(changed) == sorted(str(tmp_path / f) for f in ("questions.jsonl", "turns/arm-a1-001.stream.jsonl.gz",
+                                                               "b64.txt"))
+    assert secrets.scan_tree(tmp_path, [OWN]) == []
+    assert secrets.REDACTION in gzip.decompress((tmp_path / "turns" / "arm-a1-001.stream.jsonl.gz").read_bytes()).decode()
+
+
+def test_redact_never_follows_a_link(tmp_path):
+    outside = tmp_path / "outside.txt"; outside.write_text(OWN)
+    root = tmp_path / "root"; root.mkdir(); (root / "l").symlink_to(outside)
+    assert secrets.redact([root], [OWN]) == [] and outside.read_text() == OWN
+
+
+def test_the_arms_own_pat_values_are_its_home_files_and_its_keychain_items(tmp_state, monkeypatch):
+    from runner import config
+    from runner.paths import Paths
+    p = Paths("pass1", "control")
+    (p.home / ".config" / "gh").mkdir(parents=True)
+    (p.home / ".config" / "gh" / "hosts.yml").write_text(f"github.com:\n    oauth_token: {OWN}\n")
+    monkeypatch.setattr(credentials, "github_pat", lambda pass_, arm: "kc-" + "1" * 30)
+    monkeypatch.setattr(credentials, "github_disc_pat", lambda pass_, arm: "kd-" + "2" * 30)
+    secrets.clear_keychain_cache()
+    got = secrets.own_pat_values(p, config.load_arm("control"))
+    secrets.clear_keychain_cache()
+    assert set(got) == {OWN, "kc-" + "1" * 30, "kd-" + "2" * 30}
+    monkeypatch.setattr(credentials, "github_pat", lambda *a: pytest.fail("keychain read for a dry arm"))
+    assert secrets.own_pat_values(Paths("dry1", "dryrun"), config.load_arm("dryrun")) == []

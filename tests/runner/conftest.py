@@ -144,6 +144,10 @@ class FakeStep:
         self.later_sent_at_call: list[int] = []
         self.finalised: list[dict] = []
         self.quality_runs = 0
+        self.drift_on: dict = {}                # attempt call -> failing step-mode check ids after it (A5)
+        self.leak_on: set = set()               # attempt calls whose evidence carries the arm's own token (A5)
+        self.oom_on: dict = {}                  # attempt call -> number of OOM-killed turns in it (A5)
+        self.all_failed: list[str] = []         # hidden.all_failed attributions
 
 
 @_pytest.fixture
@@ -168,8 +172,10 @@ def fake_step(tmp_path, monkeypatch, tmp_state):
             f.attempt_result = AttemptResult("stalled", "s1", turns=[turn(fs.calls)])
             raise f
         outcome = fs.outcome_on.get(fs.calls, "done")
-        return AttemptResult(outcome, "s1", turns=[turn(fs.calls)], breach=fs.breach_on.get(fs.calls),
-                             park=fs.park_on.get(fs.calls))
+        ooms = fs.oom_on.get(fs.calls, 0)
+        return AttemptResult("arm-resource" if ooms >= 2 else outcome, "s1", turns=[turn(fs.calls)],
+                             breach=fs.breach_on.get(fs.calls), park=fs.park_on.get(fs.calls),
+                             resource_events=[{"turn": 1, "exit": 137}] * ooms)
 
     def verify_pin(files, streams, pins, **k):
         fs.verify_calls.append({"files": files, "streams": list(streams), **k})
@@ -210,6 +216,17 @@ def fake_step(tmp_path, monkeypatch, tmp_state):
     monkeypatch.setattr(stepflow.repo, "restore", lambda p, s: fs.restored.append(s))
     monkeypatch.setattr(stepflow, "park", lambda out, k, label: fs.parked.append((k, label)))
     monkeypatch.setattr(stepflow, "wait_idle", lambda ctx: None)
+    from runner.checklist import Check
+    monkeypatch.setattr(stepflow.checklist, "verify", lambda p, arm, mode: [
+        Check(i, False, f"{i} changed") for i in fs.drift_on.get(fs.calls, [])])
+    monkeypatch.setattr(stepflow.secrets, "own_pat_values", lambda p, arm: ["github_pat_" + "Q" * 60])
+    monkeypatch.setattr(stepflow.secrets, "redact", lambda roots, values: [str(ctx.out / "questions.jsonl")]
+                        if fs.calls in fs.leak_on else [])
+
+    def all_failed(p, step, out, why):
+        fs.all_failed.append(why)
+        return stepflow.hidden.summarise(step, {"m::t": "failed"}, ["m::t"], [], [], -1, attribution=why)
+    monkeypatch.setattr(stepflow.hidden, "all_failed", all_failed)
     return fs
 
 
@@ -263,6 +280,7 @@ class FakeOrch:
         self.owner = OrchOwner()
         self.issues = 0
         self.turns_written: dict = {}
+        self.verify_now: list = []            # failing step-mode check ids the next verify reports (A5)
         self.bug_runs: list = []              # (arm, step, ctx.run, issue number) for every create_bug
 
 
@@ -281,10 +299,16 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
     monkeypatch.setattr(paths, "brief_path", lambda pass_: brief)
     monkeypatch.setattr(gitops, "commit_harness_file", lambda path, msg: env.calls.append(("commit-brief", msg)))
     monkeypatch.setattr(checklist, "require_clean_green", lambda p: None)
-    monkeypatch.setattr(checklist, "verify", lambda p, arm, mode: [])
+    from runner.checklist import Check
+
+    def verify(p, arm, mode):
+        return [Check(i, False, f"{i} drifted") for i in (env.verify_now or [])]
+    monkeypatch.setattr(checklist, "verify", verify)
     monkeypatch.setattr(preflight, "check_images", lambda arm, p: None)
     monkeypatch.setattr(docker, "sweep", lambda *a, **k: env.calls.append(("sweep",)) or {})
     monkeypatch.setattr(secrets, "literals", lambda *a, **k: ["dry-run-dummy-token"])
+    env.own = []                                # the arm's own token values (A5); never the keychain in tests
+    monkeypatch.setattr(secrets, "own_pat_values", lambda p, arm: list(env.own))
 
     def scan_step(p, n, lits=()):
         left = env.findings.get((p.arm, n), 0)

@@ -889,3 +889,64 @@ def test_a_precheck_of_an_arm_with_no_main_delivers_the_planted_bug(fake_orch, m
     pc = json.loads((Paths("dry7", "dryrun").step(6) / "precheck" / "precheck.json").read_text())
     assert pc["planted_already_passes"] is False and pc["attribution"] == hidden.NO_MAIN
     assert ("create_bug", "dryrun", None) in fake_orch.calls
+
+
+# ---- final fix batch A5: arm drift and the arm's own token are arm violations here too --------------------------------
+
+def _viol(p):
+    f = p.results / "arm-violations.jsonl"
+    return [json.loads(l) for l in f.read_text().splitlines()] if f.exists() else []
+
+
+def test_arm_drift_found_before_a_run_is_an_arm_violation_repaired_by_the_steps_restore(fake_orch):
+    calls = {"n": 0}
+    from runner import checklist
+    from runner.checklist import Check
+
+    def verify(p, arm, mode):
+        calls["n"] += 1
+        return [Check("common.origin", False, "origin changed")] if calls["n"] == 3 else []
+    import pytest as _p
+    mp = _p.MonkeyPatch(); mp.setattr(checklist, "verify", verify)
+    try:
+        assert dry(fake_orch) == {"completed": True}
+    finally:
+        mp.undo()
+    p = Paths("dry7", "dryrun")
+    [v] = _viol(p)
+    assert (v["kind"], v["check"]) == ("setup-drift", "common.origin") and faults.entries("dry7") == []
+    assert ("restore", "dryrun", 2) in fake_orch.calls
+
+
+def test_non_arm_drift_before_a_run_is_still_a_harness_fault(fake_orch):
+    fake_orch.verify_now = ["common.clean-green"]
+    with pytest.raises(orchestrate.NotReady, match="setup-drift"):
+        dry(fake_orch)
+    assert faults.entries("dry7")[0]["kind"] == "setup-drift"
+
+
+def test_arm_drift_that_a_restore_cannot_repair_stops_for_the_owner_without_the_ledger(fake_orch):
+    fake_orch.verify_now = ["common.git-identity"]
+    with pytest.raises(orchestrate.NotReady, match="arm"):
+        dry(fake_orch)
+    assert faults.entries("dry7") == [] and _viol(Paths("dry7", "dryrun"))
+
+
+def test_the_arms_own_token_found_by_the_step_scan_is_redacted_not_a_fault(fake_orch, monkeypatch):
+    from runner import secrets
+    own = "github_pat_" + "Q" * 60
+    fake_orch.own = [own]
+
+    def run_step(ctx, first, extra=None, run="b"):
+        (ctx.out).mkdir(parents=True, exist_ok=True)
+        (ctx.out / "egress.log").write_text(f"CONNECT api.github.com {own}\n")
+        return real_run_step(ctx, first, extra, run)
+    from runner import stepflow as sf
+    real_run_step = sf.run_step
+    monkeypatch.setattr(sf, "run_step", run_step)
+    monkeypatch.setattr(secrets, "scan_step", lambda p, n, lits=(): secrets.scan_tree(p.step(n), [own]))
+    assert dry(fake_orch) == {"completed": True}
+    assert faults.entries("dry7") == []
+    p = Paths("dry7", "dryrun")
+    assert own not in (p.step(3) / "egress.log").read_text()
+    assert [v["kind"] for v in _viol(p)][:1] == ["own-token-in-evidence"]

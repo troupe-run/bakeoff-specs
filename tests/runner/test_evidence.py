@@ -223,3 +223,13 @@ def test_finalise_summary_says_quality_was_not_run_and_why(tmp_path, monkeypatch
     evidence.finalise(ctx, **kw)
     md = (ctx.out / "summary.md").read_text()
     assert "**Quality:** not run (arm-no-main)" in md and "crashed" not in md
+
+
+def test_finalise_lists_the_arm_violations_of_the_step(tmp_path, monkeypatch):             # final fix batch A5
+    ctx, kw = finalise_inputs(tmp_path, monkeypatch)
+    (ctx.out / "arm-violations.jsonl").write_text(json.dumps(
+        {"run": "b", "attempt": 1, "kind": "setup-drift", "check": "common.origin", "detail": "x"}) + "\n")
+    evidence.finalise(ctx, **kw)
+    run = json.loads((ctx.out / "run.json").read_text())
+    assert run["arm_violations"][0]["check"] == "common.origin"
+    assert "## Arm violations" in (ctx.out / "summary.md").read_text() and "common.origin" in (ctx.out / "summary.md").read_text()
