@@ -733,10 +733,16 @@ class _Run:
                 edited = _sha(brief) != rec["brief_sha_before"]
                 # m-9: committed BEFORE the check is recorded, so a crash re-runs it; only when the brief really
                 # differs from HEAD (follow-up 5: a crash just after the commit resumes without an empty commit)
-                if edited and self.pass_ in REAL_PASSES and gitops.harness_differs_from_head(brief):
-                    po.commit_brief(brief, self.pass_, "consistency-check", step)
+                committed_now = committed = False
+                if edited and self.pass_ in REAL_PASSES:
+                    if gitops.harness_differs_from_head(brief):
+                        po.commit_brief(brief, self.pass_, "consistency-check", step)
+                        committed_now = True
+                    committed = True          # the edit is in HEAD: now, or by a run that crashed after committing
                 rec["confirmed"] += [x["text"] for x in new]
-                rec.update(status="confirmed", brief_sha_after=_sha(brief), edited=edited, committed=edited)
+                # round 2, item 9: what really happened (a dry pass's brief is a copy and is never committed)
+                rec.update(status="confirmed", brief_sha_after=_sha(brief), edited=edited, committed=committed,
+                           committed_now=committed_now)
                 _jw(f, rec); _md(f, rec)     # atomic (fsutil)
                 self.log("consistency-confirmed", step=step, groups=len(groups), edited=rec["edited"])
                 return None

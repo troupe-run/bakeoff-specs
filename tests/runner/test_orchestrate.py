@@ -1122,3 +1122,35 @@ def test_a_substitute_whose_acceptance_run_died_is_refused_and_says_so(fake_orch
     assert ("create_bug", "dryrun", "A") not in fake_orch.calls and ("create_bug", "dryrun", None) in fake_orch.calls
     msg = fake_orch.owner.substitutes[1]
     assert "died (arm-resource)" in msg and "did not fail" not in msg
+
+
+# ---- round 2, item 9: the consistency record says what really happened to the brief edit ------------------------------
+
+def test_a_dry_pass_records_its_brief_edit_as_not_committed(fake_orch):
+    fake_orch.make("dryrun", pass_="dry7")
+    _conflict_then_edit(fake_orch)                       # the owner's edit on the "Edit …" prompt
+    fake_orch.escalate = {("dryrun", 1): (Q, "No.")}
+    answers = iter([False, True])
+    fake_orch.owner.items_answer = lambda items: {i: (next(answers, True), "", 0.0) for i, _ in items}
+    orchestrate.run_arm("dry7", "dryrun", fake_orch.cred, fake_orch.owner)
+    rec = json.loads((paths.RESULTS / "dry7" / "consistency" / "step-01.json").read_text())
+    assert rec["edited"] is True and rec["committed"] is False and rec["committed_now"] is False
+
+
+def test_a_real_pass_records_a_commit_made_now_and_one_made_before_a_crash(fake_orch, monkeypatch):
+    from runner import gitops
+    _conflict_then_edit(fake_orch)
+    head = {"text": fake_orch.brief.read_text()}
+    commits = []
+
+    def commit(path, msg):
+        commits.append(msg); head["text"] = path.read_text()
+        if len(commits) == 1:
+            raise KeyboardInterrupt("killed right after the commit")
+    monkeypatch.setattr(gitops, "commit_harness_file", commit)
+    monkeypatch.setattr(gitops, "harness_differs_from_head", lambda path: path.read_text() != head["text"])
+    with pytest.raises(KeyboardInterrupt):
+        real(fake_orch)
+    real(fake_orch)
+    rec = json.loads((paths.RESULTS / "pass1" / "consistency" / "step-01.json").read_text())
+    assert (rec["committed"], rec["committed_now"]) == (True, False)      # in HEAD, by the run that crashed
