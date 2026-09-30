@@ -458,6 +458,14 @@ def _install_github_pat(p: Paths, arm: config.Arm, pass_: str) -> bool:
     return True
 
 
+def record_arm_violation(p: Paths, rec: dict) -> None:
+    """An arm violation found by the harness's own file handling (follow-up 9): `results/<pass>/<arm>/
+    arm-violations.jsonl`, the file orchestrate writes its arm violations to — never the harness ledger."""
+    p.results.mkdir(parents=True, exist_ok=True)
+    with open(p.results / "arm-violations.jsonl", "a") as fh:
+        fh.write(json.dumps({"at": datetime.now(timezone.utc).isoformat(timespec="seconds"), **rec}) + "\n")
+
+
 def require_disc_pat(pass_: str, arm: config.Arm) -> str:
     """The arm's N.a discovery PAT, or `NotReady` (follow-up 6): a missing or timed-out keychain item is the owner's
     setup to finish (`runner github-plan <pass>`), never a runner crash. The value is never in the message."""
@@ -472,20 +480,29 @@ def install_disc_pat(p: Paths, arm: config.Arm, pass_: str) -> bool:
     """N.a (final fix batch A3): the arm's discovery-repo PAT (keychain `bakeoff-gh-<pass>-disc-<arm>`) replaces the
     normal one in `home/.config/gh/hosts.yml` (and `home/.bk-mcp.json` for an MCP arm), created 0600 in one step.
     The home comes back from the pre-step snapshot at the end of N.a, so N.b has the normal PAT again. The files are
-    arm-writable: a link, or a non-regular file, is refused rather than written through."""
+    arm-writable: a link is removed and replaced by the real file (an arm violation, follow-up 9), never written
+    through; anything that is neither a link nor the expected type is refused (`NotReady`)."""
     if config.github_disc_slug(pass_, arm.name) is None:
         return False
     targets = [p.home / ".config" / "gh" / "hosts.yml"]
     mcp = MCP_DIR / f"{arm.name}.json"
     if mcp.exists():
         targets.append(p.home / ".bk-mcp.json")
+    pat = require_disc_pat(pass_, arm)                   # before anything is touched
+    # follow-up 9: a link the arm left is never written through — it is removed (never followed), the real
+    # directory or file is written, and it is an arm violation; anything else of the wrong type is still refused
     for d in (p.home / ".config", p.home / ".config" / "gh"):
-        if os.path.lexists(d) and (os.path.islink(d) or not d.is_dir()):
-            raise NotReady(f"{d} is a link or not a directory: the arm changed its home; not writing the N.a PAT")
+        if os.path.islink(d):
+            os.unlink(d)
+            record_arm_violation(p, {"kind": "link-in-home", "path": str(d), "repaired": "unlinked, real dir made"})
+        elif os.path.lexists(d) and not stat.S_ISDIR(os.lstat(d).st_mode):
+            raise NotReady(f"{d} is not a directory (nor a link): the arm changed its home; not writing the N.a PAT")
     for f in targets:
-        if os.path.lexists(f) and (os.path.islink(f) or not stat.S_ISREG(os.lstat(f).st_mode)):
-            raise NotReady(f"{f} is a link or not a regular file: the arm changed its home; not writing the N.a PAT")
-    pat = require_disc_pat(pass_, arm)
+        if os.path.islink(f):
+            os.unlink(f)
+            record_arm_violation(p, {"kind": "link-in-home", "path": str(f), "repaired": "unlinked, real file written"})
+        elif os.path.lexists(f) and not stat.S_ISREG(os.lstat(f).st_mode):
+            raise NotReady(f"{f} is not a regular file (nor a link): the arm changed its home; not writing the N.a PAT")
     gh = p.home / ".config" / "gh"
     for d in (gh.parent, gh):
         d.mkdir(mode=0o700, exist_ok=True)

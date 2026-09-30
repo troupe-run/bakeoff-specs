@@ -53,14 +53,42 @@ def test_the_discovery_pat_replaces_the_normal_one_in_the_arm_home(tmp_state, mo
     assert oct(f.stat().st_mode & 0o777) == "0o600"
 
 
-def test_the_discovery_pat_refuses_a_link_the_arm_left_in_its_home(tmp_state, monkeypatch, tmp_path):
-    p = _home_with_pat(tmp_state)
+def _viol(p):
+    f = p.results / "arm-violations.jsonl"
+    return [json.loads(l) for l in f.read_text().splitlines()] if f.exists() else []
+
+
+def test_a_link_the_arm_left_for_hosts_yml_is_replaced_by_the_real_file_and_recorded(tmp_state, monkeypatch, tmp_path):
+    p = _home_with_pat(tmp_state)                                                           # follow-up 9
     f = p.home / ".config" / "gh" / "hosts.yml"
     f.unlink(); target = tmp_path / "elsewhere"; target.write_text("x"); f.symlink_to(target)
     monkeypatch.setattr(credentials, "github_disc_pat", lambda pass_, arm: "github_pat_" + "D" * 40)
-    with pytest.raises(checklist.NotReady, match="link"):
+    assert checklist.install_disc_pat(p, config.load_arm("control"), "pass1") is True
+    assert target.read_text() == "x"                                                      # never written through
+    assert not f.is_symlink() and "D" * 40 in f.read_text() and oct(f.stat().st_mode & 0o777) == "0o600"
+    [v] = _viol(p)
+    assert v["kind"] == "link-in-home" and v["path"].endswith(".config/gh/hosts.yml")
+
+
+def test_a_linked_gh_config_dir_is_replaced_by_a_real_directory(tmp_state, monkeypatch, tmp_path):
+    p = _home_with_pat(tmp_state)
+    import shutil
+    shutil.rmtree(p.home / ".config" / "gh")
+    elsewhere = tmp_path / "gh-elsewhere"; elsewhere.mkdir()
+    (p.home / ".config" / "gh").symlink_to(elsewhere)
+    monkeypatch.setattr(credentials, "github_disc_pat", lambda pass_, arm: "github_pat_" + "D" * 40)
+    checklist.install_disc_pat(p, config.load_arm("control"), "pass1")
+    assert (p.home / ".config" / "gh").is_dir() and not (p.home / ".config" / "gh").is_symlink()
+    assert list(elsewhere.iterdir()) == [] and _viol(p)
+
+
+def test_something_that_is_neither_a_link_nor_a_regular_file_is_still_refused(tmp_state, monkeypatch):
+    p = _home_with_pat(tmp_state)
+    f = p.home / ".config" / "gh" / "hosts.yml"
+    f.unlink(); os.mkfifo(f)
+    monkeypatch.setattr(credentials, "github_disc_pat", lambda pass_, arm: "github_pat_" + "D" * 40)
+    with pytest.raises(checklist.NotReady, match="not a regular file"):
         checklist.install_disc_pat(p, config.load_arm("control"), "pass1")
-    assert target.read_text() == "x"
 
 
 def test_no_discovery_pat_for_a_beads_or_dry_arm(tmp_state, monkeypatch):

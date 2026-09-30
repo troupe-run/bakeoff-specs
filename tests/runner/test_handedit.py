@@ -525,19 +525,40 @@ def test_a_symlinked_git_dir_stops_before_the_teammate_runs(ctx, monkeypatch, tm
 
 # ---- final fix batch m-2: the teammate's .git mount source is checked on the host first -------------------------------
 
-@pytest.mark.parametrize("make", ["symlink", "file"])
-def test_a_git_dir_the_arm_replaced_is_refused_before_any_mount_is_built(ctx, monkeypatch, tmp_path, make):
+def _clear_git(p):
     import shutil
-    p = ctx.paths
-    w = World(monkeypatch, ctx)
     g = p.repo / ".git"
     if g.is_dir() and not g.is_symlink():
         shutil.rmtree(g)
     g.parent.mkdir(parents=True, exist_ok=True)
-    if make == "symlink":
-        target = tmp_path / "elsewhere"; target.mkdir(); g.symlink_to(target)
-    else:
-        g.write_text("gitdir: ../../../../tests\n")
+    return g
+
+
+def test_a_git_file_the_arm_left_is_refused_before_any_mount_is_built(ctx, monkeypatch):
+    w = World(monkeypatch, ctx)
+    _clear_git(ctx.paths).write_text("gitdir: ../../../../tests\n")
     with pytest.raises(checklist.NotReady, match=".git"):
         handedit._teammate_turn(ctx, 1, ctx.out / "hand-edit", [])
     assert w.turn_specs == []
+
+
+def test_a_git_link_out_of_the_repo_is_refused(ctx, monkeypatch, tmp_path):
+    w = World(monkeypatch, ctx)
+    target = tmp_path / "elsewhere"; target.mkdir()
+    _clear_git(ctx.paths).symlink_to(target)
+    with pytest.raises(checklist.NotReady, match=".git"):
+        handedit._teammate_turn(ctx, 1, ctx.out / "hand-edit", [])
+    assert w.turn_specs == [] and target.is_dir()
+
+
+def test_a_git_link_to_a_directory_in_the_repo_is_replaced_by_the_real_directory(ctx, monkeypatch):   # follow-up 9
+    import json as _j
+    p = ctx.paths
+    w = World(monkeypatch, ctx)
+    g = _clear_git(p)
+    real = p.repo / ".gitdir-moved"; real.mkdir(); (real / "HEAD").write_text("ref: refs/heads/main\n")
+    g.symlink_to(".gitdir-moved")
+    assert handedit._git_dir(p) == g
+    assert g.is_dir() and not g.is_symlink() and (g / "HEAD").exists() and not real.exists()
+    [v] = [_j.loads(l) for l in (p.results / "arm-violations.jsonl").read_text().splitlines()]
+    assert v["kind"] == "link-in-repo" and v["path"].endswith(".git")

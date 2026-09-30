@@ -270,15 +270,29 @@ def _fresh(home: Path) -> None:
 def _git_dir(p: Paths) -> Path:
     """m-2: the teammate's `.git` bind-mount source is arm-writable work: Docker resolves it on the HOST, so a link
     (or a `gitdir:` file) left by the arm could mount any host directory. lstat it: only a real directory directly
-    in the repo is mounted; anything else stops for the owner (not a harness fault: the arm made it)."""
+    in the repo is mounted. Follow-up 9: a link to a real directory INSIDE the repo is repaired — the link is removed
+    (never followed) and that directory moved into place as `.git` — and recorded as an arm violation; a link out of
+    the repo, a file, or anything else stops for the owner (not a harness fault: the arm made it)."""
+    import stat as _stat
     g = p.repo / ".git"
     try:
         st = os.lstat(g)
     except FileNotFoundError:
         raise checklist.NotReady(f"{g} is missing: nothing to mount for the teammate") from None
-    import stat as _stat
-    if not _stat.S_ISDIR(st.st_mode) or os.path.realpath(g) != os.path.join(os.path.realpath(p.repo), ".git"):
-        raise checklist.NotReady(f"{g} is not a real directory in the repo (a link or a file the arm left); "
+    repo_real = os.path.realpath(p.repo)
+    if _stat.S_ISLNK(st.st_mode):
+        target = os.path.realpath(g)
+        inside = os.path.dirname(target) == repo_real and not os.path.islink(target)
+        if not (inside and os.path.isdir(target)):
+            raise checklist.NotReady(f"{g} is a link out of the repo (or to no directory); refusing to mount or "
+                                     f"follow it for the teammate — repair it (`runner shell`)")
+        os.unlink(g)
+        os.rename(target, g)
+        checklist.record_arm_violation(p, {"kind": "link-in-repo", "path": str(g), "step": 2,
+                                           "repaired": f"unlinked, {os.path.basename(target)} moved to .git"})
+        st = os.lstat(g)
+    if not _stat.S_ISDIR(st.st_mode) or os.path.realpath(g) != os.path.join(repo_real, ".git"):
+        raise checklist.NotReady(f"{g} is not a real directory in the repo (a file the arm left); "
                                  f"refusing to mount it for the teammate — repair it (`runner shell`)")
     return g
 
