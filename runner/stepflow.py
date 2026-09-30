@@ -417,7 +417,7 @@ def _tests(ctx, attempt: int, pend: dict):
         install_failed = not prep.prep.get("hidden", {}).get("ok", False)
         s = _settle(ctx, prep, _hidden_run(ctx, prep, attempt, install_failed), attempt, install_failed)
         if ctx.acceptance is not None:
-            s.acceptance = _acceptance(ctx, prep, s, install_failed)
+            s.acceptance = _acceptance(ctx, prep, s, install_failed, attempt)
             s.write(ctx.out)
         return s, prep
     summary, prep = _phase(ctx, "infra-hidden", attempt, "run the hidden tests", go, pend)
@@ -549,7 +549,7 @@ def run_step(ctx, first_message: str, extra: dict | None = None, run: str = "b")
             message, resume = first_message, None
 
 
-def _acceptance(ctx, prep, s: hidden.Summary, install_failed: bool) -> dict:
+def _acceptance(ctx, prep, s: hidden.Summary, install_failed: bool, attempt: int = 0) -> dict:
     """A4 (owner): a substitute step-6 bug is scored by the owner's acceptance test on this commit, beside the
     standard suite. Progress = the test passes AND no hidden test that passed on the step-5 commit (the precheck
     baseline) fails now. The test reaches the tester like the hidden suite (streamed into the uid-1000 0700
@@ -562,6 +562,11 @@ def _acceptance(ctx, prep, s: hidden.Summary, install_failed: bool) -> dict:
     r = hidden.run_acceptance(ctx.paths, prep.hidden_copy, ctx.step, ctx.acceptance["body"])
     if r.get("outcome") == "error":
         raise HarnessFault("infra-hidden", "acceptance test did not complete", str(r.get("detail"))[:500])
+    ev = r.get("resource_evidence") or []                  # follow-up 4: the same resource rule as the suite
+    if r.get("attribution") == "arm-resource":
+        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "repeat", ev, run="b")
+    elif len(ev) >= 2:
+        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "once", ev, run="b")
     return {**r, "regressions": regressions, "progress": r.get("outcome") == "passed" and not regressions}
 
 

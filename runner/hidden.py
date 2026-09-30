@@ -674,22 +674,39 @@ def run_acceptance(p: Paths, copy: Path, step: int, body: str) -> dict:
     """A step-6 substitute bug's acceptance test (owner, preflight B5; Task 23 ruling): the owner's pytest file body,
     streamed in the harness bundle as `SUBSTITUTE_TEST` (it may use the hidden suite's `cli`/`tmp_theatre` fixtures
     and needs `@pytest.mark.steps(...)`), run against the arm's copy like any hidden test. `outcome` is "failed"
-    (what delivery needs: the bug is real on this commit), "passed", or "error" (nothing collected, or the run did
-    not complete) with the detail."""
-    res, err = _pytest(p, copy, [SUBSTITUTE_TEST, "--step", str(step)], timeout=run_timeout(20),
-                       extra={SUBSTITUTE_TEST: body.encode()})
-    if err or res is None:
-        return {"outcome": "error", "detail": err or "no results"}
-    code = res.get("exit", b"").strip().decode(errors="replace")
-    try:
-        tests = parse_junit(res["junit.xml"]) if "junit.xml" in res else {}
-    except ET.ParseError as e:
-        return {"outcome": "error", "detail": f"unparseable junit ({e})", "exit": code}
-    if not tests:
-        log = res.get("pytest.log", b"")[-1500:].decode(errors="replace")
-        return {"outcome": "error", "detail": f"pytest exit {code}, no test ran: {log}", "exit": code}
-    return {"outcome": "failed" if any(o == "failed" for o in tests.values()) else "passed", "tests": tests,
-            "exit": code}
+    (what delivery needs: the bug is real on this commit), "passed", or "error" with the detail.
+    A run that did not complete is assessed like the main suite (follow-up 4): an abnormal death with resource
+    evidence is `arm-resource` (re-run once; a repeat fails it), over budget `arm-timeout`, corroborated results
+    overflow `arm-output` — each the arm's "failed", with `attribution`; anything else is "error" (the harness's).
+    `resource_evidence` has one list per run."""
+    evidence: list[list[str]] = []
+    for _ in (1, 2):
+        res, err = _pytest(p, copy, [SUBSTITUTE_TEST, "--step", str(step)], timeout=run_timeout(20),
+                           extra={SUBSTITUTE_TEST: body.encode()})
+        if err or res is None:
+            if err and err.startswith("arm-output"):
+                return {"outcome": "failed", "attribution": err, "resource_evidence": evidence}
+            return {"outcome": "error", "detail": err or "no results",
+                    "attribution": err if err and err.startswith("harness-fault") else f"harness-fault: {err}",
+                    "resource_evidence": evidence}
+        evidence.append(resource_evidence(res))
+        code = res.get("exit", b"").strip().decode(errors="replace")
+        try:
+            tests = parse_junit(res["junit.xml"]) if "junit.xml" in res else {}
+        except ET.ParseError as e:
+            return {"outcome": "error", "detail": f"unparseable junit ({e})", "exit": code,
+                    "attribution": "harness-fault: unparseable junit", "resource_evidence": evidence}
+        if tests:
+            return {"outcome": "failed" if any(o == "failed" for o in tests.values()) else "passed", "tests": tests,
+                    "exit": code, "resource_evidence": evidence}
+        _, _, attribution = assess([], res)
+        if attribution is None or attribution.startswith("harness-fault"):
+            log = res.get("pytest.log", b"")[-1500:].decode(errors="replace")
+            return {"outcome": "error", "detail": f"pytest exit {code}, no test ran: {log}", "exit": code,
+                    "attribution": attribution or "harness-fault: no test ran", "resource_evidence": evidence}
+        if attribution != "arm-resource":            # arm-timeout, arm-output: the arm's, at once
+            return {"outcome": "failed", "attribution": attribution, "exit": code, "resource_evidence": evidence}
+    return {"outcome": "failed", "attribution": "arm-resource", "exit": code, "resource_evidence": evidence}
 
 
 def classify_flaky(p: Paths, step: int, nodeid: str) -> str:

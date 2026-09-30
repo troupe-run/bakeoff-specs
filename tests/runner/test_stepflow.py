@@ -847,3 +847,21 @@ def test_run_a_records_arm_violations_and_resource_and_still_discovers(fake_step
     out = stepflow.run_step(fake_step.ctx, "go", run="a")
     assert {v["kind"] for v in _violations(fake_step)} == {"setup-drift", "own-token-in-evidence"}
     assert out.status == "discovered" and faults.entries("dry9") == []
+
+
+def test_an_acceptance_run_killed_for_resources_is_recorded_and_failed_not_a_fault(fake_step, monkeypatch):  # FU 4
+    fake_step.progress = [3, 3]
+    _substitute(fake_step, monkeypatch, ["passed"])
+    real = stepflow.hidden.run_acceptance
+    first = []
+
+    def acc(p, copy, step, body):
+        if not first:
+            first.append(1)
+            return {"outcome": "failed", "attribution": "arm-resource", "resource_evidence": [["oom-kill:1"]] * 2}
+        return real(p, copy, step, body)
+    monkeypatch.setattr(stepflow.hidden, "run_acceptance", acc)
+    out = stepflow.run_step(fake_step.ctx, "go")
+    assert faults.for_step("dry9", "control", 6) == [] and out.attempts == 2 and out.status == "done"
+    [r] = faults.resource_records("dry9", 6)
+    assert (r["exhausted"], r["attempt"]) == ("repeat", 1)

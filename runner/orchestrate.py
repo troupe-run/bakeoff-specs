@@ -385,7 +385,7 @@ class _Run:
             r = self.infra("infra-hidden", arm.name, 6, None, "the substitute's acceptance test",
                            lambda: hidden.run_acceptance(p, prep.hidden_copy, 6, test_body))
             _jw(d / "acceptance.json", r)
-            if r.get("outcome") == "failed":
+            if r.get("outcome") == "failed" and not r.get("attribution"):     # a genuine failure, not a death
                 e["substitute"] = {"choice": "substitute", "title": title, "body": body, "why": why,
                                    "test": str(d / "test_substitute.py"), "acceptance": r, "owner_seconds": secs}
                 _jw(d / "decision.json", e["substitute"])

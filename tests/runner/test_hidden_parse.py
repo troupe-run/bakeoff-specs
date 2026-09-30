@@ -623,3 +623,43 @@ def test_the_bundled_pytest_config_does_not_undo_the_pins():
     ini = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["tool"]["pytest"]["ini_options"]
     assert "-v" not in ini.get("addopts", "") and not {"truncation_limit_lines", "truncation_limit_chars",
                                                        "verbosity_assertions"} & set(ini)
+
+
+# ---- follow-up 4: an acceptance run that did not complete is assessed like the main suite ------------------------------
+
+def _acc(monkeypatch, results):
+    calls = []
+
+    def fake(p, copy, args, **k):
+        calls.append(args)
+        r = results[min(len(calls), len(results)) - 1]
+        return (r, None) if isinstance(r, dict) else (None, r)
+    monkeypatch.setattr(hidden, "_pytest", fake)
+    return calls
+
+
+def test_an_acceptance_run_killed_for_resources_twice_is_the_arms_failure(monkeypatch):
+    calls = _acc(monkeypatch, [{"exit": b"137", "resources": RES_OOM}])
+    r = hidden.run_acceptance(None, None, 6, "body")
+    assert (r["outcome"], r["attribution"]) == ("failed", "arm-resource") and len(calls) == 2
+    assert r["resource_evidence"] == [["oom-kill:1"], ["oom-kill:1"]]
+
+
+def test_an_acceptance_run_killed_once_then_completed_is_scored_and_keeps_its_evidence(monkeypatch):
+    junit = b'<testsuite><testcase classname="tests.hidden.test_zz_substitute" name="test_x"/></testsuite>'
+    _acc(monkeypatch, [{"exit": b"137", "resources": RES_OOM}, {"exit": b"0", "resources": RES_CALM,
+                                                                  "junit.xml": junit}])
+    r = hidden.run_acceptance(None, None, 6, "body")
+    assert r["outcome"] == "passed" and r["resource_evidence"] == [["oom-kill:1"], []]
+
+
+def test_an_acceptance_run_over_budget_is_the_arms_failure(monkeypatch):
+    _acc(monkeypatch, [{"exit": b"124", "timed_out": b"", "resources": RES_CALM}])
+    r = hidden.run_acceptance(None, None, 6, "body")
+    assert (r["outcome"], r["attribution"]) == ("failed", "arm-timeout")
+
+
+def test_an_acceptance_run_that_died_without_resource_evidence_is_still_an_error(monkeypatch):
+    _acc(monkeypatch, [{"exit": b"2", "resources": RES_CALM}])
+    r = hidden.run_acceptance(None, None, 6, "body")
+    assert r["outcome"] == "error" and r["attribution"].startswith("harness-fault")
