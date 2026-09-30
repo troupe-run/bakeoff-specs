@@ -550,8 +550,9 @@ def test_the_existing_repo_fixtures_pass_the_staged_rules():
 def test_every_github_tracker_keychain_pat_is_a_needle(tmp_state, monkeypatch):
     monkeypatch.setattr(credentials, "github_pat", lambda pass_, arm: f"kcpat-{pass_}-{arm}-" + "7" * 20)
     lits = secrets.literals(credentials.Credential(OAUTH))
-    for pass_ in ("pass1", "pass2", "canary"):
+    for pass_ in ("pass1", "canary"):
         assert f"kcpat-{pass_}-control-" + "7" * 20 in lits
+    assert not [l for l in lits if "-pass2-" in l]                       # m-5: pass 2 is retired
     assert not [l for l in lits if "-speckitty-" in l or "-dry" in l]     # beads/dry arms have no PAT item
 
 

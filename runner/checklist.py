@@ -73,7 +73,7 @@ def conditional_ids(arm: config.Arm) -> set[str]:
     """Host checks that are OMITTED when they would check nothing (Task 10 fix round 1): no setup prompts, an empty
     effective manifest list, no slash command needed. A checklist md documents them as `- (computed)` bullets,
     never as static ids, because whether they exist is computed from config (and, for the manifest, the route)."""
-    return ({"setup.agent-turns", "setup.manifest-matches-pass1"}
+    return ({"setup.agent-turns", "setup.manifest-created"}
             | ({f"{arm.name}.entry-commands"} if arm.name in COMMAND_ARMS else set()))
 
 
@@ -82,7 +82,7 @@ def host_check_ids(arm: config.Arm) -> set[str]:
     static ones plus the conditional ones that are not empty."""
     return ({"common.no-foreign-model-ids", "setup.origin-push"}                               # B4: every arm
             | ({f"{arm.name}.entry-commands"} if arm.name in COMMAND_ARMS and needed_commands(arm) else set())
-            | ({"setup.manifest-matches-pass1"} if effective_manifest_paths(arm) else set())
+            | ({"setup.manifest-created"} if effective_manifest_paths(arm) else set())
             | ({"setup.agent-turns"} if arm.setup_agent else set())
             | ({"github.issues-access"} if arm.tracker == "github" and not arm.dry else set())
             | ({f"{arm.name}.smoke"} if arm.name in SMOKE_ARMS or arm.smoke else set()))
@@ -167,13 +167,6 @@ def missing_checks(md: str, checks: list[Check], expected: set[str] | frozenset 
             for i in sorted((machine_ids(md) | set(expected)) - produced)]
 
 
-def manifest_diff(a: dict[str, str], b: dict[str, str]) -> list[str]:
-    out = [f"{k} (changed)" for k in sorted(a) if k in b and a[k] != b[k]]
-    out += [f"{k} (added)" for k in sorted(set(b) - set(a))]
-    out += [f"{k} (removed)" for k in sorted(set(a) - set(b))]
-    return out
-
-
 def model_ids_check(models: list[dict], accepted: list[str]) -> Check:
     """Aliases (opus/sonnet/haiku/inherit) are remapped by OD2's env; a FULL non-pinned model ID is not."""
     aliases = {"opus", "sonnet", "haiku", "inherit", "default"}
@@ -214,42 +207,14 @@ def parse_verify(arm_name: str, r: subprocess.CompletedProcess) -> list[Check]:
     return out
 
 
-def is_volatile(key: str, volatile, home: str = "/home/actor") -> bool:
-    """A manifest key (repo-relative, or absolute under the arm's home) is under a volatile entry: equal to it, or
-    below it as a PATH prefix (`.x/memory` covers `.x/memory/c.md`, never `.x/memoryX`). `~/` means the home."""
-    for v in volatile:
-        v = (home + v[1:] if v.startswith("~/") else v).rstrip("/")
-        if key == v or key.startswith(v + "/"):
-            return True
-    return False
-
-
-def manifest_check(pass_: str, arm_name: str, m: dict[str, str], owner, missing: list[str] = (),
-                   volatile: list[str] = ()) -> Check:
-    """Pass 2 must set up the same files as pass 1 (OD20); a difference is shown to the owner, who may accept
-    it (the acceptance and the files are recorded in the detail) — review G6. A configured manifest path that
-    does not exist fails, naming it (fix round 1): setup did not create what the method's docs say it creates.
-    Entries under the arm's `volatile_paths` (install stamps, model-written files) are left out of the comparison
-    and counted in the detail (Task 11 FR1); manifest.json still records them."""
-    cid = "setup.manifest-matches-pass1"
+def manifest_check(pass_: str, arm_name: str, m: dict[str, str], missing: list[str] = ()) -> Check:
+    """Setup created every configured manifest path (fix round 1: a path the method's docs say setup creates, and
+    it did not, fails, naming it). `manifest.json` records the hashes as setup evidence. The pass-1-vs-pass-2
+    comparison is gone with pass 2 (m-5, final fix batch)."""
+    cid = "setup.manifest-created"
     if missing:
         return Check(cid, False, f"manifest path(s) not created by setup: {', '.join(missing)}")
-    if pass_ != "pass2":
-        return Check(cid, True, f"{pass_}: recorded ({len(m)} files)")
-    first_f = Paths("pass1", arm_name).setup_results / "manifest.json"
-    if not first_f.is_file():
-        return Check(cid, False, f"no pass 1 manifest at {first_f} to compare with")
-    first = json.loads(first_f.read_text())
-    skipped = {k for k in set(first) | set(m) if is_volatile(k, volatile)}
-    diff = manifest_diff({k: v for k, v in first.items() if k not in skipped},
-                         {k: v for k, v in m.items() if k not in skipped})
-    note = f" ({len(skipped)} volatile entries not compared)" if skipped else ""
-    if not diff:
-        return Check(cid, True, "identical to pass 1" + note)
-    shown = "; ".join(diff[:20]) + (f"; … {len(diff) - 20} more" if len(diff) > 20 else "")
-    if owner is not None and _unparked(owner.confirm(f"{arm_name}: setup files differ from pass 1: {shown}. Accept?")) is True:
-        return Check(cid, True, f"owner accepted: {shown}{note}")
-    return Check(cid, False, shown + note)
+    return Check(cid, True, f"{pass_}: recorded ({len(m)} files)")
 
 
 def agent_turns_check(arm: config.Arm, record: list[dict]) -> Check | None:
@@ -571,7 +536,7 @@ def host_checks(p: Paths, arm: config.Arm, pass_: str, smoke: Check | None, st: 
         out.append(issues_access_check(p, arm, pass_, st))
     if effective_manifest_paths(arm):                            # empty list → omitted, no container (Task 10 FR1)
         m, missing = manifest_full(p, arm)
-        out.append(manifest_check(pass_, arm.name, m, owner, missing, volatile=[v.path for v in arm.volatile_paths]))
+        out.append(manifest_check(pass_, arm.name, m, missing))
     else:
         m = {}
     (p.setup_results / "manifest.json").write_text(json.dumps(m, indent=2, sort_keys=True))

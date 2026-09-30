@@ -73,7 +73,7 @@ MIN_HOME_NEEDLE = 20                            # an arm-written PAT file cannot
 MAX_HITS_PER_FILE = 1000
 MAX_HISTORY_LINE = 1 << 20                      # a fast-export command line (paths, identities)
 PAT_FILES = (".config/gh/hosts.yml", ".bk-mcp.json")   # relative to an arm home (checklist._install_github_pat)
-PAT_PASSES = ("pass1", "pass2", "canary")      # passes with a GitHub repo, so a keychain PAT item (OD16)
+PAT_PASSES = ("pass1", "canary")               # passes with a GitHub repo, so a keychain PAT item (OD16)
 REDACTED = "<redacted>"
 FAKE_MARK = b"secret-scan: fake"                # pre-commit, tests/ only (see module docstring)
 # Explicit allowlist of token-shaped fixture lines that are fake but do not say so: (repo-relative path,

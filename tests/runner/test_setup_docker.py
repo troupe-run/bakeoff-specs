@@ -21,7 +21,7 @@ DRY_MD = """# dryrun (test copy; Task 24 writes the real one)
 - `common.origin` — local bare origin, main resolves
 - `common.no-foreign-model-ids` — host
 - `setup.origin-push` — host
-- (computed) `setup.manifest-matches-pass1` — host, when the effective manifest list is not empty
+- (computed) `setup.manifest-created` — host, when the effective manifest list is not empty
 - (computed) `setup.agent-turns` — host, when setup prompts are configured
 ## Owner-verified
 - [ ] OV1: The setup session's reply reads sensibly.
@@ -79,7 +79,7 @@ def test_setup_runs_shell_agent_turns_and_post_shell_then_is_green(tmp_state, ch
     p, out = Paths(PASS, "dryrun"), Paths(PASS, "dryrun").setup_results
     got = {c.id: c for c in r.checks}
     assert r.green, [c for c in r.checks if not c.ok]
-    assert "setup.manifest-matches-pass1" not in got         # dryrun lists no manifest paths: omitted (T10 FR1)
+    assert "setup.manifest-created" not in got         # dryrun lists no manifest paths: omitted (T10 FR1)
     for cid in ["common.claude-version", "common.isolation-env", "common.git-identity", "common.no-foreign-plugins",
                 "common.origin", "common.no-foreign-model-ids", "setup.origin-push", "setup.agent-turns"]:
         assert got[cid].ok, got[cid]
@@ -170,7 +170,7 @@ def test_a_setup_prompt_whose_last_turn_failed_is_not_green(tmp_state, checks_di
 def test_a_missing_manifest_path_is_named_by_a_failing_check(tmp_state, checks_dir, monkeypatch):   # FR1 item 7
     use_arm(monkeypatch, manifest_paths=["nope-not-created"])
     r = checklist.run_setup(PASS, "dryrun", credentials.dummy(), StubOwner())
-    c = {c.id: c for c in r.checks}["setup.manifest-matches-pass1"]
+    c = {c.id: c for c in r.checks}["setup.manifest-created"]
     assert not c.ok and "nope-not-created" in c.detail and not r.green
 
 

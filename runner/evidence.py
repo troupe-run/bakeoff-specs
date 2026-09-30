@@ -218,7 +218,6 @@ def finalise(ctx, *, attempts, extra_turns, hidden, quality, pin, sha_before, st
            "breaches": [a.breach for a in attempts if a.breach],
            "research_attempts": research_attempts(arm_turns, egress_log),
            "model_overrides": json.loads(overrides_f.read_text())["declared"] if overrides_f.exists() else [],
-           "pass2_addendum": ctx.pass_ == "pass2" and shas["po_brief_at_handoff"] != sha256_file(ctx.brief_path),
            "harness_faults": fault_entries,
            "arm_violations": _lines(out / "arm-violations.jsonl")}
     (out / "run.json").write_text(json.dumps(run, indent=2))

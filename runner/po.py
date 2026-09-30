@@ -12,7 +12,7 @@ owner gates, and escalates what the brief does not cover. Each decision is ONE f
 Escalations (`escalate`): the owner answers (or parks — `owner.Park` is never an answer: it is recorded in
 `<out>/po/parked-escalations.jsonl` and returned for the caller to park the arm); a real answer is appended to the
 brief with question, answer, date, pass, the arm that first raised it and whether the owner was real or scripted,
-and committed on real passes. Pass 1 grows the brief; pass 2 re-runs every arm from the full brief.
+and committed on real passes. Each step's N.a grows the brief; N.b runs from it after the consistency check.
 
 Step 5 (binding requirement for Tasks 13/15/23): `step_view` gives the PO CR-A only until CR-B has been sent to
 the arm, and the contract with the In-include section only from then on (or from the start in OD6 A mode).

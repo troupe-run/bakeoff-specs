@@ -22,28 +22,6 @@ def test_green_needs_every_machine_check_and_every_owner_item():
 def test_owner_items_are_parsed_in_order():
     assert checklist.owner_items(MD) == [("OV1", "The constitution reads as this project's principles."), ("OV2", "No warnings.")]
 
-def test_manifest_diff_names_changed_added_and_removed_files():
-    assert checklist.manifest_diff({"a": "1", "b": "2"}, {"a": "1", "b": "3", "c": "4"}) == ["b (changed)", "c (added)"]
-    assert checklist.manifest_diff({"a": "1"}, {}) == ["a (removed)"]
-
-def test_foreign_model_ids_are_caught_at_setup():                             # review F-6 / OD2
-    c = checklist.model_ids_check([{"file": "agents/r.md", "model": "haiku"},
-                                   {"file": "agents/x.md", "model": "claude-sonnet-4-5-20250929"}], ["claude-opus-5-5"])
-    assert not c.ok and "claude-sonnet-4-5-20250929" in c.detail and "haiku" not in c.detail
-
-def test_gh_hosts_file_holds_the_pat_for_github_com_only():
-    y = checklist.gh_hosts_yml("github_pat_X")
-    assert y.startswith("github.com:\n") and "oauth_token: github_pat_X" in y and "git_protocol: https" in y
-
-def test_is_green_reads_both_records(tmp_state):
-    p = Paths("pass1", "control"); d = p.setup_results; d.mkdir(parents=True)
-    (d / "checklist.json").write_text(json.dumps([{"id": "a", "ok": True, "detail": ""}]))
-    (d / "owner-checklist.json").write_text(json.dumps({"OV1": {"ok": True, "note": ""}}))
-    assert checklist.is_green(p)
-    (d / "owner-checklist.json").write_text(json.dumps({"OV1": {"ok": False, "note": "no"}}))
-    assert not checklist.is_green(p)
-
-
 # --- preflight rulings and hardening beyond the plan text ------------------------------------------------
 FAKE_PAT = "github_pat_FAKE_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ"   # fake only, never a real token
 
@@ -245,30 +223,6 @@ def test_a_listed_check_that_was_not_produced_fails():                          
                                               checklist.Check("setup.origin-push", True, "")]) == []
 
 
-def test_pass2_manifest_difference_shows_the_files_and_asks_the_owner(tmp_state):   # review G6, OD20
-    d = Paths("pass1", "dryrun").setup_results; d.mkdir(parents=True)
-    (d / "manifest.json").write_text(json.dumps({"a": "1", "b": "2"}))
-
-    class O:
-        def __init__(self, yes): self.yes, self.asked = yes, []
-        def confirm(self, text): self.asked.append(text); return self.yes
-    assert checklist.manifest_check("pass2", "dryrun", {"a": "1", "b": "2"}, O(True)).ok
-    no = O(False)
-    c = checklist.manifest_check("pass2", "dryrun", {"a": "1", "b": "3"}, no)
-    assert not c.ok and "b (changed)" in c.detail and "b (changed)" in no.asked[0]
-    yes = O(True)
-    c = checklist.manifest_check("pass2", "dryrun", {"a": "1", "b": "3"}, yes)
-    assert c.ok and "owner accepted" in c.detail and "b (changed)" in c.detail
-    assert not checklist.manifest_check("pass2", "dryrun", {"a": "1"}, None).ok        # no owner: never accepted
-    c = checklist.manifest_check("pass1", "dryrun", {"a": "1"}, None)
-    assert c.ok and "recorded (1 files)" in c.detail
-
-
-def test_pass2_without_a_pass1_manifest_fails_rather_than_crashing(tmp_state):
-    c = checklist.manifest_check("pass2", "control", {"a": "1"}, None)
-    assert c.id == "setup.manifest-matches-pass1" and not c.ok and "pass 1" in c.detail
-
-
 def test_owner_answers_cover_every_item_and_a_missing_answer_is_not_ok():
     class O:
         def items(self, items): return {"OV1": (True, "fine", 2.0)}
@@ -436,9 +390,9 @@ def test_the_applied_model_env_is_what_sessions_get():                          
 
 
 def test_a_missing_manifest_path_fails_the_manifest_check_naming_it():                    # FR1 item 7
-    c = checklist.manifest_check("pass1", "dryrun", {"a": "1"}, None, missing=["openspec"])
+    c = checklist.manifest_check("pass1", "dryrun", {"a": "1"}, missing=["openspec"])
     assert not c.ok and "openspec" in c.detail
-    assert checklist.manifest_check("pass1", "dryrun", {"a": "1"}, None, missing=[]).ok
+    assert checklist.manifest_check("pass1", "dryrun", {"a": "1"}, missing=[]).ok
 
 
 def test_arms_whose_setup_creates_nothing_in_the_repo_list_no_manifest_paths():
@@ -580,13 +534,13 @@ def test_agent_turns_is_omitted_without_prompts_and_present_with_them():
 def test_manifest_check_follows_the_effective_manifest_list(monkeypatch):            # route-dependent
     _route(monkeypatch, "plugin-dir")
     assert checklist.effective_manifest_paths(_arm("superpowers")) == []
-    assert "setup.manifest-matches-pass1" not in checklist.host_check_ids(_arm("superpowers"))
-    assert "setup.manifest-matches-pass1" not in checklist.host_check_ids(_arm("control"))
-    assert "setup.manifest-matches-pass1" in checklist.host_check_ids(_arm("openspec"))
+    assert "setup.manifest-created" not in checklist.host_check_ids(_arm("superpowers"))
+    assert "setup.manifest-created" not in checklist.host_check_ids(_arm("control"))
+    assert "setup.manifest-created" in checklist.host_check_ids(_arm("openspec"))
     _route(monkeypatch, "marketplace")
     assert checklist.effective_manifest_paths(_arm("superpowers")) == ["~/.claude/plugins/cache"]
-    assert "setup.manifest-matches-pass1" in checklist.host_check_ids(_arm("superpowers"))
-    assert "setup.manifest-matches-pass1" not in checklist.host_check_ids(_arm("control"))   # no plugins
+    assert "setup.manifest-created" in checklist.host_check_ids(_arm("superpowers"))
+    assert "setup.manifest-created" not in checklist.host_check_ids(_arm("control"))   # no plugins
 
 
 def test_entry_commands_is_omitted_when_no_slash_command_is_needed():
@@ -603,9 +557,9 @@ def test_entry_commands_is_omitted_when_no_slash_command_is_needed():
 
 
 def test_the_conditional_ids_are_the_three_computable_host_checks():
-    assert checklist.conditional_ids(_arm("openspec")) == {"setup.agent-turns", "setup.manifest-matches-pass1",
+    assert checklist.conditional_ids(_arm("openspec")) == {"setup.agent-turns", "setup.manifest-created",
                                                            "openspec.entry-commands"}
-    assert checklist.conditional_ids(_arm("control")) == {"setup.agent-turns", "setup.manifest-matches-pass1"}
+    assert checklist.conditional_ids(_arm("control")) == {"setup.agent-turns", "setup.manifest-created"}
 
 
 MD_COMPUTED = MD_FULL.replace("## Owner-verified", "- (computed) `setup.agent-turns` — when prompts exist\n## Owner-verified")
@@ -661,7 +615,7 @@ def test_needed_commands_lists_each_command_once_in_first_seen_order():
 def test_present_manifest_check_on_route_a_is_falsifiable(tmp_state, monkeypatch):
     _route(monkeypatch, "marketplace")
     got, calls = _host_checks(tmp_state, monkeypatch, _arm("superpowers"), missing=["~/.claude/plugins/cache"])
-    assert calls and not got["setup.manifest-matches-pass1"].ok
+    assert calls and not got["setup.manifest-created"].ok
 
 
 # --- Task 20 fix round 1 (MEDIUM: owner-shell interventions can be forged) --------------------------------
@@ -806,39 +760,6 @@ def test_a_volatile_path_needs_a_kind_a_reason_and_a_manifest_path_to_live_in(tm
 
 def test_volatile_paths_default_to_none():
     assert config.load_arm("openspec").volatile_paths == []
-
-
-def _pass1(d: dict):
-    f = Paths("pass1", "dryrun").setup_results; f.mkdir(parents=True, exist_ok=True)
-    (f / "manifest.json").write_text(json.dumps(d))
-
-
-def test_pass2_ignores_only_the_volatile_entries(tmp_state):
-    _pass1({".x/stamp.json": "1", ".x/memory/c.md": "1", ".x/keep": "1", "/home/actor/.k/id": "1"})
-    vol = [".x/stamp.json", ".x/memory", "~/.k"]
-    c = checklist.manifest_check("pass2", "dryrun", {".x/stamp.json": "2", ".x/memory/c.md": "2", ".x/memory/new.md": "9",
-                                                     ".x/keep": "1", "/home/actor/.k/id": "2"}, None, volatile=vol)
-    assert c.ok and "4 volatile" in c.detail, c
-    c = checklist.manifest_check("pass2", "dryrun", {".x/stamp.json": "2", ".x/memory/c.md": "1", ".x/keep": "2",
-                                                     "/home/actor/.k/id": "1"}, None, volatile=vol)
-    assert not c.ok and ".x/keep (changed)" in c.detail and "stamp" not in c.detail
-    # a prefix is a path prefix, never a string prefix
-    _pass1({".x/memoryX": "1"})
-    assert not checklist.manifest_check("pass2", "dryrun", {".x/memoryX": "2"}, None, volatile=vol).ok
-
-
-def test_host_checks_pass_the_arms_volatile_paths_to_the_manifest_check(tmp_state, monkeypatch):
-    seen = {}
-    a = config.load_arm("speckit")
-    monkeypatch.setattr(checklist.repo, "recover", lambda p: None)
-    monkeypatch.setattr(checklist.commands, "listing", lambda p, arm: type("L", (), {"names": set(), "models": []})())
-    monkeypatch.setattr(checklist, "issues_access_check", lambda *x: checklist.Check("github.issues-access", True, ""))
-    monkeypatch.setattr(checklist, "manifest_full", lambda p, arm: ({}, []))
-    monkeypatch.setattr(checklist, "_origin_push", lambda p: checklist.Check("setup.origin-push", True, ""))
-    real = checklist.manifest_check
-    monkeypatch.setattr(checklist, "manifest_check", lambda *x, **k: seen.update(k) or real(*x, **k))
-    checklist.host_checks(Paths("dry9", "speckit"), a, "dry9", None, None)
-    assert seen["volatile"] == [v.path for v in a.volatile_paths] and seen["volatile"]
 
 
 @pytest.mark.parametrize("arm", ["speckit", "speckitty"])

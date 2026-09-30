@@ -40,7 +40,7 @@ def test_every_dry_arm_has_a_checklist_whose_listed_checks_are_all_produced(name
     produced = common | checklist.host_check_ids(arm)                  # the verify script's + the host checks
     assert checklist.missing_checks(md, [checklist.Check(i, True, "") for i in produced], produced) == []
     assert common | {"common.no-foreign-model-ids", "setup.origin-push"} <= checklist.machine_ids(md)
-    assert checklist.computed_ids(md) == {"setup.manifest-matches-pass1", "setup.agent-turns"}
+    assert checklist.computed_ids(md) == {"setup.manifest-created", "setup.agent-turns"}
     assert checklist.owner_items(md) == [("OV1", "dry run (scripted owner).")]
     sh = (checklist.CHECKS_DIR / "verify" / f"{name}.sh").read_text()
     assert ('common dryrun ""' in sh) if name == "dryrun" else ('exec bash /checks/dryrun.sh "$@"' in sh)

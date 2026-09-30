@@ -71,16 +71,6 @@ def test_an_owner_checklist_park_ends_setup_as_parked_not_a_crash():
     assert e.value.park is PARK
 
 
-def test_a_parked_manifest_difference_is_never_accepted(tmp_state):
-    for pass_, m in (("pass1", {"a": "1"}), ("pass2", {"a": "2"})):
-        d = Paths(pass_, "control").setup_results
-        d.mkdir(parents=True)
-        (d / "manifest.json").write_text(json.dumps(m))
-    owner = type("O", (), {"confirm": lambda self, t: PARK})()
-    with pytest.raises(checklist.SetupParked):
-        checklist.manifest_check("pass2", "control", {"a": "2"}, owner)
-
-
 def test_a_parked_setup_reply_ends_setup_as_parked(tmp_state, monkeypatch):
     from runner import session
     from runner.session import TurnResult

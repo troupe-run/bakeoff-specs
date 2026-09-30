@@ -44,7 +44,6 @@ class Pins:
     images: dict[str, str]
     digests: dict[str, str]
     limits: Limits
-    pass2_order: str
     plugin_route: str
     egress_setup_common: list[str]
     egress_run_common: list[str]
@@ -119,7 +118,7 @@ class Arm:
     export_after: str                              # speckit only (OD24 B): the command after which export runs
     dry: bool = False
     parked: bool = False         # Task 23 (owner): not run, not in github-plan/verify, PAT needles or the order
-    volatile_paths: list[Volatile] = field(default_factory=list)   # excluded from the pass-2 manifest comparison
+    volatile_paths: list[Volatile] = field(default_factory=list)   # setup files known to differ between runs (why)
     spec_paths: list[SpecPath] = field(default_factory=list)       # the method's spec/plan/tracker folders (N.a)
 
 
@@ -148,8 +147,6 @@ def load_pins() -> Pins:
     raw = tomllib.loads((CONFIG_DIR / "pins.toml").read_text())
     c, e, im = raw["claude"], raw["egress"], dict(raw["images"])
     digests = im.pop("digests")
-    if raw["order"]["pass2_order"] not in ("same", "reverse"):
-        raise ConfigError("pins.order.pass2_order must be same|reverse")
     if raw["plugins"]["route"] not in ("marketplace", "plugin-dir"):
         raise ConfigError("pins.plugins.route must be marketplace|plugin-dir")
     return Pins(
@@ -157,7 +154,7 @@ def load_pins() -> Pins:
         synthetic_models=list(c["synthetic_models"]), max_retries=int(c["max_retries"]),
         permission_mode=c["permission_mode"], disallowed_tools=list(c["disallowed_tools"]),
         binary_sha256=c["binary_sha256"], bd_sha256=raw["beads"]["sha256"], images=im, digests=dict(digests),
-        limits=Limits(**raw["limits"]), pass2_order=raw["order"]["pass2_order"],
+        limits=Limits(**raw["limits"]),
         plugin_route=raw["plugins"]["route"],
         egress_setup_common=_check_hosts(e["setup_common"], "pins.egress.setup_common"),
         egress_run_common=_check_hosts(e["run_common"], "pins.egress.run_common"),

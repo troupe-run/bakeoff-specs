@@ -3,7 +3,7 @@ setup turns' pin verification (preflight M5). The code is the plan's Task 13 (`H
 (`classify_pin`) text verbatim; Task 13/15 extend this file rather than create it, and Task 22 adds the ledger.
 
 The ledger (Task 22, design §9): every harness fault is one JSON line in `results/faults.jsonl` for the real passes
-(shared, so pass 1 and pass 2 halt together) and `results/<pass>/faults.jsonl` for dry, probe and canary passes (so
+(shared by the real run, `pass1`) and `results/<pass>/faults.jsonl` for dry, probe and canary passes (so
 they can never halt the real bake-off). The SECOND occurrence of the same `(kind, signature)` since the last owner
 resolution (`resume`) writes `HALTED` next to it, and every command except `faults …` refuses to run until
 `resume` records a resolution. A resolution resets every signature's count: the owner reviewed the whole ledger.

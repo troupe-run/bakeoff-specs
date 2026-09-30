@@ -46,7 +46,7 @@ Ids marked `(computed)` are omitted, never recorded ok, when they would check no
 - `common.no-foreign-model-ids` — (host) no installed file names a full non-pinned model ID
 - `setup.origin-push` — (host) `git push origin main` to the local bare origin succeeds (preflight B4)
 - (computed) `setup.agent-turns` — (host) present only when setup prompts are configured: every prompt's last turn ended ok
-- (computed) `setup.manifest-matches-pass1` — (host) present only when the effective manifest list is not empty: pass 2's setup files equal pass 1's
+- (computed) `setup.manifest-created` — (host) present only when the effective manifest list is not empty: setup created every listed manifest path (hashes recorded in manifest.json)
 - (computed) `speckitty.entry-commands` — (host) present only when `[drive]` needs a slash command (entry, bug_entry, must_run): every one is installed
 
 ## Owner-verified

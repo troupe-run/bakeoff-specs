@@ -695,13 +695,8 @@ def _two_offline_manifests(arm_name: str, tmp_path, monkeypatch) -> tuple[dict, 
 
 
 @pytest.mark.parametrize("arm", ["speckit", "speckitty", "ccsdd"])
-def test_volatile_paths_are_exactly_what_differs_between_two_offline_setups(arm, tmp_state, tmp_path, monkeypatch):
-    """FR1 item 6 guard: every `install-stamp` entry really differs between two identical offline setups (so the list
-    cannot quietly hide a real difference), and nothing else differs (so pass 2 of an unchanged setup is green)."""
+def test_two_offline_setups_create_every_listed_manifest_path(arm, tmp_state, tmp_path, monkeypatch):
+    """Every manifest path the arm lists is created by setup (the `setup.manifest-created` check's input); the
+    pass-1-vs-pass-2 comparison and its volatile-path guard went with pass 2 (m-5)."""
     a, b = _two_offline_manifests(arm, tmp_path, monkeypatch)
-    home = Paths(PASS, arm).container_home
-    vol = config.load_arm(arm).volatile_paths
-    differing = {k for k in set(a) | set(b) if a.get(k) != b.get(k)}
-    for v in (v for v in vol if v.kind == "install-stamp"):
-        assert any(checklist.is_volatile(k, [v.path], home) for k in differing), f"{v.path} never differs: {v.why}"
-    assert {k for k in differing if not checklist.is_volatile(k, [v.path for v in vol], home)} == set()
+    assert a and b

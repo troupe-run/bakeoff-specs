@@ -27,7 +27,7 @@ Ids marked `(computed)` are omitted, never recorded ok, when they would check no
 - `github.issues-access` — (host) the arm's PAT can list issues and labels of its repo (n/a, never green, on a pass without a repo)
 - `setup.origin-push` — (host) `git push origin main` to the local bare origin succeeds and `origin/main` is `main` (preflight B4)
 - (computed) `setup.agent-turns` — (host) present only when setup prompts are configured: every prompt's last turn ended ok
-- (computed) `setup.manifest-matches-pass1` — (host) present only when the effective manifest list (`manifest_paths`, plus `~/.claude/plugins/cache` on route A) is not empty: pass 2's setup files equal pass 1's
+- (computed) `setup.manifest-created` — (host) present only when the effective manifest list (`manifest_paths`, plus `~/.claude/plugins/cache` on route A) is not empty: setup created every listed manifest path (hashes recorded in manifest.json)
 
 ## Owner-verified
 - [ ] OV1: Telemetry: plain Claude Code with CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1; nothing else to disable (probe P9 evidence).

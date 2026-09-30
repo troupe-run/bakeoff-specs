@@ -19,7 +19,7 @@ def test_beads_native_binary_is_pinned_by_a_real_sha256():                 # rev
 
 def test_od_parameters_have_their_recommended_defaults():
     p = config.load_pins()
-    assert p.pass2_order == "reverse"                      # OD13 B
+    assert not hasattr(p, "pass2_order")                   # m-5: pass 2 is retired
     assert p.plugin_route == "plugin-dir"                  # OD9 B
     assert (p.limits.turn_seconds, p.limits.exchanges_per_attempt) == (28800, 250)   # OD14 B
     assert p.limits.owner_reclassifies_first_breach is True

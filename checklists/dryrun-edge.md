@@ -24,7 +24,7 @@ Ids marked `(computed)` are omitted, never recorded ok, when they would check no
 - `common.origin` — `origin` is the local bare repo `/home/actor/origin.git` and its `main` resolves
 - `common.no-foreign-model-ids` — (host) no installed file names a full non-pinned model ID
 - `setup.origin-push` — (host) `git push origin main` to the local bare origin succeeds
-- (computed) `setup.manifest-matches-pass1` — (host) present only when the effective manifest list is not empty
+- (computed) `setup.manifest-created` — (host) present only when the effective manifest list is not empty: setup created every listed manifest path (hashes recorded in manifest.json)
   (the dry arms list none: setup runs once per arm, Task 23, so there is no pass-2 compare)
 - (computed) `setup.agent-turns` — (host) present only when setup prompts are configured (none here)
 
