@@ -460,7 +460,7 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
         env.main[a] = f"sha-{n}"
         (ctx.out / stepflow.PENDING).unlink(missing_ok=True)          # as stepflow does once the step is decided
         if (a, n) in env.resource:
-            faults.record_resource(ctx.pass_, a, n, 1, env.resource[(a, n)], [["oom"]])
+            faults.record_resource(ctx.pass_, a, n, 1, env.resource[(a, n)], [["oom"]], run="b")
         (ctx.out / "summary.md").write_text(f"# Step {n} summary — {a} ({ctx.pass_})\n")
         (ctx.out / "run.json").write_text(J.dumps({"outcome": "stopped" if behaviour == "stopped" else "done"}))
         s = hidden.summarise(n, {"m::t": "passed"}, ["m::t"], [], [], 0)

@@ -1104,3 +1104,10 @@ def test_arm_drift_checks_are_skipped_when_the_tests_phase_resumes(fake_orch, mo
     dry(fake_orch)
     assert ("run_step", "dryrun", 3, "b") in fake_orch.calls and ("restore", "dryrun", 3) not in fake_orch.calls
     assert _viol(Paths("dry7", "dryrun")) == []
+
+
+def test_resource_exhaustion_in_na_never_counts_towards_the_suite_halt_or_the_reruns(fake_orch):   # follow-up 8
+    faults.record_resource("pass1", "control", 3, 1, "repeat", [["session-oom"]], run="a")
+    fake_orch.resource[("openspec", 3)] = "repeat"
+    real(fake_orch)
+    assert not faults.halted("pass1")

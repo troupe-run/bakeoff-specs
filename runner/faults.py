@@ -209,7 +209,8 @@ def resource_path(pass_: str) -> Path:
 def record_resource(pass_: str, arm: str, step: int, attempt: int, exhausted: str, evidence: list,
                     run: str | None = None) -> None:
     """`exhausted`: "repeat" (the hidden run died of resources twice: the step scored all-failed) or "once" (the
-    re-run completed and was scored). `evidence` is `hidden.Summary.resource_evidence`."""
+    re-run completed and was scored). `evidence` is `hidden.Summary.resource_evidence`. `run` is "a"/"b": only N.b
+    records count towards `limits.suite_resource_arms` and its re-runs (follow-up 8); N.a's are evidence."""
     if exhausted not in ("once", "repeat"):
         raise ValueError("exhausted is once or repeat")
     _append_to(resource_path(pass_), {"at": _now(), "pass": pass_, "arm": arm, "step": step, "attempt": attempt,

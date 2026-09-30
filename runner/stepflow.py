@@ -235,9 +235,9 @@ def _hidden_run(ctx, prep, attempt: int, install_failed: bool) -> hidden.Summary
     s = hidden.run(ctx.paths, prep.hidden_copy, ctx.step, ctx.out, install_failed,
                    install=hidden.install_record(prep.prep.get("hidden")))
     if s.attribution == "arm-resource":                         # died of resources twice: all-failed
-        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "repeat", s.resource_evidence)
+        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "repeat", s.resource_evidence, run="b")
     elif len(s.resource_evidence) >= 2:                          # died once, the re-run completed
-        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "once", s.resource_evidence)
+        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "once", s.resource_evidence, run="b")
     return s
 
 
@@ -373,9 +373,9 @@ def _resource(ctx, attempt: int, ar) -> None:
     by drive, then all-failed; every occurrence counts towards `suite_resource_arms`."""
     ev = [[f"session-oom:turn {e.get('turn')} exit {e.get('exit')}"] for e in ar.resource_events]
     if ar.outcome == "arm-resource":
-        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "repeat", ev)
+        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "repeat", ev, run=ctx.run)
     elif ev:
-        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "once", ev)
+        faults.record_resource(ctx.pass_, ctx.arm.name, ctx.step, attempt, "once", ev, run=ctx.run)
 
 
 def _failed_why(pend: dict) -> str | None:

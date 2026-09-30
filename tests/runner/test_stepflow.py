@@ -865,3 +865,20 @@ def test_an_acceptance_run_killed_for_resources_is_recorded_and_failed_not_a_fau
     assert faults.for_step("dry9", "control", 6) == [] and out.attempts == 2 and out.status == "done"
     [r] = faults.resource_records("dry9", 6)
     assert (r["exhausted"], r["attempt"]) == ("repeat", 1)
+
+
+def test_resource_records_carry_their_run(fake_step):                                     # follow-up 8
+    _run_a(fake_step)
+    fake_step.outcome_on = {1: "discovery-stop"}
+    fake_step.oom_on = {1: 1}
+    stepflow.run_step(fake_step.ctx, "go", run="a")
+    [r] = faults.resource_records("dry9", 2)
+    assert r["run"] == "a"
+
+
+def test_a_hidden_run_resource_record_is_run_b(fake_step):
+    fake_step.progress = [3]
+    fake_step.attribution_on = {1: (None, [["pids-max:3"], []])}
+    stepflow.run_step(fake_step.ctx, "go")
+    [r] = faults.resource_records("dry9", 2)
+    assert r["run"] == "b"

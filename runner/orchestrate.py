@@ -758,7 +758,8 @@ class _Run:
         if st.get("open"):
             return
         since = st.get("resolved_at")
-        recs = [r for r in faults.resource_records(self.pass_, step) if since is None or r.get("at", "") > since]
+        recs = [r for r in faults.resource_records(self.pass_, step) if (since is None or r.get("at", "") > since)
+                and r.get("run") == "b"]                  # follow-up 8: only the scored run counts (and re-runs)
         arms = sorted({r["arm"] for r in recs})
         if len(arms) < self.pins.limits.suite_resource_arms:
             return
