@@ -57,12 +57,17 @@ def test_pat_item_names_are_the_ones_the_pat_readers_use(monkeypatch):
 
 # ---- repo gaps (the owner's gh) ----------------------------------------------------------------------------------
 
-def _gh_fake(repos: dict):
-    """`repo._gh` stand-in: `gh repo view <slug> --json …` answered from `repos` (slug → view dict, absent = 404)."""
+def _gh_fake(repos: dict, issues: dict | None = None):
+    """`repo._gh` stand-in: `gh repo view <slug> --json …` answered from `repos` (slug → view dict, absent = 404);
+    `gh issue list --repo <slug> …` from `issues` (slug → list of issue dicts; absent = none)."""
     calls = []
 
     def gh(argv):
         calls.append(argv)
+        if argv[:3] == ["gh", "issue", "list"]:
+            slug = argv[argv.index("--repo") + 1]
+            assert "--state" in argv and argv[argv.index("--state") + 1] == "all"
+            return subprocess.CompletedProcess(argv, 0, json.dumps((issues or {}).get(slug, [])), "")
         assert argv[:3] == ["gh", "repo", "view"]
         slug = argv[3]
         if slug not in repos:
@@ -87,6 +92,46 @@ def test_repo_gaps_names_each_gap(monkeypatch, view, want):
     assert len(got) == len(want) and all(w in g and SLUG in g for w, g in zip(want, got))
 
 
+@pytest.mark.parametrize("fake,kind", [
+    (lambda argv: (_ for _ in ()).throw(subprocess.TimeoutExpired(argv, 120)), "timed out"),
+    (lambda argv: subprocess.CompletedProcess(argv, 0, "{not json", ""), "malformed JSON"),
+    (lambda argv: subprocess.CompletedProcess(argv, 0, "[1, 2]", ""), "malformed JSON"),
+    (lambda argv: subprocess.CompletedProcess(argv, 4, "", "auth required"), "exit 4"),
+], ids=["timeout", "bad-json", "not-an-object", "non-zero"])
+def test_repo_gaps_reports_a_gh_failure_as_a_gap_naming_the_repo_and_the_error_kind(monkeypatch, fake, kind):
+    monkeypatch.setattr(repo, "_gh", fake)
+    got = repo.repo_gaps(SLUG)
+    assert len(got) == 1 and SLUG in got[0] and kind in got[0]
+
+
+PROBE_T = tracker.PROBE_ISSUE["title"]
+
+
+@pytest.mark.parametrize("issues,ok", [
+    ([], True),
+    ([{"number": 1, "title": PROBE_T}], True),
+    ([{"number": 1, "title": PROBE_T}, {"number": 2, "title": "Alias bug"}], False),
+], ids=["clean", "probe-issue-only", "one-other-issue"])
+def test_issue_gaps_passes_an_empty_or_probe_only_repo_and_fails_one_with_another_issue(monkeypatch, issues, ok):
+    monkeypatch.setattr(repo, "_gh", _gh_fake({SLUG: GOOD}, {SLUG: issues}))
+    got = repo.issue_gaps(SLUG, ignore_title=PROBE_T)
+    assert (got == []) is ok
+    if not ok:
+        assert len(got) == 1 and SLUG in got[0] and "1 issue(s)" in got[0]
+        assert "gh issue delete" in got[0] and "recreate the repo" in got[0]
+
+
+@pytest.mark.parametrize("fake,kind", [
+    (lambda argv: (_ for _ in ()).throw(subprocess.TimeoutExpired(argv, 120)), "timed out"),
+    (lambda argv: subprocess.CompletedProcess(argv, 0, "{}", ""), "malformed JSON"),
+    (lambda argv: subprocess.CompletedProcess(argv, 1, "", "boom"), "exit 1"),
+], ids=["timeout", "bad-json", "non-zero"])
+def test_issue_gaps_reports_a_gh_failure_as_a_gap(monkeypatch, fake, kind):
+    monkeypatch.setattr(repo, "_gh", fake)
+    got = repo.issue_gaps(SLUG, ignore_title=PROBE_T)
+    assert len(got) == 1 and SLUG in got[0] and kind in got[0]
+
+
 # ---- the canary: fakes ------------------------------------------------------------------------------------------
 
 class RecOwner:
@@ -101,9 +146,9 @@ class RecOwner:
 @pytest.fixture
 def world(tmp_state, monkeypatch):
     """Every effect the canary has, faked and recorded in `w.events` in order."""
-    w = SimpleNamespace(events=[], repos={SLUG: GOOD, DISC: GOOD}, items=set(ITEMS), green=True,
+    w = SimpleNamespace(events=[], repos={SLUG: GOOD, DISC: GOOD}, issues={}, items=set(ITEMS), green=True,
                         read_rc=0, read_title=None, read_err=b"", stage_hosts=None, spec=None)
-    monkeypatch.setattr(repo, "_gh", _gh_fake(w.repos))
+    monkeypatch.setattr(repo, "_gh", _gh_fake(w.repos, w.issues))
     monkeypatch.setattr(credentials, "keychain_item_exists", lambda item: item in w.items)
     monkeypatch.setattr(orchestrate.gitops, "image_for", lambda arm: "bakeoff-base:test")
 
@@ -120,9 +165,11 @@ def world(tmp_state, monkeypatch):
         return SimpleNamespace(green=w.green)
     monkeypatch.setattr(orchestrate, "setup", setup)
 
+    w.ran = None                                      # None: the canary's normal finish, {"stopped_after": 2}
+
     def run_arm(pass_, arm, cred, owner, limits_override=None, stop_after=None):
         w.events.append(("run_arm", pass_, arm, stop_after))
-        return {"stopped_after": stop_after}
+        return w.ran if w.ran is not None else {"stopped_after": stop_after}
     monkeypatch.setattr(orchestrate, "run_arm", run_arm)
 
     def create_bug(ctx, owner, *, title=None, body=None):
@@ -173,7 +220,23 @@ def test_preflight_asks_for_both_repos_and_all_three_keychain_items(world, monke
     monkeypatch.setattr(credentials, "keychain_item_exists", lambda item: asked.append(item) or True)
     orchestrate.canary_preflight()
     assert set(asked) == ITEMS
-    assert sorted(c[3] for c in repo._gh.calls) == sorted([SLUG, DISC])
+    assert sorted(c[3] for c in repo._gh.calls if c[1] == "repo") == sorted([SLUG, DISC])
+    assert sorted(c[c.index("--repo") + 1] for c in repo._gh.calls if c[1] == "issue") == sorted([SLUG, DISC])
+
+
+@pytest.mark.parametrize("where", [SLUG, DISC])
+def test_preflight_names_a_repo_holding_an_earlier_runs_issue_and_spends_nothing(world, where):
+    world.issues[where] = [{"number": 3, "title": PROBE_T}, {"number": 4, "title": "Alias bug"}]
+    own = RecOwner()
+    res = orchestrate.canary(world.cred_of, own)
+    assert len(res["preflight_missing"]) == 1 and where in res["preflight_missing"][0]
+    assert own.confirms == [] and world.events == []
+
+
+def test_preflight_passes_repos_holding_only_the_probe_issue(world):
+    world.issues[SLUG] = [{"number": 1, "title": PROBE_T}]
+    world.issues[DISC] = [{"number": 1, "title": PROBE_T}]
+    assert orchestrate.canary_preflight() == []
 
 
 def test_preflight_lists_exactly_the_missing_items_and_spends_nothing(world):
@@ -207,6 +270,7 @@ def test_confirm_text_names_the_replacement_only_when_a_previous_canary_exists(w
     own = RecOwner(False)
     orchestrate.canary(world.cred_of, own)
     assert "replace" not in own.confirms[0].lower()
+    assert "GitHub issues are NOT reset" in own.confirms[0]
     (paths.RESULTS / "canary").mkdir(parents=True)
     orchestrate.canary(world.cred_of, own)
     assert "replaced" in own.confirms[1].lower() and str(paths.RESULTS / "canary") in own.confirms[1]
@@ -270,6 +334,32 @@ def test_a_read_of_a_different_title_is_not_ok(world):
     assert rec["arm_pat_read_ok"] is False
 
 
+UNFINISHED = [{"parked": [{"arm": ARM, "step": 1}]}, {"paused_after": 1}, {"declined": "setup of control"},
+              {"stopped_at": 1}, {"incomplete": {"arms": {}}}, {"completed": True}]
+UNFINISHED_IDS = ["parked", "paused_after", "declined", "stopped_at", "incomplete", "completed"]
+
+
+@pytest.mark.parametrize("ran", UNFINISHED, ids=UNFINISHED_IDS)
+def test_an_unfinished_run_writes_nothing_to_github_and_reports_its_status_at_the_top(world, ran):
+    world.ran = ran
+    res = orchestrate.canary(world.cred_of, RecOwner())
+    assert not any(isinstance(e, tuple) and e[0] in ("create_bug", "docker.run", "supersede") for e in world.events)
+    assert res["not_finished"] == ran and all(res[k] == v for k, v in ran.items())
+    assert str(res["tracker_check"]).startswith("not run")
+    assert not (Paths("canary", ARM).results / "tracker-check").exists()
+
+
+@pytest.mark.parametrize("ran", UNFINISHED, ids=UNFINISHED_IDS)
+def test_cli_canary_exits_non_zero_and_says_why_when_the_run_did_not_finish(world, monkeypatch, capsys, ran):
+    from runner import cli
+    world.ran = ran
+    monkeypatch.setattr(credentials, "from_keychain", lambda *a, **k: credentials.dummy())
+    monkeypatch.setattr(owner_mod, "Owner", lambda *a, **k: RecOwner())
+    assert cli.main(["canary"]) == 1
+    assert "did not finish steps 1-2" in capsys.readouterr().out
+    assert not any(isinstance(e, tuple) and e[0] == "create_bug" for e in world.events)
+
+
 def test_a_setup_that_is_not_green_stops_before_the_run(world):
     world.green = False
     res = orchestrate.canary(world.cred_of, RecOwner())
@@ -283,7 +373,7 @@ def test_a_parked_issue_confirm_is_recorded_and_nothing_is_read(world, monkeypat
     class ParkOnIssue(RecOwner):
         def confirm(self, text):
             self.confirms.append(text)
-            return park if "issue" in text else True
+            return park if "step-6 issue" in text else True
     orchestrate.canary(world.cred_of, ParkOnIssue())
     rec = json.loads((Paths("canary", ARM).results / "tracker-check" / "result.json").read_text())
     assert rec["issue"] is None and rec["arm_pat_read_ok"] is False and "park" in rec["error"]
@@ -360,7 +450,19 @@ DEFECTS = {
     "step 1: arm pin verified from real transcripts (N.a)":
         lambda p: (p.step(1) / "a" / "model-pin.json").unlink(),
     "step 1: every PO decision pin-verified (N.b)":
-        lambda p: shutil.rmtree(p.step(1) / "po"),
+        lambda p: (p.step(1) / "po" / "a1-001" / "model-pin.json").write_text(_pin(ok=False)),
+    "step 1: every PO decision pin-verified (N.a)":
+        lambda p: (p.step(1) / "a" / "po" / "a1-001" / "model-pin.json").write_text(_pin(n=0)),
+    "the real PO answered at least once across steps 1-2":
+        lambda p: [shutil.rmtree(p.step(n) / sub) for n in (1, 2) for sub in ("po", "a/po")],
+    "step 2: arm pin verified from real transcripts (N.a)":
+        lambda p: (p.step(2) / "a" / "model-pin.json").write_text(_pin(ok=False)),
+    "step 1: no harness fault (N.a discovery.json)":
+        lambda p: (p.step(1) / "a" / "discovery.json").write_text(json.dumps({"run": "a"})),
+    "step 1: evidence scan clean":
+        lambda p: (p.step(1) / "leak.txt").write_text(f"oops {LIT}\n"),
+    "step 2: hidden tests ran in the tester container":
+        lambda p: (p.step(2) / "hidden" / "summary.json").unlink(),
     "step 2: every PO decision pin-verified (N.b)":
         lambda p: (p.step(2) / "po" / "a1-001" / "model-pin.json").write_text(_pin(ok=False)),
     "step 2: every PO decision pin-verified (N.a)":
@@ -368,7 +470,7 @@ DEFECTS = {
     "step 1: no harness fault (N.b run.json)":
         lambda p: _rw(p.step(1) / "run.json", harness_faults=[{"kind": "infra-auth"}]),
     "step 2: no harness fault (N.b run.json)":
-        lambda p: (p.step(2) / "run.json").unlink(),
+        lambda p: (p.step(2) / "run.json").write_text(json.dumps({"outcome": "done"})),   # no harness_faults key
     "step 2: no harness fault (N.a discovery.json)":
         lambda p: _rw(p.step(2) / "a" / "discovery.json", harness_faults=[{"kind": "model-pin"}]),
     "step 2: evidence scan clean":
@@ -395,10 +497,27 @@ DEFECTS = {
 
 
 def test_every_row_has_a_defect_case():
-    assert set(DEFECTS) <= set(orchestrate.canary_row_names())
-    # rows without a named defect here are the per-step twins of one that has (same code path, other step)
-    assert {r.replace("step 1", "step N").replace("step 2", "step N") for r in orchestrate.canary_row_names()} == \
-        {r.replace("step 1", "step N").replace("step 2", "step N") for r in DEFECTS}
+    assert set(DEFECTS) == set(orchestrate.canary_row_names())
+
+
+def test_the_per_step_po_rows_pass_with_zero_decisions_and_only_the_at_least_once_row_fails(tree):
+    DEFECTS["the real PO answered at least once across steps 1-2"](tree)
+    rows = orchestrate.canary_check()
+    assert _failing(rows) == {"the real PO answered at least once across steps 1-2"}
+    assert all(ok for what, ok, _ in rows if "every PO decision" in what)
+
+
+def test_the_credential_row_fails_when_the_arm_home_is_missing(tree):
+    shutil.rmtree(tree.home)
+    assert _failing(orchestrate.canary_check()) == {"no credential file in the arm's home"}
+
+
+def test_the_ledger_row_fails_when_results_canary_is_missing(tmp_state, monkeypatch):
+    monkeypatch.setattr(secrets, "literals", lambda *a, **k: [LIT])
+    assert not (paths.RESULTS / "canary").exists()
+    check = dict(orchestrate._canary_rows([]))["no harness fault in the canary ledger (setup included)"]
+    ok, detail = check()                     # evaluated before canary_check would create results/canary/canary.md
+    assert ok is False and "no results/canary" in detail
 
 
 @pytest.mark.parametrize("row", sorted(DEFECTS))
@@ -412,10 +531,7 @@ def test_each_row_fails_on_its_own_defect_alone(tree, row):
 def test_an_empty_results_tree_fails_every_row_without_crashing(tmp_state, monkeypatch):
     monkeypatch.setattr(secrets, "literals", lambda *a, **k: [LIT])
     rows = orchestrate.canary_check()
-    # only the two absence rows (no credential file, no ledger entry) hold on nothing; every evidence row fails,
-    # the scan rows included (a scan of evidence that is not there proves nothing)
-    vacuous = {r for r in orchestrate.canary_row_names() if "credential file" in r or "canary ledger" in r}
-    assert _failing(rows) == set(orchestrate.canary_row_names()) - vacuous
+    assert _failing(rows) == set(orchestrate.canary_row_names())      # no row passes on nothing
     assert (paths.RESULTS / "canary" / "canary.md").read_text().rstrip().endswith("**Result: FAIL**")
 
 

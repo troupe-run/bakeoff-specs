@@ -301,10 +301,19 @@ def _gh(argv: list[str]) -> subprocess.CompletedProcess:
 def repo_gaps(slug: str) -> list[str]:
     """What stops `slug` being used as an arm tracker repo (Task 26 pre-flight), by the owner's own `gh`: not found
     (or not visible to the owner's login), not private, issues disabled. [] when it is ready. Reads only."""
-    r = _gh(["gh", "repo", "view", slug, "--json", "visibility,hasIssuesEnabled"])
+    try:
+        r = _gh(["gh", "repo", "view", slug, "--json", "visibility,hasIssuesEnabled"])
+    except subprocess.TimeoutExpired:
+        return [f"GitHub repo {slug}: could not check (gh timed out)"]
     if r.returncode != 0:
-        return [f"GitHub repo {slug}: not found (or not visible to your gh login): {r.stderr.strip()[:200]}"]
-    v = json.loads(r.stdout or "{}")
+        return [f"GitHub repo {slug}: not found (or not visible to your gh login; gh exit {r.returncode}): "
+                f"{r.stderr.strip()[:200]}"]
+    try:
+        v = json.loads(r.stdout or "{}")
+        if not isinstance(v, dict):
+            raise ValueError("not a JSON object")
+    except ValueError:
+        return [f"GitHub repo {slug}: could not check (gh returned malformed JSON)"]
     out = []
     vis = str(v.get("visibility", "")).upper()
     if vis != "PRIVATE":
@@ -312,6 +321,29 @@ def repo_gaps(slug: str) -> list[str]:
     if not v.get("hasIssuesEnabled"):
         out.append(f"GitHub repo {slug}: issues are disabled")
     return out
+
+
+def issue_gaps(slug: str, ignore_title: str) -> list[str]:
+    """Task 26 fix round 1: a repo that must start with an empty tracker. Every issue (any state) whose title is not
+    exactly `ignore_title` (the live probe's closed write test) is a gap, reported with its count. A gh timeout,
+    failure or malformed JSON is a gap too, never a traceback."""
+    try:
+        r = _gh(["gh", "issue", "list", "--repo", slug, "--state", "all", "--limit", "1000", "--json", "number,title"])
+    except subprocess.TimeoutExpired:
+        return [f"GitHub repo {slug}: could not list its issues (gh timed out)"]
+    if r.returncode != 0:
+        return [f"GitHub repo {slug}: could not list its issues (gh exit {r.returncode}): {r.stderr.strip()[:200]}"]
+    try:
+        issues = json.loads(r.stdout or "[]")
+        if not isinstance(issues, list):
+            raise ValueError("not a JSON list")
+    except ValueError:
+        return [f"GitHub repo {slug}: could not list its issues (gh returned malformed JSON)"]
+    other = [i for i in issues if not (isinstance(i, dict) and i.get("title") == ignore_title)]
+    if not other:
+        return []
+    return [f"GitHub repo {slug}: holds {len(other)} issue(s) from an earlier run (any state); delete them "
+            f"(`gh issue delete <n> --repo {slug}`) or recreate the repo (and its PAT)"]
 
 
 def ensure_private_repo(slug: str, description: str) -> str:

@@ -1543,7 +1543,13 @@ def canary_preflight() -> list[str]:
     gaps: list[str] = []
     for what, slug in (("canary repo", config.github_slug(CANARY, CANARY_ARM)),
                        ("N.a discovery repo", config.github_disc_slug(CANARY, CANARY_ARM))):
-        gaps += repo.repo_gaps(slug) if slug else [f"{what}: no slug configured for {CANARY}/{CANARY_ARM}"]
+        if not slug:
+            gaps.append(f"{what}: no slug configured for {CANARY}/{CANARY_ARM}")
+            continue
+        found = repo.repo_gaps(slug)
+        # Fix round 1 (review I-2): the replacement wipes state/ and results/, never GitHub; a repo that already holds
+        # issues (the probe's closed write test excepted) would hand the arm a non-empty tracker (and a step-6 spoiler)
+        gaps += found or repo.issue_gaps(slug, ignore_title=tracker.PROBE_ISSUE["title"])
     for what, item in (("the Claude OAuth credential", credentials.OAUTH_ITEM),
                        ("the arm's PAT", credentials.github_pat_item(CANARY, CANARY_ARM)),
                        ("the arm's N.a discovery PAT", credentials.github_disc_pat_item(CANARY, CANARY_ARM))):
@@ -1564,7 +1570,8 @@ def canary(cred_of, owner) -> dict:
     state, results = paths.STATE / CANARY, paths.RESULTS / CANARY
     previous = [str(d) for d in (state, results) if d.exists()]
     text = ("Run the canary: arm control, steps 1-2 (step 2 includes the hand edit), the real model, the real PO and "
-            "the real GitHub tracker; spends real quota (OD25)?")
+            "the real GitHub tracker; spends real quota (OD25)? GitHub issues are NOT reset by this command (the "
+            "pre-flight found none but the live probe's write test).")
     if previous:
         text += (f" A previous canary run exists ({', '.join(previous)}): it will be REPLACED (its state and evidence "
                  f"are deleted).")
@@ -1585,7 +1592,14 @@ def canary(cred_of, owner) -> dict:
     if not r.green:
         return {"setup_green": False, "see": str(Paths(CANARY, CANARY_ARM).setup_results)}
     ran = run_arm(CANARY, CANARY_ARM, cred, owner, stop_after=CANARY_STOP_AFTER)
-    return {"run": ran, "tracker_check": canary_tracker_check(owner)}
+    if ran != {"stopped_after": CANARY_STOP_AFTER}:
+        # Fix round 1 (review I-1): only the canary's normal finish goes on to the GitHub write; anything else is
+        # reported at the top level (the CLI exits 1) and the tracker is left untouched for a resume
+        return {**ran, "not_finished": ran,
+                "tracker_check": f"not run: the arm did not finish steps 1-{CANARY_STOP_AFTER}"}
+    with preflight.lock():                               # review m-1: one runner at a time, Docker and gh included
+        tc = canary_tracker_check(owner)
+    return {"run": ran, "tracker_check": tc}
 
 
 def _write_tracker_check(out: Path, rec: dict) -> None:
@@ -1684,7 +1698,8 @@ def _canary_rows(lits: list[str]) -> list[tuple[str, object]]:
             (f"step {n}: arm pin verified from real transcripts (N.b)", lambda d=d: _pin_ok(d / "model-pin.json")),
             (f"step {n}: arm pin verified from real transcripts (N.a)", lambda d=d: _pin_ok(d / "a" / "model-pin.json")),
             (f"step {n}: every PO decision pin-verified (N.b)",
-             lambda d=d: _pins_ok(sorted((d / "po").glob("*/model-pin.json")), need_one=True)),
+             lambda d=d: _pins_ok(sorted((d / "po").glob("*/model-pin.json")), need_one=False)
+             if (d / "run.json").is_file() else (False, "no N.b run recorded (run.json)")),
             (f"step {n}: every PO decision pin-verified (N.a)",
              lambda d=d: _pins_ok(sorted((d / "a" / "po").glob("*/model-pin.json")), need_one=False)
              if (d / "a" / "discovery.json").is_file() else (False, "no N.a run recorded (a/discovery.json)")),
@@ -1693,6 +1708,7 @@ def _canary_rows(lits: list[str]) -> list[tuple[str, object]]:
             (f"step {n}: evidence scan clean", lambda n=n, d=d: _scan_row(d, lambda: secrets.scan_step(p, n, lits))),
             (f"step {n}: hidden tests ran in the tester container", lambda d=d: _hidden_row(d)),
         ]
+    rows.append(("the real PO answered at least once across steps 1-2", lambda: _po_answered(p)))
     he = p.step(2) / "hand-edit"
     rows += [
         ("step 2: hand edit applied (hand-edit/edit.json)",
@@ -1714,7 +1730,8 @@ def _canary_rows(lits: list[str]) -> list[tuple[str, object]]:
          lambda: _scan_row(tc, lambda: secrets.scan_tree(tc, [*lits, *secrets.home_pat_values(p.home)]))),
         ("no credential file in the arm's home", lambda: _creds_row(p.home)),
         ("no harness fault in the canary ledger (setup included)",
-         lambda: (not (es := faults.entries(CANARY)) and not faults.halted(CANARY),
+         lambda: (False, "no results/canary (no canary run recorded)") if not (paths.RESULTS / CANARY).is_dir() else
+         (not (es := faults.entries(CANARY)) and not faults.halted(CANARY),
                   f"{len(es)} entr{'y' if len(es) == 1 else 'ies'}; halted: {bool(faults.halted(CANARY))}")),
     ]
     return rows
@@ -1734,13 +1751,19 @@ def _hidden_row(d: Path) -> tuple[bool, str]:
     return (s.get("total") or 0) > 0, f"{s.get('passed')}/{s.get('total')}"
 
 
+def _po_answered(p: Paths) -> tuple[bool, str]:
+    n = sum(len(list((p.step(k) / sub).glob("*/model-pin.json"))) for k in (1, 2) for sub in ("po", "a/po"))
+    return n > 0, f"{n} PO decision(s) across steps 1-2 (N.a and N.b)"
+
+
 def _creds_row(home: Path) -> tuple[bool, str]:
     import os
     hits = []
-    if home.is_dir() and not home.is_symlink():
-        for root, _dirs, files in os.walk(home, followlinks=False):
-            if ".credentials.json" in files:
-                hits.append(str((Path(root) / ".credentials.json").relative_to(home)))
+    if not home.is_dir() or home.is_symlink():
+        return False, f"no arm home at {home} (nothing to check)"
+    for root, _dirs, files in os.walk(home, followlinks=False):
+        if ".credentials.json" in files:
+            hits.append(str((Path(root) / ".credentials.json").relative_to(home)))
     return not hits, ", ".join(hits[:10])
 
 

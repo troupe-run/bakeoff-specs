@@ -271,7 +271,7 @@ def _orchestrated(fn):
         if res is not None:
             print(json.dumps(res, indent=2, default=str))
             if isinstance(res, dict) and any(k in res for k in ("declined", "incomplete", "skipped", "preflight_missing",
-                                                                 "setup_green")):
+                                                                 "setup_green", "not_finished")):
                 return 1
         return 0
     return run
@@ -404,6 +404,9 @@ def register_canary(sub):
                     print(f"  - {m}")
                 print(res["hint"])
                 print("Nothing was run and nothing was spent.")
+            elif "not_finished" in res:
+                print(f"The arm did not finish steps 1-2 ({res['not_finished']}): no GitHub issue was created; "
+                      f"nothing was written to the tracker.")
             elif res.get("skipped"):
                 print(f"Not confirmed ({res.get('why')}): nothing run, nothing spent.")
             return res
