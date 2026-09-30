@@ -964,6 +964,8 @@ def _run(pass_: str, arms: list[str], cred, owner, *, limits_override: dict | No
         p = Paths(pass_, a)
         checklist.require_clean_green(p)                  # design §6: no step before a clean, green setup
         preflight.check_images(a, p)                      # design §2: the locked images, the baked reference
+        if config.github_disc_slug(pass_, a):             # follow-up 6: N.a's PAT, before any step starts
+            checklist.require_disc_pat(pass_, config.load_arm(a))
     docker.sweep()
     # A dry pass never touches the keychain (Task 24): its only credential is the dummy, so the dummy token (and any
     # arm-home PAT value) is what its scans look for; a real pass adds every keychain value.

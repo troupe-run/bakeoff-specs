@@ -308,6 +308,7 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
     monkeypatch.setattr(preflight, "check_images", lambda arm, p: None)
     monkeypatch.setattr(docker, "sweep", lambda *a, **k: env.calls.append(("sweep",)) or {})
     monkeypatch.setattr(secrets, "literals", lambda *a, **k: ["dry-run-dummy-token"])
+    monkeypatch.setattr(credentials, "github_disc_pat", lambda pass_, arm: "github_pat_" + "D" * 50)   # never the keychain
     env.own = []                                # the arm's own token values (A5); never the keychain in tests
     monkeypatch.setattr(secrets, "own_pat_values", lambda p, arm, cred=None: list(env.own))
 

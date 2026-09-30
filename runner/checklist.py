@@ -458,6 +458,16 @@ def _install_github_pat(p: Paths, arm: config.Arm, pass_: str) -> bool:
     return True
 
 
+def require_disc_pat(pass_: str, arm: config.Arm) -> str:
+    """The arm's N.a discovery PAT, or `NotReady` (follow-up 6): a missing or timed-out keychain item is the owner's
+    setup to finish (`runner github-plan <pass>`), never a runner crash. The value is never in the message."""
+    try:
+        return credentials.github_disc_pat(pass_, arm.name)
+    except RuntimeError as e:
+        raise NotReady(f"{arm.name}: the N.a discovery PAT (keychain bakeoff-gh-{pass_}-disc-{arm.name}) is not "
+                       f"usable: {e}; see `runner github-plan {pass_}`") from None
+
+
 def install_disc_pat(p: Paths, arm: config.Arm, pass_: str) -> bool:
     """N.a (final fix batch A3): the arm's discovery-repo PAT (keychain `bakeoff-gh-<pass>-disc-<arm>`) replaces the
     normal one in `home/.config/gh/hosts.yml` (and `home/.bk-mcp.json` for an MCP arm), created 0600 in one step.
@@ -475,7 +485,7 @@ def install_disc_pat(p: Paths, arm: config.Arm, pass_: str) -> bool:
     for f in targets:
         if os.path.lexists(f) and (os.path.islink(f) or not stat.S_ISREG(os.lstat(f).st_mode)):
             raise NotReady(f"{f} is a link or not a regular file: the arm changed its home; not writing the N.a PAT")
-    pat = credentials.github_disc_pat(pass_, arm.name)
+    pat = require_disc_pat(pass_, arm)
     gh = p.home / ".config" / "gh"
     for d in (gh.parent, gh):
         d.mkdir(mode=0o700, exist_ok=True)

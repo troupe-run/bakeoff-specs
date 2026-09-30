@@ -105,3 +105,30 @@ def test_tracker_calls_in_na_go_to_the_discovery_repo(tmp_state, monkeypatch):
                               paths=Paths("pass1", "control"), run="a")
     assert tracker._slug(ctx) == "troupe-run/bakeoff-specs-control-pass1-disc"
     assert tracker._slug(dataclasses.replace(ctx, run="b")) == "troupe-run/bakeoff-specs-control-pass1"
+
+
+# ---- follow-up 6: a missing or timed-out discovery keychain item is NotReady, found at run start ----------------------
+
+@pytest.mark.parametrize("why", ["no usable keychain item 'bakeoff-gh-pass1-disc-control' (exit 44)",
+                                 "keychain lookup for 'bakeoff-gh-pass1-disc-control' timed out after 20s"])
+def test_install_disc_pat_turns_a_keychain_failure_into_not_ready(tmp_state, monkeypatch, why):
+    p = _home_with_pat(tmp_state)
+
+    def boom(pass_, arm):
+        raise RuntimeError(why)
+    monkeypatch.setattr(credentials, "github_disc_pat", boom)
+    with pytest.raises(checklist.NotReady, match="disc"):
+        checklist.install_disc_pat(p, config.load_arm("control"), "pass1")
+    assert "N" * 40 in (p.home / ".config" / "gh" / "hosts.yml").read_text()     # the normal PAT is untouched
+
+
+def test_a_run_with_a_missing_discovery_pat_is_refused_before_any_step(fake_orch, monkeypatch):
+    from runner import orchestrate
+    from tests.runner.test_orchestrate import real
+
+    def boom(pass_, arm):
+        raise RuntimeError(f"no usable keychain item 'bakeoff-gh-{pass_}-disc-{arm}' (exit 44)")
+    monkeypatch.setattr(credentials, "github_disc_pat", boom)
+    with pytest.raises(orchestrate.NotReady, match="bakeoff-gh-pass1-disc-"):
+        real(fake_orch)
+    assert fake_orch.runs() == []
