@@ -193,9 +193,14 @@ def test_the_in_container_unpacker_rejects_bad_records(blob, why):             #
 
 
 def test_the_in_container_unpacker_writes_files_with_0700_dirs(tmp_path):     # renamed, fix round 4
-    bundle_unpack.write(_rec("tests/hidden/a.py", b"A") + _rec("pyproject.toml", b"P"), tmp_path)
+    bundle_unpack.write(_rec("tests/hidden/a.py", b"A") + _rec("pyproject.toml", b"P")
+                        + _rec("tests/hidden/data/deep/x.txt", b"X"), tmp_path)
     assert (tmp_path / "tests/hidden/a.py").read_bytes() == b"A" and (tmp_path / "pyproject.toml").read_bytes() == b"P"
-    assert (tmp_path / "tests").stat().st_mode & 0o777 == 0o700
+    made = [d for d in tmp_path.rglob("*") if d.is_dir()]                    # Task 18 m3: EVERY created directory
+    assert sorted(d.relative_to(tmp_path).as_posix() for d in made) == [
+        "tests", "tests/hidden", "tests/hidden/data", "tests/hidden/data/deep"]
+    assert all(d.stat().st_mode & 0o777 == 0o700 for d in made), [(d, oct(d.stat().st_mode)) for d in made]
+    assert all(f.stat().st_mode & 0o777 == 0o600 for f in tmp_path.rglob("*") if f.is_file())
 
 
 def test_the_tester_never_mounts_scratch_or_the_arm_home_writable(tmp_state, accounts):
@@ -528,6 +533,12 @@ def test_a_bad_size_on_a_harness_only_member_or_a_negative_size_is_a_harness_fau
     assert hidden._frames_error(e).startswith("harness-fault")
 
 
+@pytest.mark.parametrize("blob", [b"exit -1\n", _frames({"exit": b"0"}) + b"junit.xml -5\n"], ids=["exit", "junit"])
+def test_a_negative_size_is_a_malformed_results_frame(blob):                   # Task 18 m1
+    e = _raised(blob)
+    assert "malformed results frame" in str(e) and e.overflow is None
+
+
 def test_an_oversized_junit_with_the_cli_marker_in_its_tail_is_arm_output():
     cap = hidden.RESULT_CAPS["junit.xml"]
     body = b"<testsuites>" + b"x" * cap + b"<failure message='" + MARK + b"\ntail'/>"
@@ -598,7 +609,8 @@ def test_pytest_is_pinned_quiet_with_assertion_truncation_on(tmp_state, accounts
     for o in ("truncation_limit_lines=8", "truncation_limit_chars=640", "verbosity_assertions=auto"):
         assert argv[argv.index(o) - 1] == "-o"
     for bad in (["-v"], ["-vv"], ["--verbose"], ["--verbosity=2"], ["-o", "verbosity_assertions=2"],
-                ["--override-ini=truncation_limit_lines=0"], ["-c", "x.toml"], ["-p", "x"]):
+                ["--override-ini=truncation_limit_lines=0"], ["-c", "x.toml"], ["-p", "x"],
+                ["-xvv"], ["-rv"], ["-xqq"], ["-sp", "x"], ["-xo", "a=b"], ["-xc", "x.toml"]):   # Task 18 m2: clusters
         with pytest.raises(ValueError):
             hidden._pytest_argv(["tests/hidden", *bad], "/work/bakeoff-specs-dryrun")
     _, _, s = _spec(tmp_state, "harness", cmd=argv)

@@ -53,6 +53,13 @@ PYTEST_ENV_STRIP = ("CI", "BUILD_NUMBER", "PYTEST_ADDOPTS")
 PYTEST_PINS = ["-q", "-o", "verbosity_assertions=auto", "-o", "truncation_limit_lines=8",
                "-o", "truncation_limit_chars=640"]
 PYTEST_FORBIDDEN = ("-v", "--verbos", "-o", "--override-ini", "-c", "--config-file", "-p", "-q", "--quiet")
+PYTEST_FORBIDDEN_SHORT = set("vocpq")     # Task 18 m2: in a combined short-flag cluster too (`-xvv`, `-rv`)
+
+
+def _forbidden(a: str) -> bool:
+    if a.startswith(PYTEST_FORBIDDEN):
+        return True
+    return a.startswith("-") and not a.startswith("--") and bool(PYTEST_FORBIDDEN_SHORT & set(a[1:]))
 MAIN = "refs/heads/main"
 NO_MAIN = "arm-no-main"      # the arm left no committed main: its step attempt is all-failed (final fix batch A1)
 HARNESS_UID, ARM_UID = 1000, 1001
@@ -140,7 +147,7 @@ def arm_prefix(impl: str) -> list[str]:
 def _pytest_argv(args: list[str], impl: str, reference: bool = False) -> list[str]:
     """Arm runs: the CLI as uid 1001, no TROUPE_REF_STEP. Reference runs (flake classification): the reference is
     reachable only by the harness uid, so it runs as uid 1000 and gets its step (fix round 2, item 1 (b))."""
-    bad = [a for a in args if a.startswith(PYTEST_FORBIDDEN)]
+    bad = [a for a in args if _forbidden(a)]
     if bad:     # verbosity, ini overrides, config files and plugins are the harness's pins, never a caller's
         raise ValueError(f"pytest args may not override the harness pins: {bad}")
     prefix = ["uv", "run", "--quiet", "--project", impl, "troupe"] if reference else arm_prefix(impl)
