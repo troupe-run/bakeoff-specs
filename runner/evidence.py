@@ -161,6 +161,22 @@ def _lines(f: Path) -> list[dict]:
     return [json.loads(l) for l in f.read_text().splitlines() if l.strip()] if f.exists() else []
 
 
+def na_section(a: Path) -> list[str]:
+    """m-6: the step's N.a in the owner's N.b review — why it stopped, its code check (an `unavailable` check means
+    N.a may have run the whole step unnoticed) and its escalations."""
+    d = json.loads((a / "discovery.json").read_text()) if (a / "discovery.json").is_file() else None
+    if d is None:
+        return ["- no N.a record"]
+    why = (d.get("discovery") or {}).get("why")
+    out = [f"- stopped: {d.get('outcome')}" + (f" ({why} at turn {(d.get('discovery') or {}).get('turn')})" if why else "")]
+    cc = d.get("code_check") or {}
+    out.append(f"- code check: {cc.get('status') or 'n/a'}" + "".join(
+        f"; turn {r.get('turn')}: {r.get('reason')}" for r in (cc.get("reasons") or [])[:5]))
+    esc = [q for q in _lines(a / "questions.jsonl") if q.get("escalated")]
+    out += [f"- escalation: {', '.join(q['escalated'])} → {q.get('reply')}" for q in esc] or ["- escalations: none"]
+    return out
+
+
 def _gates(out: Path) -> list[dict]:
     f = out / "owner-gates.jsonl"
     return [json.loads(l) for l in f.read_text().splitlines()] if f.exists() else []
@@ -248,6 +264,7 @@ def finalise(ctx, *, attempts, extra_turns, hidden, quality, pin, sha_before, st
         ([f"- {g['owner_action']}: {str(g['final_reply'])[:200]}" for g in gates] or ["- none"])
     lines += ["", "## Possible missed approvals (PO said `continue`, the arm used approval wording)"]
     lines += [f"- turn {q['n']}: {q['arm_message'][:200]!r}" for q in missed] or ["- none"]
+    lines += ["", "## N.a (discovery)"] + na_section(out / "a")                                          # m-6
     lines += ["", "## Arm violations (A5: the attempt failed; never a harness fault)"]
     lines += [f"- attempt {v.get('attempt')} ({v.get('run')}): {v.get('kind')} {v.get('check') or ''}".rstrip()
               for v in run["arm_violations"]] or ["- none"]

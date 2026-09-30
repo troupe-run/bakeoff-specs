@@ -233,3 +233,23 @@ def test_finalise_lists_the_arm_violations_of_the_step(tmp_path, monkeypatch):  
     run = json.loads((ctx.out / "run.json").read_text())
     assert run["arm_violations"][0]["check"] == "common.origin"
     assert "## Arm violations" in (ctx.out / "summary.md").read_text() and "common.origin" in (ctx.out / "summary.md").read_text()
+
+
+def test_the_nb_summary_shows_na_stop_reason_escalations_and_code_check(tmp_path, monkeypatch):     # m-6
+    ctx, kw = finalise_inputs(tmp_path, monkeypatch)
+    a = ctx.out / "a"; a.mkdir()
+    (a / "discovery.json").write_text(json.dumps({"outcome": "stalled", "discovery": None,
+                                                  "code_check": {"status": "unavailable", "reasons": [
+                                                      {"turn": 2, "reason": "ContainerError: git"}]}}))
+    (a / "questions.jsonl").write_text(json.dumps({"escalated": ["Floats?"], "reply": "As written."}) + "\n")
+    evidence.finalise(ctx, **kw)
+    md = (ctx.out / "summary.md").read_text()
+    sec = md.split("## N.a (discovery)", 1)[1].split("\n## ", 1)[0]
+    assert "stalled" in sec and "code check: unavailable" in sec and "ContainerError" in sec
+    assert "Floats? → As written." in sec
+
+
+def test_the_nb_summary_says_when_there_was_no_na_record(tmp_path, monkeypatch):
+    ctx, kw = finalise_inputs(tmp_path, monkeypatch)
+    evidence.finalise(ctx, **kw)
+    assert "## N.a (discovery)\n- no N.a record" in (ctx.out / "summary.md").read_text()
