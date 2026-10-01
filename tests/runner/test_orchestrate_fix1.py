@@ -327,7 +327,9 @@ def test_a_detached_head_gets_a_branch_first_so_its_commits_stay_reachable(monke
 
 # ---- 11. the consistency check's reach ------------------------------------------------------------------------------
 
-def test_step_n_minus_1_scored_run_answers_are_shown_at_step_ns_check(fake_orch):
+def test_a_brief_answer_dated_step_n_minus_1_after_its_check_is_shown_at_step_ns_check(fake_orch):
+    # N.b no longer appends to the brief (the fallback, owner 2026-10-01); the reach stays for an answer that does
+    # land in the brief at step N-1 after its check (as N.b escalations could before)
     fake_orch.escalate_b[("control", 1)] = ("Asked during 1.b?", "Yes.")
     real(fake_orch)
     [items] = fake_orch.owner.item_calls
@@ -394,3 +396,51 @@ def test_close_out_shows_the_step7_nb_escalations_for_the_owner(finished):
     finished.orch.owner.items_answer = lambda items: {i: (not i.startswith("esc7-"), "", 0.0) for i, _ in items}
     with pytest.raises(orchestrate.NotReady, match="esc7-control"):
         orchestrate.close_out("pass1", finished.orch.owner)
+
+
+# ---- owner, 2026-10-01: N.b escalations get the fallback; the next step's check shows them (informational) ----------
+
+FB = "Remote include timeout?"
+
+
+def _fb_record(step):
+    return json.loads((paths.RESULTS / "pass1" / "consistency" / f"step-{step:02d}.json").read_text())
+
+
+def test_step_ns_fallback_questions_are_shown_at_step_n_plus_1s_check_without_a_prompt_and_recorded(fake_orch):
+    fake_orch.fallback_b[("control", 1)] = [FB]
+    real(fake_orch)
+    assert fake_orch.owner.item_calls == []                     # nothing to confirm: informational only
+    shown = [t for t in fake_orch.owner.informed if FB in t]
+    assert len(shown) == 1 and "control" in shown[0] and "step 1" in shown[0] and "po-brief.md" in shown[0]
+    rec = _fb_record(2)
+    assert rec["status"] == "nothing-new"
+    assert rec["fallbacks"] == [{"arm": "control", "step": 1, "question": FB}]
+    md = (paths.RESULTS / "pass1" / "consistency" / "step-02.md").read_text()
+    assert "answered by the fallback in step 1's scored run" in md and FB in md and "control" in md
+    assert _fb_record(1).get("fallbacks") == [] and _fb_record(3).get("fallbacks") == []
+
+
+def test_fallbacks_are_shown_alongside_new_escalations_but_are_not_items_to_confirm(fake_orch):
+    fake_orch.fallback_b[("openspec", 1)] = [FB]
+    fake_orch.escalate[("control", 2)] = (Q, "Yes.")
+    real(fake_orch)
+    [items] = fake_orch.owner.item_calls
+    assert len(items) == 1 and FB not in items[0][1] and Q in items[0][1]
+    assert any(FB in t for t in fake_orch.owner.informed)
+    rec = _fb_record(2)
+    assert rec["status"] == "confirmed" and rec["fallbacks"] == [{"arm": "openspec", "step": 1, "question": FB}]
+
+
+def test_the_last_steps_fallbacks_are_listed_in_the_close_out_without_blocking_it(finished):
+    q = Paths("pass1", "control").step(7) / "questions.jsonl"
+    q.write_text(json.dumps({"kind": "question", "escalated": [FB], "fallback": [FB], "answered_by": "fallback",
+                             "reply": "The brief doesn't cover this."}) + "\n")
+    asked = []
+    finished.orch.owner.items_answer = lambda items: asked.extend(i for i, _ in items) or \
+        {i: (True, "", 0.0) for i, _ in items}
+    orchestrate.close_out("pass1", finished.orch.owner)                       # not refused
+    assert not [i for i in asked if i.startswith("esc7-")]                    # not an item to confirm
+    text = (paths.RESULTS / "pass1" / "close-out.md").read_text()
+    sec = text.split("step 7 N.b questions answered by the fallback", 1)[1]
+    assert f"control: {FB}" in sec.split("\n- brief at close")[0]

@@ -330,6 +330,8 @@ def test_scripted_owner_refuses_every_method_when_not_bound(tmp_path):
         o.substitute_bug(config.load_arm("dryrun"), "precheck")
     with pytest.raises(PermissionError):
         _ = o.escalation_answer
+    with pytest.raises(PermissionError):
+        o.inform("fyi")
 
 
 def test_scripted_owner_answers_accepts_and_pauses_where_scripted(tmp_path):
@@ -378,3 +380,20 @@ def test_scripted_owner_substitute_bug_can_be_scripted_to_substitute_with_its_te
     choice, title, body, why, test_body, secs = o.substitute_bug(config.load_arm("dryrun"), "precheck passed")
     assert (choice, title, body, why, test_body, secs) == (
         "substitute", "Alias handling bug", "Body", "Because", "def test_x():\n    assert False", 0.0)
+
+
+# --- inform (owner, 2026-10-01: the N.b fallback questions at the next consistency check) ----------------------
+
+def test_inform_shows_the_text_and_reads_no_input_even_when_unattended():
+    shown, reads = [], []
+    o = owner.Owner(input_fn=lambda prompt="": reads.append(prompt) or "NEVER", out=shown.append,
+                    clock=lambda: 0.0, unattended=True)
+    assert o.inform("Questions answered by the fallback: ...") is None
+    assert shown == ["Questions answered by the fallback: ..."] and reads == [] and o.parks == []
+
+
+def test_scripted_owner_inform_records_what_was_shown(tmp_path):
+    (tmp_path / "s.toml").write_text("[escalations]\ndefault = 'x'\n")
+    o = owner.ScriptedOwner(tmp_path / "s.toml").bind(config.load_arm("dryrun"))
+    o.inform("fyi")
+    assert o.informed == ["fyi"]

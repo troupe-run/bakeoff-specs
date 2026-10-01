@@ -11,7 +11,12 @@ step order.
    each group or edits `po-brief.md` and the check runs again. Recorded in `results/<pass>/consistency/step-NN.json`.
    Parked if the owner is away.
 3. **N.b (scored)**: every live arm, one at a time, runs `run_step(run="b")` to completion, from the same snapshot and
-   `sha_before` as N.a. N.b carries forward to N+1.
+   `sha_before` as N.a. N.b carries forward to N+1. A PO escalation in N.b never reaches the owner (owner,
+   2026-10-01; design §5): the arm gets the fixed fallback reply (`scenario.toml [messages] escalation_fallback`) and
+   nothing is added to the brief, so every arm's N.b sees the same brief. Step N's fallback questions are shown,
+   informational only (`owner.inform`, never a prompt), at step N+1's consistency check and recorded in its
+   `step-NN.json` (`fallbacks`) and `.md`; step 7's are listed in `close-out.md`. Approval gates in N.b still go to
+   the owner.
 
 The real run is ONE namespace, `pass1` (Paths, keychain `bakeoff-gh-pass1-<arm>`, private repo `…-pass1`), with runs
 a and b inside each step; `pass2` is retired (`order("pass2")` refuses), and setup runs once per arm. `canary` and
@@ -63,8 +68,8 @@ import dataclasses, hashlib, json, random, re, shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from runner import (checklist, config, credentials, docker, drive, egress, faults, fsutil, gitops, handedit, handoff,
-                    hidden, owner as owner_mod, paths, po, preflight, quality, repo, secrets, stepflow, tracker)
+from runner import (checklist, config, credentials, docker, drive, egress, evidence, faults, fsutil, gitops, handedit,
+                    handoff, hidden, owner as owner_mod, paths, po, preflight, quality, repo, secrets, stepflow, tracker)
 from runner.faults import HarnessFault
 from runner.paths import Paths, REAL_PASSES, REPO_ROOT
 
@@ -709,10 +714,19 @@ class _Run:
         f = paths.RESULTS / self.pass_ / "consistency" / f"step-{step:02d}.json"
         rec = _jr(f) or {"pass": self.pass_, "step": step, "rounds": [], "confirmed": [], "status": None}
         brief = paths.brief_path(self.pass_)
+        # owner, 2026-10-01: step N-1's N.b fallback questions, shown (never asked) once and recorded with the check
+        fb = self._fallbacks(step - 1)
+        fb_new = rec.get("fallbacks") != fb
+        if fb_new:
+            rec["fallbacks"] = fb
+            if fb:
+                self.owner.inform(_fallback_text(step - 1, fb, brief))
         new = self._unconfirmed(_escalations(brief.read_text()), step, rec)
         if not new:
-            if rec["status"] is None:
-                rec["status"] = "nothing-new"; _jw(f, rec)
+            if rec["status"] is None or fb_new:
+                rec["status"] = rec["status"] or "nothing-new"; _jw(f, rec)
+                if fb:
+                    _md(f, rec)
             return None
         sha0 = _sha(brief)
         rec.setdefault("brief_sha_before", sha0)
@@ -758,9 +772,19 @@ class _Run:
                 rec["status"] = "declined"; _jw(f, rec)
                 raise _Stop(f"consistency check of step {step} not confirmed")
 
+    def _fallbacks(self, step: int) -> list[dict]:
+        """The questions step `step`'s N.b answered with the fallback reply (owner, 2026-10-01; drive), arm by arm
+        in the run's order: `[{"arm", "step", "question"}]`. Read from each arm's `NN/questions.jsonl`, so an
+        attempt moved aside (a fault, an interrupted run) does not count; step 0 has none."""
+        if step < 1:
+            return []
+        return [{"arm": a, "step": step, "question": q} for a in self.arms
+                for q in evidence.fallback_questions(Paths(self.pass_, a).step(step) / "questions.jsonl")]
+
     def _unconfirmed(self, entries: list[dict], step: int, rec: dict) -> list[dict]:
         """Answers escalated at step N, and at step N-1 (its N.b ran after N-1's check, fix round 1), that no check
-        has confirmed yet."""
+        has confirmed yet. N.b no longer escalates to the owner (the fallback, owner 2026-10-01), so a step N-1
+        answer here is one that reached the brief after its check some other way (e.g. a run from before then)."""
         prev = _jr(paths.RESULTS / self.pass_ / "consistency" / f"step-{step - 1:02d}.json", {}) or {}
         done = set(rec["confirmed"]) | set(prev.get("confirmed", []))
         return [x for x in entries if x["pass"] == self.pass_ and x["step"] in (step - 1, step) and x["text"] not in done]
@@ -1221,8 +1245,18 @@ def _group_text(g: dict) -> str:
     return "\n".join(lines)
 
 
+def _fallback_text(step: int, fb: list[dict], brief: Path) -> str:
+    """The owner's view of step `step`'s N.b fallback questions (informational: no answer is asked for)."""
+    return "\n".join([f"Questions answered by the fallback in step {step}'s scored run (informational — no answer "
+                      f"needed; to give later steps a real answer, add it to {brief} before the next scored run):"]
+                     + [f"  - {x['arm']}: {x['question']}" for x in fb])
+
+
 def _md(f: Path, rec: dict) -> None:
     lines = [f"# Consistency check — {rec['pass']} step {rec['step']}: {rec['status']}", ""]
+    if rec.get("fallbacks"):
+        lines += [f"## Questions answered by the fallback in step {rec['step'] - 1}'s scored run (informational)",
+                  "", *[f"- {x['arm']}: {x['question']}" for x in rec["fallbacks"]], ""]
     for i, rnd in enumerate(rec["rounds"], 1):
         lines += [f"## Round {i} ({rnd['at']})", ""]
         for g in rnd["groups"]:
@@ -1236,7 +1270,9 @@ def _md(f: Path, rec: dict) -> None:
 def close_out(pass_: str, owner) -> Path:
     """The end of a run (review S-2): every arm finished, a secret scan of `results/<pass>`, the arms' live feeds and the ledger clean, every
     bundle present, publishing finished, and every run PAT revoked (the owner confirms each — a park or a "no" is not
-    a confirmation). Written to `results/<pass>/close-out.md`; `NotReady` unless every item holds."""
+    a confirmation). Written to `results/<pass>/close-out.md`; `NotReady` unless every item holds. Step 7's owner-answered
+    N.b escalations are items to confirm; its N.b fallback questions (owner, 2026-10-01) are only listed — no later
+    consistency check shows them."""
     rec = _jr(paths.RESULTS / pass_ / "order.json") or {}
     arms = rec.get("order") or (sorted(x.name for x in (paths.STATE / pass_).iterdir()
                                        if (x / "progress.json").exists()) if (paths.STATE / pass_).is_dir() else [])
@@ -1259,10 +1295,13 @@ def close_out(pass_: str, owner) -> Path:
     for a in arms:
         qa = [json.loads(l) for l in (Paths(pass_, a).step(7) / "questions.jsonl").read_text().splitlines()
               if l.strip()] if (Paths(pass_, a).step(7) / "questions.jsonl").is_file() else []
+        # owner-answered only: a fallback question (owner, 2026-10-01) is listed below, never asked to confirm
+        owned = [(q, [x for x in q["escalated"] if x not in (q.get("fallback") or [])]) for q in qa if q.get("escalated")]
         esc7 += [(f"esc7-{a}-{k}", f"{a}: step 7 N.b escalation (no later consistency check covers it): "
-                                   f"{', '.join(q['escalated'])} → {q.get('reply')}. Consistent with the brief and "
+                                   f"{', '.join(xs)} → {q.get('reply')}. Consistent with the brief and "
                                    f"the earlier answers?")
-                 for k, q in enumerate([q for q in qa if q.get("escalated")], 1)]
+                 for k, (q, xs) in enumerate([(q, xs) for q, xs in owned if xs], 1)]
+    fb7 = [(a, x) for a in arms for x in evidence.fallback_questions(Paths(pass_, a).step(7) / "questions.jsonl")]
     asks = pats + esc7
     got = owner.items(asks) if asks else {}
     lines = [f"# Close-out — {pass_} (review S-2)", "", f"- secret scan: {'clean' if not found else 'FINDINGS'}"]
@@ -1284,6 +1323,9 @@ def close_out(pass_: str, owner) -> Path:
             lines.append(f"- [{'x' if ok is True else ' '}] {iid}: {text}{' — ' + note if note else ''}")
     if not esc7:
         lines.append("- step 7 N.b escalations: none")
+    lines.append("- step 7 N.b questions answered by the fallback (informational: no later step's consistency check "
+                 "shows them): " + ("none" if not fb7 else ""))
+    lines += [f"  - {a}: {x}" for a, x in fb7]
     lines.append(f"- brief at close: sha256 {_sha(paths.brief_path(pass_))}")
     problems = ([f"secret scan: {len(found)} finding(s)"] if found else []) + \
         ([f"bundle missing: {no_bundle}"] if no_bundle else []) + \

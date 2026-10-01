@@ -262,3 +262,14 @@ def test_mutation_summary_text_renders_an_all_no_tests_run_as_unmeasured_not_cra
     assert text.startswith("unmeasured") and "crashed" not in text
     assert "mutmut attributed no test coverage to any mutant" in text
     assert "subprocess" in text and "coverage attribution failed" in text      # neither cause asserted
+
+
+def test_the_nb_summary_marks_a_fallback_escalation_as_a_fallback(tmp_path, monkeypatch):    # owner, 2026-10-01
+    ctx, kw = finalise_inputs(tmp_path, monkeypatch)
+    (ctx.out / "questions.jsonl").write_text(
+        json.dumps({"escalated": ["Floats?", "Timeout?"], "fallback": ["Timeout?"], "reply": "both"}) + "\n" +
+        json.dumps({"escalated": ["Colour?"], "reply": "Blue."}) + "\n")              # an older entry: no "fallback"
+    evidence.finalise(ctx, **kw)
+    sec = (ctx.out / "summary.md").read_text().split("## Escalations", 1)[1].split("\n## ", 1)[0]
+    assert "- Floats?, Timeout? (fallback) → both" in sec and "- Colour? → Blue." in sec
+    assert "Floats? (fallback)" not in sec

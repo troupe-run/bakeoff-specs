@@ -2,7 +2,8 @@
 
 OD19: one arm session per attempt, resumed every turn; a fresh session only before a command the arm's config
 cites in `fresh_session_before`. After each arm turn the product-owner agent (`po.decide`) classifies the arm's
-message and the runner replies: PO answers, owner escalations (appended to the brief), owner approval gates
+message and the runner replies: PO answers, owner escalations (appended to the brief) in N.a, the fixed
+fallback reply (`scenario.toml [messages] escalation_fallback`) for an escalation in N.b, owner approval gates
 (OD7), the method's own next command (review F-2), "Please continue.", or — when the PO says the step is done —
 any pending closer (OD24 B export, then `must_run`), the one-time commit nudge (OD4 A), a pending CR-B (OD6 B),
 and only then the end of the attempt.
@@ -28,11 +29,18 @@ What ends an attempt:
             (A5, owner resource rule) an arm turn's session container was killed for memory (OOMKilled or exit
             137) a second time in the attempt; the first is re-run once in the same session. The caller records
             it (`faults.record_resource`) and scores the attempt all-failed — never a harness fault
-  parked    an owner prompt (gate or escalation) returned `owner.Park` — recorded, never treated as an answer,
+  parked    an owner prompt (gate, or an escalation in N.a) returned `owner.Park` — recorded, never treated as an answer,
             never appended to the brief (Task 15 ruling 1); the caller parks the arm and moves on. With several
             escalations in one message, answers the owner gave BEFORE the park are real answers and stay
             appended to the brief (and committed on real passes); only the parked question is not. The entry's
             `answered_by` names who did answer ("po", "owner", "po+owner"; "runner" when nobody did)
+
+N.b escalations (owner, 2026-10-01; design §5): in the scored run (`ctx.run == "b"`) a PO escalation is NOT sent to
+the owner — the brief only grows between steps, so every arm in a step's N.b sees the same brief and an owner who is
+away cannot park a scored attempt. The arm gets `MESSAGES["escalation_fallback"]` for each escalated question
+(combined with any PO answers as usual); the entry lists the question under `escalated` AND `fallback`, and
+`answered_by` includes "fallback" ("fallback", "po+fallback"). Nothing is appended to the brief or committed;
+orchestrate shows the step's fallback questions at the next step's consistency check (the last step's at close-out).
 and every harness fault is raised as `faults.HarnessFault` (with `.attempt_result` carrying the turns so far,
 for evidence). Transient API errors are retried in place first (review C-4).
 
@@ -156,8 +164,9 @@ def _invoked(cmd: str, turns: list) -> bool:
 
 
 def _answered_by(by: set[str]) -> str:
-    """"po", "owner" or "po+owner" (fix round 1 ruling: the interface's order); "runner" when nobody answered."""
-    return "+".join(w for w in ("po", "owner") if w in by) or "runner"
+    """"po", "owner", "fallback" or a "+"-join in that order (fix round 1 ruling: the interface's order; "fallback"
+    is the N.b reply, owner 2026-10-01); "runner" when nobody answered."""
+    return "+".join(w for w in ("po", "owner", "fallback") if w in by) or "runner"
 
 
 def _cited(answers) -> str | None:
@@ -342,7 +351,7 @@ def _run(ctx: StepCtx, attempt: int, message: str, res: AttemptResult,
                 res.outcome, res.breach = "stalled", "exchanges"
                 return res
             base = {"attempt": attempt, "n": len(res.turns), "at": _now(), "arm_message": r.final_text,
-                    "escalated": [], "significant": False, "cited": None, "approved": None,
+                    "escalated": [], "fallback": [], "significant": False, "cited": None, "approved": None,
                     "owner_action": None, "owner_seconds": 0.0, "po_cost_usd": 0.0, "po_retries": 0}
             pending_later = ctx.later_sent < len(ctx.later_messages)
             preempt = pending_later and turns_ended >= cr_b_after
@@ -407,6 +416,7 @@ def _reply(ctx: StepCtx, dec, r: session.TurnResult, entry: dict, res: AttemptRe
     if dec.kind == "question":                                                           # review F-12
         # PO-answered entries first, then escalations in order. A park on a later escalation ends the attempt,
         # but answers the owner already gave stay appended to the brief (they are real answers, fix round 1).
+        # In N.b an escalation gets the fixed fallback reply and never reaches the owner (owner, 2026-10-01).
         parts, by = [], set()
         entry["cited"] = _cited([a for a in dec.answers if not a.escalate])
         for i, a in enumerate(dec.answers):
@@ -417,6 +427,11 @@ def _reply(ctx: StepCtx, dec, r: session.TurnResult, entry: dict, res: AttemptRe
             if not a.escalate:
                 continue
             entry["escalated"].append(a.question)
+            if ctx.run == "b":
+                entry["fallback"].append(a.question); by.add("fallback")
+                entry["answered_by"] = _answered_by(by)
+                parts.append((i, a.question, MESSAGES["escalation_fallback"]))
+                continue
             got = po.escalate(ctx.owner, a.question, r.final_text, brief_path=ctx.brief_path, pass_=ctx.pass_,
                               arm=arm.name, step=ctx.step, out_dir=ctx.out, source=source)
             if isinstance(got, owner_mod.Park):

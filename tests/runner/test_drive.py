@@ -79,6 +79,7 @@ def test_uninstalled_next_command_becomes_please_continue(rig):
 
 def test_mixed_questions_only_escalate_the_uncovered_one(rig):                   # review F-12
     sent, script, _, ctx = rig
+    ctx.run = "a"                                   # N.a: an escalation reaches the owner (N.b: the fallback)
     ctx.arm = drive.config.load_arm("control")
     script["arm"] = [TR("Two questions: a? b?"), TR("done")]
     script["po"] = [D("question", answers=[Answer("a?", "Yes, per General.", False, "General"),
@@ -246,6 +247,7 @@ def test_a_parked_gate_parks_the_attempt_cleanly_and_is_recorded(rig):          
 @pytest.mark.parametrize("where,reason", [("escalation", "timeout"), ("empty", "empty-answer")])
 def test_a_parked_escalation_is_recorded_never_appended_and_parks_the_attempt(rig, where, reason):  # ruling 1
     sent, script, _, ctx = rig
+    ctx.run = "a"                                   # N.a: an escalation reaches the owner (N.b: the fallback)
     ctx.arm = drive.config.load_arm("control"); ctx.owner = ParkingOwner(where, reason)
     before = ctx.brief_path.read_text()
     script["arm"] = [TR("Two questions: a? b?")]
@@ -261,6 +263,7 @@ def test_a_parked_escalation_is_recorded_never_appended_and_parks_the_attempt(ri
 
 def test_a_scripted_owner_answer_is_appended_as_scripted(rig, tmp_path):        # ruling 2
     sent, script, _, ctx = rig
+    ctx.run = "a"                                   # N.a: an escalation reaches the owner (N.b: the fallback)
     ctx.arm = drive.config.load_arm("dryrun")
     (tmp_path / "s.toml").write_text('[escalations]\ndefault = "Scripted answer."\n')
     ctx.owner = owner.ScriptedOwner(tmp_path / "s.toml").bind(ctx.arm)
@@ -273,6 +276,7 @@ def test_a_scripted_owner_answer_is_appended_as_scripted(rig, tmp_path):        
 
 def test_a_stub_owner_answer_is_appended_as_real(rig):                           # ruling 2
     sent, script, _, ctx = rig
+    ctx.run = "a"                                   # N.a: an escalation reaches the owner (N.b: the fallback)
     ctx.arm = drive.config.load_arm("control")
     script["arm"] = [TR("b?"), TR("done")]
     script["po"] = [D("question", answers=[Answer("b?", None, True, None)]), D("step_done")]
@@ -505,6 +509,7 @@ class AnswerThenPark(StubOwner):
 
 def test_a_partial_park_keeps_the_answers_already_obtained_in_the_brief(rig):  # item 6
     sent, script, _, ctx = rig
+    ctx.run = "a"                                   # N.a: an escalation reaches the owner (N.b: the fallback)
     ctx.arm = drive.config.load_arm("control"); ctx.owner = AnswerThenPark()
     script["arm"] = [TR("a? b? c?")]
     script["po"] = [D("question", answers=[Answer("a?", "Yes.", False, "General"), Answer("b?", None, True, None),
@@ -520,6 +525,7 @@ def test_a_partial_park_keeps_the_answers_already_obtained_in_the_brief(rig):  #
 
 def test_a_park_with_no_answers_obtained_is_answered_by_the_runner(rig):       # item 5
     sent, script, _, ctx = rig
+    ctx.run = "a"                                   # N.a: an escalation reaches the owner (N.b: the fallback)
     ctx.arm = drive.config.load_arm("control"); ctx.owner = ParkingOwner("escalation")
     script["arm"] = [TR("b?")]
     script["po"] = [D("question", answers=[Answer("b?", None, True, None)])]
@@ -754,3 +760,67 @@ def test_an_oom_on_a_transient_retry_resend_is_arm_resource_too(rig):          #
     script["arm"] = [TR("", outcome="no_result"), OOM(), OOM()]
     r = drive.run_attempt(ctx, 1, "go")
     assert r.outcome == "arm-resource" and len(r.resource_events) == 2 and len(sent) == 3
+
+
+# ---- owner, 2026-10-01: in N.b an escalation gets the fixed fallback reply, never the owner ---------------------
+
+FALLBACK = handoff.MESSAGES["escalation_fallback"]
+
+
+def test_the_fallback_reply_is_the_owners_wording_from_scenario_toml():
+    assert FALLBACK == ("The brief doesn't cover this. Make the safest assumption (the one least likely to lose or "
+                        "corrupt a user's data or to contradict the contract), record it as a decision with your "
+                        "reason, and carry on.")
+
+
+def test_an_nb_escalation_gets_the_fallback_reply_not_the_owner_and_leaves_the_brief_alone(rig):
+    sent, script, _, ctx = rig
+    ctx.arm = drive.config.load_arm("control"); ctx.run = "b"
+    before = ctx.brief_path.read_text()
+    script["arm"] = [TR("b?"), TR("done")]
+    script["po"] = [D("question", answers=[Answer("b?", None, True, None)]), D("step_done")]
+    r = drive.run_attempt(ctx, 1, "go")
+    assert r.outcome == "done" and msgs(sent)[1] == FALLBACK
+    assert ctx.owner.escalations == []                                          # the owner was never asked
+    assert ctx.brief_path.read_text() == before                                 # not appended
+    assert not (ctx.out / "po" / "parked-escalations.jsonl").exists()
+    q = qlines(ctx)[0]
+    assert q["escalated"] == ["b?"] and q["fallback"] == ["b?"] and q["answered_by"] == "fallback"
+    assert q["reply"] == FALLBACK and q["owner_seconds"] == 0.0
+
+
+def test_a_mixed_nb_decision_combines_the_po_answer_with_the_fallback_for_the_escalated_one(rig):
+    sent, script, _, ctx = rig
+    ctx.arm = drive.config.load_arm("control"); ctx.run = "b"
+    before = ctx.brief_path.read_text()
+    script["arm"] = [TR("a? b?"), TR("done")]
+    script["po"] = [D("question", answers=[Answer("a?", "Yes, per General.", False, "General"),
+                                            Answer("b?", None, True, None)]), D("step_done")]
+    drive.run_attempt(ctx, 1, "go")
+    assert msgs(sent)[1] == f"On “a?”: Yes, per General.\n\nOn “b?”: {FALLBACK}"
+    assert ctx.owner.escalations == [] and ctx.brief_path.read_text() == before
+    q = qlines(ctx)[0]
+    assert q["escalated"] == ["b?"] and q["fallback"] == ["b?"] and q["answered_by"] == "po+fallback"
+    assert q["cited"] == "General"
+
+
+def test_an_na_escalation_still_asks_the_owner_and_records_no_fallback(rig):
+    sent, script, _, ctx = rig
+    ctx.arm = drive.config.load_arm("control"); ctx.run = "a"
+    script["arm"] = [TR("b?"), TR("done")]
+    script["po"] = [D("question", answers=[Answer("b?", None, True, None)]), D("step_done")]
+    drive.run_attempt(ctx, 1, "go")
+    assert ctx.owner.escalations == ["b?"] and msgs(sent)[1] == ctx.owner.escalation_answer
+    assert ctx.owner.escalation_answer in ctx.brief_path.read_text().split("## Escalated answers")[1]
+    q = qlines(ctx)[0]
+    assert q["fallback"] == [] and q["answered_by"] == "owner"
+
+
+def test_an_nb_approval_gate_still_goes_to_the_owner(rig):
+    sent, script, _, ctx = rig
+    ctx.arm = drive.config.load_arm("control"); ctx.run = "b"
+    script["arm"] = [TR("Plan ready. Approve?"), TR("done")]
+    script["po"] = [D("approval", "Approved.", approved=True), D("step_done")]
+    drive.run_attempt(ctx, 1, "go")
+    assert ctx.owner.gates == ["Plan ready. Approve?"] and msgs(sent)[1] == "Approved."
+    assert json.loads((ctx.out / "owner-gates.jsonl").read_text().splitlines()[0])["owner_action"] == "accept"

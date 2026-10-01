@@ -105,6 +105,17 @@ every earlier step's still-valid tests, so regressions count.
   repo, `troupe-run/bakeoff-specs-<arm>-<pass>-disc` (its own `GH_REPO` and PAT, keychain
   `bakeoff-gh-<pass>-disc-<arm>`; the local origin is untouched), so nothing N.a files, comments on or closes
   reaches the tracker N.b starts from. Beads (speckitty) lives in git and is reset with the arm repo.
+- **No escalations to the owner in N.b (owner, 2026-10-01):** a question the product owner would escalate during
+  N.b is not sent to the owner. The arm gets one fixed reply instead (`runner/config/scenario.toml [messages]
+  escalation_fallback`): *"The brief doesn't cover this. Make the safest assumption (the one least likely to lose
+  or corrupt a user's data or to contradict the contract), record it as a decision with your reason, and carry
+  on."* Why: an owner answer during N.b would grow the brief mid-step, after the step's consistency check, so arms
+  later in the order would see an answer earlier arms did not, and an owner who is away would park a scored
+  attempt. The brief only grows between steps (N.a escalations, confirmed at the check). The question is logged
+  as escalated and answered by the fallback, marked as a fallback in the step summary, and never added to the
+  brief; the next step's consistency check lists step N's fallback questions (arm, question) for information
+  only, so the owner can add a real answer to the brief for later steps. Step 7's are listed in the close-out.
+  N.a escalations and N.b approval gates still go to the owner.
 
 **Consistent, not identical (owner, 2026-09-29).** Arms get the same answer to the same question, but only
 what they ask for: the product owner never volunteers brief content an arm did not ask about. Asking tougher or

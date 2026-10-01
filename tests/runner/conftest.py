@@ -24,7 +24,7 @@ class StubOwner:
     escalation_answer = "Print floats exactly as written in the file."
 
     def __init__(self):
-        self.gates, self.escalations = [], []
+        self.gates, self.escalations, self.informed = [], [], []
 
     def escalation(self, q, ctx):
         self.escalations.append(q)
@@ -35,6 +35,7 @@ class StubOwner:
         return dec.reply, "accept", 2.0
 
     def confirm(self, text): return True
+    def inform(self, text): self.informed.append(text)
     def reclassify(self, what, detail): return "arm"
     def step_review(self, md): return "continue", 0.0
 
@@ -268,7 +269,10 @@ class FakeOrch:
         self.extras: dict = {}
         self.outcome: dict = {}               # (arm, step, run) -> list of behaviours, consumed in order
         self.escalate: dict = {}              # (arm, step) -> (question, answer) appended to the brief in N.a
-        self.escalate_b: dict = {}            # (arm, step) -> (question, answer) appended to the brief in N.b
+        self.escalate_b: dict = {}            # (arm, step) -> (question, answer) appended to the brief in N.b, as
+        #                                       runs before the N.b fallback (owner, 2026-10-01) could
+        self.fallback_b: dict = {}            # (arm, step) -> [question]: N.b escalations drive answered with the
+        #                                       fallback (its questions.jsonl shape; never the brief)
         self.crash_after: set = set()         # (arm, step, run): stepflow finished, then the runner died
         self.resource: dict = {}              # (arm, step) -> "once" | "repeat" recorded during N.b
         self.state = {"branch": "main", "dirty": False}
@@ -428,6 +432,12 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
         if run == "a" and (a, n) in env.escalate:
             q, ans = env.escalate[(a, n)]
             po.append_escalation(ctx.brief_path, q, ans, ctx.pass_, a, n, source="scripted")
+        if run == "b" and (a, n) in env.fallback_b:            # drive._reply's N.b fallback entry
+            from runner import handoff
+            qs = env.fallback_b[(a, n)]
+            with open(ctx.out / "questions.jsonl", "a") as fh:
+                fh.write(J.dumps({"kind": "question", "escalated": qs, "fallback": qs, "answered_by": "fallback",
+                                  "reply": handoff.MESSAGES["escalation_fallback"]}) + "\n")
         if run == "b" and (a, n) in env.escalate_b:
             q, ans = env.escalate_b[(a, n)]
             po.append_escalation(ctx.brief_path, q, ans, ctx.pass_, a, n, source="scripted")

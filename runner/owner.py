@@ -293,6 +293,11 @@ class Owner:
         except _ParkSignal as e:
             return self._park("confirm", e.reason, t0, ctx)
 
+    def inform(self, text: str) -> None:
+        """Show the owner something that needs no answer (owner, 2026-10-01: the previous step's N.b fallback
+        questions at the consistency check). Never reads input, never waits, never parks — also when unattended."""
+        self._out(text)
+
     def items(self, items: list[tuple[str, str]]) -> dict[str, tuple[bool, str, float]] | Park:
         t0 = self._clock()
         self._begin()
@@ -397,6 +402,7 @@ class ScriptedOwner:
         self.s = tomllib.loads(Path(script).read_text())
         self._paused: set[int] = set()
         self._bound = False
+        self.informed: list[str] = []          # what `inform` showed (no answer is ever needed)
 
     def bind(self, arm) -> "ScriptedOwner":
         if not arm.dry:
@@ -429,6 +435,10 @@ class ScriptedOwner:
     def confirm(self, text):
         self._require_bound()
         return bool(self.s.get("confirm", {}).get("default", True))
+
+    def inform(self, text):
+        self._require_bound()
+        self.informed.append(text)
 
     def items(self, items):
         self._require_bound()

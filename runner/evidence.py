@@ -182,6 +182,21 @@ def na_section(a: Path) -> list[str]:
     return out
 
 
+def esc_questions(q: dict) -> str:
+    """An entry's escalated questions, each one N.b answered with the fallback reply marked "(fallback)" (owner,
+    2026-10-01: never sent to the owner, never in the brief)."""
+    fb = set(q.get("fallback") or [])
+    return ", ".join(f"{x} (fallback)" if x in fb else x for x in q["escalated"])
+
+
+def fallback_questions(qa_file: Path) -> list[str]:
+    """The questions a run answered with the N.b fallback reply, in order, once each (`questions.jsonl`)."""
+    out: list[str] = []
+    for q in _lines(qa_file):
+        out += [x for x in (q.get("fallback") or []) if x not in out]
+    return out
+
+
 def _gates(out: Path) -> list[dict]:
     f = out / "owner-gates.jsonl"
     return [json.loads(l) for l in f.read_text().splitlines()] if f.exists() else []
@@ -262,7 +277,7 @@ def finalise(ctx, *, attempts, extra_turns, hidden, quality, pin, sha_before, st
              f"ruff {ruff_summary_text(quality)} (arm {ruff_arm_summary_text(quality)}) · "
              f"mutation score {mutation_summary_text(mut)}",
              f"**Research attempts:** {run['research_attempts']}", "", "## Escalations"]
-    lines += [f"- {', '.join(q['escalated'])} → {q['reply']}" for q in esc] or ["- none"]
+    lines += [f"- {esc_questions(q)} → {q['reply']}" for q in esc] or ["- none"]
     lines += ["", "## Significant PO answers"] + \
         ([f"- {q['arm_message'][:120]!r} → {str(q['reply'])[:200]}" for q in sig] or ["- none"])
     lines += ["", "## Owner gates"] + \
