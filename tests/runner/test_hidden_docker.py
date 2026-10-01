@@ -361,3 +361,5 @@ def test_an_arm_with_no_package_and_a_broken_conftest_is_scored_with_its_tests_f
     # a CLI that cannot even start exits non-zero, which is all this one usage-error test asks of it
     assert [t for t, o in tests.items() if o == "passed"] == [
         "tests.hidden.test_step1_load_show::test_show_without_path_is_a_usage_error_before_step_3"]
+    s = hidden.summarise(1, tests, [], [], [], code, collected=collected, attribution=attribution)
+    assert (s.scoreable, s.attribution, s.total, s.passed, s.failed) == (True, None, EXPECTED[1], 1, EXPECTED[1] - 1)

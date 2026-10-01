@@ -155,11 +155,17 @@ changes its visibility later (owner, 2026-09-30).
 
 **The hidden-test pytest never loads an arm's conftest (2026-10-02, found in pass 1).** pytest's early conftest
 discovery runs before plugin options are registered, so a separate option value that is an existing path
-(`--impl /work/<arm>`) became a test-path anchor, and the arm's `conftest.py`/`tests/conftest.py` ran inside the
-harness-uid pytest (an arm conftest importing its own missing package stopped a run as a harness fault). Every
-option value is now joined with `=` in the one argv builder (`runner/hidden.py` `_pytest_argv`), which also refuses
-any bare argv element other than the hidden-test paths and the `-o` pins. The arm's own suite (quality runs) is
-unaffected: running it is deliberate.
+(`--impl /work/<arm>`) became a test-path anchor, and the arm's `conftest.py`/`tests/conftest.py` — and
+`/work/conftest.py` (the copy's parent mount) and `/conftest.py` — ran inside the harness-uid pytest (an arm conftest
+importing its own missing package stopped a run as a harness fault). Every option value is now joined with `=` in the
+one argv builder (`runner/hidden.py` `_pytest_argv`), which also refuses any bare argv element other than the
+hidden-test paths and the `-o` pins, and `PYTEST_PLUGINS` is stripped from pytest's environment. The arm's own suite
+(quality runs) is unaffected: running it is deliberate.
+Side effect: the bare path also widened pytest's config search root to `/`, so arm and reference runs found no
+config file; they now use `/harness/pyproject.toml`, as collection always did, so its `--strict-markers` and
+`testpaths` apply. Collection was already strict and must succeed first, so a benign arm's outcomes are unchanged.
+For the owner: a step-6 substitute acceptance test (`tests/hidden/test_zz_substitute.py`, never collected
+beforehand) may use only registered markers — an unregistered one is now a collection error ("error"), not a warning.
 
 **Setup checklist per arm** (`checklists/<arm>.md`), derived from the tool's own docs in the research file,
 e.g. Spec Kit's constitution step, BMAD's `bmad setup`, beads initialisation. Each item is verified by a

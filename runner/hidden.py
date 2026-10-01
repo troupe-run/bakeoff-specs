@@ -49,7 +49,7 @@ PYTEST = ["/opt/harness/bin/python", "-m", "pytest"]
 # pytest's assertion truncation is what bounds the reprs in failure messages (e.g. a theatre file compared in an
 # assert). It is off at verbosity >= 2 or when CI/BUILD_NUMBER is set (`_pytest.compat.running_on_ci`), and
 # PYTEST_ADDOPTS could add -vv: strip those from pytest's own environment and pin the rest (fix round 4, item 3).
-PYTEST_ENV_STRIP = ("CI", "BUILD_NUMBER", "PYTEST_ADDOPTS")
+PYTEST_ENV_STRIP = ("CI", "BUILD_NUMBER", "PYTEST_ADDOPTS", "PYTEST_PLUGINS")   # + env-named plugins (2026-10-02)
 PYTEST_PINS = ["-q", "-o", "verbosity_assertions=auto", "-o", "truncation_limit_lines=8",
                "-o", "truncation_limit_chars=640"]
 PYTEST_FORBIDDEN = ("-v", "--verbos", "-o", "--override-ini", "-c", "--config-file", "-p", "-q", "--quiet")

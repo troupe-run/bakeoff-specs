@@ -150,9 +150,27 @@ def test_hidden_pytest_argv_joins_the_callers_step_options():
                                   ["tests/hidden", "--cmd-prefix=x"], ["tests/hidden", "--rootdir=/work"],
                                   ["tests/hidden", "--junitxml=/work/j.xml"], ["tests/hidden", "--confcutdir=/work"],
                                   ["tests/hidden", "--step", "1", "x"], ["tests/hidden", "-k", "x"]])
-def test_hidden_pytest_argv_refuses_a_bare_value_or_a_harness_owned_option(args):
+def test_hidden_pytest_argv_refuses_anything_but_hidden_paths_step_options_and_collect_only(args):
     with pytest.raises(ValueError):
         hidden._pytest_argv(args, "/work/bakeoff-specs-dryrun")
+
+
+_GOOD = hidden._pytest_argv(["tests/hidden/test_step1_history.py::test_x[a]", "--step", "1"], "/work/a")
+
+
+@pytest.mark.parametrize("bare", [["--impl", "/work/bakeoff-specs-dryrun"],                 # the pass-1 regression
+                                  ["--cmd-prefix", " ".join(hidden.arm_prefix("/work/x"))],
+                                  ["--step", "1"], ["-p", "no:cacheprovider"], ["--rootdir", "/harness"],
+                                  ["-o", "addopts=-p evil"]])                           # an -o value not a pin
+def test_check_bare_refuses_a_regressed_argv_with_a_separate_option_value(bare):
+    i = _GOOD.index("--junitxml=/results/junit.xml")
+    with pytest.raises(ValueError, match="anchor conftest discovery"):
+        hidden._check_bare(_GOOD[:i] + bare + _GOOD[i:])
+
+
+def test_check_bare_accepts_hidden_test_paths_and_the_ini_pins():
+    hidden._check_bare(_GOOD)
+    hidden._check_bare(hidden._pytest_argv(["tests/hidden", "--step", "3", "--collect-only"], "/nonexistent"))
 
 
 def test_reference_runs_are_the_harness_uid_and_forward_the_ref_step():      # fix round 2, item 1 (b)
@@ -653,8 +671,9 @@ def test_a_full_results_tmpfs_without_the_marker_is_a_harness_fault():
 
 def test_pytest_is_pinned_quiet_with_assertion_truncation_on(tmp_state, accounts):
     argv = hidden._pytest_argv(["tests/hidden", "--step", "1"], "/work/bakeoff-specs-dryrun")
-    assert argv[:7] == ["env", "-u", "CI", "-u", "BUILD_NUMBER", "-u", "PYTEST_ADDOPTS"]   # pytest's CI switch
-    assert argv[7:10] == hidden.PYTEST
+    assert argv[:9] == ["env", "-u", "CI", "-u", "BUILD_NUMBER", "-u", "PYTEST_ADDOPTS",   # pytest's CI switch
+                        "-u", "PYTEST_PLUGINS"]                                         # nor env-named plugins
+    assert argv[9:12] == hidden.PYTEST
     assert "-q" in argv and not [a for a in argv if a.startswith("-v") or a.startswith("--verbos")]
     for o in ("truncation_limit_lines=8", "truncation_limit_chars=640", "verbosity_assertions=auto"):
         assert argv[argv.index(o) - 1] == "-o"
@@ -664,7 +683,7 @@ def test_pytest_is_pinned_quiet_with_assertion_truncation_on(tmp_state, accounts
         with pytest.raises(ValueError):
             hidden._pytest_argv(["tests/hidden", *bad], "/work/bakeoff-specs-dryrun")
     _, _, s = _spec(tmp_state, "harness", cmd=argv)
-    assert not {"CI", "BUILD_NUMBER", "PYTEST_ADDOPTS"} & set(s.env)
+    assert not {"CI", "BUILD_NUMBER", "PYTEST_ADDOPTS", "PYTEST_PLUGINS"} & set(s.env)
     assert s.cmd[s.cmd.index("entry") + 3:] == argv            # entry <unpacker> <timeout> <this argv>, verbatim
 
 
