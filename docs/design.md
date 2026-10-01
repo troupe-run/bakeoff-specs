@@ -153,6 +153,14 @@ changes its visibility later (owner, 2026-09-30).
 - tool telemetry disabled where the tool supports it (OpenSpec sends telemetry by default);
 - whether every arm runs in a container, for an identical environment, is decided by spike B's findings.
 
+**The hidden-test pytest never loads an arm's conftest (2026-10-02, found in pass 1).** pytest's early conftest
+discovery runs before plugin options are registered, so a separate option value that is an existing path
+(`--impl /work/<arm>`) became a test-path anchor, and the arm's `conftest.py`/`tests/conftest.py` ran inside the
+harness-uid pytest (an arm conftest importing its own missing package stopped a run as a harness fault). Every
+option value is now joined with `=` in the one argv builder (`runner/hidden.py` `_pytest_argv`), which also refuses
+any bare argv element other than the hidden-test paths and the `-o` pins. The arm's own suite (quality runs) is
+unaffected: running it is deliberate.
+
 **Setup checklist per arm** (`checklists/<arm>.md`), derived from the tool's own docs in the research file,
 e.g. Spec Kit's constitution step, BMAD's `bmad setup`, beads initialisation. Each item is verified by a
 script where possible and by the owner where not. **No step 1 until the checklist is green.** Known traps from

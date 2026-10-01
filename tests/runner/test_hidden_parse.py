@@ -101,13 +101,63 @@ def test_the_arm_cli_runs_under_its_own_uid_with_no_caps_and_setpriv_execs_it():
                    "--ambient-caps=-all", "--bounding-set=-all", "--",
                    "uv", "run", "--quiet", "--project", "/work/bakeoff-specs-dryrun", "troupe"]
     argv = hidden._pytest_argv(["tests/hidden", "--step", "1"], "/work/bakeoff-specs-dryrun")
-    assert argv[argv.index("--cmd-prefix") + 1] == " ".join(pre)
+    assert "--cmd-prefix=" + " ".join(pre) in argv
     assert "--junitxml=/results/junit.xml" in argv and "--forward-ref-step" not in argv
 
 
+# 2026-10-02 (pass 1): pytest's early conftest discovery runs before plugin options are registered, so a SEPARATE
+# option value that is an existing path (`--impl /work/<arm>`) became a test-path anchor and the ARM's
+# `conftest.py`/`tests/conftest.py` were imported into the harness-uid pytest. Every option value is joined with `=`.
+_ARGV_CASES = [(["tests/hidden", "--step", "3"], "/work/bakeoff-specs-dryrun", False),
+               (["tests/hidden", "--step", "3", "--collect-only", "--first-step-only", "3"], "/nonexistent", False),
+               (["tests/hidden/test_step1_history.py::test_x[a]", "--step", "1"], "/work/bakeoff-specs-dryrun", False),
+               (["tests/hidden/test_step1_history.py::test_x", "--step", "1"], "/opt/reference", True),
+               ([hidden.SUBSTITUTE_TEST, "--step", "6"], "/work/bakeoff-specs-dryrun", False)]
+
+
+def _after_pytest(argv: list[str]) -> list[str]:
+    i = argv.index("pytest")
+    assert argv[i - 2:i + 1] == hidden.PYTEST
+    return argv[i + 1:]
+
+
+@pytest.mark.parametrize("args,impl,reference", _ARGV_CASES)
+def test_hidden_pytest_argv_passes_impl_and_cmd_prefix_joined_with_equals(args, impl, reference):
+    argv = hidden._pytest_argv(args, impl, reference)
+    assert f"--impl={impl}" in argv
+    assert [a for a in argv if a.startswith("--cmd-prefix=")]
+    assert not {"--impl", "--cmd-prefix", "--rootdir", "--junitxml", "--step", "--first-step-only"} & set(argv)
+    assert impl not in argv
+
+
+@pytest.mark.parametrize("args,impl,reference", _ARGV_CASES)
+def test_hidden_pytest_argv_has_no_bare_value_but_hidden_test_paths_and_ini_pins(args, impl, reference):
+    rest = _after_pytest(hidden._pytest_argv(args, impl, reference))
+    bare = [a for i, a in enumerate(rest) if not a.startswith("-") and rest[i - 1] != "-o"]
+    assert bare and all(a == "tests/hidden" or a.startswith("tests/hidden/") for a in bare), bare
+    assert [a for i, a in enumerate(rest) if i and rest[i - 1] == "-o"] == hidden.PYTEST_PINS[2::2]
+
+
+def test_hidden_pytest_argv_joins_the_callers_step_options():
+    rest = _after_pytest(hidden._pytest_argv(["tests/hidden", "--step", "3", "--first-step-only", "3"], "/x"))
+    assert rest[:3] == ["tests/hidden", "--step=3", "--first-step-only=3"]
+
+
+@pytest.mark.parametrize("args", [["tests/hidden", "/work/bakeoff-specs-dryrun"],      # a bare absolute path
+                                  ["/harness/tests/hidden"], ["tests/hidden/../../work/x"], ["tests/hiddenx"],
+                                  ["tests/hidden", "--step"],                            # a value-taking option, no value
+                                  ["tests/hidden", "--impl", "/work/x"], ["tests/hidden", "--impl=/work/x"],
+                                  ["tests/hidden", "--cmd-prefix=x"], ["tests/hidden", "--rootdir=/work"],
+                                  ["tests/hidden", "--junitxml=/work/j.xml"], ["tests/hidden", "--confcutdir=/work"],
+                                  ["tests/hidden", "--step", "1", "x"], ["tests/hidden", "-k", "x"]])
+def test_hidden_pytest_argv_refuses_a_bare_value_or_a_harness_owned_option(args):
+    with pytest.raises(ValueError):
+        hidden._pytest_argv(args, "/work/bakeoff-specs-dryrun")
+
+
 def test_reference_runs_are_the_harness_uid_and_forward_the_ref_step():      # fix round 2, item 1 (b)
-    argv = hidden._pytest_argv(["x"], "/opt/reference", reference=True)
-    assert argv[argv.index("--cmd-prefix") + 1] == "uv run --quiet --project /opt/reference troupe"
+    argv = hidden._pytest_argv(["tests/hidden"], "/opt/reference", reference=True)
+    assert "--cmd-prefix=uv run --quiet --project /opt/reference troupe" in argv
     assert "--forward-ref-step" in argv
 
 

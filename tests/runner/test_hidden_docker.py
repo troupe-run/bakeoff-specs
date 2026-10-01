@@ -319,3 +319,45 @@ def test_all_failed_scores_every_collected_test_failed_without_arm_code(state, t
     assert (s.total, s.passed, s.failed) == (EXPECTED[2], 0, EXPECTED[2]) and s.new_discriminating_passed == 0
     assert s.scoreable and s.attribution == hidden.NO_MAIN
     assert json.loads((tmp_path / "hidden" / "summary.json").read_text())["attribution"] == "arm-no-main"
+
+
+# 2026-10-02, pass 1: the hidden pytest got `--impl /work/<arm>` as a separate argv element; pytest's early conftest
+# discovery took that existing path as a test anchor and imported the ARM's `conftest.py` and `tests/conftest.py`
+# into the harness-uid pytest (an arm conftest importing its own missing package made pytest exit 4: a harness
+# fault). These arms are never installed (no prep, no network): their CLI cannot run, so every hidden test fails.
+_SENTINEL = "ARM-CONFTEST-EXECUTED-IN-THE-HARNESS-PYTEST"
+
+
+def _unprepared_arm(label: str, conftest: str):
+    p = Paths("dryhidden", "dryrun")
+    dst = p.scratch / label / "a" / "bakeoff-specs-dryrun"
+    (dst / "tests").mkdir(parents=True, exist_ok=True)
+    (dst / "pyproject.toml").write_text('[project]\nname = "nothing"\nversion = "0"\ndependencies = []\n')
+    (dst / "conftest.py").write_text(conftest)
+    (dst / "tests" / "conftest.py").write_text(conftest)
+    return p, dst
+
+
+@pytest.mark.parametrize("args", [["tests/hidden", "--step", "1"],
+                                  ["tests/hidden/test_step1_load_show.py::test_show_nested_path_and_list_index",
+                                   "--step", "1"]], ids=["suite", "single"])
+def test_the_hidden_pytest_never_imports_the_arms_conftests(state, args):
+    p, dst = _unprepared_arm("conftest-sentinel", f"raise RuntimeError({_SENTINEL!r})\n")
+    res, err = hidden._pytest(p, dst, args, timeout=hidden.run_timeout(EXPECTED[1]))
+    assert err is None and res is not None, err
+    log = res.get("pytest.log", b"").decode(errors="replace")
+    assert _SENTINEL not in log, log[-1500:]
+    assert res["exit"].strip() == b"1", log[-1500:]          # the hidden tests ran, and failed against no CLI
+
+
+def test_an_arm_with_no_package_and_a_broken_conftest_is_scored_with_its_tests_failing_not_a_harness_fault(state):
+    p, dst = _unprepared_arm("conftest-broken", "import bakeoff_specs_superpowers_missing_pkg  # noqa\n")
+    collected = hidden._collect(p, 1, first_only=False)
+    res, err = hidden._pytest(p, dst, ["tests/hidden", "--step", "1"], timeout=hidden.run_timeout(len(collected)))
+    assert err is None and res is not None, err
+    tests, code, attribution = hidden.assess(collected, res)
+    assert (attribution, code, sorted(tests)) == (None, 1, sorted(collected)), res.get("pytest.log", b"")[-1500:]
+    assert len(collected) == EXPECTED[1]
+    # a CLI that cannot even start exits non-zero, which is all this one usage-error test asks of it
+    assert [t for t, o in tests.items() if o == "passed"] == [
+        "tests.hidden.test_step1_load_show::test_show_without_path_is_a_usage_error_before_step_3"]

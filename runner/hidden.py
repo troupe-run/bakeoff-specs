@@ -144,16 +144,61 @@ def arm_prefix(impl: str) -> list[str]:
     return [*_drop_to_arm(), "uv", "run", "--quiet", "--project", impl, "troupe"]
 
 
+# Every option VALUE in the hidden pytest's argv is joined to its option with `=` (2026-10-02, pass 1): pytest's
+# early conftest discovery runs before plugin/conftest options are registered, so a separate value that is an
+# existing path — `--impl /work/<arm>` — became a test-path anchor and the ARM's `conftest.py`/`tests/conftest.py`
+# were imported into this harness-uid process (`--confcutdir` does not stop it). The only bare elements left are the
+# positional hidden-test paths and the `-o` pins' values; `_check_bare` refuses anything else, loudly.
+CALLER_VALUE_OPTS = ("--step", "--first-step-only")     # the callers' options that take a value: joined here
+CALLER_FLAGS = ("--collect-only",)
+
+
+def _is_hidden_path(a: str) -> bool:
+    path = a.split("::", 1)[0]
+    return (path == "tests/hidden" or path.startswith("tests/hidden/")) and ".." not in path.split("/")
+
+
+def _join_caller_args(args: list[str]) -> list[str]:
+    out, i = [], 0
+    while i < len(args):
+        a = args[i]
+        if a in CALLER_VALUE_OPTS:
+            if i + 1 >= len(args) or args[i + 1].startswith("-"):
+                raise ValueError(f"{a} needs a value: {args}")
+            out.append(f"{a}={args[i + 1]}")
+            i += 2
+            continue
+        if not (a in CALLER_FLAGS or a.startswith(tuple(f"{o}=" for o in CALLER_VALUE_OPTS)) or _is_hidden_path(a)):
+            raise ValueError(f"hidden pytest args are hidden-test paths, {CALLER_VALUE_OPTS} and {CALLER_FLAGS}; "
+                             f"the rest is the harness's: {a!r}")
+        out.append(a)
+        i += 1
+    return out
+
+
+def _check_bare(argv: list[str]) -> None:
+    """After the pytest module, a bare (non-option) element must be a hidden-test path or an `-o` pin's value: any
+    other would be a conftest-discovery anchor for pytest (a future regression fails here, not in the tester)."""
+    rest = argv[argv.index(PYTEST[-1]) + 1:]
+    bad = [a for i, a in enumerate(rest)
+           if not a.startswith("-") and not (rest[i - 1] == "-o" and a in PYTEST_PINS) and not _is_hidden_path(a)]
+    if bad:
+        raise ValueError(f"a bare value in the hidden pytest argv would anchor conftest discovery: {bad}")
+
+
 def _pytest_argv(args: list[str], impl: str, reference: bool = False) -> list[str]:
     """Arm runs: the CLI as uid 1001, no TROUPE_REF_STEP. Reference runs (flake classification): the reference is
-    reachable only by the harness uid, so it runs as uid 1000 and gets its step (fix round 2, item 1 (b))."""
+    reachable only by the harness uid, so it runs as uid 1000 and gets its step (fix round 2, item 1 (b)).
+    The single builder of every hidden pytest command line: every option value is `=`-joined (see above)."""
     bad = [a for a in args if _forbidden(a)]
     if bad:     # verbosity, ini overrides, config files and plugins are the harness's pins, never a caller's
         raise ValueError(f"pytest args may not override the harness pins: {bad}")
     prefix = ["uv", "run", "--quiet", "--project", impl, "troupe"] if reference else arm_prefix(impl)
-    return ["env", *[x for k in PYTEST_ENV_STRIP for x in ("-u", k)], *PYTEST, *args, "--impl", impl,
-            "--cmd-prefix", " ".join(prefix), *(["--forward-ref-step"] if reference else []), *PYTEST_PINS,
-            "-p", "no:cacheprovider", "--rootdir", "/harness", f"--junitxml={RESULTS}/junit.xml"]
+    argv = ["env", *[x for k in PYTEST_ENV_STRIP for x in ("-u", k)], *PYTEST, *_join_caller_args(args),
+            f"--impl={impl}", f"--cmd-prefix={' '.join(prefix)}", *(["--forward-ref-step"] if reference else []),
+            *PYTEST_PINS, "-pno:cacheprovider", "--rootdir=/harness", f"--junitxml={RESULTS}/junit.xml"]
+    _check_bare(argv)
+    return argv
 
 
 def _bundle_files() -> list[Path]:
