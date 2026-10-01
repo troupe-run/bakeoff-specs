@@ -413,6 +413,10 @@ def test_step_ns_fallback_questions_are_shown_at_step_n_plus_1s_check_without_a_
     assert fake_orch.owner.item_calls == []                     # nothing to confirm: informational only
     shown = [t for t in fake_orch.owner.informed if FB in t]
     assert len(shown) == 1 and "control" in shown[0] and "step 1" in shown[0] and "po-brief.md" in shown[0]
+    # fix round 1: the edit window is between steps (pause at the last arm's 2.b review, before 3.a), never now
+    assert "after the LAST arm's step 2 scored run" in shown[0] and "p (pause here)" in shown[0]
+    assert "step 3's discovery run" in shown[0] and "commit it yourself" in shown[0]
+    assert "before the next scored run" not in shown[0]
     rec = _fb_record(2)
     assert rec["status"] == "nothing-new"
     assert rec["fallbacks"] == [{"arm": "control", "step": 1, "question": FB}]

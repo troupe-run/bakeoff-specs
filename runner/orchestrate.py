@@ -1246,10 +1246,19 @@ def _group_text(g: dict) -> str:
 
 
 def _fallback_text(step: int, fb: list[dict], brief: Path) -> str:
-    """The owner's view of step `step`'s N.b fallback questions (informational: no answer is asked for)."""
-    return "\n".join([f"Questions answered by the fallback in step {step}'s scored run (informational — no answer "
-                      f"needed; to give later steps a real answer, add it to {brief} before the next scored run):"]
-                     + [f"  - {x['arm']}: {x['question']}" for x in fb])
+    """The owner's view of step `step`'s N.b fallback questions, shown at step `step`+1's check (informational: no
+    answer is asked for, and the scored run starts straight after). Fix round 1: the brief may only change BETWEEN
+    steps — after step `step`+1's last scored run, before step `step`+2's discovery run — and nothing commits a hand
+    edit made outside a confirming check, so the text names that window, the pause that reaches it, and the commit."""
+    nxt, after = step + 1, step + 2
+    return "\n".join(
+        [f"Questions answered by the fallback in step {step}'s scored run (informational — nothing to do now; do NOT "
+         f"edit the brief while step {nxt}'s scored runs are going):"]
+        + [f"  - {x['arm']}: {x['question']}" for x in fb]
+        + [f"To give step {after} onward a real answer: at the step review after the LAST arm's step {nxt} scored "
+           f"run, press p (pause here); the run stops before step {after}'s discovery run. Then add the answer to "
+           f"{brief}, commit it yourself (`git commit -m \"PO brief: answer to step {step} fallback questions\" -- "
+           f"{brief}`; no check commits an edit made outside it), and resume with `runner run-pass`."])
 
 
 def _md(f: Path, rec: dict) -> None:

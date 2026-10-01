@@ -115,6 +115,11 @@ every earlier step's still-valid tests, so regressions count.
   as escalated and answered by the fallback, marked as a fallback in the step summary, and never added to the
   brief; the next step's consistency check lists step N's fallback questions (arm, question) for information
   only, so the owner can add a real answer to the brief for later steps. Step 7's are listed in the close-out.
+  That check runs just before step N+1's scored runs and does not wait, so the brief must not be edited then.
+  To add an answer, the owner picks **p (pause here)** at the step review after the *last* arm's N+1.b. The run
+  then stops before step N+2's discovery run. The owner edits `scenario/po-brief.md`, commits it, and resumes
+  with `runner run-pass`. Committing a hand edit made outside a confirming check is the owner's job: a check
+  commits only edits made while it is waiting on the owner.
   N.a escalations and N.b approval gates still go to the owner.
 
 **Consistent, not identical (owner, 2026-09-29).** Arms get the same answer to the same question, but only

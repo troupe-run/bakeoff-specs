@@ -2,7 +2,7 @@
 # gitops.*, commands.installed, repo.recover and checklist.require_clean_green are scripted fakes).
 import contextlib, json
 import pytest
-from runner import checklist, drive, faults, handoff, owner, po
+from runner import checklist, drive, evidence, faults, handoff, owner, po
 from runner.po import Decision, Answer, PoResult
 from runner.session import TurnResult
 from runner.transcripts import PinReport
@@ -787,6 +787,7 @@ def test_an_nb_escalation_gets_the_fallback_reply_not_the_owner_and_leaves_the_b
     q = qlines(ctx)[0]
     assert q["escalated"] == ["b?"] and q["fallback"] == ["b?"] and q["answered_by"] == "fallback"
     assert q["reply"] == FALLBACK and q["owner_seconds"] == 0.0
+    assert evidence.fallback_questions(ctx.out / "questions.jsonl") == ["b?"]     # what the next check reads
 
 
 def test_a_mixed_nb_decision_combines_the_po_answer_with_the_fallback_for_the_escalated_one(rig):
