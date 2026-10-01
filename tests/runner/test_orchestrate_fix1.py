@@ -448,3 +448,12 @@ def test_the_last_steps_fallbacks_are_listed_in_the_close_out_without_blocking_i
     text = (paths.RESULTS / "pass1" / "close-out.md").read_text()
     sec = text.split("step 7 N.b questions answered by the fallback", 1)[1]
     assert f"control: {FB}" in sec.split("\n- brief at close")[0]
+
+
+def test_step_6s_fallbacks_shown_at_the_last_steps_check_ask_for_nothing_and_name_no_step_8(fake_orch):
+    fake_orch.fallback_b[("control", 6)] = [FB]
+    real(fake_orch)
+    [shown] = [t for t in fake_orch.owner.informed if FB in t]
+    assert "step 6's scored run" in shown and "nothing to do" in shown and "close-out.md" in shown
+    assert "step 8" not in shown and "pause" not in shown and "commit it yourself" not in shown
+    assert _fb_record(7)["fallbacks"] == [{"arm": "control", "step": 6, "question": FB}]

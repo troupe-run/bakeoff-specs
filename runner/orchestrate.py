@@ -1251,6 +1251,12 @@ def _fallback_text(step: int, fb: list[dict], brief: Path) -> str:
     steps — after step `step`+1's last scored run, before step `step`+2's discovery run — and nothing commits a hand
     edit made outside a confirming check, so the text names that window, the pause that reaches it, and the commit."""
     nxt, after = step + 1, step + 2
+    if nxt >= STEPS[-1]:                           # no step after this one could use an answer (re-review)
+        return "\n".join(
+            [f"Questions answered by the fallback in step {step}'s scored run (informational — nothing to do: step "
+             f"{nxt} is the last step, so no later step could use an answer; they are recorded in this check's "
+             f"record, and step {nxt}'s own fallback questions are listed in close-out.md):"]
+            + [f"  - {x['arm']}: {x['question']}" for x in fb])
     return "\n".join(
         [f"Questions answered by the fallback in step {step}'s scored run (informational — nothing to do now; do NOT "
          f"edit the brief while step {nxt}'s scored runs are going):"]
