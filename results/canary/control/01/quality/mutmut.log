@@ -1,0 +1,481 @@
+$ .venv/bin/python -m pytest -q -p no:cacheprovider -x  (baseline)
+.......................                                                  [100%]
+23 passed in 0.85s
+
+$ .venv/bin/mutmut run --max-children 4 troupe.cli.x_do_set__mutmut_22 troupe.cli.x_do_set__mutmut_27 ... <198 more>  (sampled 200; under timeout 3600s)
+/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/mutmut/configuration.py:143: UserWarning: The config paths_to_mutate is deprecated. Please rename it to source_paths
+  warnings.warn("The config paths_to_mutate is deprecated. Please rename it to source_paths")
+⠋ Generating mutants⠙ Generating mutants⠹ Generating mutants⠸ Generating mutants⠼ Generating mutants⠴ Generating mutants⠦ Generating mutants⠧ Generating mutants⠇ Generating mutants⠏ Generating mutants⠋ Generating mutants⠙ Generating mutants⠹ Generating mutants⠸ Generating mutants⠼ Generating mutants⠴ Generating mutants⠦ Generating mutants⠧ Generating mutants⠇ Generating mutants⠏ Generating mutants⠋ Generating mutants⠙ Generating mutants⠹ Generating mutants⠸ Generating mutants⠼ Generating mutants⠴ Generating mutants⠦ Generating mutants⠧ Generating mutants⠇ Generating mutants⠏ Generating mutants⠋ Generating mutants⠙ Generating mutants⠹ Generating mutants⠸ Generating mutants⠸ Generating mutants⠸ Generating mutants⠼ Generating mutants⠼ Generating mutants⠸ Generating mutants⠼ Generating mutants⠼ Generating mutants⠴ Generating mutants⠦ Generating mutants⠴ Generating mutants⠦ Generating mutants
+    done in 38ms (0 files mutated, 0 ignored, 6 unmodified)
+⠸ Running stats     ⠼ Running stats⠴ Running stats⠦ Running stats⠧ Running stats⠇ Running stats⠏ Running stats⠋ Running stats⠙ Running stats⠹ Running stats⠸ Running stats⠼ Running stats⠴ Running stats⠦ Running stats⠧ Running stats⠇ Running stats⠏ Running stats⠋ Running stats⠙ Running stats⠹ Running stats⠸ Running stats⠼ Running stats⠴ Running stats⠦ Running stats⠧ Running stats⠇ Running stats⠏ Running stats⠋ Running stats⠙ Running stats⠹ Running stats⠸ Running stats⠼ Running stats⠴ Running stats⠦ Running stats⠧ Running stats⠇ Running stats⠏ Running stats⠋ Running stats
+......................F
+=================================== FAILURES ===================================
+_______________________________ test_entry_point _______________________________
+Traceback (most recent call last):
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 361, in from_call
+    result: TResult | None = func()
+                             ^^^^^^
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 250, in <lambda>
+    lambda: runtest_hook(item=item, **kwds),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/_pytest/logging.py", line 865, in pytest_runtest_call
+    yield
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/_pytest/capture.py", line 900, in pytest_runtest_call
+    return (yield)
+            ^^^^^
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/_pytest/skipping.py", line 268, in pytest_runtest_call
+    return (yield)
+            ^^^^^
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 184, in pytest_runtest_call
+    item.runtest()
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/_pytest/python.py", line 1707, in runtest
+    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/_pytest/python.py", line 167, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/bakeoff-specs-control/mutants/tests/test_config.py", line 160, in test_entry_point
+    assert (res.returncode, res.stdout) == (0, "demo\n")
+AssertionError: assert (2, '') == (0, 'demo\n')
+  
+  At index 0 diff: 2 != 0
+  Use -v to get more diff
+=========================== short test summary info ============================
+FAILED tests/test_config.py::test_entry_point - AssertionError: assert (2, ''...
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 22 passed in 4.06s
+failed to collect stats. runner returned 1
+
+__run_rc=1
+
+$ .venv/bin/mutmut results --all true  (fresh container)
+build_node__mutmut_78: not checked
+    troupe.model.xǁTheatreǁ_build_node__mutmut_79: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_1: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_2: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_3: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_4: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_5: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_6: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_7: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_8: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_9: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_10: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_11: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_12: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_13: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_14: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_15: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_16: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_17: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_18: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_19: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_20: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_21: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_22: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_23: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_24: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_25: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_26: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_27: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_28: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_29: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_30: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_31: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_32: not checked
+    troupe.model.xǁTheatreǁ_include__mutmut_33: not checked
+    troupe.model.x_normpath__mutmut_1: not checked
+    troupe.model.x_normpath__mutmut_2: not checked
+    troupe.model.x_flatten__mutmut_1: not checked
+    troupe.model.x_flatten__mutmut_2: not checked
+    troupe.model.x_flatten__mutmut_3: not checked
+    troupe.model.x_flatten__mutmut_4: not checked
+    troupe.model.x_flatten__mutmut_5: not checked
+    troupe.model.x_flatten__mutmut_6: not checked
+    troupe.model.x_flatten__mutmut_7: not checked
+    troupe.model.x_flatten__mutmut_8: not checked
+    troupe.model.x_flatten__mutmut_9: not checked
+    troupe.model.x_flatten__mutmut_10: not checked
+    troupe.model.x_flatten__mutmut_11: not checked
+    troupe.model.x_flatten__mutmut_12: not checked
+    troupe.model.x_flatten__mutmut_13: not checked
+    troupe.model.x_flatten__mutmut_14: not checked
+    troupe.model.x_flatten__mutmut_15: not checked
+    troupe.model.x_flatten__mutmut_16: not checked
+    troupe.model.x_flatten__mutmut_17: not checked
+    troupe.model.x_flatten__mutmut_18: not checked
+    troupe.model.x_flatten__mutmut_19: not checked
+    troupe.model.x_flatten__mutmut_20: not checked
+    troupe.model.x_flatten__mutmut_21: not checked
+    troupe.model.x_flatten__mutmut_22: not checked
+    troupe.model.x_flatten__mutmut_23: not checked
+    troupe.model.x_flatten__mutmut_24: not checked
+    troupe.model.x_flatten__mutmut_25: not checked
+    troupe.cli.xǁFailǁ__init____mutmut_1: not checked
+    troupe.cli.xǁFailǁ__init____mutmut_2: not checked
+    troupe.cli.x_parse_args__mutmut_1: not checked
+    troupe.cli.x_parse_args__mutmut_2: not checked
+    troupe.cli.x_parse_args__mutmut_3: not checked
+    troupe.cli.x_parse_args__mutmut_4: not checked
+    troupe.cli.x_parse_args__mutmut_5: not checked
+    troupe.cli.x_parse_args__mutmut_6: not checked
+    troupe.cli.x_parse_args__mutmut_7: not checked
+    troupe.cli.x_parse_args__mutmut_8: not checked
+    troupe.cli.x_parse_args__mutmut_9: not checked
+    troupe.cli.x_parse_args__mutmut_10: not checked
+    troupe.cli.x_parse_args__mutmut_11: not checked
+    troupe.cli.x_parse_args__mutmut_12: not checked
+    troupe.cli.x_parse_args__mutmut_13: not checked
+    troupe.cli.x_parse_args__mutmut_14: not checked
+    troupe.cli.x_parse_args__mutmut_15: not checked
+    troupe.cli.x_parse_args__mutmut_16: not checked
+    troupe.cli.x_parse_args__mutmut_17: not checked
+    troupe.cli.x_parse_args__mutmut_18: not checked
+    troupe.cli.x_parse_args__mutmut_19: not checked
+    troupe.cli.x_parse_args__mutmut_20: not checked
+    troupe.cli.x_parse_args__mutmut_21: not checked
+    troupe.cli.x_parse_args__mutmut_22: not checked
+    troupe.cli.x_parse_args__mutmut_23: not checked
+    troupe.cli.x_parse_args__mutmut_24: not checked
+    troupe.cli.x_parse_args__mutmut_25: not checked
+    troupe.cli.x_parse_args__mutmut_26: not checked
+    troupe.cli.x_parse_args__mutmut_27: not checked
+    troupe.cli.x_parse_args__mutmut_28: not checked
+    troupe.cli.x_parse_args__mutmut_29: not checked
+    troupe.cli.x_parse_args__mutmut_30: not checked
+    troupe.cli.x_parse_args__mutmut_31: not checked
+    troupe.cli.x_parse_args__mutmut_32: not checked
+    troupe.cli.x_parse_args__mutmut_33: not checked
+    troupe.cli.x_parse_args__mutmut_34: not checked
+    troupe.cli.x_parse_args__mutmut_35: not checked
+    troupe.cli.x_parse_args__mutmut_36: not checked
+    troupe.cli.x_parse_args__mutmut_37: not checked
+    troupe.cli.x_parse_args__mutmut_38: not checked
+    troupe.cli.x_parse_args__mutmut_39: not checked
+    troupe.cli.x_parse_args__mutmut_40: not checked
+    troupe.cli.x_parse_args__mutmut_41: not checked
+    troupe.cli.x_parse_args__mutmut_42: not checked
+    troupe.cli.x_parse_args__mutmut_43: not checked
+    troupe.cli.x_parse_args__mutmut_44: not checked
+    troupe.cli.x_parse_args__mutmut_45: not checked
+    troupe.cli.x_parse_args__mutmut_46: not checked
+    troupe.cli.x_parse_args__mutmut_47: not checked
+    troupe.cli.x_parse_args__mutmut_48: not checked
+    troupe.cli.x_parse_args__mutmut_49: not checked
+    troupe.cli.x_parse_args__mutmut_50: not checked
+    troupe.cli.x_parse_args__mutmut_51: not checked
+    troupe.cli.x_parse_args__mutmut_52: not checked
+    troupe.cli.x_parse_args__mutmut_53: not checked
+    troupe.cli.x_parse_args__mutmut_54: not checked
+    troupe.cli.x_parse_args__mutmut_55: not checked
+    troupe.cli.x_parse_args__mutmut_56: not checked
+    troupe.cli.x_parse_args__mutmut_57: not checked
+    troupe.cli.x_parse_args__mutmut_58: not checked
+    troupe.cli.x_parse_args__mutmut_59: not checked
+    troupe.cli.x_parse_args__mutmut_60: not checked
+    troupe.cli.x_parse_args__mutmut_61: not checked
+    troupe.cli.x_parse_args__mutmut_62: not checked
+    troupe.cli.x_parse_args__mutmut_63: not checked
+    troupe.cli.x_parse_args__mutmut_64: not checked
+    troupe.cli.x_parse_args__mutmut_65: not checked
+    troupe.cli.x_parse_args__mutmut_66: not checked
+    troupe.cli.x_parse_args__mutmut_67: not checked
+    troupe.cli.x_parse_args__mutmut_68: not checked
+    troupe.cli.x_parse_args__mutmut_69: not checked
+    troupe.cli.x_parse_args__mutmut_70: not checked
+    troupe.cli.x_parse_args__mutmut_71: not checked
+    troupe.cli.x_parse_args__mutmut_72: not checked
+    troupe.cli.x_parse_args__mutmut_73: not checked
+    troupe.cli.x_parse_args__mutmut_74: not checked
+    troupe.cli.x_parse_args__mutmut_75: not checked
+    troupe.cli.x_parse_args__mutmut_76: not checked
+    troupe.cli.x_parse_args__mutmut_77: not checked
+    troupe.cli.x_parse_args__mutmut_78: not checked
+    troupe.cli.x_parse_args__mutmut_79: not checked
+    troupe.cli.x_parse_args__mutmut_80: not checked
+    troupe.cli.x_parse_args__mutmut_81: not checked
+    troupe.cli.x_split_path__mutmut_1: not checked
+    troupe.cli.x_split_path__mutmut_2: not checked
+    troupe.cli.x_split_path__mutmut_3: not checked
+    troupe.cli.x_split_path__mutmut_4: not checked
+    troupe.cli.x_split_path__mutmut_5: not checked
+    troupe.cli.x_split_path__mutmut_6: not checked
+    troupe.cli.x_split_path__mutmut_7: not checked
+    troupe.cli.x_split_path__mutmut_8: not checked
+    troupe.cli.x_lookup__mutmut_1: not checked
+    troupe.cli.x_lookup__mutmut_2: not checked
+    troupe.cli.x_lookup__mutmut_3: not checked
+    troupe.cli.x_lookup__mutmut_4: not checked
+    troupe.cli.x_lookup__mutmut_5: not checked
+    troupe.cli.x_lookup__mutmut_6: not checked
+    troupe.cli.x_lookup__mutmut_7: not checked
+    troupe.cli.x_lookup__mutmut_8: not checked
+    troupe.cli.x_lookup__mutmut_9: not checked
+    troupe.cli.x_lookup__mutmut_10: not checked
+    troupe.cli.x_lookup__mutmut_11: not checked
+    troupe.cli.x_lookup__mutmut_12: not checked
+    troupe.cli.x_lookup__mutmut_13: not checked
+    troupe.cli.x_lookup__mutmut_14: not checked
+    troupe.cli.x_lookup__mutmut_15: not checked
+    troupe.cli.x_lookup__mutmut_16: not checked
+    troupe.cli.x_scalar_output__mutmut_1: not checked
+    troupe.cli.x_scalar_output__mutmut_2: not checked
+    troupe.cli.x_scalar_output__mutmut_3: not checked
+    troupe.cli.x_scalar_output__mutmut_4: not checked
+    troupe.cli.x_scalar_output__mutmut_5: not checked
+    troupe.cli.x_scalar_output__mutmut_6: not checked
+    troupe.cli.x_scalar_output__mutmut_7: not checked
+    troupe.cli.x_scalar_output__mutmut_8: not checked
+    troupe.cli.x_scalar_output__mutmut_9: not checked
+    troupe.cli.x_scalar_output__mutmut_10: not checked
+    troupe.cli.x_scalar_output__mutmut_11: not checked
+    troupe.cli.x_scalar_output__mutmut_12: not checked
+    troupe.cli.x_json_value__mutmut_1: not checked
+    troupe.cli.x_json_value__mutmut_2: not checked
+    troupe.cli.x_json_value__mutmut_3: not checked
+    troupe.cli.x_json_value__mutmut_4: not checked
+    troupe.cli.x_json_value__mutmut_5: not checked
+    troupe.cli.x_run__mutmut_1: not checked
+    troupe.cli.x_run__mutmut_2: not checked
+    troupe.cli.x_run__mutmut_3: not checked
+    troupe.cli.x_run__mutmut_4: not checked
+    troupe.cli.x_run__mutmut_5: not checked
+    troupe.cli.x_run__mutmut_6: not checked
+    troupe.cli.x_run__mutmut_7: not checked
+    troupe.cli.x_run__mutmut_8: not checked
+    troupe.cli.x_run__mutmut_9: not checked
+    troupe.cli.x_run__mutmut_10: not checked
+    troupe.cli.x_run__mutmut_11: not checked
+    troupe.cli.x_run__mutmut_12: not checked
+    troupe.cli.x_run__mutmut_13: not checked
+    troupe.cli.x_run__mutmut_14: not checked
+    troupe.cli.x_run__mutmut_15: not checked
+    troupe.cli.x_run__mutmut_16: not checked
+    troupe.cli.x_run__mutmut_17: not checked
+    troupe.cli.x_run__mutmut_18: not checked
+    troupe.cli.x_run__mutmut_19: not checked
+    troupe.cli.x_run__mutmut_20: not checked
+    troupe.cli.x_run__mutmut_21: not checked
+    troupe.cli.x_run__mutmut_22: not checked
+    troupe.cli.x_run__mutmut_23: not checked
+    troupe.cli.x_run__mutmut_24: not checked
+    troupe.cli.x_run__mutmut_25: not checked
+    troupe.cli.x_run__mutmut_26: not checked
+    troupe.cli.x_run__mutmut_27: not checked
+    troupe.cli.x_run__mutmut_28: not checked
+    troupe.cli.x_run__mutmut_29: not checked
+    troupe.cli.x_run__mutmut_30: not checked
+    troupe.cli.x_run__mutmut_31: not checked
+    troupe.cli.x_run__mutmut_32: not checked
+    troupe.cli.x_run__mutmut_33: not checked
+    troupe.cli.x_run__mutmut_34: not checked
+    troupe.cli.x_run__mutmut_35: not checked
+    troupe.cli.x_run__mutmut_36: not checked
+    troupe.cli.x_run__mutmut_37: not checked
+    troupe.cli.x_run__mutmut_38: not checked
+    troupe.cli.x_run__mutmut_39: not checked
+    troupe.cli.x_run__mutmut_40: not checked
+    troupe.cli.x_run__mutmut_41: not checked
+    troupe.cli.x_run__mutmut_42: not checked
+    troupe.cli.x_run__mutmut_43: not checked
+    troupe.cli.x_run__mutmut_44: not checked
+    troupe.cli.x_run__mutmut_45: not checked
+    troupe.cli.x_run__mutmut_46: not checked
+    troupe.cli.x_run__mutmut_47: not checked
+    troupe.cli.x_run__mutmut_48: not checked
+    troupe.cli.x_run__mutmut_49: not checked
+    troupe.cli.x_run__mutmut_50: not checked
+    troupe.cli.x_run__mutmut_51: not checked
+    troupe.cli.x_run__mutmut_52: not checked
+    troupe.cli.x_run__mutmut_53: not checked
+    troupe.cli.x_run__mutmut_54: not checked
+    troupe.cli.x_run__mutmut_55: not checked
+    troupe.cli.x_run__mutmut_56: not checked
+    troupe.cli.x_run__mutmut_57: not checked
+    troupe.cli.x_run__mutmut_58: not checked
+    troupe.cli.x_run__mutmut_59: not checked
+    troupe.cli.x_run__mutmut_60: not checked
+    troupe.cli.x_run__mutmut_61: not checked
+    troupe.cli.x_run__mutmut_62: not checked
+    troupe.cli.x_run__mutmut_63: not checked
+    troupe.cli.x_run__mutmut_64: not checked
+    troupe.cli.x_run__mutmut_65: not checked
+    troupe.cli.x_run__mutmut_66: not checked
+    troupe.cli.x_run__mutmut_67: not checked
+    troupe.cli.x_run__mutmut_68: not checked
+    troupe.cli.x_run__mutmut_69: not checked
+    troupe.cli.x_run__mutmut_70: not checked
+    troupe.cli.x_run__mutmut_71: not checked
+    troupe.cli.x_run__mutmut_72: not checked
+    troupe.cli.x_run__mutmut_73: not checked
+    troupe.cli.x_run__mutmut_74: not checked
+    troupe.cli.x_run__mutmut_75: not checked
+    troupe.cli.x_run__mutmut_76: not checked
+    troupe.cli.x_run__mutmut_77: not checked
+    troupe.cli.x_run__mutmut_78: not checked
+    troupe.cli.x_run__mutmut_79: not checked
+    troupe.cli.x_run__mutmut_80: not checked
+    troupe.cli.x_run__mutmut_81: not checked
+    troupe.cli.x_run__mutmut_82: not checked
+    troupe.cli.x_run__mutmut_83: not checked
+    troupe.cli.x_run__mutmut_84: not checked
+    troupe.cli.x_run__mutmut_85: not checked
+    troupe.cli.x_run__mutmut_86: not checked
+    troupe.cli.x_run__mutmut_87: not checked
+    troupe.cli.x_run__mutmut_88: not checked
+    troupe.cli.x_run__mutmut_89: not checked
+    troupe.cli.x_run__mutmut_90: not checked
+    troupe.cli.x_run__mutmut_91: not checked
+    troupe.cli.x_run__mutmut_92: not checked
+    troupe.cli.x_run__mutmut_93: not checked
+    troupe.cli.x_run__mutmut_94: not checked
+    troupe.cli.x_run__mutmut_95: not checked
+    troupe.cli.x_run__mutmut_96: not checked
+    troupe.cli.x_run__mutmut_97: not checked
+    troupe.cli.x_run__mutmut_98: not checked
+    troupe.cli.x_run__mutmut_99: not checked
+    troupe.cli.x_run__mutmut_100: not checked
+    troupe.cli.x_run__mutmut_101: not checked
+    troupe.cli.x_run__mutmut_102: not checked
+    troupe.cli.x_run__mutmut_103: not checked
+    troupe.cli.x_run__mutmut_104: not checked
+    troupe.cli.x_run__mutmut_105: not checked
+    troupe.cli.x_run__mutmut_106: not checked
+    troupe.cli.x_run__mutmut_107: not checked
+    troupe.cli.x_run__mutmut_108: not checked
+    troupe.cli.x_run__mutmut_109: not checked
+    troupe.cli.x_run__mutmut_110: not checked
+    troupe.cli.x_run__mutmut_111: not checked
+    troupe.cli.x_run__mutmut_112: not checked
+    troupe.cli.x_run__mutmut_113: not checked
+    troupe.cli.x_run__mutmut_114: not checked
+    troupe.cli.x_run__mutmut_115: not checked
+    troupe.cli.x_run__mutmut_116: not checked
+    troupe.cli.x_run__mutmut_117: not checked
+    troupe.cli.x_do_set__mutmut_1: not checked
+    troupe.cli.x_do_set__mutmut_2: not checked
+    troupe.cli.x_do_set__mutmut_3: not checked
+    troupe.cli.x_do_set__mutmut_4: not checked
+    troupe.cli.x_do_set__mutmut_5: not checked
+    troupe.cli.x_do_set__mutmut_6: not checked
+    troupe.cli.x_do_set__mutmut_7: not checked
+    troupe.cli.x_do_set__mutmut_8: not checked
+    troupe.cli.x_do_set__mutmut_9: not checked
+    troupe.cli.x_do_set__mutmut_10: not checked
+    troupe.cli.x_do_set__mutmut_11: not checked
+    troupe.cli.x_do_set__mutmut_12: not checked
+    troupe.cli.x_do_set__mutmut_13: not checked
+    troupe.cli.x_do_set__mutmut_14: not checked
+    troupe.cli.x_do_set__mutmut_15: not checked
+    troupe.cli.x_do_set__mutmut_16: not checked
+    troupe.cli.x_do_set__mutmut_17: not checked
+    troupe.cli.x_do_set__mutmut_18: not checked
+    troupe.cli.x_do_set__mutmut_19: not checked
+    troupe.cli.x_do_set__mutmut_20: not checked
+    troupe.cli.x_do_set__mutmut_21: not checked
+    troupe.cli.x_do_set__mutmut_22: not checked
+    troupe.cli.x_do_set__mutmut_23: not checked
+    troupe.cli.x_do_set__mutmut_24: not checked
+    troupe.cli.x_do_set__mutmut_25: not checked
+    troupe.cli.x_do_set__mutmut_26: not checked
+    troupe.cli.x_do_set__mutmut_27: not checked
+    troupe.cli.x_do_set__mutmut_28: not checked
+    troupe.cli.x_do_set__mutmut_29: not checked
+    troupe.cli.x_do_set__mutmut_30: not checked
+    troupe.cli.x_do_set__mutmut_31: not checked
+    troupe.cli.x_do_set__mutmut_32: not checked
+    troupe.cli.x_do_set__mutmut_33: not checked
+    troupe.cli.x_do_set__mutmut_34: not checked
+    troupe.cli.x_do_set__mutmut_35: not checked
+    troupe.cli.x_do_set__mutmut_36: not checked
+    troupe.cli.x_do_set__mutmut_37: not checked
+    troupe.cli.x_do_set__mutmut_38: not checked
+    troupe.cli.x_do_set__mutmut_39: not checked
+    troupe.cli.x_do_set__mutmut_40: not checked
+    troupe.cli.x_do_set__mutmut_41: not checked
+    troupe.cli.x_do_set__mutmut_42: not checked
+    troupe.cli.x_do_set__mutmut_43: not checked
+    troupe.cli.x_do_set__mutmut_44: not checked
+    troupe.cli.x_do_set__mutmut_45: not checked
+    troupe.cli.x_do_set__mutmut_46: not checked
+    troupe.cli.x_do_set__mutmut_47: not checked
+    troupe.cli.x_do_set__mutmut_48: not checked
+    troupe.cli.x_do_set__mutmut_49: not checked
+    troupe.cli.x_do_set__mutmut_50: not checked
+    troupe.cli.x_do_set__mutmut_51: not checked
+    troupe.cli.x_do_set__mutmut_52: not checked
+    troupe.cli.x_do_set__mutmut_53: not checked
+    troupe.cli.x_do_set__mutmut_54: not checked
+    troupe.cli.x_do_set__mutmut_55: not checked
+    troupe.cli.x_do_set__mutmut_56: not checked
+    troupe.cli.x_do_set__mutmut_57: not checked
+    troupe.cli.x_do_set__mutmut_58: not checked
+    troupe.cli.x_do_set__mutmut_59: not checked
+    troupe.cli.x_do_set__mutmut_60: not checked
+    troupe.cli.x_do_set__mutmut_61: not checked
+    troupe.cli.x_do_set__mutmut_62: not checked
+    troupe.cli.x_do_set__mutmut_63: not checked
+    troupe.cli.x_do_set__mutmut_64: not checked
+    troupe.cli.x_do_set__mutmut_65: not checked
+    troupe.cli.x_do_set__mutmut_66: not checked
+    troupe.cli.x_do_set__mutmut_67: not checked
+    troupe.cli.x_do_set__mutmut_68: not checked
+    troupe.cli.x_do_set__mutmut_69: not checked
+    troupe.cli.x_do_set__mutmut_70: not checked
+    troupe.cli.x_do_set__mutmut_71: not checked
+    troupe.cli.x_do_set__mutmut_72: not checked
+    troupe.cli.x_do_set__mutmut_73: not checked
+    troupe.cli.x_do_set__mutmut_74: not checked
+    troupe.cli.x_do_set__mutmut_75: not checked
+    troupe.cli.x_do_set__mutmut_76: not checked
+    troupe.cli.x_do_set__mutmut_77: not checked
+    troupe.cli.x_do_set__mutmut_78: not checked
+    troupe.cli.x_do_set__mutmut_79: not checked
+    troupe.cli.x_do_set__mutmut_80: not checked
+    troupe.cli.x_do_set__mutmut_81: not checked
+    troupe.cli.x_do_set__mutmut_82: not checked
+    troupe.cli.x_do_set__mutmut_83: not checked
+    troupe.cli.x_do_set__mutmut_84: not checked
+    troupe.cli.x_do_set__mutmut_85: not checked
+    troupe.cli.x_do_set__mutmut_86: not checked
+    troupe.cli.x_main__mutmut_1: not checked
+    troupe.cli.x_main__mutmut_2: not checked
+    troupe.cli.x_main__mutmut_3: not checked
+    troupe.cli.x_main__mutmut_4: not checked
+    troupe.cli.x_main__mutmut_5: not checked
+    troupe.cli.x_main__mutmut_6: not checked
+    troupe.cli.x_main__mutmut_7: not checked
+    troupe.cli.x_main__mutmut_8: not checked
+    troupe.cli.x_main__mutmut_9: not checked
+    troupe.cli.x_main__mutmut_10: not checked
+    troupe.cli.x_main__mutmut_11: not checked
+__results_rc=0
+/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/mutmut/configuration.py:143: UserWarning: The config paths_to_mutate is deprecated. Please rename it to source_paths
+  warnings.warn("The config paths_to_mutate is deprecated. Please rename it to source_paths")

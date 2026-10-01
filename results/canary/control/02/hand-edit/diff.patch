@@ -1,0 +1,58 @@
+commit 1e8e13d75eea402d4aa49bc03b0e877cb31790cf
+Author:     Sam Teammate <sam.teammate@troupe.run>
+AuthorDate: Wed Sep 30 23:51:30 2026 +0000
+Commit:     Sam Teammate <sam.teammate@troupe.run>
+CommitDate: Wed Sep 30 23:51:30 2026 +0000
+
+    Let TROUPE_THEATRE set the default theatre
+
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index efc4ec9..16ce360 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -4,6 +4,7 @@ from __future__ import annotations
+ 
+ import json
+ import math
++import os
+ import sys
+ from pathlib import Path
+ 
+@@ -29,7 +30,7 @@ class Fail(Exception):
+ 
+ 
+ def parse_args(argv: list[str]) -> tuple[str, list[str], Path]:
+-    theatre = "."
++    theatre: str | None = None
+     rest: list[str] = []
+     i = 0
+     only_positional = False
+@@ -57,6 +58,8 @@ def parse_args(argv: list[str]) -> tuple[str, list[str], Path]:
+     lo, hi = ARITY[cmd]
+     if not lo <= len(args) <= hi:
+         raise UsageError(f"wrong number of arguments for {cmd}")
++    if theatre is None:
++        theatre = os.environ.get("TROUPE_THEATRE") or "."
+     return cmd, args, Path(theatre)
+ 
+ 
+diff --git a/tests/test_config.py b/tests/test_config.py
+index 0216dd9..1fcc60b 100644
+--- a/tests/test_config.py
++++ b/tests/test_config.py
+@@ -151,6 +151,15 @@ def test_usage():
+     assert run(["config", "set", "a", "["])[0] == 2
+ 
+ 
++def test_theatre_from_env(theatre, tmp_path, monkeypatch):
++    monkeypatch.setenv("TROUPE_THEATRE", str(theatre))
++    assert run(["config", "show", "name"]) == (0, "demo\n")
++    assert run(["config", "show", "name", "--theatre", str(tmp_path / "none")])[0] == 4
++    monkeypatch.setenv("TROUPE_THEATRE", "")
++    monkeypatch.chdir(theatre)
++    assert run(["config", "show", "name"]) == (0, "demo\n")
++
++
+ def test_entry_point(theatre):
+     root = Path(__file__).parent.parent
+     res = subprocess.run(
