@@ -77,7 +77,8 @@ def ruff_arm_summary_text(quality: dict[str, object]) -> str:
 
 def mutation_summary_text(mut: dict[str, object]) -> str:
     """The owner-facing mutation phrase: the score when there is one, otherwise the reason there isn't --
-    crashed, baseline failed, no tests, or timed out (fix round 2, item 8) -- never a bare `None`. A
+    crashed, baseline failed, no tests, timed out (fix round 2, item 8), or unmeasured (every mutant "no tests"/
+    "skipped" in a run that completed: neutral wording, no cause asserted) -- never a bare `None`. A
     placeholder reason (`_mutation_placeholder`'s "install failed" or an "error: ..." exception summary,
     fix round 3, item 7) renders with its own specific text rather than collapsing to a generic "crashed"."""
     score = mut.get("score")
@@ -92,6 +93,10 @@ def mutation_summary_text(mut: dict[str, object]) -> str:
         return "no tests"
     if isinstance(sampling, str) and (sampling == "install failed" or sampling.startswith("error:")):
         return sampling
+    if mut.get("unmeasured") and not mut.get("crashed"):
+        # neutral on purpose: this does not say whose fault it is (design §8)
+        return ("unmeasured — mutmut attributed no test coverage to any mutant (tests may run the code only in "
+                "subprocesses, or coverage attribution failed)")
     return "crashed"
 
 

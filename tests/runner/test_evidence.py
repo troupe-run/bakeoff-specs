@@ -253,3 +253,12 @@ def test_the_nb_summary_says_when_there_was_no_na_record(tmp_path, monkeypatch):
     ctx, kw = finalise_inputs(tmp_path, monkeypatch)
     evidence.finalise(ctx, **kw)
     assert "## N.a (discovery)\n- no N.a record" in (ctx.out / "summary.md").read_text()
+
+
+def test_mutation_summary_text_renders_an_all_no_tests_run_as_unmeasured_not_crashed():
+    from runner import quality
+    text = evidence.mutation_summary_text({"score": None, "crashed": False, "sampling": "all", "total": 3,
+                                           "no_tests": 3, "unmeasured": quality.UNMEASURED_NO_COVERAGE})
+    assert text.startswith("unmeasured") and "crashed" not in text
+    assert "mutmut attributed no test coverage to any mutant" in text
+    assert "subprocess" in text and "coverage attribution failed" in text      # neither cause asserted

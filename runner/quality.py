@@ -7,10 +7,12 @@ Tool failures (a crash, a timeout) are recorded as such and kept distinct from a
 crashed mypy is not "0 errors", a crashed or timed-out mutation run is not "score 0" (every mutant "survived")
 or "score 100": `mutation_summary` withholds the score (`None`) whenever `crashed` is set, and separately
 whenever the denominator collapses to zero. A crash inside the mutation run itself — `mutmut run` failing,
-`mutmut results` failing to read back what it just did, or every selected mutant coming back with no real
-verdict at all (`not_checked` or, on its own, an all-`check_interrupted` run — fix round 2, item 1) — is
-recorded the same way, never folded into "no mutants" or a misleadingly precise `0.0` (review ruling, fix
-round 1). A `check_interrupted` mutant that isn't the whole run, or fewer statuses coming back than were
+`mutmut results` failing to read back what it just did, or no mutant getting a real verdict while any is
+left unresolved (`not_checked`, an all-`check_interrupted` run — fix round 2, item 1 — or a sampled name
+missing, with or without "no tests" mutants alongside) — is recorded the same way, never folded into "no
+mutants" or a misleadingly precise `0.0` (review ruling, fix round 1). A completed run in which every mutant
+is "no tests" or "skipped" is the one exemption: not a crash, score `None`, `unmeasured` set (mutmut
+attributed no test coverage to anything — see `mutation_env`). A `check_interrupted` mutant that isn't the whole run, or fewer statuses coming back than were
 sampled, sets `partial` instead (fix round 2, items 1 and 5) and is never silently dropped. `run_all` guards
 every phase — `targets()`, mypy, both ruff passes, `tool_versions()` and `_mutation` — in its own
 `try/except`, so an exception anywhere is recorded as that phase's crash (with the exception type and message)
@@ -298,12 +300,20 @@ def _has_arm_ruff_config(copy: Path) -> tuple[bool, bool]:
     return bool(text and "[tool.ruff" in text), False
 
 
+# `unmeasured`: set only when a run completed and EVERY mutant came back "no tests" or "skipped" -- nothing to
+# score, but not a crash either. Worded neutrally on purpose: an arm whose tests reach its code only through
+# subprocesses produces this, and so would a harness fault in mutmut's coverage attribution (a pattern
+# across arms points at the harness).
+UNMEASURED_NO_COVERAGE = "no test coverage attributed"
+
+
 def mutation_summary(c: dict[str, int], *, partial: bool, baseline_failed: bool, crashed: bool = False,
                      **extra: object) -> dict[str, object]:
     denom = c["total"] - c["no_tests"] - c["skipped"]
     score = None if crashed else ((c["killed"] / denom) if denom > 0 else None)
+    unmeasured = (UNMEASURED_NO_COVERAGE if not crashed and c["total"] > 0 and denom == 0 else None)
     return {**c, "score": score, "partial": partial, "baseline_failed": baseline_failed, "crashed": crashed,
-            **extra}
+            "unmeasured": unmeasured, **extra}
 
 
 def parse_results(text: str) -> tuple[list[str], dict[str, int]]:
@@ -511,9 +521,13 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
     Each container gets its own exit-code marker (read from the LAST anchored occurrence on its own line in
     stdout only, never the first — even a forged marker embedded in container 1's tailed log cannot beat our
     own `echo`, which is always the provably-last line; fix round 2, item 4); either marker failing is also
-    `crashed`, not "no mutants" (item 2) — as is the degenerate case where every selected mutant comes back
-    with no real verdict (`not_checked` or `check_interrupted`) even though nothing else looked wrong: zero
-    real signal must never present as a score of `0.0`. `check_interrupted` on its own (a mutant whose check
+    `crashed`, not "no mutants" (item 2) — as is the degenerate case where no mutant gets a real verdict and
+    any is left unresolved (`not_checked`, `check_interrupted`, or a sampled name missing), even with some
+    "no tests" alongside (mutmut assigns those in its stats phase, before checking anything — a run cut off by
+    the inner timeout looks exactly like this) and even though nothing else looked wrong: zero real signal
+    must never present as a score of `0.0`. The one exemption is a completed run in which EVERY mutant is
+    "no tests" or "skipped": not crashed, score `None`, `unmeasured` set (`UNMEASURED_NO_COVERAGE`) — see
+    `mutation_env` for how that arises. `check_interrupted` on its own (a mutant whose check
     was interrupted mid-way — typically a signal — without everything being interrupted) sets `partial`, the
     same as a partial `not_checked` set (fix round 2, item 1). Fewer statuses coming back than were sampled —
     mutmut silently dropping a requested mutant — also sets `partial` and is recorded as `missing_results`
@@ -631,17 +645,18 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
         wanted = set(chosen)
         _, counts = parse_results("\n".join(ln for ln in out.splitlines() if ln.strip().split(":")[0] in wanted))
     real_outcomes = sum(counts.get(k, 0) for k in _REAL_OUTCOME_KEYS)
-    # "no tests"/"skipped" are verdicts mutmut actually reached (unmeasured, outside the score's denominator), not
-    # missing ones: an arm whose tests all reach its code through the CLI subprocess (see `mutation_env`) comes
-    # back all "no tests" -- an unmeasurable null score, never a crash.
-    decided = real_outcomes + counts.get("no_tests", 0) + counts.get("skipped", 0)
-    expected_any_result = counts.get("total", 0) > 0 or bool(chosen)
-    if not crashed and expected_any_result and decided == 0:
-        # Every selected mutant came back with no verdict at all (not_checked/check_interrupted, or mutmut
-        # never even mentioned it) even though nothing else looked wrong: no real signal, so this must never
-        # present as a precise-looking 0.0 (the exact regression this closes).
-        crashed = True
     missing = max(0, len(chosen) - counts.get("total", 0)) if chosen else 0
+    unresolved = counts.get("not_checked", 0) + counts.get("check_interrupted", 0) + missing
+    expected_any_result = counts.get("total", 0) > 0 or bool(chosen)
+    if (not crashed and expected_any_result and real_outcomes == 0
+            and (unresolved > 0 or counts.get("total", 0) == 0)):
+        # No real verdict at all and something left unresolved (not_checked/check_interrupted, a sampled name
+        # mutmut never mentioned, or nothing at all) even though nothing else looked wrong: no real signal, so
+        # this must never present as a precise-looking 0.0 (the exact regression this closes) -- including when
+        # some mutants are "no tests" (assigned in mutmut's stats phase, before any check) and the rest were
+        # never checked, e.g. a run cut off by the inner timeout. The ONE exemption: every mutant "no tests" or
+        # "skipped" -- a completed run with nothing to score, recorded as `unmeasured`, not crashed.
+        crashed = True
     partial = (not crashed) and (run_rc == 124 or counts.get("not_checked", 0) > 0 or
                                  counts.get("check_interrupted", 0) > 0 or missing > 0)
     return finish({k: counts[k] for k in ZERO_MUTATION}, partial=partial, baseline_failed=False, crashed=crashed,

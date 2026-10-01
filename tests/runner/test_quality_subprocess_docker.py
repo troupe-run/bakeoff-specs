@@ -89,7 +89,7 @@ def prepared(tmp_path_factory):
     return p, prep
 
 
-def test_subprocess_cli_tests_do_not_crash_the_mutation_run_and_unreached_code_is_no_tests(prepared, tmp_path):
+def test_subprocess_only_cli_mutants_are_no_tests_and_core_mutants_are_killed_without_a_crash(prepared, tmp_path):
     p, prep = prepared
     pins = config.load_pins()
     pins = dataclasses.replace(pins, limits=dataclasses.replace(pins.limits, mutation_seconds=600))
@@ -97,7 +97,16 @@ def test_subprocess_cli_tests_do_not_crash_the_mutation_run_and_unreached_code_i
     log = (tmp_path / "quality" / "mutmut.log").read_text()
     assert m["baseline_rc"] == 0, log                      # the subprocess test passes outside mutmut
     assert m["crashed"] is False, log
-    assert m["score"] is not None and m["killed"] > 0, m   # test_add kills mutants of add, in-process
-    assert m["no_tests"] > 0, m                            # shout is reached only through the subprocess
+    assert m["score"] is not None and m["unmeasured"] is None, m
+    # per-mutant statuses, from the results container's section of the log (the only place they are parsed)
+    results = log[log.index("mutmut results --all true  (fresh container)"):]
+    statuses = {}
+    for line in results.splitlines():
+        name, sep, status = line.strip().partition(": ")
+        if sep and "__mutmut_" in name:
+            statuses[name] = status
+    cli = {n: s for n, s in statuses.items() if n.startswith("mfx.cli.")}
+    core = {n: s for n, s in statuses.items() if n.startswith("mfx.core.")}
+    assert cli and set(cli.values()) == {"no tests"}, statuses     # reached only through `uv run mfx`
+    assert core and set(core.values()) == {"killed"}, statuses     # test_add, in-process
     assert not (prep.quality_copy / "mutants" / ".venv").exists()   # uv did not build a venv of its own there
-

@@ -189,8 +189,12 @@ runs in-process. Code an arm's tests reach only by running its CLI as a subproce
 CLI contract invites) is reported as "no tests": unmeasured, and left out of the score's denominator (killed ÷
 (total − no tests − skipped)), not counted as surviving. The mutation containers set `UV_PROJECT_ENVIRONMENT` to
 the copy's prepared `.venv` so that such a subprocess, launched from inside mutmut's `mutants/` working copy,
-runs at all; it runs the unmutated install. An arm whose tests are all subprocess-based therefore gets an
-unmeasurable (null) mutation score, not a crash and not zero. The report says so.
+runs at all; it runs the unmutated install. When a completed run comes back with every mutant "no tests" or
+"skipped", the mutation score is null and the report shows it as *unmeasured — mutmut attributed no test
+coverage to any mutant* (tests may run the code only in subprocesses, or coverage attribution failed). That is
+not a crash and not zero, and it is not attributed to the arm: the harness cannot tell the two causes apart, and
+the same result across several arms points at the harness. A run with no real verdict and some mutants left
+unchecked is still recorded as crashed, never as a score.
 
 **Judging:** measured dimensions come from the evidence directly. Judgement dimensions (question quality,
 traceability, test naming) are scored by LLM judges working on **anonymised copies** (repo name, tool-specific

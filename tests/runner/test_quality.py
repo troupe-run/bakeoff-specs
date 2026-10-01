@@ -1084,3 +1084,43 @@ def test_every_mutant_no_tests_is_an_unmeasurable_null_score_not_a_crash(monkeyp
     r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=0))
     assert r["crashed"] is False and r["partial"] is False
     assert r["no_tests"] == 2 and r["total"] == 2 and r["score"] is None
+    assert r["unmeasured"] == quality.UNMEASURED_NO_COVERAGE
+
+
+def test_unmeasured_is_none_on_a_measured_run(monkeypatch, tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    responses = [quality.ToolRun(0, "5 passed\n", "", False),
+                 quality.ToolRun(0, "__run_rc=0\n", "", False),
+                 quality.ToolRun(0, "m.f__mutmut_1: killed\nm.f__mutmut_2: no tests\n__results_rc=0\n", "", False)]
+    monkeypatch.setattr(quality, "_run", _fake_run(responses))
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=0))
+    assert r["score"] == 1.0 and r["unmeasured"] is None
+
+
+# A run with "no tests" mutants and ZERO real verdicts but some mutants left unresolved (not checked,
+# interrupted, missing from the sample, or a run cut off by the inner timeout after mutmut's stats phase) is
+# still crashed: its denominator is non-zero, so anything else would present a fake 0.0.
+
+def _no_tests_plus(results_text, *, run_marker="__run_rc=0\n", sample=0, listing=""):
+    responses = [quality.ToolRun(0, "5 passed\n", "", False)]
+    if sample:
+        responses.append(quality.ToolRun(0, listing, "", False))
+    responses += [quality.ToolRun(0, run_marker, "", False),
+                  quality.ToolRun(0, results_text + "__results_rc=0\n", "", False)]
+    return responses, sample
+
+
+@pytest.mark.parametrize("results_text,run_marker,sample,listing", [
+    ("m.f__mutmut_1: no tests\nm.f__mutmut_2: not checked\n", "__run_rc=0\n", 0, ""),
+    ("m.f__mutmut_1: no tests\nm.f__mutmut_2: check was interrupted by user\n", "__run_rc=0\n", 0, ""),
+    ("m.f__mutmut_1: no tests\n", "__run_rc=0\n", 2,
+     "m.f__mutmut_1: not checked\nm.f__mutmut_2: not checked\n"),
+    ("m.f__mutmut_1: no tests\nm.f__mutmut_2: not checked\n", "__run_rc=124\n", 0, ""),
+], ids=["not_checked", "check_interrupted", "missing_sampled_name", "inner_timeout_124"])
+def test_no_tests_with_unresolved_mutants_and_no_real_verdict_is_crashed_never_a_score(
+        monkeypatch, tmp_path, results_text, run_marker, sample, listing):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    responses, sample = _no_tests_plus(results_text, run_marker=run_marker, sample=sample, listing=listing)
+    monkeypatch.setattr(quality, "_run", _fake_run(responses))
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=sample))
+    assert r["crashed"] is True and r["score"] is None and r["unmeasured"] is None
