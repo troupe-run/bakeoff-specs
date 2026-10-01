@@ -19,7 +19,7 @@ def _pins(**limits_overrides):
 def _fake_run(responses):
     """responses: a list of quality.ToolRun to return in sequence, one per quality._run call."""
     it = iter(responses)
-    def fake(p, copy, cmd, timeout):
+    def fake(p, copy, cmd, timeout, env=None):
         return next(it)
     return fake
 
@@ -409,7 +409,7 @@ def test_run_all_produces_the_exact_keys_evidence_finalise_reads(monkeypatch, tm
     (b / "pyproject.toml").write_text('[project]\nname = "x"\n')
     prep = types.SimpleNamespace(hidden_copy=a, quality_copy=b, prep={"quality": {"ok": True}})
 
-    def fake_run(p_, copy, cmd, timeout):
+    def fake_run(p_, copy, cmd, timeout, env=None):
         text = " ".join(cmd)
         if "mypy" in text:
             return quality.ToolRun(0, "Success: no issues found in 1 source file\n", "", False)
@@ -543,7 +543,7 @@ def test_ruff_findings_ignore_stderr_content_even_when_it_looks_like_json(monkey
     (a / "src").mkdir()
     prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
 
-    def fake_run(p_, copy, cmd, timeout):
+    def fake_run(p_, copy, cmd, timeout, env=None):
         text = " ".join(cmd)
         if "mypy" in text:
             return quality.ToolRun(0, "Success: no issues found in 1 source file\n", "", False)
@@ -580,7 +580,7 @@ def test_run_all_records_mypy_and_ruff_timeouts(monkeypatch, tmp_state, tmp_path
     (a / "src").mkdir()
     prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
 
-    def fake_run(p_, copy, cmd, timeout):
+    def fake_run(p_, copy, cmd, timeout, env=None):
         text = " ".join(cmd)
         if "mypy" in text:
             return quality.ToolRun(None, "", "", True)
@@ -597,7 +597,7 @@ def test_run_all_records_mypy_and_ruff_timeouts(monkeypatch, tmp_state, tmp_path
 # fix round 3, item 5: one test per run_all phase, precisely isolating which phase failed and confirming the
 # others are unaffected -- a single blanket "everything blows up" test can't show that isolation.
 
-def _ok_run(p_, copy, cmd, timeout):
+def _ok_run(p_, copy, cmd, timeout, env=None):
     text = " ".join(cmd)
     if "mypy" in text:
         return quality.ToolRun(0, "Success: no issues found in 1 source file\n", "", False)
@@ -626,7 +626,7 @@ def test_run_all_survives_an_exception_from_mypy(monkeypatch, tmp_state, tmp_pat
     (a / "src").mkdir()
     prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
 
-    def fake(p_, copy, cmd, timeout):
+    def fake(p_, copy, cmd, timeout, env=None):
         text = " ".join(cmd)
         if "mypy" in text:
             raise RuntimeError("simulated mypy crash")
@@ -646,7 +646,7 @@ def test_run_all_survives_an_exception_from_ruff(monkeypatch, tmp_state, tmp_pat
     (a / "src").mkdir()
     prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
 
-    def fake(p_, copy, cmd, timeout):
+    def fake(p_, copy, cmd, timeout, env=None):
         text = " ".join(cmd)
         if "ruff" in text and "isolated" in text:
             raise RuntimeError("simulated ruff crash")
@@ -667,7 +667,7 @@ def test_run_all_survives_an_exception_from_the_arm_ruff_pass(monkeypatch, tmp_s
     (a / "ruff.toml").write_text("")                    # gives the arm a config, so the arm pass is attempted
     prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
 
-    def fake(p_, copy, cmd, timeout):
+    def fake(p_, copy, cmd, timeout, env=None):
         text = " ".join(cmd)
         if "ruff" in text and "isolated" not in text:
             raise RuntimeError("simulated arm-ruff crash")
@@ -719,7 +719,7 @@ def test_run_all_survives_an_exception_from_mutation_itself(monkeypatch, tmp_sta
     (a / "pyproject.toml").write_text('[project]\nname = "x"\n')
     prep = types.SimpleNamespace(hidden_copy=a, quality_copy=b, prep={"quality": {"ok": True}})
 
-    def fake_run(p_, copy, cmd, timeout):
+    def fake_run(p_, copy, cmd, timeout, env=None):
         text = " ".join(cmd)
         if "mypy" in text:
             return quality.ToolRun(0, "Success: no issues found in 1 source file\n", "", False)
@@ -819,7 +819,7 @@ def test_mypy_command_quotes_targets_rather_than_interpolating_raw(monkeypatch, 
     prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
     captured = []
 
-    def fake_run(p_, copy, cmd, timeout):
+    def fake_run(p_, copy, cmd, timeout, env=None):
         captured.append(cmd)
         return quality.ToolRun(0, "Success: no issues found\n", "", False) if "mypy" in " ".join(cmd) else \
             quality.ToolRun(0, "[]", "", False)
@@ -916,7 +916,7 @@ def test_safe_read_fstat_recheck_catches_a_fifo_even_when_lstat_is_fooled(tmp_pa
 
 def _recording_run(responses, seen):
     it = iter(responses)
-    def fake(p, copy, cmd, timeout):
+    def fake(p, copy, cmd, timeout, env=None):
         seen.append(list(cmd))
         return next(it)
     return fake
@@ -977,3 +977,110 @@ def test_mutmut_log_unsampled_run_says_all(monkeypatch, tmp_path):
     quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=0))
     run_line = _cmd_lines((tmp_path / "out/quality/mutmut.log").read_text())[1]
     assert run_line.startswith("$ .venv/bin/mutmut run --max-children 4 ") and "(all;" in run_line
+
+
+# --- mutation containers: `uv run` from inside mutmut's `mutants/` must reuse the prepared venv ---------------
+# mutmut 3 copies pyproject.toml/uv.lock into `mutants/` and runs the arm's tests from there, so an arm test that
+# shells out to `uv run <script>` with cwd under `mutants/` makes uv treat `mutants/` as its own project and (with
+# UV_NO_SYNC=1, offline) build an empty `mutants/.venv` -- `Failed to spawn`, the stats phase fails, and the run
+# crashes. The listing, run and results containers carry UV_PROJECT_ENVIRONMENT=<copy>/.venv (in-container path);
+# baseline, mypy and ruff do not.
+
+def _env_recording_run(responses, seen):
+    it = iter(responses)
+    def fake(p, copy, cmd, timeout, env=None):
+        seen.append((list(cmd), env))
+        return next(it)
+    return fake
+
+
+def test_mutation_env_points_at_the_copys_venv_by_its_in_container_path(tmp_path):
+    copy = tmp_path / "work" / "bakeoff-specs-dryrun"
+    assert quality.mutation_env(copy) == {"UV_PROJECT_ENVIRONMENT": "/work/bakeoff-specs-dryrun/.venv"}
+
+
+def test_script_spec_carries_uv_project_environment_only_when_given_the_mutation_env(tmp_state, monkeypatch, tmp_path):
+    from runner import hidden
+    accounts = tmp_path / "accounts"
+    accounts.mkdir()
+    (accounts / "passwd").write_text("actor:x:1000:1000::/home/actor:/bin/bash\n")
+    (accounts / "group").write_text("actor:x:1000:\n")
+    monkeypatch.setattr(hidden, "_accounts", lambda p, image: (accounts / "passwd", accounts / "group", "actor"))
+    copy = tmp_path / "work" / "bakeoff-specs-dryrun"
+    copy.mkdir(parents=True)
+
+    plain = quality._script_spec(_paths(), copy, ["bash", "-c", "true"])
+    mut = quality._script_spec(_paths(), copy, ["bash", "-c", "true"], env=quality.mutation_env(copy))
+
+    assert "UV_PROJECT_ENVIRONMENT" not in plain.env
+    assert mut.env["UV_PROJECT_ENVIRONMENT"] == mut.workdir + "/.venv"       # the copy as mounted, + /.venv
+    assert any(m.host == copy.parent and m.ctr == "/work" for m in mut.mounts)
+    assert {k: v for k, v in mut.env.items() if k != "UV_PROJECT_ENVIRONMENT"} == plain.env   # nothing else moves
+
+
+def test_listing_run_and_results_containers_get_the_mutation_env_and_the_baseline_does_not(monkeypatch, tmp_path):
+    copy = tmp_path / "bakeoff-specs-dryrun"
+    copy.mkdir()
+    (copy / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    seen: list = []
+    responses = [quality.ToolRun(0, "5 passed\n", "", False),
+                 quality.ToolRun(0, "m.f__mutmut_1: not checked\n", "", False),
+                 quality.ToolRun(0, "__run_rc=0\n", "", False),
+                 quality.ToolRun(0, "m.f__mutmut_1: killed\n__results_rc=0\n", "", False)]
+    monkeypatch.setattr(quality, "_run", _env_recording_run(responses, seen))
+    quality._mutation(_paths(), copy, ["src"], tmp_path / "out", _pins(mutation_sample=1))
+    (baseline_cmd, baseline_env), (list_cmd, list_env), (run_cmd, run_env), (res_cmd, res_env) = seen
+    assert "pytest" in baseline_cmd[2] and baseline_env is None
+    want = {"UV_PROJECT_ENVIRONMENT": "/work/bakeoff-specs-dryrun/.venv"}
+    assert "__bk_list_only__" in list_cmd[2] and list_env == want
+    assert ".venv/bin/mutmut" in run_cmd and run_env == want
+    assert "mutmut results" in res_cmd[2] and res_env == want
+
+
+def test_mypy_and_ruff_containers_get_no_extra_env(monkeypatch, tmp_state, tmp_path):
+    a = tmp_path / "a"
+    (a / "src").mkdir(parents=True)
+    (a / "pyproject.toml").write_text('[project]\nname = "x"\n[tool.ruff]\n')
+    prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
+    seen: list = []
+    def fake(p_, copy, cmd, timeout, **kw):
+        seen.append((" ".join(cmd), kw.get("env")))
+        return _ok_run(p_, copy, cmd, timeout)
+    monkeypatch.setattr(quality, "_run", fake)
+    quality.run_all(_paths(), prep, tmp_path / "out")
+    tools = [t for t, _ in seen]
+    assert sum("mypy" in t for t in tools) == 1 and sum("ruff" in t for t in tools) == 2
+    assert all(env is None for _, env in seen)
+
+
+def test_mutmut_log_notes_the_uv_project_environment_the_mutation_containers_got(monkeypatch, tmp_path):
+    copy = tmp_path / "bakeoff-specs-dryrun"
+    copy.mkdir()
+    (copy / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    responses = [quality.ToolRun(0, "5 passed\n", "", False),
+                 quality.ToolRun(0, "__run_rc=0\n", "", False),
+                 quality.ToolRun(0, "m.f__mutmut_1: killed\n__results_rc=0\n", "", False)]
+    monkeypatch.setattr(quality, "_run", _env_recording_run(responses, []))
+    quality._mutation(_paths(), copy, ["src"], tmp_path / "out", _pins(mutation_sample=0))
+    text = (tmp_path / "out/quality/mutmut.log").read_text()
+    notes = [ln for ln in text.splitlines() if ln.startswith("# ") and
+             "UV_PROJECT_ENVIRONMENT=/work/bakeoff-specs-dryrun/.venv" in ln]
+    assert len(notes) == 1
+    # the note precedes the mutation run's `$ ` line and follows the baseline's, which ran without it
+    lines = text.splitlines()
+    i_note = lines.index(notes[0])
+    assert lines[i_note + 1].startswith("$ .venv/bin/mutmut run ")
+    assert any(ln.startswith("$ ") and "(baseline)" in ln for ln in lines[:i_note])
+
+
+def test_every_mutant_no_tests_is_an_unmeasurable_null_score_not_a_crash(monkeypatch, tmp_path):
+    # an arm whose tests all reach the code through the CLI subprocess: mutmut runs cleanly and reports every
+    # mutant "no tests" -- a real (if empty) verdict, so the score is withheld without calling the run a crash
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    responses = [quality.ToolRun(0, "5 passed\n", "", False),
+                 quality.ToolRun(0, "__run_rc=0\n", "", False),
+                 quality.ToolRun(0, "m.f__mutmut_1: no tests\nm.f__mutmut_2: no tests\n__results_rc=0\n", "", False)]
+    monkeypatch.setattr(quality, "_run", _fake_run(responses))
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=0))
+    assert r["crashed"] is False and r["partial"] is False
+    assert r["no_tests"] == 2 and r["total"] == 2 and r["score"] is None

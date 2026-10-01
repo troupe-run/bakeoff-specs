@@ -184,6 +184,14 @@ package docs, and for GitHub-tracker arms their issues) and whether the question
 question log. The run-phase egress allowlist bounds what an arm can research, and it differs slightly by arm
 (GitHub-tracker arms can reach `api.github.com`); the report says so. Weights are unchanged.
 
+**Mutation score and CLI subprocess tests (2026-10-01).** mutmut 3 attributes coverage only to code a test
+runs in-process. Code an arm's tests reach only by running its CLI as a subprocess (`uv run troupe …`, as the
+CLI contract invites) is reported as "no tests": unmeasured, and left out of the score's denominator (killed ÷
+(total − no tests − skipped)), not counted as surviving. The mutation containers set `UV_PROJECT_ENVIRONMENT` to
+the copy's prepared `.venv` so that such a subprocess, launched from inside mutmut's `mutants/` working copy,
+runs at all; it runs the unmutated install. An arm whose tests are all subprocess-based therefore gets an
+unmeasurable (null) mutation score, not a crash and not zero. The report says so.
+
 **Judging:** measured dimensions come from the evidence directly. Judgement dimensions (question quality,
 traceability, test naming) are scored by LLM judges working on **anonymised copies** (repo name, tool-specific
 folder names and commit trailers scrubbed), then checked by the owner. Blinding is partial — some methods are

@@ -395,7 +395,25 @@ def set_mutmut_paths(copy: Path, paths_: list[str]) -> None:
 
 # --- containers ----------------------------------------------------------------------------------------------
 
-def _script_spec(p: Paths, copy: Path, cmd: list[str], *, name: str = "quality") -> RunSpec:
+def mutation_env(copy: Path) -> dict[str, str]:
+    """Extra env for the three mutation containers (listing, run, results) -- never baseline, mypy or ruff.
+
+    mutmut 3 copies the project, `pyproject.toml` and `uv.lock` included, into `mutants/` and runs the arm's
+    tests from there. An arm test that shells out to the CLI the contract prescribes (`uv run troupe ...` with
+    cwd = the repo root computed from `__file__`) therefore runs `uv run` inside `mutants/`; uv discovers
+    `mutants/` as a project of its own and, offline with `UV_NO_SYNC=1`, creates an EMPTY `mutants/.venv`,
+    cannot install the project, and fails `Failed to spawn` -- that test fails mutmut's stats phase and the
+    whole run crashes (canary control/01). `UV_PROJECT_ENVIRONMENT` points uv at the copy's prepared `.venv`
+    (by its in-container path: `hidden._spec` mounts `copy.parent` at `/work`, workdir `/work/<copy.name>`).
+    The subprocess then runs the prepared, UNMUTATED install, and mutmut 3 cannot attribute coverage across a
+    subprocess anyway, so code reached only that way comes out `no tests` -- excluded from the score's
+    denominator by `mutation_summary`, not counted as survived. (Putting `mutants/src` on PYTHONPATH as well was
+    tried by the controller and breaks the mutmut run.)"""
+    return {"UV_PROJECT_ENVIRONMENT": f"/work/{copy.name}/.venv"}
+
+
+def _script_spec(p: Paths, copy: Path, cmd: list[str], *, name: str = "quality",
+                 env: dict[str, str] | None = None) -> RunSpec:
     """Binding isolation rule: mutation, mypy and ruff execute the arm's own code, so they run the way prep and
     the hidden tests do — `hidden._spec(..., mode="script")` starts the container as root only long enough to
     `setpriv` down to uid 1001 (`ARM_UID`) with every capability cleared (`--bounding-set=-all`,
@@ -410,7 +428,7 @@ def _script_spec(p: Paths, copy: Path, cmd: list[str], *, name: str = "quality")
     crash from a clean result, which needs the exit code, and mypy/mutation need up to 1800s+, so `_spec`/`_run`
     are used directly here instead of the public wrapper."""
     from runner import hidden          # lazy: Task 18's module, not a module-load-time dependency
-    return hidden._spec(p, copy, cmd, mode="script", name=name)
+    return hidden._spec(p, copy, cmd, mode="script", name=name, env=env)
 
 
 class ToolRun:
@@ -428,14 +446,14 @@ class ToolRun:
         return self.stdout + self.stderr
 
 
-def _run(p: Paths, copy: Path, cmd: list[str], timeout: int) -> ToolRun:
+def _run(p: Paths, copy: Path, cmd: list[str], timeout: int, env: dict[str, str] | None = None) -> ToolRun:
     """Every quality tool runs in its own tester container (see `_script_spec`); `hidden._run` also cleans up
     the per-container home directory this creates, whether the run succeeds, fails or times out. A container
     that does not finish within `timeout` is recorded as `timed_out` — never raised away (fix round 1, item 4:
     `run_all` always returns and records something, for every tool: baseline, mypy, ruff, mutation)."""
     from runner import hidden          # lazy: Task 18's module, not a module-load-time dependency
     try:
-        r = hidden._run(_script_spec(p, copy, cmd), timeout=timeout)
+        r = hidden._run(_script_spec(p, copy, cmd, env=env), timeout=timeout)
     except subprocess.TimeoutExpired:
         return ToolRun(rc=None, stdout="", stderr="", timed_out=True)
     return ToolRun(rc=r.returncode, stdout=r.stdout.decode(errors="replace"),
@@ -449,7 +467,7 @@ def list_mutants(p: Paths, copy: Path, tg: list[str]) -> list[str]:
     set_mutmut_paths(copy, tg)
     cmd = ["bash", "-c", ".venv/bin/mutmut run '__bk_list_only__' >/dev/null 2>&1; "
            ".venv/bin/mutmut results --all true"]
-    out = _run(p, copy, cmd, 1800)
+    out = _run(p, copy, cmd, 1800, env=mutation_env(copy))
     return parse_results(out.combined)[0]
 
 
@@ -578,7 +596,11 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
                   'echo __run_rc=$rc')
     mutmut_argv = [".venv/bin/mutmut", "run", "--max-children", "4", *chosen]
     run_cmd = ["bash", "-c", run_script, "_", str(lim.mutation_seconds), *mutmut_argv]
-    run_outcome = _run(p, copy, run_cmd, lim.mutation_seconds + 300)
+    menv = mutation_env(copy)
+    log.append("# listing, run and results containers: "
+               + " ".join(f"{k}={v}" for k, v in menv.items())
+               + "  (so `uv run` from inside mutants/ uses the prepared venv; the baseline above ran without it)")
+    run_outcome = _run(p, copy, run_cmd, lim.mutation_seconds + 300, env=menv)
     log.append(mutmut_run_log_line(mutmut_argv, len(chosen), lim.mutation_seconds) + "\n"
               + run_outcome.combined[-20000:])
     if run_outcome.timed_out:
@@ -592,7 +614,7 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
     # deliberately tampered binary is NOT excluded -- see "what this does not guard against" above. mutmut's own
     # persisted state (the `mutants/` directory) survives on the host-mounted copy between the two containers,
     # so this one sees exactly what the run container just recorded. Status lines are parsed ONLY from here.
-    results_outcome = _run(p, copy, ["bash", "-c", _RESULTS_SCRIPT + "; echo __results_rc=$?"], 300)
+    results_outcome = _run(p, copy, ["bash", "-c", _RESULTS_SCRIPT + "; echo __results_rc=$?"], 300, env=menv)
     log.append(f"$ {_RESULTS_SCRIPT}  (fresh container)\n" + results_outcome.combined[-20000:])
     if results_outcome.timed_out:
         return finish(dict(ZERO_MUTATION), partial=False, baseline_failed=False, crashed=True,
@@ -609,11 +631,15 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
         wanted = set(chosen)
         _, counts = parse_results("\n".join(ln for ln in out.splitlines() if ln.strip().split(":")[0] in wanted))
     real_outcomes = sum(counts.get(k, 0) for k in _REAL_OUTCOME_KEYS)
+    # "no tests"/"skipped" are verdicts mutmut actually reached (unmeasured, outside the score's denominator), not
+    # missing ones: an arm whose tests all reach its code through the CLI subprocess (see `mutation_env`) comes
+    # back all "no tests" -- an unmeasurable null score, never a crash.
+    decided = real_outcomes + counts.get("no_tests", 0) + counts.get("skipped", 0)
     expected_any_result = counts.get("total", 0) > 0 or bool(chosen)
-    if not crashed and expected_any_result and real_outcomes == 0:
-        # Every selected mutant came back with no real verdict at all (not_checked/check_interrupted, or
-        # mutmut never even mentioned it) even though nothing else looked wrong: no real signal, so this must
-        # never present as a precise-looking 0.0 (the exact regression this closes).
+    if not crashed and expected_any_result and decided == 0:
+        # Every selected mutant came back with no verdict at all (not_checked/check_interrupted, or mutmut
+        # never even mentioned it) even though nothing else looked wrong: no real signal, so this must never
+        # present as a precise-looking 0.0 (the exact regression this closes).
         crashed = True
     missing = max(0, len(chosen) - counts.get("total", 0)) if chosen else 0
     partial = (not crashed) and (run_rc == 124 or counts.get("not_checked", 0) > 0 or
