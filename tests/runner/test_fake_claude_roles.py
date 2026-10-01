@@ -8,9 +8,10 @@ import pytest
 
 from runner import handedit, handoff, po
 from runner.paths import REPO_ROOT
+from tests.runner.conftest import BASELINE_BRIEF
 
 FAKE = REPO_ROOT / "runner" / "images" / "dryrun" / "fake_claude.py"
-BRIEF = (REPO_ROOT / "scenario" / "po-brief.md").read_text()
+BRIEF = BASELINE_BRIEF.read_text()           # never the live brief: a real pass appends to it
 CONTRACT = (REPO_ROOT / "scenario" / "contract.md").read_text()
 STEPS = sorted((REPO_ROOT / "scenario" / "steps").glob("0*.md"))
 

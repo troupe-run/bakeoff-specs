@@ -1,5 +1,12 @@
+from pathlib import Path
+
 import pytest
 from runner import paths
+
+# The PO brief tests start from: `scenario/po-brief.md` as committed at the scenario baseline (deb2c7f), frozen here.
+# Never the live file — a real pass appends escalated answers to it and commits them (pass 1 did, e830432), and a
+# test must not change its result with what the real run has done (2026-10-02).
+BASELINE_BRIEF = Path(__file__).resolve().parent / "fixtures" / "po-brief-baseline.md"
 
 
 @pytest.fixture
@@ -46,7 +53,7 @@ def make_test_ctx(tmp_path, arm="openspec", step=1, **limits):
     pins = config.load_pins()
     if limits:
         pins = dataclasses.replace(pins, limits=dataclasses.replace(pins.limits, **limits))
-    brief = tmp_path / "po-brief.md"; shutil.copy(REPO_ROOT / "scenario" / "po-brief.md", brief)
+    brief = tmp_path / "po-brief.md"; shutil.copy(BASELINE_BRIEF, brief)
     out = tmp_path / "out"; out.mkdir(parents=True, exist_ok=True)
     return drive.StepCtx("dry9", config.load_arm(arm), step, Paths("dry9", arm), pins, out, "## General\n",
                          "# Step 1", brief, credentials.dummy(), StubOwner(), "sha0", [], lambda s: None)
@@ -298,7 +305,7 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
     env = FakeOrch(tmp_path)
     env.cred = credentials.dummy()
     brief = tmp_path / "po-brief.md"
-    shutil.copy(paths.REPO_ROOT / "scenario" / "po-brief.md", brief)
+    shutil.copy(BASELINE_BRIEF, brief)
     env.brief = brief
     monkeypatch.setattr(paths, "brief_path", lambda pass_: brief)
     monkeypatch.setattr(gitops, "commit_harness_file", lambda path, msg: env.calls.append(("commit-brief", msg)))
