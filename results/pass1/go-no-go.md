@@ -54,6 +54,15 @@ Prepared 2026-10-01 by Claude with the owner. Each item lists the evidence for i
      - (c) record the mutation score as unmeasurable and re-weight.
    - *Recommendation:* (a) first. The cause is not yet known, and it is a harness problem, not the arm's.
    - **Owner, 2026-10-01: accepted.** Fix it before `run-pass pass1`.
+   - **Fixed, 2026-10-01 (8a985df, b3a3375).**
+     - The root cause: with `UV_NO_SYNC=1`, uv saw `mutants/` as a separate project, made an empty venv there, and
+       the run failed to spawn the CLI with exit 2.
+     - The fix: the mutation containers now set `UV_PROJECT_ENVIRONMENT` to the prepared `.venv`.
+     - What's left: code reached only through CLI subprocesses is reported as "no tests". It is unmeasured and left
+       out of the denominator, because mutmut 3 cannot attribute coverage that runs in a subprocess.
+     - A run where every mutant is "no tests" shows as "unmeasured", not crashed.
+     - Evidence: a regression Docker test; the Docker suite at b3a3375 passed 217 with 0 failed; the dry run passed.
+       Owner option B, putting mutants/src on PYTHONPATH, was tested and breaks the run.
 2. **Discovery costs a whole turn for arms without gates.**
    - What happened: control wrote its whole step-1 implementation in one 17-minute turn during N.a, then discarded
      it.
@@ -63,4 +72,4 @@ Prepared 2026-10-01 by Claude with the owner. Each item lists the evidence for i
 
 ## Sign-off
 
-- [x] Owner: go for `run-pass pass1`, once finding 1 is fixed. Ticked by the owner on 2026-10-01.
+- [x] Owner: go for `run-pass pass1`; finding 1 is now fixed (above). Ticked by the owner on 2026-10-01.
