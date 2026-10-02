@@ -70,8 +70,26 @@ def snapshot(p: Paths, step: int | str) -> Path:
     return p.snapshots / name
 
 
+# Extraction flags for a snapshot onto a bind mount (2026-10-02, live pass1 ccsdd step 2). Without -P, GNU tar
+# extracts every symlink whose target is absolute or holds `..` as a placeholder file, swaps the real link in only
+# after the whole archive, and defers the metadata of each directory holding a placeholder until then; it then
+# re-stats that directory and gives up if its device/inode no longer match. On Docker Desktop's file sharing a
+# directory's inode number does not stay stable over that long a gap, so a home with a uv cache (venv `bin/python`
+# -> /opt/python/..., `..` links between cache dirs) failed every restore: "Directory renamed before its status
+# could be extracted". -P (--absolute-names) creates links directly, so no directory's metadata waits for the end.
+# What -P gives up (stripping a leading `/` and refusing `..` in member names, the placeholder guard against a
+# member written through an earlier link) is replaced by `_MEMBERS_OK_SH` and by the sandbox: snapshots are made
+# by `_SNAPSHOT_SH` (relative names under home/ and work/; tar -c never stores a member below a link), and the
+# container can write only /out (the staging dir) and its own /tmp. -p keeps the snapshot's permission bits
+# instead of masking them with the container's umask (exact restore).
+_MEMBERS_OK_SH = r"""tar -t -f "/snap/$1" > /tmp/members
+if grep -qvE '^(home|work)(/|$)' /tmp/members || grep -qE '(^|/)\.\.(/|$)' /tmp/members; then
+  echo "snapshot $1 has a member outside home/ and work/ or with a '..' component" >&2; exit 3
+fi
+"""
+
 _RESTORE_SH = r"""set -euo pipefail
-tar -x -f "/snap/$1" -C /out --no-same-owner
+""" + _MEMBERS_OK_SH + r"""tar -x -f "/snap/$1" -C /out --no-same-owner -P -p
 test -d /out/home -a ! -L /out/home -a -d /out/work -a ! -L /out/work"""
 
 
@@ -89,8 +107,8 @@ def _rmtree(path: Path) -> None:
 
 
 _EXTRACT_SH = r"""set -euo pipefail
-tar -x -f "/snap/$1" -C /out --no-same-owner --no-same-permissions
-chmod -R u+rwX /out"""
+""" + _MEMBERS_OK_SH + r"""tar -x -f "/snap/$1" -C /out --no-same-owner --no-same-permissions -P
+chmod -R u+rwX /out"""                  # -P: see `_RESTORE_SH` (the same Docker Desktop failure hit this scan)
 
 
 def extract_snapshot(p: Paths, snapshot: Path, dest: Path) -> Path:

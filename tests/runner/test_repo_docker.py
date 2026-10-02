@@ -331,3 +331,107 @@ def test_negative_control_host_git_on_the_planted_repo_does_run_the_vectors_on_t
     g("-c", "user.name=x", "-c", "user.email=x@x", "commit", "-m", "x"); g("show", "HEAD")
     on_host = {x.name for x in host.iterdir()}
     assert {"textconv", "diff-external", "fsmonitor", "filter-clean", "hook-pre-commit"} <= on_host, on_host
+
+
+# ---- restore onto a Docker Desktop bind mount (2026-10-02) ------------------------------------------------------
+# A uv cache in an arm's home holds `bin/` dirs of symlinks to absolute paths that exist only in the arm container.
+# GNU tar extracts such links via placeholders, and on Docker Desktop's file sharing that failed every restore with
+# "Directory renamed before its status could be extracted" (live pass1, ccsdd step 2).
+
+def _plant_uv_cache_like_home(P, packages: int = 24, files: int = 60, venvs: int = 3) -> None:
+    """The shape of a real uv cache in an arm home (synthetic names and content): unpacked wheels under archive-v0,
+    `wheels-v6` and `environments-v2` links into them via `..`, and venvs whose `bin/python` is a link to an absolute
+    interpreter path that exists only in the arm container, with site-packages hardlinked to the unpacked wheels.
+    Plus odd permission bits and fixed mtimes, so the exactness comparison has something to catch."""
+    import os
+    uv = P.home / ".cache" / "uv"
+    arch = uv / "archive-v0"
+    for k in range(packages):
+        pkg = arch / f"pkg{k:02d}id" / f"pkg{k:02d}"
+        pkg.mkdir(parents=True)
+        for f in range(files):
+            (pkg / f"m{f:03d}.py").write_text(f"# {k} {f}\n" * 20)
+        (uv / "wheels-v6" / "pypi" / f"pkg{k:02d}").mkdir(parents=True)
+        os.symlink(f"../../../archive-v0/pkg{k:02d}id", uv / "wheels-v6" / "pypi" / f"pkg{k:02d}" / "1.0-py3-none-any")
+    (uv / "environments-v2" / "envhash").mkdir(parents=True)
+    for v in range(venvs):
+        venv = arch / f"venv{v}id"
+        (venv / "bin").mkdir(parents=True)
+        os.symlink("/opt/python/cpython-3.12-linux-aarch64-gnu/bin/python3.12", venv / "bin" / "python")  # dangling
+        os.symlink("python", venv / "bin" / "python3")
+        (venv / "bin" / "pytest").write_text("#!/bin/sh\n"); os.chmod(venv / "bin" / "pytest", 0o755)
+        os.symlink("lib", venv / "lib64")
+        site = venv / "lib" / "python3.12" / "site-packages"
+        for k in range(packages):
+            (site / f"pkg{k:02d}").mkdir(parents=True)
+            for f in range(files):
+                os.link(arch / f"pkg{k:02d}id" / f"pkg{k:02d}" / f"m{f:03d}.py", site / f"pkg{k:02d}" / f"m{f:03d}.py")
+        os.symlink(f"../../archive-v0/venv{v}id", uv / "environments-v2" / "envhash" / f"env{v}")
+    (P.home / "group-writable.txt").write_text("g"); os.chmod(P.home / "group-writable.txt", 0o664)
+    (P.home / "private").mkdir(); os.chmod(P.home / "private", 0o700)
+    (P.home / "readonly.txt").write_text("r"); os.chmod(P.home / "readonly.txt", 0o444)
+    os.utime(arch / "pkg00id" / "pkg00" / "m000.py", (1_700_000_000, 1_700_000_000))
+    os.utime(arch / "pkg00id" / "pkg00", (1_700_000_100, 1_700_000_100))
+
+
+def _members(tar_path) -> dict:
+    """Every member of a snapshot by name: type, permission bits, size, mtime, link target and content digest.
+    The two root dirs' mtimes are left out (restore's visibility probe creates and deletes a token in each)."""
+    import hashlib, tarfile
+    out = {}
+    with tarfile.open(tar_path) as t:
+        for m in t:
+            digest = hashlib.sha256(t.extractfile(m).read()).hexdigest() if m.isfile() else None
+            out[m.name.rstrip("/")] = (m.type, m.mode & 0o7777, m.size, None if m.name.rstrip("/") in ("home", "work")
+                                       else m.mtime, m.linkname, digest)
+    return out
+
+
+def _snapshot_settled(P, step):
+    """repo.snapshot, retried while tar reports a root dir "changed as we read it": restore's visibility probe
+    creates and deletes a token at each root from the host just before, and Docker Desktop can surface that
+    change to the container a moment late. The retry is only for this comparison snapshot."""
+    import time
+    for _ in range(20):
+        try:
+            return repo.snapshot(P, step)
+        except docker.ContainerError as e:
+            if "file changed as we read it" not in str(e):
+                raise
+            time.sleep(0.5)
+    return repo.snapshot(P, step)
+
+
+def test_restore_of_a_home_with_absolute_symlinks_onto_a_bind_mount_succeeds_and_matches_the_snapshot(P):
+    _plant_uv_cache_like_home(P)
+    snap = repo.snapshot(P, 2)
+    (P.repo / "junk.py").write_text("x"); (P.home / ".cache" / "uv" / "new").write_text("n")
+    repo.restore(P, 2)
+    again = _snapshot_settled(P, "after-restore")
+    before, after = _members(snap), _members(again)
+    assert before["home/.cache/uv/archive-v0/venv0id/bin/python"][4] == \
+        "/opt/python/cpython-3.12-linux-aarch64-gnu/bin/python3.12"
+    assert any(n.startswith("home/origin.git/objects/") for n in before)        # a real git repo is in it
+    assert after == before
+
+
+def test_extract_snapshot_of_a_home_with_absolute_symlinks_onto_a_bind_mount_succeeds(P):
+    import os
+    _plant_uv_cache_like_home(P)
+    snap = repo.snapshot(P, 2)
+    dest = repo.extract_snapshot(P, snap, P.scratch / "scan")
+    link = dest / "home/.cache/uv/archive-v0/venv2id/bin/python"
+    assert os.readlink(link) == "/opt/python/cpython-3.12-linux-aarch64-gnu/bin/python3.12"
+    repo.remove_tree(dest)
+
+
+def test_restore_refuses_a_snapshot_with_a_member_outside_home_and_work(P):
+    import tarfile
+    with tarfile.open(P.snapshots / "step-09.tar", "w") as t:
+        t.add(P.home, arcname="home", recursive=False)
+        t.add(P.work, arcname="work", recursive=False)
+        t.add(P.home / ".gitconfig", arcname="home/../escape")
+    (P.repo / "keep.py").write_text("k")
+    with pytest.raises(docker.ContainerError, match="outside home/ and work/ or with a '..' component"):
+        repo.restore(P, 9)
+    assert (P.repo / "keep.py").read_text() == "k"          # a refused extract leaves the live trees untouched
