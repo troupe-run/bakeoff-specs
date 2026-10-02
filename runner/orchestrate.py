@@ -260,6 +260,16 @@ class _Run:
             self.fault(HarnessFault(kind, stepflow._sig(str(e)), repr(e)[:500]), arm, step, run,
                        f"{what} failed; fix it, then run again")
 
+    def restore(self, p: Paths, step: int, run: str | None, snap) -> None:
+        """`repo.restore` under the fault rule (2026-10-02: a failed restore crashed `run-pass` with a traceback). A
+        failure is an `infra-restore` harness fault in the ledger (a repeat halts) and the run stops for the owner
+        (NotReady). Callers restore BEFORE they change progress, so the next run restores again."""
+        try:
+            repo.restore(p, snap)
+        except stepflow.RESTORE_ERRORS as e:
+            self.fault(stepflow.restore_fault(e), p.arm, step, run,
+                       f"restoring snapshot {snap} failed; fix it, then run again")
+
     # -- the step context ----------------------------------------------------------------------------------------
     def ctx(self, arm_name: str, step: int, out: Path, e: dict, run: str = "b") -> drive.StepCtx:
         arm, p = config.load_arm(arm_name), Paths(self.pass_, arm_name)
@@ -297,7 +307,7 @@ class _Run:
     def _hand_edit(self, arm_name, p, prog, e, out) -> str | None:
         pre = p.snapshots / f"step-{handedit.PRE_EDIT}.tar"
         if e.get("hand_edit") in ("started", "paused", "halted") and pre.is_file():
-            repo.restore(p, handedit.PRE_EDIT)               # a retry starts from the pre-edit state
+            self.restore(p, 2, None, handedit.PRE_EDIT)      # a retry starts from the pre-edit state
         else:
             rec = gitops.set_aside_to_main(p, "bakeoff: the arm's leftovers at the end of step 1, set aside before "
                                               "the step-2 hand edit")
@@ -495,7 +505,7 @@ class _Run:
             _save(p, prog)
             self.log("tests-resumed", arm=arm_name, step=step, run=run, status=r.get("status"))
         elif e.get("restore_needed") or r.get("status") in INTERRUPTED:
-            repo.restore(p, e["snapshot"])                                   # the EXISTING snapshot (I-2)
+            self.restore(p, step, run, e["snapshot"])                        # the EXISTING snapshot (I-2)
             if r.get("status") in INTERRUPTED:
                 self._aside(p, step, run, "interrupted")
             e["restore_needed"] = False
@@ -595,7 +605,7 @@ class _Run:
                                f"({', '.join(c.id for c in drift)}) is still there"
                                f"{' after restoring the step snapshot' if again else ''}; an arm violation, not a "
                                f"harness fault — repair it (`runner shell`), then run again")
-            repo.restore(p, e["snapshot"])
+            self.restore(p, step, run, e["snapshot"])
 
     def _stepflow_finished(self, p: Paths, step: int, run: str) -> str | None:
         """The crash window between `stepflow.run_step` returning and progress being saved (fix round 1): stepflow's
@@ -614,7 +624,7 @@ class _Run:
         p = Paths(self.pass_, arm_name)
         e = prog["steps"][str(step)]
         if run == "a":
-            repo.restore(p, e["snapshot"])               # stepflow may have died before its own reset
+            self.restore(p, step, run, e["snapshot"])    # stepflow may have died before its own reset
         e["restore_needed"] = False
         e[run] = {**e[run], "status": status, "adopted": True, "ended_at": _now(), "post": {},
                   "post_needed": self._post_needed(step, run)}

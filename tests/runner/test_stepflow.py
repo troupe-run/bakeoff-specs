@@ -882,3 +882,65 @@ def test_a_hidden_run_resource_record_is_run_b(fake_step):
     stepflow.run_step(fake_step.ctx, "go")
     [r] = faults.resource_records("dry9", 2)
     assert r["run"] == "b"
+
+
+# ---- a failed restore is a harness fault, never a traceback (2026-10-02, live pass1 ccsdd step 2) ----------------
+
+def _restore_fails(fs, monkeypatch, times: int):
+    """repo.restore raises the container error the live pass hit, `times` times, then works."""
+    left = [times]
+
+    def restore(p, s):
+        fs.restored.append(s)
+        if left[0]:
+            left[0] -= 1
+            raise stepflow.docker.ContainerError("restore step-02.tar failed in container (2): tar: home/.cache/uv/"
+                                                 "x/bin: Directory renamed before its status could be extracted")
+    monkeypatch.setattr(stepflow.repo, "restore", restore)
+
+
+def test_a_failed_restore_after_discovery_is_recorded_and_pauses_when_the_owner_declines(fake_step, monkeypatch):
+    _run_a(fake_step)
+    fake_step.outcome_on = {1: "discovery-stop"}
+    _restore_fails(fake_step, monkeypatch, 1)
+    fake_step.ctx.owner.confirm = lambda text: False
+    with pytest.raises(stepflow.Paused, match="infra-restore"):
+        stepflow.run_step(fake_step.ctx, "go", run="a")
+    [e] = faults.entries("dry9")
+    assert (e["kind"], e["run"], e["step"]) == ("infra-restore", "a", 2) and "Directory renamed" in e["detail"]
+    assert (fake_step.ctx.out / "discovery.json").is_file()        # orchestrate adopts it on resume (no new session)
+
+
+def test_a_failed_restore_after_discovery_runs_again_once_the_owner_confirms_the_fix(fake_step, monkeypatch):
+    _run_a(fake_step)
+    fake_step.outcome_on = {1: "discovery-stop"}
+    _restore_fails(fake_step, monkeypatch, 1)
+    out = stepflow.run_step(fake_step.ctx, "go", run="a")
+    assert out.status == "discovered" and fake_step.restored == [2, 2] and fake_step.calls == 1
+    assert [e["kind"] for e in faults.entries("dry9")] == ["infra-restore"]
+
+
+def test_the_same_restore_failure_twice_halts(fake_step, monkeypatch):
+    _run_a(fake_step)
+    fake_step.outcome_on = {1: "discovery-stop"}
+    _restore_fails(fake_step, monkeypatch, 2)
+    with pytest.raises(stepflow.Halt):
+        stepflow.run_step(fake_step.ctx, "go", run="a")
+    assert fake_step.restored == [2, 2]
+
+
+def test_a_hand_edit_whose_pre_edit_restore_failed_restores_it_before_trying_again(fake_step, monkeypatch):
+    from runner.faults import HarnessFault
+    calls = []
+
+    def apply(ctx, step1):
+        calls.append("apply")
+        if len(calls) == 1:
+            f = HarnessFault("hand-edit", "probe-failed", "x")
+            f.restore_failed = True                  # as handedit._restore_keeping marks it
+            raise f
+        return stepflow.handedit.HandEdit("sha", [], [], {}, 1, {}, [], {}, [], [])
+    monkeypatch.setattr(stepflow.handedit, "apply", apply)
+    _restore_fails(fake_step, monkeypatch, 0)
+    stepflow.hand_edit(fake_step.ctx, {})
+    assert calls == ["apply", "apply"] and fake_step.restored == [stepflow.handedit.PRE_EDIT]

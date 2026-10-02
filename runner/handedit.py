@@ -421,11 +421,14 @@ def _try(ctx, k: int, step1_tests: dict[str, str], out: Path, turns: list) -> Ha
 
 
 def _restore_keeping(p: Paths, exc: BaseException) -> None:
-    """Restore the pre-edit state; a failure to do so is noted on `exc`, which the caller re-raises (never masked)."""
+    """Restore the pre-edit state; a failure to do so is noted on `exc`, which the caller re-raises (never masked),
+    and flagged as `exc.restore_failed`: the tree is then NOT the pre-edit state, so a retry must restore it first
+    (`stepflow.hand_edit`) — `apply` re-snapshots 02-pre-edit from whatever tree it starts on."""
     try:
         repo.restore(p, PRE_EDIT)
     except Exception as e:
         exc.add_note(f"restoring {PRE_EDIT} failed too: {e!r}")
+        exc.restore_failed = True
 
 
 def apply(ctx, step1_tests: dict[str, str]) -> HandEdit:
@@ -443,7 +446,15 @@ def apply(ctx, step1_tests: dict[str, str]) -> HandEdit:
     repo.snapshot(p, PRE_EDIT)
     for k in (1, 2):
         if k > 1:
-            repo.restore(p, PRE_EDIT)          # every retry starts from the pre-edit state
+            try:
+                repo.restore(p, PRE_EDIT)      # every retry starts from the pre-edit state
+            except Exception as e:             # 2026-10-02: a harness fault, never a traceback
+                from runner import stepflow
+                if not isinstance(e, stepflow.RESTORE_ERRORS):
+                    raise
+                f = stepflow.restore_fault(e)
+                f.hand_edit_turns, f.restore_failed = turns, True
+                raise f from e
         try:
             edit = _try(ctx, k, step1_tests, out, turns)
         except HarnessFault as f:

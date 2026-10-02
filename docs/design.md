@@ -251,6 +251,15 @@ recognisable by their artefact shapes — and the report says so.
   appears in the step's N.b `harness_faults`, so a canary with one fails its no-harness-fault check: after an
   owner stop, run a fresh canary. A stop during setup (step 0) has no ledger entry (`faults declare` takes steps
   1-7); setup is attended, so the owner reruns the setup.
+- **Snapshot restore failures (2026-10-02):** each step's snapshot is a tar of the arm's home and work, made and
+  extracted inside a network-less container of the arm's image; a restore extracts into a staging directory and
+  swaps it in. On pass1 every restore after step 1 failed on Docker Desktop's file sharing (GNU tar: "Directory
+  renamed before its status could be extracted", for the uv cache's venv dirs whose `bin/python` links to an
+  absolute path) and the failure crashed `run-pass`. Extraction now uses `tar -P -p` behind a member-name check
+  (every member under `home/` or `work/`, no `..`), which restores the snapshot exactly (checked member by member
+  on the live archive). A restore that still fails is an `infra-restore` harness fault: ledgered (twice halts),
+  then the owner fixes it and the restore runs again, or the run stops cleanly with the restore still pending
+  for the next run.
 
 ## 10. Repos and naming
 

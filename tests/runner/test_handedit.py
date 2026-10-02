@@ -512,6 +512,20 @@ def test_a_failed_restore_does_not_mask_the_original_fault(ctx, monkeypatch):
     with pytest.raises(HarnessFault) as e:
         handedit.apply(ctx, STEP1)
     assert e.value.kind == "infra-auth" and any("restore failed" in n for n in e.value.__notes__)
+    assert e.value.restore_failed                       # stepflow.hand_edit restores 02-pre-edit before a retry
+
+
+def test_a_failed_restore_before_the_second_try_is_an_infra_restore_fault_flagged_for_a_restore(ctx, monkeypatch):
+    from runner import docker
+    World(monkeypatch, ctx, outcomes=("ok", "is_error"), porcelains=("",))      # try 1 fails (session): retried
+
+    def restore_fails(p_, s):
+        raise docker.ContainerError("restore step-02-pre-edit.tar failed in container (2): tar: Directory renamed")
+    monkeypatch.setattr(handedit.repo, "restore", restore_fails)
+    with pytest.raises(HarnessFault) as e:
+        handedit.apply(ctx, STEP1)
+    assert e.value.kind == "infra-restore" and "Directory renamed" in e.value.detail
+    assert e.value.restore_failed and len(e.value.hand_edit_turns) == 1
 
 
 def test_a_symlinked_git_dir_stops_before_the_teammate_runs(ctx, monkeypatch, tmp_path):

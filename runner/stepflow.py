@@ -216,8 +216,27 @@ def _restore_target(ctx):
     return ctx.snapshot if ctx.snapshot is not None else ctx.step
 
 
-def _restore(ctx) -> None:
-    repo.restore(ctx.paths, _restore_target(ctx))
+def restore_fault(e: BaseException) -> HarnessFault:
+    """A failed `repo.restore` as the harness fault it is (2026-10-02: a restore that failed in its container
+    crashed `run-pass` with a traceback). The live trees are untouched by a failed extract, and a failure mid-swap
+    is rolled back or left for `repo.recover`, so the owner can fix the cause and the restore can simply run again."""
+    return HarnessFault("infra-restore", _sig(str(e)), repr(e)[:500])
+
+
+def _restore(ctx, target=None) -> None:
+    """Restore the step's snapshot (or `target`) under the fault rule: a failure is recorded in the ledger as
+    `infra-restore` (a repeat halts), the owner fixes it and the restore runs again; a decline or park raises
+    `Paused`, which the caller records (`restore_needed`), so the next run restores before anything else."""
+    target = _restore_target(ctx) if target is None else target
+    while True:
+        try:
+            repo.restore(ctx.paths, target)
+            break
+        except RESTORE_ERRORS as e:
+            f = restore_fault(e)
+        _record(ctx, f, 0, getattr(ctx, "run", None))
+        _confirm_or_pause(ctx, f"Harness fault {f.kind}: {f.signature} (restoring step {ctx.step}'s snapshot "
+                               f"{target}). Fix it, then restore again?")
     ctx.later_sent = 0                        # ruling 2: the re-run re-sends the first message, and CR-B with it
 
 
@@ -278,6 +297,9 @@ def _arm_result(ctx, summary: hidden.Summary) -> None:
 # so a park, a pause, a halt or a crash there resumes at the tests: the caller must NOT restore the snapshot when
 # the file exists (orchestrate), and the next `run_step` goes straight back to the tests.
 INFRA_ERRORS = (docker.ContainerError, subprocess.SubprocessError, hidden.HiddenError, gitops.GitError)
+# What a failed `repo.restore` raises: its container (ContainerError), a leftover interrupted restore that
+# `repo.recover` will not guess about (InterruptedRestore), or a host rename/delete or missing snapshot (OSError).
+RESTORE_ERRORS = (*INFRA_ERRORS, gitops.InterruptedRestore, OSError)
 PENDING = "tests-pending.json"
 
 
@@ -615,6 +637,8 @@ def hand_edit(ctx, step1_tests: dict[str, str]) -> handedit.HandEdit:
             _record(ctx, f, 0, None)
             _confirm_or_pause(ctx, f"Hand edit failed ({f.kind}: {f.signature}). Fix it, then run it again from "
                                    f"{handedit.PRE_EDIT}?")
+            if getattr(f, "restore_failed", False):   # the tree is not the pre-edit state: restore it first
+                _restore(ctx, handedit.PRE_EDIT)
             continue
         edit.turns = prior + list(edit.turns)
         return edit

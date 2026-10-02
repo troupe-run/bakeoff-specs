@@ -1171,3 +1171,31 @@ def test_a_declared_record_is_ledgered_but_the_next_run_supersedes_and_retests_n
     assert not list(p.results.glob("*-superseded-*")) and not (p.step(2) / "retest-1.json").exists()
     assert json.loads(p.progress.read_text())["steps"] == prog_before["steps"]
     assert [e["scope"] for e in faults.entries("dry7")] == ["record"]
+
+
+# ---- a failed restore is a harness fault and a clean stop, never a traceback (2026-10-02) -------------------------
+
+def test_a_failed_restore_when_resuming_is_recorded_stops_for_the_owner_and_restores_on_the_next_run(fake_orch,
+                                                                                                    monkeypatch):
+    from runner import docker, repo
+    fake_orch.outcome[("dryrun", 3, "a")] = ["boom"]                 # as the live crash: N.a's evidence is written,
+    with pytest.raises(RuntimeError, match="crash"):                 # then the run dies before progress is saved
+        dry(fake_orch)
+    (Paths("dry7", "dryrun").step(3) / "a").mkdir(parents=True, exist_ok=True)
+    (Paths("dry7", "dryrun").step(3) / "a" / "discovery.json").write_text("{}")
+
+    def broken(p, s):
+        raise docker.ContainerError("restore step-03.tar failed in container (2): tar: Directory renamed")
+    monkeypatch.setattr(repo, "restore", broken)
+    with pytest.raises(checklist.NotReady, match="infra-restore"):
+        dry(fake_orch)
+    [e] = faults.entries("dry7")
+    assert (e["kind"], e["step"], e["run"]) == ("infra-restore", 3, "a")
+    s = progress("dry7", "dryrun")["steps"]["3"]
+    assert s["a"]["status"] == "interrupted" and s["restore_needed"] is True       # untouched: resumable
+    monkeypatch.setattr(repo, "restore", lambda p, s: fake_orch.calls.append(("restore", p.arm, s)))
+    fake_orch.calls.clear()
+    dry(fake_orch)
+    assert ("restore", "dryrun", 3) in fake_orch.calls
+    assert progress("dry7", "dryrun")["steps"]["3"]["a"]["status"] == "discovered"
+    assert fake_orch.runs().count(("dryrun", 3, "a")) == 0                         # adopted: no new arm session
