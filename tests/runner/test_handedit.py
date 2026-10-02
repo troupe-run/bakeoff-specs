@@ -528,6 +528,20 @@ def test_a_failed_restore_before_the_second_try_is_an_infra_restore_fault_flagge
     assert e.value.restore_failed and len(e.value.hand_edit_turns) == 1
 
 
+def test_a_failed_pre_edit_snapshot_is_an_infra_snapshot_fault_not_a_traceback(ctx, monkeypatch):
+    from runner import docker
+    w = World(monkeypatch, ctx)
+
+    def snapshot_fails(p_, s):
+        raise docker.ContainerError("snapshot step-02-pre-edit.tar failed in container (1): tar: home: file "
+                                    "changed as we read it")
+    monkeypatch.setattr(handedit.repo, "snapshot", snapshot_fails)
+    with pytest.raises(HarnessFault) as e:
+        handedit.apply(ctx, STEP1)
+    assert (e.value.kind, e.value.signature) == ("infra-snapshot", "ContainerError: file changed as we read it")
+    assert e.value.hand_edit_turns == [] and "turn" not in w.names()
+
+
 def test_a_symlinked_git_dir_stops_before_the_teammate_runs(ctx, monkeypatch, tmp_path):
     w = World(monkeypatch, ctx)
     g = ctx.paths.repo / ".git"; __import__("shutil").rmtree(g); (tmp_path / "elsewhere").mkdir(); g.symlink_to(tmp_path / "elsewhere")

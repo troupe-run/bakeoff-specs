@@ -908,7 +908,8 @@ def test_a_failed_restore_after_discovery_is_recorded_and_pauses_when_the_owner_
         stepflow.run_step(fake_step.ctx, "go", run="a")
     [e] = faults.entries("dry9")
     assert (e["kind"], e["run"], e["step"]) == ("infra-restore", "a", 2) and "Directory renamed" in e["detail"]
-    assert (fake_step.ctx.out / "discovery.json").is_file()        # orchestrate adopts it on resume (no new session)
+    assert (fake_step.ctx.out / "discovery.json").is_file()        # the finished run's record stays (orchestrate's
+                                                                    # resume adopts it: test_orchestrate, fix round 1)
 
 
 def test_a_failed_restore_after_discovery_runs_again_once_the_owner_confirms_the_fix(fake_step, monkeypatch):
@@ -944,3 +945,30 @@ def test_a_hand_edit_whose_pre_edit_restore_failed_restores_it_before_trying_aga
     _restore_fails(fake_step, monkeypatch, 0)
     stepflow.hand_edit(fake_step.ctx, {})
     assert calls == ["apply", "apply"] and fake_step.restored == [stepflow.handedit.PRE_EDIT]
+
+
+def test_two_restore_failures_differing_only_in_the_failing_path_share_a_signature():
+    def err(d):
+        return stepflow.docker.ContainerError(f"restore step-02.tar failed in container (2): tar: home/.cache/uv/"
+                                              f"archive-v0/{d}/bin: Directory renamed before its status could be "
+                                              f"extracted\ntar: home/.cache/uv/archive-v0/{d}: Directory renamed")
+    a, b = stepflow.restore_fault(err("--5fDJK98-NggMgO")), stepflow.restore_fault(err("jFrCOnKoUtY8FNJu"))
+    assert a.signature == b.signature == "ContainerError: Directory renamed before its status could be extracted"
+    assert "--5fDJK98-NggMgO" in a.detail                       # the path is kept in the detail, not the signature
+
+
+def test_a_restore_failure_on_the_hand_edit_path_is_ledgered_without_a_run(fake_step, monkeypatch):
+    from runner.faults import HarnessFault
+    calls = []
+
+    def apply(ctx, step1):
+        calls.append("apply")
+        if len(calls) == 1:
+            f = HarnessFault("hand-edit", "probe-failed", "x")
+            f.restore_failed = True
+            raise f
+        return stepflow.handedit.HandEdit("sha", [], [], {}, 1, {}, [], {}, [], [])
+    monkeypatch.setattr(stepflow.handedit, "apply", apply)
+    _restore_fails(fake_step, monkeypatch, 1)
+    stepflow.hand_edit(fake_step.ctx, {})
+    assert [(e["kind"], e["run"]) for e in faults.entries("dry9")] == [("hand-edit", None), ("infra-restore", None)]

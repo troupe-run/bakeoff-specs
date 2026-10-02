@@ -1199,3 +1199,35 @@ def test_a_failed_restore_when_resuming_is_recorded_stops_for_the_owner_and_rest
     assert ("restore", "dryrun", 3) in fake_orch.calls
     assert progress("dry7", "dryrun")["steps"]["3"]["a"]["status"] == "discovered"
     assert fake_orch.runs().count(("dryrun", 3, "a")) == 0                         # adopted: no new arm session
+
+
+# fix round 1 (review important 1): a run stepflow FINISHED is adopted on resume, never re-run, whatever stop its
+# failed post-completion restore left (decline -> paused, park -> parked, a repeat -> halted)
+@pytest.mark.parametrize("stop", ["paused", "paused-park", "halt"])
+@pytest.mark.parametrize("run", ["a", "b"])
+def test_a_run_finished_before_its_restore_failed_is_adopted_on_resume_without_a_new_session(fake_orch, run, stop):
+    fake_orch.outcome[("dryrun", 3, run)] = [f"finished-{stop}"]
+    if stop == "halt":
+        with pytest.raises(stepflow.Halt):
+            dry(fake_orch)
+    else:
+        dry(fake_orch)
+    status = progress("dry7", "dryrun")["steps"]["3"][run]["status"]
+    assert status == {"paused": "paused", "paused-park": "paused", "halt": "halted"}[stop]
+    fake_orch.calls.clear()
+    dry(fake_orch)
+    assert ("run_step", "dryrun", 3, run) not in fake_orch.calls                   # no new arm session
+    e = progress("dry7", "dryrun")["steps"]["3"]
+    assert e[run]["status"] == {"a": "discovered", "b": "done"}[run]
+    assert e[run]["adopted"] is True and e["restore_needed"] is False
+    assert not (Paths("dry7", "dryrun").step(3) / f"{run}-interrupted-1").exists()      # nothing moved aside
+    assert (("restore", "dryrun", 3) in fake_orch.calls) == (run == "a")           # N.a always resets the tree
+
+
+def test_a_finished_scored_run_whose_drift_restore_failed_is_adopted_and_restored(fake_orch):
+    fake_orch.outcome[("dryrun", 3, "b")] = ["finished-drift-paused"]
+    dry(fake_orch)
+    fake_orch.calls.clear()
+    dry(fake_orch)
+    assert ("run_step", "dryrun", 3, "b") not in fake_orch.calls and ("restore", "dryrun", 3) in fake_orch.calls
+    assert not (Paths("dry7", "dryrun").step(3) / stepflow.RESTORE_AFTER).exists()

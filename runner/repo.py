@@ -65,9 +65,24 @@ def snapshot(p: Paths, step: int | str) -> Path:
     recover(p)
     p.snapshots.mkdir(parents=True, exist_ok=True)
     name = _snap_name(step)
-    _run(_tar_spec(p, [Mount(p.home, "/src/home", True), Mount(p.work, "/src/work", True),
-                       Mount(p.snapshots, "/snap", False)], _SNAPSHOT_SH, name, tag="snap"), f"snapshot {name}")
-    return p.snapshots / name
+    for tries_left in range(SNAPSHOT_TRIES - 1, -1, -1):
+        try:
+            _run(_tar_spec(p, [Mount(p.home, "/src/home", True), Mount(p.work, "/src/work", True),
+                               Mount(p.snapshots, "/snap", False)], _SNAPSHOT_SH, name, tag="snap"), f"snapshot {name}")
+            return p.snapshots / name
+        except docker.ContainerError as e:
+            if not tries_left or "file changed as we read it" not in str(e):
+                raise
+            time.sleep(SNAPSHOT_RETRY_PAUSE)
+    raise AssertionError("unreachable")
+
+
+# Fix round 1 (2026-10-02): tar exits 1 with "<dir>: file changed as we read it" when Docker Desktop surfaces a
+# just-made host change late — e.g. the token `_await_visible_in_containers` creates and deletes at both roots, right
+# before the hand edit's `02-pre-edit` snapshot. The archive of that try is not trusted (the `.partial` is never
+# renamed in) and the snapshot is taken again; a tree that keeps changing still fails after SNAPSHOT_TRIES.
+SNAPSHOT_TRIES = 10
+SNAPSHOT_RETRY_PAUSE = 0.5
 
 
 # Extraction flags for a snapshot onto a bind mount (2026-10-02, live pass1 ccsdd step 2). Without -P, GNU tar
@@ -80,8 +95,11 @@ def snapshot(p: Paths, step: int | str) -> Path:
 # What -P gives up (stripping a leading `/` and refusing `..` in member names, the placeholder guard against a
 # member written through an earlier link) is replaced by `_MEMBERS_OK_SH` and by the sandbox: snapshots are made
 # by `_SNAPSHOT_SH` (relative names under home/ and work/; tar -c never stores a member below a link), and the
-# container can write only /out (the staging dir) and its own /tmp. -p keeps the snapshot's permission bits
-# instead of masking them with the container's umask (exact restore).
+# container can write only /out (the staging dir) and its own /tmp. The check reads member NAMES only, never link
+# targets: a hardlink to anything outside /out fails (EXDEV, another file system), and a member written through an
+# earlier symlink can reach only /out (the arm's own trees) or the container's /tmp — its root is read-only and no
+# host path is mounted writable. -p keeps the snapshot's permission bits instead of masking them with the
+# container's umask (exact restore).
 _MEMBERS_OK_SH = r"""tar -t -f "/snap/$1" > /tmp/members
 if grep -qvE '^(home|work)(/|$)' /tmp/members || grep -qE '(^|/)\.\.(/|$)' /tmp/members; then
   echo "snapshot $1 has a member outside home/ and work/ or with a '..' component" >&2; exit 3

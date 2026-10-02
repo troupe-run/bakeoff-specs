@@ -216,25 +216,44 @@ def _restore_target(ctx):
     return ctx.snapshot if ctx.snapshot is not None else ctx.step
 
 
+_PATHISH = re.compile(r"[^\s:'\"\[\],()]*/[^\s:'\"\[\],()]*")
+
+
+def path_free_signature(e: BaseException) -> str:
+    """The ledger signature of a failed restore: the error type and WHAT failed, never where. tar's message class
+    ("Directory renamed before its status could be extracted") without its path; otherwise the first line with
+    path-like tokens replaced. The failing directory (a uv archive id) changes from run to run, and the same fault
+    twice must still halt (fix round 1, review minor 2)."""
+    text = str(e)
+    tar = [ln.rsplit(": ", 1)[-1].strip() for ln in text.splitlines() if "tar: " in ln]
+    what = tar[0] if tar else _PATHISH.sub("<path>", text.splitlines()[0] if text else "")
+    return _sig(f"{type(e).__name__}: {what}")
+
+
 def restore_fault(e: BaseException) -> HarnessFault:
     """A failed `repo.restore` as the harness fault it is (2026-10-02: a restore that failed in its container
     crashed `run-pass` with a traceback). The live trees are untouched by a failed extract, and a failure mid-swap
     is rolled back or left for `repo.recover`, so the owner can fix the cause and the restore can simply run again."""
-    return HarnessFault("infra-restore", _sig(str(e)), repr(e)[:500])
+    return HarnessFault("infra-restore", path_free_signature(e), repr(e)[:500])
 
 
-def _restore(ctx, target=None) -> None:
+_RUN = object()
+
+
+def _restore(ctx, target=None, run=_RUN) -> None:
     """Restore the step's snapshot (or `target`) under the fault rule: a failure is recorded in the ledger as
     `infra-restore` (a repeat halts), the owner fixes it and the restore runs again; a decline or park raises
-    `Paused`, which the caller records (`restore_needed`), so the next run restores before anything else."""
+    `Paused`, which the caller records (`restore_needed`), so the next run restores before anything else. `run` is
+    the ledger's run (default: the step's; the hand edit's is None, as its other faults)."""
     target = _restore_target(ctx) if target is None else target
+    run = getattr(ctx, "run", None) if run is _RUN else run
     while True:
         try:
             repo.restore(ctx.paths, target)
             break
         except RESTORE_ERRORS as e:
             f = restore_fault(e)
-        _record(ctx, f, 0, getattr(ctx, "run", None))
+        _record(ctx, f, 0, run)
         _confirm_or_pause(ctx, f"Harness fault {f.kind}: {f.signature} (restoring step {ctx.step}'s snapshot "
                                f"{target}). Fix it, then restore again?")
     ctx.later_sent = 0                        # ruling 2: the re-run re-sends the first message, and CR-B with it
@@ -301,6 +320,7 @@ INFRA_ERRORS = (docker.ContainerError, subprocess.SubprocessError, hidden.Hidden
 # `repo.recover` will not guess about (InterruptedRestore), or a host rename/delete or missing snapshot (OSError).
 RESTORE_ERRORS = (*INFRA_ERRORS, gitops.InterruptedRestore, OSError)
 PENDING = "tests-pending.json"
+RESTORE_AFTER = "restore-after-run.json"   # run b: the step's drift restore was due when the run ended (A5)
 
 
 def _turn_out(t) -> dict:
@@ -562,7 +582,10 @@ def run_step(ctx, first_message: str, extra: dict | None = None, run: str = "b")
         drift = any(v.get("kind") == "setup-drift" for v in pend.get("violations") or [])
         pend = None
         if drift:                                        # A5: the arm's drift is repaired by the step's restore
+            marker = ctx.out / RESTORE_AFTER             # if this restore fails after run.json, a resumed run is
+            marker.write_text("{}")                      # adopted (orchestrate) and must still do the restore
             _restore(ctx)
+            marker.unlink()
         if got is not None:
             return got
         park(ctx.out, attempt, "no-progress")
@@ -638,7 +661,7 @@ def hand_edit(ctx, step1_tests: dict[str, str]) -> handedit.HandEdit:
             _confirm_or_pause(ctx, f"Hand edit failed ({f.kind}: {f.signature}). Fix it, then run it again from "
                                    f"{handedit.PRE_EDIT}?")
             if getattr(f, "restore_failed", False):   # the tree is not the pre-edit state: restore it first
-                _restore(ctx, handedit.PRE_EDIT)
+                _restore(ctx, handedit.PRE_EDIT, run=None)
             continue
         edit.turns = prior + list(edit.turns)
         return edit

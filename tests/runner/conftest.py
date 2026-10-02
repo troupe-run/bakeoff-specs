@@ -451,6 +451,12 @@ def fake_orch(tmp_state, tmp_path, monkeypatch):
         if behaviour.startswith("tests-"):              # the attempt ran; the tests phase parked or crashed (A1)
             (ctx.out / stepflow.PENDING).write_text(J.dumps({"attempt": 1}))
             behaviour = behaviour.removeprefix("tests-")
+        if behaviour.startswith("finished-"):          # stepflow finished the run, then its restore failed and
+            behaviour = behaviour.removeprefix("finished-")      # the owner declined / parked, or it halted
+            if behaviour.startswith("drift-"):           # run b: the drift restore was due (stepflow's marker)
+                (ctx.out / stepflow.RESTORE_AFTER).write_text("{}")
+                behaviour = behaviour.removeprefix("drift-")
+            (ctx.out / ("discovery.json" if run == "a" else "run.json")).write_text(J.dumps({"outcome": "done"}))
         if behaviour == "halt":
             raise stepflow.Halt("HALTED")
         if behaviour == "paused":

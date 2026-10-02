@@ -494,8 +494,10 @@ class _Run:
         r = e.get(run) or {}
         if r.get("status") in DONE[run]:
             return self.post(arm_name, step, run, prog)
-        if r.get("status") in ("running", "interrupted") and (done := self._stepflow_finished(p, step, run)):
-            return self._adopt(arm_name, step, run, prog, done)            # never spend another arm session
+        # never spend another arm session on a run stepflow finished — whatever status the stop after it left
+        # (2026-10-02: a failed restore after discovery.json / run.json pauses, parks or halts the run)
+        if r.get("status") in INTERRUPTED and (done := self._stepflow_finished(p, step, run)):
+            return self._adopt(arm_name, step, run, prog, done)
         if not e.get("started"):
             if self.begin(arm_name, step, prog) == "parked":
                 return "parked"
@@ -623,8 +625,10 @@ class _Run:
     def _adopt(self, arm_name: str, step: int, run: str, prog: dict, status: str) -> str:
         p = Paths(self.pass_, arm_name)
         e = prog["steps"][str(step)]
-        if run == "a":
-            self.restore(p, step, run, e["snapshot"])    # stepflow may have died before its own reset
+        after = p.step(step) / stepflow.RESTORE_AFTER
+        if run == "a" or after.is_file():               # stepflow may have died (or stopped) before its own reset
+            self.restore(p, step, run, e["snapshot"])
+            after.unlink(missing_ok=True)
         e["restore_needed"] = False
         e[run] = {**e[run], "status": status, "adopted": True, "ended_at": _now(), "post": {},
                   "post_needed": self._post_needed(step, run)}

@@ -443,7 +443,15 @@ def apply(ctx, step1_tests: dict[str, str]) -> HandEdit:
     except HarnessFault as f:
         f.hand_edit_turns = turns
         raise
-    repo.snapshot(p, PRE_EDIT)
+    try:
+        repo.snapshot(p, PRE_EDIT)
+    except Exception as e:                     # fix round 1: a harness fault (ledgered), never a traceback
+        from runner import stepflow
+        if not isinstance(e, stepflow.INFRA_ERRORS):
+            raise
+        f = HarnessFault("infra-snapshot", stepflow.path_free_signature(e), repr(e)[:500])
+        f.hand_edit_turns = turns
+        raise f from e
     for k in (1, 2):
         if k > 1:
             try:

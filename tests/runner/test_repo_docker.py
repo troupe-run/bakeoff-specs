@@ -387,27 +387,12 @@ def _members(tar_path) -> dict:
     return out
 
 
-def _snapshot_settled(P, step):
-    """repo.snapshot, retried while tar reports a root dir "changed as we read it": restore's visibility probe
-    creates and deletes a token at each root from the host just before, and Docker Desktop can surface that
-    change to the container a moment late. The retry is only for this comparison snapshot."""
-    import time
-    for _ in range(20):
-        try:
-            return repo.snapshot(P, step)
-        except docker.ContainerError as e:
-            if "file changed as we read it" not in str(e):
-                raise
-            time.sleep(0.5)
-    return repo.snapshot(P, step)
-
-
 def test_restore_of_a_home_with_absolute_symlinks_onto_a_bind_mount_succeeds_and_matches_the_snapshot(P):
     _plant_uv_cache_like_home(P)
     snap = repo.snapshot(P, 2)
     (P.repo / "junk.py").write_text("x"); (P.home / ".cache" / "uv" / "new").write_text("n")
     repo.restore(P, 2)
-    again = _snapshot_settled(P, "after-restore")
+    again = repo.snapshot(P, "after-restore")      # retries tar's "file changed as we read it"
     before, after = _members(snap), _members(again)
     assert before["home/.cache/uv/archive-v0/venv0id/bin/python"][4] == \
         "/opt/python/cpython-3.12-linux-aarch64-gnu/bin/python3.12"
@@ -425,12 +410,15 @@ def test_extract_snapshot_of_a_home_with_absolute_symlinks_onto_a_bind_mount_suc
     repo.remove_tree(dest)
 
 
-def test_restore_refuses_a_snapshot_with_a_member_outside_home_and_work(P):
-    import tarfile
+@pytest.mark.parametrize("bad", ["home/../escape", "/etc/x", "etc/x", "./home/x", "homework/x"])
+def test_restore_refuses_a_snapshot_with_a_member_name_outside_home_and_work_or_with_dotdot(P, bad):
+    import io, tarfile
     with tarfile.open(P.snapshots / "step-09.tar", "w") as t:
         t.add(P.home, arcname="home", recursive=False)
         t.add(P.work, arcname="work", recursive=False)
-        t.add(P.home / ".gitconfig", arcname="home/../escape")
+        info = tarfile.TarInfo(bad); info.size = 1
+        t.addfile(info, io.BytesIO(b"x"))
+    assert bad in tarfile.open(P.snapshots / "step-09.tar").getnames()     # the name is stored as written
     (P.repo / "keep.py").write_text("k")
     with pytest.raises(docker.ContainerError, match="outside home/ and work/ or with a '..' component"):
         repo.restore(P, 9)
