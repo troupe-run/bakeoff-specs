@@ -1,0 +1,25 @@
+# scoring/rubrics/setup_effort.toml — setup and ergonomics: how much did it take to set the method up, per its own docs?
+# Judged once per arm from the setup evidence: the arm's setup checklist (what the runner runs, machine- and
+# owner-verified items, known traps) and the step-0 setup record (shell logs, agent turns, manifest).
+dimension = "setup"
+unit = "arm"
+evidence = ["setup"]
+
+[levels]
+0 = "The method could not be set up by its own docs: a working state was reached only by substantial harness work or by departing from the documented route, and checklist items were left failing or unverifiable."
+1 = "Setup needed several workarounds the docs do not mention or harness-specific changes for this arm alone (e.g. extra servers, network allowances, patched generated files), or it failed and was re-run after diagnosis."
+2 = "The documented route worked with one workaround not in the docs (e.g. pinning around a bug, a skipped documented step with a recorded reason), or a step needed owner judgement to verify that a script could not."
+3 = "The documented route worked with one or two small extra steps that the docs or release notes make findable (a flag, a config value); no harness change was needed for this arm."
+4 = "A few documented commands (install, initialise, any documented agent turn) produced a verified setup with no workaround, no undocumented step and no harness change for this arm; every checklist item could be machine-verified or checked by eye in a minute."
+
+[[lens]]
+name = "new adopter"
+perspective = "You are a developer adopting this method on day one with only its docs. Count the steps you would take and the points where you would have been stuck without knowledge the docs do not give. Cite the checklist and setup logs."
+
+[[lens]]
+name = "platform engineer"
+perspective = "You must roll this method out to twenty repos. Is the setup scriptable, version-pinnable and repeatable without an interactive session? Which known traps (upgrades overwriting files, schema migrations, interactive prompts) would bite you at scale?"
+
+[[lens]]
+name = "harness maintainer"
+perspective = "List everything the harness had to do for this arm beyond the method's documented route: workarounds, arm-only configuration, skipped or substituted steps, re-runs. Weigh each by how much it changed what the method is. Score from that list."

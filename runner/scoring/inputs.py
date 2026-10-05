@@ -70,3 +70,34 @@ def load_stale(step: int, root: Path | None = None) -> StaleList | None:
 def legitimate(path: str, s: StaleList) -> bool:
     """`**` matches across directories (fnmatch's `*` already does); patterns are repo-relative."""
     return any(fnmatch.fnmatch(path, pat) or fnmatch.fnmatch(path, pat.replace("/**", "")) for pat in s.legitimate)
+
+
+EVIDENCE_KINDS = {"repo", "diff", "stale_list", "transcript", "questions", "gates", "setup"}
+
+
+@dataclass(frozen=True)
+class Rubric:
+    part: str
+    dimension: str
+    unit: str
+    steps: tuple[int, ...]
+    evidence: tuple[str, ...]
+    levels: dict[int, str]
+    lenses: tuple[dict, ...]
+
+
+def load_rubrics(root: Path | None = None) -> dict[str, Rubric]:
+    root = root or paths.SCORING_INPUTS / "rubrics"
+    out: dict[str, Rubric] = {}
+    for f in sorted(root.glob("*.toml")):
+        raw = _toml(f)
+        levels = {int(k): v for k, v in raw.get("levels", {}).items()}
+        lenses = tuple(raw.get("lens", []))
+        r = Rubric(part=f.stem, dimension=raw["dimension"], unit=raw.get("unit", "step"),
+                   steps=tuple(raw.get("steps", range(1, 8))), evidence=tuple(raw["evidence"]),
+                   levels=levels, lenses=lenses)
+        if sorted(levels) != [0, 1, 2, 3, 4] or len(lenses) != 3 or not set(r.evidence) <= EVIDENCE_KINDS \
+                or any(set(l) != {"name", "perspective"} for l in lenses) or r.unit not in ("step", "arm"):
+            raise InputError(f"{f}: needs levels 0-4, three lenses {{name, perspective}}, known evidence, unit")
+        out[r.part] = r
+    return out

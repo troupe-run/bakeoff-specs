@@ -1,0 +1,28 @@
+# scoring/rubrics/process.toml — decision quality, process (spec §8.5): options weighed, reason stated, decision recorded.
+# Not whether the choice was good: the owner rates routes separately (choice, 6 points). Includes fallback answers
+# (spec §7.3): 'Make the safest assumption ..., record it as a decision with your reason, and carry on' — did the arm
+# record the assumption? Likewise PO answers 'out of contract: your choice — state which you chose and why'.
+# Significant decisions: choices the contract and brief left open that change behaviour, data layout or the
+# artefacts later steps build on (e.g. library, event shape, where overrides go, history for pre-lineage events).
+dimension = "decision_quality"
+unit = "step"
+evidence = ["repo", "transcript", "gates"]
+
+[levels]
+0 = "No significant decision at this step is recorded with a reason anywhere durable (repo files, commits, gate messages): choices are visible only in the code, including a fallback or 'your choice' answer that explicitly asked for the decision to be recorded."
+1 = "Most significant decisions are unrecorded; the few with a reason have it in the transcript only, and an assumption made after a fallback or 'your choice' answer is not recorded anywhere durable."
+2 = "About half the significant decisions are recorded with a reason; the rest are visible only in code or transcript; or every decision is recorded but an assumption made after a fallback or 'your choice' answer is stated only in the transcript."
+3 = "Every significant decision is recorded with a reason, including every fallback or 'your choice' assumption; the options considered are missing for one or two, or one decision lives only in a gate message or commit rather than in the repo's docs."
+4 = "Every significant decision, including every fallback or 'your choice' assumption, is recorded in the repo (decision record, spec, plan or design note) with the real options considered, the one chosen and a reason specific to this project."
+
+[[lens]]
+name = "successor"
+perspective = "You take over this repo tomorrow and cannot ask anyone. For the choices this step made that the contract left open, can you find in the repo what was decided, what else was considered and why? List the ones you could only infer from the code."
+
+[[lens]]
+name = "assumption auditor"
+perspective = "List every question at this step answered by the fallback ('make the safest assumption, record it as a decision with your reason') or with 'out of contract: your choice — state which you chose and why', and every out-of-contract area the step touched. For each, find the recorded decision and its reason, or mark it unrecorded."
+
+[[lens]]
+name = "devil's advocate"
+perspective = "For each recorded decision, test the weighing: were the alternatives real options someone might choose, or straw men? Is the reason specific to this project and contract, or boilerplate? Do not judge whether the choice itself was right."

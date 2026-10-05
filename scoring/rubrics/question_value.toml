@@ -1,0 +1,29 @@
+# scoring/rubrics/question_value.toml — human interaction: were the step's questions worth asking?
+# Owner rule (spec §2): asking is never penalised for its own sake; the count is reported, not scored. Credit
+# questions that resolve a genuine ambiguity, especially one other arms missed; penalise only questions whose answer
+# was within reach (contract, PO brief, the repo, package docs the arm could read) or that were superfluous (the
+# answer could not change what was built). N.a and N.b questions both count; fallback-answered questions are judged
+# like any other (spec §7.3). A genuine ambiguity: the contract and brief as they stood did not settle it, and the
+# choice changes observable behaviour.
+dimension = "interaction"
+unit = "step"
+evidence = ["questions", "transcript"]
+
+[levels]
+0 = "Every question asked was within reach (the contract, the PO brief, the repo or package docs already answered it) or superfluous (its answer could not change what was built); or the arm met a genuine ambiguity, asked nothing, recorded nothing, and its silent guess contradicts the contract or brief."
+1 = "Wasteful questions (within reach or superfluous) outnumber valuable ones, and at most one question resolved a genuine ambiguity; or the arm met a genuine ambiguity and guessed silently (no question, no recorded assumption), though the guess does not contradict the contract or brief."
+2 = "Valuable and wasteful questions roughly balance; or the arm asked nothing, but every genuine ambiguity it met is resolved by an assumption it recorded and named as a gap."
+3 = "Most questions resolved a genuine ambiguity (escalated, answered 'out of contract: your choice', or the answer changed what was built) and at most one was within reach or superfluous; or the arm asked nothing and the transcript shows it met no genuine ambiguity at this step."
+4 = "Every question was worth asking and at least one exposed a gap the contract and brief did not cover (escalated to the owner, answered by the fallback, or raised by no other arm at this step), and its answer visibly shaped what was built; none was within reach or superfluous."
+
+[[lens]]
+name = "product owner"
+perspective = "You answered these questions. For each, decide: did it make you think about something the brief and contract left open, or could the engineer have found the answer in what they already had? Never mark a question down just because there are many; mark it down only if it was within reach or could not change anything."
+
+[[lens]]
+name = "researcher"
+perspective = "For each question, search what the arm could reach at the time (the contract sections in force, the PO brief, the repo, the docs of packages it used). Record per question: answer already there (cite where), partly there, or genuinely open. Then check the transcript for ambiguities the arm met but did not ask about, and whether it recorded its assumption."
+
+[[lens]]
+name = "consequence"
+perspective = "For each question, ask what would have been built had it not been asked. Credit questions whose answer changed the behaviour, the spec or a test, and questions that surfaced a gap other arms did not raise. Note any point where not asking led to a guess that shows in the code."

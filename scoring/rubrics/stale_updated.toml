@@ -1,0 +1,24 @@
+# scoring/rubrics/stale_updated.toml — coping with change: did the method find and change what the step made wrong?
+dimension = "coping"
+unit = "step"
+steps = [3, 5, 7]
+evidence = ["repo", "diff", "stale_list"]
+
+[levels]
+0 = "None of the stale items on the list were changed; old requirements, tests or docs now contradict the code."
+1 = "A minority of stale items were changed; at least one stale requirement or test still asserts the old behaviour."
+2 = "About half the stale items were changed; the rest still describe old behaviour but nothing a test enforces."
+3 = "Every stale requirement and test was changed; one doc or comment still describes the old behaviour."
+4 = "Every stale item was changed or explicitly retired with a reason; nothing in spec, tests or docs contradicts the new behaviour."
+
+[[lens]]
+name = "maintainer"
+perspective = "You will maintain this code in six months. Would anything you read mislead you about how it behaves now?"
+
+[[lens]]
+name = "auditor"
+perspective = "Go through the stale list item by item. For each, find the artefact and decide: changed, retired with a reason, or still stale."
+
+[[lens]]
+name = "newcomer"
+perspective = "You are new to the project and read the spec first, then the tests. Do they agree with each other and with the code?"

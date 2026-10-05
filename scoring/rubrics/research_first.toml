@@ -1,0 +1,28 @@
+# scoring/rubrics/research_first.toml — human interaction: did the arm research before asking, and ask as an informed
+# choice? (design §8, 'Research before asking', owner 2026-09-30: use what can be reached — the repo, the scenario
+# documents, package docs, and for GitHub-tracker arms their issues — then present options, what was found and a
+# recommendation, not a bare problem.) N.a and N.b questions both count, fallback-answered ones included.
+# Applies only to steps with at least one question: with none, the judge records 'not applicable' (unmeasured, not
+# zero), so not asking is never rewarded over asking.
+dimension = "interaction"
+unit = "step"
+evidence = ["questions", "transcript"]
+
+[levels]
+0 = "Every question was asked bare: the transcript shows no reading of the contract, brief, repo or package docs on the point beforehand, and no options or recommendation; or a question asks something the arm had already read the answer to earlier in the transcript."
+1 = "Most questions are bare; at most one shows prior research or offers options, and none gives a recommendation with a reason."
+2 = "About half the questions show prior research in the transcript or arrive with options; the rest are bare problems, or options come without saying what was found or which the arm recommends."
+3 = "Every question is preceded by research on its point (cited in the transcript) and states what was found; all but one also offer options with a recommendation and a reason."
+4 = "Every question is preceded by research on its point, states what was found and where, lays out the options with their consequences, and recommends one with a reason, so the answer can be a single choice."
+
+[[lens]]
+name = "investigator"
+perspective = "For each question, read the transcript before it. Which files, contract sections, brief entries or package docs did the arm open on that point? Was the answer reachable from them, and did the arm look? Cite transcript lines. If no question was asked at this step (N.a or N.b), answer 'not applicable' instead of a score."
+
+[[lens]]
+name = "decision-maker"
+perspective = "Read each question as it reached the product owner, without the transcript. Could you decide from the question alone: are the options, what was found, the consequences and a recommendation there, or would you have to go and investigate yourself? If no question was asked at this step (N.a or N.b), answer 'not applicable' instead of a score."
+
+[[lens]]
+name = "mentor"
+perspective = "You are a senior engineer the question was brought to. For each, would you have sent it back with 'what did you find, and what do you recommend?', or would you have answered on the spot because the groundwork was done? If no question was asked at this step (N.a or N.b), answer 'not applicable' instead of a score."

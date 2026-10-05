@@ -1,0 +1,26 @@
+# scoring/rubrics/gates.toml — human interaction: do the method's approval gates fall at sensible points?
+# A gate is an approval request to the owner or product owner (spec sign-off, plan sign-off, 'choices for you to
+# confirm', as the method defines them). Sensible: where a human decision can still change the outcome cheaply,
+# and before reversing an existing requirement; not on trivia; not on work already done.
+dimension = "interaction"
+unit = "step"
+evidence = ["gates", "transcript"]
+
+[levels]
+0 = "Requirements were changed or reversed with no gate at all, or every gate asked approval for work already finished, or gates were so frequent or unfocused that the reviewer could not tell what was being approved."
+1 = "Gates are mostly misplaced: approval is asked only after the code is written, or for routine matters, with at most one gate at a point where the decision could still change the outcome."
+2 = "Most gates fall at sensible points, but one key point lacks one (e.g. a contradicting change implemented before its changed requirement was approved) or one gate is superfluous or after the fact."
+3 = "Gates fall at the points where the decision still mattered and none is superfluous, but one gate is hard to approve: too long, missing the decisions to confirm, or burying a changed requirement."
+4 = "Each gate falls where a human decision can still change the outcome cheaply (e.g. after the spec or plan, before code; before a requirement is reversed), states concisely what is to be approved and which choices to confirm, and none is trivial or after the fact. A step that needed no gate and had none also scores 4."
+
+[[lens]]
+name = "owner at the gate"
+perspective = "You were interrupted for each of these gates. For each: was it worth the interruption, could you tell in a minute what you were approving, and could your answer still change anything?"
+
+[[lens]]
+name = "risk reviewer"
+perspective = "Ignore the gates at first. From the step's request and the diff, list the points where a wrong turn would be costly (a reversed requirement, a data rule, a change to the CLI's behaviour). Then check whether a gate came before each one."
+
+[[lens]]
+name = "process coach"
+perspective = "Look at the rhythm of gates across the step's transcript: how many, when, and against what. Too many for the size of the change, too few for its risk, or placed after the fact? Judge placement, not the method's ceremony for its own sake."

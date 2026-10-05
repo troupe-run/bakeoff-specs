@@ -1,0 +1,24 @@
+# scoring/rubrics/change_reason.toml — traceability: can each change this step made be followed back to why it was made?
+dimension = "traceability"
+unit = "step"
+steps = [2, 3, 4, 5, 6, 7]
+evidence = ["repo", "diff"]
+
+[levels]
+0 = "The step's changes carry no reason: commit messages are generic ('update', 'wip', 'fixes') and no spec, change record or decision ties the diff to the request."
+1 = "A reason exists only at the coarsest level (one commit or record saying which step or feature); individual changes, and especially changes to existing behaviour, cannot be tied to why they were made."
+2 = "Additions are tied to the request through a spec or change record, but modifications and removals of existing requirements, tests or code are unexplained."
+3 = "Additions, modifications and removals are tied to the request in a commit message or record; one or two substantive diff hunks are left unexplained."
+4 = "Every substantive diff hunk can be tied, through its commit message or a record the commit points at, to the request; every changed or removed requirement or test says what replaced it and why."
+
+[[lens]]
+name = "reviewer"
+perspective = "You are reviewing this step's diff hunk by hunk before it merges. For each substantive hunk, can you find in the commits or the records why it is there? Count the hunks you could not approve for want of a reason."
+
+[[lens]]
+name = "archaeologist"
+perspective = "A year from now you run blame on lines this step changed (pick three, at least one that changed existing behaviour). Does the commit and whatever it references tell you why the line changed, and what it was before?"
+
+[[lens]]
+name = "product owner"
+perspective = "You asked for this step's change. Looking only at the repo's records and commit history, can you see where your request landed, and which earlier requirements it displaced or modified?"
