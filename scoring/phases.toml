@@ -1,0 +1,5 @@
+# scoring/phases.toml — common-phase classifier rules (spec §5). Tune here; tests pin the semantics, not the lists.
+spec_globs = ["docs/**", "*.md", "specs/**", ".specify/**", "openspec/**", ".kiro/**", "kitty-specs/**"]
+test_globs = ["tests/**", "test_*.py", "*_test.py", "conftest.py"]
+test_commands = ['\bpytest\b', '\bmypy\b', '\bruff\b', '\buv run troupe\b']
+review_markers = ['(?i)review', '(?i)verif', '(?i)audit', '(?i)converge', '(?i)analy[sz]e', '(?i)validate']

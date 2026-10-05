@@ -71,7 +71,10 @@ def build() -> None:
     turn(d, "arm-a2-001", "/speckit-specify # Step 2 second try", 30_000, 0.5)
     turn(d, "arm-a2-002", "/speckit-plan", None)          # killed: no result line
     tr = d / "transcripts" / "a2" / "-work-repo" / "session-1.jsonl"
-    w(tr, "".join(json.dumps(x) + "\n" for x in [
+    w(tr, "".join(json.dumps(x) + "\n" for x in [         # one session: turn arm-a2-001, then the killed arm-a2-002
+        {"type": "user", "timestamp": "2026-10-01T09:59:00.000Z",
+         "message": {"content": "/speckit-specify # Step 2 second try"}},
+        {"type": "assistant", "timestamp": "2026-10-01T09:59:30.000Z", "message": {"content": []}},
         {"type": "user", "timestamp": "2026-10-01T10:00:00.000Z", "message": {"content": "/speckit-plan"}},
         {"type": "assistant", "timestamp": "2026-10-01T10:00:20.000Z", "message": {"content": []}},
         {"type": "assistant", "timestamp": "2026-10-01T10:01:30.000Z", "message": {"content": []}},

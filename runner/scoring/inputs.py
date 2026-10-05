@@ -1,6 +1,7 @@
 """Load and validate the hand-written scoring inputs under `scoring/` (single sources of truth, owner-editable)."""
 from __future__ import annotations
 import fnmatch
+import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -119,3 +120,28 @@ def load_excluded(path: Path | None = None) -> Exclusions:
             raise InputError(f"{path}: bad entry {e!r}")
     return Exclusions(frozenset(e["id"] for e in entries if e["verdict"] == "defect"),
                       frozenset(e["id"] for e in entries), entries)
+
+
+@dataclass(frozen=True)
+class PhaseRules:
+    """Common-phase classifier rules (scoring/phases.toml). Globs are repo-relative fnmatch patterns (`/**` also
+    matches the directory itself); the rest are compiled regexes."""
+    spec_globs: tuple[str, ...]
+    test_globs: tuple[str, ...]
+    test_commands: tuple[re.Pattern, ...]       # over a Bash command
+    review_markers: tuple[re.Pattern, ...]      # over a Skill/Task/Agent call's input, or a turn's method label
+
+
+def load_phase_rules(path: Path | None = None) -> PhaseRules:
+    path = path or paths.SCORING_INPUTS / "phases.toml"
+    raw = _toml(path)
+    keys = {"spec_globs", "test_globs", "test_commands", "review_markers"}
+    if set(raw) != keys or not all(isinstance(raw[k], list) and all(isinstance(x, str) for x in raw[k])
+                                   for k in keys):
+        raise InputError(f"{path}: needs exactly the string lists {sorted(keys)}")
+    try:
+        cmds = tuple(re.compile(x) for x in raw["test_commands"])
+        marks = tuple(re.compile(x) for x in raw["review_markers"])
+    except re.error as e:
+        raise InputError(f"{path}: bad regex: {e}") from e
+    return PhaseRules(tuple(raw["spec_globs"]), tuple(raw["test_globs"]), cmds, marks)

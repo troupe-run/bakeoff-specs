@@ -106,12 +106,13 @@ def arm_time(step_dir: Path) -> dict:
 
 def _killed_seconds(step_dir: Path, stem: str) -> float | None:
     """A turn killed before its result line (its container died) still did real work: its length is the span of
-    the session transcript entries written while it ran — from the turn's start (its `turns/<stem>.prompt.md`
-    mtime is NOT used: copies lose it) to the last entry before the next turn's first entry. Implement with
-    `phases.events_from_transcripts` (Task 8) once it exists; until then return None (the step's time is
-    missing, not zero). The report flags every killed turn, and its cost is unknown (the cumulative total of the
-    next finished turn absorbs it, which the per-turn difference then attributes to that turn — flag it too)."""
-    return None
+    the session transcript entries written while it ran — from the turn's prompt entry (its `turns/<stem>.prompt.md`
+    mtime is NOT used: copies lose it) to the last entry before the next turn's prompt. None when the transcripts
+    hold no entries for it (the step's time is then missing, not zero). The report flags every killed turn, and its
+    cost is unknown (the cumulative total of the next finished turn absorbs it, which the per-turn difference then
+    attributes to that turn — flag it too)."""
+    from runner.scoring import phases          # lazy: phases imports evidence (controller ruling R2)
+    return phases.killed_turn_seconds(step_dir, stem)
 
 
 def costs(step_dir: Path) -> dict:

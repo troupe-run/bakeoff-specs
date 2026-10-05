@@ -1,5 +1,6 @@
 import gzip
 import json
+import shutil
 from pathlib import Path
 from runner import paths
 from runner.scoring import evidence, values
@@ -14,10 +15,20 @@ def test_arm_time_uses_only_the_final_attempt():
     assert round(t["turns"][0]["usd"], 2) == 0.9      # cumulative resets at the attempt boundary: 0.9, not 0.9 - 0.4
 
 
-def test_a_killed_final_turn_makes_the_step_time_missing_until_task_8():
-    # alpha/02's final attempt ends in arm-a2-002 with no result line; _killed_seconds is a stub (Task 8).
-    m = evidence.arm_time(MINI / "alpha" / "02")
-    assert values.is_missing(m) and "arm-a2-002" in m["missing"]
+def test_a_killed_final_turn_counts_the_span_of_its_transcript_entries_and_is_flagged():
+    # alpha/02's final attempt ends in arm-a2-002 with no result line; its transcript entries run 10:00:00-10:01:30.
+    t = evidence.arm_time(MINI / "alpha" / "02")["value"]
+    killed = t["turns"][-1]
+    assert killed == {"stem": "arm-a2-002", "seconds": 90.0, "usd": None, "killed": True}
+    assert t["seconds"] == 30.0 + 90.0
+
+
+def test_a_killed_turn_without_transcript_entries_makes_the_step_time_missing(tmp_path):
+    d = tmp_path / "02"
+    shutil.copytree(MINI / "alpha" / "02", d)
+    shutil.rmtree(d / "transcripts")
+    m = evidence.arm_time(d)
+    assert values.is_missing(m) and "arm-a2-002" in m["why"]
 
 
 def test_turn_cost_is_the_difference_of_cumulative_totals():
