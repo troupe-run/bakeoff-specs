@@ -1,6 +1,7 @@
 """Stage 1: every measured value per arm-step, each with its source path. Deterministic; no LLM."""
 from __future__ import annotations
 import re
+import shutil
 from pathlib import Path
 from runner import config, paths
 from runner.scoring import STEPS, churn, evidence, inputs, phases, regressions, values
@@ -33,7 +34,18 @@ def _hidden(step_dir: Path, excl) -> tuple[dict, dict | None]:
                        "per_test": kept}, s["source"]), tests
 
 
-def step(pass_: str, arm: str, n: int, *, prev_tests, excl, rules, docker: bool) -> tuple[dict, dict | None]:
+def _regressions(hidden, tests, prev_tests, prev_step, excl, step_dir: Path) -> dict:
+    """Against the last earlier step with scoreable hidden results (`baseline_step`, not always N-1)."""
+    if tests is None:
+        return values.missing(hidden.get("missing", ""), "no hidden results")
+    if prev_tests is None:
+        return values.missing(hidden["source"], "step 1: nothing to compare against" if prev_step is None and
+                              step_dir.name == "01" else "no earlier step with scoreable hidden results")
+    r = regressions.compute(prev_tests, tests, excl.defects)
+    return values.val({**r, "baseline_step": prev_step}, hidden["source"])
+
+
+def step(pass_: str, arm: str, n: int, *, prev_tests, prev_step: int | None = None, excl, rules, docker: bool) -> tuple[dict, dict | None]:
     """The collected record and this step's raw hidden tests (None when unscoreable), which feed the next step."""
     d = paths.RESULTS / pass_ / arm / f"{n:02d}"
     hidden, tests = _hidden(d, excl)
@@ -44,8 +56,7 @@ def step(pass_: str, arm: str, n: int, *, prev_tests, excl, rules, docker: bool)
         "arm": arm, "step": n,
         "outcome": run if values.is_missing(run) else values.val(run["value"].get("outcome"), run["source"]),
         "hidden": hidden,
-        "regressions": (values.missing(hidden.get("missing", ""), "no hidden results") if tests is None else
-                        values.val(regressions.compute(prev_tests, tests, excl.defects), hidden["source"])),
+        "regressions": _regressions(hidden, tests, prev_tests, prev_step, excl, d),
         "quality": evidence.quality(d), "time": evidence.arm_time(d), "cost": evidence.costs(d),
         "questions": evidence.questions(d), "violations": evidence.violations(d),
         "churn": (churn.for_step(pass_, arm, git, inputs.load_stale(n)) if docker
@@ -59,13 +70,15 @@ def step(pass_: str, arm: str, n: int, *, prev_tests, excl, rules, docker: bool)
 def run(pass_: str, *, docker: bool = True) -> list[Path]:
     excl, rules = inputs.load_excluded(), inputs.load_phase_rules()
     out_dir, written = paths.scoring_out(pass_) / "collected", []
+    shutil.rmtree(out_dir, ignore_errors=True)          # a re-run never leaves stale records
     for arm in arms(paths.RESULTS / pass_):
-        prev = None
+        prev, prev_n = None, None
         for n in STEPS:
             if not (paths.RESULTS / pass_ / arm / f"{n:02d}").is_dir():
                 continue
-            rec, tests = step(pass_, arm, n, prev_tests=prev, excl=excl, rules=rules, docker=docker)
-            prev = tests if tests is not None else prev
+            rec, tests = step(pass_, arm, n, prev_tests=prev, prev_step=prev_n, excl=excl, rules=rules, docker=docker)
+            if tests is not None:
+                prev, prev_n = tests, n
             f = out_dir / arm / f"{n:02d}.json"
             f.parent.mkdir(parents=True, exist_ok=True)
             f.write_text(values.dump(rec))
