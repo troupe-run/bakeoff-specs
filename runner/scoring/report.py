@@ -139,9 +139,12 @@ def _bottom_line(scores: dict, conf: dict, coll: dict, pass_: str, factor: float
     ol = _total_outliers(coll, factor)
     findings.append(f"Time and cost outliers (≥{factor:g}× or ≤1/{factor:g}× the median, arm totals): "
                     f"{len(ol['time'])} on time, {len(ol['cost'])} on cost; see Time and cost.")
-    unm = [f for f in scores["flags"] if "unmeasured" in f]
-    findings.append(f"{len(unm)} unmeasured dimension/part flag(s); those cells carry † and their weight is shared "
-                    f"among the measured parts." if unm else "No unmeasured dimensions or parts.")
+    unm = [f for f in scores["flags"] if "unmeasured" in f and "total renormalised" not in f]
+    partial = sorted(a for a, v in scores["arms"].items() if v.get("total_partial"))
+    findings.append((f"{len(unm)} unmeasured dimension/part flag(s); those cells carry † and their weight is shared "
+                     f"among the measured parts." if unm else "No unmeasured dimensions or parts.")
+                    + (f" Totals renormalised over a different set of dimensions from the field (†, not like-for-like): "
+                       f"{', '.join(partial)}." if partial else ""))
     methods = scores.get("mutation_methods", {})
     if len({m for ms in methods.values() for m in ms}) > 1:
         findings.append("Mutation scores mix methods, so they are not like-for-like across arms ("

@@ -305,6 +305,7 @@ def test_a_partial_total_carries_a_dagger_on_the_scorecard_and_the_ranked_line(p
     bottom = _section(md, "## Bottom line")
     assert f"alpha {s['arms']['alpha']['total']:.1f}†" in bottom
     assert f"control {s['arms']['control']['total']:.1f}†" not in bottom
+    assert "Totals renormalised over a different set of dimensions from the field (†, not like-for-like): alpha." in bottom
 
 
 def test_the_bottom_line_says_when_mutation_methods_are_mixed(p):
