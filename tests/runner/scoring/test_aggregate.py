@@ -108,3 +108,72 @@ def test_draft_exclusions_are_flagged_and_owner_decided_ones_are_not(p, monkeypa
                         lambda: inputs.Exclusions(frozenset({"t-draft"}), frozenset({"t-draft", "t-final"}), entries))
     flags = _scores(p)["flags"]
     assert any("t-draft" in f and "draft" in f for f in flags) and not any("t-final" in f for f in flags)
+
+
+def _coping(pass_, arm="alpha"):
+    return _scores(pass_)["arms"][arm]["dimensions"]["coping"]
+
+
+def test_unequal_shares_reweight_by_points_over_measured_points(p):
+    write_collected(p, "alpha", 2, regressions={"rate": 0.5, "baseline_step": 1},
+                    churn={"lines": 0, "files": [], "total_lines": 0})
+    write_collected(p, "control", 2)
+    d = _coping(p)
+    assert d["unmeasured_parts"] == ["hand_edit", "stale_updated"]
+    # regressions 0.5 (7 pts), churn 0.5 (3 pts, equal lines = midpoint): 20 * (7*.5 + 3*.5) / 10
+    assert d["score"] == pytest.approx(20 * (0.35 * 0.5 + 0.15 * 0.5) / 0.5)
+
+
+def test_any_step_missing_violations_evidence_leaves_the_part_unscored(p):
+    write_collected(p, "alpha", 2, violations=values.missing("x", "gone"))
+    st = _scores(p)["arms"]["alpha"]["dimensions"]["setup"]["parts"]["violations"]["steps"]["arm"]
+    assert st["score"] is None and st["why"] == "violations evidence missing for steps [2]"
+
+
+def test_time_with_zero_passed_is_worst_and_baseline_zero_passed_is_unscored(p):
+    zero = {"passed": 0, "total": 10, "excluded": [], "per_test": {}}
+    write_collected(p, "alpha", 2, hidden=zero)
+    write_collected(p, "control", 2)
+    assert _scores(p)["arms"]["alpha"]["dimensions"]["time"]["parts"]["time"]["steps"]["2"]["score"] == 0.0
+    write_collected(p, "alpha", 2)
+    write_collected(p, "control", 2, hidden=zero)
+    st = _scores(p)["arms"]["alpha"]["dimensions"]["time"]["parts"]["time"]["steps"]["2"]
+    assert st["score"] is None and st["why"] == "baseline passed no tests"
+
+
+def test_an_arm_with_a_different_step_set_is_flagged(p):
+    write_collected(p, "control", 2)
+    assert "alpha: steps collected [1] differ from the field [1, 2]" in _scores(p)["flags"]
+
+
+def test_missing_baseline_records_are_flagged(p, tmp_state):
+    import shutil
+    shutil.rmtree(paths.scoring_out(p) / "collected" / "control")
+    assert "baseline arm 'control' has no collected records" in _scores(p)["flags"]
+
+
+def test_mutation_measured_without_a_score_says_so(p):
+    write_collected(p, "alpha", 1, quality={"mypy_errors": 0, "ruff_findings": 0, "mutation_score": None,
+                                            "mutation_state": "measured"})
+    st = _scores(p)["arms"]["alpha"]["dimensions"]["code_quality"]["parts"]["mutation"]["steps"]["1"]
+    assert st["why"] == "measured but no score"
+
+
+@pytest.mark.parametrize("rows", [
+    [{"part": "req_test_code", "arm": "alpha", "step": 3, "score": 5, "reason": "r", "decided": "owner"}],
+    [{"part": "req_test_code", "arm": "alpha", "step": 3, "score": 2, "decided": "owner"}],
+    [{"part": "req_test_code", "arm": "alpha", "step": 3, "score": 2, "reason": "r", "decided": "owner"}] * 2])
+def test_bad_verdict_rows_raise_naming_the_row(p, rows):
+    v = paths.scoring_out(p) / "review" / "verdicts.jsonl"
+    v.parent.mkdir(parents=True)
+    v.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    with pytest.raises(inputs.InputError, match="verdicts.jsonl line"):
+        aggregate.run(p)
+
+
+def test_a_weights_part_without_a_rubric_raises_input_error(p, monkeypatch):
+    w = inputs.load_weights()
+    parts = {**w.parts, "coping": {**w.parts["coping"], "mystery": 0.0}}
+    monkeypatch.setattr(aggregate.inputs, "load_weights", lambda: inputs.Weights(w.dimensions, parts, w.scales))
+    with pytest.raises(inputs.InputError, match="mystery"):
+        aggregate.run(p)

@@ -6,7 +6,7 @@ from pathlib import Path
 from runner import paths
 from runner.scoring import evidence, inputs, scales, values
 
-ARM_LEVEL = {"violations", "choice", "setup_effort", "fit"}
+ARM_MEASURED = {"violations", "choice"}
 MEASURED = {"correctness", "regressions", "churn", "time", "mutation", "mypy_lint", "violations", "choice"}
 
 
@@ -23,8 +23,24 @@ def _collected(pass_: str) -> dict[str, dict[int, dict]]:
 
 def _verdicts(pass_: str) -> dict[tuple, dict]:
     f = paths.scoring_out(pass_) / "review" / "verdicts.jsonl"
-    rows = [json.loads(l) for l in f.read_text().splitlines() if l.strip()] if f.exists() else []
-    return {(r["part"], r["arm"], str(r["step"])): r for r in rows}
+    out: dict[tuple, dict] = {}
+    lines = f.read_text().splitlines() if f.exists() else []
+    for n, line in enumerate(lines, 1):
+        if not line.strip():
+            continue
+        where = f"{f}: verdicts.jsonl line {n}"
+        try:
+            r = json.loads(line)
+            key = (r["part"], r["arm"], str(r["step"]))
+            r["reason"], r["decided"]
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            raise inputs.InputError(f"{where}: bad row {line!r} ({e!r})") from e
+        if isinstance(r["score"], bool) or not isinstance(r["score"], (int, float)) or not 0 <= r["score"] <= 4:
+            raise inputs.InputError(f"{where}: score must be 0-4, got {r['score']!r}")
+        if key in out:
+            raise inputs.InputError(f"{where}: duplicate verdict for {key}")
+        out[key] = r
+    return out
 
 
 def _judged(pass_: str, part: str, arm: str, key: str, verdicts: dict) -> dict:
@@ -53,8 +69,10 @@ def _measured(part: str, rec: dict, base: dict | None, sc: dict) -> dict:
         r = _v(rec["regressions"])
         return {"score": r["rate"]} if r and r["rate"] is not None else {"score": None, "why": "no earlier tests"}
     if part == "mutation":
-        if q and q["mutation_state"] == "measured":
+        if q and q["mutation_state"] == "measured" and q["mutation_score"] is not None:
             return {"score": q["mutation_score"]}
+        if q and q["mutation_state"] == "measured":
+            return {"score": None, "why": "measured but no score"}
         return {"score": None, "why": q["mutation_state"] if q else "no quality results"}
     if part == "mypy_lint":
         if q and q["mypy_errors"] is not None and q["ruff_findings"] is not None:
@@ -67,10 +85,15 @@ def _measured(part: str, rec: dict, base: dict | None, sc: dict) -> dict:
         return ({"score": scales.churn_score(a["lines"], b["lines"], sc["ratio_cap"])} if a and b
                 else {"score": None, "why": "churn not measured"})
     if part == "time":
-        def per_test(r):
-            t, hh = _v(r["time"]), _v(r["hidden"])
-            return t["seconds"] / hh["passed"] if t and hh and hh["passed"] else None
-        s = scales.ratio_score(per_test(rec), per_test(base), sc["ratio_cap"])
+        t, bt = _v(rec["time"]), _v(base["time"])
+        hh, bh = _v(rec["hidden"]), _v(base["hidden"])
+        if not (t and bt and hh and bh):
+            return {"score": None, "why": "time or passed tests missing"}
+        if not bh["passed"]:
+            return {"score": None, "why": "baseline passed no tests"}
+        if not hh["passed"]:
+            return {"score": 0.0}
+        s = scales.ratio_score(t["seconds"] / hh["passed"], bt["seconds"] / bh["passed"], sc["ratio_cap"])
         return {"score": s} if s is not None else {"score": None, "why": "time or passed tests missing"}
     raise ValueError(part)
 
@@ -86,18 +109,22 @@ def _choice(pass_: str, arm: str, sc: dict) -> dict:
     return {"score": sum(rs) / len(rs)} if rs else {"score": None, "why": "no rated routes"}
 
 
-def _part_steps(pass_, dim, part, arm, recs, base_recs, rubrics, verdicts, sc) -> dict[str, dict]:
-    if part in ARM_LEVEL:
+def _part_steps(pass_, part, arm, recs, base_recs, rubrics, verdicts, sc) -> dict[str, dict]:
+    if part in ARM_MEASURED or (part in rubrics and rubrics[part].unit == "arm"):
         if part == "choice":
             return {"arm": _choice(pass_, arm, sc)}
         if part == "violations":
-            vs = [_v(r["violations"]) for r in recs.values()]
-            vs = [v for v in vs if v is not None]
-            return {"arm": {"score": scales.deduction(sum(len(v) for v in vs), sc["violation_per_item"])}
+            vs = {n: _v(r["violations"]) for n, r in sorted(recs.items())}
+            gone = [n for n, v in vs.items() if v is None]
+            if gone:
+                return {"arm": {"score": None, "why": f"violations evidence missing for steps {gone}"}}
+            return {"arm": {"score": scales.deduction(sum(len(v) for v in vs.values()), sc["violation_per_item"])}
                     if vs else {"score": None, "why": "no run records"}}
         return {"arm": _judged(pass_, part, arm, "arm", verdicts)}
     if part in MEASURED:
         return {str(n): _measured(part, r, base_recs.get(n), sc) for n, r in sorted(recs.items())}
+    if part not in rubrics:
+        raise inputs.InputError(f"weights.toml part {part!r} has no rubric in scoring/rubrics and is not a measured part")
     steps = [n for n in rubrics[part].steps if n in recs]
     return {str(n): _judged(pass_, part, arm, f"{n:02d}", verdicts) for n in steps}
 
@@ -132,13 +159,18 @@ def run(pass_: str, baseline: str = "control") -> Path:
     arms_out = {}
     flags = [f"excluded-tests: {e['id']} verdict is a draft (decided: {e['decided']})"
              for e in excluded.entries if not str(e["decided"]).startswith("owner")]
+    if baseline not in coll:
+        flags.append(f"baseline arm '{baseline}' has no collected records")
+    field = sorted({n for r in coll.values() for n in r})
     for arm in sorted(coll):
+        if sorted(coll[arm]) != field:
+            flags.append(f"{arm}: steps collected {sorted(coll[arm])} differ from the field {field}")
         dims = {}
         for dim in w.dimensions:
             names = list(w.parts.get(dim, {dim: 0}))
             parts = {}
             for part in names:
-                steps = _part_steps(pass_, dim, part, arm, coll[arm], coll.get(baseline, {}), rubrics, verdicts, sc)
+                steps = _part_steps(pass_, part, arm, coll[arm], coll.get(baseline, {}), rubrics, verdicts, sc)
                 parts[part] = {"score": _part_score(steps), "steps": steps}
             dims[dim] = _dimension(dim, parts, w)
             if dims[dim]["score"] is None:
