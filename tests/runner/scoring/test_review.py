@@ -1,0 +1,213 @@
+# tests/runner/scoring/test_review.py
+"""Plan 3 Task 19: the owner's review queue (disputed, decisive, seeded sample), the blind sheet and the import."""
+import copy
+import json
+from datetime import date
+
+import pytest
+from runner import paths
+from runner.scoring import aggregate, inputs, review
+from runner.scoring import cli as scli
+from tests.runner.scoring.test_confidence import W, arm
+from tests.runner.scoring.test_judge import anon_fixture
+
+
+def _scores(arms):
+    return {"weights": {"dimensions": W, "parts": {}}, "arms": arms}
+
+
+def _judged_arm(fa, fb, lenses):
+    """An arm whose dimension-a step 1 is judged (carries lenses) but not disputed."""
+    a = arm(fa, fb)
+    a["dimensions"]["a"]["parts"]["a"]["steps"]["1"] = {"score": sorted(lenses.values())[1] / 4, "disputed": False,
+                                                        "lenses": lenses}
+    return a
+
+
+def test_disputed_items_are_always_queued():
+    q = review.queue(_scores({"p": arm(0.9, 0.9, lenses={"x": 0, "y": 2, "z": 4}), "q": arm(0.1, 0.1)}), "s", 0.0)
+    assert [(i["arm"], i["reason"]) for i in q] == [("p", "disputed")]
+
+
+def test_sampling_is_seeded():
+    s = _scores({"p": arm(0.5, 0.5), "q": arm(0.4, 0.4)})
+    assert review.queue(s, "seed", 0.5) == review.queue(s, "seed", 0.5)
+
+
+def test_measured_steps_never_enter_the_queue_even_at_full_sampling():
+    q = review.queue(_scores({"p": arm(0.9, 0.9, lenses={"x": 0, "y": 2, "z": 4}), "q": arm(0.1, 0.1)}), "s", 1.0)
+    assert {(i["part"], i["arm"], i["step"]) for i in q} == {("a", "p", 1)}
+
+
+def test_a_step_that_swings_the_top_two_is_queued_and_one_that_cannot_is_not():
+    s = _scores({"p": _judged_arm(0.5, 0.5, {"x": 1, "y": 2, "z": 3}),
+                 "q": arm(0.45, 0.5),
+                 "r": _judged_arm(0.0, 0.0, {"x": 1, "y": 2, "z": 3})})
+    q = review.queue(s, "s", 0.0)
+    assert [(i["arm"], i["reason"]) for i in q] == [("p", "decides top two")]
+    assert q[0]["lenses"] == {"x": 1, "y": 2, "z": 3}
+
+
+def test_a_step_with_an_owner_verdict_is_not_queued_again():
+    a = arm(0.9, 0.9, lenses={"x": 0, "y": 2, "z": 4})
+    a["dimensions"]["a"]["parts"]["a"]["steps"]["1"]["owner"] = {"score": 2}
+    assert review.queue(_scores({"p": a, "q": arm(0.1, 0.1)}), "s", 1.0) == []
+
+
+def test_queue_does_not_mutate_its_input():
+    s = _scores({"p": _judged_arm(0.5, 0.5, {"x": 1, "y": 2, "z": 3}), "q": arm(0.45, 0.5)})
+    before = copy.deepcopy(s)
+    review.queue(s, "s", 1.0)
+    assert s == before
+
+
+def test_arm_level_steps_keep_the_arm_key():
+    a = arm(0.9, 0.9)
+    a["dimensions"]["a"]["parts"]["a"]["steps"] = {"arm": {"score": 0.5, "disputed": True, "lenses": {"x": 0, "y": 4}}}
+    q = review.queue(_scores({"p": a, "q": arm(0.1, 0.1)}), "s", 0.0)
+    assert [i["step"] for i in q] == ["arm"]
+
+
+# ---- the sheet and the import --------------------------------------------------------------------------------------
+
+PART = "req_test_code"
+
+
+def _write_judged(out, arm_, nn, lens_to_score, evidence="evidence"):
+    d = out / "judged" / PART / arm_ / nn
+    d.mkdir(parents=True, exist_ok=True)
+    for lens, sc in lens_to_score.items():
+        (d / f"{lens}.json").write_text(json.dumps({"score": sc, "status": "ok", "evidence": evidence,
+                                                    "notes": f"notes on {arm_}", "raw": "RAW"}))
+
+
+def _step(lenses, **kw):
+    return {"score": sorted(lenses.values())[len(lenses) // 2] / 4, "disputed": max(lenses.values()) - min(lenses.values()) >= 2,
+            "lenses": lenses, **kw}
+
+
+def _arm(step):
+    return {"dimensions": {"a": {"score": 0, "max": 50, "parts": {PART: {"score": 0, "steps": {"3": step}}}},
+                           "b": {"score": 0, "max": 50, "parts": {"b": {"score": 0.5, "steps": {"1": {"score": 0.5}}}}}}}
+
+
+@pytest.fixture
+def rv(tmp_state):
+    """Two arms, alpha's step 3 disputed; a scores.json, anon key and judged files on disk."""
+    out, labels = anon_fixture()
+    lz = {"auditor": 0, "maintainer": 2, "newcomer": 4}
+    scores = _scores({"alpha": _arm(_step(lz)), "beta": _arm(_step({"auditor": 3, "maintainer": 3, "newcomer": 3}))})
+    (out / "scores.json").write_text(json.dumps(scores))
+    _write_judged(out, "alpha", "03", lz, evidence="the work was done; see speckit notes")
+    _write_judged(out, "beta", "03", {"auditor": 3, "maintainer": 3, "newcomer": 3})
+    return "p", out, labels
+
+
+def _fill(pass_, score="2", reason="because"):
+    f = paths.scoring_out(pass_) / "review" / "review-sheet.md"
+    text = f.read_text().replace("score:\n", f"score: {score}\n").replace("reason:\n", f"reason: {reason}\n")
+    f.write_text(text)
+    return f
+
+
+def test_the_sheet_shows_the_label_the_levels_and_the_lenses_but_no_arm_name(rv):
+    pass_, out, labels = rv
+    text = review.sheet(pass_).read_text()
+    assert labels["alpha"] in text and "alpha" not in text.lower()
+    assert "beta" not in text.lower()
+    rub = inputs.load_rubrics()[PART]
+    assert rub.levels[4] in text and rub.levels[0] in text
+    assert all(l in text for l in ("auditor", "maintainer", "newcomer")) and "notes on" in text
+    assert "RAW" not in text
+    assert "score:\n" in text and "reason:\n" in text
+
+
+def test_the_sheet_scrubs_method_names_out_of_judge_evidence(rv):
+    pass_, *_ = rv
+    assert "speckit" not in review.sheet(pass_).read_text()
+
+
+def test_the_sheet_does_not_say_why_an_item_is_on_it(rv):
+    pass_, *_ = rv
+    text = review.sheet(pass_).read_text()
+    assert "disputed" not in text and "decides top two" not in text
+
+
+def test_import_writes_verdicts_under_the_real_arm_name_in_the_aggregate_format(rv):
+    pass_, out, labels = rv
+    review.sheet(pass_)
+    _fill(pass_, "3", "the newcomer was right")
+    f = review.import_sheet(pass_, today=date(2026, 10, 6))
+    rows = [json.loads(l) for l in f.read_text().splitlines()]
+    assert f == out / "review" / "verdicts.jsonl"
+    assert {(r["arm"], r["step"], r["score"]) for r in rows} >= {("alpha", 3, 3)}
+    assert all(r["decided"] == "owner 2026-10-06" and r["reason"] == "the newcomer was right" and r["part"] == PART
+               for r in rows)
+    assert len(aggregate._verdicts(pass_)) == len(rows)           # aggregate itself accepts the file
+
+
+def test_import_names_the_item_and_field_and_writes_nothing_on_a_bad_score(rv):
+    pass_, out, _ = rv
+    review.sheet(pass_)
+    _fill(pass_, "7")
+    with pytest.raises(inputs.InputError, match=r"item 1.*score"):
+        review.import_sheet(pass_)
+    assert not (out / "review" / "verdicts.jsonl").exists()
+
+
+def test_import_refuses_a_blank_reason(rv):
+    pass_, out, _ = rv
+    review.sheet(pass_)
+    _fill(pass_, "2", "")
+    with pytest.raises(inputs.InputError, match=r"item 1.*reason"):
+        review.import_sheet(pass_)
+    assert not (out / "review" / "verdicts.jsonl").exists()
+
+
+def test_import_refuses_a_blank_score(rv):
+    pass_, *_ = rv
+    review.sheet(pass_)
+    with pytest.raises(inputs.InputError, match=r"item 1.*score"):
+        review.import_sheet(pass_)
+
+
+def test_import_refuses_a_duplicate_of_an_existing_verdict_and_leaves_the_file_alone(rv):
+    pass_, out, _ = rv
+    review.sheet(pass_)
+    v = out / "review" / "verdicts.jsonl"
+    old = json.dumps({"part": PART, "arm": "alpha", "step": 3, "score": 1, "reason": "earlier", "decided": "owner 2026-10-01"}) + "\n"
+    v.write_text(old)
+    _fill(pass_)
+    with pytest.raises(inputs.InputError, match="duplicate"):
+        review.import_sheet(pass_)
+    assert v.read_text() == old
+
+
+def test_import_appends_to_existing_verdicts_for_other_steps(rv):
+    pass_, out, _ = rv
+    v = out / "review" / "verdicts.jsonl"
+    v.parent.mkdir(parents=True, exist_ok=True)
+    other = json.dumps({"part": PART, "arm": "beta", "step": 5, "score": 1, "reason": "earlier", "decided": "owner 2026-10-01"})
+    v.write_text(other)                                          # no trailing newline
+    review.sheet(pass_)
+    _fill(pass_)
+    review.import_sheet(pass_, today=date(2026, 10, 6))
+    rows = [json.loads(l) for l in v.read_text().splitlines()]
+    assert rows[0]["step"] == 5 and any(r["arm"] == "alpha" and r["step"] == 3 for r in rows[1:])
+
+
+def test_import_without_a_sheet_says_to_run_the_sheet_stage(rv):
+    with pytest.raises(inputs.InputError, match="review-sheet"):
+        review.import_sheet("p")
+
+
+def test_a_sheet_the_owner_has_started_is_not_overwritten(rv):
+    pass_, *_ = rv
+    review.sheet(pass_)
+    _fill(pass_)
+    with pytest.raises(inputs.InputError, match="already"):
+        review.sheet(pass_)
+
+
+def test_the_review_stages_are_registered():
+    assert {"review-sheet", "review-import"} <= set(scli.STAGES)

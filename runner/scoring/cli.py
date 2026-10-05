@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from runner import faults, paths
-from runner.scoring import aggregate, collect, confidence, decisions, evidence, inputs, judge, page, report, values
+from runner.scoring import (aggregate, collect, confidence, decisions, evidence, inputs, judge, page, report, review,
+                            values)
 
 
 def _scores(pass_: str) -> dict:
@@ -79,6 +80,8 @@ STAGES = {
     "decisions-align": _decisions_align,
     "decisions-sheet": lambda ns: print(decisions.sheet(ns.pass_)),
     "decisions-import": lambda ns: print(decisions.import_ratings(ns.pass_)),
+    "review-sheet": lambda ns: print(review.sheet(ns.pass_)),
+    "review-import": lambda ns: print(review.import_sheet(ns.pass_)),
     "aggregate": lambda ns: print(aggregate.run(ns.pass_, ns.baseline)),
     "confidence": _confidence,
     "report": _report,
