@@ -357,6 +357,9 @@ def questions_md(step_dir: Path) -> str:
         got = evidence.read_jsonl(p)
         if got is None and title != "Scored run":
             continue
+        if got is None and os.path.lexists(p):     # present but unreadable: never "asked none"
+            out.append(f"## {title}\n\n(questions.jsonl could not be read)\n")
+            continue
         recs, skipped = got or ([], 0)
         out.append(f"## {title}\n")
         for q in recs:

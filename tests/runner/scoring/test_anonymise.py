@@ -450,3 +450,9 @@ def test_real_pass1_transcripts_questions_gates_and_setup_hold_no_name_alias_or_
     assert len(texts) > 20
     leaks = sorted({(where, w) for where, text in texts for w in words if _hits(text.lower(), w)})
     assert leaks == []
+
+
+def test_an_unreadable_scored_questions_file_is_not_shown_as_asked_none(tmp_path):
+    (tmp_path / "questions.jsonl").write_bytes(b'{"n": 1}\n\xff\n')
+    text = an.questions_md(tmp_path)
+    assert "could not be read" in text and "asked no questions" not in text

@@ -24,7 +24,7 @@ def read_json(p: Path) -> dict:
         return values.val(json.loads(p.read_text()), rel(p))
     except FileNotFoundError:
         return values.missing(rel(p), "no such file")
-    except (OSError, json.JSONDecodeError) as e:
+    except (OSError, ValueError) as e:            # ValueError: bad JSON, or bytes that are not UTF-8
         return values.missing(rel(p), f"unreadable: {e}")
 
 
@@ -239,10 +239,10 @@ def quality(step_dir: Path) -> dict:
 
 
 def read_jsonl(p: Path) -> tuple[list[dict], int] | None:
-    """(objects, skipped malformed lines), or None when the file cannot be read."""
+    """(objects, skipped malformed lines), or None when the file cannot be read (absent, unreadable, not UTF-8)."""
     try:
         lines = [l for l in p.read_text().splitlines() if l.strip()]
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         return None
     out, skipped = [], 0
     for l in lines:
@@ -261,19 +261,23 @@ def read_jsonl(p: Path) -> tuple[list[dict], int] | None:
 def questions(step_dir: Path) -> dict:
     scored = step_dir / "questions.jsonl"
     b = read_jsonl(scored)
+    if b is None and os.path.lexists(scored):        # present but unreadable: missing, never "asked none"
+        return values.missing(rel(scored), "unreadable (not a readable UTF-8 file)")
     if b is None:
         # R25: drive.py creates questions.jsonl only when a question occurs, so with a run record an absent file
         # means the arm asked none (information); without a run record nothing is known.
         if values.is_missing(run_record(step_dir)):
             return values.missing(rel(scored), "no run.json and no questions.jsonl")
         b = ([], 0)
-    a = read_jsonl(step_dir / "a" / "questions.jsonl")
+    a_file = step_dir / "a" / "questions.jsonl"
+    a = read_jsonl(a_file)
     items, skipped = [], b[1] + (a[1] if a else 0)
     for run, got in (("a", a), ("b", b)):
         for q in (got[0] if got else []):
             items.append({"run": run, "n": q.get("n"), "kind": q.get("kind"), "answered_by": q.get("answered_by"),
                           "escalated": q.get("escalated", []), "fallback": q.get("fallback", [])})
-    return values.val({"items": items, "skipped_lines": skipped, "discovery": "present" if a else "absent"},
+    return values.val({"items": items, "skipped_lines": skipped, "discovery": "present" if a else
+                                                                      "unreadable" if os.path.lexists(a_file) else "absent"},
                       rel(scored))
 
 

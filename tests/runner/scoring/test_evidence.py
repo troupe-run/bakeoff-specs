@@ -222,3 +222,23 @@ def test_arm_time_reads_the_transcripts_once_even_with_a_killed_turn(monkeypatch
     monkeypatch.setattr(phases, "events_from_transcripts", lambda *a, **k: calls.append(a) or real(*a, **k))
     t = evidence.arm_time(MINI / "alpha" / "02")["value"]
     assert t["turns"][-1]["killed"] and t["turns"][-1]["seconds"] == 90.0 and len(calls) == 1
+
+
+def test_an_existing_but_unreadable_questions_file_is_missing_not_asked_none(tmp_path):
+    (tmp_path / "run.json").write_text('{"outcome": "done"}')
+    (tmp_path / "questions.jsonl").mkdir()                       # exists, but reading it fails (IsADirectoryError)
+    m = evidence.questions(tmp_path)
+    assert values.is_missing(m) and "unreadable" in m["why"]
+
+
+def test_a_questions_file_that_is_not_utf8_is_missing_not_asked_none(tmp_path):
+    (tmp_path / "run.json").write_text('{"outcome": "done"}')
+    (tmp_path / "questions.jsonl").write_bytes(b'{"n": 1}\n\xff\xfe\n')
+    m = evidence.questions(tmp_path)
+    assert values.is_missing(m) and "unreadable" in m["why"]
+
+
+def test_a_json_file_that_is_not_utf8_is_missing_not_a_crash(tmp_path):
+    (tmp_path / "run.json").write_bytes(b'{"outcome": "\xff"}')
+    m = evidence.read_json(tmp_path / "run.json")
+    assert values.is_missing(m) and m["why"].startswith("unreadable")
