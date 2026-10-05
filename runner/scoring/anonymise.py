@@ -26,7 +26,8 @@ _TABLE = {
     "to_command": "/method-command",         # slash commands
     "to_bare_command": "method-command",     # the same family without its slash (skill folder names)
     "command_families": r"(?:speckit-|opsx:|kiro-|spec-kitty\.|superpowers:)[\w-]+",
-    "generic_spec_paths": {"docs/", ".beads/"},    # spec_paths that name no method (control's docs/; the tracker)
+    "generic_spec_paths": {"docs/"},         # spec_paths that name no method (control's docs/)
+    "tracker_paths": {".beads/": "tracker/"},   # a tracker's folder: it identifies the arm that uses it (R24)
     "generic_owners": {"github"},            # tool-name parts too common to scrub ("github/spec-kit")
     "aliases": {"ccsdd": ["kiro"], "openspec": ["opsx"]},   # names for a method that its config does not carry
     "min_part": 4,
@@ -67,6 +68,7 @@ def scrub_terms(arm: str) -> list[Term]:
     names: list[str] = [] if arm == "control" else [arm]       # `control` is an ordinary English word
     repos = [f"bakeoff-specs-{arm}"] + ([a.repo_name] if a else [])
     folders: list[str] = []
+    trackers: list[str] = []
     commands: list[str] = []
     if a:
         tool = a.tool.strip()
@@ -77,7 +79,9 @@ def scrub_terms(arm: str) -> list[Term]:
                     names.append(part)
         names += [p.name for p in a.plugins]
         for sp in a.spec_paths:
-            if sp.path not in _TABLE["generic_spec_paths"] and "*" not in sp.path:
+            if sp.path in _TABLE["tracker_paths"]:
+                trackers.append(sp.path)
+            elif sp.path not in _TABLE["generic_spec_paths"] and "*" not in sp.path:
                 folders.append(sp.path)
         cmds = [a.entry, a.bug_entry, *a.must_run, *(f.get("command", "") for f in a.fresh_session_before)]
         commands = [c for c in map(_command_of, cmds) if c]
@@ -97,6 +101,10 @@ def scrub_terms(arm: str) -> list[Term]:
         literals[f if f.endswith("/") else f + "/"] = _TABLE["to_folder"]
         if stem.startswith(".") or "-" in stem:                 # `.specify` / `kitty-specs` without the slash
             literals.setdefault(stem, _TABLE["to_folder"].rstrip("/"))
+    for t in trackers:
+        to = _TABLE["tracker_paths"][t]
+        literals[t] = to
+        literals.setdefault(t.rstrip("/"), to.rstrip("/"))
     families: list[Term] = [(Rx("/" + _TABLE["command_families"]), _TABLE["to_command"]),
                             (Rx(r"(?<![\w/])" + _TABLE["command_families"]), _TABLE["to_bare_command"])]
     return families + sorted(literals.items(), key=lambda kv: (-len(kv[0]), kv[0]))
@@ -140,13 +148,14 @@ def _safe_rel(rel: str) -> str:
     return "/".join(c if c not in ("", ".", "..") else "_" for c in rel.split("/"))
 
 
-def copy_scrubbed(src: Path, dest: Path, terms: list[Term]) -> None:
+def copy_scrubbed(src: Path, dest: Path, terms: list[Term]) -> list[str]:
     """Every file under `src` into `dest`, content and path scrubbed. Text (UTF-8, < 1 MB) is scrubbed, anything
     else copied as is. A symlink is never followed or recreated: it becomes a regular file `<name>.symlink` holding
-    its scrubbed target. Two files whose scrubbed paths collide keep the first and suffix the rest `~2`, `~3`."""
+    its scrubbed target. Returns the scrubbed paths of the files copied UNSCRUBBED (binary, or 1 MB and over). Two files whose scrubbed paths collide keep the first and suffix the rest `~2`, `~3`."""
     used: set[str] = set()
+    unscrubbed: list[str] = []
 
-    def put(rel: str, data: bytes) -> None:
+    def put(rel: str, data: bytes, raw: bool = False) -> None:
         out = _safe_rel(scrub(rel, terms))
         n, cand = 1, out
         while cand in used:
@@ -156,6 +165,8 @@ def copy_scrubbed(src: Path, dest: Path, terms: list[Term]) -> None:
         t = dest / cand
         t.parent.mkdir(parents=True, exist_ok=True)
         t.write_bytes(data)
+        if raw:
+            unscrubbed.append(cand)
 
     for root, dirs, files in os.walk(src, followlinks=False):
         dirs.sort()
@@ -166,13 +177,14 @@ def copy_scrubbed(src: Path, dest: Path, terms: list[Term]) -> None:
             if f.is_symlink():
                 put(rel + ".symlink", ("-> " + scrub(os.readlink(f), terms) + "\n").encode())
             elif f.is_file():
-                data = f.read_bytes()
+                data, raw = f.read_bytes(), True
                 if len(data) < MAX_TEXT:
                     try:
-                        data = scrub(data.decode("utf-8"), terms).encode("utf-8")
+                        data, raw = scrub(data.decode("utf-8"), terms).encode("utf-8"), False
                     except UnicodeDecodeError:
                         pass
-                put(rel, data)
+                put(rel, data, raw)
+    return sorted(unscrubbed)
 
 
 # --- per-step evidence ------------------------------------------------------------------------------------------
@@ -275,6 +287,15 @@ def _w(p: Path, text: str) -> None:
     p.write_text(text, encoding="utf-8")
 
 
+def _unscrubbed_note(dest: Path, listed: list[str]) -> None:
+    if listed:
+        _w(dest / "UNSCRUBBED.txt", "Copied without scrubbing (binary or 1 MB and over):\n" + "\n".join(listed) + "\n")
+
+
+def _missing(dest: Path, what: str, why: str, terms: list[Term]) -> None:
+    _w(dest / "MISSING.md", scrub(f"# Missing\n\n- What: {what}\n- Why: {why}\n", terms))
+
+
 def run(pass_: str) -> Path:
     """Writes scoring_out/anon/<label>/<NN>/{repo/, diff.patch, transcript.md, questions.md, gates.md,
     others-questions.md} and, last, scoring_out/anon-key.json. Returns the anon/ directory."""
@@ -296,21 +317,29 @@ def run(pass_: str) -> Path:
             p = Paths(pass_, arm)
             shas = _shas(sd)
             if shas is None:
-                _w(dest / "diff.patch", "(no commit recorded for this step)\n")
+                _missing(dest, "repo/ and diff.patch", "git.json has no sha_before/sha_after for this step", t)
             else:
                 work = tmp / arm / nn
                 try:
                     gitops.export_tree(p, shas[1], work)
-                    copy_scrubbed(work, dest / "repo", t)
+                    listed = copy_scrubbed(work, dest / "repo", t)
                     _w(dest / "diff.patch", scrub(gitops.diff_text(p, *shas), t))
+                    _unscrubbed_note(dest, listed)
                 except (gitops.GitError, docker.ContainerError, OSError) as e:
                     failures.append(f"{arm}/{nn}: {e}")
-                    _w(dest / "diff.patch", "(export failed for this step)\n")
+                    shutil.rmtree(dest / "repo", ignore_errors=True)
+                    (dest / "diff.patch").unlink(missing_ok=True)
+                    (dest / "UNSCRUBBED.txt").unlink(missing_ok=True)
+                    _missing(dest, "repo/ and diff.patch", f"export or diff failed: {e}", t)
                 finally:
                     shutil.rmtree(work, ignore_errors=True)
             _w(dest / "transcript.md", scrub(transcript(sd), t))
             _w(dest / "questions.md", scrub(questions_md(sd), t))
             _w(dest / "gates.md", scrub(gates_md(sd), t))
+    for arm in arms:                                # R24: the setup records, for the setup_effort and fit judges
+        setup = pass_dir / arm / "00-setup"
+        if setup.is_dir():
+            _unscrubbed_note(anon / lab[arm] / "setup", copy_scrubbed(setup, anon / lab[arm] / "setup", terms[arm]))
     for arm in arms:                                # R6: the OTHER arms' questions at the same step
         for nn in steps[arm]:
             parts = [f"## {lab[o]}\n\n" + scrub(questions_md(pass_dir / o / nn), terms[o])

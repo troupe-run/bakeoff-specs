@@ -68,11 +68,12 @@ def test_copy_scrubs_text_renames_paths_copies_binaries_and_never_follows_links(
     (src / "big.txt").write_text("speckit " * 200_000)                # > 1 MB: copied as is
     os.symlink(secret, src / "link-speckit")
     os.symlink(src, src / "loop")
-    an.copy_scrubbed(src, dest, an.scrub_terms("speckit"))
+    listed = an.copy_scrubbed(src, dest, an.scrub_terms("speckit"))
     got = {p.relative_to(dest).as_posix() for p in dest.rglob("*") if p.is_file()}
     assert got == {"spec/memory/constitution.md", "blob.bin", "big.txt", "link-method.symlink", "loop.symlink"}
     assert (dest / "spec/memory/constitution.md").read_text() == "method rules"
     assert (dest / "blob.bin").read_bytes() == b"\xff\xfespeckit\x00"
+    assert listed == ["big.txt", "blob.bin"]
     assert (dest / "big.txt").stat().st_size == (src / "big.txt").stat().st_size
     assert not any(p.is_symlink() for p in dest.rglob("*"))
     assert "speckit private" not in "".join(p.read_text(errors="replace") for p in dest.rglob("*") if p.is_file())     # the target's content is never read
@@ -209,16 +210,21 @@ def test_a_step_without_shas_gets_a_placeholder_not_a_crash_and_no_repo(world):
     anon = an.run("p1")
     key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
     lab = {v: k for k, v in key.items()}["control"]
-    assert (anon / lab / "01" / "diff.patch").read_text().startswith("(no commit recorded")
-    assert not (anon / lab / "01" / "repo").exists()
+    step = anon / lab / "01"
+    assert "no sha_before" in (step / "MISSING.md").read_text()
+    assert not (step / "repo").exists() and not (step / "diff.patch").exists()
 
 
 def test_a_failed_export_is_reported_and_the_run_still_finishes(world, monkeypatch, capsys):
     def boom(p, sha, dest):
         raise docker.ContainerError("export failed in container: /work/bakeoff-specs-control")
     monkeypatch.setattr(gitops, "export_tree", boom)
-    an.run("p1")
+    anon = an.run("p1")
     assert "export failed" in capsys.readouterr().err
+    steps = [d for d in anon.glob("Arm */0[12]")]
+    assert steps and all((d / "MISSING.md").exists() and not (d / "diff.patch").exists() and not (d / "repo").exists()
+                         for d in steps)
+    assert not any("bakeoff-specs-control" in (d / "MISSING.md").read_text() for d in steps)
     assert (paths.scoring_out("p1") / "anon-key.json").exists()
 
 
@@ -230,3 +236,34 @@ def test_a_rerun_is_byte_identical(world):
     first = snap()
     an.run("p1")
     assert snap() == first
+
+
+def test_beads_folder_maps_to_tracker_and_the_name_is_gone():
+    out = an.scrub("see .beads/issues.jsonl and .beads", an.scrub_terms("speckitty"))
+    assert out == "see tracker/issues.jsonl and tracker"
+
+
+def test_setup_records_are_anonymised_into_setup_and_unscrubbed_files_are_listed(world):
+    for arm in ("speckit", "control"):
+        s = world / arm / "00-setup"
+        s.mkdir()
+        (s / "versions.json").write_text('{"tool": "speckit 1.0"}')
+    (world / "speckit" / "00-setup" / "blob.bin").write_bytes(b"\xff\xfe")
+    anon = an.run("p1")
+    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    lab = {v: k for k, v in key.items()}
+    assert (anon / lab["speckit"] / "setup" / "versions.json").read_text() == '{"tool": "method 1.0"}'
+    assert (anon / lab["speckit"] / "setup" / "UNSCRUBBED.txt").read_text().splitlines()[1:] == ["blob.bin"]
+    assert not (anon / lab["control"] / "setup" / "UNSCRUBBED.txt").exists()
+    assert not (anon / lab["speckit"] / "01" / "UNSCRUBBED.txt").exists()
+
+
+def test_a_step_with_an_unscrubbed_file_lists_its_scrubbed_path(world, monkeypatch):
+    def export(p, sha, dest):
+        (dest / ".specify").mkdir(parents=True)
+        (dest / ".specify" / "img.bin").write_bytes(b"\xff\xfe")
+    monkeypatch.setattr(gitops, "export_tree", export)
+    anon = an.run("p1")
+    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    lab = {v: k for k, v in key.items()}["speckit"]
+    assert "spec/img.bin" in (anon / lab / "01" / "UNSCRUBBED.txt").read_text()
