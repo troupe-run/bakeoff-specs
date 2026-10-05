@@ -73,3 +73,21 @@ def test_ratio_cap_one_raises_with_specific_message(tmp_path):
     p.write_text('[dimensions]\ncoping = 100\n[parts.coping]\nregressions = 100\n[scales]\nratio_cap = 1.0\n')
     with pytest.raises(inputs.InputError, match="ratio_cap must be > 1"):
         inputs.load_weights(p)
+
+
+def test_report_outlier_factor_defaults_and_is_read_from_the_shipped_file():
+    assert inputs.load_weights().report == {"outlier_factor": 3.0}
+
+
+def test_report_table_absent_gives_the_default(tmp_path):
+    p = tmp_path / "w.toml"
+    p.write_text('[dimensions]\ncoping = 100\n')
+    assert inputs.load_weights(p).report == {"outlier_factor": 3.0}
+
+
+@pytest.mark.parametrize("bad", ["1", "0.5", "true", '"x"', "inf", "nan"])
+def test_report_outlier_factor_must_be_a_finite_number_above_one(tmp_path, bad):
+    p = tmp_path / "w.toml"
+    p.write_text(f'[dimensions]\ncoping = 100\n[report]\noutlier_factor = {bad}\n')
+    with pytest.raises(inputs.InputError, match="outlier_factor"):
+        inputs.load_weights(p)

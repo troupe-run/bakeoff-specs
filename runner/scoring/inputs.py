@@ -13,11 +13,15 @@ class InputError(ValueError):
     pass
 
 
+REPORT_DEFAULTS = {"outlier_factor": 3.0}
+
+
 @dataclass(frozen=True)
 class Weights:
     dimensions: dict[str, float]
     parts: dict[str, dict[str, float]]          # dimension -> part -> points (dimensions without parts: absent)
     scales: dict[str, float] = field(default_factory=dict)   # measurement scales; defaults to empty dict if absent
+    report: dict[str, float] = field(default_factory=lambda: dict(REPORT_DEFAULTS))   # report.md settings
 
     def part_share(self, dim: str, part: str) -> float:
         return self.parts[dim][part] / self.dimensions[dim]
@@ -57,7 +61,14 @@ def load_weights(path: Path | None = None) -> Weights:
         if k == "ratio_cap" and fv <= 1:
             raise InputError(f"{path}: [scales] ratio_cap must be > 1, got {fv}")
         scales[k] = fv
-    return Weights(dims, parts, scales)
+    report = dict(REPORT_DEFAULTS)
+    for k, v in raw.get("report", {}).items():
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
+            raise InputError(f"{path}: [report] {k} must be a finite number, got {v!r}")
+        if k == "outlier_factor" and v <= 1:
+            raise InputError(f"{path}: [report] outlier_factor must be > 1, got {v}")
+        report[k] = float(v)
+    return Weights(dims, parts, scales, report)
 
 
 _KINDS = {"requirement", "test", "doc", "code"}
