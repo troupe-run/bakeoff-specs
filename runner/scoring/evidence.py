@@ -167,16 +167,28 @@ def costs(step_dir: Path) -> dict:
                       b["source"])
 
 
+def _measured(m: dict) -> bool:
+    return not m.get("crashed") and not m.get("baseline_failed") and m.get("score") is not None
+
+
 def quality(step_dir: Path) -> dict:
+    """mypy and ruff from `quality/summary.json`; the mutation score from `quality/remeasure.json` (Task 20, the
+    whole suite per mutant) when that exists and is measured, otherwise from the original mutmut run in the summary
+    (a crashed or unreadable re-measure never replaces it). `mutation_source`/`mutation_method` say which."""
     q = read_json(step_dir / "quality" / "summary.json")
     if values.is_missing(q):
         return q
     v, m = q["value"], q["value"].get("mutation", {})
+    m_src, method = q["source"], "mutmut"
+    r = read_json(step_dir / "quality" / "remeasure.json")
+    if not values.is_missing(r) and isinstance(r["value"], dict) and _measured(r["value"]):
+        m, m_src, method = r["value"], r["source"], r["value"].get("method", "remeasure")
     state = ("crashed" if m.get("crashed") else "baseline_failed" if m.get("baseline_failed")
              else "unmeasured" if m.get("score") is None else "measured")
     return values.val({"mypy_errors": None if v.get("mypy_crashed") else v.get("mypy_errors"),
                        "ruff_findings": None if v.get("ruff_crashed") else v.get("ruff_findings"),
-                       "mutation_score": m.get("score"), "mutation_state": state}, q["source"])
+                       "mutation_score": m.get("score"), "mutation_state": state,
+                       "mutation_source": m_src, "mutation_method": method}, q["source"])
 
 
 def read_jsonl(p: Path) -> tuple[list[dict], int] | None:

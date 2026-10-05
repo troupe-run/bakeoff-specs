@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from runner import faults, paths
-from runner.scoring import (aggregate, collect, confidence, decisions, evidence, inputs, judge, page, report, review,
-                            values)
+from runner.scoring import (aggregate, collect, confidence, decisions, evidence, inputs, judge, page, remeasure,
+                            report, review, values)
 
 
 def _scores(pass_: str) -> dict:
@@ -70,6 +70,19 @@ def _decisions_align(ns) -> None:
     print(decisions.align(ns.pass_, judge.ContainerJudge(ns.pass_), allow_failed=ns.allow_failed))
 
 
+def _remeasure(ns) -> None:
+    """Task 20 (after pass 1 only): Docker and the arms' state/ scratch, so it holds the runner lock and refuses while
+    anything else (a run-pass) holds it. Then re-run `collect` so the scores pick the re-measures up."""
+    from runner import preflight
+    from runner.checklist import NotReady
+    try:
+        with preflight.lock():
+            for f in remeasure.run(ns.pass_):
+                print(f)
+    except NotReady as e:
+        raise inputs.InputError(str(e)) from None
+
+
 STAGES = {
     "all-fail": lambda ns: print(json.dumps(evidence.all_fail(paths.RESULTS / ns.pass_,
                                                                collect.arms(paths.RESULTS / ns.pass_)), indent=2)),
@@ -85,6 +98,7 @@ STAGES = {
     "aggregate": lambda ns: print(aggregate.run(ns.pass_, ns.baseline)),
     "confidence": _confidence,
     "report": _report,
+    "remeasure": _remeasure,
 }
 DEFAULT = ("collect", "aggregate", "confidence", "report")
 

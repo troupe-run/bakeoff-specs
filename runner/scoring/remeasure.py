@@ -1,0 +1,257 @@
+"""Mutation re-measure (Plan 3 Task 20): the whole arm test suite per mutant, so no pytest node ID is ever parsed.
+
+mutmut 3 maps tests to mutants by node ID and crashes on some arms' parametrised IDs (pass 1 ccsdd and control:
+`baseline_rc 0`, `mutmut_run_rc 1`, every sampled mutant `not_checked`). This path keeps mutmut's mutant generation
+(`quality.list_mutants`: `mutmut run '__bk_list_only__'` writes `mutants/`, `mutmut results` names them) and its
+trampoline (the mutated modules dispatch on the `MUTANT_UNDER_TEST` environment variable), and replaces mutmut's
+own test selection: for each chosen mutant the WHOLE suite runs once, from `mutants/`, with that variable set —
+
+    cd mutants && MUTANT_UNDER_TEST=<name> PYTHONPATH=<mutants/source:mutants/src:mutants> \\
+        timeout <s> ../.venv/bin/python -m pytest -q -x -p no:cacheprovider
+
+The PYTHONPATH mirrors mutmut's own `setup_source_paths` (mutated `source/`, `src/`, `.` first), so the mutated
+modules shadow the arm's editable install. Exit codes map to verdicts by `verdict`; the score is the same
+`quality.mutation_summary` over the SAME seeded sample the original run drew (`quality.sample`, `pins.limits.
+mutation_sample`), so a re-measured score compares with the arms whose original run was measured.
+
+Two checks run first, in their own container, before any mutant: the suite from `mutants/` with a name that
+matches no mutant (`__baseline__`: the trampoline calls the original) must pass, and with the trampoline's own
+sentinel `fail` (it raises inside every mutated function) must fail. A baseline that does not pass there, or a
+sentinel that does not fail (the tests never reached a trampoline: the original code was imported, or nothing is
+covered), is a harness failure — `crashed`, the score withheld, never 0 and never every mutant "survived".
+
+The same discipline as `quality._mutation`: one tester container per batch of `BATCH` mutants, the arm's pytest
+output redirected to a log file inside the copy, and each exit code echoed as `__rc <name> <code>` only after every
+mutant in the batch has run (after a tail of that log), so the real marker is provably the last anchored line for
+its name (`parse_batch`, `quality._last_marker`'s rule); a name with no marker (the container died or timed out) is
+`not_checked`. The residual limit `quality._mutation` documents applies unchanged: the arm's own code runs as the
+same uid with the copy writable, so this hardening stops accidental and printed forgeries, not an arm rewriting its
+own interpreter.
+
+Runs only after pass 1 (it prepares fresh copies under the arm's `state/` scratch and uses Docker), holding the
+runner lock (`runner score <pass> --stage remeasure`). Writes `quality/remeasure.json` and `quality/remeasure.log`
+beside the original `summary.json`, which it never changes; `evidence.quality` prefers a measured re-measure.
+"""
+from __future__ import annotations
+
+import json
+import math
+import re
+import time
+from pathlib import Path
+
+from runner import config, quality
+from runner import paths
+from runner.paths import Paths
+from runner.scoring import evidence, inputs, values
+
+METHOD = "whole-suite-per-mutant"
+BATCH = 20                       # mutants per tester container
+MIN_MUTANT_TIMEOUT_S = 60        # per-mutant `timeout` floor
+TIMEOUT_FACTOR = 10              # per-mutant timeout = this x the baseline suite's seconds (container start included)
+BASELINE_NAME = "__baseline__"   # matches no mutant: the trampoline calls the original function
+SENTINEL_NAME = "fail"           # mutmut's trampoline raises MutmutProgrammaticFailException for this value
+_LOG_TAIL = 4000
+
+# the verdict for each exit code of `pytest -x` under one mutant (brief, verbatim); anything else is "suspicious"
+_VERDICTS = {0: "survived", 1: "killed", None: "timeout", 5: "no_tests"}
+
+
+# --- pure ---------------------------------------------------------------------------------------------------------
+
+def verdict(rc: int | None) -> str:
+    return _VERDICTS.get(rc, "suspicious")
+
+
+def mutant_timeout(baseline_s: float) -> int:
+    return max(MIN_MUTANT_TIMEOUT_S, math.ceil(TIMEOUT_FACTOR * baseline_s))
+
+
+# Every key a remeasure.json carries besides `quality.mutation_summary`'s own, with its default: every path —
+# measured, crashed, baseline failed — writes the same key set.
+_EXTRA_DEFAULTS: dict[str, object] = {
+    "sampled": False, "sample_size": 0, "baseline_rc": None, "mutants_baseline_rc": None, "sentinel_rc": None,
+    "mutant_timeout_s": None, "batches": 0, "harness_error": None, "sha": None, "targets": None,
+}
+
+
+def summarise(verdicts: dict[str, str], *, crashed: bool = False, baseline_failed: bool = False,
+              sampling: str = "seeded-sha256", **extra: object) -> dict:
+    """`quality.mutation_summary` over one verdict per mutant (`not_checked` for a mutant that got none), with the
+    `quality._mutation` crash rule: no real verdict while any mutant is unresolved is `crashed` (never a precise
+    0.0); some unresolved alongside real verdicts is `partial`; every mutant `no_tests` is `unmeasured`."""
+    counts = dict(quality.ZERO_MUTATION)
+    for v in verdicts.values():
+        counts[v] += 1
+    counts["total"] = len(verdicts)
+    real = sum(counts[k] for k in quality._REAL_OUTCOME_KEYS)
+    unresolved = counts["not_checked"]
+    if not crashed and real == 0 and unresolved > 0:
+        crashed = True
+    partial = not crashed and unresolved > 0
+    return quality.mutation_summary(counts, partial=partial, baseline_failed=baseline_failed, crashed=crashed,
+                                    **{**_EXTRA_DEFAULTS, **extra, "sampling": sampling, "method": METHOD})
+
+
+_MARKER = re.compile(r"(?m)^__rc (\S+) (-?\d+)$")
+
+
+def parse_batch(text: str, names: list[str]) -> dict[str, int | None]:
+    """Each requested name's exit code from the LAST anchored `__rc <name> <code>` line (`text` is stdout only).
+    `timeout`'s 124 is None (a timeout). A name with no marker is absent: the caller records it `not_checked`."""
+    wanted, out = set(names), {}
+    for name, code in _MARKER.findall(text):
+        if name in wanted:
+            out[name] = None if int(code) == 124 else int(code)
+    return out
+
+
+# Runs in the copy's root as the arm uid. Positional args: the per-mutant timeout, then the names (argv, never
+# interpolated). The arm's pytest output goes to a log file; the markers are printed only after the loop and the
+# log tail, from shell variables, so nothing the arm prints can come after them.
+_BATCH_SCRIPT = r"""
+t="$1"; shift
+cd mutants || exit 97
+pp=""
+for d in source src .; do [ -d "$d" ] && pp="${pp:+$pp:}$(cd "$d" && pwd)"; done
+names=(); rcs=()
+for n in "$@"; do
+  MUTANT_UNDER_TEST="$n" PYTHONPATH="$pp" timeout -k 10 "$t" ../.venv/bin/python -m pytest -q -x -p no:cacheprovider \
+    >>../remeasure-batch.log 2>&1
+  rcs+=("$?"); names+=("$n")
+done
+tail -c %d ../remeasure-batch.log
+echo
+for i in "${!names[@]}"; do printf '__rc %%s %%s\n' "${names[$i]}" "${rcs[$i]}"; done
+""" % _LOG_TAIL
+
+
+def batch_command(names: list[str], per_mutant_timeout: int) -> list[str]:
+    return ["bash", "-c", _BATCH_SCRIPT, "_", str(per_mutant_timeout), *names]
+
+
+# --- the container seam (faked in unit tests) ----------------------------------------------------------------------
+
+def _prepare(p: Paths, sha: str, label: str, out_dir: Path):
+    from runner import hidden          # lazy, as quality.py does
+    return hidden.prepare(p, sha, label, out_dir, with_quality=True, require_main=False)
+
+
+def _baseline(p: Paths, copy: Path) -> tuple[int | None, float, str]:
+    """The arm's suite at the copy root, exactly as `quality._mutation`'s baseline: (rc or None on timeout, seconds,
+    output)."""
+    t0 = time.monotonic()
+    r = quality._run(p, copy, ["bash", "-c", quality._BASELINE_SCRIPT], 1800)
+    return (None if r.timed_out else r.rc), time.monotonic() - t0, r.combined
+
+
+def _list_mutants(p: Paths, copy: Path, tg: list[str]) -> list[str]:
+    return quality.list_mutants(p, copy, tg)
+
+
+def run_batch(p: Paths, copy: Path, names: list[str], timeout: int, log: list[str] | None = None
+              ) -> dict[str, int | None]:
+    """One tester container runs the whole suite once per name. A container that times out returns {} (every name
+    then `not_checked`)."""
+    outer = len(names) * (timeout + 15) + 120
+    r = quality._run(p, copy, batch_command(names, timeout), outer, env=quality.mutation_env(copy))
+    if log is not None:
+        shown = names if len(names) <= 3 else [*names[:2], f"... <{len(names) - 2} more>"]
+        log.append(f"$ batch {' '.join(shown)}  (per mutant timeout {timeout}s; container {outer}s)"
+                   + ("  TIMED OUT" if r.timed_out else "") + "\n" + r.combined[-(_LOG_TAIL + 4000):])
+    return {} if r.timed_out else parse_batch(r.stdout, names)
+
+
+def _sample_size(pins: config.Pins) -> int:
+    return pins.limits.mutation_sample
+
+
+# --- one step, a pass ----------------------------------------------------------------------------------------------
+
+def one(pass_: str, arm: str, step: int, pins: config.Pins | None = None) -> Path:
+    """Re-measure one arm-step and write `quality/remeasure.json` + `quality/remeasure.log`. Always writes and
+    returns the path: an exception anywhere is recorded as `crashed` with `harness_error`, never raised."""
+    p = Paths(pass_, arm)
+    qd = p.step(step) / "quality"
+    qd.mkdir(parents=True, exist_ok=True)
+    log: list[str] = []
+    try:
+        s = _measure(p, step, pins or config.load_pins(), qd, log)
+    except Exception as e:                  # noqa: BLE001 -- a harness failure is crashed, never lost
+        log.append(f"# exception: {type(e).__name__}: {e}")
+        s = summarise({}, crashed=True, harness_error=f"{type(e).__name__}: {e}"[:200])
+    out = qd / "remeasure.json"
+    out.write_text(json.dumps(s, indent=2, sort_keys=True) + "\n")
+    (qd / "remeasure.log").write_text("\n".join(log) + "\n")
+    return out
+
+
+def _measure(p: Paths, step: int, pins: config.Pins, qd: Path, log: list[str]) -> dict:
+    def crash(why: str, **extra: object) -> dict:
+        log.append(f"# crashed: {why}")
+        return summarise({}, crashed=True, harness_error=why, **extra)
+
+    git = evidence.read_json(p.step(step) / "git.json")
+    sha = None if values.is_missing(git) else git["value"].get("sha_after")
+    if not sha:
+        return crash(f"no recorded sha_after in {p.step(step) / 'git.json'}")
+    prep = _prepare(p, sha, f"{step:02d}-remeasure", qd / "remeasure-prep")
+    if prep.quality_copy is None or not prep.prep.get("quality", {}).get("ok"):
+        return crash("quality copy install failed", sha=sha)
+    tg = quality.targets(prep.hidden_copy)          # copy A, never mutated, as quality.run_all does
+    copy = prep.quality_copy
+    common: dict[str, object] = {"sha": sha, "targets": tg}
+
+    rc, secs, text = _baseline(p, copy)
+    log.append(f"$ {quality._BASELINE_SCRIPT}  (baseline at the copy root, {secs:.1f}s)\n" + text[-_LOG_TAIL:])
+    if rc == 1:                                     # the arm's own tests fail: its result, not ours, never scored
+        return summarise({}, baseline_failed=True, sampling="n/a", baseline_rc=rc, **common)
+    if rc == 5:                                     # no tests collected: not crashed, nothing to score
+        return summarise({}, sampling="no tests", baseline_rc=rc, **common)
+    if rc != 0:
+        return crash(f"baseline at the copy root: {'timed out' if rc is None else f'rc {rc}'}", baseline_rc=rc,
+                     **common)
+    common["baseline_rc"] = rc
+
+    names = _list_mutants(p, copy, tg)
+    if not names:
+        return crash("mutmut listed no mutants", **common)
+    n = _sample_size(pins)
+    chosen = quality.sample(names, n) if n > 0 else sorted(set(names))
+    sampling = "seeded-sha256" if n > 0 else "all"
+    t = mutant_timeout(secs)
+    common |= {"sampled": n > 0, "sample_size": len(chosen), "mutant_timeout_s": t}
+    log.append(f"# {len(names)} mutants listed; {len(chosen)} chosen ({sampling}); per-mutant timeout {t}s")
+
+    ctl = run_batch(p, copy, [BASELINE_NAME, SENTINEL_NAME], t, log)
+    common |= {"mutants_baseline_rc": ctl.get(BASELINE_NAME), "sentinel_rc": ctl.get(SENTINEL_NAME)}
+    if ctl.get(BASELINE_NAME) != 0:
+        return crash(f"the suite does not pass from mutants/ (rc {ctl.get(BASELINE_NAME)})", sampling=sampling,
+                     **common)
+    if ctl.get(SENTINEL_NAME) in (0, None):
+        return crash(f"the trampoline sentinel did not fail the suite (rc {ctl.get(SENTINEL_NAME)}): the tests "
+                     "never reached a mutated function", sampling=sampling, **common)
+
+    got: dict[str, int | None] = {}
+    batches = [chosen[i:i + BATCH] for i in range(0, len(chosen), BATCH)]
+    for b in batches:
+        got |= run_batch(p, copy, b, t, log)
+    verdicts = {name: (verdict(got[name]) if name in got else "not_checked") for name in chosen}
+    return summarise(verdicts, sampling=sampling, batches=len(batches), **common)
+
+
+def targets(pass_: str) -> list[tuple[str, int]]:
+    """Every collected arm-step whose mutation state is `crashed`, sorted."""
+    d = paths.scoring_out(pass_) / "collected"
+    if not d.is_dir():
+        raise inputs.InputError(f"{d} is missing: run `runner score {pass_} --stage collect` first")
+    out = []
+    for f in sorted(d.glob("*/[0-9][0-9].json")):
+        q = json.loads(f.read_text()).get("quality", {})
+        if not values.is_missing(q) and (q.get("value") or {}).get("mutation_state") == "crashed":
+            out.append((f.parent.name, int(f.stem)))
+    return sorted(out)
+
+
+def run(pass_: str) -> list[Path]:
+    return [one(pass_, arm, step) for arm, step in targets(pass_)]
