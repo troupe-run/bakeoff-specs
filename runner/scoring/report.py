@@ -19,12 +19,12 @@ PREREG = ("This scoring is not fully pre-registered: the what-goes-stale lists, 
 
 
 def outliers(vals: dict[str, float | None], factor: float) -> dict[str, str]:
-    xs = sorted(v for v in vals.values() if v)
+    xs = sorted(v for v in vals.values() if v is not None)
     if len(xs) < 3:
         return {}
     med = xs[len(xs) // 2] if len(xs) % 2 else (xs[len(xs) // 2 - 1] + xs[len(xs) // 2]) / 2
     return {a: ("high" if v >= factor * med else "low") for a, v in sorted(vals.items())
-            if v and (v >= factor * med or v <= med / factor)}
+            if v is not None and (v >= factor * med or v <= med / factor)}
 
 
 # ---- small formatting helpers ------------------------------------------------------------------------------
@@ -93,7 +93,7 @@ def _strengths(scores: dict) -> list[str]:
         if len(diffs) < 2:
             continue
         hi, lo = max(sorted(diffs), key=lambda d: diffs[d]), min(sorted(diffs), key=lambda d: diffs[d])
-        lines.append(f"  - {a}: strongest {hi} ({_pct(diffs[hi])} of its weight vs the field mean), "
+        lines.append(f"   - {a}: strongest {hi} ({_pct(diffs[hi])} of its weight vs the field mean), "
                      f"weakest {lo} ({_pct(diffs[lo])})")
     return lines
 
@@ -116,7 +116,7 @@ def _totals(coll: dict) -> dict[str, dict]:
 
 def _total_outliers(coll: dict, factor: float) -> dict[str, dict[str, str]]:
     t = _totals(coll)
-    return {m: outliers({a: (r[k] if r["n"][k] else None) for a, r in t.items()}, factor)
+    return {m: outliers({a: (r[k] if r["n"][k] == r["m"] else None) for a, r in t.items()}, factor)   # † sums are left out
             for m, k in (("time", "seconds"), ("cost", "usd"))}
 
 
@@ -127,7 +127,9 @@ def _bottom_line(scores: dict, conf: dict, coll: dict, pass_: str, factor: float
     findings = [("The order is settled for every arm." if not groups else
                  f"{len(groups)} group(s) of arms are within noise of each other and should not be ranked "
                  f"against one another; {len(conf['order_changes'])} weight/judge variant(s) change the order.")]
-    findings.append("Relative to the field mean (share of each dimension's weight):\n" + "\n".join(_strengths(scores)))
+    st = _strengths(scores)
+    findings.append("Relative to the field mean (share of each dimension's weight):" + "".join("\n" + l for l in st)
+                    if st else "Relative to the field mean: too few measured dimensions to name strengths.")
     ol = _total_outliers(coll, factor)
     findings.append(f"Time and cost outliers (≥{factor:g}× or ≤1/{factor:g}× the median, arm totals): "
                     f"{len(ol['time'])} on time, {len(ol['cost'])} on cost; see Time and cost.")
@@ -232,29 +234,66 @@ def _turn_marks(t: dict | None) -> str:
     return marks
 
 
+class _Acc:
+    """A sum that remembers how many occurrences contributed, so a partial sum can be marked."""
+    def __init__(self):
+        self.sum, self.n, self.seen = 0.0, 0, 0
+
+    def add(self, x) -> None:
+        self.seen += 1
+        if x is not None:
+            self.sum += x
+            self.n += 1
+
+    def cell(self, fmt, gaps: bool) -> str:
+        return fmt(self.sum if self.n else None) + ("†" if gaps or (self.n and self.n < self.seen) else "")
+
+
 def _phase_tables(coll: dict) -> list[str]:
     arms = sorted(coll)
-    meth: dict[str, dict[str, list[float]]] = {}
-    common: dict[str, dict[str, list[float]]] = {a: {} for a in arms}
+    meth: dict[str, dict[str, list[_Acc]]] = {a: {} for a in arms}
+    common: dict[str, dict[str, list[_Acc]]] = {a: {} for a in arms}
+    gaps = {a: {"method": 0, "common": 0} for a in arms}       # steps whose phases leaf is missing
     for a in arms:
         for r in coll[a].values():
-            for m in _v(r.get("phases", {}).get("method")) or []:
-                s = meth.setdefault(a, {}).setdefault(m.get("label", "?"), [0.0, 0.0])
-                s[0] += m.get("seconds") or 0.0
-                s[1] += m.get("usd") or 0.0
-            c = _v(r.get("phases", {}).get("common")) or {}
-            for ph, s in (c.get("seconds") or {}).items():
-                x = common[a].setdefault(ph, [0.0, 0.0])
-                x[0] += s
-                x[1] += (c.get("usd") or {}).get(ph, 0.0)
+            ph = r.get("phases", {})
+            m = _v(ph.get("method"))
+            if m is None:
+                gaps[a]["method"] += 1
+            for x in m or []:
+                s = meth[a].setdefault(x.get("label", "?"), [_Acc(), _Acc()])
+                s[0].add(x.get("seconds"))
+                s[1].add(x.get("usd"))
+            c = _v(ph.get("common"))
+            if c is None:
+                gaps[a]["common"] += 1
+            for p in ((c or {}).get("seconds") or {}):
+                x = common[a].setdefault(p, [_Acc(), _Acc()])
+                x[0].add(c["seconds"][p])
+                x[1].add((c.get("usd") or {}).get(p))
     out = ["### Phase split, method view (the arm's own step labels, all steps)", ""]
-    rows = [[a, label, _mins(s), _usd(u)] for a in arms for label, (s, u) in sorted(meth.get(a, {}).items())]
+    rows = []
+    for a in arms:
+        g = gaps[a]["method"] > 0
+        for label, (s, u) in sorted(meth[a].items()):
+            rows.append([a + ("†" if g else ""), label, s.cell(_mins, g), u.cell(_usd, g)])
+        if g and not meth[a]:
+            rows.append([a + "†", DASH, DASH, DASH])
     out += _table(["arm", "label", "time", "cost"], rows) if rows else ["No method phases measured.", ""]
     out += ["### Phase split, common view (same phases for every arm, all steps)", ""]
     phases = sorted({p for a in arms for p in common[a]})
-    rows = [[a] + [(_mins(common[a][p][0]) + " / " + _usd(common[a][p][1])) if p in common[a] else DASH
-                   for p in phases] for a in arms]
-    out += _table(["arm"] + phases, rows) if phases else ["No common phases measured.", ""]
+    rows = []
+    for a in arms:
+        g = gaps[a]["common"] > 0
+        rows.append([a + ("†" if g else "")] + [(common[a][p][0].cell(_mins, g) + " / " + common[a][p][1].cell(_usd, g))
+                                              if p in common[a] else DASH for p in phases])
+    if phases:
+        out += _table(["arm"] + phases, rows)
+    else:
+        out += ["No common phases measured" + "".join(f"; {a}† has a step with no common phases" for a in arms
+                                                      if gaps[a]["common"]) + ".", ""]
+    out += ["† a step's phases are missing or partly unmeasured (see the arm's appendix); the sum leaves it out, "
+            "never counts it as 0.", ""]
     return out
 
 
@@ -311,6 +350,10 @@ def _confidence(scores: dict, conf: dict) -> list[str]:
 
 # ---- appendix ----------------------------------------------------------------------------------------------
 
+def _f(x) -> str:
+    return DASH if x is None else str(x)
+
+
 def _leaf_text(name: str, leaf: dict | None) -> str:
     if leaf is None:
         return f"{name}: {DASH} (no record)"
@@ -320,17 +363,17 @@ def _leaf_text(name: str, leaf: dict | None) -> str:
     if name == "hidden" and isinstance(v, dict) and "passed" in v:
         return f"{name}: {v['passed']}/{v['total']} passed, {len(v.get('excluded', []))} excluded {link}"
     if name == "regressions" and isinstance(v, dict):
-        return f"{name}: rate {v.get('rate')} {link}"
+        return f"{name}: rate {_f(v.get('rate'))} {link}"
     if name == "quality" and isinstance(v, dict):
-        return (f"{name}: mypy {v.get('mypy_errors')}, ruff {v.get('ruff_findings')}, mutation "
-                f"{v.get('mutation_score')} ({v.get('mutation_state')}) {link}")
+        return (f"{name}: mypy {_f(v.get('mypy_errors'))}, ruff {_f(v.get('ruff_findings'))}, mutation "
+                f"{_f(v.get('mutation_score'))} ({v.get('mutation_state')}) {link}")
     if name == "time" and isinstance(v, dict):
-        return f"{name}: {_mins(v.get('seconds'))}, attempt {v.get('attempt')}, {len(v.get('turns', []))} turn(s) {link}"
+        return f"{name}: {_mins(v.get('seconds'))}, attempt {_f(v.get('attempt'))}, {len(v.get('turns', []))} turn(s) {link}"
     if name == "cost" and isinstance(v, dict):
         return (f"{name}: scored {_usd(v.get('scored_usd'))}, PO {_usd(v.get('po_usd'))}, discovery "
                 f"{_usd(v.get('discovery_usd'))} {link}")
     if name == "churn" and isinstance(v, dict):
-        return f"{name}: {v.get('lines')} lines in {len(v.get('files', []))} file(s) {link}"
+        return f"{name}: {_f(v.get('lines'))} lines in {len(v.get('files', []))} file(s) {link}"
     if name == "questions" and isinstance(v, dict):
         return f"{name}: {len(v.get('items', []))} item(s), {v.get('skipped_lines', 0)} skipped line(s) {link}"
     if name == "violations" and isinstance(v, list):
@@ -343,10 +386,15 @@ def _lens_lines(pass_: str, arm: str) -> list[str]:
     out = []
     for f in sorted(root.glob(f"*/{arm}/*/*.json")) if root.is_dir() else []:
         part, _, key, lens = f.relative_to(root).parts[0], f.parts[-3], f.parts[-2], f.stem
-        j = json.loads(f.read_text())
-        ev = "; ".join(str(e) for e in j.get("evidence", [])) or "no evidence cited"
         rel = f.relative_to(paths.scoring_out(pass_))
-        out.append(f"- {part} · {key} · {lens}: {j.get('status')} score {j.get('score')} — {ev} "
+        try:
+            j = json.loads(f.read_text())
+            j.get("status")
+        except (OSError, ValueError, AttributeError):
+            out.append(f"- {part} · {key} · {lens}: unreadable ([file]({rel.as_posix()}))")
+            continue
+        ev = "; ".join(str(e) for e in j.get("evidence", [])) or "no evidence cited"
+        out.append(f"- {part} · {key} · {lens}: {j.get('status')} score {_f(j.get('score'))} — {ev} "
                    f"([file]({rel.as_posix()}))" + (f" — {j['notes']}" if j.get("notes") else ""))
     return out
 
@@ -369,7 +417,9 @@ def _appendix(pass_: str, arm: str, scores: dict, recs: dict[int, dict]) -> list
 
 def render(pass_: str) -> str:
     scores = json.loads((paths.scoring_out(pass_) / "scores.json").read_text())
-    conf, coll = confidence.check(scores), aggregate._collected(pass_)
+    if not scores["arms"]:
+        return f"# Pass {pass_} — scorecard\n\n## Bottom line\n\nNo arms collected: nothing to report.\n"
+    conf, coll = confidence.check(scores), aggregate.collected(pass_)
     factor = inputs.load_weights().report["outlier_factor"]
     parts = [[f"# Pass {pass_} — scorecard", ""], _bottom_line(scores, conf, coll, pass_, factor),
              _scorecard(scores, factor), _dimensions(scores), _decisions(pass_), _time_cost(coll, factor),

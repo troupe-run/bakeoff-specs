@@ -14,7 +14,7 @@ def _v(x):
     return None if x is None or values.is_missing(x) else x["value"]
 
 
-def _collected(pass_: str) -> dict[str, dict[int, dict]]:
+def collected(pass_: str) -> dict[str, dict[int, dict]]:
     out: dict[str, dict[int, dict]] = {}
     for f in sorted((paths.scoring_out(pass_) / "collected").glob("*/*.json")):
         out.setdefault(f.parent.name, {})[int(f.stem)] = json.loads(f.read_text())
@@ -153,7 +153,7 @@ def _guard(pass_: str, arms: list[str], excluded: inputs.Exclusions) -> None:
 
 def run(pass_: str, baseline: str = "control") -> Path:
     w, rubrics, verdicts = inputs.load_weights(), inputs.load_rubrics(), _verdicts(pass_)
-    sc, coll = w.scales, _collected(pass_)
+    sc, coll = w.scales, collected(pass_)
     excluded = inputs.load_excluded()
     _guard(pass_, sorted(coll), excluded)
     arms_out = {}

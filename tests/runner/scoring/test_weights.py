@@ -91,3 +91,10 @@ def test_report_outlier_factor_must_be_a_finite_number_above_one(tmp_path, bad):
     p.write_text(f'[dimensions]\ncoping = 100\n[report]\noutlier_factor = {bad}\n')
     with pytest.raises(inputs.InputError, match="outlier_factor"):
         inputs.load_weights(p)
+
+
+def test_report_unknown_keys_are_refused(tmp_path):
+    p = tmp_path / "w.toml"
+    p.write_text('[dimensions]\ncoping = 100\n[report]\noutlier_factr = 3\n')
+    with pytest.raises(inputs.InputError, match="outlier_factr"):
+        inputs.load_weights(p)

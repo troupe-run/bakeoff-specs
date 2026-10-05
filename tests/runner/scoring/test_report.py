@@ -23,11 +23,12 @@ def test_report_opens_with_the_bottom_line_then_the_scorecard(p):
     assert "## Appendix: alpha" in heads and "## Appendix: control" in heads
 
 
-def test_every_scorecard_total_matches_scores_json(p):
+def test_every_arms_scorecard_row_ends_with_its_total_from_scores_json(p):
     s = json.loads(aggregate.run(p).read_text())
-    md = report.render(p)
+    card = _section(report.render(p), "## Scorecard")
     for arm, v in s["arms"].items():
-        assert f"{v['total']:.1f}" in md
+        row = next(l for l in card.splitlines() if l.startswith(f"| {arm} "))
+        assert row.endswith(f"| {v['total']:.1f} |")
 
 
 def test_report_discloses_partial_blinding_and_pre_registration(p):
@@ -72,13 +73,25 @@ def test_owner_notes_are_included_verbatim_under_the_bottom_line(p):
     assert "OWNER SAYS: read step 6 first." in _section(report.render(p), "## Bottom line")
 
 
-def test_unmeasured_cells_carry_a_dagger_and_outliers_an_arrow(p):
+def test_an_unmeasured_part_puts_a_dagger_on_that_arms_cell_and_no_arrows_on_equal_arms(p):
     write_collected(p, "alpha", 1, quality={"mypy_errors": 0, "ruff_findings": 0, "mutation_score": None,
                                             "mutation_state": "crashed"})
     aggregate.run(p)
     card = _section(report.render(p), "## Scorecard")
     row = next(l for l in card.splitlines() if l.startswith("| alpha"))
     assert "†" in row and "▲" not in row and "▼" not in row
+
+
+def test_a_scorecard_cell_far_from_the_median_gets_an_arrow(p):
+    zero = {"passed": 0, "total": 10, "excluded": [], "per_test": {}}
+    for arm in ("beta", "gamma", "delta"):
+        write_collected(p, arm, 1)
+    write_collected(p, "delta", 1, hidden={"passed": 1, "total": 10, "excluded": [], "per_test": {}})
+    write_collected(p, "alpha", 1, hidden=zero)
+    aggregate.run(p)
+    card = _section(report.render(p), "## Scorecard")
+    assert "▼" in next(l for l in card.splitlines() if l.startswith("| alpha "))
+    assert "▼" not in next(l for l in card.splitlines() if l.startswith("| beta "))
 
 
 def _patch_phases(pass_, arm, step, **phases):
@@ -121,6 +134,66 @@ def test_report_renders_when_cost_and_phases_are_missing(p):
     alpha = next(l for l in sec.splitlines() if l.startswith("| alpha"))
     assert "—" in alpha and "$0.00" not in alpha
     assert "unreadable" in _section(md, "## Appendix: alpha")
+    phases = sec.split("### Phase split, method view")[1]
+    assert "$0.00" not in phases and "0.0 min" not in phases
+    meth, common = phases.split("common view")
+    assert "| alpha† | — | — | — |" in meth
+    assert "alpha† has a step with no common phases" in common
+
+
+def test_partial_phase_sums_are_marked_and_a_missing_usd_is_a_dash_not_zero(p):
+    write_collected(p, "alpha", 1)
+    write_collected(p, "alpha", 2)
+    _patch_phases(p, "alpha", 1,
+                  method=values.val([{"stem": "t", "label": "L", "seconds": 60.0, "usd": None}], "x"),
+                  common=values.val({"seconds": {"implement": 90.0}, "usd": {}}, "x"))
+    _patch_phases(p, "alpha", 2, method=values.val([{"stem": "t", "label": "L", "seconds": 60.0, "usd": 1.0}], "x"),
+                  common=values.val({"seconds": {"implement": 30.0}, "usd": {"implement": 0.5}}, "x"))
+    aggregate.run(p)
+    phases = _section(report.render(p), "## Time and cost").split("### Phase split, method view")[1]
+    assert "| alpha | L | 2.0 min | $1.00† |" in phases
+    assert "2.0 min / $0.50†" in phases
+
+
+def test_a_step_with_a_missing_phases_leaf_marks_the_arms_rows_in_both_views(p):
+    write_collected(p, "alpha", 1)
+    _patch_phases(p, "alpha", 1, method=values.missing("m", "gone"),
+                  common=values.val({"seconds": {"test": 10.0}, "usd": {"test": 0.1}}, "x"))
+    write_collected(p, "alpha", 2)
+    _patch_phases(p, "alpha", 2, method=values.val([{"stem": "t", "label": "L", "seconds": 60.0, "usd": 1.0}], "x"),
+                  common=values.missing("c", "gone"))
+    aggregate.run(p)
+    phases = _section(report.render(p), "## Time and cost")
+    assert "| alpha† | L | 1.0 min† | $1.00† |" in phases
+    assert "| alpha† | 0.2 min† / $0.10† |" in phases
+
+
+def test_report_with_no_arms_says_so(p):
+    import shutil
+    shutil.rmtree(paths.scoring_out(p) / "collected")
+    aggregate.run(p)
+    assert "No arms collected" in report.render(p)
+
+
+def test_a_corrupt_judged_file_is_shown_unreadable(p):
+    write_collected(p, "alpha", 3)
+    write_judged(p, "req_test_code", "alpha", "03", [1, 3, 4])
+    aggregate.run(p)
+    (paths.scoring_out(p) / "judged" / "req_test_code" / "alpha" / "03" / "auditor.json").write_text("{not json")
+    app = _section(report.render(p), "## Appendix: alpha")
+    assert "req_test_code · 03 · auditor: unreadable" in app and "maintainer" in app
+
+
+def test_the_appendix_shows_a_dash_for_none(p):
+    write_collected(p, "alpha", 1, quality={"mypy_errors": 0, "ruff_findings": 0, "mutation_score": None,
+                                            "mutation_state": "crashed"})
+    aggregate.run(p)
+    app = _section(report.render(p), "## Appendix: alpha")
+    assert "None" not in app and "mutation — (crashed)" in app
+
+
+def test_a_zero_is_a_real_value_for_outliers():
+    assert report.outliers({"a": 0.0, "b": 10.0, "c": 11.0, "d": 12.0}, 3.0) == {"a": "low"}
 
 
 def test_phase_split_shows_both_views(p):
@@ -140,6 +213,9 @@ def test_appendix_links_each_number_to_its_source_and_lists_lens_evidence(p):
     aggregate.run(p)
     app = _section(report.render(p), "## Appendix: alpha")
     assert "([src](../../../x))" in app
+    (paths.RESULTS.parent / "x").write_text("src")
+    link = "../../../x"
+    assert ((paths.scoring_out(p) / link).resolve() == (paths.RESULTS.parent / "x").resolve())
     assert "req_test_code" in app and "auditor" in app and "judged/req_test_code/alpha/03/auditor.json" in app
 
 
@@ -161,3 +237,22 @@ def test_decision_review_lists_one_offs_divergent_and_unanimous(p):
 def test_a_rerun_of_report_is_byte_identical(p):
     aggregate.run(p)
     assert report.run(p).read_bytes() == report.run(p).read_bytes()
+
+
+def test_a_partial_arm_total_is_left_out_of_the_total_outlier_test(p):
+    for arm in ("beta", "gamma", "delta"):
+        write_collected(p, arm, 1, time=_turns({"stem": "t", "seconds": 100.0}))
+        write_collected(p, arm, 2, time=_turns({"stem": "t", "seconds": 100.0}))
+    write_collected(p, "alpha", 1, time=_turns({"stem": "t", "seconds": 100000.0}))
+    write_collected(p, "alpha", 2, time=values.missing("m", "gone"))
+    aggregate.run(p)
+    allsteps = _section(report.render(p), "## Time and cost").split("### All steps")[1]
+    alpha = next(l for l in allsteps.splitlines() if l.startswith("| alpha"))
+    assert "†" in alpha and "▲" not in alpha
+
+
+def test_the_strengths_sub_list_is_indented_under_its_finding(p):
+    aggregate.run(p)
+    lines = _section(report.render(p), "## Bottom line").splitlines()
+    i = next(k for k, l in enumerate(lines) if l.startswith("2. Relative to the field mean"))
+    assert lines[i + 1].startswith("   - alpha: strongest")

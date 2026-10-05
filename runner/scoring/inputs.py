@@ -63,6 +63,8 @@ def load_weights(path: Path | None = None) -> Weights:
         scales[k] = fv
     report = dict(REPORT_DEFAULTS)
     for k, v in raw.get("report", {}).items():
+        if k not in REPORT_DEFAULTS:
+            raise InputError(f"{path}: [report] unknown key {k!r} (known: {sorted(REPORT_DEFAULTS)})")
         if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
             raise InputError(f"{path}: [report] {k} must be a finite number, got {v!r}")
         if k == "outlier_factor" and v <= 1:
