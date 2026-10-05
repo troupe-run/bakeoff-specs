@@ -115,6 +115,7 @@ class Rubric:
     evidence: tuple[str, ...]
     levels: dict[int, str]
     lenses: tuple[dict, ...]
+    not_applicable: bool = False    # R5/R27: a judge may answer "not applicable" (step units only)
 
 
 def load_rubrics(root: Path | None = None) -> dict[str, Rubric]:
@@ -126,10 +127,12 @@ def load_rubrics(root: Path | None = None) -> dict[str, Rubric]:
         lenses = tuple(raw.get("lens", []))
         r = Rubric(part=f.stem, dimension=raw["dimension"], unit=raw.get("unit", "step"),
                    steps=tuple(raw.get("steps", range(1, 8))), evidence=tuple(raw["evidence"]),
-                   levels=levels, lenses=lenses)
+                   levels=levels, lenses=lenses, not_applicable=raw.get("not_applicable", False))
         if sorted(levels) != [0, 1, 2, 3, 4] or len(lenses) != 3 or not set(r.evidence) <= EVIDENCE_KINDS \
                 or any(set(l) != {"name", "perspective"} for l in lenses) or r.unit not in ("step", "arm"):
             raise InputError(f"{f}: needs levels 0-4, three lenses {{name, perspective}}, known evidence, unit")
+        if not isinstance(r.not_applicable, bool) or (r.not_applicable and r.unit != "step"):
+            raise InputError(f"{f}: not_applicable must be true or false, and true only for unit = \"step\"")
         out[r.part] = r
     return out
 

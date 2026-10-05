@@ -16,7 +16,7 @@ def test_one_container_judge_call_on_dry1_step_1_returns_a_parseable_verdict_and
     assert not judge.absent(d, files), f"dry1 step 1 inputs are missing: {judge.absent(d, files)}"
     r = inputs.load_rubrics()["req_test_code"]
     j = judge.ContainerJudge("dry1")
-    v = judge.parse(j.ask(judge.prompt(r, r.lenses[0], "01", files), d), na_allowed=False)
+    v = judge.parse(j.ask(judge.prompt(r, r.lenses[0], "01", files), d, files))
     assert v.status == "ok" and 0 <= v.score <= 4 and v.evidence
     assert j.last_pin is not None and j.last_pin.ok and not j.last_pin.violations
     assert j.last_dir.is_relative_to(paths.scoring_out("dry1") / "judge-calls")

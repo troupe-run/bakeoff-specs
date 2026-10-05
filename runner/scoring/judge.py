@@ -7,7 +7,8 @@ or quoted. A verdict is `ok` (score 0-4 with evidence), `not_applicable` (only w
 `judge_failed` (two unusable replies) or `input_missing` (the item's evidence is absent, so no judge is asked,
 R24(d)). Only `ok` is a score."""
 from __future__ import annotations
-import hashlib, json, os, re, time
+import hashlib, json, os, re, shutil, time
+from datetime import date
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Protocol
@@ -20,7 +21,7 @@ TRANSIENT = ("no_result", "is_error")        # retried in place with limits.tran
 AT_ONCE = ("auth_failed", "timeout")         # never retried: a credential fault / a hung judge is the harness's
 _FILES = {"repo": "repo/", "diff": "diff.patch", "transcript": "transcript.md", "questions": "questions.md",
           "gates": "gates.md", "stale_list": "stale-list.toml"}
-_NA = "not applicable"
+_APPROVAL = re.compile(r"approved (\d{4}-\d{2}-\d{2}) (\d+)")
 
 
 class BadReply(ValueError):
@@ -55,7 +56,7 @@ def _evidence(o: dict) -> list[str]:
     return ev
 
 
-def parse(text: str, *, na_allowed: bool = True) -> Verdict:
+def parse(text: str, *, na_allowed: bool = False) -> Verdict:
     """One JSON object: `{"score": 0-4, "evidence": [...], "notes": str}`, or (R5, where `na_allowed`)
     `{"score": null, "status": "not_applicable", "evidence": [...], "notes": str}`. Anything else is a BadReply."""
     m = re.search(r"\{.*\}", text, re.S)
@@ -80,27 +81,30 @@ def parse(text: str, *, na_allowed: bool = True) -> Verdict:
 
 
 class Judge(Protocol):
-    def ask(self, prompt: str, inputs: Path) -> str: ...
+    def ask(self, prompt: str, inputs: Path, files: list[str] = ...) -> str: ...
 
 
 class FakeJudge:
     def __init__(self, replies: list[str]):
-        self.replies, self.prompts, self.inputs = list(replies), [], []
+        self.replies, self.prompts, self.inputs, self.files = list(replies), [], [], []
 
-    def ask(self, prompt: str, inputs: Path) -> str:
+    def ask(self, prompt: str, inputs: Path, files: list[str] = ()) -> str:
         self.prompts.append(prompt)
         self.inputs.append(inputs)
+        self.files.append(list(files))
         return self.replies.pop(0)
 
 
-def ask_with_retry(j: Judge, prompt: str, inputs_dir: Path, *, na_allowed: bool = True) -> Verdict:
-    """A BadReply gets one more ask with the parse error appended; a second is `judge_failed`, never a score."""
-    reply = j.ask(prompt, inputs_dir)
+def ask_with_retry(j: Judge, prompt: str, inputs_dir: Path, files: list[str] = (), *,
+                   na_allowed: bool = False) -> Verdict:
+    """A BadReply gets one more ask with the parse error appended; a second is `judge_failed`, never a score.
+    `files` are the item's selected inputs (relative to `inputs_dir`): the only ones a container judge mounts."""
+    reply = j.ask(prompt, inputs_dir, files)
     try:
         return parse(reply, na_allowed=na_allowed)
     except BadReply as e:
         reply = j.ask(f"{prompt}\n\nYour previous reply could not be used ({e}). Reply with one JSON object only.",
-                      inputs_dir)
+                      inputs_dir, files)
         try:
             return parse(reply, na_allowed=na_allowed)
         except BadReply as e2:
@@ -110,9 +114,8 @@ def ask_with_retry(j: Judge, prompt: str, inputs_dir: Path, *, na_allowed: bool 
 # ---- what to judge ---------------------------------------------------------------------------------------------
 
 def na_allowed(r: inputs.Rubric) -> bool:
-    """R5: 'not applicable' is an answer only for step-scoped parts whose rubric text (levels or lenses) offers it."""
-    text = " ".join([*r.levels.values(), *(l["perspective"] for l in r.lenses)]).lower()
-    return r.unit == "step" and _NA in text
+    """R5/R27: 'not applicable' is an answer only where the rubric sets `not_applicable = true` (step units only)."""
+    return r.not_applicable and r.unit == "step"
 
 
 def prompt(rubric: inputs.Rubric, lens: dict, key: str, files: list[str]) -> str:
@@ -160,8 +163,8 @@ def items(pass_: str) -> list[tuple[str, str, str, str]]:
 
 
 def inputs_for(pass_: str, part: str, arm: str, key: str) -> tuple[Path, list[str]]:
-    """The item's anonymised directory and the files its rubric's evidence kinds select (relative to it). The step's
-    stale list (hand-written, arm-agnostic) is copied in as `stale-list.toml` so the judge can read it at /judge."""
+    """The item's anonymised directory and the files its rubric's evidence kinds select (relative to it). Pure: it
+    writes nothing (anonymise writes every input, `stale-list.toml` included)."""
     r = inputs.load_rubrics()[part]
     base = paths.scoring_out(pass_) / "anon" / _label(pass_, arm)
     if r.unit == "arm":
@@ -171,30 +174,25 @@ def inputs_for(pass_: str, part: str, arm: str, key: str) -> tuple[Path, list[st
     files = {_FILES[k] for k in r.evidence if k in _FILES}
     if part == "question_value":
         files.add("others-questions.md")                         # R6: other arms' questions at the same step
-    src = paths.SCORING_INPUTS / "stale" / f"step-{key}.toml"
-    if "stale-list.toml" in files and src.exists() and d.is_dir():
-        (d / "stale-list.toml").write_text(src.read_text())
     return d, sorted(files)
 
 
-def _missing_md(d: Path) -> dict[str, str]:
-    """MISSING.md's `- <what>: <why>` lines, keyed by each file named in <what> (`repo/ and diff.patch`)."""
-    f = d / "MISSING.md"
-    out: dict[str, str] = {}
-    for line in (f.read_text().splitlines() if f.exists() else []):
-        m = re.match(r"- (.+?): (.*)$", line)
-        if m:
-            for name in m[1].split(" and "):
-                out[name.strip()] = f"{m[1]}: {m[2]}"
-    return out
+def _missing_json(d: Path) -> dict[str, str]:
+    """anonymise's MISSING.json (`[{"files": [...], "why": ...}]`) as {file: why}."""
+    f = d / "MISSING.json"
+    try:
+        entries = json.loads(f.read_text()) if f.exists() else []
+        return {name: e["why"] for e in entries for name in e["files"]}
+    except (ValueError, KeyError, TypeError) as e:
+        raise inputs.InputError(f"{f}: unreadable ({e!r}); re-run anonymise") from e
 
 
 def absent(d: Path, files: list[str]) -> list[str]:
-    """R24(d): what of the item's required input is absent (or named in MISSING.md). Empty means ask a judge."""
+    """R24(d): what of the item's required input is absent (or named in MISSING.json). Empty means ask a judge."""
     if not d.is_dir() or not files:
         return [f"{d.name}/: no evidence recorded"]
-    named = _missing_md(d)
-    return [named.get(f) or f"{f}: absent" for f in files if f in named or not (d / f).exists()]
+    named = _missing_json(d)
+    return [f"{f}: {named.get(f, 'absent')}" for f in files if f in named or not (d / f).exists()]
 
 
 def out_path(pass_: str, part: str, arm: str, key: str, lens: str) -> Path:
@@ -208,12 +206,23 @@ def _write(out: Path, v: Verdict) -> None:
     os.replace(tmp, out)                                      # never a half-written file a resume would skip
 
 
-def run(pass_: str, j: Judge) -> dict:
-    """Asks every unfinished item (resumable: an existing output is skipped) and writes each verdict as it lands."""
+def _unfinished(out: Path, retry_failed: bool) -> bool:
+    """No verdict yet; or `input_missing` (re-checked every run, R27); or `judge_failed` when `retry_failed`."""
+    if not out.exists():
+        return True
+    try:
+        status = json.loads(out.read_text()).get("status")
+    except (OSError, ValueError, AttributeError):
+        return True
+    return status == "input_missing" or (retry_failed and status == "judge_failed")
+
+
+def run(pass_: str, j: Judge, *, retry_failed: bool = False) -> dict:
+    """Asks every unfinished item (resumable) and writes each verdict as it lands."""
     rubrics, counts = inputs.load_rubrics(), {"asked": 0, "skipped": 0, "input_missing": 0}
     for part, arm, key, lens in items(pass_):
         out = out_path(pass_, part, arm, key, lens)
-        if out.exists():
+        if not _unfinished(out, retry_failed):
             counts["skipped"] += 1
             continue
         d, files = inputs_for(pass_, part, arm, key)
@@ -224,7 +233,7 @@ def run(pass_: str, j: Judge) -> dict:
             counts["input_missing"] += 1
         else:
             lens_d = next((l for l in r.lenses if l["name"] == lens), {"name": lens, "perspective": ""})
-            v = ask_with_retry(j, prompt(r, lens_d, key, files), d, na_allowed=na_allowed(r))
+            v = ask_with_retry(j, prompt(r, lens_d, key, files), d, files, na_allowed=na_allowed(r))
             counts["asked"] += 1
         _write(out, v)
     return counts
@@ -238,12 +247,12 @@ def _size(p: Path) -> int:
     return sum(f.stat().st_size for f in p.rglob("*") if f.is_file() and not f.is_symlink()) if p.is_dir() else 0
 
 
-def estimate(pass_: str) -> dict:
-    """Calls the judge stage would make now (unfinished items with their inputs present; retries not counted)
-    and the size of the inputs those calls read."""
+def estimate(pass_: str, *, retry_failed: bool = False) -> dict:
+    """Calls the judge stage would make now (unfinished items with their inputs present, input_missing ones that
+    are now answerable included; parse retries not counted) and the size of the inputs those calls read."""
     calls, size = 0, 0
     for part, arm, key, lens in items(pass_):
-        if out_path(pass_, part, arm, key, lens).exists():
+        if not _unfinished(out_path(pass_, part, arm, key, lens), retry_failed):
             continue
         d, files = inputs_for(pass_, part, arm, key)
         if absent(d, files):
@@ -251,6 +260,26 @@ def estimate(pass_: str) -> dict:
         calls += 1
         size += sum(_size(d / f) for f in files)
     return {"calls": calls, "input_mb": round(size / 1e6, 3)}
+
+
+def check_approval(pass_: str, calls: int) -> None:
+    """The owner's `judge-approved` file: one line `approved <YYYY-MM-DD> <calls>`. Refuses (InputError) when it is
+    absent or malformed, or when `calls` (the current estimate) exceeds the approved number."""
+    f = paths.scoring_out(pass_) / "judge-approved"
+    how = (f"run `runner score {pass_} --stage judge-estimate`, read it, then write {f} with one line: "
+           "approved <date> <calls>")
+    if not f.exists():
+        raise inputs.InputError(f"{f} is missing: {how}")
+    m = _APPROVAL.fullmatch(f.read_text().strip())
+    try:
+        ok = m is not None and date.fromisoformat(m[1]) is not None
+    except ValueError:
+        ok = False
+    if not ok:
+        raise inputs.InputError(f"{f} is malformed: {how}")
+    if calls > int(m[2]):
+        raise inputs.InputError(f"the judge stage would now make {calls} calls, but {f} has approved {m[2]}: "
+                                f"re-read the estimate and approve again")
 
 
 def implied_cost(pass_: str, calls: int) -> dict:
@@ -274,13 +303,16 @@ def judge_env(pins: config.Pins) -> dict[str, str]:
         | {"CLAUDE_CODE_SAFE_MODE": "1"}
 
 
-def mounts(pass_: str, item_dir: Path) -> list[Mount]:
-    return [Mount(paths.judge_home(pass_), "/home/actor", False), Mount(item_dir, "/judge", True)]
+def mounts(home: Path, item_dir: Path, files: list[str]) -> list[Mount]:
+    """The call's fresh home, and each selected input read-only at `/judge/<name>` — never the whole item."""
+    return [Mount(home, "/home/actor", False),
+            *(Mount(item_dir / f.rstrip("/"), f"/judge/{f.rstrip('/')}", True) for f in files)]
 
 
 def check_mounts(ms: list[Mount], pass_: str) -> None:
-    """A judge sees its own home and ONE item's anonymised inputs (read-only), nothing else: never anon-key.json,
-    results/ outside anon/<label>/, tests/, reference/ or state/<pass>/ (nor a directory containing any of them)."""
+    """A judge sees one fresh home (a directory strictly under `judge_home`) and ONE item's selected inputs, each
+    read-only under `/judge/` — nothing else: never anon-key.json, a whole item, label or anon/, results/ outside
+    them, tests/, reference/ or state/<pass>/ (nor a directory containing any of them)."""
     root, out = paths.REPO_ROOT.resolve(), paths.scoring_out(pass_).resolve()
     anon, home = out / "anon", paths.judge_home(pass_).resolve()
     forbidden = [out / "anon-key.json", root / "tests", root / "reference", (paths.STATE / pass_).resolve()]
@@ -288,30 +320,40 @@ def check_mounts(ms: list[Mount], pass_: str) -> None:
     def under(h: Path, r: Path) -> bool:
         return h == r or h.is_relative_to(r)
 
+    items_seen: set[tuple[str, ...]] = set()
     for m in ms:
         h = Path(m.host).resolve()
         for f in forbidden:
             if under(h, f) or under(f, h):
                 raise PermissionError(f"a judge may not see {m.host} (it is or holds {f})")
-        if under(h, paths.RESULTS.resolve()) and not (h != anon and under(h, anon)):
-            raise PermissionError(f"a judge may not see {m.host}: of results, only one item under anon/<label>/")
-        if not (under(h, home) or (h != anon and under(h, anon))):
-            raise PermissionError(f"a judge may not see {m.host}: only its home and one item's anonymised inputs")
-        if m.ctr != "/home/actor" and not m.ro:
-            raise PermissionError(f"a judge's inputs must be read-only: {m.ctr}")
+        if m.ctr == "/home/actor":
+            if m.ro or h == home or not h.is_relative_to(home):
+                raise PermissionError(f"a judge's home must be a fresh writable directory under {home}: {m.host}")
+            continue
+        if not m.ctr.startswith("/judge/") or not m.ro:
+            raise PermissionError(f"a judge's inputs are read-only and under /judge/: {m.ctr} <- {m.host}")
+        rel = h.relative_to(anon).parts if h.is_relative_to(anon) else ()
+        if len(rel) < 3:                                       # <label>/<NN|setup>/<input>, never more at once
+            raise PermissionError(f"a judge may not see {m.host}: only one item's selected inputs under anon/")
+        items_seen.add(rel[:2])
+    if len(items_seen) > 1:
+        raise PermissionError(f"a judge's inputs must come from one item, not {sorted(items_seen)}")
 
 
 class ContainerJudge:
     """One fresh Claude session per call, modelled on `po.decide`: base image, pinned model, Read/Glob/Grep only,
     safe mode, egress `pins.egress_po`. Turns, transcripts, the reply and `model-pin.json` land in
-    `scoring_out/judge-calls/<label>/<NN|setup>/<prompt digest>-<k>/`; a pin violation raises."""
+    `scoring_out/judge-calls/<label>/<NN|setup>/<prompt digest>-<k>/`; a pin violation raises. Each call runs in a
+    fresh home (removed once its transcripts are collected), so no lens or arm can read an earlier call's session."""
 
     def __init__(self, pass_: str, cred: credentials.Credential | None = None, pins: config.Pins | None = None):
         self.pass_, self._cred, self.pins = pass_, cred, pins
         self.last_dir: Path | None = None
         self.last_pin: transcripts.PinReport | None = None
 
-    def ask(self, prompt: str, inputs: Path) -> str:
+    def ask(self, prompt: str, inputs: Path, files: list[str] = ()) -> str:
+        if not files:
+            raise ValueError("a container judge mounts only the item's selected inputs: none given")
         pins = self.pins or config.load_pins()
         if self._cred is None:
             self._cred = credentials.from_keychain()
@@ -320,16 +362,18 @@ class ContainerJudge:
             rel = Path(inputs).resolve().relative_to(anon.resolve())
         except ValueError as e:
             raise PermissionError(f"a judge's inputs must be under {anon}: {inputs}") from e
-        ms = mounts(self.pass_, Path(inputs))
-        check_mounts(ms, self.pass_)
-        home = paths.judge_home(self.pass_)
-        (home / ".claude").mkdir(parents=True, exist_ok=True)
         digest, k = hashlib.sha256(prompt.encode()).hexdigest()[:12], 1
         base = paths.scoring_out(self.pass_) / "judge-calls" / rel
         while (base / f"{digest}-{k}").exists():
             k += 1
         d = base / f"{digest}-{k}"
+        slug = f"{rel.parts[0].replace(' ', '-')}-{rel.parts[1]}-{digest}-{k}"
+        home = paths.judge_home(self.pass_) / slug              # fresh per call (R27)
+        ms = mounts(home, Path(inputs), list(files))
+        check_mounts(ms, self.pass_)
         d.mkdir(parents=True)
+        shutil.rmtree(home, ignore_errors=True)
+        (home / ".claude").mkdir(parents=True)
         step = int(rel.name) if rel.name.isdigit() else 0
         env = judge_env(pins)
         before = transcripts.snapshot(home / ".claude")
@@ -361,6 +405,7 @@ class ContainerJudge:
             pin = transcripts.verify_pin(files, list(streams), pins, unsafe=skipped, stream_outcomes=streams)
             (d / "model-pin.json").write_text(pin.to_json())
             self.last_dir, self.last_pin = d, pin
+            shutil.rmtree(home, ignore_errors=True)            # collected: no later call can read this one
         if not pin.ok:
             raise PinViolation(f"judge call {d}: model pin not verified ({d / 'model-pin.json'})")
         (d / "reply.md").write_text(reply)

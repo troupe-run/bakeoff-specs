@@ -394,14 +394,17 @@ def _unscrubbed_note(dest: Path, listed: list[str]) -> None:
            + "\n".join(listed) + "\n")
 
 
-def _missing(dest: Path, items: list[tuple[str, str]], terms: list[Term]) -> None:
+def _missing(dest: Path, items: list[tuple[list[str], str]], terms: list[Term]) -> None:
+    """MISSING.md for people and MISSING.json (`[{"files": [...], "why": ...}]`) for the judge stage (R27)."""
     if items:
-        _w(dest / "MISSING.md", scrub("# Missing\n\n" + "".join(f"- {w}: {why}\n" for w, why in items), terms))
+        _w(dest / "MISSING.md", scrub("# Missing\n\n" + "".join(f"- {' and '.join(fs)}: {why}\n" for fs, why in items),
+                                      terms))
+        _w(dest / "MISSING.json", values.dump([{"files": fs, "why": scrub(why, terms)} for fs, why in items]))
 
 
 def run(pass_: str) -> Path:
     """Writes scoring_out/anon/<label>/<NN>/{repo/, diff.patch, transcript.md, questions.md, gates.md,
-    others-questions.md, [UNSCRUBBED.txt], [MISSING.md]}, <label>/setup/ and, last, scoring_out/anon-key.json.
+    others-questions.md, [stale-list.toml], [UNSCRUBBED.txt], [MISSING.md + MISSING.json]}, <label>/setup/ and, last, scoring_out/anon-key.json.
     Evidence that is absent is named in MISSING.md, never written as a file that looks like input. Returns anon/."""
     out = paths.scoring_out(pass_)
     anon, key_path, tmp = out / "anon", out / "anon-key.json", out / "anon-tmp"
@@ -418,10 +421,10 @@ def run(pass_: str) -> Path:
     for arm in arms:
         for nn in steps[arm]:
             sd, dest, p = pass_dir / arm / nn, anon / lab[arm] / nn, Paths(pass_, arm)
-            miss: list[tuple[str, str]] = []
+            miss: list[tuple[list[str], str]] = []
             shas = _shas(sd)
             if shas is None:
-                miss.append(("repo/ and diff.patch", "git.json has no sha_before/sha_after for this step"))
+                miss.append((["repo/", "diff.patch"], "git.json has no sha_before/sha_after for this step"))
             else:
                 work = tmp / arm / nn
                 try:
@@ -434,20 +437,23 @@ def run(pass_: str) -> Path:
                     shutil.rmtree(dest / "repo", ignore_errors=True)
                     (dest / "diff.patch").unlink(missing_ok=True)
                     (dest / "UNSCRUBBED.txt").unlink(missing_ok=True)
-                    miss.append(("repo/ and diff.patch", f"export or diff failed: {e}"))
+                    miss.append((["repo/", "diff.patch"], f"export or diff failed: {e}"))
                 finally:
                     shutil.rmtree(work, ignore_errors=True)
             tr = transcript(sd, t)
             if tr is None:
-                miss.append(("transcript.md", "no arm turn streams"))
+                miss.append((["transcript.md"], "no arm turn streams"))
             else:
                 _w(dest / "transcript.md", tr)
             if _ran(sd):
                 _w(dest / "questions.md", scrub(questions_md(sd), t))
                 _w(dest / "gates.md", scrub(gates_md(sd), t))
             else:
-                miss += [("questions.md", "no run.json: the scored run is not recorded"),
-                         ("gates.md", "no run.json: the scored run is not recorded")]
+                miss += [(["questions.md"], "no run.json: the scored run is not recorded"),
+                         (["gates.md"], "no run.json: the scored run is not recorded")]
+            stale = paths.SCORING_INPUTS / "stale" / f"step-{nn}.toml"
+            if stale.is_file():                     # R27: the step's stale list, for the stale_updated judges
+                _w(dest / "stale-list.toml", scrub(stale.read_text(encoding="utf-8"), t))
             _missing(dest, miss, t)
     for arm in arms:                                # R24: the setup records, for the setup_effort and fit judges
         setup = pass_dir / arm / "00-setup"

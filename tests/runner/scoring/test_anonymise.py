@@ -218,6 +218,8 @@ def test_a_step_without_shas_gets_a_placeholder_not_a_crash_and_no_repo(world):
     step = anon / lab / "01"
     assert "no sha_before" in (step / "MISSING.md").read_text()
     assert not (step / "repo").exists() and not (step / "diff.patch").exists()
+    assert json.loads((step / "MISSING.json").read_text()) == [
+        {"files": ["repo/", "diff.patch"], "why": "git.json has no sha_before/sha_after for this step"}]
 
 
 def test_a_failed_export_is_reported_and_the_run_still_finishes(world, monkeypatch, capsys):
@@ -230,6 +232,8 @@ def test_a_failed_export_is_reported_and_the_run_still_finishes(world, monkeypat
     assert steps and all((d / "MISSING.md").exists() and not (d / "diff.patch").exists() and not (d / "repo").exists()
                          for d in steps)
     assert not any("bakeoff-specs-control" in (d / "MISSING.md").read_text() for d in steps)
+    assert not any("bakeoff-specs-control" in (d / "MISSING.json").read_text() for d in steps)   # scrubbed too
+    assert all(json.loads((d / "MISSING.json").read_text())[0]["files"] == ["repo/", "diff.patch"] for d in steps)
     assert (paths.scoring_out("p1") / "anon-key.json").exists()
 
 
@@ -361,6 +365,7 @@ def test_with_a_run_record_and_no_questions_file_the_arm_asked_no_questions(worl
     assert "## Scored run" in (step / "questions.md").read_text()
     assert "The arm asked no questions at this step." in (step / "questions.md").read_text()
     assert not (step / "MISSING.md").exists()
+    assert not (step / "MISSING.json").exists()
 
 
 def test_without_a_run_record_questions_gates_and_transcript_are_listed_missing_not_written(world):
@@ -373,6 +378,18 @@ def test_without_a_run_record_questions_gates_and_transcript_are_listed_missing_
     assert not any((step / n).exists() for n in ("questions.md", "gates.md", "transcript.md"))
     miss = (step / "MISSING.md").read_text()
     assert "questions.md" in miss and "gates.md" in miss and "transcript.md" in miss
+    listed = [f for e in json.loads((step / "MISSING.json").read_text()) for f in e["files"]]
+    assert sorted(listed) == ["gates.md", "questions.md", "transcript.md"]
+
+
+def test_each_step_with_a_stale_list_gets_it_as_stale_list_toml_and_step_1_does_not(world):
+    anon = an.run("p1")
+    for lab in ("Arm A", "Arm B"):
+        assert not (anon / lab / "01" / "stale-list.toml").exists()
+        got = anon / lab / "02" / "stale-list.toml"
+        if (anon / lab / "02").is_dir():
+            assert got.read_text() == (paths.SCORING_INPUTS / "stale" / "step-02.toml").read_text()
+    assert any((anon / lab / "02").is_dir() for lab in ("Arm A", "Arm B"))
 
 
 def test_only_a_discovery_file_still_gets_a_scored_run_heading_and_skipped_lines_show(world):

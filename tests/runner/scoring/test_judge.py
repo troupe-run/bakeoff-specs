@@ -48,8 +48,8 @@ def test_the_stage_resumes_without_repeating_finished_items(tmp_state, monkeypat
 
 # ---- R5: "not applicable" ------------------------------------------------------------------------------------------
 
-def test_a_not_applicable_reply_parses_to_no_score():
-    v = judge.parse(NA)
+def test_a_not_applicable_reply_parses_to_no_score_where_allowed():
+    v = judge.parse(NA, na_allowed=True)
     assert v.status == "not_applicable" and v.score is None and v.evidence == ["questions.md: (none)"]
 
 
@@ -60,19 +60,50 @@ def test_a_not_applicable_reply_parses_to_no_score():
     '{"score": null, "evidence": ["x"], "notes": ""}'])
 def test_malformed_not_applicable_replies_are_refused(bad):
     with pytest.raises(judge.BadReply):
-        judge.parse(bad)
+        judge.parse(bad, na_allowed=True)
 
 
-def test_not_applicable_is_refused_where_the_rubric_does_not_offer_it():
-    with pytest.raises(judge.BadReply):
-        judge.parse(NA, na_allowed=False)
+def test_not_applicable_is_refused_by_default_and_where_the_rubric_does_not_offer_it():
+    for kw in ({}, {"na_allowed": False}):
+        with pytest.raises(judge.BadReply):
+            judge.parse(NA, **kw)
 
 
-def test_not_applicable_is_offered_only_by_step_rubrics_whose_text_mentions_it():
+def test_a_second_not_applicable_by_default_is_judge_failed(tmp_path):
+    assert judge.ask_with_retry(judge.FakeJudge([NA, NA]), "p", tmp_path).status == "judge_failed"
+
+
+def test_not_applicable_is_offered_only_by_rubrics_with_the_explicit_key():
     r = inputs.load_rubrics()
-    assert judge.na_allowed(r["research_first"])
+    assert r["research_first"].not_applicable is True and judge.na_allowed(r["research_first"])
+    assert [p for p, x in r.items() if x.not_applicable] == ["research_first"]
     assert not judge.na_allowed(r["req_test_code"])
-    assert not any(judge.na_allowed(x) for x in r.values() if x.unit == "arm")
+
+
+RUBRIC = """dimension = "interaction"
+unit = "{unit}"
+evidence = ["questions"]
+{extra}
+[levels]
+0 = "a"
+1 = "b"
+2 = "c"
+3 = "d"
+4 = "e"
+""" + "".join(f'[[lens]]\nname = "l{i}"\nperspective = "not applicable when nothing to judge"\n' for i in range(3))
+
+
+def test_rubric_text_mentioning_not_applicable_without_the_key_does_not_offer_it(tmp_path):
+    (tmp_path / "x.toml").write_text(RUBRIC.format(unit="step", extra=""))
+    r = inputs.load_rubrics(tmp_path)["x"]
+    assert r.not_applicable is False and not judge.na_allowed(r)
+
+
+@pytest.mark.parametrize("unit,extra", [("arm", "not_applicable = true"), ("step", 'not_applicable = "yes"')])
+def test_the_not_applicable_key_is_refused_on_arm_units_and_when_not_a_boolean(tmp_path, unit, extra):
+    (tmp_path / "x.toml").write_text(RUBRIC.format(unit=unit, extra=extra))
+    with pytest.raises(inputs.InputError):
+        inputs.load_rubrics(tmp_path)
 
 
 def test_the_prompt_mentions_not_applicable_only_when_it_is_allowed():
@@ -108,6 +139,7 @@ STEP_FILES = ("diff.patch", "transcript.md", "questions.md", "gates.md", "others
 
 
 def anon_fixture(pass_="p", arms=("alpha", "beta"), steps=("01", "03")):
+    """The layout anonymise writes (stale-list.toml beside each step that has a stale list)."""
     out = paths.scoring_out(pass_)
     labels = {a: f"Arm {chr(65 + i)}" for i, a in enumerate(sorted(arms))}
     for arm, lab in labels.items():
@@ -117,6 +149,8 @@ def anon_fixture(pass_="p", arms=("alpha", "beta"), steps=("01", "03")):
             (d / "repo" / "README.md").write_text("readme " * 100)
             for f in STEP_FILES:
                 (d / f).write_text(f"{f} of {lab}\n")
+            if nn != "01":
+                (d / "stale-list.toml").write_text(f"stale list {nn}\n")
         (out / "anon" / lab / "setup").mkdir(parents=True)
         (out / "anon" / lab / "setup" / "checklist.json").write_text("{}")
     (out / "anon-key.json").write_text(json.dumps({lab: arm for arm, lab in labels.items()}))
@@ -158,11 +192,12 @@ def test_question_value_also_reads_the_other_arms_questions(tmp_state):
     assert "others-questions.md" not in judge.inputs_for("p", "research_first", "alpha", "01")[1]
 
 
-def test_the_stale_list_is_copied_into_the_items_inputs(tmp_state):
+def test_inputs_for_selects_the_anonymised_stale_list_and_writes_nothing(tmp_state):
     out, lab = anon_fixture()
+    before = sorted((p, p.stat().st_mtime_ns) for p in out.rglob("*"))
     d, files = judge.inputs_for("p", "stale_updated", "alpha", "03")
-    assert "stale-list.toml" in files
-    assert (d / "stale-list.toml").read_text() == (paths.SCORING_INPUTS / "stale" / "step-03.toml").read_text()
+    assert files == ["diff.patch", "repo/", "stale-list.toml"]
+    assert sorted((p, p.stat().st_mtime_ns) for p in out.rglob("*")) == before
 
 
 def test_arm_unit_parts_read_the_anonymised_setup_record(tmp_state):
@@ -182,15 +217,20 @@ def test_run_writes_each_verdict_under_the_real_arm_and_never_names_it_to_the_ju
     assert judge.out_path("p", "fit", "beta", "arm", "claude-code-user").exists()
     assert not any("alpha" in p or "beta" in p for p in j.prompts)
     assert [i.name for i in j.inputs] == ["01", "setup"]
+    assert j.files == [["repo/"], ["checklist.json"]]
 
 
 # ---- R24(d): missing inputs are not asked --------------------------------------------------------------------------
 
-def test_an_item_whose_input_is_named_in_missing_md_is_recorded_input_missing_without_asking(tmp_state, monkeypatch):
+def missing_json(d, *entries):
+    (d / "MISSING.json").write_text(json.dumps([{"files": f, "why": w} for f, w in entries]))
+
+
+def test_an_item_whose_input_is_named_in_missing_json_is_recorded_input_missing_without_asking(tmp_state, monkeypatch):
     out, lab = anon_fixture()
     d = out / "anon" / lab["alpha"] / "01"
     (d / "transcript.md").unlink()
-    (d / "MISSING.md").write_text("# Missing\n\n- transcript.md: no arm turn streams\n")
+    missing_json(d, (["transcript.md"], "no arm turn streams"))
     monkeypatch.setattr(judge, "items", lambda pass_: [("gates", "alpha", "01", "auditor"),
                                                        ("req_test_code", "alpha", "01", "auditor")])
     j = judge.FakeJudge([OK])
@@ -201,7 +241,16 @@ def test_an_item_whose_input_is_named_in_missing_md_is_recorded_input_missing_wi
     assert len(j.prompts) == 1                                          # only req_test_code (repo/ present) asked
 
 
-def test_an_absent_required_file_without_missing_md_is_also_input_missing(tmp_state, monkeypatch):
+def test_missing_json_is_authoritative_even_for_a_file_on_disk(tmp_state, monkeypatch):
+    out, lab = anon_fixture()
+    missing_json(out / "anon" / lab["alpha"] / "01", (["repo/", "diff.patch"], "export failed"))
+    monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "x")])
+    judge.run("p", judge.FakeJudge([]))
+    v = json.loads(judge.out_path("p", "req_test_code", "alpha", "01", "x").read_text())
+    assert v["status"] == "input_missing" and v["notes"] == "repo/: export failed"
+
+
+def test_an_absent_required_file_without_missing_json_is_also_input_missing(tmp_state, monkeypatch):
     out, lab = anon_fixture()
     (out / "anon" / lab["alpha"] / "01" / "diff.patch").unlink()
     monkeypatch.setattr(judge, "items", lambda pass_: [("change_reason", "alpha", "01", "x")])
@@ -227,6 +276,53 @@ def test_aggregate_scores_an_input_missing_step_as_unmeasured_with_why_input_mis
                                                    "notes": "transcript.md: absent"}))
     got = aggregate._judged("p", "gates", "alpha", "01", {})
     assert got["score"] is None and got["why"] == "input missing" and got["lenses"] == {}
+
+
+# ---- resume: input_missing is re-checked, judge_failed only with retry_failed -----------------------------------
+
+def _write_status(status, *key):
+    f = judge.out_path("p", *key); f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps({"score": None, "status": status, "evidence": [], "notes": "", "raw": ""}))
+
+
+def test_an_input_missing_verdict_is_asked_again_once_the_inputs_are_present(tmp_state, monkeypatch):
+    anon_fixture()
+    key = ("req_test_code", "alpha", "01", "a")
+    monkeypatch.setattr(judge, "items", lambda pass_: [key])
+    _write_status("input_missing", *key)
+    assert judge.run("p", judge.FakeJudge([OK])) == {"asked": 1, "skipped": 0, "input_missing": 0}
+    assert json.loads(judge.out_path("p", *key).read_text())["status"] == "ok"
+
+
+def test_an_input_missing_verdict_stays_when_the_inputs_are_still_missing(tmp_state, monkeypatch):
+    out, lab = anon_fixture()
+    (out / "anon" / lab["alpha"] / "01" / "gates.md").unlink()
+    key = ("gates", "alpha", "01", "a")
+    monkeypatch.setattr(judge, "items", lambda pass_: [key])
+    _write_status("input_missing", *key)
+    assert judge.run("p", judge.FakeJudge([])) == {"asked": 0, "skipped": 0, "input_missing": 1}
+    assert json.loads(judge.out_path("p", *key).read_text())["status"] == "input_missing"
+
+
+def test_a_judge_failed_verdict_is_final_unless_retry_failed_is_asked_for(tmp_state, monkeypatch):
+    anon_fixture()
+    key = ("req_test_code", "alpha", "01", "a")
+    monkeypatch.setattr(judge, "items", lambda pass_: [key])
+    _write_status("judge_failed", *key)
+    assert judge.run("p", judge.FakeJudge([])) == {"asked": 0, "skipped": 1, "input_missing": 0}
+    assert judge.estimate("p")["calls"] == 0 and judge.estimate("p", retry_failed=True)["calls"] == 1
+    assert judge.run("p", judge.FakeJudge([OK]), retry_failed=True)["asked"] == 1
+    assert json.loads(judge.out_path("p", *key).read_text())["status"] == "ok"
+
+
+def test_estimate_counts_input_missing_items_that_are_now_answerable(tmp_state, monkeypatch):
+    out, lab = anon_fixture()
+    (out / "anon" / lab["alpha"] / "01" / "gates.md").unlink()
+    monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a"),
+                                                       ("gates", "alpha", "01", "a")])
+    _write_status("input_missing", "req_test_code", "alpha", "01", "a")   # answerable now
+    _write_status("input_missing", "gates", "alpha", "01", "a")           # still missing
+    assert judge.estimate("p")["calls"] == 1
 
 
 # ---- estimate and the cost it implies ------------------------------------------------------------------------------
@@ -280,6 +376,8 @@ def fake_turns(monkeypatch, replies, model=None):
     seen, queue = [], list(replies)
 
     def run_turn(t, cred, out_dir, timeout_s):
+        projects = t.config_dir / "projects"
+        object.__setattr__(t, "preexisting", sorted(str(f) for f in projects.rglob("*")) if projects.exists() else [])
         seen.append(t)
         outcome, text = queue.pop(0)
         (out_dir / "turns").mkdir(parents=True, exist_ok=True)
@@ -308,23 +406,54 @@ def item(tmp_state):
     return out / "anon" / lab["alpha"] / "03"
 
 
-def test_the_container_judge_mounts_only_its_home_and_the_items_inputs_read_only(item, monkeypatch):
+FILES = ["diff.patch", "repo/"]
+
+
+def test_the_container_judge_runs_with_only_a_fresh_home_its_selected_inputs_and_the_message(item, monkeypatch):
     seen = fake_turns(monkeypatch, [("ok", OK)])
-    assert judge.ContainerJudge("p", credentials.dummy()).ask("judge this", item) == OK
+    assert judge.ContainerJudge("p", credentials.dummy()).ask("judge this", item, FILES) == OK
     t = seen[0]
-    m = {x.ctr: x for x in t.mounts}
-    assert set(m) == {"/home/actor", "/judge"}
-    assert m["/judge"].host == item and m["/judge"].ro is True
-    assert m["/home/actor"].host == paths.judge_home("p") and m["/home/actor"].ro is False
+    spec = session._spec(t)                                     # the container's final mount set
+    m = {x.ctr: x for x in spec.mounts}
+    assert set(m) == {"/home/actor", "/judge/diff.patch", "/judge/repo", "/inbox/msg.md"}
+    assert m["/judge/diff.patch"].host == item / "diff.patch" and m["/judge/repo"].host == item / "repo"
+    assert all(m[c].ro for c in ("/judge/diff.patch", "/judge/repo", "/inbox/msg.md"))
+    assert m["/inbox/msg.md"].host.parent == paths.judge_inbox("p")
+    assert m["/home/actor"].ro is False and m["/home/actor"].host.parent == paths.judge_home("p")
     assert t.role == "judge" and t.workdir == "/judge" and t.message == "judge this" and t.dry is False
     assert t.image == config.load_pins().images["base"] and t.step == 3
-    assert t.inbox_dir == paths.judge_inbox("p") and t.config_dir == paths.judge_home("p") / ".claude"
+    assert t.config_dir == m["/home/actor"].host / ".claude"
     assert FakeStage.made[0][3] == config.load_pins().egress_po
+
+
+def test_a_research_first_judge_cannot_see_the_other_arms_questions(item, monkeypatch):
+    seen = fake_turns(monkeypatch, [("ok", OK)])
+    monkeypatch.setattr(judge, "items", lambda pass_: [("research_first", "alpha", "03", "investigator")])
+    judge.run("p", judge.ContainerJudge("p", credentials.dummy()))
+    ctrs = {x.ctr for x in seen[0].mounts}
+    assert ctrs == {"/home/actor", "/judge/questions.md", "/judge/transcript.md"}
+
+
+def test_each_call_gets_a_fresh_home_holding_no_earlier_calls_transcripts_and_it_is_removed(item, monkeypatch):
+    seen = fake_turns(monkeypatch, [("ok", OK), ("ok", OK)])
+    j = judge.ContainerJudge("p", credentials.dummy())
+    j.ask("lens one", item, FILES)
+    j.ask("lens two", item, FILES)
+    assert seen[0].config_dir != seen[1].config_dir
+    assert seen[1].preexisting == []                      # nothing of call 1 was in call 2's home
+    assert not seen[0].config_dir.parent.exists() and not seen[1].config_dir.parent.exists()
+    assert list((j.last_dir / "transcripts").rglob("*.jsonl.gz"))   # collected before the home went
+
+
+def test_the_container_judge_refuses_an_empty_input_list(item, monkeypatch):
+    fake_turns(monkeypatch, [("ok", OK)])
+    with pytest.raises(ValueError):
+        judge.ContainerJudge("p", credentials.dummy()).ask("judge this", item, [])
 
 
 def test_the_container_judge_runs_isolated_with_read_only_tools_in_safe_mode(item, monkeypatch):
     seen = fake_turns(monkeypatch, [("ok", OK)])
-    judge.ContainerJudge("p", credentials.dummy()).ask("judge this", item)
+    judge.ContainerJudge("p", credentials.dummy()).ask("judge this", item, FILES)
     env = seen[0].env
     assert env["BK_ISOLATED"] == "1" and env["BK_TOOLS"] == "Read,Glob,Grep" and env["CLAUDE_CODE_SAFE_MODE"] == "1"
     assert env["BK_MODEL"] == config.load_pins().model == "claude-opus-5-5"
@@ -334,7 +463,7 @@ def test_the_container_judge_runs_isolated_with_read_only_tools_in_safe_mode(ite
 def test_the_container_judge_keeps_transcripts_and_a_clean_pin_report_per_call(item, monkeypatch):
     fake_turns(monkeypatch, [("ok", OK)])
     j = judge.ContainerJudge("p", credentials.dummy())
-    j.ask("judge this", item)
+    j.ask("judge this", item, FILES)
     pin = json.loads((j.last_dir / "model-pin.json").read_text())
     assert pin["ok"] is True and list((j.last_dir / "transcripts").rglob("*.jsonl.gz"))
     assert j.last_dir.is_relative_to(paths.scoring_out("p") / "judge-calls" / "Arm A" / "03")
@@ -343,12 +472,12 @@ def test_the_container_judge_keeps_transcripts_and_a_clean_pin_report_per_call(i
 def test_a_reply_from_the_wrong_model_raises_and_is_never_returned(item, monkeypatch):
     fake_turns(monkeypatch, [("ok", OK)], model="claude-sonnet-4-5")
     with pytest.raises(judge.PinViolation):
-        judge.ContainerJudge("p", credentials.dummy()).ask("judge this", item)
+        judge.ContainerJudge("p", credentials.dummy()).ask("judge this", item, FILES)
 
 
 def test_a_transient_failure_is_retried_with_backoff(item, monkeypatch):
     seen = fake_turns(monkeypatch, [("no_result", ""), ("ok", OK)])
-    assert judge.ContainerJudge("p", credentials.dummy()).ask("judge this", item) == OK
+    assert judge.ContainerJudge("p", credentials.dummy()).ask("judge this", item, FILES) == OK
     assert len(seen) == 2
 
 
@@ -356,14 +485,20 @@ def test_a_transient_failure_is_retried_with_backoff(item, monkeypatch):
 def test_auth_failures_and_timeouts_raise_at_once(item, monkeypatch, outcome):
     seen = fake_turns(monkeypatch, [(outcome, ""), ("ok", OK)])
     with pytest.raises(judge.SessionError):
-        judge.ContainerJudge("p", credentials.dummy()).ask("judge this", item)
+        judge.ContainerJudge("p", credentials.dummy()).ask("judge this", item, FILES)
     assert len(seen) == 1
+
+
+def _home():
+    return Mount(paths.judge_home("p") / "call-1", "/home/actor", False)
 
 
 @pytest.mark.parametrize("host", [
     lambda: paths.scoring_out("p") / "anon-key.json",
     lambda: paths.scoring_out("p"),                                  # would expose anon-key.json
     lambda: paths.scoring_out("p") / "anon",                         # every label at once
+    lambda: paths.scoring_out("p") / "anon" / "Arm A",               # every step of one label
+    lambda: paths.scoring_out("p") / "anon" / "Arm A" / "03",        # the whole item, not its selected inputs
     lambda: paths.scoring_out("p") / "collected",                    # results/ outside anon/
     lambda: paths.RESULTS / "p" / "alpha" / "01",
     lambda: REPO / "tests",
@@ -371,19 +506,32 @@ def test_auth_failures_and_timeouts_raise_at_once(item, monkeypatch, outcome):
     lambda: REPO,                                                    # contains all of the above
     lambda: paths.STATE / "p" / "alpha" / "work",
     lambda: paths.STATE / "p",
+    lambda: paths.judge_home("p"),                                   # every call's home, not one fresh one
 ])
-def test_the_judge_mount_check_refuses_anything_but_its_home_and_one_items_inputs(tmp_state, host):
+def test_the_judge_mount_check_refuses_anything_but_one_fresh_home_and_one_items_selected_inputs(tmp_state, host):
     with pytest.raises(PermissionError):
-        judge.check_mounts([Mount(paths.judge_home("p"), "/home/actor", False), Mount(host(), "/judge", True)], "p")
+        judge.check_mounts([_home(), Mount(host(), "/judge/x", True)], "p")
+
+
+def test_the_judge_mount_check_refuses_inputs_from_two_items(item):
+    other = item.parent.parent / "Arm B" / "03"
+    with pytest.raises(PermissionError):
+        judge.check_mounts([_home(), Mount(item / "diff.patch", "/judge/diff.patch", True),
+                            Mount(other / "repo", "/judge/repo", True)], "p")
 
 
 def test_the_judge_mount_check_refuses_writable_inputs(item):
     with pytest.raises(PermissionError):
-        judge.check_mounts([Mount(item, "/judge", False)], "p")
+        judge.check_mounts([Mount(item / "repo", "/judge/repo", False)], "p")
 
 
-def test_the_judge_mount_check_accepts_its_home_and_one_items_inputs(item):
-    judge.check_mounts(judge.mounts("p", item), "p")
+def test_the_judge_mount_check_refuses_inputs_outside_slash_judge(item):
+    with pytest.raises(PermissionError):
+        judge.check_mounts([Mount(item / "repo", "/work", True)], "p")
+
+
+def test_the_judge_mount_check_accepts_a_fresh_home_and_one_items_selected_inputs(item):
+    judge.check_mounts(judge.mounts(paths.judge_home("p") / "call-1", item, FILES), "p")
 
 
 def test_judge_is_a_known_session_role():
@@ -399,6 +547,43 @@ def test_the_judge_stage_refuses_without_the_owners_approval_and_asks_nothing(tm
     assert cli.main(["score", "p", "--stage", "judge"]) == 1
     assert "judge-approved" in capsys.readouterr().out
     assert not (paths.scoring_out("p") / "judged").exists()
+
+
+@pytest.mark.parametrize("line", ["approved", "approved 2026-10-06", "approved yesterday 2", "ok 2026-10-06 2",
+                                  "approved 2026-10-06 two"])
+def test_the_judge_stage_refuses_a_malformed_approval(tmp_state, monkeypatch, capsys, line):
+    from runner import cli
+    anon_fixture()
+    (paths.scoring_out("p") / "judge-approved").write_text(line + "\n")
+    monkeypatch.setattr(judge, "ContainerJudge", lambda *a, **k: pytest.fail("no judge on a malformed approval"))
+    assert cli.main(["score", "p", "--stage", "judge"]) == 1
+    assert "approved <date> <calls>" in capsys.readouterr().out
+
+
+def test_the_judge_stage_refuses_when_the_estimate_has_grown_past_the_approval(tmp_state, monkeypatch, capsys):
+    from runner import cli
+    anon_fixture()
+    (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 1\n")
+    monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a"),
+                                                       ("req_test_code", "alpha", "01", "b")])
+    monkeypatch.setattr(judge, "ContainerJudge", lambda *a, **k: pytest.fail("no judge past the approval"))
+    assert cli.main(["score", "p", "--stage", "judge"]) == 1
+    out = capsys.readouterr().out
+    assert "2 calls" in out and "approved 1" in out
+
+
+def test_retry_failed_counts_failed_items_against_the_approval_and_asks_them(tmp_state, monkeypatch, capsys):
+    from runner import cli
+    anon_fixture()
+    key = ("req_test_code", "alpha", "01", "a")
+    monkeypatch.setattr(judge, "items", lambda pass_: [key])
+    _write_status("judge_failed", *key)
+    (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 1\n")
+    monkeypatch.setattr(judge, "ContainerJudge", lambda pass_: judge.FakeJudge([OK]))
+    assert cli.main(["score", "p", "--stage", "judge"]) == 0
+    assert '"asked": 0' in capsys.readouterr().out
+    assert cli.main(["score", "p", "--stage", "judge", "--retry-failed"]) == 0
+    assert '"asked": 1' in capsys.readouterr().out
 
 
 def test_the_judge_stage_runs_once_approved(tmp_state, monkeypatch, capsys):

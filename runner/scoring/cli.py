@@ -32,17 +32,16 @@ def _report(ns) -> None:
 
 def _judge_estimate(ns) -> None:
     """Calls, input size and the implied cost (at the PO's mean cost per call). Needs no approval."""
-    e = judge.estimate(ns.pass_)
+    e = judge.estimate(ns.pass_, retry_failed=ns.retry_failed)
     print(json.dumps(e | judge.implied_cost(ns.pass_, e["calls"]), indent=2, sort_keys=True))
 
 
 def _judge(ns) -> None:
-    """Spends model quota: refuses unless the owner has read the estimate and written `judge-approved`."""
-    f = paths.scoring_out(ns.pass_) / "judge-approved"
-    if not f.exists():
-        raise inputs.InputError(f"{f} is missing: run `runner score {ns.pass_} --stage judge-estimate`, read it, "
-                                f"then create it with one line: approved <date> <estimate calls>")
-    print(json.dumps(judge.run(ns.pass_, judge.ContainerJudge(ns.pass_)), indent=2, sort_keys=True))
+    """Spends model quota: refuses unless `judge-approved` covers the current estimate (`judge.check_approval`)."""
+    retry = ns.retry_failed
+    judge.check_approval(ns.pass_, judge.estimate(ns.pass_, retry_failed=retry)["calls"])
+    print(json.dumps(judge.run(ns.pass_, judge.ContainerJudge(ns.pass_), retry_failed=retry), indent=2,
+                     sort_keys=True))
 
 
 STAGES = {
