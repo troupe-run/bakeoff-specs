@@ -288,3 +288,20 @@ def test_the_appendix_says_why_a_present_remeasure_was_ignored(p):
     aggregate.run(p)
     line = next(ln for ln in _section(report.render(p), "## Appendix: alpha").splitlines() if "quality:" in ln)
     assert "mutation — (crashed) via mutmut" in line and "re-measure ignored: stale: remeasure sha a" in line
+
+
+def test_a_partial_total_carries_a_dagger_on_the_scorecard_and_the_ranked_line(p):
+    # alpha's mutation crashed and nothing else in code_quality is measured for it -> code_quality unmeasured for alpha
+    # but measured for control: alpha's total is renormalised over a different set (R34).
+    write_collected(p, "alpha", 1, quality={"mypy_errors": None, "ruff_findings": None, "mutation_score": None,
+                                            "mutation_state": "crashed"})
+    s = json.loads(aggregate.run(p).read_text())
+    assert s["arms"]["alpha"]["total_partial"] and not s["arms"]["control"]["total_partial"]
+    md = report.render(p)
+    card = _section(md, "## Scorecard")
+    assert next(l for l in card.splitlines() if l.startswith("| alpha ")).endswith(f"| {s['arms']['alpha']['total']:.1f}† |")
+    assert next(l for l in card.splitlines() if l.startswith("| control ")).endswith(
+        f"| {s['arms']['control']['total']:.1f} |")
+    bottom = _section(md, "## Bottom line")
+    assert f"alpha {s['arms']['alpha']['total']:.1f}†" in bottom
+    assert f"control {s['arms']['control']['total']:.1f}†" not in bottom

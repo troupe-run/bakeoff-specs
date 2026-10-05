@@ -18,14 +18,22 @@ def _part(part: dict, mode: str) -> float | None:
     return sum(xs) / len(xs) if xs else None
 
 
-def total(arm: dict, dims_w: dict, parts_w: dict, mode: str) -> float:
-    t = 0.0
+def total(arm: dict, dims_w: dict, parts_w: dict, mode: str) -> float | None:
+    """Ruling R34: 100 x the weighted mean of the measured dimensions' fractions, i.e. renormalised over the weight of
+    the dimensions that were measured. An unmeasured dimension is never a 0. None when no measured dimension carries
+    weight (nothing to total)."""
+    num = den = 0.0
     for dim, d in arm["dimensions"].items():
         shares = parts_w.get(dim) or {p: 1.0 for p in d["parts"]}
         measured = {p: s for p, s in ((p, _part(v, mode)) for p, v in d["parts"].items()) if s is not None}
         if measured:
-            t += dims_w[dim] * sum(shares[p] * s for p, s in measured.items()) / sum(shares[p] for p in measured)
-    return t
+            num += dims_w[dim] * sum(shares[p] * s for p, s in measured.items()) / sum(shares[p] for p in measured)
+            den += dims_w[dim]
+    return 100 * num / den if den > 0 else None
+
+
+def _key(t: float | None) -> float:
+    return float("-inf") if t is None else t
 
 
 def weight_variants(dims_w: dict) -> list[tuple[str, dict]]:
@@ -70,7 +78,7 @@ def check(scores: dict) -> dict:
     with its order. Groups join both arms of every changed pair and every arm ranked between them."""
     dims_w, parts_w, arms = scores["weights"]["dimensions"], scores["weights"]["parts"], scores["arms"]
     base = {a: total(v, dims_w, parts_w, "median") for a, v in arms.items()}
-    ranking = sorted(arms, key=lambda a: (-base[a], a))
+    ranking = sorted(arms, key=lambda a: (-_key(base[a]), a))
     intervals = {a: [base[a], base[a]] for a in arms}
     changes = []
     reach = list(range(len(ranking)))  # reach[i]: lowest-ranked index that i swapped with (itself if none)
@@ -78,14 +86,18 @@ def check(scores: dict) -> dict:
         for mode in ("median", "low", "high"):
             t = {a: total(v, w, parts_w, mode) for a, v in arms.items()}
             for a in arms:
-                intervals[a] = [min(intervals[a][0], t[a]), max(intervals[a][1], t[a])]
+                if t[a] is not None:
+                    lo, hi = intervals[a]
+                    intervals[a] = [t[a] if lo is None else min(lo, t[a]), t[a] if hi is None else max(hi, t[a])]
+            # a total that cannot be computed (None) is never an overtaking or overtaken arm
             changed = [(i, j) for i in range(len(ranking)) for j in range(i + 1, len(ranking))
-                       if t[ranking[i]] - t[ranking[j]] < -CHECK_TOL]
+                       if t[ranking[i]] is not None and t[ranking[j]] is not None
+                       and t[ranking[i]] - t[ranking[j]] < -CHECK_TOL]
             for i, j in changed:
                 reach[i] = max(reach[i], j)
             if changed:
                 changes.append({"variant": f"{name}, judges {mode}",
-                                "order": sorted(arms, key=lambda a: (-t[a], a))})
+                                "order": sorted(arms, key=lambda a: (-_key(t[a]), a))})
     groups: list[list[str]] = []
     end = -1
     for k, a in enumerate(ranking):

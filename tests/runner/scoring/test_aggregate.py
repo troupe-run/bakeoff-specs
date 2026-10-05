@@ -76,12 +76,43 @@ def test_unreviewed_all_fail_test_stops_aggregation(p, monkeypatch):
         aggregate.run(p)
 
 
-def test_total_is_the_sum_of_scored_dimensions_and_a_rerun_is_byte_identical(p):
-    a = aggregate.run(p).read_bytes()
-    b = aggregate.run(p).read_bytes()
-    arm = json.loads(a)["arms"]["alpha"]
-    assert a == b and arm["total"] == pytest.approx(
-        sum(d["score"] for d in arm["dimensions"].values() if d["score"] is not None))
+def test_a_rerun_is_byte_identical(p):
+    assert aggregate.run(p).read_bytes() == aggregate.run(p).read_bytes()
+
+
+def _two_dimension_weights(monkeypatch):
+    w = inputs.load_weights()
+    monkeypatch.setattr(aggregate.inputs, "load_weights", lambda: inputs.Weights(
+        {"correctness": 50.0, "code_quality": 50.0}, {"code_quality": {"mutation": 50.0}}, w.scales, w.report))
+
+
+def test_total_is_renormalised_over_measured_dimension_weight_and_a_different_measured_set_is_flagged(
+        tmp_state, monkeypatch):
+    # R34 probe: x scores 45/50 on a (correctness), b (mutation) unmeasured; y scores 30/50 on both.
+    # Renormalised: x = 100 * 45 / 50 = 90, y = 100 * 60 / 100 = 60. The plain sum would rank y (60) over x (45).
+    (paths.RESULTS / "q").mkdir(parents=True)
+    monkeypatch.setattr(aggregate.evidence, "all_fail", lambda d, arms: {})
+    _two_dimension_weights(monkeypatch)
+    write_collected("q", "x", 1, hidden={"passed": 9, "total": 10, "excluded": [], "per_test": {}},
+                    quality={"mypy_errors": 0, "ruff_findings": 0, "mutation_score": None, "mutation_state": "crashed"})
+    write_collected("q", "y", 1, hidden={"passed": 6, "total": 10, "excluded": [], "per_test": {}},
+                    quality={"mypy_errors": 0, "ruff_findings": 0, "mutation_score": 0.6, "mutation_state": "measured"})
+    s = _scores("q")
+    assert s["arms"]["x"]["total"] == pytest.approx(90.0) and s["arms"]["y"]["total"] == pytest.approx(60.0)
+    assert s["arms"]["x"]["total_partial"] is True and s["arms"]["y"]["total_partial"] is False
+    assert any(f.startswith("x: total renormalised") and "code_quality" in f for f in s["flags"])
+    assert not any(f.startswith("y: total renormalised") for f in s["flags"])
+
+
+def test_an_arm_with_no_measured_dimension_has_no_total_not_a_zero(tmp_state, monkeypatch):
+    (paths.RESULTS / "q").mkdir(parents=True)
+    monkeypatch.setattr(aggregate.evidence, "all_fail", lambda d, arms: {})
+    _two_dimension_weights(monkeypatch)
+    write_collected("q", "x", 1, hidden=values.missing("x", "gone"),
+                    quality={"mypy_errors": 0, "ruff_findings": 0, "mutation_score": None, "mutation_state": "crashed"})
+    write_collected("q", "y", 1)
+    s = _scores("q")
+    assert s["arms"]["x"]["total"] is None and s["arms"]["x"]["total_partial"] is True
 
 
 def test_not_applicable_lenses_are_left_out_of_the_median_and_all_na_is_not_a_zero(p):

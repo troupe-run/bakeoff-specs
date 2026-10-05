@@ -2,8 +2,9 @@
 
 The page embeds its data once (`<script type="application/json" id="data">`) and draws everything from it in
 vanilla JS: no external scripts, styles or fonts. Weight sliders recompute totals with the same formula as
-`confidence.total(..., "median")`: each dimension's fraction (score / max) times its weight, weights renormalised to
-100, an unmeasured dimension (score None) skipped and flagged, never counted as 0."""
+`confidence.total(..., "median")` (R34): 100 x the sum of each measured dimension's fraction (score / max) times its
+weight, over the sum of the measured dimensions' weights; an unmeasured dimension (score None) is skipped, never
+counted as 0, and an arm whose measured set differs from the field's carries † on its total."""
 from __future__ import annotations
 import html
 import json
@@ -80,36 +81,40 @@ function mins(s) { return s === null || s === undefined ? DASH : (s / 60).toFixe
 function usd(x) { return x === null || x === undefined ? DASH : '$' + Number(x).toFixed(2); }
 function fraction(dim) { return dim.score === null ? null : dim.score / dim.max; }
 function totals(weights) {
-  const sum = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
+  // R34: renormalised over the weight of the measured dimensions; an unmeasured one is skipped, never a 0.
   const out = {};
   for (const [arm, v] of Object.entries(data.scores.arms)) {
-    let t = 0;
+    let num = 0, den = 0;
     for (const [d, dim] of Object.entries(v.dimensions)) {
-      const f = fraction(dim); if (f !== null) t += (weights[d] / sum) * 100 * f;
+      const f = fraction(dim); if (f !== null) { num += weights[d] * f; den += weights[d]; }
     }
-    out[arm] = t;
+    out[arm] = den > 0 ? 100 * num / den : null;
   }
   return out;
 }
+function partial(arm) { return !!data.scores.arms[arm].total_partial; }
+const PARTIAL = 'total renormalised over its measured dimensions: not like-for-like with the field';
 function unmeasured(arm) {
   return Object.entries(data.scores.arms[arm].dimensions).filter(([d, x]) => x.score === null || x.unmeasured_parts.length).map(([d]) => d);
 }
-function order(t) { return Object.keys(t).sort((a, b) => (t[b] - t[a]) || (a < b ? -1 : 1)); }
+function key(x) { return x === null ? -Infinity : x; }
+function order(t) { return Object.keys(t).sort((a, b) => (key(t[b]) - key(t[a])) || (a < b ? -1 : 1)); }
 const base = Object.assign({}, data.scores.weights.dimensions);
 let current = Object.assign({}, base);
 const baseTotals = totals(base), baseOrder = data.confidence.ranking;
 const TOL = 1e-9;
 function orderChanged(t) {
   for (let i = 0; i < baseOrder.length; i++) for (let j = i + 1; j < baseOrder.length; j++)
-    if (t[baseOrder[i]] - t[baseOrder[j]] < -TOL) return true;
+    if (t[baseOrder[i]] !== null && t[baseOrder[j]] !== null && t[baseOrder[i]] - t[baseOrder[j]] < -TOL) return true;
   return false;
 }
 function renderRanking() {
   const t = totals(current), arms = order(t);
   const changed = orderChanged(t);
-  let h = '<ol class="rank">' + arms.map(a => '<li><b>' + esc(a) + '</b> ' + t[a].toFixed(1) +
-    (Math.abs(t[a] - baseTotals[a]) > TOL ? ' <span class="muted">(base ' + baseTotals[a].toFixed(1) + ')</span>' : '') +
-    (unmeasured(a).length ? ' <span class="warn" title="unmeasured: ' + esc(unmeasured(a).join(', ')) + '">†</span>' : '') + '</li>').join('') + '</ol>';
+  let h = '<ol class="rank">' + arms.map(a => '<li><b>' + esc(a) + '</b> ' + num(t[a]) +
+    (partial(a) ? '<span class="warn" title="' + PARTIAL + '">†</span>' : '') +
+    (t[a] !== null && baseTotals[a] !== null && Math.abs(t[a] - baseTotals[a]) > TOL ? ' <span class="muted">(base ' + baseTotals[a].toFixed(1) + ')</span>' : '') +
+    (unmeasured(a).length ? ' <span class="muted" title="unmeasured: ' + esc(unmeasured(a).join(', ')) + '">(unmeasured: ' + esc(unmeasured(a).join(', ')) + ')</span>' : '') + '</li>').join('') + '</ol>';
   if (changed) h += '<div class="notice" role="status">Order changed: the ranking with these weights differs from the base order (' + baseOrder.map(esc).join(' > ') + ').</div>';
   document.getElementById('ranking').innerHTML = h;
 }
@@ -120,7 +125,7 @@ function renderGroups() {
     gs.map(g => g.map(esc).join(' · ')).join('; ') + '.' : 'The order is settled for every arm.') + ' ' +
     c.order_changes.length + ' weight/judge variant(s) change the order.</p>';
   h += '<div class="scroll"><table><tr><th>arm</th><th>reported</th><th>lowest</th><th>highest</th></tr>' +
-    c.ranking.map(a => '<tr><td>' + esc(a) + '</td><td>' + num(s.arms[a].total) + '</td><td>' + num(c.intervals[a][0]) + '</td><td>' + num(c.intervals[a][1]) + '</td></tr>').join('') + '</table></div>';
+    c.ranking.map(a => '<tr><td>' + esc(a) + '</td><td>' + num(s.arms[a].total) + (partial(a) ? '†' : '') + '</td><td>' + num(c.intervals[a][0]) + '</td><td>' + num(c.intervals[a][1]) + '</td></tr>').join('') + '</table></div>';
   if (c.order_changes.length) h += '<details><summary>Variants that change the order</summary><ul>' +
     c.order_changes.map(o => '<li>' + esc(o.variant) + ': ' + o.order.map(esc).join(' > ') + '</li>').join('') + '</ul></details>';
   document.getElementById('confidence').innerHTML = h;
@@ -146,7 +151,7 @@ function renderScorecard() {
   document.getElementById('scorecard').innerHTML = '<table><tr><th>arm</th>' + dims.map(d => '<th>' + esc(d) + ' /' + base[d] + '</th>').join('') + '<th>total /100</th></tr>' +
     names.map(a => '<tr><td>' + esc(a) + '</td>' + dims.map(d => { const x = arms[a].dimensions[d];
       return '<td>' + num(x.score) + (x.score === null || x.unmeasured_parts.length ? '<span class="warn">†</span>' : '') + '</td>'; }).join('') +
-      '<td><b>' + t[a].toFixed(1) + '</b></td></tr>').join('') + '</table>';
+      '<td><b>' + num(t[a]) + (partial(a) ? '†' : '') + '</b></td></tr>').join('') + '</table>';
 }
 function stepCells(st) {
   if (!st) return DASH;
@@ -190,7 +195,7 @@ HTML = """<!doctype html>
 <h1>Bake-off scorecard</h1><p class="muted">Pass __PASS__. Move the sliders to try other weights; totals and ranking update live.</p>
 <h2>Bottom line</h2><div class="card" id="ranking"></div><div class="card" id="confidence"></div>
 <h2>Weights</h2><div class="card"><div class="sliders" id="sliders"></div><p><button id="reset" type="button">Reset to base weights</button></p>
-<p class="muted">Weights are renormalised to 100. A dimension with no measurement is skipped (marked †), never counted as 0.</p></div>
+<p class="muted">Each total is renormalised over the weight of the dimensions that arm had measured: a dimension with no measurement is skipped, never counted as 0. † on a total: that arm's measured dimensions differ from the field's, so its total is not like-for-like.</p></div>
 <h2>Scorecard</h2><div class="card scroll" id="scorecard"></div>
 <h2>Dimensions</h2><div id="dimensions"></div>
 <section id="decisions-sec"><h2>Decision review</h2><div id="decisions"></div></section>

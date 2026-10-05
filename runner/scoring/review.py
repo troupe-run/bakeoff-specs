@@ -31,7 +31,8 @@ def _step_id(key: str) -> int | str:
 
 
 def _forced(scores: dict, arm: str, part: str, key: str, value: float) -> dict[str, float]:
-    """Every arm's total with the one step's score forced (median mode, base weights)."""
+    """Every arm's total with the one step's score forced (median mode, base weights), renormalised over measured
+    dimension weight exactly as aggregate's total (R34, via confidence.total)."""
     arms = copy.deepcopy(scores["arms"])
     for d in arms[arm]["dimensions"].values():
         if part in d["parts"] and key in d["parts"][part]["steps"]:
@@ -44,9 +45,11 @@ def _swings_top_two(top: list[str], t: dict[str, float]) -> bool:
     """The top-two order changes when the second is clearly ahead of the first, or any other arm is clearly ahead of
     either (CHECK_TOL, as in confidence.check)."""
     first, second = top
+    if t[first] is None or t[second] is None:
+        return False
     if t[first] - t[second] < -confidence.CHECK_TOL:
         return True
-    return any(t[c] - t[second] > confidence.CHECK_TOL for c in t if c not in top)
+    return any(t[c] is not None and t[c] - t[second] > confidence.CHECK_TOL for c in t if c not in top)
 
 
 def _sort_key(i: dict) -> tuple:

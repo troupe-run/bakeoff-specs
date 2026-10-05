@@ -55,10 +55,14 @@ def test_flag_text_is_html_escaped(p):
 
 
 def _page_totals(scores, weights):
-    """The page's formula, in Python: dimension fraction x weight, weights renormalised to 100, None skipped."""
-    s = sum(weights.values()) or 1
-    return {a: sum(weights[d] / s * 100 * (x["score"] / x["max"]) for d, x in v["dimensions"].items()
-                   if x["score"] is not None) for a, v in scores["arms"].items()}
+    """The page's formula, in Python (R34): dimension fraction x weight over the weight of the measured dimensions
+    only, x 100; an unmeasured dimension is skipped, never a 0. None when no measured dimension has weight."""
+    out = {}
+    for a, v in scores["arms"].items():
+        m = {d: x["score"] / x["max"] for d, x in v["dimensions"].items() if x["score"] is not None}
+        den = sum(weights[d] for d in m)
+        out[a] = 100 * sum(weights[d] * f for d, f in m.items()) / den if den > 0 else None
+    return out
 
 
 def test_page_formula_at_default_weights_equals_the_scored_totals(p):
@@ -223,3 +227,31 @@ def test_order_changed_notice_appears_when_a_slider_flips_the_order_and_reset_cl
     assert "Order changed" not in out["load"]["ranking"]
     assert out["steps"][0].index("<b>B</b>") < out["steps"][0].index("<b>A</b>") and "Order changed" in out["steps"][0]
     assert "Order changed" not in out["steps"][1] and out["steps"][1].index("<b>A</b>") < out["steps"][1].index("<b>B</b>")
+
+
+def _probe_data():
+    """R34 probe: X 45/50 on d1, d2 unmeasured; Y 30/50 on both. X 90 > Y 60; X's total is partial."""
+    def dim(score, mx):
+        return {"score": score, "max": mx, "unmeasured_parts": [] if score is not None else ["p"], "parts": {}}
+    arms = {"X": {"total": 90.0, "total_partial": True, "dimensions": {"d1": dim(45, 50), "d2": dim(None, 50)}},
+            "Y": {"total": 60.0, "total_partial": False, "dimensions": {"d1": dim(30, 50), "d2": dim(30, 50)}}}
+    return {"scores": {"baseline": "Y", "weights": {"dimensions": {"d1": 50, "d2": 50}, "parts": {}}, "arms": arms,
+                       "flags": []},
+            "confidence": {"ranking": ["X", "Y"], "intervals": {"X": [90, 90], "Y": [60, 60]},
+                           "groups": [["X"], ["Y"]], "order_changes": []},
+            "time_cost": {}, "decisions": None}
+
+
+@needs_node
+def test_page_totals_are_renormalised_and_a_partial_total_carries_a_dagger_on_ranking_and_scorecard(p):
+    aggregate.run(p)
+    out = _run_page(page.render(p), actions=[{"slide": ["d2", 10]}], data_text=json.dumps(_probe_data()))
+    ranking, card = out["load"]["ranking"], out["load"]["scorecard"]
+    assert "<b>X</b> 90.0" in ranking and "<b>Y</b> 60.0" in ranking
+    assert ranking.index("<b>X</b>") < ranking.index("<b>Y</b>")
+    x_line = ranking[ranking.index("<b>X</b>"):ranking.index("<b>Y</b>")]
+    assert "†" in x_line and "†" not in ranking[ranking.index("<b>Y</b>"):]
+    x_row = card[card.index("<td>X</td>"):card.index("<td>Y</td>")]
+    assert "<b>90.0†</b>" in x_row
+    # moving d2's weight (unmeasured for X) leaves X's renormalised total where it was
+    assert "<b>X</b> 90.0" in out["steps"][0]

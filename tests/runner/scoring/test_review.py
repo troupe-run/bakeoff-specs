@@ -400,3 +400,18 @@ def test_a_failed_replace_leaves_the_existing_verdicts_untouched(rv, monkeypatch
     with pytest.raises(OSError):
         review.import_sheet(pass_)
     assert v.read_text() == old
+
+
+def test_forced_totals_are_renormalised_so_an_arm_with_an_unmeasured_dimension_can_decide_the_top_two():
+    # R34: p measures only a (0.5 -> total 50); q 0.55 on both (55). Its highest lens (3 -> 0.75) lifts p to 75 over q;
+    # under the old plain sum p would be 25 -> 37.5 and never reach q. r measures nothing (no total) and is ignored.
+    from tests.runner.scoring.test_confidence import _unmeasured_b
+    p = _unmeasured_b(0.5)
+    p["dimensions"]["a"]["parts"]["a"]["steps"]["1"] = {"score": 0.5, "disputed": False,
+                                                        "lenses": {"x": 1, "y": 2, "z": 3}}
+    r = _unmeasured_b(0.0)
+    r["dimensions"]["a"]["score"] = None
+    r["dimensions"]["a"]["parts"]["a"] = {"score": None, "steps": {"1": {"score": None}}}
+    s = _scores({"p": p, "q": arm(0.55, 0.55), "r": r})
+    assert review._forced(s, "p", "a", "1", 0.75)["p"] == pytest.approx(75)
+    assert [(i["arm"], i["reason"]) for i in review.queue(s, "s", 0.0)] == [("p", "decides top two")]

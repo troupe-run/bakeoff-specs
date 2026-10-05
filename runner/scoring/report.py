@@ -70,12 +70,17 @@ def _steps_of(coll: dict) -> list[int]:
 
 # ---- bottom line -------------------------------------------------------------------------------------------
 
+def _total(arm: dict) -> str:
+    """An arm's total; † when its measured dimensions differ from the field's (R34: renormalised, not like-for-like)."""
+    return _num(arm["total"]) + ("†" if arm.get("total_partial") else "")
+
+
 def _ranked_lines(scores: dict, conf: dict) -> list[str]:
     out, rank = [], 1
     for g in conf["groups"]:
         span = f"{rank}–{rank + len(g) - 1}" if len(g) > 1 else f"{rank}"
         label = f"{span} (within noise)" if len(g) > 1 else span
-        out.append(f"{label}: " + " · ".join(f"{a} {scores['arms'][a]['total']:.1f}" for a in g))
+        out.append(f"{label}: " + " · ".join(f"{a} {_total(scores['arms'][a])}" for a in g))
         rank += len(g)
     return out
 
@@ -157,11 +162,13 @@ def _scorecard(scores: dict, factor: float) -> list[str]:
             dd = arms[a]["dimensions"][d]
             cells.append(_num(dd["score"]) + ("†" if dd["unmeasured_parts"] or dd["score"] is None else "")
                          + _mark(cols[d].get(a)))
-        rows.append([a] + cells + [f"{arms[a]['total']:.1f}"])
+        rows.append([a] + cells + [_total(arms[a])])
     head = ["arm"] + [f"{d} /{arms[next(iter(arms))]['dimensions'][d]['max']:g}" for d in dims] + ["total /100"]
     return ["## Scorecard", ""] + _table(head, rows) + [
         "† a part of this dimension is unmeasured (its weight went to the measured parts); — nothing measured; "
-        f"▲/▼ ≥{factor:g}× / ≤1/{factor:g}× the median of the arms. A total sums the dimensions that were scored.", ""]
+        f"▲/▼ ≥{factor:g}× / ≤1/{factor:g}× the median of the arms. A total is 100 × the measured dimensions' scores over "
+        "their weights (an unmeasured dimension is left out, never counted as 0); † on a total: that arm's measured "
+        "dimensions differ from the field's, so it is not like-for-like.", ""]
 
 
 # ---- dimensions --------------------------------------------------------------------------------------------
@@ -336,7 +343,7 @@ def _confidence(scores: dict, conf: dict) -> list[str]:
     out = ["## Confidence", "",
            "Each arm's total across every variant: weights ±5 per dimension, disputed judgements at each single "
            "lens's extreme, and both together (spec §10).", ""]
-    rows = [[a, f"{scores['arms'][a]['total']:.1f}", f"{conf['intervals'][a][0]:.1f}", f"{conf['intervals'][a][1]:.1f}"]
+    rows = [[a, _total(scores["arms"][a]), _num(conf["intervals"][a][0]), _num(conf["intervals"][a][1])]
             for a in conf["ranking"]]
     out += _table(["arm", "reported", "lowest", "highest"], rows)
     out += ["### Variants that change the order", ""]

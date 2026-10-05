@@ -75,6 +75,28 @@ def test_low_and_high_use_the_extreme_lens_of_disputed_items():
     assert confidence.total(a, W, PW, "high") == pytest.approx(100)
 
 
+def _unmeasured_b(fa):
+    return {"dimensions": {
+        "a": {"score": 50 * fa, "max": 50, "parts": {"a": {"score": fa, "steps": {"1": {"score": fa}}}}},
+        "b": {"score": None, "max": 50, "parts": {"b": {"score": None, "steps": {"1": {"score": None}}}}}}}
+
+
+def test_total_is_renormalised_over_the_measured_dimensions_in_every_mode_and_variant():
+    # R34 probe: x 45/50 on a, b unmeasured -> 90; y 30/50 on a and b -> 60.
+    x, y = _unmeasured_b(0.9), arm(0.6, 0.6)
+    for mode in ("median", "low", "high"):
+        assert confidence.total(x, W, PW, mode) == pytest.approx(90)
+        assert confidence.total(y, W, PW, mode) == pytest.approx(60)
+    # a weight variant renormalises over the measured weight too: a's fraction is the whole total
+    assert confidence.total(x, {"a": 45.0, "b": 55.0}, PW, "median") == pytest.approx(90)
+    out = confidence.check({"weights": {"dimensions": W, "parts": PW}, "arms": {"x": x, "y": y}})
+    assert out["ranking"] == ["x", "y"] and out["order_changes"] == []
+
+
+def test_total_is_none_when_no_measured_dimension_has_weight():
+    assert confidence.total(_unmeasured_b(0.9), {"a": 0.0, "b": 100.0}, PW, "median") is None
+
+
 def test_flip_between_ranks_1_and_3_groups_all_three():
     # A flip between ranks 1 and 3 groups all three arms
     # q = (0.0, 1.02): base = 0*50 + 1.02*50 = 51

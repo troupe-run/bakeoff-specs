@@ -144,6 +144,14 @@ def _dimension(dim: str, parts: dict, w: inputs.Weights) -> dict:
             "unmeasured_parts": sorted(p for p in parts if parts[p]["score"] is None)}
 
 
+def _total(dims: dict) -> float | None:
+    """Ruling R34: 100 x the sum of the measured dimensions' scores over the sum of their maxima, never counting an
+    unmeasured dimension as 0. Same rule as confidence.total (base weights, median), review._forced and the page."""
+    measured = [d for d in dims.values() if d["score"] is not None]
+    den = sum(d["max"] for d in measured)
+    return 100 * sum(d["score"] for d in measured) / den if den > 0 else None
+
+
 def _guard(pass_: str, arms: list[str], excluded: inputs.Exclusions) -> None:
     reviewed = excluded.reviewed
     pending = sorted({t for ts in evidence.all_fail(paths.RESULTS / pass_, arms).values() for t in ts} - reviewed)
@@ -179,8 +187,14 @@ def run(pass_: str, baseline: str = "control") -> Path:
             if dims[dim]["score"] is None:
                 flags.append(f"{arm}: {dim} unmeasured")
             flags += [f"{arm}: {dim}.{p} unmeasured" for p in dims[dim]["unmeasured_parts"]]
-        arms_out[arm] = {"total": sum(d["score"] for d in dims.values() if d["score"] is not None),
-                         "dimensions": dims}
+        arms_out[arm] = {"total": _total(dims), "dimensions": dims}
+    field_measured = sorted({d for v in arms_out.values() for d, x in v["dimensions"].items() if x["score"] is not None})
+    for arm, v in sorted(arms_out.items()):
+        gap = [d for d in field_measured if v["dimensions"][d]["score"] is None]
+        v["total_partial"] = bool(gap) or v["total"] is None
+        if gap:
+            flags.append(f"{arm}: total renormalised over its measured dimensions; unmeasured where other arms were "
+                         f"measured: {gap} (the total is not like-for-like with the field)")
     out = paths.scoring_out(pass_) / "scores.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(values.dump({"baseline": baseline, "weights": {"dimensions": w.dimensions, "parts": w.parts},
