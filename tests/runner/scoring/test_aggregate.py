@@ -13,7 +13,8 @@ def write_collected(pass_, arm, step, **fields):
            "quality": values.val({"mypy_errors": 0, "ruff_findings": 0, "mutation_score": 0.8,
                                   "mutation_state": "measured"}, "x"),
            "time": values.val({"seconds": 100.0, "attempt": 1, "turns": []}, "x"),
-           "cost": values.val({}, "x"), "questions": values.val([], "x"), "violations": values.val([], "x"),
+           "cost": values.val({}, "x"), "violations": values.val([], "x"),
+           "questions": values.val({"items": [], "skipped_lines": 0, "discovery": "absent"}, "x"),   # evidence's shape
            "churn": values.val({"lines": 0, "files": [], "total_lines": 0}, "x"),
            "phases": {"method": values.val([], "x"), "common": values.val({}, "x")}}
     for k, v in fields.items():

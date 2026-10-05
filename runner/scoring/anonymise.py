@@ -435,62 +435,64 @@ def run(pass_: str) -> Path:
     for d in (anon, tmp):
         shutil.rmtree(d, ignore_errors=True)
     key_path.unlink(missing_ok=True)                # no key until the whole run finished
-    pass_dir = paths.RESULTS / pass_
-    arms = collect.arms(pass_dir)
-    lab = labels(arms, pass_)
-    t = pass_terms(arms)
-    steps = {a: _step_dirs(pass_dir / a) for a in arms}
-    failures: list[str] = []
-    anon.mkdir(parents=True, exist_ok=True)
-    for arm in arms:
-        for nn in steps[arm]:
-            sd, dest, p = pass_dir / arm / nn, anon / lab[arm] / nn, Paths(pass_, arm)
-            miss: list[tuple[list[str], str]] = []
-            shas = _shas(sd)
-            if shas is None:
-                miss.append((["repo/", "diff.patch"], "git.json has no sha_before/sha_after for this step"))
-            else:
-                work = tmp / arm / nn
-                try:
-                    gitops.export_tree(p, shas[1], work)
-                    listed = copy_scrubbed(work, dest / "repo", t)
-                    _w(dest / "diff.patch", scrub(gitops.diff_text(p, *shas), t))
-                    _unscrubbed_note(dest, listed)
-                except (gitops.GitError, docker.ContainerError, OSError) as e:
-                    failures.append(f"{arm}/{nn}: {e}")
-                    shutil.rmtree(dest / "repo", ignore_errors=True)
-                    (dest / "diff.patch").unlink(missing_ok=True)
-                    (dest / "UNSCRUBBED.txt").unlink(missing_ok=True)
-                    miss.append((["repo/", "diff.patch"], f"export or diff failed: {e}"))
-                finally:
-                    shutil.rmtree(work, ignore_errors=True)
-            tr = transcript(sd, t)
-            if tr is None:
-                miss.append((["transcript.md"], "no arm turn streams"))
-            else:
-                _w(dest / "transcript.md", tr)
-            if _ran(sd):
-                _w(dest / "questions.md", scrub(questions_md(sd), t))
-                _w(dest / "gates.md", scrub(gates_md(sd), t))
-            else:
-                miss += [(["questions.md"], "no run.json: the scored run is not recorded"),
-                         (["gates.md"], "no run.json: the scored run is not recorded")]
-            stale = paths.SCORING_INPUTS / "stale" / f"step-{nn}.toml"
-            if stale.is_file():                     # R27: the step's stale list, for the stale_updated judges
-                _w(dest / "stale-list.toml", scrub(stale.read_text(encoding="utf-8"), t))
-            _missing(dest, miss, t)
-    for arm in arms:                                # R24: the setup records, for the setup_effort and fit judges
-        setup = pass_dir / arm / "00-setup"
-        if setup.is_dir():
-            _unscrubbed_note(anon / lab[arm] / "setup", copy_scrubbed(setup, anon / lab[arm] / "setup", t))
-    for arm in arms:                                # R6: the OTHER arms' questions at the same step
-        for nn in steps[arm]:
-            parts = [f"## {lab[o]}\n\n" + (scrub(questions_md(pass_dir / o / nn), t) if _ran(pass_dir / o / nn)
-                                           else "(no scored run recorded for this arm at this step)\n")
-                     for o in sorted((o for o in arms if o != arm and nn in steps[o]), key=lab.get)]
-            _w(anon / lab[arm] / nn / "others-questions.md", "\n".join(parts) if parts else "(no other arm has this step)\n")
-    shutil.rmtree(tmp, ignore_errors=True)
-    for f in failures:
-        print(f"anonymise: {f}", file=sys.stderr)
-    key_path.write_text(values.dump({lab[a]: a for a in arms}), encoding="utf-8")   # last
+    try:
+        pass_dir = paths.RESULTS / pass_
+        arms = collect.arms(pass_dir)
+        lab = labels(arms, pass_)
+        t = pass_terms(arms)
+        steps = {a: _step_dirs(pass_dir / a) for a in arms}
+        failures: list[str] = []
+        anon.mkdir(parents=True, exist_ok=True)
+        for arm in arms:
+            for nn in steps[arm]:
+                sd, dest, p = pass_dir / arm / nn, anon / lab[arm] / nn, Paths(pass_, arm)
+                miss: list[tuple[list[str], str]] = []
+                shas = _shas(sd)
+                if shas is None:
+                    miss.append((["repo/", "diff.patch"], "git.json has no sha_before/sha_after for this step"))
+                else:
+                    work = tmp / arm / nn
+                    try:
+                        gitops.export_tree(p, shas[1], work)
+                        listed = copy_scrubbed(work, dest / "repo", t)
+                        _w(dest / "diff.patch", scrub(gitops.diff_text(p, *shas), t))
+                        _unscrubbed_note(dest, listed)
+                    except (gitops.GitError, docker.ContainerError, OSError) as e:
+                        failures.append(f"{arm}/{nn}: {e}")
+                        shutil.rmtree(dest / "repo", ignore_errors=True)
+                        (dest / "diff.patch").unlink(missing_ok=True)
+                        (dest / "UNSCRUBBED.txt").unlink(missing_ok=True)
+                        miss.append((["repo/", "diff.patch"], f"export or diff failed: {e}"))
+                    finally:
+                        shutil.rmtree(work, ignore_errors=True)
+                tr = transcript(sd, t)
+                if tr is None:
+                    miss.append((["transcript.md"], "no arm turn streams"))
+                else:
+                    _w(dest / "transcript.md", tr)
+                if _ran(sd):
+                    _w(dest / "questions.md", scrub(questions_md(sd), t))
+                    _w(dest / "gates.md", scrub(gates_md(sd), t))
+                else:
+                    miss += [(["questions.md"], "no run.json: the scored run is not recorded"),
+                             (["gates.md"], "no run.json: the scored run is not recorded")]
+                stale = paths.SCORING_INPUTS / "stale" / f"step-{nn}.toml"
+                if stale.is_file():                     # R27: the step's stale list, for the stale_updated judges
+                    _w(dest / "stale-list.toml", scrub(stale.read_text(encoding="utf-8"), t))
+                _missing(dest, miss, t)
+        for arm in arms:                                # R24: the setup records, for the setup_effort and fit judges
+            setup = pass_dir / arm / "00-setup"
+            if setup.is_dir():
+                _unscrubbed_note(anon / lab[arm] / "setup", copy_scrubbed(setup, anon / lab[arm] / "setup", t))
+        for arm in arms:                                # R6: the OTHER arms' questions at the same step
+            for nn in steps[arm]:
+                parts = [f"## {lab[o]}\n\n" + (scrub(questions_md(pass_dir / o / nn), t) if _ran(pass_dir / o / nn)
+                                               else "(no scored run recorded for this arm at this step)\n")
+                         for o in sorted((o for o in arms if o != arm and nn in steps[o]), key=lab.get)]
+                _w(anon / lab[arm] / nn / "others-questions.md", "\n".join(parts) if parts else "(no other arm has this step)\n")
+        for f in failures:
+            print(f"anonymise: {f}", file=sys.stderr)
+        key_path.write_text(values.dump({lab[a]: a for a in arms}), encoding="utf-8")   # last
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)       # never left behind, even on a failure (never commit it)
     return anon

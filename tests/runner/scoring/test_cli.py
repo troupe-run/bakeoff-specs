@@ -87,8 +87,13 @@ def test_a_missing_pass_directory_exits_1_and_creates_nothing(tmp_state, capsys)
 
 def test_report_stage_refreshes_confidence_json(p):
     assert cli.main(["score", p, "--stage", "aggregate"]) == 0
+    stale = paths.scoring_out(p) / "confidence.json"
+    stale.write_text('{"stale": true}\n')
     assert cli.main(["score", p, "--stage", "report"]) == 0
-    assert (paths.scoring_out(p) / "confidence.json").exists()
+    got = json.loads(stale.read_text())
+    from runner.scoring import confidence
+    assert "stale" not in got and got == json.loads(json.dumps(confidence.check(
+        json.loads((paths.scoring_out(p) / "scores.json").read_text()))))
 
 
 def test_an_unknown_stage_is_rejected_by_argparse(p):

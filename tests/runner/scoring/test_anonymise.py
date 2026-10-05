@@ -456,3 +456,14 @@ def test_an_unreadable_scored_questions_file_is_not_shown_as_asked_none(tmp_path
     (tmp_path / "questions.jsonl").write_bytes(b'{"n": 1}\n\xff\n')
     text = an.questions_md(tmp_path)
     assert "could not be read" in text and "asked no questions" not in text
+
+
+def test_anon_tmp_is_removed_even_when_the_run_fails_midway(world, monkeypatch):
+    def boom(p, sha, dest):
+        (dest / "half").mkdir(parents=True)
+        (dest / "half" / "x.txt").write_text("speckit")
+        raise RuntimeError("container went away")
+    monkeypatch.setattr(gitops, "export_tree", boom)
+    with pytest.raises(RuntimeError):
+        an.run("p1")
+    assert not (paths.scoring_out("p1") / "anon-tmp").exists()

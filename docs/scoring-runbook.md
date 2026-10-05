@@ -91,6 +91,8 @@ resumable or idempotent unless noted.
     the key is tracked; if it is only on disk, untracked, the report still runs. Moving it ends the scoring
     stages that read it (`judge`, `decisions-*`, `review-*`), so finish them first; to redo one, move it back.
     Do not `git add` `anon/` unless the owner wants the anonymised copies kept (they are scrubbed, but large).
+    Never commit `anon-tmp/`: it holds UNSCRUBBED exports (anonymise removes it on every exit, and it is
+    gitignored; if a killed run left one, delete it).
 
 ## What the report discloses about blinding
 
