@@ -607,3 +607,19 @@ def test_the_estimate_stage_needs_no_approval_and_prints_calls_size_and_implied_
     assert cli.main(["score", "p", "--stage", "judge-estimate"]) == 0
     got = json.loads(capsys.readouterr().out)
     assert got["judge_calls"] == 1 and got["calls"] == 6 and "input_mb" in got and got["implied_usd"] is None
+
+
+def test_the_estimate_shows_an_upper_bound_with_parse_retries_but_approval_still_checks_the_calls(tmp_state, monkeypatch,
+                                                                                                   capsys):
+    # every judge and decision call may be retried once when its reply does not parse: shown, never gated on
+    from runner import cli
+    anon_fixture()
+    monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a")])
+    monkeypatch.setattr(judge, "implied_cost", lambda pass_, calls: {"po_usd_per_call": 0.5, "implied_usd": 0.5 * calls})
+    assert cli.main(["score", "p", "--stage", "judge-estimate"]) == 0
+    got = json.loads(capsys.readouterr().out)
+    assert got["calls_with_parse_retries"] == 2 * got["calls"] and got["implied_usd_with_parse_retries"] == got["calls"]
+    (paths.scoring_out("p") / "judge-approved").write_text(f"approved 2026-10-06 {got['calls']}\n")
+    monkeypatch.setattr(judge, "run", lambda *a, **k: {})
+    monkeypatch.setattr(judge, "ContainerJudge", lambda pass_: None)
+    assert cli.main(["score", "p", "--stage", "judge"]) == 0

@@ -71,12 +71,16 @@ def _approve(ns) -> None:
 
 
 def _judge_estimate(ns) -> None:
-    """Calls (judge + decision extract/align), input size and the implied cost (at the PO's mean cost per call).
-    Needs no approval."""
+    """Calls (judge + decision extract/align), input size and the implied cost (at the PO's mean cost per call), plus
+    the upper bound if every call needed its one parse retry. Needs no approval."""
     j, d = _estimates(ns)
     calls = j["calls"] + d["calls"]
     e = {"calls": calls, "judge_calls": j["calls"], "decision_calls": d["calls"],
          "input_mb": round(j["input_mb"] + d["input_mb"], 3)}
+    # Every call is retried once when its reply does not parse, so 2x is the upper bound. Shown only: approval is
+    # checked against `calls` (judge.check_approval), as before.
+    upper = judge.implied_cost(ns.pass_, 2 * calls)
+    e |= {"calls_with_parse_retries": 2 * calls, "implied_usd_with_parse_retries": upper["implied_usd"]}
     print(json.dumps(e | judge.implied_cost(ns.pass_, calls), indent=2, sort_keys=True))
 
 

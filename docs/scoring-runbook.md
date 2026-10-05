@@ -51,8 +51,9 @@ resumable or idempotent unless noted.
 
 ## 5. Approval, then decisions and judging (spends model quota)
 
-10. `--stage judge-estimate` prints calls (judge plus decision extract and align), input size and implied cost.
-    It needs no approval. **One approval number covers the judge and the decision calls**, so this comes
+10. `--stage judge-estimate` prints calls (judge plus decision extract and align), input size and implied cost,
+    and separately the upper bound if every call needed its one parse retry (`calls_with_parse_retries`, 2x; shown
+    for the owner, not what approval is checked against). It needs no approval. **One approval number covers the judge and the decision calls**, so this comes
     *before* `decisions-extract`.
 11. Owner approves: `echo "approved <YYYY-MM-DD> <calls>" > results/pass1/scoring/judge-approved`. Any stage that
     spends quota refuses if its current estimate exceeds the approved number.
