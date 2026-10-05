@@ -28,6 +28,11 @@ its name (`parse_batch`, `quality._last_marker`'s rule); a name with no marker (
 same uid with the copy writable, so this hardening stops accidental and printed forgeries, not an arm rewriting its
 own interpreter.
 
+The step's batches (control included) share a time budget of `pins.limits.mutation_seconds`, the same budget the
+original mutmut run had (R31): a batch is started only while the budget is unspent, so a step overruns it by at most
+one batch; mutants never reached are `not_checked`, which makes the summary `partial` (and, by
+`quality.mutation_summary`'s existing denominator, counts them unkilled).
+
 Runs only after pass 1 (it prepares fresh copies under the arm's `state/` scratch and uses Docker), holding the
 runner lock (`runner score <pass> --stage remeasure`). Writes `quality/remeasure.json` and `quality/remeasure.log`
 beside the original `summary.json`, which it never changes; `evidence.quality` prefers a measured re-measure.
@@ -72,6 +77,7 @@ def mutant_timeout(baseline_s: float) -> int:
 _EXTRA_DEFAULTS: dict[str, object] = {
     "sampled": False, "sample_size": 0, "baseline_rc": None, "mutants_baseline_rc": None, "sentinel_rc": None,
     "mutant_timeout_s": None, "batches": 0, "harness_error": None, "sha": None, "targets": None,
+    "budget_s": None, "budget_exhausted": False,
 }
 
 
@@ -162,6 +168,9 @@ def run_batch(p: Paths, copy: Path, names: list[str], timeout: int, log: list[st
     return {} if r.timed_out else parse_batch(r.stdout, names)
 
 
+_clock = time.monotonic           # the step budget's clock (faked in unit tests)
+
+
 def _sample_size(pins: config.Pins) -> int:
     return pins.limits.mutation_sample
 
@@ -220,7 +229,9 @@ def _measure(p: Paths, step: int, pins: config.Pins, qd: Path, log: list[str]) -
     chosen = quality.sample(names, n) if n > 0 else sorted(set(names))
     sampling = "seeded-sha256" if n > 0 else "all"
     t = mutant_timeout(secs)
-    common |= {"sampled": n > 0, "sample_size": len(chosen), "mutant_timeout_s": t}
+    budget = pins.limits.mutation_seconds          # R31: the original run's budget, from the control container on
+    start = _clock()
+    common |= {"sampled": n > 0, "sample_size": len(chosen), "mutant_timeout_s": t, "budget_s": budget}
     log.append(f"# {len(names)} mutants listed; {len(chosen)} chosen ({sampling}); per-mutant timeout {t}s")
 
     ctl = run_batch(p, copy, [BASELINE_NAME, SENTINEL_NAME], t, log)
@@ -234,10 +245,17 @@ def _measure(p: Paths, step: int, pins: config.Pins, qd: Path, log: list[str]) -
 
     got: dict[str, int | None] = {}
     batches = [chosen[i:i + BATCH] for i in range(0, len(chosen), BATCH)]
+    ran, exhausted = 0, False
     for b in batches:
+        if _clock() - start >= budget:              # R31: mutants not reached within the budget stay not_checked
+            exhausted = True
+            log.append(f"# step budget {budget}s spent: {len(batches) - ran} batch(es) not started")
+            break
         got |= run_batch(p, copy, b, t, log)
+        ran += 1
+    common |= {"budget_exhausted": exhausted}
     verdicts = {name: (verdict(got[name]) if name in got else "not_checked") for name in chosen}
-    return summarise(verdicts, sampling=sampling, batches=len(batches), **common)
+    return summarise(verdicts, sampling=sampling, batches=ran, **common)
 
 
 def targets(pass_: str) -> list[tuple[str, int]]:

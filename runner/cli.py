@@ -17,8 +17,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     ns = build_parser().parse_args(argv)
-    # design §9: halted until `faults resume --note` (Task 22). watch reads only; score (R22) never touches run state:
-    # it reads results/ and writes only results/<pass>/scoring/, and aggregate flags a halted pass in scores.json.
+    # design §9: halted until `faults resume --note` (Task 22). watch reads only; score (R22) is exempt because its
+    # stages read results/ and write only results/<pass>/scoring/, and aggregate flags a halted pass in scores.json --
+    # except `score --stage remeasure` (Task 20, R31), which uses Docker and state/ scratch and writes into
+    # results/<pass>/<arm>/<NN>/quality/: that stage refuses a halted pass itself (runner/scoring/cli.py).
     if ns.cmd not in ("faults", "watch", "score"):
         from runner import faults
         pass_ = getattr(ns, "pass_", None) or "pass1"      # no pass named: the real bake-off's ledger

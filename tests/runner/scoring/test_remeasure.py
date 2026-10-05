@@ -1,3 +1,4 @@
+import dataclasses
 import fcntl
 import json
 import os
@@ -6,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from runner import cli, hidden, paths, quality
+from runner import cli, config, faults, hidden, paths, quality
 from runner.scoring import evidence, inputs, values
 from runner.scoring import cli as scli
 from runner.scoring import remeasure as rm
@@ -315,3 +316,35 @@ def test_remeasure_stage_runs_under_the_lock(tmp_state, monkeypatch):
     assert "remeasure" in scli.STAGES and "remeasure" not in scli.DEFAULT
     assert cli.main(["score", "p", "--stage", "remeasure"]) == 0
     assert held == [True]
+
+
+# --- R31: a halted pass, and the per-step time budget -------------------------------------------------------------
+
+def test_remeasure_stage_refuses_on_a_halted_pass_and_runs_nothing(tmp_state, monkeypatch, capsys):
+    (paths.RESULTS / "p").mkdir(parents=True)
+    faults.halt("p", "suite-resource:1 test", {"x": 1})
+    calls = []
+    monkeypatch.setattr(rm, "run", lambda pass_: calls.append(pass_) or [])
+    assert cli.main(["score", "p", "--stage", "remeasure"]) == 1
+    out = capsys.readouterr().out
+    assert calls == [] and "HALTED" in out and "suite-resource:1 test" in out and "faults resume p" in out
+
+
+def test_mutants_not_reached_within_the_step_budget_are_not_checked_and_partial(tmp_state, monkeypatch):
+    _step(tmp_state)
+    names = [f"pkg.m.x_f__mutmut_{i}" for i in range(60)]         # three batches of 20
+    f = Fake(tmp_state, names, {n: 1 for n in names}).install(monkeypatch)
+    clock = [0.0]
+    monkeypatch.setattr(rm, "_clock", lambda: clock[0])
+    real_batch = f.run_batch
+    def timed_batch(*a, **k):
+        clock[0] += 30.0                                            # every container takes 30 s
+        return real_batch(*a, **k)
+    monkeypatch.setattr(rm, "run_batch", timed_batch)
+    pins = config.load_pins()
+    pins = dataclasses.replace(pins, limits=dataclasses.replace(pins.limits, mutation_seconds=50, mutation_sample=0))
+    s = _read(rm.one("p", "alpha", 3, pins=pins))
+    # control at 0 s, batch 1 at 30 s, then 60 s >= 50 s: batch 2 and 3 never start
+    assert len(f.batches) == 1 and s["killed"] == 20 and s["not_checked"] == 40
+    assert s["partial"] is True and s["crashed"] is False and s["score"] == 20 / 60
+    assert s["budget_s"] == 50 and s["budget_exhausted"] is True

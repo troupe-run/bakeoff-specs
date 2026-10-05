@@ -71,10 +71,14 @@ def _decisions_align(ns) -> None:
 
 
 def _remeasure(ns) -> None:
-    """Task 20 (after pass 1 only): Docker and the arms' state/ scratch, so it holds the runner lock and refuses while
-    anything else (a run-pass) holds it. Then re-run `collect` so the scores pick the re-measures up."""
+    """Task 20 (after pass 1 only): Docker and the arms' state/ scratch, so it refuses on a halted pass (R31) and
+    holds the runner lock, refusing while anything else (a run-pass) holds it. Then re-run `collect` so the scores pick the re-measures up."""
     from runner import preflight
     from runner.checklist import NotReady
+    if faults.halted(ns.pass_):            # R31: unlike the other stages, this one is not exempt from a halt (R22)
+        raise inputs.InputError(
+            f"HALTED ({faults.ledger_paths(ns.pass_)[1]}): {faults.halt_reason(ns.pass_)} (design §9). remeasure "
+            f"uses Docker and state/; review with the owner, then `runner faults resume {ns.pass_} --note \"...\"`.")
     try:
         with preflight.lock():
             for f in remeasure.run(ns.pass_):
