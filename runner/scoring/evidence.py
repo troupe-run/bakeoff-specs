@@ -52,17 +52,21 @@ def run_record(step_dir: Path) -> dict:
     return read_json(step_dir / "run.json")
 
 
-def _result_line(p: Path) -> dict | None:
+def _result_lines(p: Path) -> list[dict] | None:
+    """Every result line of a turn's stream, in order (a turn whose background agents wake the main loop ends each
+    wake with its own result line); None when the stream cannot be read."""
     try:
         with gzip.open(p, "rt", errors="replace") as f:
-            last = None
+            out = []
             for line in f:
                 if '"type":"result"' in line.replace(" ", ""):
                     try:
-                        last = json.loads(line)
+                        o = json.loads(line)
                     except json.JSONDecodeError:
                         continue
-            return last
+                    if isinstance(o, dict):
+                        out.append(o)
+            return out
     except (OSError, EOFError):
         return None
 
@@ -76,9 +80,9 @@ def arm_time(step_dir: Path) -> dict:
     attempt = max(a for a, _, _ in found)
     turns, prev_usd, secs, unknown_before = [], 0.0, 0.0, False
     for _, _, f in (x for x in found if x[0] == attempt):
-        r = _result_line(f)
+        rs = _result_lines(f)
         stem = f.name.removesuffix(".stream.jsonl.gz")
-        if r is None:                       # killed turn (e.g. pass 1 ccsdd 05b a1-005, Docker restart 2026-10-05)
+        if not rs:                          # killed turn (e.g. pass 1 ccsdd 05b a1-005, Docker restart 2026-10-05)
             k = _killed_seconds(step_dir, stem)
             if k is None:
                 return values.missing(rel(f), f"turn {stem}: no result line and no transcript timestamps")
@@ -86,11 +90,11 @@ def arm_time(step_dir: Path) -> dict:
             secs += k
             unknown_before = True
             continue
-        if not isinstance(r.get("duration_ms"), (int, float)):
+        if not all(isinstance(r.get("duration_ms"), (int, float)) for r in rs):
             return values.missing(rel(f), f"turn {stem}: result line has no duration_ms")
-        seconds = r["duration_ms"] / 1000
+        seconds = sum(r["duration_ms"] for r in rs) / 1000    # R9: every wake of the turn is real time
         turn = {"stem": stem, "seconds": seconds}
-        cum = r.get("total_cost_usd")
+        cum = rs[-1].get("total_cost_usd")                      # cumulative: the turn's last result line
         if isinstance(cum, (int, float)):
             turn["usd"] = max(0.0, float(cum) - prev_usd)
             if unknown_before:

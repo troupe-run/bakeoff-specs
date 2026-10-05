@@ -105,6 +105,13 @@ def test_the_queue_operations_handing_in_a_prompt_also_end_the_previous_turn():
     assert s["understand"] == 20 and sum(s.values()) == 20
 
 
+def test_entries_between_the_queue_operations_and_the_prompt_still_open_the_turn():
+    # real transcripts: enqueue, dequeue, an attachment, then the prompt (pass1 speckitty/01 turn 6: a 35 min gap)
+    evs = [ev(0, "Read"), ev(10, kind="other"), ev(90, "(queue)", kind="other"), ev(91, kind="other"),
+           ev(100, "(prompt)", kind="other", input={"label": "(free text)"}), ev(105, "Read"), ev(110, kind="other")]
+    assert sum(phases.classify(evs, RULES, [])["seconds"].values()) == 20
+
+
 def test_a_turn_whose_command_is_a_review_marker_is_review_throughout():
     evs = [ev(0, "(prompt)", kind="other", input={"label": "/speckit-converge"}),
            ev(1, "Read"), ev(4, "Write", input={"file_path": "src/a.py"}), ev(10, kind="other")]
@@ -200,6 +207,59 @@ def test_a_cost_absorbed_from_an_unknown_turn_is_split_over_both_turns_seconds()
     usd, unplaced = phases._split_usd([{"stem": "a", "usd": None}, {"stem": "b", "usd": 2.0}],
                                       [dict(zero, understand=10.0), dict(zero, implement=30.0)])
     assert usd["understand"] == 0.5 and usd["implement"] == 1.5 and unplaced == []
+
+
+def _bash(t, cmd, id=None):
+    return ev(t, "Bash", input={"command": cmd}, id=id)
+
+
+def test_bash_write_targets_are_extracted_from_redirects_sed_tee_and_python():
+    t = phases.bash_write_targets
+    assert t("cd /work/r; cat > src/a.py <<'EOF'\nx = 1\nEOF", RULES) == ["src/a.py"]
+    assert t("cat >> tests/test_a.py <<EOF\nEOF", RULES) == ["tests/test_a.py"]
+    assert t("sed -i 's/x/y/' tests/test_a.py", RULES) == ["tests/test_a.py"]
+    assert t("echo hi | tee -a docs/notes.md", RULES) == ["docs/notes.md"]
+    assert t("python3 - <<'EOF'\nopen('specs/x.md', 'w').write(s)\nEOF", RULES) == ["specs/x.md"]
+    assert t("python3 - <<'EOF'\nPath(\"src/b.py\").write_text(s)\nEOF", RULES) == ["src/b.py"]
+    assert t("python3 - <<'EOF'\np = 'tests/test_a.py'; s = open(p).read()\nopen(p, 'w').write(s)\nEOF",
+             RULES) == ["tests/test_a.py"]                                 # the variable's last string assignment
+    assert t("sed -i 's/a -> b/c/' src/a.py; echo \"x >, y\"", RULES) == ["src/a.py"]   # no target from '>,'
+    assert t("cd /work/r; uv run pytest -q 2>&1 | tail", RULES) is None       # 2>&1 is not a file write
+    assert t("ls > /dev/null", RULES) is None and t("uv run pytest | tee /tmp/log", RULES) is None   # outside the repo
+    assert t("python3 - <<'EOF'\nif a > b:\n    pass\nEOF", RULES) is None        # a comparison in a heredoc body
+    assert t("grep -n foo src/a.py", RULES) is None                           # not a write at all
+
+
+def test_a_bash_write_is_classified_by_its_target_path():
+    evs = [_bash(0, "cat > src/a.py <<EOF\nEOF"), _bash(4, "sed -i 's/x/y/' tests/test_a.py"),
+           _bash(6, "python3 - <<'EOF'\nopen('/work/bakeoff-specs-x/specs/x.md', 'w').write(s)\nEOF"),
+           ev(9, kind="other")]
+    s = phases.classify(evs, RULES, [])["seconds"]
+    assert s["implement"] == 4 and s["test"] == 2 and s["specify"] == 3 and s["understand"] == 0
+
+
+def test_a_bash_write_without_a_readable_target_is_implementation_or_rework():
+    unreadable = "python3 - <<'EOF'\nopen(sys.argv[1], 'w').write(s)\nEOF"
+    assert phases.bash_write_targets(unreadable, RULES) == []
+    evs = [ev(0, "Read"), _bash(2, unreadable), _bash(5, "uv run pytest", id="b"),
+           ev(6, kind="result", id="b", output="1 failed, 2 passed"), _bash(6, unreadable), ev(10, kind="other")]
+    s = phases.classify(evs, RULES, [])["seconds"]
+    assert s["understand"] == 2 and s["implement"] == 3 and s["test"] == 1 and s["rework"] == 4
+
+
+def test_a_passing_run_that_prints_error_inside_its_output_does_not_set_rework():
+    evs = [_bash(0, "uv run troupe config get x", id="b"),
+           ev(1, kind="result", id="b", output="Error: unknown actor 'bogus'\nexit=2"),
+           ev(1, "Write", input={"file_path": "src/a.py"}), ev(3, kind="other")]
+    assert phases.classify(evs, RULES, [])["seconds"]["implement"] == 2
+
+
+@pytest.mark.parametrize("output", ["1 failed, 3 passed in 0.2s", "2 errors in 0.1s", "Found 3 errors in 1 file",
+                                    "FAILED tests/test_a.py::test_x - assert 1 == 2"])
+def test_a_test_summary_reporting_failures_sets_rework(output):
+    evs = [_bash(0, "uv run pytest", id="b"), ev(1, kind="result", id="b", output=output),
+           ev(1, "Write", input={"file_path": "src/a.py"}), ev(3, kind="other")]
+    assert phases.classify(evs, RULES, [])["seconds"]["rework"] == 2
 
 
 SAMPLE = FIX / "phase-sample.json"

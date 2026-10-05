@@ -22,7 +22,8 @@ QUEUE = "(queue)"                                         # a queue-operation en
 FREE_TEXT = "(free text)"
 OUTPUT_CHARS = 4000
 _WRITE = {"Write", "Edit", "NotebookEdit", "MultiEdit"}
-_FAILED = re.compile(r"(?i)\b(failed|error)\b")
+_QUOTED = re.compile(r"""'[^']*'|"(?:[^"\\]|\\.)*\"""")        # shell strings: emptied before write_commands run
+_HEREDOC = re.compile(r"<<-?[ \t]*(['\"]?)(\w+)\1([^\n]*)\n.*?\n[ \t]*\2[ \t]*(?=\n|$)", re.S)
 _COMMAND_NAME = re.compile(r"<command-name>\s*(/\S+?)\s*</command-name>")
 _CALL_NAMES = ("skill", "description", "subagent_type")   # not the prompt: it may say "verify" about anything
 _STEM = re.compile(r"^arm-a(\d+)-(\d+)$")
@@ -41,6 +42,34 @@ def _rel(path: str) -> str:
     return re.sub(r"^/work/[^/]+/", "", path or "")
 
 
+def _assigned(before: str, var: str) -> str | None:
+    """The last string literal assigned to `var` in `before` (`p = 'src/a.py'`), if any."""
+    found = re.findall(rf"\b{re.escape(var)}\s*=\s*(['\"])([^'\"\n]+)\1", before)
+    return found[-1][1] if found else None
+
+
+def bash_write_targets(command: str, rules) -> list[str] | None:
+    """None when `command` writes no repo file; else its repo-relative targets in order ([] when it writes but
+    names no readable target). Rules: `write_commands` over the shell text with heredoc bodies removed and quoted
+    strings emptied (a `>` inside a sed expression or an echo is not a redirect),
+    `write_calls` over the whole command; a target outside the repo (absolute after /work/<repo>/ is cut) is
+    ignored, and a command whose only targets are outside the repo is not a write."""
+    shell = _QUOTED.sub(lambda m: m[0][0] * 2, _HEREDOC.sub(lambda m: "<<" + m[2] + m[3], command))
+    targets, unnamed = [], False
+    for regexes, text in ((rules.write_commands, shell), (rules.write_calls, command)):
+        for r in regexes:
+            for m in r.finditer(text):
+                g = m.groupdict()
+                p = g.get("path") or (_assigned(text[:m.start()], g["var"]) if g.get("var") else None)
+                if p is None:
+                    unnamed = True
+                    continue
+                p = _rel(p.strip("'\""))
+                if p and not p.startswith("/") and p not in targets:
+                    targets.append(p)
+    return targets if targets else ([] if unnamed else None)
+
+
 def label(prompt: str) -> str:
     """A turn's method label: its slash command when it opens with one, else "(free text)"."""
     m = _COMMAND_NAME.search(prompt)
@@ -55,17 +84,20 @@ def _is_prompt(e: dict) -> bool:
 
 
 def _turn_starts(events: list[dict]) -> set[int]:
-    """Indices that open a turn: each prompt, and the queue operations that directly precede it."""
-    out, opening = set(), False
-    for i in range(len(events) - 1, -1, -1):
-        e = events[i]
-        if _is_prompt(e):
-            out.add(i)
-            opening = True
-        elif opening and e["kind"] == "other" and e["name"] == QUEUE:
-            out.add(i)
-        else:
-            opening = False
+    """Indices that open a turn: each prompt, and everything from the earliest queue operation in the run of
+    plain entries just before it (the harness handing the prompt in: queue ops, attachments, ...)."""
+    out = set()
+    for i, e in enumerate(events):
+        if not _is_prompt(e):
+            continue
+        out.add(i)
+        j, first_queue = i - 1, None
+        while j >= 0 and events[j]["kind"] == "other" and not _is_prompt(events[j]):
+            if events[j]["name"] == QUEUE:
+                first_queue = j
+            j -= 1
+        if first_queue is not None:
+            out.update(range(first_queue, i))
     return out
 
 
@@ -91,19 +123,24 @@ def classify(events: list[dict], rules, spec_paths) -> dict:
             phase = current
         elif e["kind"] == "result":
             if e["id"] in pending:                        # rules 3-4: a test result sets or clears rework mode
-                rework = bool(e["is_error"]) or bool(_FAILED.search(e.get("output") or ""))
+                out = e.get("output") or ""
+                rework = bool(e["is_error"]) or any(r.search(out) for r in rules.failure_markers)
                 pending.discard(e["id"])
         elif e["kind"] == "tool":
             name, inp = e["name"], e["input"] or {}
-            if name in _WRITE:
-                path = _rel(inp.get("file_path") or inp.get("notebook_path") or "")
-                base = ("specify" if _spec(path, rules, spec_paths) else "test" if _match(path, rules.test_globs)
-                        else "implement")
-                phase, wrote = ("rework" if rework else base), True
-            elif name == "Bash" and any(r.search(inp.get("command", "")) for r in rules.test_commands):
-                phase = "test"
+            cmd = inp.get("command", "") if name == "Bash" and isinstance(inp.get("command"), str) else ""
+            bash_targets = bash_write_targets(cmd, rules) if cmd else None
+            if cmd and any(r.search(cmd) for r in rules.test_commands):
+                phase = "test"                            # a test run dominates a call's time, even if it also writes
+                wrote = wrote or bash_targets is not None
                 if e.get("id"):
                     pending.add(e["id"])
+            elif name in _WRITE or bash_targets is not None:    # rule 2, and Bash writes (R10)
+                path = (_rel(inp.get("file_path") or inp.get("notebook_path") or "") if name in _WRITE
+                        else (bash_targets or [None])[0])
+                base = ("implement" if path is None else "specify" if _spec(path, rules, spec_paths)
+                        else "test" if _match(path, rules.test_globs) else "implement")
+                phase, wrote = ("rework" if rework else base), True
             elif name in ("Skill", "Task", "Agent") and any(    # the skill's name, the task's description/type
                     r.search(" ".join(str(inp.get(k, "")) for k in _CALL_NAMES)) for r in rules.review_markers):
                 phase = "review"
@@ -148,7 +185,7 @@ def _entry_events(o: dict, t: float, session: str) -> list[dict]:
                for b in blocks if b.get("type") == "tool_use"]
     elif o.get("type") == "user":
         out = [{**base, "kind": "result", "id": b.get("tool_use_id"), "is_error": bool(b.get("is_error")),
-                "output": _text(b.get("content"))[:OUTPUT_CHARS]} for b in blocks if b.get("type") == "tool_result"]
+                "output": _text(b.get("content"))[-OUTPUT_CHARS:]} for b in blocks if b.get("type") == "tool_result"]
         if not out and not o.get("isSidechain") and not o.get("isMeta") and not o.get("isCompactSummary") \
                 and not o.get("origin") and (isinstance(content, str) or blocks):   # origin: task notifications
             out = [{**base, "name": PROMPT, "input": {"label": label(_text(content))}}]
@@ -212,11 +249,17 @@ def method_phases(step_dir: Path) -> dict:
 def turn_spans(step_dir: Path, attempt: int) -> list[tuple[float, float]] | None:
     """(first, last) event time of each top-level turn in the attempt's transcripts, in order; None if none."""
     evs, _ = events_from_transcripts(step_dir / "transcripts" / f"a{attempt}")
+    opening = _turn_starts(evs)
     starts = [i for i, e in enumerate(evs) if _is_prompt(e)]
     if not starts:
         return None
-    ends = starts[1:] + [len(evs)]
-    return [(evs[s]["t"], evs[e - 1]["t"]) for s, e in zip(starts, ends)]
+    ends = []                                   # a turn ends before the next turn's opening queue operations
+    for nxt in starts[1:]:
+        while nxt - 1 in opening:
+            nxt -= 1
+        ends.append(nxt)
+    ends.append(len(evs))
+    return [(evs[s]["t"], evs[max(s, e - 1)]["t"]) for s, e in zip(starts, ends)]
 
 
 def killed_turn_seconds(step_dir: Path, stem: str) -> float | None:

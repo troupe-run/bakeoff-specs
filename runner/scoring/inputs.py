@@ -130,18 +130,24 @@ class PhaseRules:
     test_globs: tuple[str, ...]
     test_commands: tuple[re.Pattern, ...]       # over a Bash command
     review_markers: tuple[re.Pattern, ...]      # over a Skill/Task/Agent call's input, or a turn's method label
+    failure_markers: tuple[re.Pattern, ...]     # over a test command's output: failures set rework mode (R11)
+    write_commands: tuple[re.Pattern, ...]      # over a Bash command, heredoc bodies removed; (?P<path>) = target
+    write_calls: tuple[re.Pattern, ...]         # over the whole Bash command (code in heredocs / -c); same groups
+
+
+_PHASE_GLOBS = ("spec_globs", "test_globs")
+_PHASE_REGEXES = ("test_commands", "review_markers", "failure_markers", "write_commands", "write_calls")
 
 
 def load_phase_rules(path: Path | None = None) -> PhaseRules:
     path = path or paths.SCORING_INPUTS / "phases.toml"
     raw = _toml(path)
-    keys = {"spec_globs", "test_globs", "test_commands", "review_markers"}
+    keys = set(_PHASE_GLOBS + _PHASE_REGEXES)
     if set(raw) != keys or not all(isinstance(raw[k], list) and all(isinstance(x, str) for x in raw[k])
                                    for k in keys):
         raise InputError(f"{path}: needs exactly the string lists {sorted(keys)}")
     try:
-        cmds = tuple(re.compile(x) for x in raw["test_commands"])
-        marks = tuple(re.compile(x) for x in raw["review_markers"])
+        rx = {k: tuple(re.compile(x) for x in raw[k]) for k in _PHASE_REGEXES}
     except re.error as e:
         raise InputError(f"{path}: bad regex: {e}") from e
-    return PhaseRules(tuple(raw["spec_globs"]), tuple(raw["test_globs"]), cmds, marks)
+    return PhaseRules(spec_globs=tuple(raw["spec_globs"]), test_globs=tuple(raw["test_globs"]), **rx)

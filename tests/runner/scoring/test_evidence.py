@@ -116,3 +116,26 @@ def test_an_absent_discovery_questions_file_is_reported_absent_not_an_error(tmp_
     (tmp_path / "questions.jsonl").write_text('{"n": 1}\n')
     v = evidence.questions(tmp_path)["value"]
     assert v["discovery"] == "absent" and [q["run"] for q in v["items"]] == ["b"]
+
+
+def test_a_turn_woken_by_background_agents_sums_the_durations_of_all_its_result_lines(tmp_path):
+    # R9: each wake of the main loop ends in its own result line; the cumulative cost is the last one's.
+    d = _step(tmp_path, _res(duration_ms=1000, total_cost_usd=1.0),
+              _res(duration_ms=4000, total_cost_usd=2.0) + _res(duration_ms=500, total_cost_usd=2.5)
+              + _res(duration_ms=2500, total_cost_usd=3.0))
+    t = evidence.arm_time(d)["value"]
+    assert [x["seconds"] for x in t["turns"]] == [1.0, 7.0] and t["seconds"] == 8.0
+    assert t["turns"][1]["usd"] == 2.0
+
+
+def test_one_result_line_without_duration_in_a_multi_result_turn_makes_the_step_time_missing(tmp_path):
+    d = _step(tmp_path, _res(duration_ms=4000, total_cost_usd=2.0) + _res(total_cost_usd=3.0))
+    m = evidence.arm_time(d)
+    assert values.is_missing(m) and "arm-a1-001" in m["why"]
+
+
+def test_an_unknown_cost_on_the_last_result_line_leaves_usd_unknown(tmp_path):
+    d = _step(tmp_path, _res(duration_ms=4000, total_cost_usd=2.0) + _res(duration_ms=1000),
+              _res(duration_ms=1000, total_cost_usd=5.0))
+    t = evidence.arm_time(d)["value"]["turns"]
+    assert t[0]["usd"] is None and t[0]["seconds"] == 5.0 and t[1]["usd"] == 5.0 and t[1]["absorbs_previous"]

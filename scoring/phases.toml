@@ -3,3 +3,25 @@ spec_globs = ["docs/**", "*.md", "specs/**", ".specify/**", "openspec/**", ".kir
 test_globs = ["tests/**", "test_*.py", "*_test.py", "conftest.py"]
 test_commands = ['\bpytest\b', '\bmypy\b', '\bruff\b', '\buv run troupe\b']
 review_markers = ['(?i)review', '(?i)verif', '(?i)audit', '(?i)converge', '(?i)analy[sz]e', '(?i)validate']
+
+# A test command's result sets rework mode when it is an error or its output matches one of these (R11); a test
+# result matching none clears it. Not the bare word "error": passing CLI checks print errors on purpose.
+failure_markers = ['\b\d+ failed\b', '\b\d+ errors?\b', 'Found \d+ errors?', '(?m)^FAILED ']
+
+# A Bash call is a file write (R10) when one of these matches. An optional (?P<path>...) group names the target,
+# which then classifies the write like a Write/Edit to that path (a (?P<var>) group names a variable whose last
+# string assignment before the call, `p = 'src/a.py'`, is the target); a write whose targets are all outside the repo
+# (absolute, e.g. /dev/null or /tmp/x) is not a write; a write with no readable target is `implement`/`rework`.
+# write_commands run over the shell text with heredoc bodies removed and quoted strings emptied (so `a > b` inside
+# Python or a sed expression is not a redirect; a quoted target is not read);
+# write_calls run over the whole command, heredoc bodies included (python - <<EOF ... EOF, python -c "...").
+write_commands = [
+  '(?<![0-9&<>])>>?\s*(?P<path>[\w./~-][^\s;&|<>()]*)',
+  '''\bsed\s+(?:-\w+\s+)*-i\S*\s+(?:-\w+\s+)*(?:'[^']*'|"[^"]*"|\S+)\s+(?P<path>[^\s;&|<>()]+)''',
+  '\btee\s+(?:-\w+\s+)*(?P<path>[^\s;&|<>()]+)',
+]
+write_calls = [
+  '''\bopen\(\s*(?:(?P<q>['"])(?P<path>[^'"]+)(?P=q)|(?P<var>[A-Za-z_]\w*)|[^,()]+)\s*,\s*['"][wax]''',
+  '''\bPath\(\s*(?P<q>['"])(?P<path>[^'"]+)(?P=q)\s*\)\s*\.write_(?:text|bytes)\(''',
+  '\.write_(?:text|bytes)\(',
+]
