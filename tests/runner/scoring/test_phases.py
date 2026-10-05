@@ -433,3 +433,47 @@ def test_a_test_run_driven_from_python_code_the_call_runs_is_a_test_run(cmd):
 
 def test_a_test_run_inside_python_code_that_is_only_saved_is_not_a_test_run():
     assert not phases.is_test_command("cat > tests/run.py <<'EOF'\nimport pytest\npytest.main(['-q'])\nEOF", RULES)
+
+
+# --- fix round 5: heredoc operators only at shell level; tee-saved scripts; ${...} ---------------------------------
+
+@pytest.mark.parametrize("cmd", ['grep -n "<<EOF" scripts/x.sh\nuv run pytest -q',
+                                 'python3 -c "print(1 << n)"\nuv run pytest -q',
+                                 "echo $(( a << b ))\nuv run pytest -q",
+                                 "(( x = a << b ))\nuv run pytest -q",
+                                 "echo '<<EOF'\nuv run pytest -q"])
+def test_a_heredoc_operator_inside_quotes_or_arithmetic_does_not_swallow_the_rest_of_the_command(cmd):
+    assert phases.is_test_command(cmd, RULES)
+
+
+def test_a_quoted_heredoc_operator_does_not_hide_a_later_write():
+    assert phases.bash_write_targets('grep -n "<<EOF" x.sh\necho y > src/f.py', RULES) == ["src/f.py"]
+    assert phases.bash_write_targets("python3 - <<'EOF'\nif a > b:", RULES) is None    # genuine unterminated: kept
+
+
+def test_a_script_saved_with_tee_and_then_run_is_code():
+    body = "tee /tmp/p.py >/dev/null <<'EOF'\nopen('src/t.py','w').write(s)\nEOF\n"
+    assert phases.bash_write_targets(body + "python3 /tmp/p.py", RULES) == ["src/t.py"]
+    assert phases.bash_write_targets(body + "echo saved", RULES) is None
+
+
+def test_saved_script_detection_follows_the_write_commands_rules():
+    import dataclasses
+    no_redirects = dataclasses.replace(RULES, write_commands=tuple(
+        r for r in RULES.write_commands if not r.pattern.startswith("(?<![0-9&<>])>")))
+    cmd = "cat > /tmp/p.py <<'EOF'\nopen('src/t.py','w').write(s)\nEOF\npython3 /tmp/p.py"
+    assert phases.bash_write_targets(cmd, RULES) == ["src/t.py"]
+    assert phases.bash_write_targets(cmd, no_redirects) is None      # no redirect rule: nothing saved, nothing run
+
+
+def test_a_parameter_expansion_brace_does_not_split_a_command():
+    assert not phases.is_test_command("echo ${d} pytest", RULES)
+    assert phases.is_test_command("cd ${d} && uv run pytest", RULES)
+
+
+def test_an_apostrophe_in_a_shell_comment_does_not_hide_a_later_heredoc():
+    # pass1 speckit/04: "# deliberate break: print the current command's actor" preceded a python heredoc edit
+    cmd = ("uv run pytest -q\n# the command's actor\n"
+           "python3 - <<'EOF'\np='src/troupe/config/commands.py'; s=open(p).read()\nopen(p,'w').write(s)\nEOF")
+    assert phases.bash_write_targets(cmd, RULES) == ["src/troupe/config/commands.py"]
+    assert phases.bash_write_targets("echo a#b > src/x.py", RULES) == ["src/x.py"]      # '#' inside a word

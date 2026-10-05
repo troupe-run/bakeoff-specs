@@ -27,11 +27,13 @@ TRANSCRIPT_CHAR_CAP = 256 * 1024 * 1024                   # decompressed charact
 _WRITE = {"Write", "Edit", "NotebookEdit", "MultiEdit"}
 _QUOTED = re.compile(r"""'[^']*'|"(?:[^"\\]|\\.)*\"""")        # shell strings: emptied in the shell text (_shell)
 # a heredoc: delimiter (2), the rest of its header line (3), its body (4, from the header's newline) up to the
-# terminator line, or to the end of the command when it has none; an empty body is allowed; `<<<` is a here-string
+# terminator line, or to the end of the command when it has none; an empty body is allowed; `<<<` is a here-string.
+# Only matched where _heredocs() finds a `<<` at shell level (not in quotes, not in (( )) / $(( )) arithmetic).
 _HEREDOC = re.compile(r"(?<!<)<<(?!<)-?[ \t]*(['\"]?)([A-Za-z_]\w*)\1([^\n]*)(.*?)(?:\n[ \t]*\2[ \t]*(?=\n|$)|\Z)",
                       re.S)
 _COMPARISON = re.compile(r"\[\[.*?\]\]|\(\(.*?\)\)")          # [[ a > b ]] and (( a > b )) are not redirects
 _SIMPLE_COMMAND = re.compile(r"\n|&&|\|\||\$\(|[;&|(){}`]")
+_PARAM = re.compile(r"\$\{[^{}]*\}")                          # ${d}: a parameter expansion, not a { } group
 _COMMAND_NAME = re.compile(r"<command-name>\s*(/\S+?)\s*</command-name>")
 _CALL_NAMES = ("skill", "description", "subagent_type")   # not the prompt: it may say "verify" about anything
 _STEM = re.compile(r"^arm-a(\d+)-(\d+)$")
@@ -50,9 +52,74 @@ def _rel(path) -> str:
     return re.sub(r"^/work/[^/]+/", "", path) if isinstance(path, str) else ""
 
 
+def _arith_end(command: str, i: int) -> int:
+    """The index just past the `))` closing the `((` at i (or the end of the command)."""
+    depth, j = 0, i
+    while j < len(command):
+        if command[j] == "(":
+            depth += 1
+        elif command[j] == ")":
+            depth -= 1
+            if depth == 0:
+                return j + 1
+        j += 1
+    return j
+
+
+def _scan(command: str) -> tuple[list[re.Match], list[tuple[int, int]]]:
+    """The command's heredocs and comments, in order, as the shell reads them: a `<<WORD` operator or a `#` comment
+    (at the start of a word) only outside quotes and outside (( )) / $(( )) arithmetic; a heredoc's body and a
+    comment are not scanned further (an apostrophe in `# the command's actor` opens no quote)."""
+    out, comments, i, n = [], [], 0, len(command)
+    while i < n:
+        c = command[i]
+        if c == "#" and (i == 0 or command[i - 1] in " \t\n;&|("):
+            j = command.find("\n", i)
+            j = n if j < 0 else j
+            comments.append((i, j))
+            i = j
+        elif c == "\\":
+            i += 2
+        elif c == "'":
+            j = command.find("'", i + 1)
+            i = n if j < 0 else j + 1
+        elif c == '"':
+            j = i + 1
+            while j < n and command[j] != '"':
+                j += 2 if command[j] == "\\" else 1
+            i = j + 1
+        elif command.startswith("((", i):
+            i = _arith_end(command, i)
+        elif command.startswith("<<", i):
+            m = _HEREDOC.match(command, i)
+            if m:
+                out.append(m)
+                i = m.end()
+            else:
+                i += 2 + (command.startswith("<", i + 2))
+        else:
+            i += 1
+    return out, comments
+
+
+def _heredocs(command: str) -> list[re.Match]:
+    return _scan(command)[0]
+
+
+def _without_heredoc_bodies(command: str) -> str:
+    """The command with each heredoc's body and each comment removed (the heredoc's header line is kept)."""
+    heredocs, comments = _scan(command)
+    cuts = sorted([(m.start(), m.end(), "<<" + m[2] + m[3]) for m in heredocs] + [(a, b, "") for a, b in comments])
+    parts, last = [], 0
+    for a, b, keep in cuts:
+        parts += [command[last:a], keep]
+        last = b
+    return "".join(parts) + command[last:]
+
+
 def _shell(command: str) -> str:
     """The shell text of a Bash command: heredoc bodies removed, quoted strings emptied, [[ ]] / (( )) blanked."""
-    text = _QUOTED.sub(lambda m: m[0][0] * 2, _HEREDOC.sub(lambda m: "<<" + m[2] + m[3], command))
+    text = _QUOTED.sub(lambda m: m[0][0] * 2, _without_heredoc_bodies(command))
     return _COMPARISON.sub(lambda m: m[0][:2] + "  " + m[0][-2:], text)
 
 
@@ -62,7 +129,7 @@ def is_test_command(command: str, rules) -> bool:
     a `test_calls` regex matches code the call feeds an interpreter (`pytest.main(...)` in a python heredoc)."""
     if any(r.search(code) for code in _code_texts(command, rules) for r in rules.test_calls):
         return True
-    for part in _SIMPLE_COMMAND.split(_shell(command)):
+    for part in _SIMPLE_COMMAND.split(_PARAM.sub("$_", _shell(command))):
         part = part.lstrip()
         stripped = True
         while stripped:
@@ -92,16 +159,16 @@ def _code_texts(command: str, rules) -> list[str]:
     and -c strings."""
     word_src, word, dash_c = _interpreter_rx(tuple(r.pattern for r in rules.code_interpreters))
     out = []
-    for m in _HEREDOC.finditer(command):
+    for m in _heredocs(command):
         start = max(command.rfind(c, 0, m.start()) for c in "\n;&") + 1
         header = command[start:m.start()] + re.split(r"[;&]", m[3], maxsplit=1)[0]
-        saved = re.search(r"(?<![0-9&<>])>\s*([^\s;&|<>()'\"]+)", header)
-        runs_saved = saved and re.search(
-            word_src + r"\s+(?:-\S+\s+)*" + re.escape(saved[1]) + r"(?![^\s;&|)])",
-            command[m.end():])
+        saved = [g.strip("'\"") for r in rules.write_commands for x in r.finditer(header)   # the script it saves to
+                 if (g := x.groupdict().get("path"))]
+        runs_saved = any(re.search(word_src + r"\s+(?:-\S+\s+)*" + re.escape(p) + r"(?![^\s;&|)])",
+                                   command[m.end():]) for p in saved)
         if word.search(header) or runs_saved:
             out.append(m[4])
-    for m in dash_c.finditer(_HEREDOC.sub(lambda m: "<<" + m[2] + m[3], command)):
+    for m in dash_c.finditer(_without_heredoc_bodies(command)):
         code = m["code"][1:-1]
         out.append(re.sub(r'\\(["\\$`])', r"\1", code) if m["code"][0] == '"' else code)
     return out
