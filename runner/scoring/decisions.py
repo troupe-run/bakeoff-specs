@@ -7,13 +7,14 @@ Stages and files (all under `scoring_out/decisions/`):
 - `align` -> `topics.json` = `{"topics": [{"id", "question", "routes": [{"route", "labels", "reason_given", "outcome",
   "proposed", "proposed_why"}]}], "dropped": [{"label", "decisions"}]}`; every label with no route in a topic is then
   added, deterministically, to a `"not considered"` route - unless one of its steps has no extraction (failed, allowed
-  with `--allow-failed`, or input missing): then to an UNRATED `"no evidence"` route, never a rated one (R29). Its
+  with `--allow-failed`, or input missing), or the aligner placed none of its decisions on any route (I6): then to
+  an UNRATED `"no evidence"` route, never a rated one (R29). Its
   single input is written to `anon/_decisions/align/extracted.json` (labels only, scrubbed again), so the container
   judge's one-item mount rule holds.
 - `sheet` -> `rating-sheet.md` (the owner's blind view: topics `T1`, `T2`, ... and numbered routes; no labels, no arm
   names, no aligner ids) and `.import/rating-sheet.json` (the import map: the same structure with ids and labels; no
   arm names).
-- `import_ratings` -> `ratings.json` = `{"topics": [{"id", "routes": [{"route", "arms", "rating", "reason"}]}]}` (the
+- `import_ratings` -> `ratings.json` = `{"topics": [{"id", "kind", "routes": [{"route", "arms", "rating", "reason"}]}]}` (the
   Task 11 format). Only this stage reads `anon-key.json`.
 
 Labels are the `Arm X` directories anonymise wrote; no stage before import knows which arm is which."""
@@ -360,6 +361,9 @@ def align(pass_: str, j: judge.Judge, *, allow_failed: bool = False) -> Path:
     placed = {l for t in got for r in t["routes"] for l in r["labels"]}
     dropped = [{"label": lab, "decisions": n} for lab in sorted(collected)
                if lab not in placed and (n := sum(len(v) for v in collected[lab].values()))]
+    # I6: a label whose decisions the aligner placed on no route at all is not "not considered" (it may well have
+    # decided the topic): it goes on the unrated "no evidence" route, like a failed extraction (R29).
+    no_ev |= {d["label"] for d in dropped}
     out = _dir(pass_) / "topics.json"
     _write(out, values.dump({"topics": [fill_not_considered(t, labs, no_ev) for t in sorted(got, key=lambda t: t["id"])],
                              "dropped": dropped}))
@@ -589,7 +593,7 @@ def import_ratings(pass_: str) -> Path:
             o = rated[r["route_no"]]
             routes.append({"route": r["route"], "arms": sorted(key[l] for l in r["labels"]), "rating": o["rating"],
                            "reason": o["reason"]})
-        out.append({"id": t["id"], "routes": routes})
+        out.append({"id": t["id"], "kind": t["kind"], "routes": routes})   # the sheet's kind, never recomputed
     f = d / "ratings.json"
     _write(f, values.dump({"topics": out}))
     return f

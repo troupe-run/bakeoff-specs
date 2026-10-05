@@ -220,14 +220,18 @@ def _decisions(pass_: str) -> list[str]:
         asked = {t.get("id"): t.get("question", "") for t in json.loads(tf.read_text()).get("topics", [])}
     n_arms = len({a for t in topics for r in t["routes"] for a in r["arms"]})
     lines = {k: [] for k in decisions.KINDS}
+    counts = {k: 0 for k in decisions.KINDS}
     for t in topics:
-        kind = decisions.kind(t, n_arms)
+        kind = t["kind"] if t.get("kind") in decisions.KINDS else decisions.kind(t, n_arms)   # older ratings: recompute
         q = t.get("question") or asked.get(t.get("id")) or t.get("id", "?")
-        routes = "; ".join(f"{r.get('route', '?')} [{', '.join(r['arms'])}: {r.get('rating', DASH)}]" for r in t["routes"])
-        lines[kind].append(f"- {q} {routes}")
+        counts[kind] += 1
+        lines[kind].append(f"- {q}")
+        for r in t["routes"]:
+            reason = f" — {r['reason']}" if r.get("reason") else ""
+            lines[kind].append(f"  - {r.get('route', '?')} [{', '.join(r['arms'])}]: {r.get('rating', DASH)}{reason}")
     out = ["## Decision review", ""]
     for kind, title in (("one-off", "One-offs"), ("divergent", "Divergent"), ("unanimous", "Unanimous")):
-        out += [f"### {title} ({len(lines[kind])})", ""] + lines[kind] + [""]
+        out += [f"### {title} ({counts[kind]})", ""] + lines[kind] + [""]
     return out
 
 

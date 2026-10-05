@@ -317,3 +317,17 @@ def test_the_bottom_line_says_when_mutation_methods_are_mixed(p):
     write_collected(p, "alpha", 1, quality={**q, "mutation_method": "whole-suite-per-mutant"})
     aggregate.run(p)
     assert "Mutation scores mix methods" not in _section(report.render(p), "## Bottom line")
+
+
+def test_decision_review_uses_the_stored_kind_and_shows_each_routes_reason(p):
+    aggregate.run(p)
+    d = paths.scoring_out(p) / "decisions"
+    d.mkdir()
+    # routes alone would make t1 unanimous; the sheet's stored kind (divergent: a "no evidence" arm was left out of the
+    # recomputation's field) decides where it is listed
+    (d / "ratings.json").write_text(json.dumps({"topics": [
+        {"id": "t1", "question": "Q1?", "kind": "divergent",
+         "routes": [{"route": "A", "arms": ["alpha", "control"], "rating": "good", "reason": "fails loudly"}]}]}))
+    sec = _section(report.render(p), "## Decision review")
+    assert "### Divergent (1)\n\n- Q1?" in sec and "### Unanimous (0)" in sec
+    assert "good — fails loudly" in sec

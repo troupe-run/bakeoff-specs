@@ -396,6 +396,18 @@ def test_alignment_dropping_a_labels_decisions_is_recorded_and_counted_on_the_sh
     assert "1 decision" in header and "dropped" in header and "Arm B" not in header
 
 
+def test_a_label_the_aligner_dropped_goes_to_the_unrated_no_evidence_route_never_not_considered(tmp_state):
+    # I6: Arm B recorded a decision the aligner placed nowhere; "not considered" would rate an arm for a topic it may
+    # well have decided. It sits on the unrated "no evidence" route instead.
+    anon_fixture(arms=("alpha", "beta"), steps=("01",))
+    _extracted("Arm A", "01", D1)
+    _extracted("Arm B", "01", D1)
+    dz.align("p", judge.FakeJudge([ALIGNED]))
+    t = json.loads((paths.scoring_out("p") / "decisions" / "topics.json").read_text())["topics"][0]
+    assert [(r["route"], r["labels"], r.get("unrated", False)) for r in t["routes"]] == [
+        ("fail", ["Arm A"], False), ("no evidence", ["Arm B"], True)]
+
+
 def test_import_writes_ratings_under_real_arm_names(tmp_state):
     _aligned_pass()
     md = dz.sheet("p")
@@ -403,7 +415,7 @@ def test_import_writes_ratings_under_real_arm_names(tmp_state):
                   .replace("rating:\nreason:\n", "rating: poor\nreason: it mattered\n", 1))
     f = dz.import_ratings("p")
     assert f == paths.scoring_out("p") / "decisions" / "ratings.json"
-    assert json.loads(f.read_text()) == {"topics": [{"id": "actor-unset", "routes": [
+    assert json.loads(f.read_text()) == {"topics": [{"id": "actor-unset", "kind": "one-off", "routes": [
         {"route": "fail", "arms": ["alpha"], "rating": "good", "reason": "sensible"},
         {"route": "not considered", "arms": ["beta"], "rating": "poor", "reason": "it mattered"}]}]}
 

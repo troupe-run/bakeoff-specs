@@ -181,7 +181,7 @@ function renderDecisions() {
   const d = data.decisions;
   if (!d || !d.topics) { document.getElementById('decisions-sec').hidden = true; return; }
   document.getElementById('decisions').innerHTML = d.topics.map(t => '<details><summary>' + esc(t.question || t.id || '?') + '</summary><ul>' +
-    t.routes.map(r => '<li>' + esc(r.route || '?') + ' [' + r.arms.map(esc).join(', ') + ']: ' + esc(r.rating === undefined ? DASH : r.rating) + '</li>').join('') + '</ul></details>').join('');
+    t.routes.map(r => '<li>' + esc(r.route || '?') + ' [' + r.arms.map(esc).join(', ') + ']: ' + esc(r.rating === undefined ? DASH : r.rating) + (r.reason ? ' — ' + esc(r.reason) : '') + '</li>').join('') + '</ul></details>').join('');
 }
 renderSliders(); renderRanking(); renderScorecard(); renderGroups(); renderDimensions(); renderTimeCost(); renderDecisions();
 if (typeof module !== 'undefined') module.exports = { totals };
