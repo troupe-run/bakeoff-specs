@@ -278,8 +278,8 @@ def check_approval(pass_: str, calls: int) -> None:
     if not ok:
         raise inputs.InputError(f"{f} is malformed: {how}")
     if calls > int(m[2]):
-        raise inputs.InputError(f"the judge stage would now make {calls} calls, but {f} has approved {m[2]}: "
-                                f"re-read the estimate and approve again")
+        raise inputs.InputError(f"the judge and decision stages would now make {calls} calls, but {f} has approved "
+                                f"{m[2]}: re-read the estimate and approve again")
 
 
 def implied_cost(pass_: str, calls: int) -> dict:

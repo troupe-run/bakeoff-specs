@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from runner import faults, paths
-from runner.scoring import aggregate, collect, confidence, evidence, inputs, judge, page, report, values
+from runner.scoring import aggregate, collect, confidence, decisions, evidence, inputs, judge, page, report, values
 
 
 def _scores(pass_: str) -> dict:
@@ -30,18 +30,43 @@ def _report(ns) -> None:
     print(page.run(ns.pass_))
 
 
+def _estimates(ns) -> tuple[dict, dict]:
+    """The judge stage's and the decision stages' (extract, align) estimates: one approval covers their total."""
+    return (judge.estimate(ns.pass_, retry_failed=ns.retry_failed),
+            decisions.estimate(ns.pass_, retry_failed=ns.retry_failed))
+
+
+def _approve(ns) -> None:
+    """Every stage that spends model quota refuses unless `judge-approved` covers the current total estimate."""
+    j, d = _estimates(ns)
+    judge.check_approval(ns.pass_, j["calls"] + d["calls"])
+
+
 def _judge_estimate(ns) -> None:
-    """Calls, input size and the implied cost (at the PO's mean cost per call). Needs no approval."""
-    e = judge.estimate(ns.pass_, retry_failed=ns.retry_failed)
-    print(json.dumps(e | judge.implied_cost(ns.pass_, e["calls"]), indent=2, sort_keys=True))
+    """Calls (judge + decision extract/align), input size and the implied cost (at the PO's mean cost per call).
+    Needs no approval."""
+    j, d = _estimates(ns)
+    calls = j["calls"] + d["calls"]
+    e = {"calls": calls, "judge_calls": j["calls"], "decision_calls": d["calls"],
+         "input_mb": round(j["input_mb"] + d["input_mb"], 3)}
+    print(json.dumps(e | judge.implied_cost(ns.pass_, calls), indent=2, sort_keys=True))
 
 
 def _judge(ns) -> None:
     """Spends model quota: refuses unless `judge-approved` covers the current estimate (`judge.check_approval`)."""
-    retry = ns.retry_failed
-    judge.check_approval(ns.pass_, judge.estimate(ns.pass_, retry_failed=retry)["calls"])
-    print(json.dumps(judge.run(ns.pass_, judge.ContainerJudge(ns.pass_), retry_failed=retry), indent=2,
+    _approve(ns)
+    print(json.dumps(judge.run(ns.pass_, judge.ContainerJudge(ns.pass_), retry_failed=ns.retry_failed), indent=2,
                      sort_keys=True))
+
+
+def _decisions_extract(ns) -> None:
+    _approve(ns)
+    print(decisions.extract(ns.pass_, judge.ContainerJudge(ns.pass_), retry_failed=ns.retry_failed))
+
+
+def _decisions_align(ns) -> None:
+    _approve(ns)
+    print(decisions.align(ns.pass_, judge.ContainerJudge(ns.pass_)))
 
 
 STAGES = {
@@ -50,6 +75,10 @@ STAGES = {
     "collect": lambda ns: print(len(collect.run(ns.pass_, docker=not ns.no_docker)), "records"),
     "judge-estimate": _judge_estimate,
     "judge": _judge,
+    "decisions-extract": _decisions_extract,
+    "decisions-align": _decisions_align,
+    "decisions-sheet": lambda ns: print(decisions.sheet(ns.pass_)),
+    "decisions-import": lambda ns: print(decisions.import_ratings(ns.pass_)),
     "aggregate": lambda ns: print(aggregate.run(ns.pass_, ns.baseline)),
     "confidence": _confidence,
     "report": _report,

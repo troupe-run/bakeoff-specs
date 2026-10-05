@@ -563,13 +563,14 @@ def test_the_judge_stage_refuses_a_malformed_approval(tmp_state, monkeypatch, ca
 def test_the_judge_stage_refuses_when_the_estimate_has_grown_past_the_approval(tmp_state, monkeypatch, capsys):
     from runner import cli
     anon_fixture()
-    (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 1\n")
+    # anon_fixture also makes 5 decision calls (4 extractions + 1 alignment): one approval covers the total (Task 18)
+    (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 6\n")
     monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a"),
                                                        ("req_test_code", "alpha", "01", "b")])
     monkeypatch.setattr(judge, "ContainerJudge", lambda *a, **k: pytest.fail("no judge past the approval"))
     assert cli.main(["score", "p", "--stage", "judge"]) == 1
     out = capsys.readouterr().out
-    assert "2 calls" in out and "approved 1" in out
+    assert "7 calls" in out and "approved 6" in out
 
 
 def test_retry_failed_counts_failed_items_against_the_approval_and_asks_them(tmp_state, monkeypatch, capsys):
@@ -578,7 +579,8 @@ def test_retry_failed_counts_failed_items_against_the_approval_and_asks_them(tmp
     key = ("req_test_code", "alpha", "01", "a")
     monkeypatch.setattr(judge, "items", lambda pass_: [key])
     _write_status("judge_failed", *key)
-    (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 1\n")
+    # anon_fixture also makes 5 decision calls (4 extractions + 1 alignment): one approval covers the total (Task 18)
+    (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 6\n")
     monkeypatch.setattr(judge, "ContainerJudge", lambda pass_: judge.FakeJudge([OK]))
     assert cli.main(["score", "p", "--stage", "judge"]) == 0
     assert '"asked": 0' in capsys.readouterr().out
@@ -589,7 +591,8 @@ def test_retry_failed_counts_failed_items_against_the_approval_and_asks_them(tmp
 def test_the_judge_stage_runs_once_approved(tmp_state, monkeypatch, capsys):
     from runner import cli
     anon_fixture()
-    (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 2\n")
+    # anon_fixture also makes 5 decision calls (4 extractions + 1 alignment): one approval covers the total (Task 18)
+    (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 7\n")
     monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a"),
                                                        ("req_test_code", "alpha", "01", "b")])
     monkeypatch.setattr(judge, "ContainerJudge", lambda pass_: judge.FakeJudge([OK, OK]))
@@ -603,4 +606,4 @@ def test_the_estimate_stage_needs_no_approval_and_prints_calls_size_and_implied_
     monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a")])
     assert cli.main(["score", "p", "--stage", "judge-estimate"]) == 0
     got = json.loads(capsys.readouterr().out)
-    assert got["calls"] == 1 and "input_mb" in got and got["implied_usd"] is None
+    assert got["judge_calls"] == 1 and got["calls"] == 6 and "input_mb" in got and got["implied_usd"] is None

@@ -7,7 +7,7 @@ import json
 import statistics
 from pathlib import Path
 from runner import paths
-from runner.scoring import aggregate, confidence, inputs, values
+from runner.scoring import aggregate, confidence, decisions, inputs, values
 
 DASH = "—"
 # Footnote markers on a time cell: where the seconds are approximate.
@@ -205,12 +205,10 @@ def _decisions(pass_: str) -> list[str]:
     tf = d / "topics.json"
     if tf.exists():
         asked = {t.get("id"): t.get("question", "") for t in json.loads(tf.read_text()).get("topics", [])}
-    all_arms = sorted({a for t in topics for r in t["routes"] for a in r["arms"]})
-    lines = {"one-off": [], "divergent": [], "unanimous": []}
+    n_arms = len({a for t in topics for r in t["routes"] for a in r["arms"]})
+    lines = {k: [] for k in decisions.KINDS}
     for t in topics:
-        taken = [r for r in t["routes"] if r.get("route") != "not considered" and r["arms"]]
-        kind = ("unanimous" if len(taken) == 1 and sorted(taken[0]["arms"]) == all_arms else
-                "one-off" if sum(len(r["arms"]) for r in taken) == 1 else "divergent")
+        kind = decisions.kind(t, n_arms)
         q = t.get("question") or asked.get(t.get("id")) or t.get("id", "?")
         routes = "; ".join(f"{r.get('route', '?')} [{', '.join(r['arms'])}: {r.get('rating', DASH)}]" for r in t["routes"])
         lines[kind].append(f"- {q} {routes}")
