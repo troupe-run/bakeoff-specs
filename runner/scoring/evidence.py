@@ -3,6 +3,8 @@ Every reader returns values.val(...) or values.missing(...), never raises on bad
 from __future__ import annotations
 import gzip
 import json
+import os
+import stat
 import re
 from pathlib import Path
 from runner import paths
@@ -71,6 +73,22 @@ def _result_lines(p: Path) -> list[dict] | None:
         return None
 
 
+_BG_WAIT = b"Background tasks still running after"
+_STDERR_LIMIT = 16 * 1024 * 1024
+
+
+def _background_wait(p: Path) -> bool:
+    """R13: the turn's stderr shows the CLI waited out its background-task ceiling (up to 600 s that no transcript
+    entry covers). A missing, linked, non-regular or unreadable file is no flag; at most 16 MiB is decompressed."""
+    try:
+        if not stat.S_ISREG(os.lstat(p).st_mode):
+            return False
+        with gzip.open(p, "rb") as f:
+            return _BG_WAIT in f.read(_STDERR_LIMIT)
+    except (OSError, EOFError):
+        return False
+
+
 def arm_time(step_dir: Path) -> dict:
     td = step_dir / "turns"
     found = sorted((int(m[1]), int(m[2]), f) for f in (td.iterdir() if td.is_dir() else [])
@@ -113,6 +131,9 @@ def arm_time(step_dir: Path) -> dict:
             unknown_before = True
         turns.append(turn)
         secs += seconds
+    for turn in turns:
+        if _background_wait(td / f"{turn['stem']}.stderr.gz"):
+            turn["background_wait"] = True      # time understated by up to 600 s (ruling R13)
     return values.val({"seconds": secs, "attempt": attempt, "turns": turns}, rel(td))
 
 

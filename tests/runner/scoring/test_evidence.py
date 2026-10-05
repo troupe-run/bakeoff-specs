@@ -170,3 +170,13 @@ def test_a_turn_without_a_usable_transcript_falls_back_to_its_summed_durations(t
     d = _step(tmp_path, _res(duration_ms=4000, total_cost_usd=1.0) + _res(duration_ms=1000, total_cost_usd=1.5))
     t = evidence.arm_time(d)["value"]
     assert t["turns"] == [{"stem": "arm-a1-001", "seconds": 5.0, "usd": 1.5, "time_source": "duration_ms"}]
+
+
+def test_a_turn_whose_stderr_shows_the_background_wait_ceiling_is_flagged(tmp_path):
+    # R13: the CLI waited up to 600 s on background shell tasks that leave no transcript entries.
+    d = _step(tmp_path, _res(duration_ms=1000, total_cost_usd=1.0), _res(duration_ms=1000, total_cost_usd=2.0))
+    with gzip.open(d / "turns" / "arm-a1-001.stderr.gz", "wt") as f:
+        f.write("Background tasks still running after 600s; terminating. Set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0\n")
+    (d / "turns" / "arm-a1-002.stderr.gz").write_bytes(b"not gzip")          # unreadable: no flag, no failure
+    turns = evidence.arm_time(d)["value"]["turns"]
+    assert turns[0]["background_wait"] is True and "background_wait" not in turns[1]
