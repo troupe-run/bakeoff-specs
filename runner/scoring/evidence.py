@@ -1,7 +1,9 @@
 """Readers for one arm-step's evidence directory (results/<pass>/<arm>/<NN>/). Pure: no Docker, no git, no LLM.
 Every reader returns values.val(...) or values.missing(...), never raises on bad evidence."""
 from __future__ import annotations
+import gzip
 import json
+import re
 from pathlib import Path
 from runner import paths
 from runner.scoring import values
@@ -43,8 +45,6 @@ def all_fail(pass_dir: Path, arms: list[str]) -> dict[int, list[str]]:
 
 
 # --- evidence readers: run, time, cost, quality, questions, violations ---------------------------------------------
-import gzip, re
-
 _ARM_STREAM = re.compile(r"^arm-a(\d+)-(\d+)\.stream\.jsonl\.gz$")
 
 
@@ -74,20 +74,33 @@ def arm_time(step_dir: Path) -> dict:
     if not found:
         return values.missing(rel(td), "no arm turn streams")
     attempt = max(a for a, _, _ in found)
-    turns, prev_usd, secs = [], 0.0, 0.0
+    turns, prev_usd, secs, unknown_before = [], 0.0, 0.0, False
     for _, _, f in (x for x in found if x[0] == attempt):
         r = _result_line(f)
         stem = f.name.removesuffix(".stream.jsonl.gz")
         if r is None:                       # killed turn (e.g. pass 1 ccsdd 05b a1-005, Docker restart 2026-10-05)
             k = _killed_seconds(step_dir, stem)
             if k is None:
-                return values.missing(rel(f), "no result line and no transcript timestamps for the turn")
+                return values.missing(rel(f), f"turn {stem}: no result line and no transcript timestamps")
             turns.append({"stem": stem, "seconds": k, "usd": None, "killed": True})
             secs += k
+            unknown_before = True
             continue
-        usd = float(r.get("total_cost_usd") or 0.0)
-        turns.append({"stem": stem, "seconds": r.get("duration_ms", 0) / 1000, "usd": max(0.0, usd - prev_usd)})
-        prev_usd, secs = usd, secs + r.get("duration_ms", 0) / 1000
+        if not isinstance(r.get("duration_ms"), (int, float)):
+            return values.missing(rel(f), f"turn {stem}: result line has no duration_ms")
+        seconds = r["duration_ms"] / 1000
+        turn = {"stem": stem, "seconds": seconds}
+        cum = r.get("total_cost_usd")
+        if isinstance(cum, (int, float)):
+            turn["usd"] = max(0.0, float(cum) - prev_usd)
+            if unknown_before:
+                turn["absorbs_previous"] = True
+            prev_usd, unknown_before = float(cum), False
+        else:
+            turn["usd"] = None
+            unknown_before = True
+        turns.append(turn)
+        secs += seconds
     return values.val({"seconds": secs, "attempt": attempt, "turns": turns}, rel(td))
 
 
@@ -130,13 +143,39 @@ def _jsonl(p: Path) -> list[dict]:
         return []
 
 
+def _jsonl(p: Path) -> tuple[list[dict], int] | None:
+    """(objects, skipped malformed lines), or None when the file cannot be read."""
+    try:
+        lines = [l for l in p.read_text().splitlines() if l.strip()]
+    except OSError:
+        return None
+    out, skipped = [], 0
+    for l in lines:
+        try:
+            o = json.loads(l)
+        except json.JSONDecodeError:
+            skipped += 1
+            continue
+        if isinstance(o, dict):
+            out.append(o)
+        else:
+            skipped += 1
+    return out, skipped
+
+
 def questions(step_dir: Path) -> dict:
-    out = []
-    for run, p in (("a", step_dir / "a" / "questions.jsonl"), ("b", step_dir / "questions.jsonl")):
-        for q in _jsonl(p):
-            out.append({"run": run, "n": q.get("n"), "kind": q.get("kind"), "answered_by": q.get("answered_by"),
-                        "escalated": q.get("escalated", []), "fallback": q.get("fallback", [])})
-    return values.val(out, rel(step_dir / "questions.jsonl"))
+    scored = step_dir / "questions.jsonl"
+    b = _jsonl(scored)
+    if b is None:
+        return values.missing(rel(scored), "absent or unreadable")
+    a = _jsonl(step_dir / "a" / "questions.jsonl")
+    items, skipped = [], b[1] + (a[1] if a else 0)
+    for run, got in (("a", a), ("b", b)):
+        for q in (got[0] if got else []):
+            items.append({"run": run, "n": q.get("n"), "kind": q.get("kind"), "answered_by": q.get("answered_by"),
+                          "escalated": q.get("escalated", []), "fallback": q.get("fallback", [])})
+    return values.val({"items": items, "skipped_lines": skipped, "discovery": "present" if a else "absent"},
+                      rel(scored))
 
 
 def violations(step_dir: Path) -> dict:
