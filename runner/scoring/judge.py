@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Protocol
 from runner import config, credentials, egress, paths, session, transcripts
 from runner.docker import Mount
-from runner.scoring import inputs, values
+from runner.scoring import anonymise, inputs, values
 
 TOOLS = "Read,Glob,Grep"
 TRANSIENT = ("no_result", "is_error")        # retried in place with limits.transient_backoff (as po.decide)
@@ -139,10 +139,26 @@ def prompt(rubric: inputs.Rubric, lens: dict, key: str, files: list[str]) -> str
 
 def anon_key(pass_: str) -> dict[str, str]:
     """{label: arm}. Read on the host only; never mounted into, or quoted to, a judge."""
-    f = paths.scoring_out(pass_) / "anon-key.json"
+    f = paths.scoring_out(pass_) / anonymise.KEY
     if not f.exists():
         raise inputs.InputError(f"{f} is missing: run the anonymise stage first")
-    return json.loads(f.read_text())
+    return anonymise.read_key(pass_)
+
+
+def key_digest(pass_: str) -> str:
+    """anonymise.key_digest, refusing clearly when there is no key."""
+    anon_key(pass_)
+    return anonymise.key_digest(pass_)
+
+
+def check_key(pass_: str, recorded: str | None, what: str) -> None:
+    """R37: refuse when `what` was made under a different anon-key.json (labels may differ) or records none."""
+    now = key_digest(pass_)
+    if recorded != now:
+        raise inputs.InputError(
+            f"{what} was made under {'a different' if recorded else 'an unrecorded'} anonymisation key "
+            f"(anon-key.json sha256 {now[:12]}, recorded {recorded[:12] if recorded else 'none'}): its labels may not "
+            f"match. Restore the anon-key.json it was made with, or redo it under the current key.")
 
 
 def _label(pass_: str, arm: str) -> str:

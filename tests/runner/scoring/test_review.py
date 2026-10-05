@@ -415,3 +415,15 @@ def test_forced_totals_are_renormalised_so_an_arm_with_an_unmeasured_dimension_c
     s = _scores({"p": p, "q": arm(0.55, 0.55), "r": r})
     assert review._forced(s, "p", "a", "1", 0.75)["p"] == pytest.approx(75)
     assert [(i["arm"], i["reason"]) for i in review.queue(s, "s", 0.0)] == [("p", "decides top two")]
+
+
+
+def test_the_review_import_refuses_when_the_key_changed_since_the_sheet(rv):
+    pass_, out, labels = rv
+    review.sheet(pass_)
+    _fill(pass_)
+    k = json.loads((out / "anon-key.json").read_text())
+    (out / "anon-key.json").write_text(json.dumps({**k, "salt": "another salt"}))
+    with pytest.raises(inputs.InputError, match="different anonymisation key"):
+        review.import_sheet(pass_)
+    assert not (out / "review" / "verdicts.jsonl").exists()

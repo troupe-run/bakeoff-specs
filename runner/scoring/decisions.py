@@ -268,8 +268,26 @@ def _extract_items(pass_: str):
     return [(lab, nn, anon / lab / nn) for lab in labels(pass_) for nn in _steps(pass_, lab)]
 
 
+def _key_record(pass_: str) -> Path:
+    """The digest of the anon-key.json the extractions were made under (R37): labels are per key."""
+    return _dir(pass_) / "extracted" / "key.sha256"
+
+
+def _recorded(f: Path) -> str | None:
+    try:
+        return f.read_text().strip() or None
+    except OSError:
+        return None
+
+
 def extract(pass_: str, j: judge.Judge, *, retry_failed: bool = False) -> Path:
-    """One call per unfinished label × step (resumable), each list written as it lands."""
+    """One call per unfinished label × step (resumable), each list written as it lands. Records the key's digest on
+    its first run and refuses to add to extractions made under another key (R37)."""
+    rec = _key_record(pass_)
+    if (old := _recorded(rec)) is not None:
+        judge.check_key(pass_, old, f"{_dir(pass_) / 'extracted'}")
+    else:
+        _write(rec, judge.key_digest(pass_) + "\n")
     for lab, nn, d in _extract_items(pass_):
         f = extracted_path(pass_, lab, nn)
         if not _unfinished(f, retry_failed):
@@ -332,6 +350,7 @@ def align(pass_: str, j: judge.Judge, *, allow_failed: bool = False) -> Path:
     labels with a step that could not be extracted, an unrated "no evidence" route. Refuses while an extraction has
     not run, and while one failed unless `allow_failed`. Labels with decisions that the aligner put on no route at
     all are recorded under `dropped`."""
+    judge.check_key(pass_, _recorded(_key_record(pass_)), f"{_dir(pass_) / 'extracted'}")      # R37
     labs, collected, unrun, failed, no_ev = labels(pass_), {}, [], [], set()
     for lab, nn, _ in _extract_items(pass_):
         r = _record(extracted_path(pass_, lab, nn))
@@ -491,7 +510,8 @@ def sheet(pass_: str) -> Path:
     aligned, failed = json.loads(tf.read_text()), _failures(pass_)
     topics, dropped = aligned["topics"], aligned.get("dropped", [])
     _write(md, render_sheet(topics, _arms(pass_), failed, dropped))
-    _write(_import_map(pass_), values.dump({"topics": _ordered(topics), "failed": failed, "dropped": dropped}))
+    _write(_import_map(pass_), values.dump({"topics": _ordered(topics), "failed": failed, "dropped": dropped,
+                                            "key_sha256": judge.key_digest(pass_)}))      # R37
     return md
 
 
@@ -566,8 +586,10 @@ def import_ratings(pass_: str) -> Path:
     for f in (md, js):
         if not f.exists():
             raise inputs.InputError(f"{f} is missing: run the decisions-sheet stage first")
+    mp = json.loads(js.read_text())
+    judge.check_key(pass_, mp.get("key_sha256"), f"{md}")        # R37: labels map back only under the same key
     parsed = parse_sheet(md.read_text(encoding="utf-8"))
-    structure = json.loads(js.read_text())["topics"]
+    structure = mp["topics"]
     problems = []
     for t in structure:
         sid = t["sheet_id"]

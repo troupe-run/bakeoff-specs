@@ -22,5 +22,5 @@ def test_dry1_anonymised_hides_the_arm_name_and_the_key_maps_one_label_to_it():
     anon = an.run("dry1")
     hits = [f for f in anon.rglob("*") if f.is_file() and "dryrun" in f.read_text(errors="replace").lower()]
     assert hits == []
-    key = json.loads((paths.scoring_out("dry1") / "anon-key.json").read_text())
+    key = an.read_key("dry1")
     assert list(key.values()).count("dryrun") == 1

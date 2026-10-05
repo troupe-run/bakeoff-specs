@@ -153,7 +153,7 @@ def anon_fixture(pass_="p", arms=("alpha", "beta"), steps=("01", "03")):
                 (d / "stale-list.toml").write_text(f"stale list {nn}\n")
         (out / "anon" / lab / "setup").mkdir(parents=True)
         (out / "anon" / lab / "setup" / "checklist.json").write_text("{}")
-    (out / "anon-key.json").write_text(json.dumps({lab: arm for arm, lab in labels.items()}))
+    (out / "anon-key.json").write_text(json.dumps({"salt": "s", "labels": {lab: arm for arm, lab in labels.items()}}))
     return out, labels
 
 

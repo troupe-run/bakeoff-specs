@@ -42,7 +42,10 @@ resumable or idempotent unless noted.
    record count is arms x steps run; read `missing` entries in the records.
 8. `--stage anonymise` (Docker, container git) writes `anon/` and then `anon-key.json`. **Re-run it whenever any
    `anon/` predates the judge changes** (the judges need `MISSING.json` and `stale-list.toml` in each step dir).
-   Labels are seeded by the pass name, so re-running anonymise after ratings exist is safe (same labels).
+   Labels are the arms shuffled by a random salt stored in `anon-key.json`: **re-running anonymise keeps labels while
+   the key exists** (its salt is reused, even after a crashed re-run, from `anon-key.json.prev`); a new salt is drawn
+   only when there is no key. Extractions and both sheets record the key's sha256 and refuse on a mismatch, so a
+   changed key can never silently re-map ratings or verdicts.
    Check: any `anon/<label>/<NN>/MISSING.md` and `UNSCRUBBED.txt` are expected, and are disclosed in the report.
 9. `--stage leak-check` searches every file under `anon/` (contents and paths, `repo/` and `diff.patch` included)
    for every arm's names, aliases, tool folders and CLI forms, with a checker independent of the scrubber's regexes.

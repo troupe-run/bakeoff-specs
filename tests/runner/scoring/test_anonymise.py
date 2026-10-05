@@ -159,7 +159,7 @@ def test_run_writes_labelled_dirs_with_every_artefact_and_the_key_after_the_expo
     anon = an.run("p1")
     assert seen and not any(seen)                 # no key while any export is still to come
     out = paths.scoring_out("p1")
-    key = json.loads((out / "anon-key.json").read_text())
+    key = an.read_key("p1")
     assert sorted(key.values()) == ["control", "speckit"] and sorted(key) == ["Arm A", "Arm B"]
     assert sorted(p.name for p in anon.iterdir()) == ["Arm A", "Arm B"]          # only labelled dirs under anon/
     assert not (anon / "anon-key.json").exists() and not (out / "anon-tmp").exists()
@@ -186,7 +186,7 @@ def test_transcript_is_the_final_attempts_assistant_text_and_tool_calls_one_line
     d = world / "speckit" / "01"
     _stream(d / "turns" / "arm-a1-001.stream.jsonl.gz", ["OLD ATTEMPT"], [])
     anon = an.run("p1")
-    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    key = an.read_key("p1")
     lab = {v: k for k, v in key.items()}["speckit"]
     tr = (anon / lab / "01" / "transcript.md").read_text()
     assert "OLD ATTEMPT" not in tr
@@ -196,7 +196,7 @@ def test_transcript_is_the_final_attempts_assistant_text_and_tool_calls_one_line
 
 def test_others_questions_lists_only_the_other_arms_under_their_anonymous_label(world):
     anon = an.run("p1")
-    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    key = an.read_key("p1")
     lab = {v: k for k, v in key.items()}
     mine = (anon / lab["speckit"] / "01" / "others-questions.md").read_text()
     assert f"## {lab['control']}" in mine and "unique-qc1-question" in mine
@@ -207,7 +207,7 @@ def test_others_questions_lists_only_the_other_arms_under_their_anonymous_label(
 
 def test_the_other_arms_questions_are_scrubbed_too(world):
     anon = an.run("p1")
-    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    key = an.read_key("p1")
     lab = {v: k for k, v in key.items()}
     theirs = (anon / lab["control"] / "01" / "others-questions.md").read_text()
     assert ".specify" not in theirs and "which spec/ file" in theirs
@@ -216,7 +216,7 @@ def test_the_other_arms_questions_are_scrubbed_too(world):
 def test_a_step_without_shas_gets_a_placeholder_not_a_crash_and_no_repo(world):
     (world / "control" / "01" / "git.json").write_text(json.dumps({"head": "0" * 40}))
     anon = an.run("p1")
-    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    key = an.read_key("p1")
     lab = {v: k for k, v in key.items()}["control"]
     step = anon / lab / "01"
     assert "no sha_before" in (step / "MISSING.md").read_text()
@@ -262,7 +262,7 @@ def test_setup_records_are_anonymised_into_setup_and_unscrubbed_files_are_listed
         (s / "versions.json").write_text('{"tool": "speckit 1.0"}')
     (world / "speckit" / "00-setup" / "blob.bin").write_bytes(b"\xff\xfe")
     anon = an.run("p1")
-    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    key = an.read_key("p1")
     lab = {v: k for k, v in key.items()}
     assert (anon / lab["speckit"] / "setup" / "versions.json").read_text() == '{"tool": "method 1.0"}'
     assert (anon / lab["speckit"] / "setup" / "UNSCRUBBED.txt").read_text().splitlines()[1:] == ["blob.bin"]
@@ -276,7 +276,7 @@ def test_a_step_with_an_unscrubbed_file_lists_its_scrubbed_path(world, monkeypat
         (dest / ".specify" / "img.bin").write_bytes(b"\xff\xfe")
     monkeypatch.setattr(gitops, "export_tree", export)
     anon = an.run("p1")
-    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    key = an.read_key("p1")
     lab = {v: k for k, v in key.items()}["speckit"]
     assert "spec/img.bin" in (anon / lab / "01" / "UNSCRUBBED.txt").read_text()
 
@@ -323,7 +323,7 @@ def test_a_trailer_after_an_escaped_newline_is_removed_from_a_transcript(world):
     _stream(d / "turns" / "arm-a9-001.stream.jsonl.gz", [],
             [("Bash", {"command": 'git commit -m "msg\n\nCo-Authored-By: Bot <b@x>\nClaude-Session: https://s/1"'})])
     anon = an.run("p1")
-    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    key = an.read_key("p1")
     lab = {v: k for k, v in key.items()}["speckit"]
     tr = (anon / lab / "01" / "transcript.md").read_text()
     assert "git commit -m" in tr and "Co-Authored-By" not in tr and "Claude-Session" not in tr
@@ -334,7 +334,7 @@ def test_scrubbing_precedes_truncation_so_a_repo_name_cannot_survive_cut_in_half
     cmd = "x" * 1990 + " /work/bakeoff-specs-speckitty/y"
     _stream(d / "turns" / "arm-a9-001.stream.jsonl.gz", [], [("Bash", {"command": cmd})])
     anon = an.run("p1")
-    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    key = an.read_key("p1")
     lab = {v: k for k, v in key.items()}["speckit"]
     assert "bakeoff-specs" not in (anon / lab / "01" / "transcript.md").read_text()
 
@@ -362,7 +362,7 @@ def test_with_a_run_record_and_no_questions_file_the_arm_asked_no_questions(worl
     (world / "speckit" / "01" / "questions.jsonl").unlink()
     (world / "speckit" / "01" / "a" / "questions.jsonl").unlink()
     anon = an.run("p1")
-    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    key = an.read_key("p1")
     lab = {v: k for k, v in key.items()}["speckit"]
     step = anon / lab / "01"
     assert "## Scored run" in (step / "questions.md").read_text()
@@ -376,7 +376,7 @@ def test_without_a_run_record_questions_gates_and_transcript_are_listed_missing_
     (d / "run.json").unlink()
     shutil.rmtree(d / "turns")
     anon = an.run("p1")
-    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    key = an.read_key("p1")
     step = anon / {v: k for k, v in key.items()}["control"] / "01"
     assert not any((step / n).exists() for n in ("questions.md", "gates.md", "transcript.md"))
     miss = (step / "MISSING.md").read_text()
@@ -399,7 +399,7 @@ def test_only_a_discovery_file_still_gets_a_scored_run_heading_and_skipped_lines
     d = world / "speckit" / "01"
     (d / "questions.jsonl").write_text("not json\n")
     anon = an.run("p1")
-    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    key = an.read_key("p1")
     text = (anon / {v: k for k, v in key.items()}["speckit"] / "01" / "questions.md").read_text()
     assert "## Scored run" in text and "1 malformed line(s) skipped" in text and "## Discovery run" in text
 
@@ -467,3 +467,51 @@ def test_anon_tmp_is_removed_even_when_the_run_fails_midway(world, monkeypatch):
     with pytest.raises(RuntimeError):
         an.run("p1")
     assert not (paths.scoring_out("p1") / "anon-tmp").exists()
+
+
+# --- R37: a random salt, kept while a key exists -----------------------------------------------------------------------
+def _raw_key():
+    return json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+
+
+def test_the_key_stores_a_random_salt_and_labels_are_the_arms_shuffled_by_it(world, monkeypatch):
+    monkeypatch.setattr(an.secrets, "token_hex", lambda n: "f" * (2 * n))
+    an.run("p1")
+    k = _raw_key()
+    assert k["salt"] == "f" * 32
+    assert {a: lab for lab, a in k["labels"].items()} == an.labels(["control", "speckit"], "f" * 32)
+
+
+def test_a_rerun_reuses_the_keys_salt_and_a_missing_key_draws_a_new_one(world, monkeypatch):
+    salts = iter(["a" * 32, "b" * 32])
+    monkeypatch.setattr(an.secrets, "token_hex", lambda n: next(salts))
+    an.run("p1")
+    first = (paths.scoring_out("p1") / "anon-key.json").read_bytes()
+    an.run("p1")
+    assert (paths.scoring_out("p1") / "anon-key.json").read_bytes() == first          # same salt, same labels
+    (paths.scoring_out("p1") / "anon-key.json").unlink()
+    an.run("p1")
+    assert _raw_key()["salt"] == "b" * 32
+
+
+def test_a_rerun_that_crashes_keeps_the_salt_for_the_next_run(world, monkeypatch):
+    monkeypatch.setattr(an.secrets, "token_hex", lambda n: "c" * (2 * n))
+    an.run("p1")
+    monkeypatch.setattr(an.secrets, "token_hex", lambda n: "d" * (2 * n))
+    real = gitops.export_tree
+    monkeypatch.setattr(gitops, "export_tree", lambda p, sha, dest: (_ for _ in ()).throw(RuntimeError("gone")))
+    with pytest.raises(RuntimeError):
+        an.run("p1")
+    assert not (paths.scoring_out("p1") / "anon-key.json").exists()               # no key for a half-written tree
+    monkeypatch.setattr(gitops, "export_tree", real)
+    an.run("p1")
+    assert _raw_key()["salt"] == "c" * 32 and not (paths.scoring_out("p1") / "anon-key.json.prev").exists()
+
+
+def test_a_key_from_before_salts_keeps_its_pass_seeded_labels(world):
+    out = paths.scoring_out("p1")
+    out.mkdir(parents=True, exist_ok=True)
+    legacy = {lab: a for a, lab in an.labels(["control", "speckit"], "p1").items()}
+    (out / "anon-key.json").write_text(json.dumps(legacy))
+    an.run("p1")
+    assert _raw_key() == {"salt": "p1", "labels": legacy}

@@ -254,6 +254,7 @@ def _extracted(lab, nn, body):
     f = paths.scoring_out("p") / "decisions" / "extracted" / lab / f"{nn}.json"
     f.parent.mkdir(parents=True, exist_ok=True)
     f.write_text(body)
+    (f.parent.parent / "key.sha256").write_text(judge.key_digest("p") + "\n")     # as extract records it (R37)
 
 
 def test_align_writes_topics_with_every_other_label_not_considered(tmp_state):
@@ -532,3 +533,34 @@ def test_decisions_align_passes_allow_failed_from_the_command_line(tmp_state, mo
     assert cli.main(["score", "p", "--stage", "decisions-align"]) == 0
     assert cli.main(["score", "p", "--stage", "decisions-align", "--allow-failed"]) == 0
     assert seen == [False, True]
+
+
+# ---- R37: the key digest -------------------------------------------------------------------------------------------
+
+def _rekey(pass_="p"):
+    f = paths.scoring_out(pass_) / "anon-key.json"
+    k = json.loads(f.read_text())
+    f.write_text(json.dumps({**k, "salt": "another salt"}))
+
+
+def test_extract_and_align_refuse_extractions_made_under_another_key(tmp_state):
+    from runner.scoring import inputs
+    anon_fixture(arms=("alpha",), steps=("01",))
+    dz.extract("p", judge.FakeJudge([D1]))
+    assert (paths.scoring_out("p") / "decisions" / "extracted" / "key.sha256").read_text().strip() == judge.key_digest("p")
+    _rekey()
+    with pytest.raises(inputs.InputError, match="different anonymisation key"):
+        dz.extract("p", judge.FakeJudge([]))
+    with pytest.raises(inputs.InputError, match="different anonymisation key"):
+        dz.align("p", judge.FakeJudge([ALIGNED]))
+
+
+def test_the_rating_import_refuses_when_the_key_changed_since_the_sheet(tmp_state):
+    from runner.scoring import inputs
+    _aligned_pass()
+    md = dz.sheet("p")
+    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: good\nreason: sensible\n"))
+    _rekey()
+    with pytest.raises(inputs.InputError, match="different anonymisation key"):
+        dz.import_ratings("p")
+    assert not (paths.scoring_out("p") / "decisions" / "ratings.json").exists()

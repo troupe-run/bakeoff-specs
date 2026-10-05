@@ -1,13 +1,16 @@
 """Plan 3 Task 16: anonymised copies of every arm-step, so judges and the owner score without knowing which method
 produced what. Arm identities are scrubbed from file contents, file and directory names, the diff, the transcript,
-questions and gates. `anon-key.json` ({label: arm}) is written last and lives OUTSIDE `anon/` (a judge mounts only
+questions and gates. `anon-key.json` ({"salt", "labels": {label: arm}}; R37: labels are the arms shuffled by a random
+salt, reused while a key exists) is written last and lives OUTSIDE `anon/` (a judge mounts only
 labelled directories under `anon/`). The host never runs git: trees and diffs come from `runner.gitops` (container)."""
 from __future__ import annotations
 import functools
 import gzip
+import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import sys
 import zlib
@@ -77,9 +80,50 @@ Term = tuple[str, str]
 
 
 def labels(arms: list[str], seed: str) -> dict[str, str]:
+    """{arm: label}: the sorted arms shuffled by `seed` (the key's salt, R37)."""
     order = sorted(arms)
     random.Random(seed).shuffle(order)
     return {a: f"Arm {chr(65 + i)}" for i, a in enumerate(order)}
+
+
+# --- the key: {"salt", "labels": {label: arm}} (R37) ----------------------------------------------------------------
+KEY = "anon-key.json"
+KEY_PREV = "anon-key.json.prev"          # the previous key while a re-run is in progress: its salt survives a crash
+
+
+def _key_file(pass_: str) -> Path:
+    return paths.scoring_out(pass_) / KEY
+
+
+def _parse_key(text: str) -> tuple[str | None, dict[str, str]]:
+    """(salt, {label: arm}). A key written before R37 is a flat {label: arm} with no salt."""
+    d = json.loads(text)
+    if isinstance(d, dict) and isinstance(d.get("labels"), dict):
+        return (d["salt"] if isinstance(d.get("salt"), str) and d["salt"] else None), dict(d["labels"])
+    return None, dict(d)
+
+
+def read_key(pass_: str) -> dict[str, str]:
+    """{label: arm} from anon-key.json; raises FileNotFoundError when there is none."""
+    return _parse_key(_key_file(pass_).read_text())[1]
+
+
+def key_digest(pass_: str) -> str:
+    """sha256 of anon-key.json's bytes: extractions and both sheets record it and refuse when it changed (R37)."""
+    return hashlib.sha256(_key_file(pass_).read_bytes()).hexdigest()
+
+
+def _existing_salt(pass_: str) -> str | None:
+    """The salt of the current key (or of the previous one a crashed re-run left), so labels survive a re-run. A
+    pre-R37 key's labels were seeded by the pass name, which therefore is its salt."""
+    for name in (KEY, KEY_PREV):
+        f = paths.scoring_out(pass_) / name
+        try:
+            salt, _ = _parse_key(f.read_text())
+        except (OSError, ValueError, TypeError):
+            continue
+        return salt or pass_
+    return None
 
 
 def _load(arm: str):
@@ -431,14 +475,16 @@ def run(pass_: str) -> Path:
     others-questions.md, [stale-list.toml], [UNSCRUBBED.txt], [MISSING.md + MISSING.json]}, <label>/setup/ and, last, scoring_out/anon-key.json.
     Evidence that is absent is named in MISSING.md, never written as a file that looks like input. Returns anon/."""
     out = paths.scoring_out(pass_)
-    anon, key_path, tmp = out / "anon", out / "anon-key.json", out / "anon-tmp"
+    anon, key_path, prev, tmp = out / "anon", out / KEY, out / KEY_PREV, out / "anon-tmp"
+    salt = _existing_salt(pass_) or secrets.token_hex(16)   # R37: reuse the key's salt; a new one only without a key
     for d in (anon, tmp):
         shutil.rmtree(d, ignore_errors=True)
-    key_path.unlink(missing_ok=True)                # no key until the whole run finished
+    if key_path.exists():                           # no key until the whole run finished; its salt is kept in .prev
+        os.replace(key_path, prev)
     try:
         pass_dir = paths.RESULTS / pass_
         arms = collect.arms(pass_dir)
-        lab = labels(arms, pass_)
+        lab = labels(arms, salt)
         t = pass_terms(arms)
         steps = {a: _step_dirs(pass_dir / a) for a in arms}
         failures: list[str] = []
@@ -492,7 +538,8 @@ def run(pass_: str) -> Path:
                 _w(anon / lab[arm] / nn / "others-questions.md", "\n".join(parts) if parts else "(no other arm has this step)\n")
         for f in failures:
             print(f"anonymise: {f}", file=sys.stderr)
-        key_path.write_text(values.dump({lab[a]: a for a in arms}), encoding="utf-8")   # last
+        key_path.write_text(values.dump({"salt": salt, "labels": {lab[a]: a for a in arms}}), encoding="utf-8")  # last
+        prev.unlink(missing_ok=True)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)       # never left behind, even on a failure (never commit it)
     return anon

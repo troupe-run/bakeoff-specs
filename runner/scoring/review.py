@@ -157,7 +157,7 @@ def sheet(pass_: str) -> Path:
     md.parent.mkdir(parents=True, exist_ok=True)
     md.write_text(head + "\n".join(body) if items else head + "Nothing to review.\n", encoding="utf-8")
     _map_file(pass_).parent.mkdir(parents=True, exist_ok=True)
-    _map_file(pass_).write_text(values.dump({"items": mapping}))
+    _map_file(pass_).write_text(values.dump({"items": mapping, "key_sha256": judge.key_digest(pass_)}))   # R37
     return md
 
 
@@ -207,7 +207,9 @@ def import_sheet(pass_: str, today: date | None = None, say=print) -> Path:
     for f in (md, mp):
         if not f.exists():
             raise inputs.InputError(f"{f} is missing: run the review-sheet stage first")
-    structure = json.loads(mp.read_text())["items"]
+    m = json.loads(mp.read_text())
+    judge.check_key(pass_, m.get("key_sha256"), f"{md}")          # R37: labels map back only under the same key
+    structure = m["items"]
     parsed, problems = _parse(md.read_text(encoding="utf-8"))
     arm_of, existing = judge.anon_key(pass_), aggregate.read_verdicts(pass_)
     problems += [f"item {n}: not on the review sheet's list" for n in sorted(set(parsed) - {i["item"] for i in structure})]
