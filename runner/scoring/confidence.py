@@ -25,12 +25,39 @@ def total(arm: dict, dims_w: dict, parts_w: dict, mode: str) -> float:
 
 def weight_variants(dims_w: dict) -> list[tuple[str, dict]]:
     out = [("base", dict(dims_w))]
+
     for dim in sorted(dims_w):
         for delta in (5, -5):
-            new = max(0.0, dims_w[dim] + delta)
+            new = max(0.0, min(100.0, dims_w[dim] + delta))  # Cap at 100
             rest = {k: v for k, v in dims_w.items() if k != dim}
-            scale = (100 - new) / sum(rest.values())
-            out.append((f"{dim} {delta:+d}", {**{k: v * scale for k, v in rest.items()}, dim: new}))
+            rest_sum = sum(rest.values())
+
+            # Skip if we can't renormalize (others sum to 0)
+            if rest_sum == 0 and new < 100:
+                continue
+
+            if rest_sum > 0:
+                scale = (100 - new) / rest_sum
+                variant = {**{k: v * scale for k, v in rest.items()}, dim: new}
+            else:
+                # If rest_sum is 0, just set this dim and zeros for others
+                variant = {k: 0.0 for k in dims_w}
+                variant[dim] = new
+
+            # Check for duplicates by comparing the weights dict
+            # Use a tuple of sorted items as a unique key
+            variant_key = tuple(sorted(variant.items()))
+
+            # Check if we've seen this exact weight distribution
+            is_duplicate = False
+            for _, existing in out:
+                if tuple(sorted(existing.items())) == variant_key:
+                    is_duplicate = True
+                    break
+
+            if not is_duplicate:
+                out.append((f"{dim} {delta:+d}", variant))
+
     return out
 
 
@@ -40,18 +67,80 @@ def check(scores: dict) -> dict:
     ranking = sorted(arms, key=lambda a: (-base[a], a))
     intervals = {a: [base[a], base[a]] for a in arms}
     changes = []
+
+    # Track which pairs of arms flip relative order
+    flips = set()  # Set of (a, b) tuples representing pairs that flip
+    tolerance = 1e-9
+
     for name, w in weight_variants(dims_w):
         for mode in ("median", "low", "high"):
             t = {a: total(v, w, parts_w, mode) for a, v in arms.items()}
             for a in arms:
                 intervals[a] = [min(intervals[a][0], t[a]), max(intervals[a][1], t[a])]
             order = sorted(arms, key=lambda a: (-t[a], a))
+
             if order != ranking:
                 changes.append({"variant": f"{name}, judges {mode}", "order": order})
+                # Track which pairs flipped (with tolerance for float noise)
+                for i in range(len(ranking)):
+                    for j in range(i + 1, len(ranking)):
+                        arm_i, arm_j = ranking[i], ranking[j]
+                        base_score_i = base[arm_i]
+                        base_score_j = base[arm_j]
+                        variant_score_i = t[arm_i]
+                        variant_score_j = t[arm_j]
+
+                        # Check if relative order flipped
+                        base_diff = base_score_i - base_score_j
+                        variant_diff = variant_score_i - variant_score_j
+
+                        # If signs differ (and neither is within tolerance of 0), it's a flip
+                        if abs(base_diff) > tolerance and abs(variant_diff) > tolerance:
+                            if base_diff * variant_diff < 0:  # Different signs = flip
+                                flips.add((min(arm_i, arm_j), max(arm_i, arm_j)))
+
+    # Build groups using flips: if a and c flip, all arms between them in ranking join the group
     groups: list[list[str]] = []
-    for a in ranking:
-        if groups and intervals[a][1] >= intervals[groups[-1][-1]][0]:
-            groups[-1].append(a)
-        else:
-            groups.append([a])
+    in_group = set()
+
+    for i, a in enumerate(ranking):
+        if a in in_group:
+            continue
+
+        # Start a new group with arm a
+        group = [a]
+        in_group.add(a)
+
+        # Find all arms that should be in this group due to flips
+        # An arm is in the group if it flips with a, or with something already in the group
+        changed = True
+        while changed:
+            changed = False
+            for j in range(len(ranking)):
+                b = ranking[j]
+                if b in in_group:
+                    continue
+                # Check if b flips with any arm in the current group
+                for arm_in_group in group:
+                    flip_key = (min(arm_in_group, b), max(arm_in_group, b))
+                    if flip_key in flips:
+                        # b flips with something in the group, add it
+                        group.append(b)
+                        in_group.add(b)
+                        changed = True
+                        break
+
+        # Ensure groups stay contiguous in base ranking by including all arms between min and max
+        if group:
+            min_rank = min(ranking.index(a) for a in group)
+            max_rank = max(ranking.index(a) for a in group)
+            for k in range(min_rank, max_rank + 1):
+                if ranking[k] not in in_group:
+                    group.append(ranking[k])
+                    in_group.add(ranking[k])
+            # Re-sort group to base ranking order
+            group.sort(key=lambda x: ranking.index(x))
+
+        groups.append(group)
+
     return {"ranking": ranking, "intervals": intervals, "groups": groups, "order_changes": changes}
