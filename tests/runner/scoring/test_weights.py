@@ -52,3 +52,24 @@ def test_non_numeric_scale_value_raises_input_error(tmp_path):
     p.write_text('[dimensions]\ncoping = 100\n[parts.coping]\nregressions = 100\n[scales]\nratio_cap = "not a number"\n')
     with pytest.raises(inputs.InputError, match="must be a number"):
         inputs.load_weights(p)
+
+
+def test_bool_scale_value_raises_with_specific_message(tmp_path):
+    p = tmp_path / "w.toml"
+    p.write_text('[dimensions]\ncoping = 100\n[parts.coping]\nregressions = 100\n[scales]\nratio_cap = true\n')
+    with pytest.raises(inputs.InputError, match="must be a number"):
+        inputs.load_weights(p)
+
+
+def test_infinite_scale_value_raises_with_specific_message(tmp_path):
+    p = tmp_path / "w.toml"
+    p.write_text('[dimensions]\ncoping = 100\n[parts.coping]\nregressions = 100\n[scales]\nratio_cap = inf\n')
+    with pytest.raises(inputs.InputError, match="must be finite"):
+        inputs.load_weights(p)
+
+
+def test_ratio_cap_one_raises_with_specific_message(tmp_path):
+    p = tmp_path / "w.toml"
+    p.write_text('[dimensions]\ncoping = 100\n[parts.coping]\nregressions = 100\n[scales]\nratio_cap = 1.0\n')
+    with pytest.raises(inputs.InputError, match="ratio_cap must be > 1"):
+        inputs.load_weights(p)

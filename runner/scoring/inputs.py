@@ -50,13 +50,13 @@ def load_weights(path: Path | None = None) -> Weights:
             raise InputError(f"{path}: [scales] {k} must be a number, got {v!r}")
         try:
             fv = float(v)
-            if not math.isfinite(fv):
-                raise InputError(f"{path}: [scales] {k} must be finite, got {fv!r}")
-            if k == "ratio_cap" and fv <= 1:
-                raise InputError(f"{path}: [scales] ratio_cap must be > 1, got {fv}")
-            scales[k] = fv
         except (ValueError, OverflowError) as e:
-            raise InputError(f"{path}: [scales] {k} must be a finite number, got {v!r}") from e
+            raise InputError(f"{path}: [scales] {k} must be a number, got {v!r}") from e
+        if not math.isfinite(fv):
+            raise InputError(f"{path}: [scales] {k} must be finite, got {fv!r}")
+        if k == "ratio_cap" and fv <= 1:
+            raise InputError(f"{path}: [scales] ratio_cap must be > 1, got {fv}")
+        scales[k] = fv
     return Weights(dims, parts, scales)
 
 

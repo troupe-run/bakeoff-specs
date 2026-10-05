@@ -27,13 +27,14 @@ def test_out_of_scope_rating_is_not_a_score():
 
 
 def test_churn_proves_add_one():
-    """churn_score(9, 99) = ratio_score(10, 100) = 0.5 (equal at log scale)"""
-    assert scales.churn_score(9, 99) == 1.0
+    """churn_score(0, 9) = ratio_score(1, 10) = 1.0; ratio_score(0, 9) would be None without add-one."""
+    assert scales.churn_score(0, 9) == 1.0
+    assert scales.ratio_score(0, 9) is None
 
 
 def test_ratio_better_side_past_cap():
-    """ratio_score(1, 100) = 1.0 (far better than cap, capped at 1.0)"""
-    assert scales.ratio_score(1, 100) == 1.0
+    """ratio_score(1, 1000) = 1.0 (100x better than cap of 10x, capped at 1.0)"""
+    assert scales.ratio_score(1, 1000) == 1.0
 
 
 def test_ratio_negative_input_is_undefined():
