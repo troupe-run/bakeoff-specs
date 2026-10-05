@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from runner import paths
+from runner import faults, paths
 from runner.scoring import aggregate, collect, confidence, evidence, inputs, page, report, values
 
 
@@ -13,14 +13,19 @@ def _scores(pass_: str) -> dict:
     return json.loads(f.read_text())
 
 
+def _write_confidence(pass_: str, scores: dict) -> Path:
+    out = paths.scoring_out(pass_) / "confidence.json"
+    out.write_text(values.dump(confidence.check(scores)))
+    return out
+
+
 def _confidence(ns) -> None:
-    out = paths.scoring_out(ns.pass_) / "confidence.json"
-    out.write_text(values.dump(confidence.check(_scores(ns.pass_))))
-    print(out)
+    print(_write_confidence(ns.pass_, _scores(ns.pass_)))
 
 
 def _report(ns) -> None:
-    _scores(ns.pass_)                      # refuse before writing anything
+    scores = _scores(ns.pass_)             # refuse before writing anything
+    _write_confidence(ns.pass_, scores)    # so confidence.json can never lag the report
     print(report.run(ns.pass_))
     print(page.run(ns.pass_))
 
@@ -37,6 +42,12 @@ DEFAULT = ("collect", "aggregate", "confidence", "report")
 
 
 def score(ns) -> int:
+    if not faults.valid_name(ns.pass_):
+        print(f"score: bad pass name {ns.pass_!r}")
+        return 1
+    if not (paths.RESULTS / ns.pass_).is_dir():
+        print(f"score: no such pass: {paths.RESULTS / ns.pass_} does not exist")
+        return 1
     try:
         for s in ([ns.stage] if ns.stage else DEFAULT):
             STAGES[s](ns)

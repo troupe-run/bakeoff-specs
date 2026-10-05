@@ -3,7 +3,7 @@
 from __future__ import annotations
 import json, statistics
 from pathlib import Path
-from runner import paths
+from runner import faults, paths
 from runner.scoring import evidence, inputs, scales, values
 
 ARM_MEASURED = {"violations", "choice"}
@@ -159,6 +159,8 @@ def run(pass_: str, baseline: str = "control") -> Path:
     arms_out = {}
     flags = [f"excluded-tests: {e['id']} verdict is a draft (decided: {e['decided']})"
              for e in excluded.entries if not str(e["decided"]).startswith("owner")]
+    if (why := faults.halt_reason(pass_)):
+        flags.append(f"pass {pass_} is HALTED: {why}")
     if baseline not in coll:
         flags.append(f"baseline arm '{baseline}' has no collected records")
     field = sorted({n for r in coll.values() for n in r})

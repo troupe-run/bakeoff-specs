@@ -17,7 +17,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     ns = build_parser().parse_args(argv)
-    if ns.cmd not in ("faults", "watch"):    # design §9: halted until `faults resume --note` (Task 22); watch reads only
+    # design §9: halted until `faults resume --note` (Task 22). watch reads only; score (R22) never touches run state:
+    # it reads results/ and writes only results/<pass>/scoring/, and aggregate flags a halted pass in scores.json.
+    if ns.cmd not in ("faults", "watch", "score"):
         from runner import faults
         pass_ = getattr(ns, "pass_", None) or "pass1"      # no pass named: the real bake-off's ledger
         if not faults.valid_name(pass_):                   # never build a ledger path from a bad name (M-2)
