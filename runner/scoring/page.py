@@ -7,6 +7,7 @@ vanilla JS: no external scripts, styles or fonts. Weight sliders recompute total
 from __future__ import annotations
 import html
 import json
+import re
 from pathlib import Path
 from runner import paths
 from runner.scoring import aggregate, confidence, values
@@ -41,13 +42,15 @@ def _decisions(pass_: str):
 
 
 def _embed(obj) -> str:
-    return json.dumps(obj, sort_keys=True).replace("</", "<\\/")
+    """Every `<` becomes a JSON unicode escape, so the data can neither close the script element nor open `<!--`."""
+    return json.dumps(obj, sort_keys=True).replace("<", "\\u003c")
 
 
 CSS = """
-:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#64625c;--card:#fff;--line:#dcd9d0;--accent:#1f5fbf;--warn:#9a5b00;--bad:#b3261e;--good:#1c7c45}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#15161a;--fg:#e8e6e1;--muted:#a09d95;--card:#1e2026;--line:#363944;--accent:#7fb0ff;--warn:#e6a94a;--bad:#ff8a80;--good:#6fd39a}}
-:root[data-theme="dark"]{--bg:#15161a;--fg:#e8e6e1;--muted:#a09d95;--card:#1e2026;--line:#363944;--accent:#7fb0ff;--warn:#e6a94a;--bad:#ff8a80;--good:#6fd39a}
+:root{color-scheme:light dark;--bg:#fbfaf7;--fg:#1d1d1b;--muted:#64625c;--card:#fff;--line:#dcd9d0;--accent:#1f5fbf;--warn:#9a5b00;--bad:#b3261e;--good:#1c7c45}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#15161a;--fg:#e8e6e1;--muted:#a09d95;--card:#1e2026;--line:#363944;--accent:#7fb0ff;--warn:#e6a94a;--bad:#ff8a80;--good:#6fd39a}}
+:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#15161a;--fg:#e8e6e1;--muted:#a09d95;--card:#1e2026;--line:#363944;--accent:#7fb0ff;--warn:#e6a94a;--bad:#ff8a80;--good:#6fd39a}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:960px;margin:0 auto;padding:16px}
@@ -125,7 +128,7 @@ function renderGroups() {
 function renderSliders() {
   const el = document.getElementById('sliders');
   el.innerHTML = Object.keys(base).map(d => '<div class="sl"><label for="w-' + esc(d) + '">' + esc(d) + '</label><output id="o-' + esc(d) + '">' + base[d] + '</output>' +
-    '<input type="range" id="w-' + esc(d) + '" data-dim="' + esc(d) + '" min="0" max="%(smax)d" step="%(sstep)d" value="' + base[d] + '"></div>').join('');
+    '<input type="range" id="w-' + esc(d) + '" data-dim="' + esc(d) + '" min="0" max="__SMAX__" step="__SSTEP__" value="' + base[d] + '"></div>').join('');
   el.querySelectorAll('input').forEach(i => i.addEventListener('input', () => {
     current[i.dataset.dim] = Number(i.value);
     document.getElementById('o-' + i.dataset.dim).textContent = i.value;
@@ -177,14 +180,14 @@ function renderDecisions() {
 }
 renderSliders(); renderRanking(); renderScorecard(); renderGroups(); renderDimensions(); renderTimeCost(); renderDecisions();
 if (typeof module !== 'undefined') module.exports = { totals };
-""" % {"smax": SLIDER_MAX, "sstep": SLIDER_STEP}
+""".replace("__SMAX__", str(SLIDER_MAX)).replace("__SSTEP__", str(SLIDER_STEP))
 
 HTML = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Bake-off scorecard</title>
-<style>%(css)s</style></head>
+<style>__CSS__</style></head>
 <body><main>
-<h1>Bake-off scorecard</h1><p class="muted">Pass %(pass)s. Move the sliders to try other weights; totals and ranking update live.</p>
+<h1>Bake-off scorecard</h1><p class="muted">Pass __PASS__. Move the sliders to try other weights; totals and ranking update live.</p>
 <h2>Bottom line</h2><div class="card" id="ranking"></div><div class="card" id="confidence"></div>
 <h2>Weights</h2><div class="card"><div class="sliders" id="sliders"></div><p><button id="reset" type="button">Reset to base weights</button></p>
 <p class="muted">Weights are renormalised to 100. A dimension with no measurement is skipped (marked †), never counted as 0.</p></div>
@@ -192,10 +195,10 @@ HTML = """<!doctype html>
 <h2>Dimensions</h2><div id="dimensions"></div>
 <section id="decisions-sec"><h2>Decision review</h2><div id="decisions"></div></section>
 <h2>Time and cost</h2><div id="timecost"></div>
-<h2>Flags</h2><ul>%(flags)s</ul>
+<h2>Flags</h2><ul>__FLAGS__</ul>
 </main>
-<script type="application/json" id="data">%(data)s</script>
-<script>%(js)s</script>
+<script type="application/json" id="data">__DATA__</script>
+<script>__JS__</script>
 </body></html>
 """
 
@@ -206,7 +209,8 @@ def render(pass_: str) -> str:
     data = {"scores": scores, "confidence": conf, "time_cost": _time_cost(aggregate.collected(pass_)),
             "decisions": _decisions(pass_)}
     flags = "".join(f"<li>{html.escape(f)}</li>" for f in scores["flags"]) or "<li>None.</li>"
-    return HTML % {"css": CSS, "pass": html.escape(pass_), "flags": flags, "data": _embed(data), "js": JS}
+    subs = {"__CSS__": CSS, "__PASS__": html.escape(pass_), "__FLAGS__": flags, "__DATA__": _embed(data), "__JS__": JS}
+    return re.sub("__(?:CSS|PASS|FLAGS|DATA|JS)__", lambda m: subs[m.group(0)], HTML)  # one pass: values are never re-scanned
 
 
 def run(pass_: str) -> Path:
