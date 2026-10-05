@@ -461,3 +461,14 @@ def register_watch(sub):
     p.add_argument("--poll", type=float, default=0.5, help=argparse.SUPPRESS)
     p.set_defaults(func=watch)
 REGISTRARS.append(register_watch)
+
+
+def register_score(sub):
+    from runner.scoring import cli as scli
+    p = sub.add_parser("score", help="Plan 3: score a pass (collect, aggregate, report; judges after pass 1)")
+    p.add_argument("pass_", metavar="pass")
+    p.add_argument("--stage", choices=sorted(scli.STAGES), default=None)
+    p.add_argument("--baseline", default="control", help="the arm time and churn are scaled against")
+    p.add_argument("--no-docker", action="store_true", help="skip Docker-backed measures (churn): recorded as deferred")
+    p.set_defaults(func=scli.score)
+REGISTRARS.append(register_score)
