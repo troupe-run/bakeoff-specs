@@ -1,0 +1,110 @@
+import json
+import pytest
+from runner import paths
+from runner.scoring import aggregate, inputs, values
+
+LENSES = ("auditor", "maintainer", "newcomer")
+
+
+def write_collected(pass_, arm, step, **fields):
+    rec = {"arm": arm, "step": step, "outcome": values.val("done", "x"),
+           "hidden": values.val({"passed": 10, "total": 10, "excluded": [], "per_test": {}}, "x"),
+           "regressions": values.val({"rate": None}, "x"),
+           "quality": values.val({"mypy_errors": 0, "ruff_findings": 0, "mutation_score": 0.8,
+                                  "mutation_state": "measured"}, "x"),
+           "time": values.val({"seconds": 100.0, "attempt": 1, "turns": []}, "x"),
+           "cost": values.val({}, "x"), "questions": values.val([], "x"), "violations": values.val([], "x"),
+           "churn": values.val({"lines": 0, "files": [], "total_lines": 0}, "x"),
+           "phases": {"method": values.val([], "x"), "common": values.val({}, "x")}}
+    for k, v in fields.items():
+        rec[k] = v if isinstance(v, dict) and ("value" in v or "missing" in v) else values.val(v, "x")
+    f = paths.scoring_out(pass_) / "collected" / arm / f"{step:02d}.json"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(values.dump(rec))
+
+
+def write_judged(pass_, part, arm, key, scores):
+    for lens, s in zip(LENSES, scores):
+        f = paths.scoring_out(pass_) / "judged" / part / arm / key / f"{lens}.json"
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps({"score": s, "status": "ok", "evidence": ["x"], "notes": ""}))
+
+
+@pytest.fixture
+def p(tmp_state, monkeypatch):
+    (paths.RESULTS / "p").mkdir(parents=True)
+    monkeypatch.setattr(aggregate.evidence, "all_fail", lambda d, arms: {})
+    for arm in ("alpha", "control"):
+        write_collected("p", arm, 1)
+    return "p"
+
+
+def _scores(pass_):
+    return json.loads(aggregate.run(pass_).read_text())
+
+
+def test_a_dimension_with_one_unmeasured_part_reweights_the_rest(p):
+    write_collected(p, "alpha", 1, quality={"mypy_errors": 0, "ruff_findings": 0, "mutation_score": None,
+                                            "mutation_state": "crashed"})
+    write_judged(p, "test_names", "alpha", "01", [4, 4, 4])
+    s = _scores(p)["arms"]["alpha"]["dimensions"]["code_quality"]
+    assert s["unmeasured_parts"] == ["mutation"] and s["score"] == pytest.approx(15.0)
+
+
+def test_owner_verdict_is_used_and_lenses_are_kept(p):
+    write_collected(p, "alpha", 3)
+    write_judged(p, "req_test_code", "alpha", "03", [1, 3, 4])
+    v = paths.scoring_out(p) / "review" / "verdicts.jsonl"
+    v.parent.mkdir(parents=True)
+    v.write_text(json.dumps({"part": "req_test_code", "arm": "alpha", "step": 3, "score": 2, "reason": "r",
+                             "decided": "owner"}) + "\n")
+    st = _scores(p)["arms"]["alpha"]["dimensions"]["traceability"]["parts"]["req_test_code"]["steps"]["3"]
+    assert st["score"] == 0.5 and st["lenses"] == {"auditor": 1, "maintainer": 3, "newcomer": 4} and st["disputed"]
+
+
+def test_control_missing_for_a_step_leaves_time_unscored(p):
+    write_collected(p, "alpha", 2)
+    st = _scores(p)["arms"]["alpha"]["dimensions"]["time"]["parts"]["time"]["steps"]["2"]
+    assert st["score"] is None and st["why"] == "no baseline for this step"
+
+
+def test_unreviewed_all_fail_test_stops_aggregation(p, monkeypatch):
+    monkeypatch.setattr(aggregate.evidence, "all_fail", lambda d, arms: {1: ["t-everyone-fails"]})
+    monkeypatch.setattr(aggregate.inputs, "load_excluded",
+                        lambda: inputs.Exclusions(frozenset(), frozenset(), []))
+    with pytest.raises(inputs.InputError, match="t-everyone-fails"):
+        aggregate.run(p)
+
+
+def test_total_is_the_sum_of_scored_dimensions_and_a_rerun_is_byte_identical(p):
+    a = aggregate.run(p).read_bytes()
+    b = aggregate.run(p).read_bytes()
+    arm = json.loads(a)["arms"]["alpha"]
+    assert a == b and arm["total"] == pytest.approx(
+        sum(d["score"] for d in arm["dimensions"].values() if d["score"] is not None))
+
+
+def test_not_applicable_lenses_are_left_out_of_the_median_and_all_na_is_not_a_zero(p):
+    write_collected(p, "alpha", 2)
+    for lens, (st, sc) in zip(LENSES, [("ok", 4), ("not_applicable", None), ("ok", 2)]):
+        f = paths.scoring_out(p) / "judged" / "hand_edit" / "alpha" / "02" / f"{lens}.json"
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps({"score": sc, "status": st, "evidence": [], "notes": ""}))
+    for lens in LENSES:
+        f = paths.scoring_out(p) / "judged" / "stale_updated" / "alpha" / "03" / f"{lens}.json"
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps({"score": None, "status": "not_applicable", "evidence": [], "notes": ""}))
+    write_collected(p, "alpha", 3)
+    parts = _scores(p)["arms"]["alpha"]["dimensions"]["coping"]["parts"]
+    assert parts["hand_edit"]["steps"]["2"]["score"] == 0.75        # median of the two ok lenses (4, 2) = 3
+    na = parts["stale_updated"]["steps"]["3"]
+    assert na["score"] is None and na["why"] == "not applicable"
+
+
+def test_draft_exclusions_are_flagged_and_owner_decided_ones_are_not(p, monkeypatch):
+    entries = [{"id": "t-draft", "verdict": "defect", "reason": "r", "decided": "draft - awaiting owner"},
+               {"id": "t-final", "verdict": "hard", "reason": "r", "decided": "owner 2026-10-05"}]
+    monkeypatch.setattr(aggregate.inputs, "load_excluded",
+                        lambda: inputs.Exclusions(frozenset({"t-draft"}), frozenset({"t-draft", "t-final"}), entries))
+    flags = _scores(p)["flags"]
+    assert any("t-draft" in f and "draft" in f for f in flags) and not any("t-final" in f for f in flags)
