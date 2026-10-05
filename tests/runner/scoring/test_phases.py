@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from runner import config
+from runner import config, paths
 from runner.scoring import inputs, phases, values
 
 RULES = inputs.load_phase_rules()
@@ -270,6 +270,166 @@ def test_the_classifier_still_reproduces_the_owner_checked_sample():
     sample = json.loads(SAMPLE.read_text())
     assert not sample["checked_by"].startswith("pending")
     for arm, want in sample["runs"].items():
-        step_dir = Path(__file__).parents[3] / "results" / "pass1" / arm / "04"
+        step_dir = paths.RESULTS / "pass1" / arm / "04"
         got = phases.common_phases(step_dir, config.load_arm(arm).spec_paths, RULES)["value"]
         assert got == want, arm
+
+
+# --- fix round 4: damaged transcripts, malformed entries, shell sanitising ------------------------------------------
+
+def _entries(n):
+    """n distinct timestamped assistant entries (distinct text, so gzip cannot squeeze them into one block)."""
+    import hashlib
+    return "".join(json.dumps({"type": "assistant", "timestamp": _at(i), "message": {"content": [
+        {"type": "text", "text": hashlib.sha256(str(i).encode()).hexdigest() * 8}]}}) + "\n" for i in range(n))
+
+
+def _gz(tmp_path, data: bytes):
+    import gzip
+    d = tmp_path / "-work-repo"
+    d.mkdir()
+    raw = gzip.compress(data, mtime=0)
+    return d / "s.jsonl.gz", raw
+
+
+def test_a_corrupt_gzip_transcript_is_skipped_and_counted_not_a_crash(tmp_path):
+    import gzip
+    import zlib
+    f, raw = _gz(tmp_path, _entries(50).encode())
+    bad = bytearray(raw)
+    bad[20] ^= 0xFF                                       # inside the deflate stream
+    f.write_bytes(bytes(bad))
+    with pytest.raises(zlib.error):                       # the damage this test is about: zlib.error, not OSError
+        gzip.decompress(bytes(bad))
+    refused: list[dict] = []
+    evs, skipped = phases.events_from_transcripts(tmp_path, skipped_files=refused)
+    assert evs == [] and skipped == 1
+    assert refused == [{"path": "-work-repo/s.jsonl.gz", "reason": "corrupt", "kept_lines": 0}]
+
+
+def test_a_truncated_gzip_transcript_keeps_the_lines_read_before_the_cut_and_counts_the_cut(tmp_path):
+    f, raw = _gz(tmp_path, _entries(50).encode())
+    f.write_bytes(raw[: len(raw) * 3 // 4])
+    refused: list[dict] = []
+    evs, skipped = phases.events_from_transcripts(tmp_path, skipped_files=refused)
+    assert 0 < len(evs) < 50 and skipped == 1
+    assert [e["t"] - evs[0]["t"] for e in evs] == list(range(len(evs)))      # the first entries, in order
+    assert refused == [{"path": "-work-repo/s.jsonl.gz", "reason": "truncated", "kept_lines": len(evs)}]
+
+
+def test_a_transcript_over_the_decompressed_size_cap_is_cut_there_and_counted(tmp_path, monkeypatch):
+    d = tmp_path / "-work-repo"
+    d.mkdir()
+    text = _entries(10)
+    (d / "s.jsonl").write_text(text)
+    first_line = len(text.splitlines(keepends=True)[0])
+    monkeypatch.setattr(phases, "TRANSCRIPT_CHAR_CAP", first_line * 3 + 1)
+    refused: list[dict] = []
+    evs, skipped = phases.events_from_transcripts(tmp_path, skipped_files=refused)
+    assert len(evs) == 3 and skipped == 1
+    assert refused == [{"path": "-work-repo/s.jsonl", "reason": "over-size-cap", "kept_lines": 3}]
+
+
+def test_wrongly_shaped_entries_are_counted_as_skipped_and_do_not_break_classification(tmp_path):
+    d = tmp_path / "-work-repo"
+    d.mkdir()
+    (d / "s.jsonl").write_text("".join(json.dumps(e) + "\n" for e in [
+        {"type": "user", "timestamp": _at(0), "message": {"content": [{"type": "text", "text": 5}]}},
+        {"type": "assistant", "timestamp": _at(1), "message": {"content": [
+            {"type": "tool_use", "id": "a", "name": "Bash", "input": ["uv run pytest"]}]}},
+        {"type": "assistant", "timestamp": _at(2), "message": {"content": [
+            {"type": "tool_use", "id": "b", "name": "Write", "input": {"file_path": ["src/a.py"]}}]}},
+        {"type": "assistant", "timestamp": _at(3), "message": {"content": [
+            {"type": "tool_use", "id": "c", "name": "Read", "input": {"file_path": "src/a.py"}}]}},
+        {"type": "assistant", "timestamp": _at(9), "message": {"content": []}}]))
+    evs, skipped = phases.events_from_transcripts(tmp_path)
+    assert skipped == 3 and len(evs) == 5                 # every timestamp is kept as an event
+    assert all(isinstance(e["input"], dict) for e in evs)
+    assert sum(phases.classify(evs, RULES, [])["seconds"].values()) == 9
+
+
+def test_classify_tolerates_a_non_dict_input_and_a_non_string_path():
+    evs = [ev(0, "Bash", input=["ls"]), ev(1, "Write", input={"file_path": 7}), ev(3, kind="other")]
+    s = phases.classify(evs, RULES, [])["seconds"]
+    assert s["understand"] == 1 and s["implement"] == 2
+
+
+def test_damaged_transcript_files_are_named_in_common_phases(tmp_path):
+    d = _step_with_transcript(tmp_path, [_prompt(0, "build it"), _tool(0, "Read", {}), _tool(10, "Read", {})],
+                              turns=[("arm-a1-001", "build it", 10_000, 1.0)])
+    import gzip
+    raw = gzip.compress(_entries(50).encode(), mtime=0)
+    (d / "transcripts" / "a1" / "-work-repo" / "s.jsonl.gz").write_bytes(raw[: len(raw) * 3 // 4])
+    v = phases.common_phases(d, [], RULES)["value"]
+    assert v["skipped_lines"] == 1
+    assert [(x["path"], x["reason"]) for x in v["skipped_files"]] == [("-work-repo/s.jsonl.gz", "truncated")]
+
+
+def test_the_mini_steps_classified_seconds_add_up_to_its_arm_time():
+    from runner.scoring import evidence
+    step = MINI / "alpha" / "02"
+    s = phases.common_phases(step, [], RULES)["value"]["seconds"]
+    arm = evidence.arm_time(step)["value"]["seconds"]
+    assert abs(sum(v for p, v in s.items() if p != "waiting") - arm) <= 0.5
+
+
+@pytest.mark.parametrize("cmd", ['git commit -m "fix ruff warnings"', "grep -rn pytest src",
+                                 "cat <<'EOF'\nimport pytest\nEOF", "cat /tmp/pytest.out", "uv add --dev pytest",
+                                 "pgrep -af pytest"])
+def test_a_test_tool_named_outside_command_position_is_not_a_test_run(cmd):
+    assert not phases.is_test_command(cmd, RULES)
+
+
+@pytest.mark.parametrize("cmd", ["uv run pytest -q", "cd /work/r; uv run pytest -q 2>&1 | tail -3",
+                                 "uv run ruff check . && uv run mypy --strict .", "python -m pytest tests",
+                                 "PYTHONPATH=src timeout 60 .venv/bin/python -m pytest",
+                                 "uv run --no-project --with pytest python -m pytest",
+                                 "for i in 1 2; do uv run pytest -x; done", "(uv run pytest)",
+                                 "uv run troupe config show a"])
+def test_a_test_tool_in_command_position_is_a_test_run(cmd):
+    assert phases.is_test_command(cmd, RULES)
+
+
+def test_a_command_merely_mentioning_a_test_tool_neither_counts_as_testing_nor_clears_rework():
+    for cmd in ('git commit -m "fix ruff warnings"', "grep pytest src/a.py", "cat <<'EOF'\nimport pytest\nEOF"):
+        evs = [_bash(0, "uv run pytest", id="b1"), ev(1, kind="result", id="b1", output="1 failed"),
+               _bash(1, cmd, id="b2"), ev(2, kind="result", id="b2", output="0 failed? no: ok"),
+               ev(2, "Write", input={"file_path": "src/a.py"}), ev(4, kind="other")]
+        s = phases.classify(evs, RULES, [])["seconds"]
+        assert s["test"] == 1 and s["rework"] == 2, cmd
+
+
+def test_write_calls_only_count_inside_python_code_and_heredocs_are_parsed_in_every_shape():
+    t = phases.bash_write_targets
+    assert t("git commit -m \"use open(p, 'w') now\"", RULES) is None          # code in a commit message
+    assert t("cat > /tmp/x <<'EOF'\nopen('src/a.py','w')\nEOF", RULES) is None   # a heredoc that is not python
+    assert t('[[ "$a" > b ]] && echo y', RULES) is None                        # a [[ ]] string comparison
+    assert t("(( a > b )) && echo y", RULES) is None                           # an arithmetic comparison
+    assert t("python3 - <<'EOF'\nif a > b:", RULES) is None                    # unterminated heredoc
+    assert t("cat > src/p.py <<EOF\nEOF\necho x > src/q.py\ncat > src/r.py <<EOF\nbody\nEOF",
+             RULES) == ["src/p.py", "src/q.py", "src/r.py"]                    # an empty-body heredoc
+    assert t("python3 -c \"open('src/c.py','w').write('x')\"", RULES) == ["src/c.py"]
+    assert t("cat <<'EOF' | python3\nopen('src/d.py','w').write(s)\nEOF", RULES) == ["src/d.py"]
+    assert t("uv run python - <<'EOF'\nPath('src/e.py').write_text(s)\nEOF", RULES) == ["src/e.py"]
+    assert t('cat <<< "x"; echo y > src/f.py', RULES) == ["src/f.py"]          # a here-string is not a heredoc
+
+
+def test_a_heredoc_saved_to_a_script_counts_as_code_only_when_the_same_call_runs_that_script():
+    t = phases.bash_write_targets
+    body = "cat > /tmp/patch.py <<'EOF'\np='src/troupe/store.py'\ns=open(p).read()\nopen(p,'w').write(s)\nEOF\n"
+    assert t(body + "python3 /tmp/patch.py && git diff --stat", RULES) == ["src/troupe/store.py"]   # pass1 superpowers/04
+    assert t(body + "cd /work/r && uv run python /tmp/patch.py", RULES) == ["src/troupe/store.py"]
+    assert t(body + "echo saved", RULES) is None                              # saved, never run here
+    assert t(body + "python3 /tmp/other.py", RULES) is None                   # a different script runs
+
+
+@pytest.mark.parametrize("cmd", [
+    "python3 - <<'EOF'\nimport subprocess\nsubprocess.run([\"uv\",\"run\",\"pytest\",\"tests/t.py\",\"-q\"])\nEOF",
+    "uv run python -c \"import sys, pytest; sys.exit(pytest.main(['-q', 'tests/t.py']))\"",
+    "cat > /tmp/mut.py <<'EOF'\nimport subprocess\nsubprocess.run(['uv', 'run', 'pytest', '-x'])\nEOF\npython3 /tmp/mut.py"])
+def test_a_test_run_driven_from_python_code_the_call_runs_is_a_test_run(cmd):
+    assert phases.is_test_command(cmd, RULES)
+
+
+def test_a_test_run_inside_python_code_that_is_only_saved_is_not_a_test_run():
+    assert not phases.is_test_command("cat > tests/run.py <<'EOF'\nimport pytest\npytest.main(['-q'])\nEOF", RULES)

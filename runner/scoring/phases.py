@@ -8,9 +8,11 @@ The gap that ends at a prompt (or at the queue operations that hand it in) is be
 time is `waiting`, taken from run.json."""
 from __future__ import annotations
 import fnmatch
+import functools
 import gzip
 import json
 import re
+import zlib
 from datetime import datetime
 from pathlib import Path
 from runner import transcripts
@@ -21,9 +23,15 @@ PROMPT = "(prompt)"
 QUEUE = "(queue)"                                         # a queue-operation entry: the harness handing in a prompt
 FREE_TEXT = "(free text)"
 OUTPUT_CHARS = 4000
+TRANSCRIPT_CHAR_CAP = 256 * 1024 * 1024                   # decompressed characters read per transcript file
 _WRITE = {"Write", "Edit", "NotebookEdit", "MultiEdit"}
-_QUOTED = re.compile(r"""'[^']*'|"(?:[^"\\]|\\.)*\"""")        # shell strings: emptied before write_commands run
-_HEREDOC = re.compile(r"<<-?[ \t]*(['\"]?)(\w+)\1([^\n]*)\n.*?\n[ \t]*\2[ \t]*(?=\n|$)", re.S)
+_QUOTED = re.compile(r"""'[^']*'|"(?:[^"\\]|\\.)*\"""")        # shell strings: emptied in the shell text (_shell)
+# a heredoc: delimiter (2), the rest of its header line (3), its body (4, from the header's newline) up to the
+# terminator line, or to the end of the command when it has none; an empty body is allowed; `<<<` is a here-string
+_HEREDOC = re.compile(r"(?<!<)<<(?!<)-?[ \t]*(['\"]?)([A-Za-z_]\w*)\1([^\n]*)(.*?)(?:\n[ \t]*\2[ \t]*(?=\n|$)|\Z)",
+                      re.S)
+_COMPARISON = re.compile(r"\[\[.*?\]\]|\(\(.*?\)\)")          # [[ a > b ]] and (( a > b )) are not redirects
+_SIMPLE_COMMAND = re.compile(r"\n|&&|\|\||\$\(|[;&|(){}`]")
 _COMMAND_NAME = re.compile(r"<command-name>\s*(/\S+?)\s*</command-name>")
 _CALL_NAMES = ("skill", "description", "subagent_type")   # not the prompt: it may say "verify" about anything
 _STEM = re.compile(r"^arm-a(\d+)-(\d+)$")
@@ -38,8 +46,65 @@ def _spec(path, rules, spec_paths) -> bool:
         path.startswith(sp.path) if sp.path.endswith("/") else fnmatch.fnmatch(path, sp.path) for sp in spec_paths)
 
 
-def _rel(path: str) -> str:
-    return re.sub(r"^/work/[^/]+/", "", path or "")
+def _rel(path) -> str:
+    return re.sub(r"^/work/[^/]+/", "", path) if isinstance(path, str) else ""
+
+
+def _shell(command: str) -> str:
+    """The shell text of a Bash command: heredoc bodies removed, quoted strings emptied, [[ ]] / (( )) blanked."""
+    text = _QUOTED.sub(lambda m: m[0][0] * 2, _HEREDOC.sub(lambda m: "<<" + m[2] + m[3], command))
+    return _COMPARISON.sub(lambda m: m[0][:2] + "  " + m[0][-2:], text)
+
+
+def is_test_command(command: str, rules) -> bool:
+    """True when a `test_commands` regex matches at the start of one of the command's simple commands (shell text
+    only, `command_prefixes` stripped first): `uv run pytest` is a test run, `grep pytest` is not. Also true when
+    a `test_calls` regex matches code the call feeds an interpreter (`pytest.main(...)` in a python heredoc)."""
+    if any(r.search(code) for code in _code_texts(command, rules) for r in rules.test_calls):
+        return True
+    for part in _SIMPLE_COMMAND.split(_shell(command)):
+        part = part.lstrip()
+        stripped = True
+        while stripped:
+            stripped = False
+            for r in rules.command_prefixes:
+                m = r.match(part)
+                if m and m.end() > 0:
+                    part, stripped = part[m.end():].lstrip(), True
+                    break
+        if any(r.match(part) for r in rules.test_commands):
+            return True
+    return False
+
+
+@functools.lru_cache(maxsize=None)
+def _interpreter_rx(patterns: tuple[str, ...]) -> tuple[str, re.Pattern, re.Pattern]:
+    """(the interpreter command word as a regex source, that word standing alone, an interpreter call with a -c
+    string in group "code")."""
+    word = rf"(?:^|(?<=[\s;&|(]))(?:\S*/)?(?:{'|'.join(patterns)})"
+    return (word, re.compile(word + r"(?=[\s;&|)]|$)"),
+            re.compile(word + r"""\s+(?:-\w+\s+)*-c\s+(?P<code>'[^']*'|"(?:[^"\\]|\\.)*")"""))
+
+
+def _code_texts(command: str, rules) -> list[str]:
+    """The code a Bash call feeds an interpreter: heredoc bodies of interpreter commands (`python3 - <<EOF`), heredocs
+    saved to a script that the same call then runs with one (`cat > /tmp/p.py <<EOF ... EOF; python3 /tmp/p.py`),
+    and -c strings."""
+    word_src, word, dash_c = _interpreter_rx(tuple(r.pattern for r in rules.code_interpreters))
+    out = []
+    for m in _HEREDOC.finditer(command):
+        start = max(command.rfind(c, 0, m.start()) for c in "\n;&") + 1
+        header = command[start:m.start()] + re.split(r"[;&]", m[3], maxsplit=1)[0]
+        saved = re.search(r"(?<![0-9&<>])>\s*([^\s;&|<>()'\"]+)", header)
+        runs_saved = saved and re.search(
+            word_src + r"\s+(?:-\S+\s+)*" + re.escape(saved[1]) + r"(?![^\s;&|)])",
+            command[m.end():])
+        if word.search(header) or runs_saved:
+            out.append(m[4])
+    for m in dash_c.finditer(_HEREDOC.sub(lambda m: "<<" + m[2] + m[3], command)):
+        code = m["code"][1:-1]
+        out.append(re.sub(r'\\(["\\$`])', r"\1", code) if m["code"][0] == '"' else code)
+    return out
 
 
 def _assigned(before: str, var: str) -> str | None:
@@ -50,13 +115,15 @@ def _assigned(before: str, var: str) -> str | None:
 
 def bash_write_targets(command: str, rules) -> list[str] | None:
     """None when `command` writes no repo file; else its repo-relative targets in order ([] when it writes but
-    names no readable target). Rules: `write_commands` over the shell text with heredoc bodies removed and quoted
-    strings emptied (a `>` inside a sed expression or an echo is not a redirect),
-    `write_calls` over the whole command; a target outside the repo (absolute after /work/<repo>/ is cut) is
-    ignored, and a command whose only targets are outside the repo is not a write."""
-    shell = _QUOTED.sub(lambda m: m[0][0] * 2, _HEREDOC.sub(lambda m: "<<" + m[2] + m[3], command))
+    names no readable target). Rules: `write_commands` over the shell text (heredoc bodies removed, quoted strings
+    emptied, [[ ]] / (( )) comparisons blanked: a `>` inside a sed expression, an echo or a test is not a redirect),
+    `write_calls` only over the code fed to an interpreter (_code_texts: python heredoc bodies, heredoc scripts the
+    call runs, python -c strings); a target
+    outside the repo (absolute after /work/<repo>/ is cut) is ignored, and a command whose only targets are outside
+    the repo is not a write."""
     targets, unnamed = [], False
-    for regexes, text in ((rules.write_commands, shell), (rules.write_calls, command)):
+    passes = [(rules.write_commands, _shell(command))] + [(rules.write_calls, c) for c in _code_texts(command, rules)]
+    for regexes, text in passes:
         for r in regexes:
             for m in r.finditer(text):
                 g = m.groupdict()
@@ -103,7 +170,12 @@ def _turn_starts(events: list[dict]) -> set[int]:
 
 def classify(events: list[dict], rules, spec_paths) -> dict:
     """Seconds per phase over time-ordered events (rules 1-6 of the brief; `waiting` is left 0 here). Also returns
-    `by_turn`: the same split per turn prompt (time before the first prompt joins the first turn)."""
+    `by_turn`: the same split per turn prompt (time before the first prompt joins the first turn).
+
+    One state machine runs over the whole interleaved timeline: the main session and every subagent session merged
+    by time. Rework mode, the current phase and "has written this turn" are shared, so a subagent's failing test
+    run puts the main loop's next write into rework, and a gap is attributed to whichever session's event came
+    first. Keep this in mind when checking the owner's sample: per-session state would split differently."""
     secs = {p: 0.0 for p in PHASES}
     by_turn: list[dict] = []
     rework, wrote, current, pending, review_turn, prompts = False, False, "understand", set(), False, 0
@@ -119,7 +191,8 @@ def classify(events: list[dict], rules, spec_paths) -> dict:
             if prompts > 1 or not by_turn:
                 by_turn.append({p: 0.0 for p in PHASES})
             wrote, current = False, "understand"
-            review_turn = any(r.search((e["input"] or {}).get("label", "")) for r in rules.review_markers)
+            lab = e["input"].get("label") if isinstance(e["input"], dict) else None
+            review_turn = isinstance(lab, str) and any(r.search(lab) for r in rules.review_markers)
             phase = current
         elif e["kind"] == "result":
             if e["id"] in pending:                        # rules 3-4: a test result sets or clears rework mode
@@ -127,10 +200,10 @@ def classify(events: list[dict], rules, spec_paths) -> dict:
                 rework = bool(e["is_error"]) or any(r.search(out) for r in rules.failure_markers)
                 pending.discard(e["id"])
         elif e["kind"] == "tool":
-            name, inp = e["name"], e["input"] or {}
+            name, inp = e["name"], e["input"] if isinstance(e["input"], dict) else {}
             cmd = inp.get("command", "") if name == "Bash" and isinstance(inp.get("command"), str) else ""
             bash_targets = bash_write_targets(cmd, rules) if cmd else None
-            if cmd and any(r.search(cmd) for r in rules.test_commands):
+            if cmd and is_test_command(cmd, rules):
                 phase = "test"                            # a test run dominates a call's time, even if it also writes
                 wrote = wrote or bash_targets is not None
                 if e.get("id"):
@@ -169,19 +242,52 @@ def _text(content) -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
-        return "\n".join(b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text")
+        return "\n".join(b["text"] for b in content
+                         if isinstance(b, dict) and b.get("type") == "text" and isinstance(b.get("text"), str))
     return ""
 
 
-def _entry_events(o: dict, t: float, session: str) -> list[dict]:
+_PATH_KEYS = ("file_path", "notebook_path", "command")
+
+
+def _malformed(blocks: list[dict]) -> bool:
+    """A content block of the wrong shape: non-string text, a tool call whose input is not an object or whose path
+    or command is not a string, a tool result whose content is neither text nor a list of blocks."""
+    for b in blocks:
+        kind = b.get("type")
+        if kind == "text" and not isinstance(b.get("text"), str):
+            return True
+        if kind == "tool_use":
+            inp = b.get("input")
+            if inp is not None and not isinstance(inp, dict):
+                return True
+            if isinstance(inp, dict) and any(k in inp and not isinstance(inp[k], str) for k in _PATH_KEYS):
+                return True
+        if kind == "tool_result" and not isinstance(b.get("content"), (str, list, type(None))):
+            return True
+        if kind == "tool_result" and isinstance(b.get("content"), list) and _malformed(
+                [x for x in b["content"] if isinstance(x, dict)]):
+            return True
+    return False
+
+
+def _clean_input(inp) -> dict:
+    if not isinstance(inp, dict):
+        return {}
+    return {k: v for k, v in inp.items() if k not in _PATH_KEYS or isinstance(v, str)}
+
+
+def _entry_events(o: dict, t: float, session: str) -> tuple[list[dict], bool]:
+    """The entry's events (at least one) and whether any of its blocks was malformed (repaired, counted skipped)."""
     base = {"t": t, "kind": "other", "name": None, "input": {}, "is_error": False, "id": None, "output": "",
             "session": session}
     msg = o.get("message") if isinstance(o.get("message"), dict) else {}
     content = msg.get("content")
     blocks = [b for b in content if isinstance(b, dict)] if isinstance(content, list) else []
+    bad = _malformed(blocks)
     out = []
     if o.get("type") == "assistant":
-        out = [{**base, "kind": "tool", "name": b.get("name"), "input": b.get("input") or {}, "id": b.get("id")}
+        out = [{**base, "kind": "tool", "name": b.get("name"), "input": _clean_input(b.get("input")), "id": b.get("id")}
                for b in blocks if b.get("type") == "tool_use"]
     elif o.get("type") == "user":
         out = [{**base, "kind": "result", "id": b.get("tool_use_id"), "is_error": bool(b.get("is_error")),
@@ -191,22 +297,24 @@ def _entry_events(o: dict, t: float, session: str) -> list[dict]:
             out = [{**base, "name": PROMPT, "input": {"label": label(_text(content))}}]
     elif o.get("type") == "queue-operation":
         out = [{**base, "name": QUEUE}]
-    return out or [base]
+    return out or [base], bad
 
 
 def events_from_transcripts(dir: Path, *, skipped_files: list[dict] | None = None) -> tuple[list[dict], int]:
     """All events of the session transcripts under `dir` (subagent sessions included), sorted by time, and the
-    number of lines that could not be parsed. Files `safe_files` refuses are appended to `skipped_files`."""
+    number of lines that could not be parsed (or held a malformed block: repaired, kept, counted). Files
+    `safe_files` refuses are appended to `skipped_files`; so is a file that could not be read to its end
+    (`"reason": "truncated" | "corrupt" | "unreadable" | "over-size-cap"`, with the `kept_lines` read before that
+    point, whose events are kept; the lost rest counts as one skipped line). At most TRANSCRIPT_CHAR_CAP
+    decompressed characters are read per file."""
     keyed, skipped = [], 0
+    rec = skipped_files if skipped_files is not None else []
     for fi, f in enumerate(transcripts.safe_files(dir, "*.jsonl*", skipped=skipped_files)):
         session = str(f.relative_to(dir))
-        try:
-            opener = gzip.open if f.name.endswith(".gz") else open
-            with opener(f, "rt", errors="replace") as fh:
-                lines = list(fh)
-        except (OSError, EOFError):
-            skipped += 1                                  # an unreadable or truncated file counts as one bad line
-            continue
+        lines, cut = _read_lines(f)
+        if cut:
+            skipped += 1
+            rec.append({"path": session, "reason": cut, "kept_lines": len(lines)})
         for li, line in enumerate(lines):
             if not line.strip():
                 continue
@@ -224,10 +332,34 @@ def events_from_transcripts(dir: Path, *, skipped_files: list[dict] | None = Non
             if t is None:
                 skipped += 1
                 continue
-            for bi, e in enumerate(_entry_events(o, t, session)):
+            evs, bad = _entry_events(o, t, session)
+            skipped += bad
+            for bi, e in enumerate(evs):
                 keyed.append(((t, fi, li, bi), e))
     keyed.sort(key=lambda x: x[0])
     return [e for _, e in keyed], skipped
+
+
+def _read_lines(f: Path) -> tuple[list[str], str | None]:
+    """The file's lines, read one at a time, and why reading stopped early (None when it reached the end)."""
+    lines, total = [], 0
+    opener = gzip.open if f.name.endswith(".gz") else open
+    try:
+        with opener(f, "rt", errors="replace") as fh:
+            while True:
+                line = fh.readline(TRANSCRIPT_CHAR_CAP - total + 1)
+                if not line:
+                    return lines, None
+                total += len(line)
+                if total > TRANSCRIPT_CHAR_CAP:
+                    return lines, "over-size-cap"
+                lines.append(line)
+    except EOFError:
+        return lines, "truncated"
+    except (zlib.error, gzip.BadGzipFile):
+        return lines, "corrupt"
+    except OSError:
+        return lines, "unreadable"
 
 
 def method_phases(step_dir: Path) -> dict:
@@ -264,15 +396,15 @@ def turn_spans(step_dir: Path, attempt: int) -> list[tuple[float, float]] | None
     return [(evs[s]["t"], evs[max(s, e - 1)]["t"]) for s, e in zip(starts, ends)]
 
 
-def killed_turn_seconds(step_dir: Path, stem: str) -> float | None:
-    """The span of a killed turn's transcript entries (evidence._killed_seconds), or None when it has none."""
+def killed_turn_seconds(step_dir: Path, stem: str, spans: list[tuple[float, float]] | None) -> float | None:
+    """The span of a killed turn's transcript entries (evidence._killed_seconds), or None when it has none. `spans`
+    is turn_spans() of the turn's attempt, computed once by the caller."""
     m = _STEM.match(stem)
     if not m:
         return None
     attempt = int(m[1])
     stems = sorted(f.name.removesuffix(".stream.jsonl.gz") for f in (step_dir / "turns").glob(
         f"arm-a{attempt}-*.stream.jsonl.gz"))
-    spans = turn_spans(step_dir, attempt)
     if stem not in stems or spans is None or stems.index(stem) >= len(spans):
         return None
     first, last = spans[stems.index(stem)]

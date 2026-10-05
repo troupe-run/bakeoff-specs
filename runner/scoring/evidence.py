@@ -3,6 +3,7 @@ Every reader returns values.val(...) or values.missing(...), never raises on bad
 from __future__ import annotations
 import gzip
 import json
+import zlib
 import os
 import stat
 import re
@@ -69,7 +70,7 @@ def _result_lines(p: Path) -> list[dict] | None:
                     if isinstance(o, dict):
                         out.append(o)
             return out
-    except (OSError, EOFError):
+    except (OSError, EOFError, zlib.error):              # missing, truncated or corrupt (BadGzipFile is an OSError)
         return None
 
 
@@ -85,7 +86,7 @@ def _background_wait(p: Path) -> bool:
             return False
         with gzip.open(p, "rb") as f:
             return _BG_WAIT in f.read(_STDERR_LIMIT)
-    except (OSError, EOFError):
+    except (OSError, EOFError, zlib.error):
         return False
 
 
@@ -97,7 +98,8 @@ def arm_time(step_dir: Path) -> dict:
         return values.missing(rel(td), "no arm turn streams")
     attempt = max(a for a, _, _ in found)
     from runner.scoring import phases           # lazy: phases imports evidence (controller ruling R2)
-    spans = phases.turn_spans(step_dir, attempt)
+    all_spans = phases.turn_spans(step_dir, attempt)      # the transcripts are parsed once, here
+    spans = all_spans
     if spans is not None and len(spans) != sum(1 for a, _, _ in found if a == attempt):
         spans = None                            # prompts do not map one-to-one onto turns: durations only
     turns, prev_usd, secs, unknown_before = [], 0.0, 0.0, False
@@ -105,7 +107,7 @@ def arm_time(step_dir: Path) -> dict:
         rs = _result_lines(f)
         stem = f.name.removesuffix(".stream.jsonl.gz")
         if not rs:                          # killed turn (e.g. pass 1 ccsdd 05b a1-005, Docker restart 2026-10-05)
-            k = _killed_seconds(step_dir, stem)
+            k = _killed_seconds(step_dir, stem, all_spans)
             if k is None:
                 return values.missing(rel(f), f"turn {stem}: no result line and no transcript timestamps")
             turns.append({"stem": stem, "seconds": k, "usd": None, "killed": True, "time_source": "transcript"})
@@ -137,7 +139,7 @@ def arm_time(step_dir: Path) -> dict:
     return values.val({"seconds": secs, "attempt": attempt, "turns": turns}, rel(td))
 
 
-def _killed_seconds(step_dir: Path, stem: str) -> float | None:
+def _killed_seconds(step_dir: Path, stem: str, spans: list[tuple[float, float]] | None) -> float | None:
     """A turn killed before its result line (its container died) still did real work: its length is the span of
     the session transcript entries written while it ran — from the turn's prompt entry (its `turns/<stem>.prompt.md`
     mtime is NOT used: copies lose it) to the last entry before the next turn's prompt. None when the transcripts
@@ -145,7 +147,7 @@ def _killed_seconds(step_dir: Path, stem: str) -> float | None:
     cost is unknown (the cumulative total of the next finished turn absorbs it, which the per-turn difference then
     attributes to that turn — flag it too)."""
     from runner.scoring import phases          # lazy: phases imports evidence (controller ruling R2)
-    return phases.killed_turn_seconds(step_dir, stem)
+    return phases.killed_turn_seconds(step_dir, stem, spans)
 
 
 def costs(step_dir: Path) -> dict:

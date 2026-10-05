@@ -128,15 +128,19 @@ class PhaseRules:
     matches the directory itself); the rest are compiled regexes."""
     spec_globs: tuple[str, ...]
     test_globs: tuple[str, ...]
-    test_commands: tuple[re.Pattern, ...]       # over a Bash command
+    test_commands: tuple[re.Pattern, ...]       # at the start of a Bash call's simple commands, prefixes stripped
+    command_prefixes: tuple[re.Pattern, ...]    # wrappers stripped from a simple command's start (uv run, env, ...)
+    test_calls: tuple[re.Pattern, ...]          # over the code a Bash call feeds an interpreter: test runs from code
     review_markers: tuple[re.Pattern, ...]      # over a Skill/Task/Agent call's input, or a turn's method label
     failure_markers: tuple[re.Pattern, ...]     # over a test command's output: failures set rework mode (R11)
     write_commands: tuple[re.Pattern, ...]      # over a Bash command, heredoc bodies removed; (?P<path>) = target
-    write_calls: tuple[re.Pattern, ...]         # over the whole Bash command (code in heredocs / -c); same groups
+    write_calls: tuple[re.Pattern, ...]         # over the code a Bash call feeds an interpreter; same groups
+    code_interpreters: tuple[re.Pattern, ...]   # command words whose heredoc body / -c string is code
 
 
 _PHASE_GLOBS = ("spec_globs", "test_globs")
-_PHASE_REGEXES = ("test_commands", "review_markers", "failure_markers", "write_commands", "write_calls")
+_PHASE_REGEXES = ("test_commands", "command_prefixes", "test_calls", "review_markers", "failure_markers", "write_commands",
+                  "write_calls", "code_interpreters")
 
 
 def load_phase_rules(path: Path | None = None) -> PhaseRules:

@@ -118,7 +118,7 @@ def test_an_absent_discovery_questions_file_is_reported_absent_not_an_error(tmp_
     assert v["discovery"] == "absent" and [q["run"] for q in v["items"]] == ["b"]
 
 
-def test_a_turn_woken_by_background_agents_sums_the_durations_of_all_its_result_lines(tmp_path):
+def test_without_a_usable_transcript_a_turn_woken_by_background_agents_sums_all_its_result_line_durations(tmp_path):
     # R9: each wake of the main loop ends in its own result line; the cumulative cost is the last one's.
     d = _step(tmp_path, _res(duration_ms=1000, total_cost_usd=1.0),
               _res(duration_ms=4000, total_cost_usd=2.0) + _res(duration_ms=500, total_cost_usd=2.5)
@@ -128,7 +128,7 @@ def test_a_turn_woken_by_background_agents_sums_the_durations_of_all_its_result_
     assert t["turns"][1]["usd"] == 2.0
 
 
-def test_one_result_line_without_duration_in_a_multi_result_turn_makes_the_step_time_missing(tmp_path):
+def test_without_a_usable_transcript_one_result_line_lacking_duration_makes_the_step_time_missing(tmp_path):
     d = _step(tmp_path, _res(duration_ms=4000, total_cost_usd=2.0) + _res(total_cost_usd=3.0))
     m = evidence.arm_time(d)
     assert values.is_missing(m) and "arm-a1-001" in m["why"]
@@ -180,3 +180,39 @@ def test_a_turn_whose_stderr_shows_the_background_wait_ceiling_is_flagged(tmp_pa
     (d / "turns" / "arm-a1-002.stderr.gz").write_bytes(b"not gzip")          # unreadable: no flag, no failure
     turns = evidence.arm_time(d)["value"]["turns"]
     assert turns[0]["background_wait"] is True and "background_wait" not in turns[1]
+
+
+def _flipped_gz(p, text):
+    raw = bytearray(gzip.compress(text.encode(), mtime=0))
+    raw[20] ^= 0xFF                                       # inside the deflate stream: reading raises zlib.error
+    p.write_bytes(bytes(raw))
+
+
+def test_a_corrupt_gzip_turn_stream_reads_as_unreadable_not_a_crash(tmp_path):
+    import zlib
+    d = _step(tmp_path, _res(duration_ms=1000, total_cost_usd=1.0))
+    p = d / "turns" / "arm-a1-001.stream.jsonl.gz"
+    _flipped_gz(p, "".join(json.dumps(_res(duration_ms=i)[0]) + "\n" for i in range(200)))
+    try:
+        gzip.decompress(p.read_bytes())
+        raise AssertionError("the fixture is meant to be corrupt")
+    except zlib.error:
+        pass
+    assert evidence._result_lines(p) is None
+    m = evidence.arm_time(d)                               # unreadable stream, no transcript: missing, not a crash
+    assert values.is_missing(m) and "arm-a1-001" in m["why"]
+
+
+def test_a_corrupt_gzip_stderr_gives_no_background_wait_flag_and_no_crash(tmp_path):
+    d = _step(tmp_path, _res(duration_ms=1000, total_cost_usd=1.0))
+    _flipped_gz(d / "turns" / "arm-a1-001.stderr.gz", "noise\n" * 500 + "Background tasks still running after 600s\n")
+    assert "background_wait" not in evidence.arm_time(d)["value"]["turns"][0]
+
+
+def test_arm_time_reads_the_transcripts_once_even_with_a_killed_turn(monkeypatch):
+    from runner.scoring import phases
+    calls = []
+    real = phases.events_from_transcripts
+    monkeypatch.setattr(phases, "events_from_transcripts", lambda *a, **k: calls.append(a) or real(*a, **k))
+    t = evidence.arm_time(MINI / "alpha" / "02")["value"]
+    assert t["turns"][-1]["killed"] and t["turns"][-1]["seconds"] == 90.0 and len(calls) == 1

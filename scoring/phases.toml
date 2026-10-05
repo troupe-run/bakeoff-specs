@@ -1,7 +1,29 @@
 # scoring/phases.toml — common-phase classifier rules (spec §5). Tune here; tests pin the semantics, not the lists.
 spec_globs = ["docs/**", "*.md", "specs/**", ".specify/**", "openspec/**", ".kiro/**", "kitty-specs/**"]
 test_globs = ["tests/**", "test_*.py", "*_test.py", "conftest.py"]
-test_commands = ['\bpytest\b', '\bmypy\b', '\bruff\b', '\buv run troupe\b']
+
+# A Bash call is a test run when a test_commands regex matches at the START of one of its simple commands, read from
+# the shell text with heredoc bodies removed and quoted strings emptied (so `git commit -m "fix ruff warnings"`,
+# `grep pytest src`, `cat /tmp/pytest.out` and an `import pytest` inside a heredoc are not test runs). Simple commands
+# are split at newlines, ; & && | || ( ) { } ` and $( ; command_prefixes are stripped from each one's start,
+# repeatedly, first (env assignments, `timeout 60`, `uv run --with x`, `python -m`, a path to the tool, `do`/`then`).
+test_commands = ['pytest(?![^\s<>])', 'mypy(?![^\s<>])', 'ruff(?![^\s<>])', 'troupe(?![^\s<>])']
+command_prefixes = [
+  '[A-Za-z_]\w*=\S*\s+',
+  '(?:do|then|else|time|exec|command|nohup|env|!)\s+',
+  'timeout\s+(?:-\S+\s+)*\S+\s+',
+  'uv\s+run\s+(?:(?:--with|--with-editable|--project|--directory|--python|-p|--env-file|--group|--extra|--package)(?:=|\s+)\S+\s+|--?[\w-]+\s+)*',
+  '\S*python[\d.]*\s+-m\s+',
+  '\$\{?\w+\}?\s+-m\s+',
+  '\S*/(?=\w)',
+]
+# ... and a Bash call is also a test run when one of these matches the code it feeds an interpreter (the same code
+# contexts as write_calls below): a test tool run from Python (`pytest.main(...)`, `subprocess.run(["uv", "run",
+# "pytest", ...])`), as mutation and probe scripts do.
+test_calls = [
+  '\bpytest\.main\(',
+  '''\bsubprocess\.\w+\(\s*\[[^\]]*?['"](?:pytest|mypy|ruff)['"]''',
+]
 review_markers = ['(?i)review', '(?i)verif', '(?i)audit', '(?i)converge', '(?i)analy[sz]e', '(?i)validate']
 
 # A test command's result sets rework mode when it is an error or its output matches one of these (R11); a test
@@ -12,14 +34,19 @@ failure_markers = ['\b\d+ failed\b', '\b\d+ errors?\b', 'Found \d+ errors?', '(?
 # which then classifies the write like a Write/Edit to that path (a (?P<var>) group names a variable whose last
 # string assignment before the call, `p = 'src/a.py'`, is the target); a write whose targets are all outside the repo
 # (absolute, e.g. /dev/null or /tmp/x) is not a write; a write with no readable target is `implement`/`rework`.
-# write_commands run over the shell text with heredoc bodies removed and quoted strings emptied (so `a > b` inside
-# Python or a sed expression is not a redirect; a quoted target is not read);
-# write_calls run over the whole command, heredoc bodies included (python - <<EOF ... EOF, python -c "...").
+# write_commands run over the shell text with heredoc bodies removed, quoted strings emptied and `[[ ... ]]` /
+# `(( ... ))` tests blanked (so `a > b` inside Python, a sed expression or a comparison is not a redirect; a quoted
+# target is not read). A heredoc's body runs to its terminator line, or to the end of the command when it has none.
+# write_calls run only over code: the body of a heredoc fed to a code_interpreters command (`python3 - <<EOF`,
+# `cat <<EOF | python3`), the body of a heredoc saved to a script that the same call then runs with one
+# (`cat > /tmp/p.py <<EOF ... EOF; python3 /tmp/p.py`), and the string after `-c` of one (`python3 -c "..."`).
+# Not commit messages, not a heredoc saved to a file that is not run in the call, not echo text.
 write_commands = [
   '(?<![0-9&<>])>>?\s*(?P<path>[\w./~-][^\s;&|<>()]*)',
   '''\bsed\s+(?:-\w+\s+)*-i\S*\s+(?:-\w+\s+)*(?:'[^']*'|"[^"]*"|\S+)\s+(?P<path>[^\s;&|<>()]+)''',
   '\btee\s+(?:-\w+\s+)*(?P<path>[^\s;&|<>()]+)',
 ]
+code_interpreters = ['python[\d.]*']            # whole command words (an optional leading path is allowed)
 write_calls = [
   '''\bopen\(\s*(?:(?P<q>['"])(?P<path>[^'"]+)(?P=q)|(?P<var>[A-Za-z_]\w*)|[^,()]+)\s*,\s*['"][wax]''',
   '''\bPath\(\s*(?P<q>['"])(?P<path>[^'"]+)(?P=q)\s*\)\s*\.write_(?:text|bytes)\(''',
