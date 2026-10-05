@@ -35,12 +35,19 @@ def _refuse_tracked_anon_key(pass_: str) -> None:
         rel = key.resolve().relative_to(paths.REPO_ROOT.resolve())
     except ValueError:
         return
-    r = subprocess.run(["git", "-C", str(paths.REPO_ROOT), "ls-files", "--error-unmatch", "--", str(rel)],
-                       capture_output=True, text=True)
-    if r.returncode == 0:
-        raise inputs.InputError(
-            f"{rel} is tracked by git: it maps Arm labels to arms and would de-anonymise the published evidence. "
-            f"`git rm --cached {rel}`, move it to state/{pass_}-scoring/, then re-run report.")
+    try:
+        r = subprocess.run(["git", "-C", str(paths.REPO_ROOT), "ls-files", "--error-unmatch", "--", str(rel)],
+                           capture_output=True, text=True)
+    except OSError as e:                  # fail closed: no git means we cannot show the key is untracked
+        raise inputs.InputError(f"cannot check whether {rel} is tracked by git ({e}); refusing to report") from None
+    if r.returncode == 1:                 # only 1 means "not tracked"; anything else is an error, not an all-clear
+        return
+    if r.returncode != 0:
+        raise inputs.InputError(f"cannot check whether {rel} is tracked by git (git exit {r.returncode}: "
+                                f"{r.stderr.strip()}); refusing to report")
+    raise inputs.InputError(
+        f"{rel} is tracked by git: it maps Arm labels to arms and would de-anonymise the published evidence. "
+        f"`git rm --cached {rel}`, move it to state/{pass_}-scoring/, then re-run report.")
 
 
 def _report(ns) -> None:

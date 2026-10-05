@@ -119,7 +119,8 @@ def test_report_refuses_while_anon_key_is_tracked_and_writes_nothing(p, tmp_path
     assert cli.main(["score", p, "--stage", "report"]) == 1
     out = capsys.readouterr().out
     assert "anon-key.json" in out and "tracked by git" in out
-    assert not (paths.scoring_out(p) / "report.md").exists() and not (paths.scoring_out(p) / "confidence.json").exists()
+    out_dir = paths.scoring_out(p)
+    assert not any((out_dir / n).exists() for n in ("report.md", "report.html", "confidence.json"))
 
 
 def test_report_runs_when_anon_key_is_present_but_not_tracked(p, tmp_path, monkeypatch):
@@ -136,3 +137,12 @@ def test_anonymise_stage_runs_anonymise_for_the_pass(p, monkeypatch, capsys):
     monkeypatch.setattr(anonymise, "run", lambda pass_: seen.append(pass_) or paths.scoring_out(pass_) / "anon")
     assert cli.main(["score", p, "--stage", "anonymise"]) == 0
     assert seen == [p] and str(paths.scoring_out(p) / "anon") in capsys.readouterr().out
+
+
+def test_report_fails_closed_when_the_harness_is_not_a_git_repo(p, tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(paths, "REPO_ROOT", tmp_path)          # tmp_path is not a git repo
+    assert cli.main(["score", p, "--stage", "aggregate"]) == 0
+    (paths.scoring_out(p) / "anon-key.json").write_text('{"Arm A": "control"}')
+    assert cli.main(["score", p, "--stage", "report"]) == 1
+    assert "cannot check whether" in capsys.readouterr().out
+    assert not (paths.scoring_out(p) / "report.md").exists()

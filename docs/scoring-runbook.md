@@ -4,7 +4,7 @@ Run after pass 1 has finished, **in the main checkout, on the landed `scoring` b
 (nothing is copied; the worktree snapshot was only for building the scorer). Design: [design §8](design.md),
 spec: [superpowers/specs/2026-10-05-scoring-design.md](superpowers/specs/2026-10-05-scoring-design.md).
 Every stage is `uv run runner score pass1 --stage <S>` and prints what it wrote or why it refused.
-Stages that need Docker or quota say so. Order matters; it follows `runner/scoring/cli.py`.
+Stages that need Docker or quota say so. Order matters: the stages are listed in dependency order.
 
 Re-running is safe: every stage reads the previous stage's files under `results/pass1/scoring/` and is
 resumable or idempotent unless noted.
@@ -31,6 +31,7 @@ resumable or idempotent unless noted.
    record count is arms x steps run; read `missing` entries in the records.
 6. `--stage anonymise` (Docker, container git) writes `anon/` and then `anon-key.json`. **Re-run it whenever any
    `anon/` predates the judge changes** (the judges need `MISSING.json` and `stale-list.toml` in each step dir).
+   Labels are seeded by the pass name, so re-running anonymise after ratings exist is safe (same labels).
    Check: any `anon/<label>/<NN>/MISSING.md` and `UNSCRUBBED.txt` are expected, and are disclosed in the report.
 7. Leak check: `uv run pytest tests/runner/scoring/test_anonymise_docker.py --run-docker` (repo trees and diffs are
    covered only by this test).
@@ -56,8 +57,8 @@ resumable or idempotent unless noted.
 
 13. `--stage aggregate` writes `scores.json` (and refuses on an unreviewed all-fail test).
 14. `--stage review-sheet` writes `review/review-sheet.md`: every disputed item, every item that decides a
-    top-two placing, and a seeded sample. The owner fills `review/review-sheet.md`. It can be done in several
-    sittings: items with both fields blank are skipped; half-filled or invalid items block the import; re-import is
+    top-two placing, and a seeded sample. **The owner fills only `review/review-sheet.md`; never open `review/.import/`** (it maps items back to arms and
+    would unblind the review). It can be filled over several sittings: items with both fields blank are skipped; half-filled or invalid items block the import; re-import is
     idempotent.
 15. `--stage review-import`, then `--stage aggregate` again so the verdicts count.
 
