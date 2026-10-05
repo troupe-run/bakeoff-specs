@@ -2,7 +2,7 @@
 step's legitimate paths (scoring/stale/step-NN.toml) plus the arm's own spec folders are never collateral."""
 from __future__ import annotations
 import fnmatch, re
-from runner import config, gitops
+from runner import config, docker, gitops
 from runner.paths import Paths
 from runner.scoring import inputs, values
 
@@ -11,7 +11,7 @@ _BRACE = re.compile(r"\{([^{}]*) => ([^{}]*)\}")
 
 def normalise(path: str) -> str:
     if _BRACE.search(path):
-        return re.sub(r"//+", "/", _BRACE.sub(lambda m: m[2], path))
+        return re.sub(r"//+", "/", _BRACE.sub(lambda m: m[2], path)).lstrip("/")
     return path.split(" => ", 1)[1] if " => " in path else path
 
 
@@ -33,15 +33,17 @@ def collateral(rows, stale: inputs.StaleList, spec_paths) -> dict:
 
 def for_step(pass_: str, arm: str, git_json: dict, stale: inputs.StaleList | None) -> dict:
     """Docker (gitops runs git in a network-less container — the host never runs git on an arm repo)."""
+    src = git_json.get("source") or git_json.get("missing", "")
     if stale is None:
-        return values.missing(git_json.get("source", ""), "step 1: nothing to compare against")
+        return values.missing(src, "step 1: nothing to compare against")
     if values.is_missing(git_json):
         return git_json
     g = git_json["value"]
+    a, b = (g.get("sha_before"), g.get("sha_after")) if isinstance(g, dict) else (None, None)
+    if not (isinstance(a, str) and a and isinstance(b, str) and b):
+        return values.missing(src, "no sha_before/sha_after")
     try:
-        rows = gitops.numstat(Paths(pass_, arm), g["sha_before"], g["sha_after"])
-    except KeyError as e:
-        return values.missing(git_json["source"], f"git.json lacks {e}")
-    except gitops.GitError as e:
-        return values.missing(git_json["source"], f"numstat failed: {e}")
-    return values.val(collateral(rows, stale, config.load_arm(arm).spec_paths), git_json["source"])
+        rows = gitops.numstat(Paths(pass_, arm), a, b)
+    except (gitops.GitError, docker.ContainerError, ValueError) as e:
+        return values.missing(src, f"numstat failed: {e}")
+    return values.val(collateral(rows, stale, config.load_arm(arm).spec_paths), src)

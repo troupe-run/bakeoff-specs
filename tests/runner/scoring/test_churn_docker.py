@@ -7,5 +7,7 @@ pytestmark = pytest.mark.docker
 
 def test_real_step_has_nonzero_total_lines():
     d = paths.RESULTS / "dry1" / "dryrun" / "03"
+    if not (d / "git.json").exists():
+        pytest.skip(f"{d / 'git.json'} absent (results/dry1 snapshot not present)")
     out = churn.for_step("dry1", "dryrun", evidence.read_json(d / "git.json"), inputs.load_stale(3))
     assert out["value"]["total_lines"] > 0
