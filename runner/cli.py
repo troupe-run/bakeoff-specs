@@ -474,6 +474,8 @@ def register_score(sub):
     p.add_argument("--stage", choices=sorted(scli.STAGES), default=None)
     p.add_argument("--baseline", default="control", help="the arm time and churn are scaled against")
     p.add_argument("--no-docker", action="store_true", help="skip Docker-backed measures (churn): recorded as deferred")
+    p.add_argument("--all", action="store_true",
+                   help="remeasure: every arm's scored steps, not only crashed or under-half-checked ones (R35)")
     p.add_argument("--retry-failed", action="store_true",
                    help="judge / judge-estimate: also re-ask items recorded judge_failed (otherwise final)")
     p.add_argument("--allow-failed", action="store_true",

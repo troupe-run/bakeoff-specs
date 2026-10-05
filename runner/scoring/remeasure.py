@@ -30,7 +30,7 @@ own interpreter.
 
 The step's containers, the control one included, share a time budget of `pins.limits.mutation_seconds`, the same
 budget the original mutmut run had (R31, R32). It is a real cap: each batch script gets the seconds left and starts a mutant
-only while its full per-mutant timeout still fits in them (R33: never a truncated timeout, which would make a fake
+only while its full per-mutant timeout still fits in them (R32(3): never a truncated timeout, which would make a fake
 `timeout` verdict), and each container's timeout is clamped to the seconds left plus `CONTAINER_SLACK_S`. Mutants never started are `not_checked`, so the summary is
 `partial`; the scoring layer (`evidence.mutation`) scores over checked mutants only.
 
@@ -127,7 +127,7 @@ def parse_batch(text: str, names: list[str]) -> dict[str, int | None]:
 
 # Runs in the copy's root as the arm uid. Positional args: the per-mutant timeout, the step's remaining budget in
 # seconds, then the names (argv, never interpolated). A mutant starts only while at least its full timeout is left of
-# the budget (R33: a timeout clamped to a truncated budget would turn into a fake `timeout` verdict, a real unkilled
+# the budget (R32(3): a timeout clamped to a truncated budget would turn into a fake `timeout` verdict, a real unkilled
 # one). The arm's pytest output goes to a log file; the
 # markers are printed only after the loop and the log tail, from shell variables, so nothing the arm prints can come
 # after them. Every requested name gets a real marker, `skipped` for one never started, so a forged marker in the
@@ -270,7 +270,7 @@ def _measure(p: Paths, step: int, pins: config.Pins, qd: Path, log: list[str]) -
     batches = [chosen[i:i + BATCH] for i in range(0, len(chosen), BATCH)]
     ran, exhausted = 0, False
     for b in batches:
-        if left() < t:                              # R31/R33: not reached within the budget (a full mutant timeout
+        if left() < t:                              # R31/R32: not reached within the budget (a full mutant timeout
                                                     # no longer fits): not_checked
             exhausted = True
             log.append(f"# step budget {budget}s spent: {len(batches) - ran} batch(es) not started")
@@ -288,8 +288,21 @@ def _measure(p: Paths, step: int, pins: config.Pins, qd: Path, log: list[str]) -
     return summarise(verdicts, sampling=sampling, batches=ran, **common)
 
 
-def targets(pass_: str) -> list[tuple[str, int]]:
-    """Every collected arm-step whose mutation state is `crashed`, sorted. A malformed record refuses (InputError)."""
+def _wanted(q: dict, every: bool) -> bool:
+    """A step to re-measure: with `every`, any step with a quality record (R35: one method for every arm, so the
+    owner can choose comparability); by default a `crashed` mutation run or one `unmeasured` because under half its
+    sampled mutants were checked (R32)."""
+    if values.is_missing(q):
+        return False
+    v = q.get("value") or {}
+    if every:
+        return True
+    return v.get("mutation_state") == "crashed" or (
+        v.get("mutation_state") == "unmeasured" and v.get("mutation_why") == evidence.PARTIAL_UNDER_HALF)
+
+
+def targets(pass_: str, every: bool = False) -> list[tuple[str, int]]:
+    """Every collected arm-step to re-measure (`_wanted`), sorted. A malformed record refuses (InputError)."""
     d = paths.scoring_out(pass_) / "collected"
     if not d.is_dir():
         raise inputs.InputError(f"{d} is missing: run `runner score {pass_} --stage collect` first")
@@ -302,10 +315,10 @@ def targets(pass_: str) -> list[tuple[str, int]]:
                 raise ValueError("no quality record")
         except (OSError, ValueError) as e:
             raise inputs.InputError(f"{f} is malformed ({e}): re-run `runner score {pass_} --stage collect`") from None
-        if not values.is_missing(q) and (q.get("value") or {}).get("mutation_state") == "crashed":
+        if _wanted(q, every):
             out.append((f.parent.name, int(f.stem)))
     return sorted(out)
 
 
-def run(pass_: str) -> list[Path]:
-    return [one(pass_, arm, step) for arm, step in targets(pass_)]
+def run(pass_: str, every: bool = False) -> list[Path]:
+    return [one(pass_, arm, step) for arm, step in targets(pass_, every)]

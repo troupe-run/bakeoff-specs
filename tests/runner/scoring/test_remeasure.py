@@ -175,6 +175,22 @@ def test_targets_are_the_collected_steps_whose_mutation_crashed(tmp_state):
     assert rm.targets("p") == [("alpha", 3), ("beta", 2)]
 
 
+def test_targets_include_steps_unmeasured_because_under_half_was_checked_but_not_other_unmeasured_ones(tmp_state):
+    q = {"mypy_errors": 0, "ruff_findings": 0, "mutation_score": None, "mutation_state": "unmeasured"}
+    write_collected("p", "alpha", 2, quality={**q, "mutation_why": evidence.PARTIAL_UNDER_HALF})     # R32 partial
+    write_collected("p", "alpha", 3, quality={**q, "mutation_why": None})                            # all no_tests
+    assert rm.targets("p") == [("alpha", 2)]
+
+
+def test_targets_with_every_are_all_collected_steps_with_a_quality_record(tmp_state):
+    crashed = {"mypy_errors": 0, "ruff_findings": 0, "mutation_score": None, "mutation_state": "crashed"}
+    write_collected("p", "beta", 2, quality=crashed)
+    write_collected("p", "alpha", 1)                                                   # measured by mutmut
+    write_collected("p", "alpha", 4, quality={**crashed, "mutation_state": "baseline_failed"})
+    write_collected("p", "gamma", 1, quality=values.missing("x", "no such file"))
+    assert rm.targets("p", every=True) == [("alpha", 1), ("alpha", 4), ("beta", 2)]
+
+
 def test_targets_with_a_malformed_collected_record_refuse(tmp_state):
     write_collected("p", "alpha", 1)
     (paths.scoring_out("p") / "collected" / "alpha" / "02.json").write_text("{not json")
@@ -438,6 +454,20 @@ def test_remeasure_stage_runs_under_the_lock(tmp_state, monkeypatch):
     assert "remeasure" in scli.STAGES and "remeasure" not in scli.DEFAULT
     assert cli.main(["score", "p", "--stage", "remeasure"]) == 0
     assert held == [True]
+
+
+def test_remeasure_all_re_measures_every_scored_step_and_the_default_only_the_targets(tmp_state, monkeypatch):
+    (paths.RESULTS / "p").mkdir(parents=True)
+    calls = []
+    monkeypatch.setattr(rm, "one", lambda pass_, arm, step: calls.append((arm, step)) or Path(f"{arm}-{step}"))
+    crashed = {"mypy_errors": 0, "ruff_findings": 0, "mutation_score": None, "mutation_state": "crashed"}
+    write_collected("p", "alpha", 1)
+    write_collected("p", "beta", 2, quality=crashed)
+    assert cli.main(["score", "p", "--stage", "remeasure"]) == 0
+    assert calls == [("beta", 2)]
+    calls.clear()
+    assert cli.main(["score", "p", "--stage", "remeasure", "--all"]) == 0
+    assert calls == [("alpha", 1), ("beta", 2)]
 
 
 # --- R31: a halted pass, and the per-step time budget -------------------------------------------------------------

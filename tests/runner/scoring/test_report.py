@@ -305,3 +305,15 @@ def test_a_partial_total_carries_a_dagger_on_the_scorecard_and_the_ranked_line(p
     bottom = _section(md, "## Bottom line")
     assert f"alpha {s['arms']['alpha']['total']:.1f}†" in bottom
     assert f"control {s['arms']['control']['total']:.1f}†" not in bottom
+
+
+def test_the_bottom_line_says_when_mutation_methods_are_mixed(p):
+    q = {"mypy_errors": 0, "ruff_findings": 0, "mutation_score": 0.8, "mutation_state": "measured"}
+    write_collected(p, "alpha", 1, quality={**q, "mutation_method": "mutmut"})
+    write_collected(p, "control", 1, quality={**q, "mutation_method": "whole-suite-per-mutant"})
+    aggregate.run(p)
+    bottom = _section(report.render(p), "## Bottom line")
+    assert "Mutation scores mix methods" in bottom and "alpha: mutmut 1" in bottom
+    write_collected(p, "alpha", 1, quality={**q, "mutation_method": "whole-suite-per-mutant"})
+    aggregate.run(p)
+    assert "Mutation scores mix methods" not in _section(report.render(p), "## Bottom line")

@@ -185,7 +185,7 @@ def mutation(m: dict) -> dict:
         return out | {"state": "baseline_failed"}
     if not isinstance(m.get("total"), int):
         return out | {"score": m.get("score"), "state": "unmeasured" if m.get("score") is None else "measured"}
-    missing = m.get("missing_results") or 0          # sampled names mutmut never reported: not in `total` (R33)
+    missing = m.get("missing_results") or 0          # sampled names mutmut never reported: not in `total` (R32)
     eligible = m["total"] + missing - m.get("no_tests", 0) - m.get("skipped", 0)
     unchecked = sum(m.get(k, 0) for k in _UNCHECKED) + missing
     checked = eligible - unchecked

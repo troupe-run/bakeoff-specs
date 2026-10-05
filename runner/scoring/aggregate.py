@@ -71,7 +71,7 @@ def _measured(part: str, rec: dict, base: dict | None, sc: dict) -> dict:
         return {"score": r["rate"]} if r and r["rate"] is not None else {"score": None, "why": "no earlier tests"}
     if part == "mutation":
         if q and q["mutation_state"] == "measured" and q["mutation_score"] is not None:
-            return {"score": q["mutation_score"]}
+            return {"score": q["mutation_score"], "method": q.get("mutation_method") or "unrecorded"}
         if q and q["mutation_state"] == "measured":
             return {"score": None, "why": "measured but no score"}
         return {"score": None, "why": (q.get("mutation_why") or q["mutation_state"]) if q else "no quality results"}
@@ -152,6 +152,18 @@ def _total(dims: dict) -> float | None:
     return 100 * sum(d["score"] for d in measured) / den if den > 0 else None
 
 
+def _mutation_methods(arms_out: dict) -> dict[str, dict[str, int]]:
+    """R35: {arm: {method: scored steps}} over the mutation steps that carry a score."""
+    out: dict[str, dict[str, int]] = {}
+    for arm, v in sorted(arms_out.items()):
+        for d in v["dimensions"].values():
+            for st in d["parts"].get("mutation", {}).get("steps", {}).values():
+                if st["score"] is not None:
+                    out.setdefault(arm, {}).setdefault(st["method"], 0)
+                    out[arm][st["method"]] += 1
+    return out
+
+
 def _guard(pass_: str, arms: list[str], excluded: inputs.Exclusions) -> None:
     reviewed = excluded.reviewed
     pending = sorted({t for ts in evidence.all_fail(paths.RESULTS / pass_, arms).values() for t in ts} - reviewed)
@@ -195,8 +207,13 @@ def run(pass_: str, baseline: str = "control") -> Path:
         if gap:
             flags.append(f"{arm}: total renormalised over its measured dimensions; unmeasured where other arms were "
                          f"measured: {gap} (the total is not like-for-like with the field)")
+    methods = _mutation_methods(arms_out)
+    if len({m for ms in methods.values() for m in ms}) > 1:
+        flags.append("mutation methods mixed (not like-for-like): " + "; ".join(
+            f"{a}: " + ", ".join(f"{m} {n}" for m, n in sorted(ms.items())) for a, ms in sorted(methods.items()))
+            + f"; `runner score {pass_} --stage remeasure --all` re-measures every step by one method")
     out = paths.scoring_out(pass_) / "scores.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(values.dump({"baseline": baseline, "weights": {"dimensions": w.dimensions, "parts": w.parts},
-                                "arms": arms_out, "flags": sorted(flags)}))
+                                "arms": arms_out, "flags": sorted(flags), "mutation_methods": methods}))
     return out

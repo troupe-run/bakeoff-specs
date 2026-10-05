@@ -108,7 +108,7 @@ def _remeasure(ns) -> None:
             f"uses Docker and state/; review with the owner, then `runner faults resume {ns.pass_} --note \"...\"`.")
     try:
         with preflight.lock():
-            for f in remeasure.run(ns.pass_):
+            for f in (remeasure.run(ns.pass_, every=True) if getattr(ns, "all", False) else remeasure.run(ns.pass_)):
                 print(f)
     except NotReady as e:
         raise inputs.InputError(str(e)) from None

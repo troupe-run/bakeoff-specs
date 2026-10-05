@@ -141,6 +141,12 @@ def _bottom_line(scores: dict, conf: dict, coll: dict, pass_: str, factor: float
     unm = [f for f in scores["flags"] if "unmeasured" in f]
     findings.append(f"{len(unm)} unmeasured dimension/part flag(s); those cells carry † and their weight is shared "
                     f"among the measured parts." if unm else "No unmeasured dimensions or parts.")
+    methods = scores.get("mutation_methods", {})
+    if len({m for ms in methods.values() for m in ms}) > 1:
+        findings.append("Mutation scores mix methods, so they are not like-for-like across arms ("
+                        + "; ".join(f"{a}: " + ", ".join(f"{m} {n}" for m, n in sorted(ms.items()))
+                                    for a, ms in sorted(methods.items()))
+                        + " scored steps); `--stage remeasure --all` re-measures every step by one method.")
     out += [f"{i}. {f}" for i, f in enumerate(findings, 1)] + [""]
     out += [f"**Blinding.** {BLINDING}", "", f"**Pre-registration.** {PREREG}", ""]
     notes = paths.scoring_out(pass_) / "report-notes.md"

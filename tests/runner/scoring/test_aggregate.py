@@ -217,3 +217,22 @@ def test_an_unmeasured_mutation_part_carries_the_evidence_why(p):
     s = _scores(p)
     parts = json.dumps(s["arms"]["alpha"])
     assert "partial: under 50% of sampled mutants checked" in parts
+
+
+def test_mixed_mutation_methods_across_arms_are_flagged_and_counted(p):
+    q = {"mypy_errors": 0, "ruff_findings": 0, "mutation_score": 0.8, "mutation_state": "measured"}
+    write_collected(p, "alpha", 1, quality={**q, "mutation_method": "mutmut"})
+    write_collected(p, "control", 1, quality={**q, "mutation_method": "whole-suite-per-mutant"})
+    s = _scores(p)
+    assert s["mutation_methods"] == {"alpha": {"mutmut": 1}, "control": {"whole-suite-per-mutant": 1}}
+    assert s["arms"]["alpha"]["dimensions"]["code_quality"]["parts"]["mutation"]["steps"]["1"]["method"] == "mutmut"
+    assert any(f.startswith("mutation methods mixed") and "remeasure --all" in f for f in s["flags"])
+
+
+def test_one_mutation_method_throughout_is_not_flagged(p):
+    q = {"mypy_errors": 0, "ruff_findings": 0, "mutation_score": 0.8, "mutation_state": "measured",
+         "mutation_method": "whole-suite-per-mutant"}
+    write_collected(p, "alpha", 1, quality=q)
+    write_collected(p, "control", 1, quality=q)
+    s = _scores(p)
+    assert not any(f.startswith("mutation methods mixed") for f in s["flags"])
