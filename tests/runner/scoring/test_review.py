@@ -2,6 +2,7 @@
 """Plan 3 Task 19: the owner's review queue (disputed, decisive, seeded sample), the blind sheet and the import."""
 import copy
 import json
+import math
 from datetime import date
 
 import pytest
@@ -29,9 +30,46 @@ def test_disputed_items_are_always_queued():
     assert [(i["arm"], i["reason"]) for i in q] == [("p", "disputed")]
 
 
-def test_sampling_is_seeded():
-    s = _scores({"p": arm(0.5, 0.5), "q": arm(0.4, 0.4)})
-    assert review.queue(s, "seed", 0.5) == review.queue(s, "seed", 0.5)
+def _many(fa, n):
+    """An arm whose dimension-a part has n judged, non-disputed steps (and a measured dimension b)."""
+    a = arm(fa, fa)
+    a["dimensions"]["a"]["parts"]["a"]["steps"] = {str(i): {"score": 0.5, "disputed": False,
+                                                           "lenses": {"x": 2, "y": 2, "z": 2}}
+                                                   for i in range(1, n + 1)}
+    return a
+
+
+def _pool():
+    return _scores({"p": _many(0.9, 10), "q": _many(0.1, 10)})        # 20 judged steps; none swings the order
+
+
+def test_sampling_is_seeded_and_sized_by_the_pool():
+    s = _pool()
+    q1 = review.queue(s, "seed-1", 0.3)
+    assert len(q1) == math.ceil(0.3 * 20) and {i["reason"] for i in q1} == {"sample"}
+    assert q1 == review.queue(s, "seed-1", 0.3)
+    assert q1 != review.queue(s, "seed-2", 0.3)
+
+
+def test_the_sample_does_not_depend_on_dict_insertion_order():
+    s = _pool()
+    flipped = copy.deepcopy(s)
+    flipped["arms"] = dict(reversed(list(flipped["arms"].items())))
+    for a in flipped["arms"].values():
+        part = a["dimensions"]["a"]["parts"]["a"]
+        part["steps"] = dict(reversed(list(part["steps"].items())))
+    assert review.queue(s, "seed-1", 0.3) == review.queue(flipped, "seed-1", 0.3)
+
+
+def test_a_step_whose_highest_lens_would_swing_the_top_two_is_queued_though_its_lowest_would_not():
+    s = _scores({"p": _judged_arm(0.5, 0.5, {"x": 1, "y": 2, "z": 3}), "q": arm(0.55, 0.5)})
+    assert [(i["arm"], i["reason"]) for i in review.queue(s, "s", 0.0)] == [("p", "decides top two")]
+
+
+def test_a_step_that_would_lift_an_arm_outside_the_top_two_past_the_second_is_queued():
+    r = _judged_arm(0.5, 0.1, {"x": 2, "y": 3, "z": 4})
+    s = _scores({"p": arm(0.9, 0.9), "q": arm(0.5, 0.5), "r": r})
+    assert [(i["arm"], i["reason"]) for i in review.queue(s, "s", 0.0)] == [("r", "decides top two")]
 
 
 def test_measured_steps_never_enter_the_queue_even_at_full_sampling():
@@ -143,7 +181,7 @@ def test_import_writes_verdicts_under_the_real_arm_name_in_the_aggregate_format(
     assert {(r["arm"], r["step"], r["score"]) for r in rows} >= {("alpha", 3, 3)}
     assert all(r["decided"] == "owner 2026-10-06" and r["reason"] == "the newcomer was right" and r["part"] == PART
                for r in rows)
-    assert len(aggregate._verdicts(pass_)) == len(rows)           # aggregate itself accepts the file
+    assert len(aggregate.read_verdicts(pass_)) == len(rows)           # aggregate itself accepts the file
 
 
 def test_import_names_the_item_and_field_and_writes_nothing_on_a_bad_score(rv):
@@ -164,11 +202,13 @@ def test_import_refuses_a_blank_reason(rv):
     assert not (out / "review" / "verdicts.jsonl").exists()
 
 
-def test_import_refuses_a_blank_score(rv):
-    pass_, *_ = rv
+def test_import_refuses_a_blank_score_when_a_reason_is_given(rv):
+    pass_, out, _ = rv
     review.sheet(pass_)
+    _fill(pass_, "", "a reason")
     with pytest.raises(inputs.InputError, match=r"item 1.*score"):
         review.import_sheet(pass_)
+    assert not (out / "review" / "verdicts.jsonl").exists()
 
 
 def test_import_refuses_a_duplicate_of_an_existing_verdict_and_leaves_the_file_alone(rv):
@@ -178,7 +218,7 @@ def test_import_refuses_a_duplicate_of_an_existing_verdict_and_leaves_the_file_a
     old = json.dumps({"part": PART, "arm": "alpha", "step": 3, "score": 1, "reason": "earlier", "decided": "owner 2026-10-01"}) + "\n"
     v.write_text(old)
     _fill(pass_)
-    with pytest.raises(inputs.InputError, match="duplicate"):
+    with pytest.raises(inputs.InputError, match="already"):
         review.import_sheet(pass_)
     assert v.read_text() == old
 
@@ -211,3 +251,152 @@ def test_a_sheet_the_owner_has_started_is_not_overwritten(rv):
 
 def test_the_review_stages_are_registered():
     assert {"review-sheet", "review-import"} <= set(scli.STAGES)
+
+
+# ---- partial import, idempotence, headings, parsing ----------------------------------------------------------------
+
+def _edit(pass_, fn):
+    f = paths.scoring_out(pass_) / "review" / "review-sheet.md"
+    f.write_text(fn(f.read_text()))
+
+
+def _answer(pass_, n, score, reason):
+    """Fill item n only (its first blank `score:` / `reason:` pair)."""
+    def go(t):
+        head, _, rest = t.partition(f"## Item {n}:")
+        body, sep, tail = rest.partition("## Item ")
+        body = body.replace("score:\n", f"score: {score}\n", 1).replace("reason:\n", f"reason: {reason}\n", 1)
+        return head + f"## Item {n}:" + body + sep + tail
+    _edit(pass_, go)
+
+
+def _rows(out):
+    f = out / "review" / "verdicts.jsonl"
+    return [json.loads(l) for l in f.read_text().splitlines()] if f.exists() else []
+
+
+def test_an_item_with_both_fields_blank_is_skipped_and_counted(rv, capsys):
+    pass_, out, labels = rv
+    review.sheet(pass_)
+    _answer(pass_, 2, "3", "fine")
+    review.import_sheet(pass_, today=date(2026, 10, 6))
+    assert [(r["arm"], r["step"], r["score"]) for r in _rows(out)] == [("beta", 3, 3)]
+    assert "1 of 2 imported, 1 left blank" in capsys.readouterr().out
+
+
+def test_import_finish_later_import_again_adds_only_the_new_item(rv, capsys):
+    pass_, out, _ = rv
+    review.sheet(pass_)
+    _answer(pass_, 2, "3", "fine")
+    review.import_sheet(pass_, today=date(2026, 10, 6))
+    _answer(pass_, 1, "1", "weak")
+    review.import_sheet(pass_, today=date(2026, 10, 7))
+    rows = _rows(out)
+    assert [(r["arm"], r["score"], r["decided"]) for r in rows] == [("beta", 3, "owner 2026-10-06"),
+                                                                    ("alpha", 1, "owner 2026-10-07")]
+    assert "1 of 2 imported, 0 left blank" in capsys.readouterr().out.splitlines()[-1]
+
+
+def test_re_importing_an_unchanged_sheet_writes_nothing_new(rv):
+    pass_, out, _ = rv
+    review.sheet(pass_)
+    _fill(pass_)
+    review.import_sheet(pass_, today=date(2026, 10, 6))
+    before = (out / "review" / "verdicts.jsonl").read_text()
+    review.import_sheet(pass_, today=date(2026, 11, 1))
+    assert (out / "review" / "verdicts.jsonl").read_text() == before
+
+
+def test_changing_an_already_imported_answer_is_an_error_and_writes_nothing(rv):
+    pass_, out, _ = rv
+    review.sheet(pass_)
+    _answer(pass_, 2, "3", "fine")
+    review.import_sheet(pass_)
+    before = (out / "review" / "verdicts.jsonl").read_text()
+    _edit(pass_, lambda t: t.replace("score: 3", "score: 4"))
+    _answer(pass_, 1, "1", "weak")
+    with pytest.raises(inputs.InputError, match=r"item 2.*already"):
+        review.import_sheet(pass_)
+    assert (out / "review" / "verdicts.jsonl").read_text() == before
+
+
+def test_one_invalid_item_blocks_the_valid_ones(rv):
+    pass_, out, _ = rv
+    review.sheet(pass_)
+    _answer(pass_, 1, "2", "ok")
+    _answer(pass_, 2, "9", "bad")
+    with pytest.raises(inputs.InputError, match=r"item 2.*score"):
+        review.import_sheet(pass_)
+    assert not (out / "review" / "verdicts.jsonl").exists()
+
+
+def test_a_reason_without_a_score_blocks_the_import(rv):
+    pass_, out, _ = rv
+    review.sheet(pass_)
+    _answer(pass_, 2, "", "just a reason")
+    with pytest.raises(inputs.InputError, match=r"item 2.*score"):
+        review.import_sheet(pass_)
+
+
+def test_a_changed_item_heading_is_refused(rv):
+    pass_, out, labels = rv
+    review.sheet(pass_)
+    _fill(pass_)
+    _edit(pass_, lambda t: t.replace(f"## Item 1: {PART}, {labels['alpha']}", f"## Item 1: {PART}, {labels['beta']}"))
+    with pytest.raises(inputs.InputError, match=r"item 1.*heading"):
+        review.import_sheet(pass_)
+    assert not (out / "review" / "verdicts.jsonl").exists()
+
+
+def test_the_sheet_is_ordered_by_label_not_by_arm(rv):
+    pass_, out, _ = rv
+    (out / "anon-key.json").write_text(json.dumps({"Arm A": "beta", "Arm B": "alpha"}))
+    text = review.sheet(pass_).read_text()
+    assert text.index("Item 1: " + PART + ", Arm A") < text.index("Item 2: " + PART + ", Arm B")
+    _answer(pass_, 1, "3", "x")
+    review.import_sheet(pass_)
+    assert [r["arm"] for r in _rows(out)] == ["beta"]               # item 1 is labelled Arm A, which is beta
+
+
+def test_a_reason_may_run_over_following_lines_and_may_start_on_the_next_line(rv):
+    pass_, out, _ = rv
+    review.sheet(pass_)
+    _edit(pass_, lambda t: t.replace("score:\nreason:\n", "score: 2\nreason: first line\nsecond line\n\nthird\n", 1)
+          .replace("score:\nreason:\n", "score: 3\nreason:\n  starts below\n", 1))
+    review.import_sheet(pass_)
+    assert [r["reason"] for r in _rows(out)] == ["first line second line third", "starts below"]
+
+
+def test_a_duplicated_item_heading_is_an_error_not_a_crash(rv):
+    pass_, *_ = rv
+    review.sheet(pass_)
+    _fill(pass_)
+    _edit(pass_, lambda t: t + "\n## Item 1: again\nscore: 1\nreason: a\nreason: b\n")
+    with pytest.raises(inputs.InputError, match=r"item 1.*twice"):
+        review.import_sheet(pass_)
+
+
+def test_a_repeated_field_names_its_item(rv):
+    pass_, *_ = rv
+    review.sheet(pass_)
+    _fill(pass_)
+    _edit(pass_, lambda t: t.replace("score: 2\n", "score: 2\nscore: 3\n", 1))
+    with pytest.raises(inputs.InputError, match=r"item 1.*two score"):
+        review.import_sheet(pass_)
+
+
+def test_a_failed_replace_leaves_the_existing_verdicts_untouched(rv, monkeypatch):
+    pass_, out, _ = rv
+    v = out / "review" / "verdicts.jsonl"
+    v.parent.mkdir(parents=True, exist_ok=True)
+    old = json.dumps({"part": PART, "arm": "beta", "step": 5, "score": 1, "reason": "r", "decided": "owner 2026-10-01"}) + "\n"
+    v.write_text(old)
+    review.sheet(pass_)
+    _fill(pass_)
+
+    def boom(*a):
+        raise OSError("disk")
+    monkeypatch.setattr(review.os, "replace", boom)
+    with pytest.raises(OSError):
+        review.import_sheet(pass_)
+    assert v.read_text() == old

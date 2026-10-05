@@ -21,7 +21,7 @@ def collected(pass_: str) -> dict[str, dict[int, dict]]:
     return out
 
 
-def _verdicts(pass_: str) -> dict[tuple, dict]:
+def read_verdicts(pass_: str) -> dict[tuple, dict]:
     f = paths.scoring_out(pass_) / "review" / "verdicts.jsonl"
     out: dict[tuple, dict] = {}
     lines = f.read_text().splitlines() if f.exists() else []
@@ -153,7 +153,7 @@ def _guard(pass_: str, arms: list[str], excluded: inputs.Exclusions) -> None:
 
 
 def run(pass_: str, baseline: str = "control") -> Path:
-    w, rubrics, verdicts = inputs.load_weights(), inputs.load_rubrics(), _verdicts(pass_)
+    w, rubrics, verdicts = inputs.load_weights(), inputs.load_rubrics(), read_verdicts(pass_)
     sc, coll = w.scales, collected(pass_)
     excluded = inputs.load_excluded()
     _guard(pass_, sorted(coll), excluded)

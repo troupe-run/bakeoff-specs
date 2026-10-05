@@ -5,12 +5,13 @@ from __future__ import annotations
 import copy
 import json
 import math
+import os
 import random
 import re
 from datetime import date
 from pathlib import Path
 from runner import paths
-from runner.scoring import anonymise, confidence, inputs, judge, values
+from runner.scoring import aggregate, anonymise, confidence, inputs, judge, values
 
 SAMPLE = 0.10
 
@@ -48,6 +49,10 @@ def _swings_top_two(top: list[str], t: dict[str, float]) -> bool:
     return any(t[c] - t[second] > confidence.CHECK_TOL for c in t if c not in top)
 
 
+def _sort_key(i: dict) -> tuple:
+    return (i["part"], i["arm"], i["step"] == "arm", str(i["step"]).zfill(3))
+
+
 def queue(scores: dict, seed: str, sample: float = SAMPLE) -> list[dict]:
     ranking = confidence.check(scores)["ranking"] if len(scores["arms"]) >= 2 else []
     top = ranking[:2]
@@ -64,9 +69,9 @@ def queue(scores: dict, seed: str, sample: float = SAMPLE) -> list[dict]:
         else:
             rest.append(item)
     k = math.ceil(sample * len(rest)) if sample > 0 else 0
-    picked = random.Random(seed).sample(rest, min(k, len(rest)))
+    picked = random.Random(seed).sample(sorted(rest, key=_sort_key), min(k, len(rest)))
     items += [i | {"reason": "sample"} for i in picked]
-    return sorted(items, key=lambda i: (i["part"], i["arm"], i["step"] == "arm", str(i["step"]).zfill(3)))
+    return sorted(items, key=_sort_key)
 
 
 # ---- the sheet ------------------------------------------------------------------------------------------------------
@@ -139,10 +144,11 @@ def sheet(pass_: str) -> Path:
         lab, nn = label_of[i["arm"]], ("arm" if i["step"] == "arm" else f"{i['step']:02d}")
         where = "whole arm" if nn == "arm" else f"step {nn}"
         levels = "\n".join(f"- {lv}: {rubrics[i['part']].levels[lv]}" for lv in range(5)) if i["part"] in rubrics else ""
-        body.append(f"## Item {n}: {i['part']}, {lab}, {where}\n\nRubric levels:\n\n{levels}\n\n"
+        heading = f"Item {n}: {i['part']}, {lab}, {where}"
+        body.append(f"## {heading}\n\nRubric levels:\n\n{levels}\n\n"
                     f"{_lens_block(pass_, i['part'], i['arm'], nn, terms)}\n"
                     f"Your verdict (a whole number 0 to 4, and a reason):\n\nscore:\nreason:\n")
-        mapping.append({"item": n, "part": i["part"], "label": lab, "step": i["step"]})
+        mapping.append({"item": n, "heading": heading, "part": i["part"], "label": lab, "step": i["step"]})
     head = ("# Review sheet\n\nFill in `score:` (0 to 4) and `reason:` for every item, then run the review-import "
             "stage. Every item needs both.\n\n")
     md.parent.mkdir(parents=True, exist_ok=True)
@@ -154,86 +160,101 @@ def sheet(pass_: str) -> Path:
 
 # ---- the import -----------------------------------------------------------------------------------------------------
 
+
+
 def _parse(text: str) -> tuple[dict[int, dict], list[str]]:
+    """{item: {"heading", "score", "reason"}}. A reason runs on over the lines after `reason:` up to the next field or
+    `## Item` heading."""
     got: dict[int, dict] = {}
     problems: list[str] = []
-    cur = None
+    cur, n, last = None, 0, None
     for line in text.splitlines():
         if m := _ITEM.match(line):
-            n = int(m[1])
+            n, last = int(m[1]), None
             if n in got:
                 problems.append(f"item {n}: appears twice on the sheet")
-                cur = {}
+                cur = {}                                        # a throwaway: the first one stands
             else:
-                cur = got[n] = {}
+                cur = got[n] = {"heading": line[3:].strip()}
+        elif line.startswith("## "):
+            cur, last = None, None
         elif (m := _FIELD.match(line)) and cur is not None:
-            f = m[1].lower()
-            if f in cur:
-                problems.append(f"item {next(k for k, v in got.items() if v is cur)}: two {f} lines")
+            last = m[1].lower()
+            if last in cur:
+                problems.append(f"item {n}: two {last} lines")
             else:
-                cur[f] = m[2].strip()
+                cur[last] = m[2].strip()
+        elif cur is not None and last == "reason" and line.strip():
+            cur["reason"] = (cur.get("reason", "") + " " + line.strip()).strip()
     return got, problems
 
 
-def _score(raw: str | None):
-    if raw is None or not raw:
-        return None, "is blank"
+def _score(raw: str):
     if not re.fullmatch(r"[0-4]", raw.strip("`* ")):
         return None, f"must be a whole number 0 to 4, got {raw!r}"
     return int(raw.strip("`* ")), None
 
 
-def import_sheet(pass_: str, today: date | None = None) -> Path:
-    """Validates the filled sheet and appends one row per item to review/verdicts.jsonl (real arm names). On any
-    problem nothing is written."""
+def import_sheet(pass_: str, today: date | None = None, say=print) -> Path:
+    """Validates the filled sheet and appends one row per newly answered item to review/verdicts.jsonl (real arm
+    names). An item with both fields blank is skipped (and counted); one field filled, a bad score, a changed heading
+    or a different answer to an already-imported item is an error and nothing is written. An item already imported
+    with the same score and reason is skipped, so the sheet can be imported again after more is filled in."""
     md, mp = _dir(pass_) / "review-sheet.md", _map_file(pass_)
     for f in (md, mp):
         if not f.exists():
             raise inputs.InputError(f"{f} is missing: run the review-sheet stage first")
     structure = json.loads(mp.read_text())["items"]
     parsed, problems = _parse(md.read_text(encoding="utf-8"))
-    known = {i["item"] for i in structure}
-    problems += [f"item {n}: not on the review sheet's list" for n in sorted(set(parsed) - known)]
-    answers = {}
+    arm_of, existing = judge.anon_key(pass_), aggregate.read_verdicts(pass_)
+    problems += [f"item {n}: not on the review sheet's list" for n in sorted(set(parsed) - {i["item"] for i in structure})]
+    decided = f"owner {(today or date.today()).isoformat()}"
+    rows, blank, already = [], 0, 0
     for it in structure:
         n = it["item"]
         if n not in parsed:
             problems.append(f"item {n}: missing from the sheet")
             continue
-        score, why = _score(parsed[n].get("score"))
+        p = parsed[n]
+        if p["heading"] != it["heading"]:
+            problems.append(f"item {n}: heading is {p['heading']!r} but the sheet was written with {it['heading']!r} "
+                            f"(was the sheet regenerated or restored?)")
+            continue
+        raw, reason = p.get("score", ""), p.get("reason", "")
+        if not raw and not reason:
+            blank += 1
+            continue
+        score, why = _score(raw) if raw else (None, "is blank")
         if why:
             problems.append(f"item {n}: score {why}")
-        reason = parsed[n].get("reason", "")
         if not reason:
             problems.append(f"item {n}: reason is blank")
-        answers[n] = (score, reason)
-    if problems:
-        raise inputs.InputError("the review sheet has problems:\n" + "\n".join(f"- {p}" for p in problems))
-    arm_of = judge.anon_key(pass_)
-    existing = _existing(pass_)
-    decided = f"owner {(today or date.today()).isoformat()}"
-    rows = []
-    for it in structure:
+        if why or not reason:
+            continue
         if it["label"] not in arm_of:
-            raise inputs.InputError(f"item {it['item']}: label {it['label']!r} not in anon-key.json")
-        score, reason = answers[it["item"]]
+            problems.append(f"item {n}: label {it['label']!r} not in anon-key.json")
+            continue
         row = {"part": it["part"], "arm": arm_of[it["label"]], "step": it["step"], "score": score, "reason": reason,
                "decided": decided}
-        k = (row["part"], row["arm"], str(row["step"]))
-        if k in existing:
-            raise inputs.InputError(f"item {it['item']}: duplicate verdict for {k} (already in {_verdicts_file(pass_)})")
-        existing.add(k)
-        rows.append(row)
-    f = _verdicts_file(pass_)
-    old = f.read_text() if f.exists() else ""
-    if old and not old.endswith("\n"):
-        old += "\n"
-    f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text(old + "".join(json.dumps(r, sort_keys=True, ensure_ascii=False) + "\n" for r in rows))
-    return f
-
-
-def _existing(pass_: str) -> set[tuple]:
-    """Keys of the verdicts already on file, validated exactly as aggregate validates them."""
-    from runner.scoring import aggregate
-    return set(aggregate._verdicts(pass_))
+        old = existing.get((row["part"], row["arm"], str(row["step"])))
+        if old is None:
+            rows.append(row)
+        elif old["score"] == score and old["reason"] == reason:
+            already += 1
+        else:
+            problems.append(f"item {n}: already has a verdict ({old['score']}, {old['reason']!r}) that differs from "
+                            f"this sheet's; edit {_verdicts_file(pass_)} by hand if the answer really changed")
+    if problems:
+        raise inputs.InputError("the review sheet has problems:\n" + "\n".join(f"- {p}" for p in problems))
+    if rows:
+        f = _verdicts_file(pass_)
+        old_text = f.read_text() if f.exists() else ""
+        if old_text and not old_text.endswith("\n"):
+            old_text += "\n"
+        f.parent.mkdir(parents=True, exist_ok=True)
+        tmp = f.with_name(f.name + ".tmp")
+        tmp.write_text(old_text + "".join(json.dumps(r, sort_keys=True, ensure_ascii=False) + "\n" for r in rows))
+        os.replace(tmp, f)
+    say(f"{len(rows)} of {len(structure)} imported, {blank} left blank"
+        + (f", {already} already imported" if already else ""))
+    return _verdicts_file(pass_)
