@@ -14,7 +14,7 @@ Stages and files (all under `scoring_out/decisions/`):
 - `sheet` -> `rating-sheet.md` (the owner's blind view: topics `T1`, `T2`, ... and numbered routes; no labels, no arm
   names, no aligner ids) and `.import/rating-sheet.json` (the import map: the same structure with ids and labels; no
   arm names).
-- `import_ratings` -> `ratings.json` = `{"topics": [{"id", "kind", "routes": [{"route", "arms", "rating", "reason"}]}]}` (the
+- `import_ratings` -> `ratings.json` = `{"topics": [{"id", "kind", "routes": [{"route", "arms", "rating", "reason", "outcome"}]}]}` (the
   Task 11 format). Only this stage reads `anon-key.json`.
 
 Labels are the `Arm X` directories anonymise wrote; no stage before import knows which arm is which."""
@@ -592,7 +592,7 @@ def import_ratings(pass_: str) -> Path:
                 raise inputs.InputError(f"{t['sheet_id']} route {r['route_no']}: {unknown} not in anon-key.json")
             o = rated[r["route_no"]]
             routes.append({"route": r["route"], "arms": sorted(key[l] for l in r["labels"]), "rating": o["rating"],
-                           "reason": o["reason"]})
+                           "reason": o["reason"], "outcome": r.get("outcome", "")})   # spec §8.6: shown, not scored
         out.append({"id": t["id"], "kind": t["kind"], "routes": routes})   # the sheet's kind, never recomputed
     f = d / "ratings.json"
     _write(f, values.dump({"topics": out}))

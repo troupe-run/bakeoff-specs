@@ -242,3 +242,57 @@ def test_a_json_file_that_is_not_utf8_is_missing_not_a_crash(tmp_path):
     (tmp_path / "run.json").write_bytes(b'{"outcome": "\xff"}')
     m = evidence.read_json(tmp_path / "run.json")
     assert values.is_missing(m) and m["why"].startswith("unreadable")
+
+
+# --- R36: reported, not scored ---------------------------------------------------------------------------------------
+
+def _jsonl(p, rows):
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("".join(json.dumps(r) + "\n" for r in rows))
+
+
+def test_owner_review_time_sums_owner_seconds_split_into_gates_and_escalations(tmp_path):
+    (tmp_path / "run.json").write_text('{"outcome": "done"}')
+    _jsonl(tmp_path / "questions.jsonl", [{"n": 1, "kind": "approval", "owner_seconds": 10.0},
+                                          {"n": 2, "kind": "question", "owner_seconds": 5.5},
+                                          {"n": 3, "kind": "next_command", "owner_seconds": 0.0}])
+    v = evidence.owner_review(tmp_path)["value"]
+    assert v == {"seconds": 15.5, "gates": 1, "gate_seconds": 10.0, "escalation_seconds": 5.5}
+
+
+def test_owner_review_time_is_zero_with_a_run_and_no_questions_and_missing_without_a_run(tmp_path):
+    assert values.is_missing(evidence.owner_review(tmp_path))
+    (tmp_path / "run.json").write_text('{"outcome": "done"}')
+    assert evidence.owner_review(tmp_path)["value"]["seconds"] == 0.0
+
+
+def test_tracker_reads_the_snapshot_and_step_6s_round_trip(tmp_path):
+    (tmp_path / "tracker.json").write_text(json.dumps({"backend": "github", "initialised": True,
+                                                       "survives_restore": True, "issues": [{"n": 1}, {"n": 2}]}))
+    rt = {"issue": "o/r#5", "state": "closed", "comments": 1, "commits_referencing": ["abc"],
+          "issue_links_commit": True, "non_py_files_changed": ["spec.md"]}
+    (tmp_path / "tracker-round-trip.json").write_text(json.dumps(rt))
+    v = evidence.tracker(tmp_path)["value"]
+    assert v == {"backend": "github", "initialised": True, "survives_restore": True, "issues": 2, "round_trip": rt}
+    (tmp_path / "tracker-round-trip.json").unlink()
+    assert evidence.tracker(tmp_path)["value"]["round_trip"] is None
+
+
+def test_discovery_reads_why_n_a_stopped_and_is_missing_without_a_record(tmp_path):
+    assert values.is_missing(evidence.discovery(tmp_path))
+    (tmp_path / "a").mkdir()
+    (tmp_path / "a" / "discovery.json").write_text(json.dumps(
+        {"outcome": "discovery-stop", "discovery": {"why": "code", "turn": 4}, "exchanges": 4}))
+    assert evidence.discovery(tmp_path)["value"] == {"outcome": "discovery-stop", "why": "code", "turn": 4,
+                                                     "exchanges": 4}
+
+
+def test_runs_reads_attempts_interventions_harness_faults_and_park(tmp_path):
+    (tmp_path / "run.json").write_text(json.dumps({
+        "outcome": "done", "attempts": 2, "interventions": ["owner-shell-commit:abc"], "park": None,
+        "harness_faults": [{"kind": "infra-hidden", "signature": "pytest exit", "action": "rerun", "run": "b",
+                            "attempt": 1, "detail": "x"}]}))
+    v = evidence.runs(tmp_path)["value"]
+    assert v == {"attempts": 2, "interventions": ["owner-shell-commit:abc"], "parked": False,
+                 "harness_faults": [{"kind": "infra-hidden", "signature": "pytest exit", "action": "rerun",
+                                     "run": "b", "attempt": 1}]}

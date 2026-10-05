@@ -104,3 +104,12 @@ def test_a_rerun_clears_stale_collected_records(mini_pass):
     stale.write_text("{}")
     collect.run(mini_pass, docker=False)
     assert not stale.exists()
+
+
+def test_collect_records_the_reported_not_scored_evidence(mini_pass):
+    # R36: owner review time, tracker, N.a stop and re-runs/harness faults are collected (each a value or missing)
+    collect.run(mini_pass, docker=False)
+    rec = json.loads((paths.scoring_out(mini_pass) / "collected" / "alpha" / "01.json").read_text())
+    assert {"owner_review", "tracker", "discovery", "runs"} <= set(rec)
+    assert rec["owner_review"]["value"]["seconds"] >= 0 and rec["runs"]["value"]["attempts"] is not None
+    assert "missing" in rec["tracker"] and "missing" in rec["discovery"]     # the mini fixture has neither file

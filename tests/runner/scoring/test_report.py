@@ -319,7 +319,7 @@ def test_the_bottom_line_says_when_mutation_methods_are_mixed(p):
     assert "Mutation scores mix methods" not in _section(report.render(p), "## Bottom line")
 
 
-def test_decision_review_uses_the_stored_kind_and_shows_each_routes_reason(p):
+def test_decision_review_uses_the_stored_kind_and_shows_each_routes_reason_and_outcome(p):
     aggregate.run(p)
     d = paths.scoring_out(p) / "decisions"
     d.mkdir()
@@ -327,7 +327,67 @@ def test_decision_review_uses_the_stored_kind_and_shows_each_routes_reason(p):
     # recomputation's field) decides where it is listed
     (d / "ratings.json").write_text(json.dumps({"topics": [
         {"id": "t1", "question": "Q1?", "kind": "divergent",
-         "routes": [{"route": "A", "arms": ["alpha", "control"], "rating": "good", "reason": "fails loudly"}]}]}))
+         "routes": [{"route": "A", "arms": ["alpha", "control"], "rating": "good", "reason": "fails loudly",
+                     "outcome": "reworked at step 5"}]}]}))
     sec = _section(report.render(p), "## Decision review")
     assert "### Divergent (1)\n\n- Q1?" in sec and "### Unanimous (0)" in sec
-    assert "good — fails loudly" in sec
+    assert "good — fails loudly (later: reworked at step 5)" in sec
+
+
+def test_reported_not_scored_shows_owner_time_tracker_n_a_and_re_runs(p):
+    write_collected(p, "alpha", 1,
+                    owner_review={"seconds": 120.0, "gates": 2, "gate_seconds": 90.0, "escalation_seconds": 30.0},
+                    tracker={"backend": "beads", "initialised": True, "survives_restore": False, "issues": 3,
+                             "round_trip": None},
+                    discovery={"outcome": "discovery-stop", "why": "code", "turn": 4, "exchanges": 4},
+                    cost={"scored_usd": 1.0, "po_usd": 0.1, "discovery_usd": 2.5},
+                    questions={"items": [{"run": "a"}, {"run": "a"}, {"run": "b"}], "skipped_lines": 0,
+                               "discovery": "present"},
+                    runs={"attempts": 2, "interventions": [], "parked": False,
+                          "harness_faults": [{"kind": "infra-hidden", "signature": "pytest exit", "action": "rerun",
+                                              "run": "b", "attempt": 1}]})
+    write_collected(p, "alpha", 6, owner_review={"seconds": 0.0, "gates": 0, "gate_seconds": 0.0, "escalation_seconds": 0.0},
+                    tracker={"backend": "beads", "initialised": True, "survives_restore": False,
+                                            "issues": 4, "round_trip": {"issue": "bd-7", "state": "closed",
+                                                                         "comments": 2, "commits_referencing": ["a1"],
+                                                                         "issue_links_commit": True,
+                                                                         "non_py_files_changed": ["spec/x.md"]}})
+    aggregate.run(p)
+    sec = _section(report.render(p), "## Reported, not scored")
+    own = sec[sec.index("### Owner review time"):sec.index("### Tracker quality")]
+    assert next(l for l in own.splitlines() if l.startswith("| alpha ")).startswith("| alpha | 2.0 min | 2 | 1.5 min | 0.5 min")
+    trk = sec[sec.index("### Tracker quality"):sec.index("### N.a")]
+    assert "| alpha | beads | 4 | bd-7 | closed | 2 | 1 | yes | 1 |" in trk
+    assert "| control | — |" in trk                       # no tracker record: a dash, never a zero
+    na = sec[sec.index("### N.a"):sec.index("### Re-runs")]
+    assert "| alpha | 1 | $2.50 | 2 | step 1: discovery-stop (code, turn 4) |" in na
+    rr = sec[sec.index("### Re-runs"):]
+    assert "- alpha step 1: 2 attempts; harness faults: infra-hidden (pytest exit, rerun, run b attempt 1)" in rr
+
+
+def test_the_blinding_disclosure_lists_residual_vocabulary_counts_tells_egress_and_the_leak_check(p):
+    import json as _j
+    from runner.scoring import anonymise
+    write_collected(p, "alpha", 1, tracker={"backend": "github", "initialised": True, "survives_restore": True,
+                                            "issues": 0, "round_trip": None})
+    write_collected(p, "control", 1, tracker={"backend": "beads", "initialised": True, "survives_restore": False,
+                                              "issues": 0, "round_trip": None})
+    out = paths.scoring_out(p)
+    step = out / "anon" / "Arm A" / "01"
+    step.mkdir(parents=True)
+    (step / "UNSCRUBBED.txt").write_text("Copied without scrubbing (binary), or left out:\nrepo/a.bin\nrepo/b.bin\n")
+    (step / "MISSING.json").write_text(_j.dumps([{"files": ["transcript.md"], "why": "no arm turn streams"}]))
+    (out / "leak-check.json").write_text(_j.dumps({"files": 10, "hits": [{"path": "Arm A/01/x", "word": "kiro"}]}))
+    aggregate.run(p)
+    sec = _section(report.render(p), "## Blinding disclosure")
+    assert all(w in sec for w in anonymise.RESIDUAL_VOCABULARY)
+    assert "2 file(s) copied unscrubbed" in sec and "1 missing input(s)" in sec
+    assert "spec/spec/" in sec and "tracker-cli" in sec
+    assert "api.github.com" in sec and "alpha" in sec[sec.index("api.github.com") - 200:]
+    assert "1 hit(s) in 10 file(s)" in sec
+
+
+def test_the_blinding_disclosure_says_when_anonymise_or_the_leak_check_has_not_run(p):
+    aggregate.run(p)
+    sec = _section(report.render(p), "## Blinding disclosure")
+    assert "anonymise has not run" in sec and "leak check has not run" in sec

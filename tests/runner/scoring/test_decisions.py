@@ -363,7 +363,7 @@ def test_sheet_shows_no_evidence_routes_unrated_and_lists_failures_and_missing_i
     md.write_text(text.replace("rating:\nreason:\n", "rating: good\nreason: s\n"))
     f = dz.import_ratings("p")
     assert json.loads(f.read_text())["topics"][0]["routes"] == [
-        {"route": "fail", "arms": ["alpha"], "rating": "good", "reason": "s"}]
+        {"route": "fail", "arms": ["alpha"], "rating": "good", "reason": "s", "outcome": "kept"}]
 
 
 def test_choice_averages_only_real_ratings_when_an_arm_had_no_evidence(tmp_state):
@@ -416,8 +416,8 @@ def test_import_writes_ratings_under_real_arm_names(tmp_state):
     f = dz.import_ratings("p")
     assert f == paths.scoring_out("p") / "decisions" / "ratings.json"
     assert json.loads(f.read_text()) == {"topics": [{"id": "actor-unset", "kind": "one-off", "routes": [
-        {"route": "fail", "arms": ["alpha"], "rating": "good", "reason": "sensible"},
-        {"route": "not considered", "arms": ["beta"], "rating": "poor", "reason": "it mattered"}]}]}
+        {"route": "fail", "arms": ["alpha"], "rating": "good", "reason": "sensible", "outcome": "kept"},
+        {"route": "not considered", "arms": ["beta"], "rating": "poor", "reason": "it mattered", "outcome": ""}]}]}
 
 
 def test_import_refuses_a_sheet_with_a_route_left_unrated(tmp_state):

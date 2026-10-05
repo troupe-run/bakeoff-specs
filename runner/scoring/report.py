@@ -148,7 +148,7 @@ def _bottom_line(scores: dict, conf: dict, coll: dict, pass_: str, factor: float
                                     for a, ms in sorted(methods.items()))
                         + " scored steps); `--stage remeasure --all` re-measures every step by one method.")
     out += [f"{i}. {f}" for i, f in enumerate(findings, 1)] + [""]
-    out += [f"**Blinding.** {BLINDING}", "", f"**Pre-registration.** {PREREG}", ""]
+    out += [f"**Blinding.** {BLINDING} See Blinding disclosure.", "", f"**Pre-registration.** {PREREG}", ""]
     notes = paths.scoring_out(pass_) / "report-notes.md"
     if notes.exists():
         out += [notes.read_text().rstrip("\n"), ""]
@@ -228,7 +228,9 @@ def _decisions(pass_: str) -> list[str]:
         lines[kind].append(f"- {q}")
         for r in t["routes"]:
             reason = f" — {r['reason']}" if r.get("reason") else ""
-            lines[kind].append(f"  - {r.get('route', '?')} [{', '.join(r['arms'])}]: {r.get('rating', DASH)}{reason}")
+            later = f" (later: {r['outcome']})" if r.get("outcome") else ""        # spec §8.6: did it survive?
+            lines[kind].append(f"  - {r.get('route', '?')} [{', '.join(r['arms'])}]: {r.get('rating', DASH)}{reason}"
+                               f"{later}")
     out = ["## Decision review", ""]
     for kind, title in (("one-off", "One-offs"), ("divergent", "Divergent"), ("unanimous", "Unanimous")):
         out += [f"### {title} ({counts[kind]})", ""] + lines[kind] + [""]
@@ -347,6 +349,145 @@ def _time_cost(coll: dict, factor: float) -> list[str]:
     return out
 
 
+# ---- reported, not scored (spec §3, ruling R36) -----------------------------------------------------------------
+
+def _owner_review(coll: dict) -> list[str]:
+    rows = []
+    for a in sorted(coll):
+        got = [_v(r.get("owner_review")) for _, r in sorted(coll[a].items())]
+        vs = [g for g in got if g is not None]
+        gap = "†" if len(vs) < len(got) else ""
+        tot = lambda k: sum(g[k] for g in vs) if vs else None
+        rows.append([a + gap, _mins(tot("seconds")), _f(tot("gates")), _mins(tot("gate_seconds")),
+                     _mins(tot("escalation_seconds"))])
+    return (["### Owner review time", "",
+             "Removed from the score (spec §2: the relay auto-continued uncontroversial reviews, so it measures the "
+             "relay, not the arm). The owner's time answering gates and escalations on the scored runs.", ""]
+            + _table(["arm", "owner time", "gates", "gate time", "escalation time"], rows)
+            + ["† a step's question log is missing; the sum leaves it out.", ""])
+
+
+def _tracker(coll: dict) -> list[str]:
+    rows = []
+    for a in sorted(coll):
+        ts = [(n, _v(r.get("tracker"))) for n, r in sorted(coll[a].items())]
+        ts = [(n, t) for n, t in ts if t is not None]
+        last = ts[-1][1] if ts else None
+        rt = next((t["round_trip"] for n, t in ts if n == 6 and t.get("round_trip")), None)
+        row = [a, _f(last.get("backend")) if last else DASH, _f(last.get("issues")) if last else DASH]
+        if rt:
+            row += [_f(rt.get("issue")), _f(rt.get("state")), _f(rt.get("comments")),
+                    str(len(rt.get("commits_referencing") or [])), "yes" if rt.get("issue_links_commit") else "no",
+                    str(len(rt.get("non_py_files_changed") or []))]
+        else:
+            row += [DASH] * 6
+        rows.append(row)
+    return (["### Tracker quality", "",
+             "The arm's tracker after its last step, and step 6's bug round trip (the issue the harness filed: its "
+             "state, comments, commits referencing it, whether it links a commit, and the non-.py files the fix "
+             "changed — a spec trace).", ""]
+            + _table(["arm", "tracker", "issues", "step 6 issue", "state", "comments", "commits referencing",
+                      "issue links a commit", "non-.py files changed"], rows)
+            + ["— no record (or step 6 not run).", ""])
+
+
+def _n_a(coll: dict) -> list[str]:
+    rows = []
+    for a in sorted(coll):
+        recs = sorted(coll[a].items())
+        disc = [(n, _v(r.get("discovery"))) for n, r in recs]
+        disc = [(n, d) for n, d in disc if d is not None]
+        usd = [(_v(r.get("cost")) or {}).get("discovery_usd") for _, r in recs]
+        usd = [u for u in usd if u is not None]
+        qs = [_v(r.get("questions")) for _, r in recs]
+        nq = sum(1 for q in qs if isinstance(q, dict) for i in q.get("items", []) if i.get("run") == "a")
+        stops = "; ".join(f"step {n}: {_f(d.get('outcome'))}" + (f" ({d['why']}, turn {_f(d.get('turn'))})"
+                                                                 if d.get("why") else "") for n, d in disc)
+        rows.append([a, str(len(disc)), _usd(sum(usd) if usd else None), str(nq), stops or DASH])
+    return (["### N.a (discovery) runs", "",
+             "Not scored (spec §7.7); their questions count toward human interaction through the judges.", ""]
+            + _table(["arm", "N.a runs", "cost", "questions", "stopped"], rows))
+
+
+def _re_runs(coll: dict) -> list[str]:
+    lines = []
+    for a in sorted(coll):
+        for n, r in sorted(coll[a].items()):
+            v = _v(r.get("runs"))
+            if not v:
+                continue
+            bits = []
+            if (v.get("attempts") or 1) > 1:
+                bits.append(f"{v['attempts']} attempts")
+            if v.get("harness_faults"):
+                bits.append("harness faults: " + ", ".join(
+                    f"{f.get('kind')} ({f.get('signature')}, {f.get('action')}, run {f.get('run')} attempt "
+                    f"{f.get('attempt')})" for f in v["harness_faults"]))
+            if v.get("interventions"):
+                bits.append("interventions: " + ", ".join(map(str, v["interventions"])))
+            if v.get("parked"):
+                bits.append("parked")
+            if bits:
+                lines.append(f"- {a} step {n}: " + "; ".join(bits))
+    return (["### Re-runs and harness faults", "", "Only the final valid run is scored (spec §7.4).", ""]
+            + (lines or ["None: every step ran once, with no harness fault, intervention or park."]) + [""])
+
+
+def _reported(coll: dict) -> list[str]:
+    return (["## Reported, not scored", ""] + _owner_review(coll) + _tracker(coll) + _n_a(coll) + _re_runs(coll))
+
+
+STRUCTURAL_TELLS = ("directory shapes such as a nested `spec/spec/` (a scrubbed tool folder inside another); the "
+                    "placeholder names `tracker` and `tracker-cli` (only an arm with its own tracker has them); file "
+                    "counts and artefact shapes")
+
+
+def _anon_counts(pass_: str) -> tuple[int, int] | None:
+    anon = paths.scoring_out(pass_) / "anon"
+    if not anon.is_dir():
+        return None
+    unscrubbed = sum(max(0, len(f.read_text(errors="replace").splitlines()) - 1)
+                     for f in sorted(anon.rglob("UNSCRUBBED.txt")))
+    missing = 0
+    for f in sorted(anon.rglob("MISSING.json")):
+        try:
+            missing += len(json.loads(f.read_text()))
+        except (OSError, ValueError):
+            missing += 1
+    return unscrubbed, missing
+
+
+def _blinding(pass_: str, coll: dict) -> list[str]:
+    from runner.scoring import anonymise
+    out = ["## Blinding disclosure", "", BLINDING, "",
+           "- **Residual method vocabulary, not scrubbed:** " + "; ".join(anonymise.RESIDUAL_VOCABULARY) + ".",
+           f"- **Structural tells that survive scrubbing:** {STRUCTURAL_TELLS}."]
+    backends: dict[str, list[str]] = {}
+    for a in sorted(coll):
+        ts = [_v(r.get("tracker")) for _, r in sorted(coll[a].items())]
+        b = next((t.get("backend") for t in reversed(ts) if t and t.get("backend")), None)
+        backends.setdefault(b or "unknown", []).append(a)
+    out.append("- **Egress differs by tracker:** GitHub-tracker arms can reach `api.github.com` (their issues are "
+               "research they may do); others cannot. By tracker: "
+               + "; ".join(f"{b}: {', '.join(arms)}" for b, arms in sorted(backends.items())) + ".")
+    counts = _anon_counts(pass_)
+    out.append("- **Anonymised copies:** anonymise has not run, so no judge input exists yet." if counts is None else
+               f"- **Anonymised copies:** {counts[0]} file(s) copied unscrubbed (binary) or left out, listed in "
+               f"`UNSCRUBBED.txt`; {counts[1]} missing input(s), listed in `MISSING.md`.")
+    lc = paths.scoring_out(pass_) / "leak-check.json"
+    try:
+        l = json.loads(lc.read_text())
+        out.append(f"- **Leak check** over the whole `anon/` tree (repo trees and diffs included): "
+                   f"{len(l.get('hits', []))} hit(s) in {l.get('files')} file(s)"
+                   + ("" if not l.get("hits") else ": " + "; ".join(f"{h['path']}: {h['word']}" for h in l["hits"]))
+                   + ".")
+    except FileNotFoundError:
+        out.append("- **Leak check:** the leak check has not run (`--stage leak-check`).")
+    except (OSError, ValueError) as e:
+        out.append(f"- **Leak check:** leak-check.json unreadable ({e}).")
+    return out + [""]
+
+
 # ---- confidence --------------------------------------------------------------------------------------------
 
 def _confidence(scores: dict, conf: dict) -> list[str]:
@@ -462,7 +603,7 @@ def render(pass_: str) -> str:
     factor = inputs.load_weights().report["outlier_factor"]
     parts = [[f"# Pass {pass_} — scorecard", ""], _bottom_line(scores, conf, coll, pass_, factor),
              _scorecard(scores, factor), _dimensions(scores), _decisions(pass_), _time_cost(coll, factor),
-             _confidence(scores, conf)]
+             _reported(coll), _confidence(scores, conf), _blinding(pass_, coll)]
     parts += [_appendix(pass_, a, scores, coll.get(a, {})) for a in sorted(scores["arms"])]
     return "\n".join(l for sec in parts for l in sec).rstrip("\n") + "\n"
 

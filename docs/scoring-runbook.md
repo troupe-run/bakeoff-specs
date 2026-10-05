@@ -94,7 +94,9 @@ resumable or idempotent unless noted.
 
 ## What the report discloses about blinding
 
-Blinding is **partial**, and the report says so:
+Blinding is **partial**, and the report's "Blinding disclosure" section says so (residual vocabulary, structural
+tells, the egress difference by tracker, counts of `UNSCRUBBED.txt` and `MISSING.json` items, and the leak check's
+result):
 
 - **Residual method vocabulary** is not scrubbed (`anonymise.RESIDUAL_VOCABULARY`): steering, mission, WP (work
   package), claude-plugins-official, constitution, charter, proposal, delta spec, converge, brainstorming, "Spec-Driven

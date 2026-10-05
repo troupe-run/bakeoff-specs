@@ -226,6 +226,29 @@ and cost by phase, outliers, owner review time, tracker quality, N.a runs, re-ru
 - Missing or unreadable evidence is never zero: it is recorded as `missing` and shown.
 - The correctness / coping-with-change overlap is deliberate: a regression is counted in both (regressions part, and again in the all-tests correctness count). The headline ("how each method copes with change") is not reworded.
 - Mutation scores in the scoring layer are computed over **checked mutants only** (killed ÷ (total − no tests − skipped − not checked)), with `partial` and `checked_fraction` carried; they therefore differ by design from the runner's own `summary.json` score, and are `unmeasured` below 50% checked.
+- Totals are **renormalised over measured weight** (ruling R34): an arm's total = 100 × Σ measured dimension scores ÷
+  Σ their weights, never counting an unmeasured dimension as 0; an arm whose measured dimensions differ from the
+  field's is flagged (`total_partial`) and its total carries †. The confidence check uses the same rule, and also
+  checks pairs with one arm's disputed judgements at their low extreme against the other's at their high.
+
+**Deviation from the scoring spec (final review, ruling R36).** Arm violations are deducted by a **measured stand-in
+for "each judged by severity"**: a severity per violation kind in `scoring/violations.toml` (`default` 0.25, a
+`[by_kind]` table keyed on the `kind` field of run.json's `arm_violations`), summed over the arm's violations and
+deducted from the 2-point part (floor 0). No judge reads the violations.
+
+**Deferred (spec items not done by the scorer, final review).**
+- Arm violations that the orchestrator or setup checks write to the arm-level `results/<pass>/<arm>/arm-violations.jsonl`
+  (setup drift and an own token found by orchestrate's step checks; `link-in-home` from setup) are not in a step's
+  run.json, so the violations part does not read them yet; the step-level ones (stepflow) are scored.
+- Decision review: each route's evidence (where it was recorded: file, commit, gate, transcript line) is not carried
+  into the report; routes show the owner's rating, reason and the aligner's outcome ("later: …") only.
+- The page carries report levels 0–2 (bottom line, scorecard, dimension detail, decisions, time and cost); levels 3–4
+  (raw step values, lens verdicts, evidence links) are in `report.md`'s per-arm appendix only.
+- Time and cost by phase are reported per arm over all steps, not per step.
+- Time a background process the arm left running is not measurable per turn (ruling R13); turns that waited on one
+  are flagged instead, pending a per-turn wall-clock field in run.json after the bake-off.
+- A step whose whole mutation budget is shorter than one mutant timeout is recorded `crashed` with an ambiguous reason
+  (no wrong score; Task 20 note).
 
 **Research before asking (owner, 2026-09-30).** Within *Quality of human interaction*, each question put to the
 product owner is judged on whether the arm first used what it could reach (the repo, the scenario documents,

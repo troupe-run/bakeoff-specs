@@ -59,6 +59,9 @@ def step(pass_: str, arm: str, n: int, *, prev_tests, prev_step: int | None = No
         "regressions": _regressions(hidden, tests, prev_tests, prev_step, excl, d),
         "quality": evidence.quality(d), "time": evidence.arm_time(d), "cost": evidence.costs(d),
         "questions": evidence.questions(d), "violations": evidence.violations(d),
+        # reported, not scored (R36)
+        "owner_review": evidence.owner_review(d), "tracker": evidence.tracker(d), "discovery": evidence.discovery(d),
+        "runs": evidence.runs(d),
         "churn": (churn.for_step(pass_, arm, git, inputs.load_stale(n)) if docker
                   else values.missing(git_src, "deferred: run with Docker after pass 1")),
         "phases": {"method": phases.method_phases(d),

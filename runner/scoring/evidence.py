@@ -284,3 +284,63 @@ def questions(step_dir: Path) -> dict:
 def violations(step_dir: Path) -> dict:
     r = run_record(step_dir)
     return r if values.is_missing(r) else values.val(r["value"].get("arm_violations", []), r["source"])
+
+
+# --- reported, not scored (spec §3, ruling R36) -------------------------------------------------------------------
+
+def _num(x) -> float:
+    return float(x) if isinstance(x, (int, float)) and not isinstance(x, bool) else 0.0
+
+
+def owner_review(step_dir: Path) -> dict:
+    """The owner's time on this step's scored run: Σ owner_seconds over questions.jsonl (approval gates are logged
+    there too, kind "approval"; everything else the owner answered is an escalation). Reported, not scored (spec §2).
+    With a run record and no questions file the owner spent nothing (R25); without either nothing is known."""
+    q = questions(step_dir)
+    if values.is_missing(q):
+        return q
+    got = read_jsonl(step_dir / "questions.jsonl")
+    rows = got[0] if got else []
+    gate = sum((_num(r.get("owner_seconds")) for r in rows if r.get("kind") == "approval"), 0.0)
+    esc = sum((_num(r.get("owner_seconds")) for r in rows if r.get("kind") != "approval"), 0.0)
+    return values.val({"seconds": gate + esc, "gates": sum(1 for r in rows if r.get("kind") == "approval"),
+                       "gate_seconds": gate, "escalation_seconds": esc}, q["source"])
+
+
+def tracker(step_dir: Path) -> dict:
+    """The tracker snapshot after the step (tracker.json) and, at step 6, the issue round trip's facts
+    (tracker-round-trip.json, written by orchestrate; None where absent). Reported, not scored."""
+    t = read_json(step_dir / "tracker.json")
+    if values.is_missing(t):
+        return t
+    v = t["value"] if isinstance(t["value"], dict) else {}
+    rt = read_json(step_dir / "tracker-round-trip.json")
+    return values.val({"backend": v.get("backend"), "initialised": v.get("initialised"),
+                       "survives_restore": v.get("survives_restore"),
+                       "issues": len(v["issues"]) if isinstance(v.get("issues"), list) else None,
+                       "round_trip": None if values.is_missing(rt) else rt["value"]}, t["source"])
+
+
+def discovery(step_dir: Path) -> dict:
+    """Why the step's N.a (discovery) run stopped (a/discovery.json). Its cost is in `costs` (discovery_usd), its
+    questions in `questions` (run "a"). Reported, not scored."""
+    d = read_json(step_dir / "a" / "discovery.json")
+    if values.is_missing(d):
+        return d
+    v = d["value"] if isinstance(d["value"], dict) else {}
+    disc = v.get("discovery") if isinstance(v.get("discovery"), dict) else {}
+    return values.val({"outcome": v.get("outcome"), "why": disc.get("why"), "turn": disc.get("turn"),
+                       "exchanges": v.get("exchanges")}, d["source"])
+
+
+def runs(step_dir: Path) -> dict:
+    """Re-runs and harness faults from run.json: attempts, interventions, whether the step parked, and each harness
+    fault (kind, signature, action, run, attempt). Only the final valid run is scored (spec §7.4)."""
+    r = run_record(step_dir)
+    if values.is_missing(r):
+        return r
+    v = r["value"] if isinstance(r["value"], dict) else {}
+    faults = [{k: f.get(k) for k in ("kind", "signature", "action", "run", "attempt")}
+              for f in v.get("harness_faults") or [] if isinstance(f, dict)]
+    return values.val({"attempts": v.get("attempts"), "interventions": list(v.get("interventions") or []),
+                       "parked": v.get("park") is not None, "harness_faults": faults}, r["source"])
