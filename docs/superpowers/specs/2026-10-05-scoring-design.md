@@ -38,7 +38,7 @@ change is deliberate overlap. Six of seven steps are change steps.
 |---|---|---|---|
 | 20 | **Coping with change** | Regressions: earlier steps' hidden tests still green after each change step (7) · Stale artefacts updated: old requirements, tests and docs a change made wrong were found and changed, steps 3, 5, 7 (7) · Collateral churn: lines changed in files the step had no reason to touch (3) · Hand edit detected and reconciled, step 2 (3) | measured · judged · measured · judged |
 | 20 | **Correctness** | Hidden tests passed per step, **all** tests at that step including earlier steps' (a regression deliberately costs twice) | measured |
-| 10 | **Traceability** | Requirement → test → code · change → reason · fallback assumptions recorded as decisions · step 6's fix leaves a spec trace | judged |
+| 10 | **Traceability** | Requirement → test → code · change → reason · step 6's fix leaves a spec trace | judged |
 | 10 | **Quality of human interaction** | Value of questions, N.a and N.b both counted · research before asking, informed-choice framing (design §8) · gates at sensible points | judged |
 | 15 | **Code and test quality** | Mutation score · `mypy --strict` and lint · test names checked against what the tests assert | measured · measured · judged |
 | 10 | **Decision quality** | Choice: the owner's rating of each route the arm took, averaged over topics (6) · Process: options weighed, reason stated, decision recorded (4) — §8 | owner-rated · judged |
@@ -99,7 +99,7 @@ the decision review's unscored parts (§8).
    different path: select tests by file rather than node ID, or another mutation runner. Only if every path fails
    is the score unmeasured; then the dimension's other parts are reweighted and the cell is flagged.
 3. **Fallback-answered questions** are judged like any other question. Whether the arm recorded its assumption as
-   the fallback asked counts under traceability.
+   the fallback asked counts under decision quality (process, §8).
 4. **Harness faults and re-runs:** only the final valid run is scored; re-runs are listed.
 5. **Owner review time:** removed from the score (§2).
 6. **Arm violations:** listed, each judged, deducted under setup and ergonomics by severity. An arm-caused fault is
