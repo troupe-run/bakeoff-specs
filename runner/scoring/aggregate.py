@@ -119,8 +119,15 @@ def _part_steps(pass_, part, arm, recs, base_recs, rubrics, verdicts, sc) -> dic
             gone = [n for n, v in vs.items() if v is None]
             if gone:
                 return {"arm": {"score": None, "why": f"violations evidence missing for steps {gone}"}}
-            return {"arm": {"score": scales.deduction(sum(len(v) for v in vs.values()), sc["violation_per_item"])}
-                    if vs else {"score": None, "why": "no run records"}}
+            if not vs:
+                return {"arm": {"score": None, "why": "no run records"}}
+            sev = inputs.load_violations()          # R36: each violation deducted by the severity of its kind
+            kinds: dict[str, int] = {}
+            for v in (x for step in vs.values() for x in step):
+                k = v.get("kind") if isinstance(v, dict) and isinstance(v.get("kind"), str) else "unknown"
+                kinds[k] = kinds.get(k, 0) + 1
+            deducted = sum(sev.of(k) * n for k, n in kinds.items())
+            return {"arm": {"score": max(0.0, 1.0 - deducted), "deducted": deducted, "kinds": kinds}}
         return {"arm": _judged(pass_, part, arm, "arm", verdicts)}
     if part in MEASURED:
         return {str(n): _measured(part, r, base_recs.get(n), sc) for n, r in sorted(recs.items())}

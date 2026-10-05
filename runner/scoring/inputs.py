@@ -73,6 +73,31 @@ def load_weights(path: Path | None = None) -> Weights:
     return Weights(dims, parts, scales, report)
 
 
+@dataclass(frozen=True)
+class ViolationSeverity:
+    """scoring/violations.toml (R36): a severity (0..1) per arm-violation `kind`, `default` for an unlisted one."""
+    default: float
+    by_kind: dict[str, float]
+
+    def of(self, kind) -> float:
+        return self.by_kind.get(kind, self.default) if isinstance(kind, str) else self.default
+
+
+def _severity(path: Path, what: str, v) -> float:
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not 0 <= v <= 1:
+        raise InputError(f"{path}: {what} must be a number from 0 to 1, got {v!r}")
+    return float(v)
+
+
+def load_violations(path: Path | None = None) -> ViolationSeverity:
+    path = path or paths.SCORING_INPUTS / "violations.toml"
+    raw = _toml(path)
+    if set(raw) - {"default", "by_kind"} or "default" not in raw or not isinstance(raw.get("by_kind", {}), dict):
+        raise InputError(f"{path}: needs `default` and an optional [by_kind] table, nothing else")
+    return ViolationSeverity(_severity(path, "default", raw["default"]),
+                             {k: _severity(path, f"by_kind.{k}", v) for k, v in sorted(raw.get("by_kind", {}).items())})
+
+
 _KINDS = {"requirement", "test", "doc", "code"}
 
 

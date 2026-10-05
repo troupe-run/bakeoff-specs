@@ -98,3 +98,18 @@ def test_report_unknown_keys_are_refused(tmp_path):
     p.write_text('[dimensions]\ncoping = 100\n[report]\noutlier_factr = 3\n')
     with pytest.raises(inputs.InputError, match="outlier_factr"):
         inputs.load_weights(p)
+
+
+def test_violation_severities_load_with_a_default_and_per_kind_values():
+    v = inputs.load_violations()
+    assert v.default == 0.25 and v.of("own-token-in-evidence") == v.by_kind["own-token-in-evidence"]
+    assert v.of("a-kind-nobody-listed") == v.default and v.of(None) == v.default
+
+
+@pytest.mark.parametrize("body", ['default = -1\n', 'default = 0.25\n[by_kind]\nx = "high"\n', '[by_kind]\nx = 0.1\n',
+                                  'default = 0.25\nextra = 1\n'])
+def test_a_bad_violation_severity_table_raises(tmp_path, body):
+    f = tmp_path / "violations.toml"
+    f.write_text(body)
+    with pytest.raises(inputs.InputError, match="violations.toml"):
+        inputs.load_violations(f)

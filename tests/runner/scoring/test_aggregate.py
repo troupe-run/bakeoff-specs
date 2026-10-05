@@ -236,3 +236,13 @@ def test_one_mutation_method_throughout_is_not_flagged(p):
     write_collected(p, "control", 1, quality=q)
     s = _scores(p)
     assert not any(f.startswith("mutation methods mixed") for f in s["flags"])
+
+
+def test_violations_are_deducted_by_severity_of_their_kind(p, monkeypatch):
+    monkeypatch.setattr(aggregate.inputs, "load_violations",
+                        lambda: inputs.ViolationSeverity(0.1, {"own-token-in-evidence": 0.5}))
+    write_collected(p, "alpha", 1, violations=[{"kind": "own-token-in-evidence"}, {"kind": "setup-drift"}])
+    write_collected(p, "alpha", 2, violations=[{"kind": "setup-drift"}])
+    st = _scores(p)["arms"]["alpha"]["dimensions"]["setup"]["parts"]["violations"]["steps"]["arm"]
+    assert st["score"] == pytest.approx(1 - 0.5 - 0.1 - 0.1)
+    assert st["deducted"] == pytest.approx(0.7) and st["kinds"] == {"own-token-in-evidence": 1, "setup-drift": 2}

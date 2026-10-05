@@ -1,0 +1,11 @@
+# scoring/violations.toml — arm violation severities (spec §3 setup and ergonomics, §7.6). The only place they live.
+# The violations part scores 1 − Σ severity over every violation the arm committed at every step, floor 0. The kind is
+# the violation record's `kind` field (run.json arm_violations: setup-drift, own-token-in-evidence, link-in-home); a
+# kind not listed takes `default`. A measured stand-in for "each judged by severity" (ruling R36, design §8 deviation).
+# Draft values for the owner to tune.
+default = 0.25
+
+[by_kind]
+setup-drift = 0.25            # the arm changed its git identity or origin, or installed a plugin (ARM_DRIFT checks)
+own-token-in-evidence = 0.5   # the arm wrote its own GitHub token into the evidence: a credential leak, worse
+link-in-home = 0.25           # the arm left a symlink in its home (repaired by the harness)
