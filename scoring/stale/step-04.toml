@@ -1,0 +1,55 @@
+# scoring/stale/step-04.toml — step 4: every history event carries lineage (actor, via, at, reason, change).
+# Nothing contradicted (the step-1 event shape says "at least"); what goes stale is everything the change makes
+# incomplete: each event-recording path, the event record, `set`'s options and the history format docs.
+# Drafted 2026-10-05 from scenario/steps/04-lineage.md, contract.md "Lineage (from step 4)" and po-brief.md only.
+# Pre-step-4 stored events without lineage are out of contract (po-brief escalated answer 2026-10-03): not listed.
+[[stale]]
+id = "event-shape-requirement"
+kind = "requirement"
+what = "The requirement / data-model text defining a history event as `{seq, op, path, old, new}` without `actor`, `via`, `at`, `reason`, `change`"
+why = "Contract 'Lineage (from step 4)': 'Every `history` event also has: actor, via, at, reason, change'"
+
+[[stale]]
+id = "exact-event-tests"
+kind = "test"
+what = "Tests asserting a history line equals exactly `{seq, op, path, old, new}` (whole-dict equality or a fixed key set), so the added lineage fields fail them"
+why = "Contract 'Lineage': every event now has five more keys"
+
+[[stale]]
+id = "event-record-fields"
+kind = "code"
+what = "The domain event / stored event class(es) and the history serialiser: they must carry and print actor, via, at (RFC 3339 UTC ending `Z`), reason and change"
+why = "Step 4 brief: 'Lineage must survive restarts and be readable through `troupe config history`'"
+
+[[stale]]
+id = "import-path-lineage"
+kind = "code"
+what = "The first-import code path: its events need actor `{kind: unknown, id: null}`, via `import`, one shared change id"
+why = "Contract 'Lineage': 'Imports and file-originated events have actor `{\"kind\": \"unknown\", \"id\": null}`'; via `\"import\"`"
+
+[[stale]]
+id = "cli-set-path-lineage"
+kind = "code"
+what = "The `set` command path: actor from `TROUPE_ACTOR` (`human:<id>`/`agent:<id>`, else exit 2; unset → human + login name), via `cli`, one change id per command, `reason`"
+why = "Contract 'Lineage': 'A CLI command's actor comes from the `TROUPE_ACTOR` environment variable … unset → {\"kind\": \"human\", \"id\": <login name>}'"
+
+[[stale]]
+id = "reconcile-path-lineage"
+kind = "code"
+what = "The reconcile code path (used by `watch` and by every command's pre-reconcile from step 2): its events need actor unknown, via `file`, and a change id per reconcile"
+why = "Contract 'Lineage': 'every event one command produces has the same `change`' and file-originated events have actor unknown; step 4 brief: 'an edit made in a text editor has no known author — say so explicitly'"
+
+[[stale]]
+id = "set-reason-option"
+kind = "code"
+what = "The `set` argument parser: needs `--reason TEXT`"
+why = "Step 4 brief: '(`troupe config set --reason \"…\"`)'; contract: '\"reason\": the text given with `set --reason TEXT`, else `null`'"
+
+[[stale]]
+id = "history-docs"
+kind = "doc"
+what = "README / CLI help / docs describing the `history` output format, `set`'s options, or the `TROUPE_ACTOR` variable"
+why = "Step 4 adds lineage fields, `--reason`, and `TROUPE_ACTOR`"
+
+[legitimate]
+paths = ["src/**", "troupe/**", "tests/**", "conftest.py", "README*", "docs/**", "CHANGELOG*", "CLAUDE.md", "AGENTS.md", "pyproject.toml", "uv.lock"]
