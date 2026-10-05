@@ -101,3 +101,21 @@ def load_rubrics(root: Path | None = None) -> dict[str, Rubric]:
             raise InputError(f"{f}: needs levels 0-4, three lenses {{name, perspective}}, known evidence, unit")
         out[r.part] = r
     return out
+
+
+@dataclass(frozen=True)
+class Exclusions:
+    defects: frozenset[str]
+    reviewed: frozenset[str]
+    entries: list[dict]
+
+
+def load_excluded(path: Path | None = None) -> Exclusions:
+    path = path or paths.SCORING_INPUTS / "excluded-tests.toml"
+    raw = _toml(path) if path.exists() else {}
+    entries = raw.get("test", [])
+    for e in entries:
+        if set(e) != {"id", "verdict", "reason", "decided"} or e["verdict"] not in ("defect", "hard"):
+            raise InputError(f"{path}: bad entry {e!r}")
+    return Exclusions(frozenset(e["id"] for e in entries if e["verdict"] == "defect"),
+                      frozenset(e["id"] for e in entries), entries)

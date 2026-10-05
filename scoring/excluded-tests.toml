@@ -1,0 +1,23 @@
+# Hidden tests every arm failed, reviewed against the contract (Plan 3 Task 4).
+# verdict = "defect": the contract is silent on, or contradicts, the asserted bytes -> excluded from scoring.
+# verdict = "hard":   the contract requires the asserted bytes -> kept; every arm genuinely failed it.
+# Line numbers refer to scenario/contract.md. Found by evidence.all_fail over results/pass1, steps 1-4
+# (the same three cases at every step; nothing new at step 5).
+
+[[test]]
+id = "tests.hidden.test_step1_writeback::test_writeback_is_byte_surgical[multi-line -> plain]"
+verdict = "defect"
+reason = '''Contradicts the contract. Golden: `a: |\n  x\n  y\n\nb: 1\n` + set a "single" -> `a: single\n\nb: 1\n` (block scalar rewritten as plain). Contract L63-64: "A block scalar keeps its indicator and chomping unless the value's trailing newlines require a different chomping." "single" has no trailing newline, so the contract requires `a: |-\n  single\n\nb: 1\n` (literal kept, chomping clip -> strip). L54 agrees: "A changed scalar keeps its quoting style if that style can represent the new value" - literal `|-` represents "single" exactly. L40-41 (only required bytes change) also favours keeping the block. Nothing in the contract converts a block scalar to plain.'''
+decided = "draft — awaiting owner"
+
+[[test]]
+id = "tests.hidden.test_step1_writeback::test_writeback_is_byte_surgical[null gains a child key]"
+verdict = "defect"
+reason = '''Contract silent. Golden: `a:\nb: 1\n` + set a.c 5 -> `a:\n  c: 5\nb: 1\n` (a null value silently becomes a mapping). Rule 2 (L47-48) covers only "the deepest existing ancestor mapping of PATH; missing intermediate mappings are created there" - here `a` exists and is null, not a mapping, and is not missing. The contract never says a null counts as an empty mapping, and L23-24 makes exit 5 an equally valid reading: "`5` path not found, or the path is the wrong kind of node for the command." Neither success-with-these-bytes nor exit 5 is required.'''
+decided = "draft — awaiting owner"
+
+[[test]]
+id = "tests.hidden.test_step1_writeback::test_writeback_is_byte_surgical[scalar -> mapping keeps EOL comment on the key line]"
+verdict = "defect"
+reason = '''Contradictory for step 1. Golden: `model: 'opus'  # default` + set model {name: opus, temperature: 0.2} -> key line `model:  # default` (value and its leading space dropped, comment pulled to column 8). L76-77: "When a scalar is replaced by a block collection, the key's line keeps its bytes up to and including its end-of-line comment" - read literally that keeps `'opus'` too (unrepresentable), so it does not fix the bytes. L78-80, which does apply ("when a changed value's length changes, the comment on that line is moved back to its previous column ... No other line changes"), would keep `#` at its old column 15 (0-based), i.e. `model:` + 9 spaces + `# default`. The golden matches neither; it matches only the step-5 example at L138 (`coder: file:agents/coder.yaml  # c` -> `coder:  # c`), and that section is not in force before step 5 (L3-4). Owner may prefer "hard" if L138 is taken as the intended reading of L76 for every step; the L78-80 conflict would then still need a contract fix.'''
+decided = "draft — awaiting owner"
