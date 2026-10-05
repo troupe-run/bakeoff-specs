@@ -280,7 +280,12 @@ REAL_STRINGS = [
     "kitty-implement-review", "specify_cli", "Specify CLI", "beads", ".beads/issues.jsonl", "Beads",
     "bd create 'x'", "bd list --json", "bd close troupe-1", "bd show x", "bd ready", "bd update x", "bd dep add a b",
     "run `specify init .`", "OpenSpec", "Open Spec", "cc-sdd", "CC SDD", "obra/superpowers", "Obra", "Kiro",
-    "bakeoff-specs-cc\u2026", "bakeoff-specs-speckitty/src",
+    "bakeoff-specs-cc\u2026", "bakeoff-specs-speckitty/src", "bakeoff_specs_speckitty", "dolt sql-server", "Dolt", "a bead",
+    # R26: after an escaped newline, tab, return or quote (JSON text and transcript lines)
+    "x\\nKiro-style Spec-Driven Development", "x\\nbd create --title=x", "x\\nbd remember --key k", "x\\nbd ready",
+    "x\\nbd show x", "x\\nbd update x", "x\\nbd close x", "x\\nbd dep add a b", "x\\nbeads here", "x\\nSpec Kit is",
+    "x\\nCC-SDD", "x\\nObra wrote", "x\\nkitty/x", "x\\tkitty", "x\\rBeads", '{"a": "\\"Kiro\\""}', "x\\n/speckit-plan",
+    "x\\nspeckit-plan", "x\\nspecify init .",
 ]
 
 
@@ -289,9 +294,9 @@ def test_real_name_variants_and_aliases_from_the_snapshot_are_scrubbed():
     for s in REAL_STRINGS:
         out = an.scrub(s, t).lower()
         for banned in ("spec kit", "spec_kit", "kitty", "specify_cli", "specify cli", "beads", "bd ", "open spec",
-                       "cc sdd", "cc-sdd", "obra", "kiro", "bakeoff-specs-"):
+                       "cc sdd", "cc-sdd", "obra", "kiro", "bakeoff-specs-", "bakeoff_specs", "dolt", "bead"):
             assert banned not in out, (s, out)
-        assert not re.search(r"\b(?:bd|speckit|openspec|spec-kitty)\b", out), (s, out)
+        assert not re.search(r"(?<![a-z0-9])(?:bd|speckit|openspec|spec-kitty)(?![a-z0-9])", out.replace("\\n", " ")), (s, out)
 
 
 def test_short_aliases_match_on_word_boundaries_only():
@@ -387,27 +392,53 @@ def test_residual_vocabulary_is_listed_and_not_scrubbed():
 
 
 # --- the general claim: the real pass-1 snapshot -------------------------------------------------------------------
-def _variants(word: str) -> set[str]:
-    parts = re.split(r"[-_ ]+", word)
+def test_open_specification_in_plain_english_survives_but_the_tool_name_does_not():
+    t = an.pass_terms(["openspec"])
+    assert an.scrub("an open specification and open specs", t) == "an open specification and open specs"
+    assert an.scrub("Open Spec and OpenSpec", t) == "method and method"
+
+
+# --- the general claim, checked WITHOUT the implementation's regexes -------------------------------------------------
+def _forms(word: str) -> set[str]:
+    parts = re.split(r"[-_ ]+", word.lower())
     return {sep.join(parts) for sep in ("", "-", "_", " ")}
 
 
-def test_real_pass1_snapshot_scrubbed_output_holds_no_arm_tool_alias_or_folder_name_in_any_variant(tmp_path):
+def _hits(low: str, word: str) -> bool:
+    """Independent of anonymise: a plain substring search; a short word counts only at a word boundary, where a
+    preceding backslash-n, -t, -r or -quote (JSON or transcript text) is a boundary too."""
+    start = 0
+    while (i := low.find(word, start)) != -1:
+        start = i + 1
+        if len(word) >= 6:
+            return True
+        before = low[i - 1] if i else " "
+        esc = i >= 2 and low[i - 2] == "\\" and before in "ntr\""
+        after = low[i + len(word)] if i + len(word) < len(low) else " "
+        if (not before.isalnum() or esc) and not after.isalnum():
+            return True
+    return False
+
+
+def test_real_pass1_transcripts_questions_gates_and_setup_hold_no_name_alias_or_cli_in_any_form(tmp_path):
+    """Scope: transcript.md text, questions, gates and the 00-setup copy of results/pass1. NOT repo trees or diffs
+    (the docker test covers those after pass 1)."""
     pass_dir = paths.RESULTS / "pass1"
     if not pass_dir.is_dir():
         pytest.skip(f"{pass_dir} absent (results/pass1 snapshot not present)")
     from runner.scoring import collect
     arms = collect.arms(pass_dir)
     t = an.pass_terms(arms)
-    words = sorted({v.lower() for a in [*arms, *(f.stem for f in config.ARMS_DIR.glob("*.toml"))]
-                    for w in an.banned_words(a) for v in _variants(w) if v.strip()})
-    assert {"kitty", "beads", "obra", "ccsdd", "openspec"} <= set(words)      # the derivation reached the aliases
+    configured = [f.stem for f in config.ARMS_DIR.glob("*.toml")]
+    words = sorted({f for a in [*arms, *configured] for w in an.banned_words(a) for f in _forms(w)
+                    if f and f != "control"} | {"specify_cli", "specify cli", "bakeoff-specs-", "bakeoff_specs_",
+                                                "dolt", "bead", "bd"})
+    assert {"kitty", "beads", "obra", "ccsdd", "openspec", "kiro"} <= set(words)
     texts: list[tuple[str, str]] = []
     for arm in arms:
         for nn in an._step_dirs(pass_dir / arm):
             sd = pass_dir / arm / nn
-            tr = an.transcript(sd, t)
-            texts += [(f"{arm}/{nn}/transcript", tr or "")]
+            texts.append((f"{arm}/{nn}/transcript", an.transcript(sd, t) or ""))
             if an._ran(sd):
                 texts += [(f"{arm}/{nn}/questions", an.scrub(an.questions_md(sd), t)),
                           (f"{arm}/{nn}/gates", an.scrub(an.gates_md(sd), t))]
@@ -417,14 +448,6 @@ def test_real_pass1_snapshot_scrubbed_output_holds_no_arm_tool_alias_or_folder_n
             assert not list(dest.rglob("*.gz"))
             texts += [(f.relative_to(tmp_path).as_posix(), f.read_text(errors="replace"))
                       for f in dest.rglob("*") if f.is_file()]
-    assert texts
-    leaks = []
-    for where, text in texts:
-        low = text.lower()
-        for w in words:
-            pat = rf"(?<![a-z0-9]){re.escape(w)}(?![a-z0-9])" if len(w) < 6 else re.escape(w)
-            if re.search(pat, low):
-                leaks.append((where, w))
-        if re.search(r"(?<![\w.-])bd\s+(?:create|list|close|show|update|ready|dep)\b", low) or "bakeoff-specs-" in low:
-            leaks.append((where, "bd/repo"))
+    assert len(texts) > 20
+    leaks = sorted({(where, w) for where, text in texts for w in words if _hits(text.lower(), w)})
     assert leaks == []

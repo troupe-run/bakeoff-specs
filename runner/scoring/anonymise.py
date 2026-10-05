@@ -20,6 +20,14 @@ from runner.scoring import collect, evidence, values
 
 # The ONLY hard-coded knowledge: what config cannot tell us. Everything else (arm, repo, tool, plugin, spec folders,
 # entry / must_run commands) is derived from runner/config/arms/<arm>.toml in vocabulary().
+_ESC = r'(?<=\\[ntr"])'                  # a preceding backslash-n/t/r/quote is a boundary in JSON and transcript text
+
+
+def _lb(chars: str = "A-Za-z0-9") -> str:
+    """Start-of-word lookbehind: not preceded by one of `chars`, or preceded by an escaped newline/tab/return/quote."""
+    return rf"(?:(?<![{chars}])|{_ESC})"
+
+
 _TABLE = {
     "to_repo": "repo",                       # bakeoff-specs-<arm>, the config's repo_name
     "to_method": "method",                   # arm names, tool names, plugin names, aliases
@@ -29,17 +37,18 @@ _TABLE = {
     "to_command": "/method-command",         # slash commands
     "to_bare_command": "method-command",     # the same family without its slash (skill folder names)
     "command_families": r"(?:speckit-|opsx:|kiro-|spec-kitty\.|superpowers:)[\w-]+",
-    "repo_family": r"bakeoff-specs-(?:[\w\-\u2026]|\.(?=\w))*",     # also truncated forms: bakeoff-specs-cc...
+    "command_lookbehind": _lb(r"\w/"),
+    "repo_family": r"bakeoff[-_]specs[-_](?:[\w\-\u2026]|\.(?=\w))*",     # also truncated forms: bakeoff-specs-cc...
     "generic_spec_paths": {"docs/"},         # spec_paths that name no method (control's docs/)
     "tracker_paths": {".beads/": "tracker/"},   # a tracker's folder: it identifies the arm that uses it (R24)
     "generic_owners": {"github"},            # tool-name parts too common to scrub ("github/spec-kit")
     # names a method goes by that its config does not carry (matched on word boundaries, separator variants too)
     "aliases": {"ccsdd": ["kiro"], "openspec": ["opsx"], "speckitty": ["kitty", "kittify"]},
-    "tracker_aliases": ["beads"],            # every arm: a tracker the methods use
+    "tracker_aliases": ["beads", "bead", "dolt"],   # every arm: the tracker (beads) and its database (dolt)
     # CLI forms, as regexes (non-capturing groups only); replacement is the key
     "cli_forms": {
-        "to_tracker_cli": [r"(?<![\w.-])bd(?![\w-])"],
-        "to_method": [r"specify[-_ ]?cli", r"(?<![\w-])specify\s+(?:init|check|version|bug|extension|workflow|integration)\b"],
+        "to_tracker_cli": [_lb(r"\w.-") + r"bd(?!\w)"],
+        "to_method": [r"specify[-_ ]?cli", _lb(r"\w-") + r"specify\s+(?:init|check|version|bug|extension|workflow|integration)\b"],
     },
     "min_part": 4,
     "bounded_below": 6,                      # names shorter than this (and every alias, owner part) need word boundaries
@@ -48,7 +57,9 @@ _TABLE = {
 # blinding disclosure quotes this list: a judge can still infer a method family from these.
 RESIDUAL_VOCABULARY = (
     "steering", "mission", "WP (work package)", "claude-plugins-official", "constitution", "charter", "proposal",
-    "delta spec", "converge", "brainstorming", "skills and command names without a method prefix",
+    "delta spec", "converge", "brainstorming", "Spec-Driven Development (the phrase)",
+    "issue ids and tracker concepts without a tracker name (e.g. troupe-12, ready/blocked)",
+    "skill and command names without a method prefix", "plain English use of 'open specification'",
 )
 TRAILERS = re.compile(r"^[+\- ]?(?:Co-Authored-By|Claude-Session|Signed-off-by):.*$\n?", re.I | re.M)
 ESCAPED_TRAILERS = re.compile(r"(?:(?:\\n)+|(?<![\w-]))(?:Co-Authored-By|Claude-Session|Signed-off-by):[^\n\"\\]*", re.I)
@@ -126,8 +137,9 @@ def banned_words(arm: str) -> list[str]:
 def _variant(name: str, bounded: bool) -> str:
     """A name as a regex matching every `-`, `_`, space or no separator between its parts, case-insensitively."""
     split = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name.strip())           # OpenSpec -> Open Spec
+    camel = split != name.strip()                                        # then bounded: "open specification" survives
     body = "[-_ ]?".join(re.escape(p).lower() for p in re.split(r"[-_ ]+", split) if p)
-    return rf"(?<![A-Za-z0-9]){body}(?![A-Za-z0-9])" if bounded else body
+    return rf"{_lb()}{body}(?![A-Za-z0-9])" if bounded or camel else body
 
 
 def scrub_terms(arm: str) -> list[Term]:
@@ -156,7 +168,7 @@ def scrub_terms(arm: str) -> list[Term]:
         for pat in pats:
             variants.setdefault(pat, _TABLE[key])
     families: list[Term] = [(Rx("/" + _TABLE["command_families"]), _TABLE["to_command"]),
-                            (Rx(r"(?<![\w/])" + _TABLE["command_families"]), _TABLE["to_bare_command"]),
+                            (Rx(_TABLE["command_lookbehind"] + _TABLE["command_families"]), _TABLE["to_bare_command"]),
                             (Rx(_TABLE["repo_family"]), _TABLE["to_repo"])]
     return (families + sorted(literals.items(), key=lambda kv: (-len(kv[0]), kv[0]))
             + [(Rx(k), r) for k, r in sorted(variants.items(), key=lambda kv: (-len(kv[0]), kv[0]))])
@@ -185,7 +197,8 @@ def pass_terms(arms: list[str]) -> list[Term]:
             + [(Rx(k), r) for k, r in sorted(vars_.items(), key=lambda kv: (-len(kv[0]), kv[0]))])
 
 
-_FAMILY_KEYS = {"/" + _TABLE["command_families"], r"(?<![\w/])" + _TABLE["command_families"], _TABLE["repo_family"]}
+_FAMILY_KEYS = {"/" + _TABLE["command_families"], _TABLE["command_lookbehind"] + _TABLE["command_families"],
+                _TABLE["repo_family"]}
 
 
 @functools.lru_cache(maxsize=64)
