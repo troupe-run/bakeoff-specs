@@ -19,7 +19,7 @@ def test_a_killed_final_turn_counts_the_span_of_its_transcript_entries_and_is_fl
     # alpha/02's final attempt ends in arm-a2-002 with no result line; its transcript entries run 10:00:00-10:01:30.
     t = evidence.arm_time(MINI / "alpha" / "02")["value"]
     killed = t["turns"][-1]
-    assert killed == {"stem": "arm-a2-002", "seconds": 90.0, "usd": None, "killed": True}
+    assert killed == {"stem": "arm-a2-002", "seconds": 90.0, "usd": None, "killed": True, "time_source": "transcript"}
     assert t["seconds"] == 30.0 + 90.0
 
 
@@ -139,3 +139,34 @@ def test_an_unknown_cost_on_the_last_result_line_leaves_usd_unknown(tmp_path):
               _res(duration_ms=1000, total_cost_usd=5.0))
     t = evidence.arm_time(d)["value"]["turns"]
     assert t[0]["usd"] is None and t[0]["seconds"] == 5.0 and t[1]["usd"] == 5.0 and t[1]["absorbs_previous"]
+
+
+def _transcript(d, rel_path, entries):
+    p = d / "transcripts" / "a1" / rel_path
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("".join(json.dumps(e) + "\n" for e in entries))
+
+
+def _ts(sec):
+    return f"2026-10-05T09:{sec // 60:02d}:{sec % 60:02d}.000Z"
+
+
+def test_a_turns_time_is_its_transcript_span_from_the_first_queue_operation_including_background_agents(tmp_path):
+    # R12: the main loop's result line says 10 s, but a background subagent kept working until 100 s.
+    d = _step(tmp_path, _res(duration_ms=10_000, total_cost_usd=1.0))
+    _transcript(d, "-work-repo/s.jsonl", [
+        {"type": "queue-operation", "timestamp": _ts(0)},
+        {"type": "user", "timestamp": _ts(3), "message": {"content": "build it"}},
+        {"type": "assistant", "timestamp": _ts(13), "message": {"content": [{"type": "text", "text": "started"}]}}])
+    _transcript(d, "-work-repo/s/subagents/agent-1.jsonl", [
+        {"type": "user", "isSidechain": True, "timestamp": _ts(14), "message": {"content": "do part"}},
+        {"type": "assistant", "isSidechain": True, "timestamp": _ts(100), "message": {"content": []}}])
+    t = evidence.arm_time(d)["value"]
+    assert t["turns"] == [{"stem": "arm-a1-001", "seconds": 100.0, "usd": 1.0, "time_source": "transcript"}]
+    assert t["seconds"] == 100.0
+
+
+def test_a_turn_without_a_usable_transcript_falls_back_to_its_summed_durations(tmp_path):
+    d = _step(tmp_path, _res(duration_ms=4000, total_cost_usd=1.0) + _res(duration_ms=1000, total_cost_usd=1.5))
+    t = evidence.arm_time(d)["value"]
+    assert t["turns"] == [{"stem": "arm-a1-001", "seconds": 5.0, "usd": 1.5, "time_source": "duration_ms"}]

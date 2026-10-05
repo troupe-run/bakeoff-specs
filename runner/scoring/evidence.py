@@ -78,6 +78,10 @@ def arm_time(step_dir: Path) -> dict:
     if not found:
         return values.missing(rel(td), "no arm turn streams")
     attempt = max(a for a, _, _ in found)
+    from runner.scoring import phases           # lazy: phases imports evidence (controller ruling R2)
+    spans = phases.turn_spans(step_dir, attempt)
+    if spans is not None and len(spans) != sum(1 for a, _, _ in found if a == attempt):
+        spans = None                            # prompts do not map one-to-one onto turns: durations only
     turns, prev_usd, secs, unknown_before = [], 0.0, 0.0, False
     for _, _, f in (x for x in found if x[0] == attempt):
         rs = _result_lines(f)
@@ -86,14 +90,18 @@ def arm_time(step_dir: Path) -> dict:
             k = _killed_seconds(step_dir, stem)
             if k is None:
                 return values.missing(rel(f), f"turn {stem}: no result line and no transcript timestamps")
-            turns.append({"stem": stem, "seconds": k, "usd": None, "killed": True})
+            turns.append({"stem": stem, "seconds": k, "usd": None, "killed": True, "time_source": "transcript"})
             secs += k
             unknown_before = True
             continue
-        if not all(isinstance(r.get("duration_ms"), (int, float)) for r in rs):
-            return values.missing(rel(f), f"turn {stem}: result line has no duration_ms")
-        seconds = sum(r["duration_ms"] for r in rs) / 1000    # R9: every wake of the turn is real time
-        turn = {"stem": stem, "seconds": seconds}
+        span = spans[len(turns)] if spans else None
+        if span is not None and span[1] > span[0]:              # R12: wall-clock span, subagents included
+            seconds, source = span[1] - span[0], "transcript"
+        elif all(isinstance(r.get("duration_ms"), (int, float)) for r in rs):
+            seconds, source = sum(r["duration_ms"] for r in rs) / 1000, "duration_ms"   # R9: every wake counts
+        else:
+            return values.missing(rel(f), f"turn {stem}: no usable transcript and a result line has no duration_ms")
+        turn = {"stem": stem, "seconds": seconds, "time_source": source}
         cum = rs[-1].get("total_cost_usd")                      # cumulative: the turn's last result line
         if isinstance(cum, (int, float)):
             turn["usd"] = max(0.0, float(cum) - prev_usd)

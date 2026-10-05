@@ -247,18 +247,20 @@ def method_phases(step_dir: Path) -> dict:
 
 
 def turn_spans(step_dir: Path, attempt: int) -> list[tuple[float, float]] | None:
-    """(first, last) event time of each top-level turn in the attempt's transcripts, in order; None if none."""
+    """(first, last) event time of each top-level turn in the attempt's transcripts, in order; None if none. A turn
+    opens at its earliest queue operation (else its prompt) and ends at its last entry before the next turn opens,
+    background-subagent entries included (R12)."""
     evs, _ = events_from_transcripts(step_dir / "transcripts" / f"a{attempt}")
     opening = _turn_starts(evs)
-    starts = [i for i, e in enumerate(evs) if _is_prompt(e)]
-    if not starts:
+    prompts = [i for i, e in enumerate(evs) if _is_prompt(e)]
+    if not prompts:
         return None
-    ends = []                                   # a turn ends before the next turn's opening queue operations
-    for nxt in starts[1:]:
-        while nxt - 1 in opening:
-            nxt -= 1
-        ends.append(nxt)
-    ends.append(len(evs))
+    starts = []
+    for p in prompts:
+        while p - 1 in opening:
+            p -= 1
+        starts.append(p)
+    ends = starts[1:] + [len(evs)]
     return [(evs[s]["t"], evs[max(s, e - 1)]["t"]) for s, e in zip(starts, ends)]
 
 
