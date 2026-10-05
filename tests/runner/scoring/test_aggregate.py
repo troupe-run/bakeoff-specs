@@ -177,3 +177,12 @@ def test_a_weights_part_without_a_rubric_raises_input_error(p, monkeypatch):
     monkeypatch.setattr(aggregate.inputs, "load_weights", lambda: inputs.Weights(w.dimensions, parts, w.scales))
     with pytest.raises(inputs.InputError, match="mystery"):
         aggregate.run(p)
+
+
+def test_an_unmeasured_mutation_part_carries_the_evidence_why(p):
+    write_collected(p, "alpha", 1, quality={"mypy_errors": 0, "ruff_findings": 0, "mutation_score": None,
+                                            "mutation_state": "unmeasured",
+                                            "mutation_why": "partial: under 50% of sampled mutants checked"})
+    s = _scores(p)
+    parts = json.dumps(s["arms"]["alpha"])
+    assert "partial: under 50% of sampled mutants checked" in parts

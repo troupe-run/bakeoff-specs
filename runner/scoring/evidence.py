@@ -167,28 +167,73 @@ def costs(step_dir: Path) -> dict:
                       b["source"])
 
 
-def _measured(m: dict) -> bool:
-    return not m.get("crashed") and not m.get("baseline_failed") and m.get("score") is not None
+PARTIAL_UNDER_HALF = "partial: under 50% of sampled mutants checked"
+_UNCHECKED = ("not_checked", "check_interrupted")     # no verdict (quality.py: check_interrupted is not one either)
+
+
+def mutation(m: dict) -> dict:
+    """R32: the mutation score over CHECKED mutants only, recomputed here (runner/quality.py, the live instrument,
+    keeps its own `score`): `killed / (total - no_tests - skipped - unchecked)`, with `partial` and
+    `checked_fraction = checked / (total - no_tests - skipped)`. Under half checked is `unmeasured`
+    (`PARTIAL_UNDER_HALF`). Crashed and baseline_failed are kept as they are. A summary without counts (an older
+    shape) keeps its recorded score."""
+    out = {"score": None, "partial": bool(m.get("partial")), "checked_fraction": None, "why": None}
+    if m.get("crashed"):
+        return out | {"state": "crashed"}
+    if m.get("baseline_failed"):
+        return out | {"state": "baseline_failed"}
+    if not isinstance(m.get("total"), int):
+        return out | {"score": m.get("score"), "state": "unmeasured" if m.get("score") is None else "measured"}
+    eligible = m["total"] - m.get("no_tests", 0) - m.get("skipped", 0)
+    unchecked = sum(m.get(k, 0) for k in _UNCHECKED)
+    checked = eligible - unchecked
+    if eligible <= 0:
+        return out | {"state": "unmeasured"}
+    out |= {"partial": out["partial"] or unchecked > 0, "checked_fraction": checked / eligible}
+    if checked / eligible < 0.5:
+        return out | {"state": "unmeasured", "why": PARTIAL_UNDER_HALF}
+    return out | {"state": "measured", "score": m.get("killed", 0) / checked}
+
+
+def _remeasure(step_dir: Path) -> tuple[dict | None, str | None, str | None]:
+    """(the re-measure's mutation dict, its source) when it is current and measured; otherwise (None, None, why
+    ignored) — None for why when there is no remeasure.json at all."""
+    r = read_json(step_dir / "quality" / "remeasure.json")
+    if values.is_missing(r):
+        return None, None, None if r["why"] == "no such file" else r["why"]
+    m = r["value"]
+    if not isinstance(m, dict):
+        return None, None, "unreadable: not an object"
+    git = read_json(step_dir / "git.json")
+    sha_after = None if values.is_missing(git) else git["value"].get("sha_after")
+    if m.get("sha") != sha_after or sha_after is None:
+        return None, None, f"stale: remeasure sha {m.get('sha')}, git.json sha_after {sha_after}"
+    ev = mutation(m)
+    if ev["state"] != "measured":
+        return None, None, f"not measured: {ev['why'] or ev['state']}"
+    return m, r["source"], None
 
 
 def quality(step_dir: Path) -> dict:
-    """mypy and ruff from `quality/summary.json`; the mutation score from `quality/remeasure.json` (Task 20, the
-    whole suite per mutant) when that exists and is measured, otherwise from the original mutmut run in the summary
-    (a crashed or unreadable re-measure never replaces it). `mutation_source`/`mutation_method` say which."""
+    """mypy and ruff from `quality/summary.json`. The mutation part (`mutation()`, over checked mutants only) comes
+    from `quality/remeasure.json` (Task 20, the whole suite per mutant) when that is for the step's `sha_after` and
+    measured; otherwise from the original mutmut run in the summary, and `remeasure_ignored` says why a present
+    re-measure was not used. `mutation_source`/`mutation_method` say where the mutation part came from."""
     q = read_json(step_dir / "quality" / "summary.json")
     if values.is_missing(q):
         return q
     v, m = q["value"], q["value"].get("mutation", {})
     m_src, method = q["source"], "mutmut"
-    r = read_json(step_dir / "quality" / "remeasure.json")
-    if not values.is_missing(r) and isinstance(r["value"], dict) and _measured(r["value"]):
-        m, m_src, method = r["value"], r["source"], r["value"].get("method", "remeasure")
-    state = ("crashed" if m.get("crashed") else "baseline_failed" if m.get("baseline_failed")
-             else "unmeasured" if m.get("score") is None else "measured")
+    rem, rem_src, ignored = _remeasure(step_dir)
+    if rem is not None:
+        m, m_src, method = rem, rem_src, rem.get("method", "remeasure")
+    ev = mutation(m if isinstance(m, dict) else {})
     return values.val({"mypy_errors": None if v.get("mypy_crashed") else v.get("mypy_errors"),
                        "ruff_findings": None if v.get("ruff_crashed") else v.get("ruff_findings"),
-                       "mutation_score": m.get("score"), "mutation_state": state,
-                       "mutation_source": m_src, "mutation_method": method}, q["source"])
+                       "mutation_score": ev["score"], "mutation_state": ev["state"], "mutation_why": ev["why"],
+                       "mutation_partial": ev["partial"], "mutation_checked_fraction": ev["checked_fraction"],
+                       "mutation_source": m_src, "mutation_method": method, "remeasure_ignored": ignored},
+                      q["source"])
 
 
 def read_jsonl(p: Path) -> tuple[list[dict], int] | None:

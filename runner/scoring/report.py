@@ -352,6 +352,22 @@ def _f(x) -> str:
     return DASH if x is None else str(x)
 
 
+def _quality_text(name: str, v: dict, source: str) -> str:
+    """mypy and ruff link the summary; the mutation part links its own source (a re-measure when one was used,
+    R32) and names its method, partial runs their checked share, and a present but unused re-measure why."""
+    m = f"mutation {_f(v.get('mutation_score'))} ({v.get('mutation_state')}"
+    m += f": {v['mutation_why']})" if v.get("mutation_why") else ")"
+    if v.get("mutation_method"):
+        m += f" via {v['mutation_method']}"
+    if v.get("mutation_partial"):
+        cf = v.get("mutation_checked_fraction")
+        m += ", partial" + (f", {round(cf * 100)}% checked" if isinstance(cf, (int, float)) else "")
+    m += f" {_src(v.get('mutation_source') or source)}"
+    if v.get("remeasure_ignored"):
+        m += f"; re-measure ignored: {v['remeasure_ignored']}"
+    return f"{name}: mypy {_f(v.get('mypy_errors'))}, ruff {_f(v.get('ruff_findings'))} {_src(source)}; {m}"
+
+
 def _leaf_text(name: str, leaf: dict | None) -> str:
     if leaf is None:
         return f"{name}: {DASH} (no record)"
@@ -363,8 +379,7 @@ def _leaf_text(name: str, leaf: dict | None) -> str:
     if name == "regressions" and isinstance(v, dict):
         return f"{name}: rate {_f(v.get('rate'))} {link}"
     if name == "quality" and isinstance(v, dict):
-        return (f"{name}: mypy {_f(v.get('mypy_errors'))}, ruff {_f(v.get('ruff_findings'))}, mutation "
-                f"{_f(v.get('mutation_score'))} ({v.get('mutation_state')}) {link}")
+        return _quality_text(name, v, leaf["source"])
     if name == "time" and isinstance(v, dict):
         return f"{name}: {_mins(v.get('seconds'))}, attempt {_f(v.get('attempt'))}, {len(v.get('turns', []))} turn(s) {link}"
     if name == "cost" and isinstance(v, dict):

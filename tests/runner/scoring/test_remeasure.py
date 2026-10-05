@@ -70,12 +70,22 @@ def test_markers_are_read_from_the_last_anchored_line_and_only_for_requested_nam
     assert got == {"pkg.m.x_f__mutmut_1": 1, "pkg.m.x_f__mutmut_2": None}
 
 
+def test_a_skipped_marker_beats_a_forged_earlier_one_and_leaves_the_name_unchecked():
+    got = rm.parse_batch("__rc pkg.m.x_f__mutmut_1 1\n__rc pkg.m.x_f__mutmut_1 skipped\n", ["pkg.m.x_f__mutmut_1"])
+    assert got == {}
+
+
+def test_a_137_from_timeouts_kill_grace_is_a_timeout_not_suspicious():
+    got = rm.parse_batch("__rc pkg.m.x_f__mutmut_1 137\n", ["pkg.m.x_f__mutmut_1"])
+    assert got == {"pkg.m.x_f__mutmut_1": None} and rm.verdict(got["pkg.m.x_f__mutmut_1"]) == "timeout"
+
+
 # --- the per-batch shell script, run on the host against a stub interpreter (no arm code) -------------------------
 
 def _stub_copy(tmp_path: Path, codes: dict[str, int]) -> tuple[Path, Path]:
     """A copy dir whose `.venv/bin/python` is a bash stub: it prints a forged marker for every name, records the
     MUTANT_UNDER_TEST and PYTHONPATH it saw, and exits with codes[MUTANT_UNDER_TEST]. `timeout` is stubbed to just
-    run its command (macOS has none)."""
+    log its timeout seconds to timeouts.txt and run its command (macOS has none)."""
     copy = tmp_path / "copy"
     (copy / "mutants" / "src").mkdir(parents=True)
     (copy / ".venv" / "bin").mkdir(parents=True)
@@ -84,6 +94,7 @@ def _stub_copy(tmp_path: Path, codes: dict[str, int]) -> tuple[Path, Path]:
     py = copy / ".venv" / "bin" / "python"
     py.write_text(f"""#!/bin/bash
 echo "$MUTANT_UNDER_TEST|$PYTHONPATH|$PWD|$*" >> {seen}
+[ -n "${{STUB_SLEEP:-}}" ] && sleep "$STUB_SLEEP"
 for n in {' '.join(codes)}; do echo "__rc $n 0"; done
 case "$MUTANT_UNDER_TEST" in
 {case}
@@ -94,7 +105,7 @@ exit 3
     bindir = tmp_path / "bin"
     bindir.mkdir()
     t = bindir / "timeout"
-    t.write_text('#!/bin/bash\n[ "$1" = -k ] && shift 2\nshift\nexec "$@"\n')
+    t.write_text(f'#!/bin/bash\n[ "$1" = -k ] && shift 2\necho "$1" >> {tmp_path / "timeouts.txt"}\nshift\nexec "$@"\n')
     t.chmod(0o755)
     return copy, bindir
 
@@ -102,7 +113,7 @@ exit 3
 def test_the_batch_script_records_each_exit_code_after_all_arm_output(tmp_path):
     names = ["pkg.m.x_f__mutmut_1", "pkg.m.x_f__mutmut_2", "fail"]
     copy, bindir = _stub_copy(tmp_path, {"pkg.m.x_f__mutmut_1": 1, "pkg.m.x_f__mutmut_2": 0, "fail": 5})
-    cmd = rm.batch_command(names, 60)
+    cmd = rm.batch_command(names, 60, 1000)
     r = subprocess.run(cmd, cwd=copy, capture_output=True, text=True,
                        env={**os.environ, "PATH": f"{bindir}:{os.environ['PATH']}"})
     assert rm.parse_batch(r.stdout, names) == {"pkg.m.x_f__mutmut_1": 1, "pkg.m.x_f__mutmut_2": 0, "fail": 5}
@@ -111,6 +122,38 @@ def test_the_batch_script_records_each_exit_code_after_all_arm_output(tmp_path):
     m = str((copy / "mutants").resolve())
     assert all(s[1] == f"{m}/src:{m}" and Path(s[2]).resolve() == Path(m) for s in seen)
     assert all(s[3] == "-m pytest -q -x -p no:cacheprovider" for s in seen)
+
+
+def test_the_batch_script_starts_no_mutant_once_the_remaining_budget_is_spent(tmp_path):
+    names = ["pkg.m.x_f__mutmut_1", "pkg.m.x_f__mutmut_2", "pkg.m.x_f__mutmut_3"]
+    copy, bindir = _stub_copy(tmp_path, {n: 1 for n in names})
+    r = subprocess.run(rm.batch_command(names, 60, 1), cwd=copy, capture_output=True, text=True,
+                       env={**os.environ, "PATH": f"{bindir}:{os.environ['PATH']}", "STUB_SLEEP": "1.2"})
+    # the first mutant starts at 0 s (under the 1 s left) with its timeout clamped to that 1 s; after it $SECONDS >= 1
+    assert rm.parse_batch(r.stdout, names) == {"pkg.m.x_f__mutmut_1": 1}
+    assert (tmp_path / "timeouts.txt").read_text().split() == ["1"]
+
+
+def test_the_batch_script_with_no_budget_left_runs_nothing(tmp_path):
+    names = ["pkg.m.x_f__mutmut_1"]
+    copy, bindir = _stub_copy(tmp_path, {n: 1 for n in names})
+    r = subprocess.run(rm.batch_command(names, 60, 0), cwd=copy, capture_output=True, text=True,
+                       env={**os.environ, "PATH": f"{bindir}:{os.environ['PATH']}"})
+    assert rm.parse_batch(r.stdout, names) == {} and not (tmp_path / "seen.txt").exists()
+
+
+def test_run_batch_clamps_the_container_timeout_to_the_remaining_budget(tmp_path, monkeypatch):
+    seen = []
+    def fake_run(p, copy, cmd, timeout, env=None):
+        seen.append((cmd, timeout))
+        return quality.ToolRun(0, "", "")
+    monkeypatch.setattr(quality, "_run", fake_run)
+    names = [f"pkg.m.x_f__mutmut_{i}" for i in range(20)]
+    rm.run_batch(paths.Paths("p", "alpha"), tmp_path / "copy", names, 600, remaining=100)
+    rm.run_batch(paths.Paths("p", "alpha"), tmp_path / "copy", names[:1], 30, remaining=10_000)
+    (cmd1, t1), (cmd2, t2) = seen
+    assert t1 == 100 + rm.CONTAINER_SLACK_S and cmd1[4:6] == ["600", "100"]
+    assert t2 == 1 * (30 + 15) + 120 and cmd2[4:6] == ["30", "10000"]
 
 
 # --- target selection ---------------------------------------------------------------------------------------------
@@ -123,6 +166,13 @@ def test_targets_are_the_collected_steps_whose_mutation_crashed(tmp_state):
     write_collected("p", "alpha", 4, quality={**crashed, "mutation_state": "baseline_failed"})
     write_collected("p", "gamma", 1, quality=values.missing("x", "no such file"))
     assert rm.targets("p") == [("alpha", 3), ("beta", 2)]
+
+
+def test_targets_with_a_malformed_collected_record_refuse(tmp_state):
+    write_collected("p", "alpha", 1)
+    (paths.scoring_out("p") / "collected" / "alpha" / "02.json").write_text("{not json")
+    with pytest.raises(inputs.InputError, match="02.json"):
+        rm.targets("p")
 
 
 def test_targets_without_collected_records_refuse(tmp_state):
@@ -147,6 +197,7 @@ class Fake:
         self.batches: list[list[str]] = []
         self.prepared: list[tuple] = []
         self.listed_targets: list[list[str]] = []
+        self.remaining: list = []
 
     def install(self, monkeypatch):
         monkeypatch.setattr(rm, "_prepare", self.prepare)
@@ -166,7 +217,8 @@ class Fake:
         self.listed_targets.append(tg)
         return list(reversed(self.names))
 
-    def run_batch(self, p, copy, names, timeout, log=None):
+    def run_batch(self, p, copy, names, timeout, log=None, remaining=None):
+        self.remaining.append(remaining)
         if names in (["__baseline__", "fail"],):
             return {n: self.control[n] for n in names if n in self.control}
         self.batches.append(list(names))
@@ -235,6 +287,15 @@ def test_one_with_a_dead_batch_container_marks_its_mutants_not_checked_and_parti
     assert s["not_checked"] == 20 and s["killed"] == 10 and s["partial"] is True and s["score"] == 10 / 30
 
 
+def test_one_where_no_mutant_is_killed_and_all_survived_is_crashed_dispatch_unverified(tmp_state, monkeypatch):
+    _step(tmp_state)
+    names = [f"pkg.m.x_f__mutmut_{i}" for i in range(5)]
+    Fake(tmp_state, names, {n: 0 for n in names}).install(monkeypatch)
+    s = _read(rm.one("p", "alpha", 3))
+    assert s["crashed"] is True and s["score"] is None and s["survived"] == 5
+    assert s["harness_error"] == "no mutant killed: dispatch unverified"
+
+
 def test_one_without_a_recorded_sha_is_crashed_and_prepares_nothing(tmp_state, monkeypatch):
     _step(tmp_state, sha=None)
     f = Fake(tmp_state, [], {}).install(monkeypatch)
@@ -260,32 +321,80 @@ def test_every_path_writes_the_same_key_set(tmp_state, monkeypatch):
     assert set(ok) == set(bad)
 
 
-# --- evidence prefers a measured re-measure -----------------------------------------------------------------------
+# --- evidence: scores over checked mutants, prefers a measured and current re-measure -----------------------------
 
-def _quality_dir(tmp_path, remeasure: dict | None) -> Path:
+def _counts(**c) -> dict:
+    return {**quality.ZERO_MUTATION, **c, "total": sum(c.values())}
+
+
+def _quality_dir(tmp_path, remeasure: dict | None, mutation: dict | None = None, sha_after="abc") -> Path:
     d = tmp_path / "03"
     (d / "quality").mkdir(parents=True)
+    (d / "git.json").write_text(json.dumps({"sha_after": sha_after}))
     (d / "quality" / "summary.json").write_text(json.dumps(
-        {"mypy_errors": 2, "ruff_findings": 1, "mutation": {"crashed": True, "score": None}}))
+        {"mypy_errors": 2, "ruff_findings": 1,
+         "mutation": mutation if mutation is not None else {**quality.ZERO_MUTATION, "crashed": True, "score": None}}))
     if remeasure is not None:
         (d / "quality" / "remeasure.json").write_text(json.dumps(remeasure))
     return d
 
 
+def _orig(**c) -> dict:
+    return quality.mutation_summary(_counts(**c), partial=c.get("not_checked", 0) > 0, baseline_failed=False)
+
+
+def test_a_full_run_scores_killed_over_checked(tmp_path):
+    q = evidence.quality(_quality_dir(tmp_path, None, _orig(killed=8, survived=2)))["value"]
+    assert q["mutation_state"] == "measured" and q["mutation_score"] == 0.8
+    assert q["mutation_partial"] is False and q["mutation_checked_fraction"] == 1.0
+
+
+def test_a_partial_run_above_half_checked_scores_over_the_checked_mutants_only(tmp_path):
+    # eligible = 12 - 2 no_tests = 10; checked = 10 - 4 not_checked = 6; score 3/6 (quality.py itself says 3/10)
+    q = evidence.quality(_quality_dir(tmp_path, None, _orig(killed=3, survived=3, not_checked=4, no_tests=2)))["value"]
+    assert q["mutation_state"] == "measured" and q["mutation_score"] == 0.5
+    assert q["mutation_partial"] is True and q["mutation_checked_fraction"] == 0.6
+
+
+def test_a_partial_run_below_half_checked_is_unmeasured_and_says_why(tmp_path):
+    q = evidence.quality(_quality_dir(tmp_path, None, _orig(killed=2, not_checked=8)))["value"]
+    assert q["mutation_state"] == "unmeasured" and q["mutation_score"] is None
+    assert q["mutation_why"] == "partial: under 50% of sampled mutants checked"
+    assert q["mutation_checked_fraction"] == 0.2
+
+
+def test_crashed_and_baseline_failed_states_are_kept(tmp_path):
+    crashed = {**_orig(killed=5, survived=5), "crashed": True, "score": None}
+    assert evidence.quality(_quality_dir(tmp_path / "a", None, crashed))["value"]["mutation_state"] == "crashed"
+    bf = {**_orig(), "baseline_failed": True}
+    assert evidence.quality(_quality_dir(tmp_path / "b", None, bf))["value"]["mutation_state"] == "baseline_failed"
+
+
 def test_evidence_prefers_a_measured_remeasure(tmp_path):
-    q = evidence.quality(_quality_dir(tmp_path, rm.summarise({"m1": "killed", "m2": "survived"})))["value"]
+    r = rm.summarise({"m1": "killed", "m2": "survived", "m3": "not_checked"}, sha="abc")
+    q = evidence.quality(_quality_dir(tmp_path, r))["value"]
     assert q["mutation_state"] == "measured" and q["mutation_score"] == 0.5 and q["mypy_errors"] == 2
     assert q["mutation_method"] == "whole-suite-per-mutant" and q["mutation_source"].endswith("remeasure.json")
+    assert q["mutation_partial"] is True and q["remeasure_ignored"] is None
 
 
-def test_evidence_ignores_a_crashed_remeasure(tmp_path):
-    q = evidence.quality(_quality_dir(tmp_path, rm.summarise({}, crashed=True)))["value"]
+def test_evidence_ignores_a_crashed_remeasure_and_says_why(tmp_path):
+    q = evidence.quality(_quality_dir(tmp_path, rm.summarise({}, crashed=True, sha="abc")))["value"]
     assert q["mutation_state"] == "crashed" and q["mutation_method"] == "mutmut"
+    assert q["remeasure_ignored"] == "not measured: crashed"
+
+
+def test_evidence_ignores_a_stale_remeasure_and_says_why(tmp_path):
+    r = rm.summarise({"m1": "killed"}, sha="old")
+    q = evidence.quality(_quality_dir(tmp_path, r, sha_after="abc"))["value"]
+    assert q["mutation_state"] == "crashed" and q["mutation_source"].endswith("summary.json")
+    assert q["remeasure_ignored"] == "stale: remeasure sha old, git.json sha_after abc"
 
 
 def test_evidence_without_a_remeasure_is_unchanged(tmp_path):
     q = evidence.quality(_quality_dir(tmp_path, None))["value"]
     assert q["mutation_state"] == "crashed" and q["mutation_source"].endswith("summary.json")
+    assert q["remeasure_ignored"] is None
 
 
 # --- the CLI stage ------------------------------------------------------------------------------------------------
@@ -347,4 +456,21 @@ def test_mutants_not_reached_within_the_step_budget_are_not_checked_and_partial(
     # control at 0 s, batch 1 at 30 s, then 60 s >= 50 s: batch 2 and 3 never start
     assert len(f.batches) == 1 and s["killed"] == 20 and s["not_checked"] == 40
     assert s["partial"] is True and s["crashed"] is False and s["score"] == 20 / 60
-    assert s["budget_s"] == 50 and s["budget_exhausted"] is True
+    assert s["budget_s"] == 50 and s["budget_exhausted"] is True and f.remaining == [50, 20]
+
+
+def test_the_control_container_counts_against_the_budget(tmp_state, monkeypatch):
+    _step(tmp_state)
+    names = [f"pkg.m.x_f__mutmut_{i}" for i in range(5)]
+    f = Fake(tmp_state, names, {n: 1 for n in names}).install(monkeypatch)
+    clock = [0.0]
+    monkeypatch.setattr(rm, "_clock", lambda: clock[0])
+    real_batch = f.run_batch
+    def slow_control(*a, **k):
+        clock[0] += 60.0
+        return real_batch(*a, **k)
+    monkeypatch.setattr(rm, "run_batch", slow_control)
+    pins = config.load_pins()
+    pins = dataclasses.replace(pins, limits=dataclasses.replace(pins.limits, mutation_seconds=50, mutation_sample=0))
+    s = _read(rm.one("p", "alpha", 3, pins=pins))
+    assert f.remaining == [50] and f.batches == [] and s["budget_exhausted"] is True and s["not_checked"] == 5

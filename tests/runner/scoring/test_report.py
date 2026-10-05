@@ -256,3 +256,28 @@ def test_the_strengths_sub_list_is_indented_under_its_finding(p):
     lines = _section(report.render(p), "## Bottom line").splitlines()
     i = next(k for k, l in enumerate(lines) if l.startswith("2. Relative to the field mean"))
     assert lines[i + 1].startswith("   - alpha: strongest")
+
+
+def test_the_appendix_shows_the_mutation_method_and_links_a_remeasure_source(p):
+    write_collected(p, "alpha", 1, quality=values.val(
+        {"mypy_errors": 0, "ruff_findings": 0, "mutation_score": 0.5, "mutation_state": "measured",
+         "mutation_why": None, "mutation_partial": True, "mutation_checked_fraction": 0.75,
+         "mutation_method": "whole-suite-per-mutant", "remeasure_ignored": None,
+         "mutation_source": "results/p/alpha/01/quality/remeasure.json"}, "results/p/alpha/01/quality/summary.json"))
+    aggregate.run(p)
+    app = _section(report.render(p), "## Appendix: alpha")
+    line = next(ln for ln in app.splitlines() if "quality:" in ln)
+    assert "mypy 0, ruff 0 ([src](../../../results/p/alpha/01/quality/summary.json))" in line
+    assert ("mutation 0.5 (measured) via whole-suite-per-mutant, partial, 75% checked "
+            "([src](../../../results/p/alpha/01/quality/remeasure.json))") in line
+
+
+def test_the_appendix_says_why_a_present_remeasure_was_ignored(p):
+    write_collected(p, "alpha", 1, quality=values.val(
+        {"mypy_errors": 0, "ruff_findings": 0, "mutation_score": None, "mutation_state": "crashed",
+         "mutation_why": None, "mutation_partial": False, "mutation_checked_fraction": None,
+         "mutation_method": "mutmut", "remeasure_ignored": "stale: remeasure sha a, git.json sha_after b",
+         "mutation_source": "results/p/alpha/01/quality/summary.json"}, "results/p/alpha/01/quality/summary.json"))
+    aggregate.run(p)
+    line = next(ln for ln in _section(report.render(p), "## Appendix: alpha").splitlines() if "quality:" in ln)
+    assert "mutation — (crashed) via mutmut" in line and "re-measure ignored: stale: remeasure sha a" in line

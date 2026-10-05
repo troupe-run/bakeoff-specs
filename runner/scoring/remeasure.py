@@ -28,10 +28,18 @@ its name (`parse_batch`, `quality._last_marker`'s rule); a name with no marker (
 same uid with the copy writable, so this hardening stops accidental and printed forgeries, not an arm rewriting its
 own interpreter.
 
-The step's batches (control included) share a time budget of `pins.limits.mutation_seconds`, the same budget the
-original mutmut run had (R31): a batch is started only while the budget is unspent, so a step overruns it by at most
-one batch; mutants never reached are `not_checked`, which makes the summary `partial` (and, by
-`quality.mutation_summary`'s existing denominator, counts them unkilled).
+The step's containers, the control one included, share a time budget of `pins.limits.mutation_seconds`, the same
+budget the original mutmut run had (R31, R32). It is a real cap: each batch script gets the seconds left and starts no
+mutant once `$SECONDS` reaches them (each mutant's own timeout clamped to what is left), and each container's timeout
+is clamped to the seconds left plus `CONTAINER_SLACK_S`. Mutants never started are `not_checked`, so the summary is
+`partial`; the scoring layer (`evidence.mutation`) scores over checked mutants only.
+
+A run where no mutant is killed and every real verdict is `survived` is `crashed` ("no mutant killed: dispatch
+unverified", R32): the sentinel shows a trampoline is reached, not that each mutant is dispatched.
+
+Not like-for-like with mutmut's own results: mutmut gives a mutant that no test covers `no tests` (outside the
+denominator), while the whole suite per mutant runs everything, so an uncovered mutant comes out `survived`. The
+method is recorded (`method`) and shown in the report beside every score.
 
 Runs only after pass 1 (it prepares fresh copies under the arm's `state/` scratch and uses Docker), holding the
 runner lock (`runner score <pass> --stage remeasure`). Writes `quality/remeasure.json` and `quality/remeasure.log`
@@ -54,6 +62,8 @@ METHOD = "whole-suite-per-mutant"
 BATCH = 20                       # mutants per tester container
 MIN_MUTANT_TIMEOUT_S = 60        # per-mutant `timeout` floor
 TIMEOUT_FACTOR = 10              # per-mutant timeout = this x the baseline suite's seconds (container start included)
+CONTAINER_SLACK_S = 60           # a batch container's timeout beyond the step's remaining budget (kill grace, tail)
+NO_BUDGET_S = 10 ** 9            # `remaining` when no budget applies (the docker spike)
 BASELINE_NAME = "__baseline__"   # matches no mutant: the trampoline calls the original function
 SENTINEL_NAME = "fail"           # mutmut's trampoline raises MutmutProgrammaticFailException for this value
 _LOG_TAIL = 4000
@@ -99,41 +109,50 @@ def summarise(verdicts: dict[str, str], *, crashed: bool = False, baseline_faile
                                     **{**_EXTRA_DEFAULTS, **extra, "sampling": sampling, "method": METHOD})
 
 
-_MARKER = re.compile(r"(?m)^__rc (\S+) (-?\d+)$")
+_TIMEOUT_RCS = (124, 137)
+_MARKER = re.compile(r"(?m)^__rc (\S+) (-?\d+|skipped)$")
 
 
 def parse_batch(text: str, names: list[str]) -> dict[str, int | None]:
     """Each requested name's exit code from the LAST anchored `__rc <name> <code>` line (`text` is stdout only).
-    `timeout`'s 124 is None (a timeout). A name with no marker is absent: the caller records it `not_checked`."""
+    `timeout`'s 124, and 137 (its `-k` SIGKILL after the grace period; R32), are None (a timeout). A name whose
+    last marker is `skipped` (the budget ran out before it started), or that has none (the container died), is
+    absent: the caller records it `not_checked`."""
     wanted, out = set(names), {}
     for name, code in _MARKER.findall(text):
         if name in wanted:
-            out[name] = None if int(code) == 124 else int(code)
-    return out
+            out[name] = code if code == "skipped" else None if int(code) in _TIMEOUT_RCS else int(code)
+    return {n: c for n, c in out.items() if c != "skipped"}
 
 
-# Runs in the copy's root as the arm uid. Positional args: the per-mutant timeout, then the names (argv, never
-# interpolated). The arm's pytest output goes to a log file; the markers are printed only after the loop and the
-# log tail, from shell variables, so nothing the arm prints can come after them.
+# Runs in the copy's root as the arm uid. Positional args: the per-mutant timeout, the step's remaining budget in
+# seconds, then the names (argv, never interpolated). No mutant starts once `$SECONDS` reaches the remaining budget,
+# and each mutant's timeout is clamped to the budget left (R32). The arm's pytest output goes to a log file; the
+# markers are printed only after the loop and the log tail, from shell variables, so nothing the arm prints can come
+# after them. Every requested name gets a real marker, `skipped` for one never started, so a forged marker in the
+# tailed log can never stand in for a mutant that did not run.
 _BATCH_SCRIPT = r"""
-t="$1"; shift
+t="$1"; r="$2"; shift 2
 cd mutants || exit 97
 pp=""
 for d in source src .; do [ -d "$d" ] && pp="${pp:+$pp:}$(cd "$d" && pwd)"; done
-names=(); rcs=()
-for n in "$@"; do
-  MUTANT_UNDER_TEST="$n" PYTHONPATH="$pp" timeout -k 10 "$t" ../.venv/bin/python -m pytest -q -x -p no:cacheprovider \
+all=("$@"); rcs=()
+for n in "${all[@]}"; do
+  left=$((r - SECONDS))
+  [ "$left" -le 0 ] && break
+  tt=$(( t < left ? t : left ))
+  MUTANT_UNDER_TEST="$n" PYTHONPATH="$pp" timeout -k 10 "$tt" ../.venv/bin/python -m pytest -q -x -p no:cacheprovider \
     >>../remeasure-batch.log 2>&1
-  rcs+=("$?"); names+=("$n")
+  rcs+=("$?")
 done
 tail -c %d ../remeasure-batch.log
 echo
-for i in "${!names[@]}"; do printf '__rc %%s %%s\n' "${names[$i]}" "${rcs[$i]}"; done
+for i in "${!all[@]}"; do printf '__rc %%s %%s\n' "${all[$i]}" "${rcs[$i]:-skipped}"; done
 """ % _LOG_TAIL
 
 
-def batch_command(names: list[str], per_mutant_timeout: int) -> list[str]:
-    return ["bash", "-c", _BATCH_SCRIPT, "_", str(per_mutant_timeout), *names]
+def batch_command(names: list[str], per_mutant_timeout: int, remaining_s: int) -> list[str]:
+    return ["bash", "-c", _BATCH_SCRIPT, "_", str(per_mutant_timeout), str(remaining_s), *names]
 
 
 # --- the container seam (faked in unit tests) ----------------------------------------------------------------------
@@ -155,12 +174,14 @@ def _list_mutants(p: Paths, copy: Path, tg: list[str]) -> list[str]:
     return quality.list_mutants(p, copy, tg)
 
 
-def run_batch(p: Paths, copy: Path, names: list[str], timeout: int, log: list[str] | None = None
-              ) -> dict[str, int | None]:
-    """One tester container runs the whole suite once per name. A container that times out returns {} (every name
-    then `not_checked`)."""
-    outer = len(names) * (timeout + 15) + 120
-    r = quality._run(p, copy, batch_command(names, timeout), outer, env=quality.mutation_env(copy))
+def run_batch(p: Paths, copy: Path, names: list[str], timeout: int, log: list[str] | None = None,
+              remaining: int | None = None) -> dict[str, int | None]:
+    """One tester container runs the whole suite once per name, starting none once the step's `remaining` budget
+    is spent (None: no budget). The container timeout is clamped to `remaining` + `CONTAINER_SLACK_S` (R32). A
+    container that times out returns {} (every name then `not_checked`)."""
+    rem = NO_BUDGET_S if remaining is None else max(0, int(remaining))
+    outer = min(len(names) * (timeout + 15) + 120, rem + CONTAINER_SLACK_S)
+    r = quality._run(p, copy, batch_command(names, timeout, rem), outer, env=quality.mutation_env(copy))
     if log is not None:
         shown = names if len(names) <= 3 else [*names[:2], f"... <{len(names) - 2} more>"]
         log.append(f"$ batch {' '.join(shown)}  (per mutant timeout {timeout}s; container {outer}s)"
@@ -196,9 +217,9 @@ def one(pass_: str, arm: str, step: int, pins: config.Pins | None = None) -> Pat
 
 
 def _measure(p: Paths, step: int, pins: config.Pins, qd: Path, log: list[str]) -> dict:
-    def crash(why: str, **extra: object) -> dict:
+    def crash(why: str, verdicts: dict[str, str] | None = None, **extra: object) -> dict:
         log.append(f"# crashed: {why}")
-        return summarise({}, crashed=True, harness_error=why, **extra)
+        return summarise(verdicts or {}, crashed=True, harness_error=why, **extra)
 
     git = evidence.read_json(p.step(step) / "git.json")
     sha = None if values.is_missing(git) else git["value"].get("sha_after")
@@ -234,7 +255,10 @@ def _measure(p: Paths, step: int, pins: config.Pins, qd: Path, log: list[str]) -
     common |= {"sampled": n > 0, "sample_size": len(chosen), "mutant_timeout_s": t, "budget_s": budget}
     log.append(f"# {len(names)} mutants listed; {len(chosen)} chosen ({sampling}); per-mutant timeout {t}s")
 
-    ctl = run_batch(p, copy, [BASELINE_NAME, SENTINEL_NAME], t, log)
+    def left() -> int:
+        return max(0, int(budget - (_clock() - start)))
+
+    ctl = run_batch(p, copy, [BASELINE_NAME, SENTINEL_NAME], t, log, remaining=left())     # counts against it
     common |= {"mutants_baseline_rc": ctl.get(BASELINE_NAME), "sentinel_rc": ctl.get(SENTINEL_NAME)}
     if ctl.get(BASELINE_NAME) != 0:
         return crash(f"the suite does not pass from mutants/ (rc {ctl.get(BASELINE_NAME)})", sampling=sampling,
@@ -247,25 +271,37 @@ def _measure(p: Paths, step: int, pins: config.Pins, qd: Path, log: list[str]) -
     batches = [chosen[i:i + BATCH] for i in range(0, len(chosen), BATCH)]
     ran, exhausted = 0, False
     for b in batches:
-        if _clock() - start >= budget:              # R31: mutants not reached within the budget stay not_checked
+        if left() <= 0:                             # R31: mutants not reached within the budget stay not_checked
             exhausted = True
             log.append(f"# step budget {budget}s spent: {len(batches) - ran} batch(es) not started")
             break
-        got |= run_batch(p, copy, b, t, log)
+        got |= run_batch(p, copy, b, t, log, remaining=left())
         ran += 1
+    exhausted = exhausted or (left() <= 0 and any(name not in got for name in chosen))
     common |= {"budget_exhausted": exhausted}
     verdicts = {name: (verdict(got[name]) if name in got else "not_checked") for name in chosen}
+    real = [v for v in verdicts.values() if v in quality._REAL_OUTCOME_KEYS]
+    if real and all(v == "survived" for v in real):
+        # R32: the control proves the sentinel reaches a trampoline, not that each mutant is dispatched; every real
+        # verdict "survived" is far likelier a dispatch failure than an arm whose tests catch nothing
+        return crash("no mutant killed: dispatch unverified", verdicts, sampling=sampling, batches=ran, **common)
     return summarise(verdicts, sampling=sampling, batches=ran, **common)
 
 
 def targets(pass_: str) -> list[tuple[str, int]]:
-    """Every collected arm-step whose mutation state is `crashed`, sorted."""
+    """Every collected arm-step whose mutation state is `crashed`, sorted. A malformed record refuses (InputError)."""
     d = paths.scoring_out(pass_) / "collected"
     if not d.is_dir():
         raise inputs.InputError(f"{d} is missing: run `runner score {pass_} --stage collect` first")
     out = []
     for f in sorted(d.glob("*/[0-9][0-9].json")):
-        q = json.loads(f.read_text()).get("quality", {})
+        try:
+            rec = json.loads(f.read_text())
+            q = rec.get("quality", {}) if isinstance(rec, dict) else None
+            if not isinstance(q, dict) or not isinstance(q.get("value", {}), (dict, type(None))):
+                raise ValueError("no quality record")
+        except (OSError, ValueError) as e:
+            raise inputs.InputError(f"{f} is malformed ({e}): re-run `runner score {pass_} --stage collect`") from None
         if not values.is_missing(q) and (q.get("value") or {}).get("mutation_state") == "crashed":
             out.append((f.parent.name, int(f.stem)))
     return sorted(out)

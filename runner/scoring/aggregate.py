@@ -74,7 +74,7 @@ def _measured(part: str, rec: dict, base: dict | None, sc: dict) -> dict:
             return {"score": q["mutation_score"]}
         if q and q["mutation_state"] == "measured":
             return {"score": None, "why": "measured but no score"}
-        return {"score": None, "why": q["mutation_state"] if q else "no quality results"}
+        return {"score": None, "why": (q.get("mutation_why") or q["mutation_state"]) if q else "no quality results"}
     if part == "mypy_lint":
         if q and q["mypy_errors"] is not None and q["ruff_findings"] is not None:
             return {"score": scales.deduction(q["mypy_errors"] + q["ruff_findings"], sc["lint_per_error"])}

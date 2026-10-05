@@ -56,6 +56,7 @@ def test_remeasure_of_dry1_dryrun_01_writes_a_scored_summary():
         s = json.loads(out.read_text())
         assert s["sha"] == sha and s["crashed"] is False, s["harness_error"]
         assert s["score"] is not None and s["method"] == "whole-suite-per-mutant"
+        assert s["killed"] > 0 and s["score"] > 0       # dispatch reached at least one mutant (R32)
         assert evidence.quality(qd.parent)["value"]["mutation_method"] == "whole-suite-per-mutant"
     finally:                                        # leave the shared results/dry1 snapshot as it was
         for f in created:
