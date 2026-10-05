@@ -24,3 +24,32 @@ def test_deduction_floors_at_zero_and_passes_none_through():
 
 def test_out_of_scope_rating_is_not_a_score():
     assert scales.rating("out_of_scope") is None and scales.rating("acceptable") == 0.67
+
+
+def test_churn_proves_add_one():
+    """churn_score(9, 99) = ratio_score(10, 100) = 0.5 (equal at log scale)"""
+    assert scales.churn_score(9, 99) == 1.0
+
+
+def test_ratio_better_side_past_cap():
+    """ratio_score(1, 100) = 1.0 (far better than cap, capped at 1.0)"""
+    assert scales.ratio_score(1, 100) == 1.0
+
+
+def test_ratio_negative_input_is_undefined():
+    """Negative inputs should return None"""
+    assert scales.ratio_score(-1, 100) is None
+    assert scales.ratio_score(100, -1) is None
+
+
+def test_rating_table_maps_scales_to_rating_keys():
+    scales_dict = {"rating_good": 1.0, "rating_acceptable": 0.67, "rating_poor": 0.0}
+    table = scales.rating_table(scales_dict)
+    assert table == {"good": 1.0, "acceptable": 0.67, "poor": 0.0}
+
+
+def test_rating_with_custom_table():
+    """rating() can use a custom table passed from weights.toml"""
+    custom_table = {"good": 0.9, "acceptable": 0.5, "poor": 0.1}
+    assert scales.rating("acceptable", table=custom_table) == 0.5
+    assert scales.rating("good", table=custom_table) == 0.9

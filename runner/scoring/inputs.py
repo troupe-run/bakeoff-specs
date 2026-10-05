@@ -1,6 +1,7 @@
 """Load and validate the hand-written scoring inputs under `scoring/` (single sources of truth, owner-editable)."""
 from __future__ import annotations
 import fnmatch
+import math
 import re
 import tomllib
 from dataclasses import dataclass, field
@@ -44,10 +45,18 @@ def load_weights(path: Path | None = None) -> Weights:
     scales_raw = raw.get("scales", {})
     scales = {}
     for k, v in scales_raw.items():
-        try:
-            scales[k] = float(v)
-        except (TypeError, ValueError):
+        # Only accept real numbers (int, float), not bool (which is a subclass of int in Python)
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
             raise InputError(f"{path}: [scales] {k} must be a number, got {v!r}")
+        try:
+            fv = float(v)
+            if not math.isfinite(fv):
+                raise InputError(f"{path}: [scales] {k} must be finite, got {fv!r}")
+            if k == "ratio_cap" and fv <= 1:
+                raise InputError(f"{path}: [scales] ratio_cap must be > 1, got {fv}")
+            scales[k] = fv
+        except (ValueError, OverflowError) as e:
+            raise InputError(f"{path}: [scales] {k} must be a finite number, got {v!r}") from e
     return Weights(dims, parts, scales)
 
 
