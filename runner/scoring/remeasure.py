@@ -29,9 +29,9 @@ same uid with the copy writable, so this hardening stops accidental and printed 
 own interpreter.
 
 The step's containers, the control one included, share a time budget of `pins.limits.mutation_seconds`, the same
-budget the original mutmut run had (R31, R32). It is a real cap: each batch script gets the seconds left and starts no
-mutant once `$SECONDS` reaches them (each mutant's own timeout clamped to what is left), and each container's timeout
-is clamped to the seconds left plus `CONTAINER_SLACK_S`. Mutants never started are `not_checked`, so the summary is
+budget the original mutmut run had (R31, R32). It is a real cap: each batch script gets the seconds left and starts a mutant
+only while its full per-mutant timeout still fits in them (R33: never a truncated timeout, which would make a fake
+`timeout` verdict), and each container's timeout is clamped to the seconds left plus `CONTAINER_SLACK_S`. Mutants never started are `not_checked`, so the summary is
 `partial`; the scoring layer (`evidence.mutation`) scores over checked mutants only.
 
 A run where no mutant is killed and every real verdict is `survived` is `crashed` ("no mutant killed: dispatch
@@ -126,8 +126,9 @@ def parse_batch(text: str, names: list[str]) -> dict[str, int | None]:
 
 
 # Runs in the copy's root as the arm uid. Positional args: the per-mutant timeout, the step's remaining budget in
-# seconds, then the names (argv, never interpolated). No mutant starts once `$SECONDS` reaches the remaining budget,
-# and each mutant's timeout is clamped to the budget left (R32). The arm's pytest output goes to a log file; the
+# seconds, then the names (argv, never interpolated). A mutant starts only while at least its full timeout is left of
+# the budget (R33: a timeout clamped to a truncated budget would turn into a fake `timeout` verdict, a real unkilled
+# one). The arm's pytest output goes to a log file; the
 # markers are printed only after the loop and the log tail, from shell variables, so nothing the arm prints can come
 # after them. Every requested name gets a real marker, `skipped` for one never started, so a forged marker in the
 # tailed log can never stand in for a mutant that did not run.
@@ -138,10 +139,8 @@ pp=""
 for d in source src .; do [ -d "$d" ] && pp="${pp:+$pp:}$(cd "$d" && pwd)"; done
 all=("$@"); rcs=()
 for n in "${all[@]}"; do
-  left=$((r - SECONDS))
-  [ "$left" -le 0 ] && break
-  tt=$(( t < left ? t : left ))
-  MUTANT_UNDER_TEST="$n" PYTHONPATH="$pp" timeout -k 10 "$tt" ../.venv/bin/python -m pytest -q -x -p no:cacheprovider \
+  [ $((r - SECONDS)) -lt "$t" ] && break
+  MUTANT_UNDER_TEST="$n" PYTHONPATH="$pp" timeout -k 10 "$t" ../.venv/bin/python -m pytest -q -x -p no:cacheprovider \
     >>../remeasure-batch.log 2>&1
   rcs+=("$?")
 done
@@ -271,13 +270,14 @@ def _measure(p: Paths, step: int, pins: config.Pins, qd: Path, log: list[str]) -
     batches = [chosen[i:i + BATCH] for i in range(0, len(chosen), BATCH)]
     ran, exhausted = 0, False
     for b in batches:
-        if left() <= 0:                             # R31: mutants not reached within the budget stay not_checked
+        if left() < t:                              # R31/R33: not reached within the budget (a full mutant timeout
+                                                    # no longer fits): not_checked
             exhausted = True
             log.append(f"# step budget {budget}s spent: {len(batches) - ran} batch(es) not started")
             break
         got |= run_batch(p, copy, b, t, log, remaining=left())
         ran += 1
-    exhausted = exhausted or (left() <= 0 and any(name not in got for name in chosen))
+    exhausted = exhausted or (left() < t and any(name not in got for name in chosen))
     common |= {"budget_exhausted": exhausted}
     verdicts = {name: (verdict(got[name]) if name in got else "not_checked") for name in chosen}
     real = [v for v in verdicts.values() if v in quality._REAL_OUTCOME_KEYS]

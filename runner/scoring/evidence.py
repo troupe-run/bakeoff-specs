@@ -173,8 +173,9 @@ _UNCHECKED = ("not_checked", "check_interrupted")     # no verdict (quality.py: 
 
 def mutation(m: dict) -> dict:
     """R32: the mutation score over CHECKED mutants only, recomputed here (runner/quality.py, the live instrument,
-    keeps its own `score`): `killed / (total - no_tests - skipped - unchecked)`, with `partial` and
-    `checked_fraction = checked / (total - no_tests - skipped)`. Under half checked is `unmeasured`
+    keeps its own `score`): `killed / (eligible - unchecked)`, eligible = `total + missing_results - no_tests -
+    skipped`, unchecked = `not_checked + check_interrupted + missing_results`, with `partial` and
+    `checked_fraction = checked / eligible`. Under half checked is `unmeasured`
     (`PARTIAL_UNDER_HALF`). Crashed and baseline_failed are kept as they are. A summary without counts (an older
     shape) keeps its recorded score."""
     out = {"score": None, "partial": bool(m.get("partial")), "checked_fraction": None, "why": None}
@@ -184,8 +185,9 @@ def mutation(m: dict) -> dict:
         return out | {"state": "baseline_failed"}
     if not isinstance(m.get("total"), int):
         return out | {"score": m.get("score"), "state": "unmeasured" if m.get("score") is None else "measured"}
-    eligible = m["total"] - m.get("no_tests", 0) - m.get("skipped", 0)
-    unchecked = sum(m.get(k, 0) for k in _UNCHECKED)
+    missing = m.get("missing_results") or 0          # sampled names mutmut never reported: not in `total` (R33)
+    eligible = m["total"] + missing - m.get("no_tests", 0) - m.get("skipped", 0)
+    unchecked = sum(m.get(k, 0) for k in _UNCHECKED) + missing
     checked = eligible - unchecked
     if eligible <= 0:
         return out | {"state": "unmeasured"}

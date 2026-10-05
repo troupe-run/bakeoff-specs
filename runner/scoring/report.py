@@ -352,6 +352,11 @@ def _f(x) -> str:
     return DASH if x is None else str(x)
 
 
+NOT_LIKE_FOR_LIKE = ("Mutation scores marked \"via whole-suite-per-mutant\" (the Task 20 re-measure) are not "
+                     "like-for-like with \"via mutmut\": mutmut leaves a mutant no test covers out of the score, while "
+                     "the whole suite per mutant counts it as survived.")
+
+
 def _quality_text(name: str, v: dict, source: str) -> str:
     """mypy and ruff link the summary; the mutation part links its own source (a re-measure when one was used,
     R32) and names its method, partial runs their checked share, and a present but unused re-measure why."""
@@ -414,6 +419,9 @@ def _lens_lines(pass_: str, arm: str) -> list[str]:
 
 def _appendix(pass_: str, arm: str, scores: dict, recs: dict[int, dict]) -> list[str]:
     out = [f"## Appendix: {arm}", ""]
+    if any(_v(r.get("quality")) and _v(r.get("quality")).get("mutation_method") not in (None, "mutmut")
+           for r in recs.values()):
+        out += [f"*{NOT_LIKE_FOR_LIKE}*", ""]
     for n, r in sorted(recs.items()):
         out += [f"### Step {n}", ""]
         for name in sorted(k for k in r if k not in ("arm", "step", "phases")):

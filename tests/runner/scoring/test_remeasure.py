@@ -124,14 +124,21 @@ def test_the_batch_script_records_each_exit_code_after_all_arm_output(tmp_path):
     assert all(s[3] == "-m pytest -q -x -p no:cacheprovider" for s in seen)
 
 
-def test_the_batch_script_starts_no_mutant_once_the_remaining_budget_is_spent(tmp_path):
+def test_budget_truncation_never_produces_a_timeout_verdict(tmp_path):
     names = ["pkg.m.x_f__mutmut_1", "pkg.m.x_f__mutmut_2", "pkg.m.x_f__mutmut_3"]
     copy, bindir = _stub_copy(tmp_path, {n: 1 for n in names})
-    r = subprocess.run(rm.batch_command(names, 60, 1), cwd=copy, capture_output=True, text=True,
-                       env={**os.environ, "PATH": f"{bindir}:{os.environ['PATH']}", "STUB_SLEEP": "1.2"})
-    # the first mutant starts at 0 s (under the 1 s left) with its timeout clamped to that 1 s; after it $SECONDS >= 1
-    assert rm.parse_batch(r.stdout, names) == {"pkg.m.x_f__mutmut_1": 1}
-    assert (tmp_path / "timeouts.txt").read_text().split() == ["1"]
+    # the stub `timeout` exits 124 whenever it is given less than the full per-mutant timeout (60 s): a mutant started
+    # on a truncated budget would show up as a fake timeout
+    t = bindir / "timeout"
+    t.write_text(f'#!/bin/bash\n[ "$1" = -k ] && shift 2\necho "$1" >> {tmp_path / "timeouts.txt"}\n'
+                 '[ "$1" -lt 60 ] && exit 124\nshift\nexec "$@"\n')
+    r = subprocess.run(rm.batch_command(names, 60, 61), cwd=copy, capture_output=True, text=True,
+                       env={**os.environ, "PATH": f"{bindir}:{os.environ['PATH']}", "STUB_SLEEP": "2.2"})
+    # mutant 1 starts with 61 s left (>= 60); after it ~59 s are left, under a full timeout: 2 and 3 never start
+    got = rm.parse_batch(r.stdout, names)
+    assert got == {"pkg.m.x_f__mutmut_1": 1} and None not in got.values()
+    assert (tmp_path / "timeouts.txt").read_text().split() == ["60"]
+    assert "__rc pkg.m.x_f__mutmut_2 skipped" in r.stdout and "__rc pkg.m.x_f__mutmut_3 skipped" in r.stdout
 
 
 def test_the_batch_script_with_no_budget_left_runs_nothing(tmp_path):
@@ -356,6 +363,12 @@ def test_a_partial_run_above_half_checked_scores_over_the_checked_mutants_only(t
     assert q["mutation_partial"] is True and q["mutation_checked_fraction"] == 0.6
 
 
+def test_sampled_names_mutmut_never_reported_count_as_unchecked(tmp_path):
+    m = {**_orig(killed=10), "missing_results": 90}           # 100 sampled, 10 reported, all killed
+    q = evidence.quality(_quality_dir(tmp_path, None, m))["value"]
+    assert q["mutation_checked_fraction"] == 0.1 and q["mutation_state"] == "unmeasured" and q["mutation_score"] is None
+
+
 def test_a_partial_run_below_half_checked_is_unmeasured_and_says_why(tmp_path):
     q = evidence.quality(_quality_dir(tmp_path, None, _orig(killed=2, not_checked=8)))["value"]
     assert q["mutation_state"] == "unmeasured" and q["mutation_score"] is None
@@ -441,7 +454,7 @@ def test_remeasure_stage_refuses_on_a_halted_pass_and_runs_nothing(tmp_state, mo
 
 def test_mutants_not_reached_within_the_step_budget_are_not_checked_and_partial(tmp_state, monkeypatch):
     _step(tmp_state)
-    names = [f"pkg.m.x_f__mutmut_{i}" for i in range(60)]         # three batches of 20
+    names = [f"pkg.m.x_f__mutmut_{i}" for i in range(80)]         # four batches of 20
     f = Fake(tmp_state, names, {n: 1 for n in names}).install(monkeypatch)
     clock = [0.0]
     monkeypatch.setattr(rm, "_clock", lambda: clock[0])
@@ -451,12 +464,13 @@ def test_mutants_not_reached_within_the_step_budget_are_not_checked_and_partial(
         return real_batch(*a, **k)
     monkeypatch.setattr(rm, "run_batch", timed_batch)
     pins = config.load_pins()
-    pins = dataclasses.replace(pins, limits=dataclasses.replace(pins.limits, mutation_seconds=50, mutation_sample=0))
+    pins = dataclasses.replace(pins, limits=dataclasses.replace(pins.limits, mutation_seconds=130, mutation_sample=0))
     s = _read(rm.one("p", "alpha", 3, pins=pins))
-    # control at 0 s, batch 1 at 30 s, then 60 s >= 50 s: batch 2 and 3 never start
-    assert len(f.batches) == 1 and s["killed"] == 20 and s["not_checked"] == 40
-    assert s["partial"] is True and s["crashed"] is False and s["score"] == 20 / 60
-    assert s["budget_s"] == 50 and s["budget_exhausted"] is True and f.remaining == [50, 20]
+    # per-mutant timeout 60 s (the floor). Control at 0 s (130 left), batches 1 and 2 at 30 s and 60 s (100, 70 left);
+    # at 90 s only 40 s are left, under one full mutant timeout: batches 3 and 4 never start
+    assert len(f.batches) == 2 and s["killed"] == 40 and s["not_checked"] == 40
+    assert s["partial"] is True and s["crashed"] is False and s["score"] == 40 / 80
+    assert s["budget_s"] == 130 and s["budget_exhausted"] is True and f.remaining == [130, 100, 70]
 
 
 def test_the_control_container_counts_against_the_budget(tmp_state, monkeypatch):

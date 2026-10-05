@@ -270,6 +270,13 @@ def test_the_appendix_shows_the_mutation_method_and_links_a_remeasure_source(p):
     assert "mypy 0, ruff 0 ([src](../../../results/p/alpha/01/quality/summary.json))" in line
     assert ("mutation 0.5 (measured) via whole-suite-per-mutant, partial, 75% checked "
             "([src](../../../results/p/alpha/01/quality/remeasure.json))") in line
+    assert report.NOT_LIKE_FOR_LIKE in app
+
+
+def test_the_like_for_like_note_is_absent_without_a_remeasure(p):
+    write_collected(p, "alpha", 1)
+    aggregate.run(p)
+    assert report.NOT_LIKE_FOR_LIKE not in report.render(p)
 
 
 def test_the_appendix_says_why_a_present_remeasure_was_ignored(p):
