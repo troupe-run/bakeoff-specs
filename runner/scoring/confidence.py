@@ -78,25 +78,29 @@ def check(scores: dict) -> dict:
                 intervals[a] = [min(intervals[a][0], t[a]), max(intervals[a][1], t[a])]
             order = sorted(arms, key=lambda a: (-t[a], a))
 
-            if order != ranking:
+            # Track which pairs flipped (with tolerance for float noise)
+            variant_has_flip = False
+            for i in range(len(ranking)):
+                for j in range(i + 1, len(ranking)):
+                    arm_i, arm_j = ranking[i], ranking[j]
+                    base_score_i = base[arm_i]
+                    base_score_j = base[arm_j]
+                    variant_score_i = t[arm_i]
+                    variant_score_j = t[arm_j]
+
+                    # Check if relative order flipped
+                    base_diff = base_score_i - base_score_j
+                    variant_diff = variant_score_i - variant_score_j
+
+                    # If signs differ (and neither is within tolerance of 0), it's a flip
+                    if abs(base_diff) > tolerance and abs(variant_diff) > tolerance:
+                        if base_diff * variant_diff < 0:  # Different signs = flip
+                            flips.add((min(arm_i, arm_j), max(arm_i, arm_j)))
+                            variant_has_flip = True
+
+            # Only record order_changes if actual flips were detected (not just within-tolerance changes)
+            if variant_has_flip:
                 changes.append({"variant": f"{name}, judges {mode}", "order": order})
-                # Track which pairs flipped (with tolerance for float noise)
-                for i in range(len(ranking)):
-                    for j in range(i + 1, len(ranking)):
-                        arm_i, arm_j = ranking[i], ranking[j]
-                        base_score_i = base[arm_i]
-                        base_score_j = base[arm_j]
-                        variant_score_i = t[arm_i]
-                        variant_score_j = t[arm_j]
-
-                        # Check if relative order flipped
-                        base_diff = base_score_i - base_score_j
-                        variant_diff = variant_score_i - variant_score_j
-
-                        # If signs differ (and neither is within tolerance of 0), it's a flip
-                        if abs(base_diff) > tolerance and abs(variant_diff) > tolerance:
-                            if base_diff * variant_diff < 0:  # Different signs = flip
-                                flips.add((min(arm_i, arm_j), max(arm_i, arm_j)))
 
     # Build groups using flips: if a and c flip, all arms between them in ranking join the group
     groups: list[list[str]] = []

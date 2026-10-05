@@ -57,10 +57,10 @@ def test_weight_variants_drop_duplicates():
     variant_names = [name for name, _ in vs]
     variant_dicts = [v for _, v in vs]
 
-    # Assert one of the duplicate variants is missing (not both present)
+    # Assert exactly one of "c -5" or "d +5" is present (not both, not neither)
     c_minus_5_present = "c -5" in variant_names
     d_plus_5_present = "d +5" in variant_names
-    assert not (c_minus_5_present and d_plus_5_present), "Both duplicate variants present; one should be dropped"
+    assert c_minus_5_present != d_plus_5_present, "Exactly one of 'c -5'/'d +5' should be present (they're duplicates)"
 
     # All returned weight dicts should be distinct
     for i, v1 in enumerate(variant_dicts):
@@ -123,20 +123,20 @@ def test_overlapping_intervals_without_flip_stay_separate():
 
 
 def test_near_tie_is_not_a_flip():
-    # A near-tie with tiny differences that change sign is not a flip (within tolerance)
-    # Construct two arms with scores differing by ~1e-12 that flip sign between variants
-    # but stay within the 1e-9 tolerance so they're not counted as flips
-    # u = (0.5, 0.5 + 1e-12): base = 0.5*50 + (0.5 + 1e-12)*50 = 50 + 5e-11 ≈ 50
-    # v = (0.5, 0.5): base = 0.5*50 + 0.5*50 = 50
-    # Under "a +5" (a=55, b=45): u = 0.5*55 + (0.5 + 1e-12)*45 ≈ 50.5 - tiny, v = 50.5
-    # The tiny difference changes sign but is well within 1e-9 tolerance
+    # A near-tie where u - v changes sign but stays within tolerance (1e-9)
+    # u = (0.5 + 1e-12, 0.5), v = (0.5, 0.5 + 1e-12)
+    # u - v = 1e-12 * (w_a - w_b)
+    # Base (a=50, b=50): u - v = 1e-12 * 0 = 0 (call it ~5e-11 from rounding)
+    # "a +5" (a=55, b=45): u - v = 1e-12 * (55 - 45) = +1e-11
+    # "a -5" (a=45, b=55): u - v = 1e-12 * (45 - 55) = -1e-11
+    # All differences have |diff| < 1e-9, so no flips are detected with tolerance
     s = {"weights": {"dimensions": W, "parts": PW},
          "arms": {
-             "u": arm(0.5, 0.5 + 1e-12),
-             "v": arm(0.5, 0.5)
+             "u": arm(0.5 + 1e-12, 0.5),
+             "v": arm(0.5, 0.5 + 1e-12)
          }}
     out = confidence.check(s)
-    # No order changes because tiny differences are within tolerance
+    # No order changes because all diffs are within 1e-9 tolerance
     assert len(out["order_changes"]) == 0
     # Each arm is its own group (no flip means no grouping)
     assert out["groups"] == [["u"], ["v"]] or out["groups"] == [["v"], ["u"]]
