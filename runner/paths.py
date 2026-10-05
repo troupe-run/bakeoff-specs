@@ -26,6 +26,16 @@ def scoring_out(pass_: str) -> Path:
     return RESULTS / pass_ / "scoring"
 
 
+def judge_home(pass_: str) -> Path:
+    """Plan 3 Task 17: the judges' Claude home — `state/<pass>-scoring/`, never under `state/<pass>/` (the arms')."""
+    return STATE / f"{pass_}-scoring" / "judge-home"
+
+
+def judge_inbox(pass_: str) -> Path:
+    """The judges' own inbox (session.run_turn mounts only the turn's message file from it)."""
+    return STATE / f"{pass_}-scoring" / "judge-inbox"
+
+
 @dataclass(frozen=True)
 class Paths:
     pass_: str

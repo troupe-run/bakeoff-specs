@@ -25,7 +25,7 @@ from runner.docker import Mount, RunSpec
 from runner.config import load_pins
 
 Outcome = Literal["ok", "is_error", "no_result", "timeout", "auth_failed"]
-ROLES = ("arm", "po", "teammate", "setup", "probe")
+ROLES = ("arm", "po", "teammate", "setup", "probe", "judge")
 STREAM_LINE_LIMIT = 64 * 1024 * 1024        # asyncio's 64 KiB default breaks on real stream-json lines (spike B)
 POST_STOP_DRAIN_S = 90                      # docker stop grace (30 s) + rm, with margin
 OVERSIZE_MARKER = "bk_oversize_line"        # written to the stream in place of a line over the reader limit
@@ -113,7 +113,7 @@ class Turn:
     proxy: bool
     workdir: str
     inbox_dir: Path                 # the role's OWN host inbox (Paths.inbox(role)); only one file is mounted
-    role: str = "arm"               # arm | po | teammate | setup | probe
+    role: str = "arm"               # arm | po | teammate | setup | probe | judge
     dry: bool = False
     config_dir: Path | None = None  # host path of the session's CLAUDE_CONFIG_DIR (post-turn credential check)
 

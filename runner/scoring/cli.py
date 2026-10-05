@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from runner import faults, paths
-from runner.scoring import aggregate, collect, confidence, evidence, inputs, page, report, values
+from runner.scoring import aggregate, collect, confidence, evidence, inputs, judge, page, report, values
 
 
 def _scores(pass_: str) -> dict:
@@ -30,10 +30,27 @@ def _report(ns) -> None:
     print(page.run(ns.pass_))
 
 
+def _judge_estimate(ns) -> None:
+    """Calls, input size and the implied cost (at the PO's mean cost per call). Needs no approval."""
+    e = judge.estimate(ns.pass_)
+    print(json.dumps(e | judge.implied_cost(ns.pass_, e["calls"]), indent=2, sort_keys=True))
+
+
+def _judge(ns) -> None:
+    """Spends model quota: refuses unless the owner has read the estimate and written `judge-approved`."""
+    f = paths.scoring_out(ns.pass_) / "judge-approved"
+    if not f.exists():
+        raise inputs.InputError(f"{f} is missing: run `runner score {ns.pass_} --stage judge-estimate`, read it, "
+                                f"then create it with one line: approved <date> <estimate calls>")
+    print(json.dumps(judge.run(ns.pass_, judge.ContainerJudge(ns.pass_)), indent=2, sort_keys=True))
+
+
 STAGES = {
     "all-fail": lambda ns: print(json.dumps(evidence.all_fail(paths.RESULTS / ns.pass_,
                                                                collect.arms(paths.RESULTS / ns.pass_)), indent=2)),
     "collect": lambda ns: print(len(collect.run(ns.pass_, docker=not ns.no_docker)), "records"),
+    "judge-estimate": _judge_estimate,
+    "judge": _judge,
     "aggregate": lambda ns: print(aggregate.run(ns.pass_, ns.baseline)),
     "confidence": _confidence,
     "report": _report,

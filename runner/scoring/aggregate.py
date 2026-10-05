@@ -56,8 +56,9 @@ def _judged(pass_: str, part: str, arm: str, key: str, verdicts: dict) -> dict:
     out = {"score": scales.judged(used), "lenses": ok, "disputed": len(ok) >= 2 and max(ok.values()) - min(ok.values()) >= 2}
     if owner:
         out["owner"] = owner
-    if used is None:
-        out["why"] = "judge_failed"
+    if used is None:                        # R24(d): absent evidence is unmeasured, and says so (never a zero)
+        missing = any(j.get("status") == "input_missing" for j in lenses.values())
+        out["why"] = "input missing" if missing else "judge_failed"
     return out
 
 
