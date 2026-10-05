@@ -241,3 +241,18 @@ def test_confidence_total_matches_aggregate_arm_total(p):
         if arm_data["total"] is not None:
             calculated = confidence.total(arm_data, w["dimensions"], w["parts"], "median")
             assert calculated == pytest.approx(arm_data["total"])
+
+
+def test_pairwise_judge_extremes_group_arms_whose_uniform_extremes_never_flip():
+    # Spec §10.2 / I1: a's lenses (1, 3, 4), b's (0, 2, 4), dimension b equal. Median: a .75 > b .5; all-low:
+    # a .25 > b 0; all-high: a 1 = b 1 (a tie, no flip). Only a at its low and b at its high (.25 < 1) flips them.
+    s = {"weights": {"dimensions": W, "parts": PW},
+         "arms": {"a": arm(0.75, 0.5, lenses={"x": 1, "y": 3, "z": 4}),
+                  "b": arm(0.5, 0.5, lenses={"x": 0, "y": 2, "z": 4})}}
+    out = confidence.check(s)
+    assert out["ranking"] == ["a", "b"]
+    variants = [c["variant"] for c in out["order_changes"]]
+    assert "base, judges a low / b high" in variants
+    assert not any(v.endswith(("judges median", "judges low", "judges high")) and v.startswith("base,") for v in variants)
+    assert next(c["order"] for c in out["order_changes"] if c["variant"] == "base, judges a low / b high") == ["b", "a"]
+    assert out["groups"] == [["a", "b"]]

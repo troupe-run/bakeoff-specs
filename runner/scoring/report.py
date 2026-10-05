@@ -342,7 +342,8 @@ def _time_cost(coll: dict, factor: float) -> list[str]:
 def _confidence(scores: dict, conf: dict) -> list[str]:
     out = ["## Confidence", "",
            "Each arm's total across every variant: weights ±5 per dimension, disputed judgements at each single "
-           "lens's extreme, and both together (spec §10).", ""]
+           "lens's extreme, and both together (spec §10). Order is also checked pairwise: an arm's disputed items at "
+           "their low extreme against the arm below it at its high extreme (\"judges a low / b high\").", ""]
     rows = [[a, _total(scores["arms"][a]), _num(conf["intervals"][a][0]), _num(conf["intervals"][a][1])]
             for a in conf["ranking"]]
     out += _table(["arm", "reported", "lowest", "highest"], rows)

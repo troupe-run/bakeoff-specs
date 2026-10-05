@@ -75,29 +75,49 @@ def weight_variants(dims_w: dict) -> list[tuple[str, dict]]:
 def check(scores: dict) -> dict:
     """Ruling R20: for each variant, a pair (a, b) with a before b in the base ranking has changed iff b is now
     clearly ahead (t[a] - t[b] < -CHECK_TOL), whatever the base gap. A variant with any changed pair is recorded
-    with its order. Groups join both arms of every changed pair and every arm ranked between them."""
+    with its order. Groups join both arms of every changed pair and every arm ranked between them. Judge variants are
+    median, all-low, all-high and, per pair, a at its low extreme with b at its high (spec §10.2, final review I1)."""
     dims_w, parts_w, arms = scores["weights"]["dimensions"], scores["weights"]["parts"], scores["arms"]
     base = {a: total(v, dims_w, parts_w, "median") for a, v in arms.items()}
     ranking = sorted(arms, key=lambda a: (-_key(base[a]), a))
     intervals = {a: [base[a], base[a]] for a in arms}
     changes = []
     reach = list(range(len(ranking)))  # reach[i]: lowest-ranked index that i swapped with (itself if none)
+    n = len(ranking)
+
+    def flipped(hi: dict, lo: dict) -> list[tuple[int, int]]:
+        # (i, j), i ranked before j at base, where j (taken from `lo`) is clearly ahead of i (taken from `hi`)
+        return [(i, j) for i in range(n) for j in range(i + 1, n)
+                if hi[ranking[i]] is not None and lo[ranking[j]] is not None
+                and hi[ranking[i]] - lo[ranking[j]] < -CHECK_TOL]
+
     for name, w in weight_variants(dims_w):
-        for mode in ("median", "low", "high"):
-            t = {a: total(v, w, parts_w, mode) for a, v in arms.items()}
+        ts = {mode: {a: total(v, w, parts_w, mode) for a, v in arms.items()} for mode in ("median", "low", "high")}
+        uniform: set[tuple[int, int]] = set()
+        for mode, t in ts.items():
             for a in arms:
                 if t[a] is not None:
                     lo, hi = intervals[a]
                     intervals[a] = [t[a] if lo is None else min(lo, t[a]), t[a] if hi is None else max(hi, t[a])]
             # a total that cannot be computed (None) is never an overtaking or overtaken arm
-            changed = [(i, j) for i in range(len(ranking)) for j in range(i + 1, len(ranking))
-                       if t[ranking[i]] is not None and t[ranking[j]] is not None
-                       and t[ranking[i]] - t[ranking[j]] < -CHECK_TOL]
+            changed = flipped(t, t)
+            uniform.update(changed)
             for i, j in changed:
                 reach[i] = max(reach[i], j)
             if changed:
                 changes.append({"variant": f"{name}, judges {mode}",
                                 "order": sorted(arms, key=lambda a: (-_key(t[a]), a))})
+        # Spec §10.2, pairwise: each arm's disputed items swing independently, so a pair also changes when the upper
+        # arm at its low extreme falls clearly behind the lower arm at its high extreme. Pairs already shown changed
+        # by a uniform mode of this weight variant are not repeated.
+        for i, j in flipped(ts["low"], ts["high"]):
+            if (i, j) in uniform:
+                continue
+            reach[i] = max(reach[i], j)
+            a, b = ranking[i], ranking[j]
+            t = {**ts["median"], a: ts["low"][a], b: ts["high"][b]}
+            changes.append({"variant": f"{name}, judges {a} low / {b} high",
+                            "order": sorted(arms, key=lambda x: (-_key(t[x]), x))})
     groups: list[list[str]] = []
     end = -1
     for k, a in enumerate(ranking):
