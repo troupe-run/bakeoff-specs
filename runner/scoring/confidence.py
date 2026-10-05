@@ -44,14 +44,13 @@ def weight_variants(dims_w: dict) -> list[tuple[str, dict]]:
                 variant = {k: 0.0 for k in dims_w}
                 variant[dim] = new
 
-            # Check for duplicates by comparing the weights dict
-            # Use a tuple of sorted items as a unique key
-            variant_key = tuple(sorted(variant.items()))
-
-            # Check if we've seen this exact weight distribution
+            # Check for duplicates by comparing the weights dict (with tolerance for float arithmetic)
             is_duplicate = False
+            tolerance = 1e-9
             for _, existing in out:
-                if tuple(sorted(existing.items())) == variant_key:
+                # Compare each weight with tolerance
+                all_dims = set(variant.keys()) | set(existing.keys())
+                if all(abs(variant.get(d, 0) - existing.get(d, 0)) < tolerance for d in all_dims):
                     is_duplicate = True
                     break
 

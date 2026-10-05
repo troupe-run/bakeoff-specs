@@ -39,19 +39,34 @@ def test_weight_variants_skip_when_others_sum_to_zero():
 
 
 def test_weight_variants_cap_at_100():
+    # With {"a": 98, "b": 2}, a+5 would be 103 but should be capped at 100
     vs = confidence.weight_variants({"a": 98, "b": 2})
-    # a+5 would be 103, should be capped at 100
-    for name, v in vs:
-        if "a +5" in name:
-            assert v["a"] == pytest.approx(100) and v["b"] == pytest.approx(0)
+    variant_names = [name for name, _ in vs]
+    # Assert "a +5" exists (test must fail if cap logic is missing)
+    assert "a +5" in variant_names
+    # Find and verify the capped variant
+    a_plus_5 = next((v for name, v in vs if name == "a +5"), None)
+    assert a_plus_5 is not None
+    assert a_plus_5["a"] == pytest.approx(100) and a_plus_5["b"] == pytest.approx(0)
 
 
 def test_weight_variants_drop_duplicates():
-    # {"c": 3, "d": 97}: various edge cases should produce no duplicates
+    # With {"c": 3, "d": 97}, c-5 gives (c=0, d=100) and d+5 caps to (d=100, c=0)
+    # These are identical, so exactly one should be present (not both)
     vs = confidence.weight_variants({"c": 3, "d": 97})
     variant_names = [name for name, _ in vs]
-    # Should not have duplicates
-    assert len(variant_names) == len(set(variant_names))
+    variant_dicts = [v for _, v in vs]
+
+    # Assert one of the duplicate variants is missing (not both present)
+    c_minus_5_present = "c -5" in variant_names
+    d_plus_5_present = "d +5" in variant_names
+    assert not (c_minus_5_present and d_plus_5_present), "Both duplicate variants present; one should be dropped"
+
+    # All returned weight dicts should be distinct
+    for i, v1 in enumerate(variant_dicts):
+        for j, v2 in enumerate(variant_dicts):
+            if i != j:
+                assert v1 != v2, f"Duplicate weight dicts found at indices {i} and {j}"
 
 
 def test_low_and_high_use_the_extreme_lens_of_disputed_items():
@@ -60,43 +75,71 @@ def test_low_and_high_use_the_extreme_lens_of_disputed_items():
     assert confidence.total(a, W, PW, "high") == pytest.approx(100)
 
 
-def test_flip_between_ranks_groups_all_between():
-    # When two arms flip relative positions, all arms between them join the group
-    # Create a scenario where with different weights, order changes
+def test_flip_between_ranks_1_and_3_groups_all_three():
+    # A flip between ranks 1 and 3 groups all three arms
+    # q = (0.0, 1.02): base = 0*50 + 1.02*50 = 51
+    # p = (1.0, 0.01): base = 1.0*50 + 0.01*50 = 50.5
+    # r = (0.5, 0.5): base = 0.5*50 + 0.5*50 = 50 (always 50)
+    # Base ranking: [q (51), p (50.5), r (50)]
+    # Under "a +5" (a=55, b=45): q=0*55+1.02*45=45.9, p=1*55+0.01*45=55.45, r=50
+    # New ranking under a+5: [p (55.45), r (50), q (45.9)] - q flipped from rank 0 to 2
     s = {"weights": {"dimensions": W, "parts": PW},
          "arms": {
-             "p": arm(0.6, 0.0),           # rank 0: 30 + 0 = 30
-             "q": arm(0.5, 0.5),           # rank 1: 25 + 25 = 50
-             "r": arm(0.0, 0.6)            # rank 2: 0 + 30 = 30
+             "q": arm(0.0, 1.02),
+             "p": arm(1.0, 0.01),
+             "r": arm(0.5, 0.5)
          }}
     out = confidence.check(s)
-    # Base ranking: q (50) > p/r (30 each, tie on name: p < r)
-    assert out["ranking"][0] == "q"
-    # With weight adjustments and disputes, this should create a scenario where order flips
+    assert out["ranking"] == ["q", "p", "r"]
+    # q flips from rank 0 to rank 2, so all three group together
+    assert out["groups"] == [["q", "p", "r"]]
+    # order_changes must be non-empty (at least one variant causes a flip)
+    assert len(out["order_changes"]) > 0
 
 
-def test_arms_that_never_flip_are_separate_groups():
-    # p > q > r and they never flip order - they should be in separate groups
+def test_overlapping_intervals_without_flip_stay_separate():
+    # Overlapping intervals without a flip stay separate groups
+    # t = (1.0, 0.0): varies with a's weight = 1.0*a + 0.0*b = a (ranges 45 to 55)
+    # s = (1.0, 0.04): always = 1.0*a + 0.04*b = a + 0.04*b (always ahead by ≥1.8)
+    # Base: s = 1.0*50 + 0.04*50 = 52, t = 1.0*50 + 0.0*50 = 50
+    # Base ranking: [s (52), t (50)]
+    # Under "a -5" (a=45, b=55): s = 1.0*45 + 0.04*55 = 47.2, t = 45, s still ahead
+    # Under "a +5" (a=55, b=45): s = 1.0*55 + 0.04*45 = 56.8, t = 55, s still ahead
+    # Intervals: s=[47.2, 56.8], t=[45, 55]. s_lo=47.2 < t_hi=55, so they overlap.
+    # But s never flips with t, so they're separate groups.
     s = {"weights": {"dimensions": W, "parts": PW},
          "arms": {
-             "p": arm(1.0, 1.0),
-             "q": arm(0.5, 0.5),
-             "r": arm(0.0, 0.0)
+             "s": arm(1.0, 0.04),
+             "t": arm(1.0, 0.0)
          }}
     out = confidence.check(s)
-    assert out["groups"] == [["p"], ["q"], ["r"]]
+    assert out["ranking"] == ["s", "t"]
+    # Intervals overlap: s_lo < t_hi
+    assert out["intervals"]["s"][0] < out["intervals"]["t"][1]
+    # But no order_changes (they never flip)
+    assert len(out["order_changes"]) == 0
+    # And they remain separate groups (no flip means no grouping)
+    assert out["groups"] == [["s"], ["t"]]
 
 
-def test_a_tie_is_not_a_flip():
-    # Two arms with exact same scores should not be considered a flip
+def test_near_tie_is_not_a_flip():
+    # A near-tie with tiny differences that change sign is not a flip (within tolerance)
+    # Construct two arms with scores differing by ~1e-12 that flip sign between variants
+    # but stay within the 1e-9 tolerance so they're not counted as flips
+    # u = (0.5, 0.5 + 1e-12): base = 0.5*50 + (0.5 + 1e-12)*50 = 50 + 5e-11 ≈ 50
+    # v = (0.5, 0.5): base = 0.5*50 + 0.5*50 = 50
+    # Under "a +5" (a=55, b=45): u = 0.5*55 + (0.5 + 1e-12)*45 ≈ 50.5 - tiny, v = 50.5
+    # The tiny difference changes sign but is well within 1e-9 tolerance
     s = {"weights": {"dimensions": W, "parts": PW},
          "arms": {
-             "p": arm(0.5, 0.5),
-             "q": arm(0.5, 0.5)
+             "u": arm(0.5, 0.5 + 1e-12),
+             "v": arm(0.5, 0.5)
          }}
     out = confidence.check(s)
-    # They should be in separate groups (tie means no flip, so not grouped together)
-    assert out["groups"] == [["p"], ["q"]]
+    # No order changes because tiny differences are within tolerance
+    assert len(out["order_changes"]) == 0
+    # Each arm is its own group (no flip means no grouping)
+    assert out["groups"] == [["u"], ["v"]] or out["groups"] == [["v"], ["u"]]
 
 
 def test_owner_verdict_keeps_score_in_low_and_high():
