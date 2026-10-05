@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 import pytest
 from runner import config, docker, gitops, paths
-from runner.scoring import anonymise as an
+from runner.scoring import anonymise as an, leakcheck
 
 MINI = Path(__file__).parent / "fixtures" / "mini"
 
@@ -59,22 +59,25 @@ def test_a_replacement_is_not_scrubbed_again():
 
 
 # --- copy_scrubbed -------------------------------------------------------------------------------------------------
-def test_copy_scrubs_text_renames_paths_copies_binaries_and_never_follows_links(tmp_path):
+def test_copy_scrubs_text_of_any_size_renames_paths_copies_binaries_and_never_follows_links(tmp_path):
     src, dest, secret = tmp_path / "src", tmp_path / "dest", tmp_path / "secret.txt"
     secret.write_text("speckit private")
     (src / ".specify" / "memory").mkdir(parents=True)
     (src / ".specify" / "memory" / "constitution.md").write_text("speckit rules")
     (src / "blob.bin").write_bytes(b"\xff\xfespeckit\x00")
-    (src / "big.txt").write_text("speckit " * 200_000)                # > 1 MB: copied as is
+    (src / "big.txt").write_text("speckit line\n" * 100_000)          # > 1 MB of text: scrubbed too (I2)
+    (src / "big.bin").write_bytes(b"speckit\n" * 200_000 + b"\xff\xfe")   # > 1 MB, not UTF-8 at the end: raw, listed
     os.symlink(secret, src / "link-speckit")
     os.symlink(src, src / "loop")
     listed = an.copy_scrubbed(src, dest, an.scrub_terms("speckit"))
     got = {p.relative_to(dest).as_posix() for p in dest.rglob("*") if p.is_file()}
-    assert got == {"spec/memory/constitution.md", "blob.bin", "big.txt", "link-method.symlink", "loop.symlink"}
+    assert got == {"spec/memory/constitution.md", "blob.bin", "big.txt", "big.bin", "link-method.symlink",
+                   "loop.symlink"}
     assert (dest / "spec/memory/constitution.md").read_text() == "method rules"
     assert (dest / "blob.bin").read_bytes() == b"\xff\xfespeckit\x00"
-    assert listed == ["big.txt", "blob.bin"]
-    assert (dest / "big.txt").stat().st_size == (src / "big.txt").stat().st_size
+    assert listed == ["big.bin", "blob.bin"]
+    assert (dest / "big.txt").read_text() == "method line\n" * 100_000
+    assert (dest / "big.bin").read_bytes() == (src / "big.bin").read_bytes()
     assert not any(p.is_symlink() for p in dest.rglob("*"))
     assert "speckit private" not in "".join(p.read_text(errors="replace") for p in dest.rglob("*") if p.is_file())     # the target's content is never read
 
@@ -415,41 +418,20 @@ def test_open_specification_in_plain_english_survives_but_the_tool_name_does_not
     assert an.scrub("Open Spec and OpenSpec", t) == "method and method"
 
 
-# --- the general claim, checked WITHOUT the implementation's regexes -------------------------------------------------
-def _forms(word: str) -> set[str]:
-    parts = re.split(r"[-_ ]+", word.lower())
-    return {sep.join(parts) for sep in ("", "-", "_", " ")}
-
-
-def _hits(low: str, word: str) -> bool:
-    """Independent of anonymise: a plain substring search; a short word counts only at a word boundary, where a
-    preceding backslash-n, -t, -r or -quote (JSON or transcript text) is a boundary too."""
-    start = 0
-    while (i := low.find(word, start)) != -1:
-        start = i + 1
-        if len(word) >= 6:
-            return True
-        before = low[i - 1] if i else " "
-        esc = i >= 2 and low[i - 2] == "\\" and before in "ntr\""
-        after = low[i + len(word)] if i + len(word) < len(low) else " "
-        if (not before.isalnum() or esc) and not after.isalnum():
-            return True
-    return False
+# --- the general claim, checked WITHOUT the implementation's regexes (runner/scoring/leakcheck.py) -----------------
+_forms, _hits = leakcheck.forms, leakcheck.hits
 
 
 def test_real_pass1_transcripts_questions_gates_and_setup_hold_no_name_alias_or_cli_in_any_form(tmp_path):
-    """Scope: transcript.md text, questions, gates and the 00-setup copy of results/pass1. NOT repo trees or diffs
-    (the docker test covers those after pass 1)."""
+    """Scope: transcript.md text, questions, gates and the 00-setup copy of results/pass1. NOT repo trees or diffs:
+    those are checked by the `leak-check` stage over the written anon/ tree after pass 1 (run book)."""
     pass_dir = paths.RESULTS / "pass1"
     if not pass_dir.is_dir():
         pytest.skip(f"{pass_dir} absent (results/pass1 snapshot not present)")
     from runner.scoring import collect
     arms = collect.arms(pass_dir)
     t = an.pass_terms(arms)
-    configured = [f.stem for f in config.ARMS_DIR.glob("*.toml")]
-    words = sorted({f for a in [*arms, *configured] for w in an.banned_words(a) for f in _forms(w)
-                    if f and f != "control"} | {"specify_cli", "specify cli", "bakeoff-specs-", "bakeoff_specs_",
-                                                "dolt", "bead", "bd"})
+    words = leakcheck.words(arms)
     assert {"kitty", "beads", "obra", "ccsdd", "openspec", "kiro"} <= set(words)
     texts: list[tuple[str, str]] = []
     for arm in arms:

@@ -235,17 +235,30 @@ def _gunzip_text(f: Path) -> str | None:
         return None
 
 
+def _scrub_stream(f: Path, t: Path, terms: list[Term]) -> bool:
+    """A large file scrubbed line by line into `t`; False (and `t` removed) when it turns out not to be UTF-8."""
+    try:
+        with open(f, encoding="utf-8", newline="") as r, open(t, "w", encoding="utf-8", newline="") as w:
+            for line in r:
+                w.write(scrub(line, terms))
+        return True
+    except UnicodeDecodeError:
+        t.unlink(missing_ok=True)
+        return False
+
+
 def copy_scrubbed(src: Path, dest: Path, terms: list[Term]) -> list[str]:
-    """Every file under `src` into `dest`, content and path scrubbed. Text (UTF-8, < 1 MB) is scrubbed, anything
-    else copied as is. A `.gz` file is NEVER copied raw: it is gunzipped and scrubbed as text under its name without
-    `.gz` (or, if it cannot be read as text, left out and listed). A symlink is never followed or recreated: it
-    becomes a regular file `<name>.symlink` holding its scrubbed target. Returns the scrubbed paths of the files
-    copied UNSCRUBBED (binary, or 1 MB and over) and of those left out. Two files whose scrubbed paths collide keep
-    the first and suffix the rest `~2`, `~3`."""
+    """Every file under `src` into `dest`, content and path scrubbed. Text (UTF-8) is scrubbed whatever its size: under
+    1 MB in one piece, larger files line by line (final review I2: never copied raw); anything else (binary) is copied
+    as is. A `.gz` file is NEVER copied raw: it is gunzipped and scrubbed as text under its name without `.gz` (or, if
+    it cannot be read as text, left out and listed). A symlink is never followed or recreated: it becomes a regular
+    file `<name>.symlink` holding its scrubbed target. Returns the scrubbed paths of the files copied UNSCRUBBED
+    (binary) and of those left out. Two files whose scrubbed paths collide keep the first and suffix the rest `~2`,
+    `~3`."""
     used: set[str] = set()
     unscrubbed: list[str] = []
 
-    def put(rel: str, data: bytes, raw: bool = False) -> None:
+    def target(rel: str) -> tuple[str, Path]:
         out = _safe_rel(scrub(rel, terms))
         n, cand = 1, out
         while cand in used:
@@ -254,6 +267,10 @@ def copy_scrubbed(src: Path, dest: Path, terms: list[Term]) -> list[str]:
         used.add(cand)
         t = dest / cand
         t.parent.mkdir(parents=True, exist_ok=True)
+        return cand, t
+
+    def put(rel: str, data: bytes, raw: bool = False) -> None:
+        cand, t = target(rel)
         t.write_bytes(data)
         if raw:
             unscrubbed.append(cand)
@@ -272,13 +289,17 @@ def copy_scrubbed(src: Path, dest: Path, terms: list[Term]) -> list[str]:
                     unscrubbed.append(f"{scrub(rel, terms)} (left out: not readable as text)")
                 else:
                     put(rel[:-3], scrub(text, terms).encode("utf-8"))
+            elif f.is_file() and f.stat().st_size >= MAX_TEXT:
+                cand, t = target(rel)
+                if not _scrub_stream(f, t, terms):
+                    shutil.copyfile(f, t)
+                    unscrubbed.append(cand)
             elif f.is_file():
                 data, raw = f.read_bytes(), True
-                if len(data) < MAX_TEXT:
-                    try:
-                        data, raw = scrub(data.decode("utf-8"), terms).encode("utf-8"), False
-                    except UnicodeDecodeError:
-                        pass
+                try:
+                    data, raw = scrub(data.decode("utf-8"), terms).encode("utf-8"), False
+                except UnicodeDecodeError:
+                    pass
                 put(rel, data, raw)
     return sorted(unscrubbed)
 
@@ -390,7 +411,7 @@ def _w(p: Path, text: str) -> None:
 
 def _unscrubbed_note(dest: Path, listed: list[str]) -> None:
     if listed:
-        _w(dest / "UNSCRUBBED.txt", "Copied without scrubbing (binary or 1 MB and over), or left out:\n"
+        _w(dest / "UNSCRUBBED.txt", "Copied without scrubbing (binary), or left out:\n"
            + "\n".join(listed) + "\n")
 
 

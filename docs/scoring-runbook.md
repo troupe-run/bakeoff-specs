@@ -33,8 +33,10 @@ resumable or idempotent unless noted.
    `anon/` predates the judge changes** (the judges need `MISSING.json` and `stale-list.toml` in each step dir).
    Labels are seeded by the pass name, so re-running anonymise after ratings exist is safe (same labels).
    Check: any `anon/<label>/<NN>/MISSING.md` and `UNSCRUBBED.txt` are expected, and are disclosed in the report.
-7. Leak check: `uv run pytest tests/runner/scoring/test_anonymise_docker.py --run-docker` (repo trees and diffs are
-   covered only by this test).
+7. `--stage leak-check` searches every file under `anon/` (contents and paths, `repo/` and `diff.patch` included)
+   for every arm's names, aliases, tool folders and CLI forms, with a checker independent of the scrubber's regexes.
+   It writes `leak-check.json` and exits non-zero naming each hit. Fix the scrub terms (or accept a hit as disclosed
+   residue, with the owner) before judging; the report discloses the result.
 
 ## 4. Approval, then decisions and judging (spends model quota)
 
@@ -90,8 +92,9 @@ Blinding is **partial**, and the report says so:
 - **Structural tells** survive scrubbing: directory shapes such as nested `spec/spec/` (a scrubbed tool folder inside
   another), the placeholder names `tracker` and `tracker-cli` (only one arm family has a tracker), file counts and
   artefact shapes. The owner noted these in review.
-- **Repo trees and diffs** are checked for leaks only by the post-pass-1 Docker test (step 7); the in-suite leak
-  test covers transcripts, questions, gates and setup records, not `repo/` or `diff.patch`.
-- Unscrubbed binaries and files over 1 MB are listed per step in `UNSCRUBBED.txt`.
+- **Leak check:** the whole written `anon/` tree, repo trees and diffs included, is checked by the `leak-check` stage
+  (step 7); the in-suite test over the snapshot covers transcripts, questions, gates and setup records only. The
+  Docker test `test_anonymise_docker.py` checks only that dry1's arm name is gone, not the whole vocabulary.
+- Unscrubbed binaries are listed per step in `UNSCRUBBED.txt` (text files of any size are scrubbed).
 - The stale lists, rubrics and all-fail verdicts were written after steps 1-5 were seen and before steps 6-7: they are
   not fully pre-registered.

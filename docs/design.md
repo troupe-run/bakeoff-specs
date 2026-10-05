@@ -253,8 +253,8 @@ copies** (repo name, tool-specific folder names, commands and commit trailers sc
 disputed item, every judgement that decides a top-two placing and a seeded sample of the rest; verdicts are stored
 beside the judges', never instead. The owner also rates, blind to the arm, the routes arms took on each decision
 topic (the choice part of decision quality). Blinding is partial — some methods are recognisable by their artefact
-shapes — and the report says so (residual vocabulary, structural tells, and that repo trees and diffs are covered
-only by the post-pass-1 Docker leak test).
+shapes — and the report says so (residual vocabulary, structural tells, unscrubbed binaries, and the result of the
+`leak-check` stage, which searches the whole written `anon/` tree, repo trees and diffs included).
 
 ## 9. Stop rules
 

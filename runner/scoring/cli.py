@@ -4,8 +4,8 @@ import json
 import subprocess
 from pathlib import Path
 from runner import faults, paths
-from runner.scoring import (aggregate, anonymise, collect, confidence, decisions, evidence, inputs, judge, page, remeasure,
-                            report, review, values)
+from runner.scoring import (aggregate, anonymise, collect, confidence, decisions, evidence, inputs, judge, leakcheck, page,
+                            remeasure, report, review, values)
 
 
 def _scores(pass_: str) -> dict:
@@ -114,11 +114,28 @@ def _remeasure(ns) -> None:
         raise inputs.InputError(str(e)) from None
 
 
+def _leak_check(ns) -> None:
+    """Final review I2: every file under anon/ (contents and paths, repo/ and diff.patch included) searched for every
+    arm's names by the independent checker. Writes leak-check.json (the report discloses it); hits exit 1."""
+    anon = paths.scoring_out(ns.pass_) / "anon"
+    if not anon.is_dir():
+        raise inputs.InputError(f"{anon} is missing: run the anonymise stage first")
+    hits = leakcheck.check(anon, collect.arms(paths.RESULTS / ns.pass_))
+    files = sum(1 for f in anon.rglob("*") if f.is_file())
+    out = paths.scoring_out(ns.pass_) / "leak-check.json"
+    out.write_text(values.dump({"files": files, "hits": [{"path": p, "word": w} for p, w in hits]}))
+    if hits:
+        raise inputs.InputError(f"leak check: {len(hits)} hit(s) in {files} file(s) under {anon} ({out}):\n"
+                                + "\n".join(f"- {p}: {w}" for p, w in hits))
+    print(f"leak check: no leaks in {files} file(s) under {anon} ({out})")
+
+
 STAGES = {
     "all-fail": lambda ns: print(json.dumps(evidence.all_fail(paths.RESULTS / ns.pass_,
                                                                collect.arms(paths.RESULTS / ns.pass_)), indent=2)),
     "collect": lambda ns: print(len(collect.run(ns.pass_, docker=not ns.no_docker)), "records"),
     "anonymise": lambda ns: print(anonymise.run(ns.pass_)),     # Docker (container git); rewrites anon/ and anon-key.json
+    "leak-check": _leak_check,
     "judge-estimate": _judge_estimate,
     "judge": _judge,
     "decisions-extract": _decisions_extract,
