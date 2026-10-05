@@ -66,7 +66,7 @@ def _decisions_extract(ns) -> None:
 
 def _decisions_align(ns) -> None:
     _approve(ns)
-    print(decisions.align(ns.pass_, judge.ContainerJudge(ns.pass_)))
+    print(decisions.align(ns.pass_, judge.ContainerJudge(ns.pass_), allow_failed=ns.allow_failed))
 
 
 STAGES = {

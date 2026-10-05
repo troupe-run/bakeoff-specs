@@ -5,11 +5,14 @@ Stages and files (all under `scoring_out/decisions/`):
 - `extract` -> `extracted/<label>/<NN>.json`: a list of `{"decision", "options", "reason", "recorded_at"}`, or (never
   silently empty) `{"status": "extract_failed" | "input_missing", "why", "raw"?}`.
 - `align` -> `topics.json` = `{"topics": [{"id", "question", "routes": [{"route", "labels", "reason_given", "outcome",
-  "proposed", "proposed_why"}]}]}`; every label with no route in a topic is then added, deterministically, to a
-  `"not considered"` route. Its single input is written to `anon/_decisions/align/extracted.json` (labels only,
-  scrubbed again), so the container judge's one-item mount rule holds.
-- `sheet` -> `rating-sheet.md` (the owner's blind view: numbered routes, no labels, no arm names) and
-  `rating-sheet.json` (the same structure with labels, for import; no arm names).
+  "proposed", "proposed_why"}]}], "dropped": [{"label", "decisions"}]}`; every label with no route in a topic is then
+  added, deterministically, to a `"not considered"` route - unless one of its steps has no extraction (failed, allowed
+  with `--allow-failed`, or input missing): then to an UNRATED `"no evidence"` route, never a rated one (R29). Its
+  single input is written to `anon/_decisions/align/extracted.json` (labels only, scrubbed again), so the container
+  judge's one-item mount rule holds.
+- `sheet` -> `rating-sheet.md` (the owner's blind view: topics `T1`, `T2`, ... and numbered routes; no labels, no arm
+  names, no aligner ids) and `.import/rating-sheet.json` (the import map: the same structure with ids and labels; no
+  arm names).
 - `import_ratings` -> `ratings.json` = `{"topics": [{"id", "routes": [{"route", "arms", "rating", "reason"}]}]}` (the
   Task 11 format). Only this stage reads `anon-key.json`.
 
@@ -22,6 +25,8 @@ from runner.scoring import anonymise, collect, inputs, judge, values
 
 RATINGS = ("good", "acceptable", "poor", "out_of_scope")
 NOT_CONSIDERED = "not considered"
+NO_EVIDENCE = "no evidence"                     # unrated: a label whose extraction failed or had no input (R29)
+_RESERVED = (NOT_CONSIDERED, NO_EVIDENCE)
 KINDS = ("one-off", "divergent", "unanimous")
 ALIGN_ITEM = "_decisions/align"                 # under anon/: <item>/<file>, the depth check_mounts requires
 _SOURCES = ("diff.patch", "gates.md", "questions.md", "repo/", "transcript.md")
@@ -54,31 +59,37 @@ def _members(r: dict) -> list[str]:
     return list(r["labels"] if "labels" in r else r.get("arms", []))
 
 
-def fill_not_considered(topic: dict, labels: list[str]) -> dict:
-    """A copy of `topic` in which every label without a route sits on a `"not considered"` route (last), carrying the
-    aligner's `not_considered` proposal when it gave one."""
+def fill_not_considered(topic: dict, labels: list[str], no_evidence=()) -> dict:
+    """A copy of `topic` in which every label without a route sits on a `"not considered"` route, carrying the
+    aligner's `not_considered` proposal when it gave one - or, for a label in `no_evidence` (a step of it could not be
+    extracted), on an unrated `"no evidence"` route, last."""
     t = copy.deepcopy(topic)
     nc_note = t.pop("not_considered", None) or {}
-    routes = [r for r in t["routes"] if r["route"] != NOT_CONSIDERED]
-    old = [l for r in t["routes"] if r["route"] == NOT_CONSIDERED for l in r["labels"]]
+    routes = [r for r in t["routes"] if r["route"] not in _RESERVED]
+    old = {n: [l for r in t["routes"] if r["route"] == n for l in r["labels"]] for n in _RESERVED}
     taken = {l for r in routes for l in r["labels"]}
-    rest = sorted({*old, *(l for l in labels if l not in taken)})
-    if rest:
-        nc = {"route": NOT_CONSIDERED, "labels": rest, "reason_given": "", "outcome": ""}
+    free = {*old[NOT_CONSIDERED], *old[NO_EVIDENCE], *(l for l in labels if l not in taken)}
+    ne = sorted(l for l in free if l in no_evidence or l in old[NO_EVIDENCE])
+    nc = sorted(free - set(ne))
+    if nc:
+        r = {"route": NOT_CONSIDERED, "labels": nc, "reason_given": "", "outcome": ""}
         if nc_note.get("proposed"):
-            nc |= {"proposed": nc_note["proposed"], "proposed_why": nc_note.get("why", "")}
-        routes.append(nc)
+            r |= {"proposed": nc_note["proposed"], "proposed_why": nc_note.get("why", "")}
+        routes.append(r)
+    if ne:
+        routes.append({"route": NO_EVIDENCE, "labels": ne, "reason_given": "", "outcome": "", "unrated": True})
     t["routes"] = routes
     return t
 
 
 def kind(topic: dict, n_labels: int) -> str:
-    """one-off: exactly one label (or arm) took a route other than "not considered"; unanimous: one route holds every
-    label; else divergent. Reads `labels` (topics, sheet) or `arms` (ratings.json)."""
-    taken = [m for r in topic["routes"] if r["route"] != NOT_CONSIDERED for m in _members(r)]
-    if len(taken) == 1:
+    """one-off: exactly one label (or arm) took a route other than "not considered" / "no evidence"; unanimous: one
+    route holds every label that has evidence; else divergent. Reads `labels` (topics, sheet) or `arms` (ratings)."""
+    real = [r for r in topic["routes"] if r["route"] not in _RESERVED]
+    no_ev = {m for r in topic["routes"] if r["route"] == NO_EVIDENCE for m in _members(r)}
+    if sum(len(_members(r)) for r in real) == 1:
         return "one-off"
-    if any(r["route"] != NOT_CONSIDERED and len(set(_members(r))) == n_labels for r in topic["routes"]):
+    if any(len(set(_members(r))) == n_labels - len(no_ev) for r in real):
         return "unanimous"
     return "divergent"
 
@@ -144,7 +155,7 @@ def parse_topics(text: str, labels: list[str]) -> list[dict]:
         if not _ID.match(tid) or tid in seen:
             raise judge.BadReply(f"topic {i}: id {tid!r} must be a unique lowercase slug (a-z, 0-9, -)")
         seen.add(tid)
-        routes, held = t.get("routes"), set()
+        routes, held, names = t.get("routes"), set(), set()
         if not isinstance(routes, list) or not routes:
             raise judge.BadReply(f"topic {tid}: needs at least one route")
         rs = []
@@ -153,8 +164,12 @@ def parse_topics(text: str, labels: list[str]) -> list[dict]:
             if not isinstance(r, dict):
                 raise judge.BadReply(f"{where} is not an object")
             name = _str(r, "route", where, nonempty=True)
-            if name.strip().lower() == NOT_CONSIDERED:
-                raise judge.BadReply(f"{where}: do not list a \"not considered\" route; it is added afterwards")
+            key = re.sub(r"\s+", " ", name).strip().lower()
+            if key in _RESERVED:
+                raise judge.BadReply(f"{where}: do not list a \"{key}\" route; it is added afterwards")
+            if key in names:
+                raise judge.BadReply(f"{where}: the route {name.strip()!r} appears twice in this topic")
+            names.add(key)
             ls = r.get("labels")
             if not isinstance(ls, list) or not ls or any(l not in labels for l in ls):
                 raise judge.BadReply(f"{where}: \"labels\" must be a non-empty list drawn from {labels}")
@@ -311,29 +326,43 @@ def align_prompt(labs: list[str]) -> str:
             '"proposed": "<rating>", "proposed_why": "<one line>"}]}]}')
 
 
-def align(pass_: str, j: judge.Judge) -> Path:
-    """One call over every extracted list -> topics.json, each topic filled with its "not considered" route."""
-    labs, collected, unrun = labels(pass_), {}, []
+def align(pass_: str, j: judge.Judge, *, allow_failed: bool = False) -> Path:
+    """One call over every extracted list -> topics.json, each topic filled with its "not considered" route and, for
+    labels with a step that could not be extracted, an unrated "no evidence" route. Refuses while an extraction has
+    not run, and while one failed unless `allow_failed`. Labels with decisions that the aligner put on no route at
+    all are recorded under `dropped`."""
+    labs, collected, unrun, failed, no_ev = labels(pass_), {}, [], [], set()
     for lab, nn, _ in _extract_items(pass_):
         r = _record(extracted_path(pass_, lab, nn))
         if r is None:
             unrun.append(f"{lab}/{nn}")
         elif isinstance(r, list):
             collected.setdefault(lab, {})[nn] = r
+        else:
+            no_ev.add(lab)
+            if r.get("status") != "input_missing":
+                failed.append(f"{lab}/{nn}")
     if unrun:
         raise inputs.InputError(f"no extraction yet for {', '.join(unrun)}: run the decisions-extract stage first")
+    if failed and not allow_failed:
+        raise inputs.InputError(f"extraction failed for {', '.join(failed)}: re-run decisions-extract --retry-failed, "
+                                "or pass --allow-failed to align without them (they become unrated \"no evidence\")")
     item = paths.scoring_out(pass_) / "anon" / ALIGN_ITEM
     terms = anonymise.pass_terms(_arms(pass_))
     _write(item / "extracted.json", values.dump(_scrub_obj(collected, terms)))
     got, why, raw = _ask(j, align_prompt(labs), item, ["extracted.json"], lambda t: parse_topics(t, labs),
                          "one JSON object")
-    failed = _dir(pass_) / "align-failed.json"
+    failed_f = _dir(pass_) / "align-failed.json"
     if got is None:
-        _write(failed, values.dump({"status": "align_failed", "why": why, "raw": raw}))
-        raise inputs.InputError(f"the alignment failed twice ({why}); recorded in {failed}: re-run decisions-align")
-    failed.unlink(missing_ok=True)
+        _write(failed_f, values.dump({"status": "align_failed", "why": why, "raw": raw}))
+        raise inputs.InputError(f"the alignment failed twice ({why}); recorded in {failed_f}: re-run decisions-align")
+    failed_f.unlink(missing_ok=True)
+    placed = {l for t in got for r in t["routes"] for l in r["labels"]}
+    dropped = [{"label": lab, "decisions": n} for lab in sorted(collected)
+               if lab not in placed and (n := sum(len(v) for v in collected[lab].values()))]
     out = _dir(pass_) / "topics.json"
-    _write(out, values.dump({"topics": [fill_not_considered(t, labs) for t in sorted(got, key=lambda t: t["id"])]}))
+    _write(out, values.dump({"topics": [fill_not_considered(t, labs, no_ev) for t in sorted(got, key=lambda t: t["id"])],
+                             "dropped": dropped}))
     return out
 
 
@@ -345,18 +374,24 @@ def _ordered(topics: list[dict]) -> list[dict]:
     n = len({l for t in topics for r in t["routes"] for l in _members(r)})
     out = []
     for t in topics:
-        rs = sorted(t["routes"], key=lambda r: (r["route"] == NOT_CONSIDERED, r["route"]))
+        rated = sorted((r for r in t["routes"] if r["route"] != NO_EVIDENCE),
+                       key=lambda r: (r["route"] == NOT_CONSIDERED, r["route"]))
         out.append({"id": t["id"], "question": t.get("question", ""), "kind": kind(t, n),
                     "routes": [{"route_no": i, "route": r["route"], "labels": sorted(_members(r)),
                                 "reason_given": r.get("reason_given", ""), "outcome": r.get("outcome", ""),
                                 "proposed": r.get("proposed", ""), "proposed_why": r.get("proposed_why", "")}
-                               for i, r in enumerate(rs, 1)]})
-    return sorted(out, key=lambda t: (KINDS.index(t["kind"]), t["id"]))
+                               for i, r in enumerate(rated, 1)],
+                    "no_evidence": sorted(m for r in t["routes"] if r["route"] == NO_EVIDENCE for m in _members(r))})
+    out.sort(key=lambda t: (KINDS.index(t["kind"]), t["id"]))
+    for i, t in enumerate(out, 1):
+        t["sheet_id"] = f"T{i}"                        # the sheet never shows the aligner's id (it may name an arm)
+    return out
 
 
 def _cleaner(arms: list[str]):
     terms = anonymise.pass_terms(arms)
-    names = [re.escape(a) for a in sorted(arms, key=len, reverse=True) if a]
+    # `control` is an ordinary English word (anonymise's rule): its repo name is scrubbed by pass_terms, the word is not
+    names = [re.escape(a) for a in sorted(arms, key=len, reverse=True) if a and a != "control"]
     own = re.compile(rf"(?<![A-Za-z0-9])(?:{'|'.join(names)})(?![A-Za-z0-9])", re.I) if names else None
 
     def clean(s) -> str:
@@ -366,19 +401,39 @@ def _cleaner(arms: list[str]):
     return clean
 
 
-def _failed_line(failed: list[dict]) -> str:
-    if not failed:
-        return "Extraction: every step's decisions were extracted."
+def _steps_text(rs: list[dict]) -> str:
     by_step: dict[str, int] = {}
-    for f in failed:
+    for f in rs:
         by_step[f["step"]] = by_step.get(f["step"], 0) + 1
-    steps = ", ".join(f"step {s}" + (f" ×{n}" if n > 1 else "") for s, n in sorted(by_step.items()))
-    n = len(failed)
-    return (f"Extraction: **{n} extraction{' failed' if n == 1 else 's failed'}** ({steps}); "
-            f"{'its' if n == 1 else 'their'} decisions are not on this sheet. Re-run decisions-extract with --retry-failed, then decisions-align and decisions-sheet.")
+    return ", ".join(f"step {s}" + (f" ×{n}" if n > 1 else "") for s, n in sorted(by_step.items()))
 
 
-def render_sheet(topics: list[dict], arms: list[str], failed: list[dict] = ()) -> str:
+def _failed_lines(failed: list[dict], dropped: list[dict]) -> list[str]:
+    bad = [f for f in failed if f["status"] != "input_missing"]
+    gone = [f for f in failed if f["status"] == "input_missing"]
+    out = []
+    if bad:
+        n = len(bad)
+        out += [f"Extraction: {n} extraction{' failed' if n == 1 else 's failed'} ({_steps_text(bad)}); "
+                f"{'its' if n == 1 else 'their'} decisions are not on this sheet. Re-run decisions-extract with "
+                "--retry-failed, then decisions-align and decisions-sheet.", ""]
+    if gone:
+        n = len(gone)
+        out += [f"Inputs: {n} step{' had' if n == 1 else 's had'} no evidence ({_steps_text(gone)}): nothing could be "
+                "extracted there.", ""]
+    if bad or gone:
+        out += ["An arm with such a step is never shown as \"not considered\": where it took no route, it is listed "
+                "under an unrated \"No evidence\" heading, with no rating to give.", ""]
+    else:
+        out += ["Extraction: every step's decisions were extracted.", ""]
+    if dropped:
+        k, d = len(dropped), sum(x["decisions"] for x in dropped)
+        out += [f"Alignment: the aligner placed no decision of {k} arm{'' if k == 1 else 's'} on any topic: "
+                f"{d} decision{'' if d == 1 else 's'} dropped.", ""]
+    return out
+
+
+def render_sheet(topics: list[dict], arms: list[str], failed: list[dict] = (), dropped: list[dict] = ()) -> str:
     """The owner's blind view: numbered routes with their text, reasoning, outcome and proposed rating; blank `rating:`
     and `reason:` lines. No labels; judge-written text is flattened to one line and scrubbed of every arm name given
     (and every configured method name) as a second guard."""
@@ -390,13 +445,13 @@ def render_sheet(topics: list[dict], arms: list[str], failed: list[dict] = ()) -
            "Routes are anonymous: which arm took which route is hidden. \"not considered\" is a route too: if the "
            "topic mattered, missing it is a weakness; if it did not, not considering it can be acceptable and "
            "deciding it may have been over-engineering. `proposed:` is the aligning judge's suggestion; your rating "
-           "decides.", "", _failed_line(list(failed)), ""]
+           "decides.", "", *_failed_lines(list(failed), list(dropped))]
     groups = _ordered(topics)
     for k, title in zip(KINDS, ("One-offs", "Divergent", "Unanimous")):
         ts = [t for t in groups if t["kind"] == k]
         out += [f"# {title} ({len(ts)})", ""]
         for t in ts:
-            out += [f"## {t['id']}", "", f"**Question:** {clean(t['question'])}  ", f"**Kind:** {k}", ""]
+            out += [f"## {t['sheet_id']}", "", f"**Question:** {clean(t['question'])}  ", f"**Kind:** {k}", ""]
             for r in t["routes"]:
                 prop = f"{r['proposed']} - {clean(r['proposed_why'])}" if r["proposed"] else "(none)"
                 out += [f"### Route {r['route_no']}", "",
@@ -405,6 +460,11 @@ def render_sheet(topics: list[dict], arms: list[str], failed: list[dict] = ()) -
                         f"- Outcome: {clean(r['outcome']) or '(none)'}",
                         f"- proposed: {prop}", "",
                         "rating:", "reason:", ""]
+            if t["no_evidence"]:
+                n = len(t["no_evidence"])
+                out += ["### No evidence (unrated)", "",
+                        f"- {n} arm{'' if n == 1 else 's'} took no route here and had a step whose decisions could not "
+                        "be extracted: whether they considered it is unknown. Nothing to rate.", ""]
     return "\n".join(out)
 
 
@@ -424,10 +484,16 @@ def sheet(pass_: str) -> Path:
         raise inputs.InputError(f"{tf} is missing: run the decisions-align stage first")
     if md.exists() and re.search(r"^[ \t]*(?:[-*][ \t]+)?(?:rating|reason)[ \t]*:[ \t]*\S", md.read_text(), re.I | re.M):
         raise inputs.InputError(f"{md} already holds ratings: move it aside to write a fresh sheet")
-    topics, failed = json.loads(tf.read_text())["topics"], _failures(pass_)
-    _write(md, render_sheet(topics, _arms(pass_), failed))
-    _write(md.with_suffix(".json"), values.dump({"topics": _ordered(topics), "failed": failed}))
+    aligned, failed = json.loads(tf.read_text()), _failures(pass_)
+    topics, dropped = aligned["topics"], aligned.get("dropped", [])
+    _write(md, render_sheet(topics, _arms(pass_), failed, dropped))
+    _write(_import_map(pass_), values.dump({"topics": _ordered(topics), "failed": failed, "dropped": dropped}))
     return md
+
+
+def _import_map(pass_: str) -> Path:
+    """Sheet topic and route numbers -> aligner ids and labels: kept out of the owner's way, never shown on the sheet."""
+    return _dir(pass_) / ".import" / "rating-sheet.json"
 
 
 _H2 = re.compile(r"^##\s+(\S.*?)\s*$")
@@ -451,6 +517,8 @@ def parse_sheet(md: str) -> dict[str, list[dict]]:
             if topic in got:
                 problems.append(f"{topic}: the topic appears twice")
             got.setdefault(topic, {})
+        elif line.startswith("###") and not _H3.match(line):
+            route = None                                        # e.g. "No evidence (unrated)": nothing to rate
         elif m := _H3.match(line):
             if topic is None:
                 problems.append(f"Route {m[1]}: outside a topic")
@@ -490,7 +558,7 @@ def parse_sheet(md: str) -> dict[str, list[dict]]:
 def import_ratings(pass_: str) -> Path:
     """Validates the filled sheet against rating-sheet.json and writes ratings.json under real arm names."""
     d = _dir(pass_)
-    md, js = d / "rating-sheet.md", d / "rating-sheet.json"
+    md, js = d / "rating-sheet.md", _import_map(pass_)
     for f in (md, js):
         if not f.exists():
             raise inputs.InputError(f"{f} is missing: run the decisions-sheet stage first")
@@ -498,25 +566,26 @@ def import_ratings(pass_: str) -> Path:
     structure = json.loads(js.read_text())["topics"]
     problems = []
     for t in structure:
-        rated = {r["route_no"]: r for r in parsed.get(t["id"], [])}
-        if t["id"] not in parsed:
-            problems.append(f"{t['id']}: missing from the sheet")
+        sid = t["sheet_id"]
+        rated = {r["route_no"]: r for r in parsed.get(sid, [])}
+        if sid not in parsed:
+            problems.append(f"{sid}: missing from the sheet")
             continue
         nos = {r["route_no"] for r in t["routes"]}
-        problems += [f"{t['id']} route {n}: no rating" for n in sorted(nos - set(rated))]
-        problems += [f"{t['id']} route {n}: not on the sheet" for n in sorted(set(rated) - nos)]
-    problems += [f"{tid}: not on the sheet" for tid in sorted(set(parsed) - {t["id"] for t in structure})]
+        problems += [f"{sid} route {n}: no rating" for n in sorted(nos - set(rated))]
+        problems += [f"{sid} route {n}: not on the sheet" for n in sorted(set(rated) - nos)]
+    problems += [f"{tid}: not on the sheet" for tid in sorted(set(parsed) - {t["sheet_id"] for t in structure})]
     if problems:
         raise SheetError("the rating sheet has problems:\n" + "\n".join(f"- {p}" for p in problems))
     key = judge.anon_key(pass_)
     out = []
     for t in sorted(structure, key=lambda t: t["id"]):
-        rated = {r["route_no"]: r for r in parsed[t["id"]]}
+        rated = {r["route_no"]: r for r in parsed[t["sheet_id"]]}
         routes = []
         for r in t["routes"]:
             unknown = [l for l in r["labels"] if l not in key]
             if unknown:
-                raise inputs.InputError(f"{t['id']} route {r['route_no']}: {unknown} not in anon-key.json")
+                raise inputs.InputError(f"{t['sheet_id']} route {r['route_no']}: {unknown} not in anon-key.json")
             o = rated[r["route_no"]]
             routes.append({"route": r["route"], "arms": sorted(key[l] for l in r["labels"]), "rating": o["rating"],
                            "reason": o["reason"]})
@@ -530,16 +599,17 @@ def import_ratings(pass_: str) -> Path:
 
 def estimate(pass_: str, *, retry_failed: bool = False) -> dict:
     """Model calls the extract and align stages would make now (parse retries not counted): one per unfinished
-    label × step with inputs present, plus one alignment when any extraction will run or topics.json is absent."""
-    calls, size = 0, 0
+    label × step with inputs present, plus ONE alignment call whenever there is anything to align - each run of
+    decisions-align, a re-run included, makes one call."""
+    extract_calls, size = 0, 0
     items = _extract_items(pass_)
     for lab, nn, d in items:
         if not _unfinished(extracted_path(pass_, lab, nn), retry_failed):
             continue
         files = _present(d)
         if files:
-            calls += 1
+            extract_calls += 1
             size += sum(judge._size(d / f) for f in files)
-    if items and (calls or not (_dir(pass_) / "topics.json").exists()):
-        calls += 1
-    return {"calls": calls, "input_mb": round(size / 1e6, 3)}
+    align_calls = 1 if items else 0
+    return {"calls": extract_calls + align_calls, "extract_calls": extract_calls, "align_calls": align_calls,
+            "input_mb": round(size / 1e6, 3)}

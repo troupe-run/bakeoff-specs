@@ -24,8 +24,9 @@ def test_a_route_only_one_arm_took_is_a_one_off():
 
 def test_the_rating_sheet_shows_no_labels_or_arm_names(tmp_state):
     sheet = dz.render_sheet([dz.fill_not_considered(T, ["Arm A", "Arm B"])], arms=["speckit", "control"])
-    assert "Arm A" not in sheet and "speckit" not in sheet and "control" not in sheet
-    assert sheet.index("one-off") < len(sheet) and "rating:" in sheet
+    assert "Arm A" not in sheet and "Arm B" not in sheet and "speckit" not in sheet and "control" not in sheet
+    assert sheet.index("# One-offs (1)") < sheet.index("## T1") < sheet.index("# Divergent (0)")
+    assert "**Kind:** one-off" in sheet and "rating:" in sheet
 
 
 def test_import_refuses_a_route_without_a_reason(tmp_state):
@@ -97,15 +98,28 @@ TOPICS = [_topic("zz-unanimous", ("same", ["Arm A", "Arm B", "Arm C"])),
 
 def test_the_sheet_orders_one_offs_then_divergent_then_unanimous():
     s = dz.render_sheet(TOPICS, arms=[])
-    assert s.index("## aa-one-off") < s.index("## mm-divergent") < s.index("## zz-unanimous")
+    assert s.index("aa-one-off?") < s.index("mm-divergent?") < s.index("zz-unanimous?")
+    assert s.index("## T1") < s.index("aa-one-off?") < s.index("## T2") < s.index("mm-divergent?") < s.index("## T3")
 
 
 def test_each_route_shows_its_text_reasoning_outcome_and_proposed_rating_with_blank_owner_fields():
     s = dz.render_sheet(TOPICS, arms=[])
-    one = s[s.index("## aa-one-off"):s.index("## mm-divergent")]
+    one = s[s.index("## T1"):s.index("## T2")]
     assert "only me" in one and "why only me" in one and "then only me" in one and "proposed: acceptable" in one
     assert "not considered" in one and "proposed: poor" in one
     assert one.count("\nrating:\n") == 2 and one.count("\nreason:\n") == 2
+
+
+def test_the_sheet_never_shows_the_aligners_topic_ids():
+    ts = [dict(_topic("arm-b-env-check", ("x", ["Arm A"])), question="Check the environment first?"),
+          dict(_topic("speckit-constitution", ("y", ["Arm B"])), question="Keep a set of principles?")]
+    s = dz.render_sheet(ts, arms=["speckit"])
+    assert "arm-b-env-check" not in s and "speckit-constitution" not in s and "## T1" in s and "## T2" in s
+
+
+def test_version_control_survives_the_sheets_scrub_but_the_control_repo_name_does_not():
+    s = dz.render_sheet([_topic("x", ("use version control; see bakeoff-specs-control", ["Arm A"]))], arms=["control"])
+    assert "version control" in s and "bakeoff-specs-control" not in s
 
 
 def test_judge_text_naming_a_label_or_an_arm_is_scrubbed_on_the_sheet():
@@ -124,10 +138,10 @@ def test_a_filled_sheet_round_trips_through_parse_sheet():
     s = dz.render_sheet(TOPICS, arms=[])
     filled = s.replace("rating:\nreason:\n", "rating: good\nreason: fine\n")
     got = dz.parse_sheet(filled)
-    assert sorted(got) == ["aa-one-off", "mm-divergent", "zz-unanimous"]
-    assert got["mm-divergent"] == [{"route_no": 1, "rating": "good", "reason": "fine"},
+    assert sorted(got) == ["T1", "T2", "T3"]
+    assert got["T2"] == [{"route_no": 1, "rating": "good", "reason": "fine"},
                                    {"route_no": 2, "rating": "good", "reason": "fine"}]
-    assert [r["route_no"] for r in got["aa-one-off"]] == [1, 2]
+    assert [r["route_no"] for r in got["T1"]] == [1, 2]
 
 
 def test_out_of_scope_may_be_written_with_spaces():
@@ -284,6 +298,9 @@ def test_align_refuses_while_an_extraction_has_not_run(tmp_state):
     '{"topics": [{"id": "x", "question": "q", "not_considered": {"proposed": "poor", "why": "w"}, '
     '"routes": [{"route": "r", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "good", "proposed_why": ""}, '
     '{"route": "s", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "good", "proposed_why": ""}]}]}',
+    '{"topics": [{"id": "x", "question": "q", "not_considered": {"proposed": "poor", "why": "w"}, '
+    '"routes": [{"route": "same", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "good", "proposed_why": ""}, '
+    '{"route": "Same ", "labels": ["Arm B"], "reason_given": "", "outcome": "", "proposed": "good", "proposed_why": ""}]}]}',
     '{"topics": [{"id": "Has Spaces", "question": "q", "not_considered": {"proposed": "poor", "why": "w"}, '
     '"routes": [{"route": "r", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "good", "proposed_why": ""}]}]}'])
 def test_unusable_alignments_are_refused(bad):
@@ -307,19 +324,76 @@ def _aligned_pass(failed=False):
     anon_fixture(arms=("alpha", "beta"), steps=("01",))
     _extracted("Arm A", "01", D1)
     _extracted("Arm B", "01", json.dumps({"status": "extract_failed", "why": "x", "raw": ""}) if failed else "[]")
-    dz.align("p", judge.FakeJudge([ALIGNED]))
+    dz.align("p", judge.FakeJudge([ALIGNED]), allow_failed=failed)
 
 
-def test_sheet_writes_markdown_and_json_and_lists_failed_extractions_in_the_header(tmp_state):
+def test_align_refuses_a_failed_extraction_unless_allowed(tmp_state):
+    from runner.scoring import inputs
+    anon_fixture(arms=("alpha", "beta"), steps=("01",))
+    _extracted("Arm A", "01", D1)
+    _extracted("Arm B", "01", json.dumps({"status": "extract_failed", "why": "x", "raw": ""}))
+    with pytest.raises(inputs.InputError, match="--allow-failed"):
+        dz.align("p", judge.FakeJudge([]))
+
+
+def test_a_label_without_evidence_goes_on_an_unrated_no_evidence_route_never_not_considered(tmp_state):
     _aligned_pass(failed=True)
+    t = json.loads((paths.scoring_out("p") / "decisions" / "topics.json").read_text())["topics"][0]
+    assert [(r["route"], r["labels"]) for r in t["routes"]] == [("fail", ["Arm A"]), ("no evidence", ["Arm B"])]
+
+
+def test_sheet_shows_no_evidence_routes_unrated_and_lists_failures_and_missing_inputs_apart(tmp_state):
+    anon_fixture(arms=("alpha", "beta", "gamma"), steps=("01",))
+    _extracted("Arm A", "01", D1)
+    _extracted("Arm B", "01", json.dumps({"status": "extract_failed", "why": "x", "raw": ""}))
+    _extracted("Arm C", "01", json.dumps({"status": "input_missing", "why": "none present"}))
+    dz.align("p", judge.FakeJudge([ALIGNED]), allow_failed=True)
     md = dz.sheet("p")
     text = md.read_text()
     header = text[:text.index("\n## ")]
-    assert "1 extraction failed" in header and "step 01" in header and "Arm B" not in text
-    js = json.loads((md.parent / "rating-sheet.json").read_text())
-    assert [(r["route_no"], r["route"], r["labels"]) for r in js["topics"][0]["routes"]] == [
-        (1, "fail", ["Arm A"]), (2, "not considered", ["Arm B"])]
-    assert js["failed"] == [{"label": "Arm B", "status": "extract_failed", "step": "01", "why": "x"}]
+    assert "1 extraction failed (step 01)" in header and "1 step had no evidence (step 01)" in header
+    assert header.count("--retry-failed") == 1 and header.index("--retry-failed") < header.index("no evidence")
+    assert "Arm B" not in text and "Arm C" not in text
+    topic = text[text.index("## T1"):]
+    assert "### Route 1" in topic and "### Route 2" not in topic and "No evidence" in topic
+    assert topic.count("\nrating:\n") == 1
+    js = json.loads((md.parent / ".import" / "rating-sheet.json").read_text())
+    assert [(r["route_no"], r["route"]) for r in js["topics"][0]["routes"]] == [(1, "fail")]
+    assert js["topics"][0]["no_evidence"] == ["Arm B", "Arm C"]
+    md.write_text(text.replace("rating:\nreason:\n", "rating: good\nreason: s\n"))
+    f = dz.import_ratings("p")
+    assert json.loads(f.read_text())["topics"][0]["routes"] == [
+        {"route": "fail", "arms": ["alpha"], "rating": "good", "reason": "s"}]
+
+
+def test_choice_averages_only_real_ratings_when_an_arm_had_no_evidence(tmp_state):
+    from runner.scoring import aggregate, inputs
+    d = paths.scoring_out("p") / "decisions"
+    d.mkdir(parents=True)
+    (d / "ratings.json").write_text(json.dumps({"topics": [
+        {"id": "a", "routes": [{"route": "x", "arms": ["alpha"], "rating": "good", "reason": "r"}]},
+        {"id": "b", "routes": [{"route": "y", "arms": ["alpha"], "rating": "poor", "reason": "r"},
+                               {"route": "z", "arms": ["beta"], "rating": "good", "reason": "r"}]}]}))
+    sc = inputs.load_weights().scales
+    table = __import__("runner.scoring.scales", fromlist=["x"]).rating_table(sc)
+    assert aggregate._choice("p", "alpha", sc)["score"] == (table["good"] + table["poor"]) / 2
+    assert aggregate._choice("p", "beta", sc)["score"] == table["good"]       # topic a: no evidence, not a zero
+
+
+def test_a_rating_written_under_a_no_evidence_route_is_refused():
+    with pytest.raises(ValueError, match="T1: a rating line outside a route"):
+        dz.parse_sheet("## T1\n### Route 1\nrating: good\nreason: s\n### No evidence (unrated)\nrating: poor\n")
+
+
+def test_alignment_dropping_a_labels_decisions_is_recorded_and_counted_on_the_sheet(tmp_state):
+    anon_fixture(arms=("alpha", "beta"), steps=("01",))
+    _extracted("Arm A", "01", D1)
+    _extracted("Arm B", "01", D1)                    # ALIGNED places only Arm A
+    dz.align("p", judge.FakeJudge([ALIGNED]))
+    got = json.loads((paths.scoring_out("p") / "decisions" / "topics.json").read_text())
+    assert got["dropped"] == [{"decisions": 1, "label": "Arm B"}]
+    header = dz.sheet("p").read_text().split("\n## ")[0]
+    assert "1 decision" in header and "dropped" in header and "Arm B" not in header
 
 
 def test_import_writes_ratings_under_real_arm_names(tmp_state):
@@ -338,7 +412,7 @@ def test_import_refuses_a_sheet_with_a_route_left_unrated(tmp_state):
     _aligned_pass()
     md = dz.sheet("p")
     md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: good\nreason: sensible\n", 1))
-    with pytest.raises(ValueError, match="actor-unset route 2: no rating"):
+    with pytest.raises(ValueError, match="T1 route 2: no rating"):
         dz.import_ratings("p")
     assert not (paths.scoring_out("p") / "decisions" / "ratings.json").exists()
 
@@ -347,15 +421,15 @@ def test_import_refuses_a_topic_or_route_the_sheet_never_had(tmp_state):
     _aligned_pass()
     md = dz.sheet("p")
     md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: good\nreason: s\n")
-                  + "### Route 3\nrating: good\nreason: s\n## made-up\n### Route 1\nrating: good\nreason: s\n")
+                  + "### Route 3\nrating: good\nreason: s\n## T9\n### Route 1\nrating: good\nreason: s\n")
     with pytest.raises(ValueError) as e:
         dz.import_ratings("p")
-    assert "actor-unset route 3: not on the sheet" in str(e.value) and "made-up: not on the sheet" in str(e.value)
+    assert "T1 route 3: not on the sheet" in str(e.value) and "T9: not on the sheet" in str(e.value)
 
 
 # ---- estimate and the CLI gate -------------------------------------------------------------------------------------
 
-def test_the_estimate_counts_unfinished_extractions_and_one_alignment(tmp_state):
+def test_the_estimate_counts_unfinished_extractions_and_one_alignment_even_for_a_re_run(tmp_state):
     anon_fixture()
     assert dz.estimate("p")["calls"] == 5
     for lab in ("Arm A", "Arm B"):
@@ -363,7 +437,7 @@ def test_the_estimate_counts_unfinished_extractions_and_one_alignment(tmp_state)
             _extracted(lab, nn, "[]")
     assert dz.estimate("p")["calls"] == 1
     (paths.scoring_out("p") / "decisions" / "topics.json").write_text('{"topics": []}')
-    assert dz.estimate("p")["calls"] == 0
+    assert dz.estimate("p") | {"input_mb": 0} == {"calls": 1, "extract_calls": 0, "align_calls": 1, "input_mb": 0}
 
 
 def test_judge_estimate_prints_decision_calls_in_the_total(tmp_state, monkeypatch, capsys):
@@ -411,7 +485,7 @@ def test_decisions_import_prints_the_sheets_problems_and_exits_1(tmp_state, caps
     assert cli.main(["score", "p", "--stage", "decisions-sheet"]) == 0
     capsys.readouterr()
     assert cli.main(["score", "p", "--stage", "decisions-import"]) == 1
-    assert "actor-unset route 1: no rating" in capsys.readouterr().out
+    assert "T1 route 1: no rating" in capsys.readouterr().out
 
 
 def test_sheet_refuses_to_overwrite_a_sheet_the_owner_has_started(tmp_state):
@@ -433,3 +507,16 @@ def test_the_container_judges_mount_check_accepts_the_alignment_and_extraction_i
     judge.check_mounts(judge.mounts(home, out / "anon" / dz.ALIGN_ITEM, ["extracted.json"]), "p")
     d = out / "anon" / "Arm A" / "01"
     judge.check_mounts(judge.mounts(home, d, dz._present(d)), "p")
+
+
+def test_decisions_align_passes_allow_failed_from_the_command_line(tmp_state, monkeypatch):
+    from runner import cli
+    anon_fixture(arms=("alpha",), steps=("01",))
+    (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 9\n")
+    monkeypatch.setattr(judge, "items", lambda pass_: [])
+    seen = []
+    monkeypatch.setattr(dz, "align", lambda pass_, j, allow_failed=False: seen.append(allow_failed) or "ok")
+    monkeypatch.setattr(judge, "ContainerJudge", lambda pass_: judge.FakeJudge([]))
+    assert cli.main(["score", "p", "--stage", "decisions-align"]) == 0
+    assert cli.main(["score", "p", "--stage", "decisions-align", "--allow-failed"]) == 0
+    assert seen == [False, True]

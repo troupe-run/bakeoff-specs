@@ -474,5 +474,8 @@ def register_score(sub):
     p.add_argument("--no-docker", action="store_true", help="skip Docker-backed measures (churn): recorded as deferred")
     p.add_argument("--retry-failed", action="store_true",
                    help="judge / judge-estimate: also re-ask items recorded judge_failed (otherwise final)")
+    p.add_argument("--allow-failed", action="store_true",
+                   help="decisions-align: align although some extractions failed (their arms become unrated "
+                        "\"no evidence\", never \"not considered\")")
     p.set_defaults(func=scli.score)
 REGISTRARS.append(register_score)
