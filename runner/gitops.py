@@ -325,6 +325,11 @@ def numstat(p: Paths, a: str, b: str) -> list[tuple[int, int, str]]:
     return out
 
 
+def diff_text(p: Paths, a: str, b: str) -> str:
+    """The full unified diff a..b (anonymise's diff.patch); textconv and external diff off, like numstat."""
+    return git(p, "diff", "--no-textconv", "--no-ext-diff", "--no-color", a, b).stdout.decode(errors="replace")
+
+
 def worktree_diffstat(p: Paths) -> str:
     return _out(git(p, "diff", "--no-textconv", "--no-ext-diff", "--stat", "HEAD"))
 
