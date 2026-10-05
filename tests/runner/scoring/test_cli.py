@@ -100,3 +100,39 @@ def test_an_unknown_stage_is_rejected_by_argparse(p):
 def test_a_stage_added_to_stages_appears_in_the_choices(monkeypatch):
     monkeypatch.setitem(scli.STAGES, "extra-stage", lambda ns: None)
     assert cli.main(["score", "x", "--stage", "extra-stage"]) == 1     # parsed (no SystemExit), then pass missing
+
+
+def _harness_repo(tmp_path, monkeypatch):
+    import subprocess
+    monkeypatch.setattr(paths, "REPO_ROOT", tmp_path)
+    for c in (["init", "-q"], ["config", "user.email", "t@t"], ["config", "user.name", "t"]):
+        subprocess.run(["git", "-C", str(tmp_path), *c], check=True)
+    return lambda *a: subprocess.run(["git", "-C", str(tmp_path), *a], check=True, capture_output=True)
+
+
+def test_report_refuses_while_anon_key_is_tracked_and_writes_nothing(p, tmp_path, monkeypatch, capsys):
+    git = _harness_repo(tmp_path, monkeypatch)
+    assert cli.main(["score", p, "--stage", "aggregate"]) == 0
+    key = paths.scoring_out(p) / "anon-key.json"
+    key.write_text('{"Arm A": "control"}')
+    git("add", "-f", str(key.relative_to(tmp_path)))
+    assert cli.main(["score", p, "--stage", "report"]) == 1
+    out = capsys.readouterr().out
+    assert "anon-key.json" in out and "tracked by git" in out
+    assert not (paths.scoring_out(p) / "report.md").exists() and not (paths.scoring_out(p) / "confidence.json").exists()
+
+
+def test_report_runs_when_anon_key_is_present_but_not_tracked(p, tmp_path, monkeypatch):
+    _harness_repo(tmp_path, monkeypatch)
+    assert cli.main(["score", p, "--stage", "aggregate"]) == 0
+    (paths.scoring_out(p) / "anon-key.json").write_text('{"Arm A": "control"}')
+    assert cli.main(["score", p, "--stage", "report"]) == 0
+    assert (paths.scoring_out(p) / "report.md").exists()
+
+
+def test_anonymise_stage_runs_anonymise_for_the_pass(p, monkeypatch, capsys):
+    from runner.scoring import anonymise
+    seen = []
+    monkeypatch.setattr(anonymise, "run", lambda pass_: seen.append(pass_) or paths.scoring_out(pass_) / "anon")
+    assert cli.main(["score", p, "--stage", "anonymise"]) == 0
+    assert seen == [p] and str(paths.scoring_out(p) / "anon") in capsys.readouterr().out

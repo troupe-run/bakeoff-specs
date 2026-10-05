@@ -1,9 +1,10 @@
 """`runner score <pass> [--stage S]`: each stage reads the previous stage's files (spec §9)."""
 from __future__ import annotations
 import json
+import subprocess
 from pathlib import Path
 from runner import faults, paths
-from runner.scoring import (aggregate, collect, confidence, decisions, evidence, inputs, judge, page, remeasure,
+from runner.scoring import (aggregate, anonymise, collect, confidence, decisions, evidence, inputs, judge, page, remeasure,
                             report, review, values)
 
 
@@ -24,8 +25,27 @@ def _confidence(ns) -> None:
     print(_write_confidence(ns.pass_, _scores(ns.pass_)))
 
 
+def _refuse_tracked_anon_key(pass_: str) -> None:
+    """The key de-anonymises the published evidence: refuse while it sits under results/ AND git tracks it (staged or
+    committed). Asks the HARNESS repo only (paths.REPO_ROOT), never an arm repo."""
+    key = paths.scoring_out(pass_) / "anon-key.json"
+    if not key.exists():
+        return
+    try:
+        rel = key.resolve().relative_to(paths.REPO_ROOT.resolve())
+    except ValueError:
+        return
+    r = subprocess.run(["git", "-C", str(paths.REPO_ROOT), "ls-files", "--error-unmatch", "--", str(rel)],
+                       capture_output=True, text=True)
+    if r.returncode == 0:
+        raise inputs.InputError(
+            f"{rel} is tracked by git: it maps Arm labels to arms and would de-anonymise the published evidence. "
+            f"`git rm --cached {rel}`, move it to state/{pass_}-scoring/, then re-run report.")
+
+
 def _report(ns) -> None:
     scores = _scores(ns.pass_)             # refuse before writing anything
+    _refuse_tracked_anon_key(ns.pass_)
     _write_confidence(ns.pass_, scores)    # so confidence.json can never lag the report
     print(report.run(ns.pass_))
     print(page.run(ns.pass_))
@@ -91,6 +111,7 @@ STAGES = {
     "all-fail": lambda ns: print(json.dumps(evidence.all_fail(paths.RESULTS / ns.pass_,
                                                                collect.arms(paths.RESULTS / ns.pass_)), indent=2)),
     "collect": lambda ns: print(len(collect.run(ns.pass_, docker=not ns.no_docker)), "records"),
+    "anonymise": lambda ns: print(anonymise.run(ns.pass_)),     # Docker (container git); rewrites anon/ and anon-key.json
     "judge-estimate": _judge_estimate,
     "judge": _judge,
     "decisions-extract": _decisions_extract,

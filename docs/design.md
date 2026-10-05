@@ -196,23 +196,43 @@ written, and the feeds are secret-scanned with the step's evidence after every r
 
 ## 8. Scoring
 
-| Weight | Dimension | Measured by |
-|---|---|---|
-| 30% | Coping with change | Hidden tests still green after each change step; amount of rework; whether spec, code and tests agree after steps 3 and 5; whether step 2's hand edit was detected |
-| 20% | Correctness | Hidden acceptance tests passed per step |
-| 15% | Traceability | Requirement → test → code, and change → reason, can be followed |
-| 15% | Quality of human interaction | Number and value of questions; whether the arm researched before asking (see below); whether gates fall at sensible points; owner review time |
-| 10% | Code and test quality | Mutation score, `mypy --strict`, lint, test names checked against what the tests assert |
-| 10% | Setup and ergonomics | Setup effort; fit with Claude Code and with the arm's tracking |
+| Weight | Dimension | Parts (points within the dimension) | Measured / judged |
+|---|---|---|---|
+| 20 | **Coping with change** | Regressions: earlier steps' hidden tests still green after each change step (7) · Stale artefacts updated: old requirements, tests and docs a change made wrong were found and changed, steps 3, 5, 7 (7) · Collateral churn: lines changed in files the step had no reason to touch (3) · Hand edit detected and reconciled, step 2 (3) | measured · judged · measured · judged |
+| 20 | **Correctness** | Hidden tests passed per step, **all** tests at that step including earlier steps' (a regression deliberately costs twice) | measured |
+| 10 | **Traceability** | Requirement → test → code · change → reason · step 6's fix leaves a spec trace | judged |
+| 10 | **Quality of human interaction** | Value of questions, N.a and N.b both counted · research before asking, informed-choice framing (below) · gates at sensible points | judged |
+| 15 | **Code and test quality** | Mutation score · `mypy --strict` and lint · test names checked against what the tests assert | measured · measured · judged |
+| 10 | **Decision quality** | Choice: the owner's rating of each route the arm took, averaged over topics (6) · Process: options weighed, reason stated, decision recorded (4) | owner-rated · judged |
+| 10 | **Setup and ergonomics** | Setup effort (4) · fit with Claude Code and the arm's tracker (4) · arm violations, deduction by severity (2) | judged · judged · measured |
+| 5 | **Time to outcome** | Arm working time per hidden test passed | measured |
 
-Cost is reported alongside, not scored. Tracker quality is reported separately.
+Internal splits not given are equal. All weights live in `scoring/weights.toml`. Reported, not scored: cost, time
+and cost by phase, outliers, owner review time, tracker quality, N.a runs, re-runs and harness faults.
+
+**Scoring revised (owner, 2026-10-05).** Full rationale, scales and stage architecture:
+[superpowers/specs/2026-10-05-scoring-design.md](superpowers/specs/2026-10-05-scoring-design.md); how to run it:
+[scoring-runbook.md](scoring-runbook.md). The changes to the table above:
+
+- Coping with change 30 → 20, traceability 15 → 10, human interaction 15 → 10, code and test quality 10 → 15.
+- New dimension **Decision quality** (10): the owner rates the routes arms took, blind to which arm took them, plus a judged process part.
+- New dimension **Time to outcome** (5): arm working time per hidden test passed; cost stays reported, with outliers flagged either way.
+- "Number and value of questions" → **value of questions**: asking is never penalised for itself; the count is reported.
+- Owner review time is removed from the score and reported (the relay auto-continued uncontroversial reviews, so it measures the relay).
+- Judged parts are scored by a **panel of three lenses** (0-4, anchored rubric, median); disagreement is reported, not averaged away.
+- Scales: natural where one exists; deductions with a floor; time and churn as log(arm ÷ control) capped at 10× either way; every step weighs the same.
+- Hidden tests every arm fails are reviewed by the owner before scoring; a defect in a test is excluded for all arms and recorded.
+- Mutation runs that crashed are re-measured by another path; only if that fails is the score unmeasured and the dimension reweighted.
+- Missing or unreadable evidence is never zero: it is recorded as `missing` and shown.
+- The correctness / coping-with-change overlap is deliberate: a regression is counted in both (regressions part, and again in the all-tests correctness count). The headline ("how each method copes with change") is not reworded.
+- Mutation scores in the scoring layer are computed over **checked mutants only** (killed ÷ (total − no tests − skipped − not checked)), with `partial` and `checked_fraction` carried; they therefore differ by design from the runner's own `summary.json` score, and are `unmeasured` below 50% checked.
 
 **Research before asking (owner, 2026-09-30).** Within *Quality of human interaction*, each question put to the
 product owner is judged on whether the arm first used what it could reach (the repo, the scenario documents,
 package docs, and for GitHub-tracker arms their issues) and whether the question arrived as an informed choice
 (options, what was found, a recommendation) rather than a bare problem. Judged from the step transcripts and the
 question log. The run-phase egress allowlist bounds what an arm can research, and it differs slightly by arm
-(GitHub-tracker arms can reach `api.github.com`); the report says so. Weights are unchanged.
+(GitHub-tracker arms can reach `api.github.com`); the report says so.
 
 **Mutation score and CLI subprocess tests (2026-10-01).** mutmut 3 attributes coverage only to code a test
 runs in-process. Code an arm's tests reach only by running its CLI as a subprocess (`uv run troupe …`, as the
@@ -226,10 +246,15 @@ not a crash and not zero, and it is not attributed to the arm: the harness canno
 the same result across several arms points at the harness. A run with no real verdict and some mutants left
 unchecked is still recorded as crashed, never as a score.
 
-**Judging:** measured dimensions come from the evidence directly. Judgement dimensions (question quality,
-traceability, test naming) are scored by LLM judges working on **anonymised copies** (repo name, tool-specific
-folder names and commit trailers scrubbed), then checked by the owner. Blinding is partial — some methods are
-recognisable by their artefact shapes — and the report says so.
+**Judging:** measured dimensions come from the evidence directly. Judged parts (value of questions, research before
+asking, traceability, test naming, stale artefacts, hand edit, setup, process of decisions) are scored by a
+**panel of three lenses** per part (Opus 5.5, the arms' model), each citing evidence, working on **anonymised
+copies** (repo name, tool-specific folder names, commands and commit trailers scrubbed). The owner reviews every
+disputed item, every judgement that decides a top-two placing and a seeded sample of the rest; verdicts are stored
+beside the judges', never instead. The owner also rates, blind to the arm, the routes arms took on each decision
+topic (the choice part of decision quality). Blinding is partial — some methods are recognisable by their artefact
+shapes — and the report says so (residual vocabulary, structural tells, and that repo trees and diffs are covered
+only by the post-pass-1 Docker leak test).
 
 ## 9. Stop rules
 
