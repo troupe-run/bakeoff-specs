@@ -5,7 +5,7 @@ import re
 import shutil
 from pathlib import Path
 import pytest
-from runner import docker, gitops, paths
+from runner import config, docker, gitops, paths
 from runner.scoring import anonymise as an
 
 MINI = Path(__file__).parent / "fixtures" / "mini"
@@ -26,7 +26,7 @@ def test_scrub_removes_tool_names_folders_commands_and_trailers():
 
 
 def test_scrub_terms_cover_every_real_arm_repo_name():
-    for arm in ("ccsdd", "superpowers", "speckit", "speckitty", "openspec", "control"):
+    for arm in sorted(f.stem for f in config.ARMS_DIR.glob("*.toml")):
         assert any(f"bakeoff-specs-{arm}" in t[0] for t in an.scrub_terms(arm))
 
 
@@ -148,8 +148,13 @@ def _all_text(anon: Path) -> str:
                      for f in sorted(anon.rglob("*")) if f.is_file())
 
 
-def test_run_writes_labelled_dirs_with_every_artefact_and_the_key_last(world):
+def test_run_writes_labelled_dirs_with_every_artefact_and_the_key_after_the_export(world, monkeypatch):
+    seen = []
+    real = gitops.export_tree
+    monkeypatch.setattr(gitops, "export_tree", lambda p, sha, dest: (seen.append((paths.scoring_out("p1") / "anon-key.json").exists()),
+                                                                    real(p, sha, dest)))
     anon = an.run("p1")
+    assert seen and not any(seen)                 # no key while any export is still to come
     out = paths.scoring_out("p1")
     key = json.loads((out / "anon-key.json").read_text())
     assert sorted(key.values()) == ["control", "speckit"] and sorted(key) == ["Arm A", "Arm B"]
@@ -162,7 +167,7 @@ def test_run_writes_labelled_dirs_with_every_artefact_and_the_key_last(world):
     assert (step / "repo" / "spec" / "notes.md").read_text().startswith("speckit".replace("speckit", "method") + " method")
 
 
-def test_leak_check_no_arm_tool_or_folder_name_survives_anywhere_under_anon(world):
+def test_fixture_leak_check_no_arm_tool_or_folder_name_survives_in_the_mini_fixture_run(world):
     anon = an.run("p1")
     text = _all_text(anon)
     banned = ["speckit", "spec-kit", "specify", "openspec", "opsx", "ccsdd", "kiro", "superpowers", "speckitty",
@@ -267,3 +272,159 @@ def test_a_step_with_an_unscrubbed_file_lists_its_scrubbed_path(world, monkeypat
     key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
     lab = {v: k for k, v in key.items()}["speckit"]
     assert "spec/img.bin" in (anon / lab / "01" / "UNSCRUBBED.txt").read_text()
+
+
+# --- R-fix: real strings, aliases, word boundaries ----------------------------------------------------------------
+REAL_STRINGS = [
+    "Spec Kit", "Spec Kitty", "SPEC_KITTY", "spec-kitty", "kitty/mission-troupe-config-sync-files-01", "kitty-ops/x",
+    "kitty-implement-review", "specify_cli", "Specify CLI", "beads", ".beads/issues.jsonl", "Beads",
+    "bd create 'x'", "bd list --json", "bd close troupe-1", "bd show x", "bd ready", "bd update x", "bd dep add a b",
+    "run `specify init .`", "OpenSpec", "Open Spec", "cc-sdd", "CC SDD", "obra/superpowers", "Obra", "Kiro",
+    "bakeoff-specs-cc\u2026", "bakeoff-specs-speckitty/src",
+]
+
+
+def test_real_name_variants_and_aliases_from_the_snapshot_are_scrubbed():
+    t = an.pass_terms(["speckit", "speckitty", "ccsdd", "openspec", "superpowers", "control"])
+    for s in REAL_STRINGS:
+        out = an.scrub(s, t).lower()
+        for banned in ("spec kit", "spec_kit", "kitty", "specify_cli", "specify cli", "beads", "bd ", "open spec",
+                       "cc sdd", "cc-sdd", "obra", "kiro", "bakeoff-specs-"):
+            assert banned not in out, (s, out)
+        assert not re.search(r"\b(?:bd|speckit|openspec|spec-kitty)\b", out), (s, out)
+
+
+def test_short_aliases_match_on_word_boundaries_only():
+    t = an.pass_terms(["superpowers", "speckitty"])
+    assert an.scrub("a cobra and a bdelloid and Kittyhawk and abd", t) == "a cobra and a bdelloid and Kittyhawk and abd"
+    assert an.scrub("Obra wrote it; the kitty/x branch; use bd now", t) == "method wrote it; the method/x branch; use tracker-cli now"
+
+
+def test_english_specify_is_left_alone_but_the_cli_forms_go():
+    t = an.pass_terms(["speckit"])
+    assert an.scrub("specify it clearly", t) == "specify it clearly"
+    assert "specify" not in an.scrub("run specify init and specify_cli", t)
+
+
+def test_a_trailer_after_an_escaped_newline_is_removed_from_a_transcript(world):
+    d = world / "speckit" / "01"
+    _stream(d / "turns" / "arm-a9-001.stream.jsonl.gz", [],
+            [("Bash", {"command": 'git commit -m "msg\n\nCo-Authored-By: Bot <b@x>\nClaude-Session: https://s/1"'})])
+    anon = an.run("p1")
+    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    lab = {v: k for k, v in key.items()}["speckit"]
+    tr = (anon / lab / "01" / "transcript.md").read_text()
+    assert "git commit -m" in tr and "Co-Authored-By" not in tr and "Claude-Session" not in tr
+
+
+def test_scrubbing_precedes_truncation_so_a_repo_name_cannot_survive_cut_in_half(world):
+    d = world / "speckit" / "01"
+    cmd = "x" * 1990 + " /work/bakeoff-specs-speckitty/y"
+    _stream(d / "turns" / "arm-a9-001.stream.jsonl.gz", [], [("Bash", {"command": cmd})])
+    anon = an.run("p1")
+    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    lab = {v: k for k, v in key.items()}["speckit"]
+    assert "bakeoff-specs" not in (anon / lab / "01" / "transcript.md").read_text()
+
+
+def test_a_truncated_repo_name_family_is_scrubbed():
+    t = an.pass_terms(["control"])
+    assert an.scrub("/work/bakeoff-specs-cc\u2026 and bakeoff-specs-x.", t) == "/work/repo and repo."
+
+
+def test_setup_gz_streams_are_gunzipped_scrubbed_and_never_copied_raw(tmp_path):
+    src, dest = tmp_path / "setup", tmp_path / "out"
+    (src / "turns").mkdir(parents=True)
+    with gzip.open(src / "turns" / "setup-a1-001.stream.jsonl.gz", "wt") as g:
+        g.write('{"x": "speckit /speckit-plan\\n\\nCo-Authored-By: B <b@x>"}\n')
+    (src / "turns" / "bad.gz").write_bytes(b"not gzip")
+    listed = an.copy_scrubbed(src, dest, an.pass_terms(["speckit"]))
+    assert not list(dest.rglob("*.gz"))
+    text = (dest / "turns" / "setup-a1-001.stream.jsonl").read_text()
+    assert "speckit" not in text and "Co-Authored" not in text and "method" in text
+    assert listed == ["turns/bad.gz (left out: not readable as text)"]
+
+
+# --- R25 -----------------------------------------------------------------------------------------------------------
+def test_with_a_run_record_and_no_questions_file_the_arm_asked_no_questions(world):
+    (world / "speckit" / "01" / "questions.jsonl").unlink()
+    (world / "speckit" / "01" / "a" / "questions.jsonl").unlink()
+    anon = an.run("p1")
+    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    lab = {v: k for k, v in key.items()}["speckit"]
+    step = anon / lab / "01"
+    assert "## Scored run" in (step / "questions.md").read_text()
+    assert "The arm asked no questions at this step." in (step / "questions.md").read_text()
+    assert not (step / "MISSING.md").exists()
+
+
+def test_without_a_run_record_questions_gates_and_transcript_are_listed_missing_not_written(world):
+    d = world / "control" / "01"
+    (d / "run.json").unlink()
+    shutil.rmtree(d / "turns")
+    anon = an.run("p1")
+    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    step = anon / {v: k for k, v in key.items()}["control"] / "01"
+    assert not any((step / n).exists() for n in ("questions.md", "gates.md", "transcript.md"))
+    miss = (step / "MISSING.md").read_text()
+    assert "questions.md" in miss and "gates.md" in miss and "transcript.md" in miss
+
+
+def test_only_a_discovery_file_still_gets_a_scored_run_heading_and_skipped_lines_show(world):
+    d = world / "speckit" / "01"
+    (d / "questions.jsonl").write_text("not json\n")
+    anon = an.run("p1")
+    key = json.loads((paths.scoring_out("p1") / "anon-key.json").read_text())
+    text = (anon / {v: k for k, v in key.items()}["speckit"] / "01" / "questions.md").read_text()
+    assert "## Scored run" in text and "1 malformed line(s) skipped" in text and "## Discovery run" in text
+
+
+def test_residual_vocabulary_is_listed_and_not_scrubbed():
+    t = an.pass_terms(["ccsdd", "speckitty"])
+    for w in ("steering", "mission", "claude-plugins-official"):
+        assert w in an.RESIDUAL_VOCABULARY
+        assert an.scrub(w, t) == w
+
+
+# --- the general claim: the real pass-1 snapshot -------------------------------------------------------------------
+def _variants(word: str) -> set[str]:
+    parts = re.split(r"[-_ ]+", word)
+    return {sep.join(parts) for sep in ("", "-", "_", " ")}
+
+
+def test_real_pass1_snapshot_scrubbed_output_holds_no_arm_tool_alias_or_folder_name_in_any_variant(tmp_path):
+    pass_dir = paths.RESULTS / "pass1"
+    if not pass_dir.is_dir():
+        pytest.skip(f"{pass_dir} absent (results/pass1 snapshot not present)")
+    from runner.scoring import collect
+    arms = collect.arms(pass_dir)
+    t = an.pass_terms(arms)
+    words = sorted({v.lower() for a in [*arms, *(f.stem for f in config.ARMS_DIR.glob("*.toml"))]
+                    for w in an.banned_words(a) for v in _variants(w) if v.strip()})
+    assert {"kitty", "beads", "obra", "ccsdd", "openspec"} <= set(words)      # the derivation reached the aliases
+    texts: list[tuple[str, str]] = []
+    for arm in arms:
+        for nn in an._step_dirs(pass_dir / arm):
+            sd = pass_dir / arm / nn
+            tr = an.transcript(sd, t)
+            texts += [(f"{arm}/{nn}/transcript", tr or "")]
+            if an._ran(sd):
+                texts += [(f"{arm}/{nn}/questions", an.scrub(an.questions_md(sd), t)),
+                          (f"{arm}/{nn}/gates", an.scrub(an.gates_md(sd), t))]
+        if (pass_dir / arm / "00-setup").is_dir():
+            dest = tmp_path / arm
+            an.copy_scrubbed(pass_dir / arm / "00-setup", dest, t)
+            assert not list(dest.rglob("*.gz"))
+            texts += [(f.relative_to(tmp_path).as_posix(), f.read_text(errors="replace"))
+                      for f in dest.rglob("*") if f.is_file()]
+    assert texts
+    leaks = []
+    for where, text in texts:
+        low = text.lower()
+        for w in words:
+            pat = rf"(?<![a-z0-9]){re.escape(w)}(?![a-z0-9])" if len(w) < 6 else re.escape(w)
+            if re.search(pat, low):
+                leaks.append((where, w))
+        if re.search(r"(?<![\w.-])bd\s+(?:create|list|close|show|update|ready|dep)\b", low) or "bakeoff-specs-" in low:
+            leaks.append((where, "bd/repo"))
+    assert leaks == []

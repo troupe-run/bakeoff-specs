@@ -51,6 +51,13 @@ def all_fail(pass_dir: Path, arms: list[str]) -> dict[int, list[str]]:
 _ARM_STREAM = re.compile(r"^arm-a(\d+)-(\d+)\.stream\.jsonl\.gz$")
 
 
+def arm_streams(step_dir: Path) -> list[tuple[int, Path]]:
+    """(attempt, path) of every arm turn stream in the step, sorted by attempt then name."""
+    td = step_dir / "turns"
+    return sorted(((int(m[1]), f) for f in (td.iterdir() if td.is_dir() else []) if (m := _ARM_STREAM.match(f.name))),
+                  key=lambda x: (x[0], x[1].name))
+
+
 def run_record(step_dir: Path) -> dict:
     return read_json(step_dir / "run.json")
 
@@ -172,14 +179,7 @@ def quality(step_dir: Path) -> dict:
                        "mutation_score": m.get("score"), "mutation_state": state}, q["source"])
 
 
-def _jsonl(p: Path) -> list[dict]:
-    try:
-        return [json.loads(l) for l in p.read_text().splitlines() if l.strip()]
-    except (OSError, json.JSONDecodeError):
-        return []
-
-
-def _jsonl(p: Path) -> tuple[list[dict], int] | None:
+def read_jsonl(p: Path) -> tuple[list[dict], int] | None:
     """(objects, skipped malformed lines), or None when the file cannot be read."""
     try:
         lines = [l for l in p.read_text().splitlines() if l.strip()]
@@ -201,10 +201,14 @@ def _jsonl(p: Path) -> tuple[list[dict], int] | None:
 
 def questions(step_dir: Path) -> dict:
     scored = step_dir / "questions.jsonl"
-    b = _jsonl(scored)
+    b = read_jsonl(scored)
     if b is None:
-        return values.missing(rel(scored), "absent or unreadable")
-    a = _jsonl(step_dir / "a" / "questions.jsonl")
+        # R25: drive.py creates questions.jsonl only when a question occurs, so with a run record an absent file
+        # means the arm asked none (information); without a run record nothing is known.
+        if values.is_missing(run_record(step_dir)):
+            return values.missing(rel(scored), "no run.json and no questions.jsonl")
+        b = ([], 0)
+    a = read_jsonl(step_dir / "a" / "questions.jsonl")
     items, skipped = [], b[1] + (a[1] if a else 0)
     for run, got in (("a", a), ("b", b)):
         for q in (got[0] if got else []):

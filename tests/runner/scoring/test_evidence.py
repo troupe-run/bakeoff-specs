@@ -101,9 +101,15 @@ def test_an_error_turn_still_counts_as_real_time(tmp_path):
     assert evidence.arm_time(d)["value"]["seconds"] == 4.0
 
 
-def test_an_absent_scored_questions_file_is_missing(tmp_path):
+def test_without_a_run_record_and_without_questions_the_questions_are_missing(tmp_path):
     m = evidence.questions(tmp_path)
     assert values.is_missing(m) and m["missing"].endswith("questions.jsonl")
+
+
+def test_with_a_run_record_an_absent_questions_file_means_the_arm_asked_none(tmp_path):
+    (tmp_path / "run.json").write_text('{"outcome": "done"}')
+    v = evidence.questions(tmp_path)["value"]
+    assert v["items"] == [] and v["skipped_lines"] == 0 and v["discovery"] == "absent"
 
 
 def test_a_malformed_question_line_is_skipped_and_counted_and_the_rest_kept(tmp_path):
