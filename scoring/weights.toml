@@ -38,3 +38,11 @@ process = 4
 setup_effort = 4
 fit = 4
 violations = 2
+
+[scales]
+ratio_cap = 10.0           # log scale relative to control: capped at 10x worse and 10x better (spec §4)
+lint_per_error = 0.05      # mypy + ruff: 1 - 0.05 per error, floor 0 (20 errors = 0)
+violation_per_item = 0.25  # arm violations: 1 - 0.25 per violation, floor 0
+rating_good = 1.0
+rating_acceptable = 0.67
+rating_poor = 0.0

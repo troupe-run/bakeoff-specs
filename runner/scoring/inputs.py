@@ -3,7 +3,7 @@ from __future__ import annotations
 import fnmatch
 import re
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from runner import paths
 
@@ -16,6 +16,7 @@ class InputError(ValueError):
 class Weights:
     dimensions: dict[str, float]
     parts: dict[str, dict[str, float]]          # dimension -> part -> points (dimensions without parts: absent)
+    scales: dict[str, float] = field(default_factory=dict)   # measurement scales; defaults to empty dict if absent
 
     def part_share(self, dim: str, part: str) -> float:
         return self.parts[dim][part] / self.dimensions[dim]
@@ -40,7 +41,14 @@ def load_weights(path: Path | None = None) -> Weights:
             raise InputError(f"{path}: parts for unknown dimension {d!r}")
         if abs(sum(ps.values()) - dims[d]) > 1e-9:
             raise InputError(f"{path}: parts of {d} sum to {sum(ps.values())}, not {dims[d]}")
-    return Weights(dims, parts)
+    scales_raw = raw.get("scales", {})
+    scales = {}
+    for k, v in scales_raw.items():
+        try:
+            scales[k] = float(v)
+        except (TypeError, ValueError):
+            raise InputError(f"{path}: [scales] {k} must be a number, got {v!r}")
+    return Weights(dims, parts, scales)
 
 
 _KINDS = {"requirement", "test", "doc", "code"}
