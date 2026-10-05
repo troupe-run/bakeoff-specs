@@ -274,7 +274,7 @@ def test_aggregate_scores_an_input_missing_step_as_unmeasured_with_why_input_mis
     for lens in ("a", "b", "c"):
         (d / f"{lens}.json").write_text(json.dumps({"score": None, "status": "input_missing", "evidence": [],
                                                    "notes": "transcript.md: absent"}))
-    got = aggregate._judged("p", "gates", "alpha", "01", {})
+    got = aggregate._judged("p", "gates", "alpha", "01", {}, frozenset({"a", "b", "c"}))
     assert got["score"] is None and got["why"] == "input missing" and got["lenses"] == {}
 
 

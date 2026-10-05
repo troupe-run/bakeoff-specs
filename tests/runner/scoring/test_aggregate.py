@@ -24,8 +24,12 @@ def write_collected(pass_, arm, step, **fields):
     f.write_text(values.dump(rec))
 
 
+def lens_names(part):
+    return [l["name"] for l in inputs.load_rubrics()[part].lenses]
+
+
 def write_judged(pass_, part, arm, key, scores):
-    for lens, s in zip(LENSES, scores):
+    for lens, s in zip(lens_names(part), scores):
         f = paths.scoring_out(pass_) / "judged" / part / arm / key / f"{lens}.json"
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(json.dumps({"score": s, "status": "ok", "evidence": ["x"], "notes": ""}))
@@ -118,11 +122,11 @@ def test_an_arm_with_no_measured_dimension_has_no_total_not_a_zero(tmp_state, mo
 
 def test_not_applicable_lenses_are_left_out_of_the_median_and_all_na_is_not_a_zero(p):
     write_collected(p, "alpha", 2)
-    for lens, (st, sc) in zip(LENSES, [("ok", 4), ("not_applicable", None), ("ok", 2)]):
+    for lens, (st, sc) in zip(lens_names("hand_edit"), [("ok", 4), ("not_applicable", None), ("ok", 2)]):
         f = paths.scoring_out(p) / "judged" / "hand_edit" / "alpha" / "02" / f"{lens}.json"
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(json.dumps({"score": sc, "status": st, "evidence": [], "notes": ""}))
-    for lens in LENSES:
+    for lens in lens_names("stale_updated"):
         f = paths.scoring_out(p) / "judged" / "stale_updated" / "alpha" / "03" / f"{lens}.json"
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(json.dumps({"score": None, "status": "not_applicable", "evidence": [], "notes": ""}))
@@ -247,3 +251,23 @@ def test_violations_are_deducted_by_severity_of_their_kind(p, monkeypatch):
     st = _scores(p)["arms"]["alpha"]["dimensions"]["setup"]["parts"]["violations"]["steps"]["arm"]
     assert st["score"] == pytest.approx(1 - 0.5 - 0.1 - 0.1)
     assert st["deducted"] == pytest.approx(0.7) and st["kinds"] == {"own-token-in-evidence": 1, "setup-drift": 2}
+
+
+def test_a_judged_step_with_fewer_than_three_ok_lenses_is_marked_thin(p):
+    write_collected(p, "alpha", 3)
+    write_judged(p, "req_test_code", "alpha", "03", [2, 3])                 # the third lens never answered
+    write_judged(p, "change_reason", "alpha", "03", [2, 3, 3])
+    parts = _scores(p)["arms"]["alpha"]["dimensions"]["traceability"]["parts"]
+    assert parts["req_test_code"]["steps"]["3"]["thin"] is True
+    assert parts["change_reason"]["steps"]["3"]["thin"] is False
+
+
+def test_a_lens_file_not_named_in_the_rubric_is_ignored_and_flagged(p):
+    write_collected(p, "alpha", 3)
+    write_judged(p, "req_test_code", "alpha", "03", [3, 3, 3])
+    f = paths.scoring_out(p) / "judged" / "req_test_code" / "alpha" / "03" / "intruder.json"
+    f.write_text(json.dumps({"score": 0, "status": "ok", "evidence": ["x"], "notes": ""}))
+    s = _scores(p)
+    st = s["arms"]["alpha"]["dimensions"]["traceability"]["parts"]["req_test_code"]["steps"]["3"]
+    assert st["score"] == 0.75 and "intruder" not in st["lenses"] and st["disputed"] is False
+    assert "alpha: req_test_code 03: lens file(s) ['intruder'] are not lenses of the rubric; ignored" in s["flags"]

@@ -155,7 +155,7 @@ function renderScorecard() {
 }
 function stepCells(st) {
   if (!st) return DASH;
-  return num(st.score, 2) + (st.disputed ? '*' : '') + (st.owner !== undefined ? '°' : '') + (st.why ? ' <span class="muted">' + esc(st.why) + '</span>' : '');
+  return num(st.score, 2) + (st.disputed ? '*' : '') + (st.owner !== undefined ? '°' : '') + (st.thin ? '◦' : '') + (st.why ? ' <span class="muted">' + esc(st.why) + '</span>' : '');
 }
 function renderDimensions() {
   const arms = Object.keys(data.scores.arms).sort(), w = data.scores.weights;
@@ -168,7 +168,7 @@ function renderDimensions() {
         return '<tr><th>' + esc(p) + '</th>' + arms.map(a => '<td>' + num(data.scores.arms[a].dimensions[d].parts[p].score, 2) + '</td>').join('') + '</tr>' +
           ks.map(k => '<tr><td class="muted">&nbsp;&nbsp;' + (k === 'arm' ? 'arm' : 'step ' + esc(k)) + '</td>' +
             arms.map(a => '<td>' + stepCells(data.scores.arms[a].dimensions[d].parts[p].steps[k]) + '</td>').join('') + '</tr>').join('');
-      }).join('') + '</table></div><p class="muted">Part scores are 0–1. * judges disagreed by 2+ points; ° owner verdict used; ' + DASH + ' unmeasured or not applicable.</p></details>';
+      }).join('') + '</table></div><p class="muted">Part scores are 0–1. * judges disagreed by 2+ points; ° owner verdict used; ◦ thin panel (fewer than three lenses answered); ' + DASH + ' unmeasured or not applicable.</p></details>';
   }).join('');
 }
 function renderTimeCost() {

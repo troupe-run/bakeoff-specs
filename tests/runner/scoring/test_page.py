@@ -255,3 +255,14 @@ def test_page_totals_are_renormalised_and_a_partial_total_carries_a_dagger_on_ra
     assert "<b>90.0†</b>" in x_row
     # moving d2's weight (unmeasured for X) leaves X's renormalised total where it was
     assert "<b>X</b> 90.0" in out["steps"][0]
+
+
+@needs_node
+def test_the_page_marks_a_thin_panel_in_the_dimension_detail(p):
+    write_judged = __import__("tests.runner.scoring.test_aggregate", fromlist=["x"]).write_judged
+    write_collected = __import__("tests.runner.scoring.test_aggregate", fromlist=["x"]).write_collected
+    write_collected(p, "alpha", 3)
+    write_judged(p, "req_test_code", "alpha", "03", [2, 3])
+    aggregate.run(p)
+    dims = _run_page(page.render(p))["load"]["dimensions"]
+    assert re.search(r"0\.6[23]◦", dims) and "thin panel" in dims          # JS rounds 0.625 up

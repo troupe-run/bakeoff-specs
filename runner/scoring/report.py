@@ -12,6 +12,7 @@ from runner.scoring import aggregate, confidence, decisions, inputs, values
 DASH = "—"
 # Footnote markers on a time cell: where the seconds are approximate.
 KILLED, BACKGROUND, APPROX = "‡", "§", "~"
+THIN = "◦"              # a judged step with fewer than three ok lenses
 BLINDING = ("Blinding is partial: judges and the owner's decision ratings saw anonymised labels, but arm-specific "
             "vocabulary (command names, file layouts, spec formats) can still identify the method.")
 PREREG = ("This scoring is not fully pre-registered: the what-goes-stale lists, rubrics and the review of tests every "
@@ -198,11 +199,13 @@ def _dimensions(scores: dict) -> list[str]:
                 for a in arms:
                     st = scores["arms"][a]["dimensions"][dim]["parts"][p]["steps"].get(k)
                     cells.append(DASH if st is None else _num(st["score"], ".2f")
-                                 + ("*" if st.get("disputed") else "") + ("°" if "owner" in st else ""))
+                                 + ("*" if st.get("disputed") else "") + ("°" if "owner" in st else "")
+                                 + (THIN if st.get("thin") else ""))
                 rows.append([f"{p} · {'arm' if k == 'arm' else 'step ' + k}"] + cells)
         out += _table(["part · step"] + arms, rows)
-        out += ["Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was used. — unmeasured or "
-                "not applicable; the reason is in the arm's appendix.", ""]
+        out += ["Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was used; "
+                f"{THIN} a thin panel: fewer than three lenses answered. — unmeasured or not applicable; the reason is in "
+                "the arm's appendix.", ""]
     return out
 
 

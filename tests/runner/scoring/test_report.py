@@ -391,3 +391,12 @@ def test_the_blinding_disclosure_says_when_anonymise_or_the_leak_check_has_not_r
     aggregate.run(p)
     sec = _section(report.render(p), "## Blinding disclosure")
     assert "anonymise has not run" in sec and "leak check has not run" in sec
+
+
+def test_a_thin_panel_is_marked_in_the_dimension_detail(p):
+    write_collected(p, "alpha", 3)
+    write_judged(p, "req_test_code", "alpha", "03", [2, 3])
+    aggregate.run(p)
+    sec = _section(report.render(p), "## Dimensions")
+    row = next(l for l in sec.splitlines() if l.startswith("| req_test_code · step 3 "))
+    assert "0.62◦" in row and "◦ a thin panel" in sec
