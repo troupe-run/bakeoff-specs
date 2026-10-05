@@ -18,6 +18,14 @@ def brief_path(pass_: str) -> Path:
     return REPO_ROOT / "scenario" / "po-brief.md" if pass_ in REAL_PASSES else STATE / pass_ / "po-brief.md"
 
 
+SCORING_INPUTS = REPO_ROOT / "scoring"     # Plan 3: hand-written scoring inputs (weights, stale lists, rubrics)
+
+
+def scoring_out(pass_: str) -> Path:
+    """Plan 3: every scoring stage's output for a pass (collected/, judged/, scores.json, report.*)."""
+    return RESULTS / pass_ / "scoring"
+
+
 @dataclass(frozen=True)
 class Paths:
     pass_: str

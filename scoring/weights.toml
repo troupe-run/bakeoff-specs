@@ -1,0 +1,40 @@
+# scoring/weights.toml — owner decisions 2026-10-05 (spec §2-§3). The only place weights live.
+[dimensions]
+coping = 20
+correctness = 20
+traceability = 10
+interaction = 10
+code_quality = 15
+decision_quality = 10
+setup = 10
+time = 5
+
+[parts.coping]
+regressions = 7
+stale_updated = 7
+churn = 3
+hand_edit = 3
+
+[parts.traceability]          # equal split (spec: splits not given are equal)
+req_test_code = 3.3333333333333335
+change_reason = 3.3333333333333335
+step6_spec_trace = 3.333333333333333
+
+[parts.interaction]
+question_value = 3.3333333333333335
+research_first = 3.3333333333333335
+gates = 3.333333333333333
+
+[parts.code_quality]
+mutation = 5
+mypy_lint = 5
+test_names = 5
+
+[parts.decision_quality]
+choice = 6
+process = 4
+
+[parts.setup]
+setup_effort = 4
+fit = 4
+violations = 2
