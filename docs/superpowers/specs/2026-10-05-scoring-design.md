@@ -21,11 +21,12 @@ open items in design §8. Brainstormed with the owner 2026-10-05 19:46–20:15 A
 
 | Was | Now |
 |---|---|
-| Coping with change 30 · Correctness 20 · Traceability 15 · Human interaction 15 · Code and test quality 10 · Setup and ergonomics 10 | Coping with change **20** · Correctness 20 · Traceability 15 · Human interaction 15 · Code and test quality **15** · Setup and ergonomics 10 · **Time to outcome 5** |
+| Coping with change 30 · Correctness 20 · Traceability 15 · Human interaction 15 · Code and test quality 10 · Setup and ergonomics 10 | Coping with change **20** · Correctness 20 · Traceability **10** · Human interaction **10** · Code and test quality **15** · **Decision quality 10** · Setup and ergonomics 10 · **Time to outcome 5** |
 | Cost reported, not scored | **Time to outcome is scored** (5). Cost stays reported alongside, with outliers either way flagged. Owner: "I'd score time taken to reach an outcome (cost is a proxy for that)"; "blow-outs one way or another are interesting data points." |
 | "Number and value of questions" | **Value of questions.** Asking is never penalised for its own sake; only asks whose answer was within reach, or that were superfluous, lose points. The count is reported. |
 | Owner review time scored under human interaction | **Removed from the score; reported.** The relay auto-continued uncontroversial reviews, so the measure reflects the relay, not the arm. |
 | LLM judges, checked by the owner | **A panel of three lenses per judged part** (§6). Disagreement is reported, not averaged away. |
+| (no decision dimension) | **Decision quality is scored** (10, from traceability 5 and human interaction 5). The owner rates the routes arms took, blind to which arm took them (§8). Owner: "it should be scored — but I'd like the chance to review the options first and weigh in on what is a good or bad choice." |
 
 The design's headline ("judged on how each method copes with change over time") is **not** reworded. Owner:
 correctness is implicit in coping with change; measuring change explicitly as well as the correctness of that
@@ -37,9 +38,10 @@ change is deliberate overlap. Six of seven steps are change steps.
 |---|---|---|---|
 | 20 | **Coping with change** | Regressions: earlier steps' hidden tests still green after each change step (7) · Stale artefacts updated: old requirements, tests and docs a change made wrong were found and changed, steps 3, 5, 7 (7) · Collateral churn: lines changed in files the step had no reason to touch (3) · Hand edit detected and reconciled, step 2 (3) | measured · judged · measured · judged |
 | 20 | **Correctness** | Hidden tests passed per step, **all** tests at that step including earlier steps' (a regression deliberately costs twice) | measured |
-| 15 | **Traceability** | Requirement → test → code · change → reason · fallback assumptions recorded as decisions · step 6's fix leaves a spec trace | judged |
-| 15 | **Quality of human interaction** | Value of questions, N.a and N.b both counted · research before asking, informed-choice framing (design §8) · gates at sensible points | judged |
+| 10 | **Traceability** | Requirement → test → code · change → reason · fallback assumptions recorded as decisions · step 6's fix leaves a spec trace | judged |
+| 10 | **Quality of human interaction** | Value of questions, N.a and N.b both counted · research before asking, informed-choice framing (design §8) · gates at sensible points | judged |
 | 15 | **Code and test quality** | Mutation score · `mypy --strict` and lint · test names checked against what the tests assert | measured · measured · judged |
+| 10 | **Decision quality** | Choice: the owner's rating of each route the arm took, averaged over topics (6) · Process: options weighed, reason stated, decision recorded (4) — §8 | owner-rated · judged |
 | 10 | **Setup and ergonomics** | Setup effort (4) · fit with Claude Code and the arm's tracker (4) · arm violations, deduction by severity (2) | judged · judged · measured |
 | 5 | **Time to outcome** | Arm working time per hidden test passed | measured |
 
@@ -48,7 +50,7 @@ of truth).
 
 **Reported, not scored:** cost; time and cost by phase (§5); outliers in time or cost, by step and by arm; owner
 review time; tracker quality (incl. step 6's tracker round trip); N.a runs in full; re-runs and harness faults;
-the "your choice" sweep (§8).
+the decision review's unscored parts (§8).
 
 ## 4. Scales (owner, Q3: C)
 
@@ -106,12 +108,40 @@ the "your choice" sweep (§8).
 
 Missing or unreadable evidence is never a zero: it is recorded as `missing` with its path and shown.
 
-## 8. The "your choice" sweep (owner, 2026-10-04)
+## 8. Decision review (scored as decision quality)
 
-For each escalated or fallback answer that left a decision out of contract, the route each arm took — not just
-the asker's — from its recorded decisions, code and hidden-test results. For discussion, not scored. Includes the
-owner's note (2026-10-05): with `TROUPE_ACTOR` unset and no login name, the owner would rather the command fail
+Replaces the narrower "your choice" sweep (owner, 2026-10-04), which it contains. Owner, 2026-10-05: review the
+small changes of direction where options were weighed, "particularly where the different arms chose different
+paths"; scored, after the owner has weighed in on what is a good or bad choice.
+
+1. **Extract.** For each arm × step, every decision: what was decided, the options considered if recorded, the
+   reason given, and where it is recorded (file, commit, gate message, transcript line) or "unrecorded" (visible
+   only in the code). Sources: gate messages ("choices for you to confirm"), the arms' decision records, specs and
+   plans, transcripts, code. One LLM pass per arm × step (~42 calls).
+2. **Align by topic across arms** (one pass). E.g. check `TROUPE_ACTOR` before loading; YAML library; change-id
+   format; where nested overrides go; history for events recorded before lineage.
+3. **Every topic is rated, none skipped,** in this order: **one-offs** (only one arm decided it) · **divergent**
+   (arms took different routes) · **unanimous** (a quick confirm at the end). Owner: a one-off is not to be
+   glossed over because it was a one-off.
+   - **"Not considered" is a route.** When one arm raised a topic the others never touched, the others are listed
+     under "not considered", and that route is rated too: if the topic mattered, missing it is a weakness; if it
+     did not, "not considered" can be acceptable and the one-off may have been over-engineering.
+4. **The owner rates routes, not arms.** Routes are shown as anonymous options with their reasoning and outcome;
+   which arm took which is hidden (the same anonymisation as §6). Ratings: **good · acceptable · poor · out of
+   scope** (not a real choice, or does not matter), each with a one-line reason that becomes cited evidence. A
+   proposed rating, from the lens notes and outcomes, is shown; the owner's rating decides.
+5. **Score:** choice (6) = the owner's rating of each route the arm took, averaged over its topics; process (4) =
+   options weighed, reason stated, recorded — judged by the lens panel.
+6. **Shown, not scored again: did the choice survive later steps,** or was it reworked? That already counts under
+   coping with change.
+7. **Report:** a top-level section, summary first (one-offs and divergent topics, a line each), expanding to routes,
+   ratings, reasons and evidence. Also on the page.
+
+Out-of-contract answers (escalated or fallback) are topics like any other; the owner's note (2026-10-05) is
+recorded against its topic: with `TROUPE_ACTOR` unset and no login name, the owner would rather the command fail
 than record a null or unknown actor.
+
+Runs after pass 1, so ratings can take steps 6–7's consequences into account.
 
 ## 9. Architecture (owner: B, staged)
 
@@ -121,6 +151,7 @@ Run as `runner score <pass> [--stage S]`. Each stage reads the previous stage's 
 | Stage | Reads | Writes | LLM? |
 |---|---|---|---|
 | **collect** | `results/<pass>/` | `collected/<arm>/<NN>.json`: every measured value with its source path | no, deterministic |
+| **decisions** | `results/<pass>/`, arm repos | `decisions/` extracted and aligned topics; `decisions/ratings.json` (owner) | yes (extract, align) |
 | **anonymise** | arm repos at the scored SHAs, transcripts, question logs | `anon/` copies + `anon-key.json` (kept from judges) | no |
 | **judge** | `anon/`, rubrics | `judged/<part>/<arm>/<NN>/<lens>.json`, written as each call finishes | yes |
 | **aggregate** | `collected/`, `judged/`, owner verdicts, `weights.toml` | `scores.json` | no, deterministic |
@@ -174,6 +205,6 @@ unmeasured parts are flagged.
 1. **Now, offline, while pass 1 runs:** the stale lists, rubrics and all-fail test review (for owner approval);
    collect, aggregate and report; the alternative mutation path, proven on stored commits; the phase classifier
    and its hand-checked sample.
-2. **After pass 1:** full collect; anonymise; judge cost estimate → owner go-ahead → judge; owner review of
+2. **After pass 1:** full collect; decision extraction and alignment → owner rates routes; anonymise; judge cost estimate → owner go-ahead → judge; owner review of
    disputed and sampled items; aggregate; report.
 3. **Design doc:** amend §8 per §2 above, citing this spec.
