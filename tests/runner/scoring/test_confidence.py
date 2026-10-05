@@ -122,24 +122,36 @@ def test_overlapping_intervals_without_flip_stay_separate():
     assert out["groups"] == [["s"], ["t"]]
 
 
-def test_near_tie_is_not_a_flip():
-    # A near-tie where u - v changes sign but stays within tolerance (1e-9)
-    # u = (0.5 + 1e-12, 0.5), v = (0.5, 0.5 + 1e-12)
-    # u - v = 1e-12 * (w_a - w_b)
-    # Base (a=50, b=50): u - v = 1e-12 * 0 = 0 (call it ~5e-11 from rounding)
-    # "a +5" (a=55, b=45): u - v = 1e-12 * (55 - 45) = +1e-11
-    # "a -5" (a=45, b=55): u - v = 1e-12 * (45 - 55) = -1e-11
-    # All differences have |diff| < 1e-9, so no flips are detected with tolerance
+def test_near_tie_within_check_tolerance_records_no_change():
+    # u = (0.5 + 1e-12, 0.5), v = (0.5, 0.5 + 1e-12); u - v = 1e-12 * (w_a - w_b)
+    # Base (a=50, b=50): u - v = 0, so u ranks first by name.
+    # "a +5": u - v = +1e-11; "a -5": u - v = -1e-11, i.e. v ahead by 1e-11 < CHECK_TOL (1e-9).
+    # With CHECK_TOL = 0 the "a -5" variants would be recorded as changes and u, v grouped;
+    # this test fails in that case (evidence in the task 12 report, fix round 4).
     s = {"weights": {"dimensions": W, "parts": PW},
          "arms": {
              "u": arm(0.5 + 1e-12, 0.5),
              "v": arm(0.5, 0.5 + 1e-12)
          }}
     out = confidence.check(s)
-    # No order changes because all diffs are within 1e-9 tolerance
-    assert len(out["order_changes"]) == 0
-    # Each arm is its own group (no flip means no grouping)
-    assert out["groups"] == [["u"], ["v"]] or out["groups"] == [["v"], ["u"]]
+    assert out["ranking"] == ["u", "v"]
+    assert out["order_changes"] == []
+    assert out["groups"] == [["u"], ["v"]]
+
+
+def test_tied_at_base_arms_that_clearly_swap_are_reported_and_grouped():
+    # u = (1, 0), v = (0, 1): both 50 at base, u first by name.
+    # "a -5" (a=45, b=55): u = 45, v = 55, so v is clearly ahead -> a change.
+    # "a +5" (a=55, b=45): u stays ahead -> no change.
+    s = {"weights": {"dimensions": W, "parts": PW},
+         "arms": {"u": arm(1.0, 0.0), "v": arm(0.0, 1.0)}}
+    out = confidence.check(s)
+    assert out["ranking"] == ["u", "v"]
+    variants = [c["variant"] for c in out["order_changes"]]
+    assert "a -5, judges median" in variants
+    assert not any(v.startswith("a +5") for v in variants)
+    assert next(c["order"] for c in out["order_changes"] if c["variant"] == "a -5, judges median") == ["v", "u"]
+    assert out["groups"] == [["u", "v"]]
 
 
 def test_owner_verdict_keeps_score_in_low_and_high():
