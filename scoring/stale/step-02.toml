@@ -34,16 +34,11 @@ what = "The `set` write-back path: its file write must be marked/suppressed so t
 why = "Step 2 brief: 'When troupe itself writes a change back to a file, that must not be picked up again'; contract: 'its write-back produces no further events'"
 
 [[stale]]
-id = "cli-watch-subcommand"
-kind = "code"
-what = "The CLI's subcommand table/parser: needs a `watch` subcommand (foreground until SIGINT/SIGTERM, prints `watching <dir>`)"
-why = "Step 2 brief: 'Add `troupe config watch`'; contract 'Sync with files'"
-
-[[stale]]
 id = "cli-docs-commands"
 kind = "doc"
 what = "README / CLI help / usage docs listing the `config` subcommands, or describing the files as written only through troupe"
 why = "Step 2 adds `watch` and makes hand edits a supported, recorded input ('People edit `.troupe/` files directly … while troupe is running')"
 
 [legitimate]
-paths = ["src/**", "troupe/**", "tests/**", "conftest.py", "README*", "docs/**", "CHANGELOG*", "CLAUDE.md", "AGENTS.md", "pyproject.toml", "uv.lock"]
+paths = ["src/**", "troupe/**", "tests/**", "conftest.py", "README*", "docs/**", "CHANGELOG*", "CLAUDE.md", "AGENTS.md", "pyproject.toml", "uv.lock",
+         ".gitignore", ".python-version", "Makefile", "justfile", ".github/**", "pytest.ini"]

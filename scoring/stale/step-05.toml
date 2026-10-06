@@ -34,18 +34,6 @@ what = "The include loader/resolver (shared by every command, `watch` and reconc
 why = "Contract 'Overrides': 'the value is the included content deep-merged with the overrides … a mapping-form include of any other file with sibling keys → exit 4'"
 
 [[stale]]
-id = "sources-provenance-overrides"
-kind = "code"
-what = "`show --sources` provenance: an overridden scalar must report the including file (where the override lives), not the included file"
-why = "Contract 'get and show': `# from <file>` names 'the file the scalar comes from'; with overrides that is the including file"
-
-[[stale]]
-id = "set-in-include-option"
-kind = "code"
-what = "The `set` argument parser: needs `--in-include`"
-why = "Contract 'In-include (from step 5, change request B)': '`set --in-include PATH VALUE` writes a new key into the included file instead'"
-
-[[stale]]
 id = "override-events-lineage"
 kind = "code"
 what = "Events recorded for override writes (including the leaves moved by a scalar-form → mapping-form conversion, if any) must carry step 4's lineage fields"
@@ -58,4 +46,5 @@ what = "README / CLI help / docs describing where `set` writes a new key, or des
 why = "Step 5 changes where new keys go, adds mapping-form includes and `--in-include`"
 
 [legitimate]
-paths = ["src/**", "troupe/**", "tests/**", "conftest.py", "README*", "docs/**", "CHANGELOG*", "CLAUDE.md", "AGENTS.md", "pyproject.toml", "uv.lock"]
+paths = ["src/**", "troupe/**", "tests/**", "conftest.py", "README*", "docs/**", "CHANGELOG*", "CLAUDE.md", "AGENTS.md", "pyproject.toml", "uv.lock",
+         ".gitignore", ".python-version", "Makefile", "justfile", ".github/**", "pytest.ini"]

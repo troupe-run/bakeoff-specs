@@ -40,16 +40,11 @@ what = "The reconcile code path (used by `watch` and by every command's pre-reco
 why = "Contract 'Lineage': 'every event one command produces has the same `change`' and file-originated events have actor unknown; step 4 brief: 'an edit made in a text editor has no known author — say so explicitly'"
 
 [[stale]]
-id = "set-reason-option"
-kind = "code"
-what = "The `set` argument parser: needs `--reason TEXT`"
-why = "Step 4 brief: '(`troupe config set --reason \"…\"`)'; contract: '\"reason\": the text given with `set --reason TEXT`, else `null`'"
-
-[[stale]]
 id = "history-docs"
 kind = "doc"
 what = "README / CLI help / docs describing the `history` output format, `set`'s options, or the `TROUPE_ACTOR` variable"
 why = "Step 4 adds lineage fields, `--reason`, and `TROUPE_ACTOR`"
 
 [legitimate]
-paths = ["src/**", "troupe/**", "tests/**", "conftest.py", "README*", "docs/**", "CHANGELOG*", "CLAUDE.md", "AGENTS.md", "pyproject.toml", "uv.lock"]
+paths = ["src/**", "troupe/**", "tests/**", "conftest.py", "README*", "docs/**", "CHANGELOG*", "CLAUDE.md", "AGENTS.md", "pyproject.toml", "uv.lock",
+         ".gitignore", ".python-version", "Makefile", "justfile", ".github/**", "pytest.ini"]
