@@ -342,6 +342,7 @@ def check_mounts(ms: list[Mount], pass_: str) -> None:
         return h == r or h.is_relative_to(r)
 
     items_seen: set[tuple[str, ...]] = set()
+    rels: list[tuple[str, ...]] = []
     for m in ms:
         h = Path(m.host).resolve()
         for f in forbidden:
@@ -357,14 +358,19 @@ def check_mounts(ms: list[Mount], pass_: str) -> None:
         if len(rel) < 3:                                       # <label>/<NN|setup>/<input>, never more at once
             raise PermissionError(f"a judge may not see {m.host}: only one item's selected inputs under anon/")
         items_seen.add(rel[:2])
+        rels.append(rel)
     if len(items_seen) > 1:
-        raise PermissionError(f"a judge's inputs must come from one item, not {sorted(items_seen)}")
+        # only an arm-unit call may span items: ONE label, and only its setup/** files and NN/transcript.md files
+        def arm_input(rel: tuple[str, ...]) -> bool:
+            return rel[1] == "setup" or (rel[1].isdigit() and rel[2:] == ("transcript.md",))
+        if len({r[0] for r in rels}) > 1 or not all(arm_input(r) for r in rels):
+            raise PermissionError(f"a judge's inputs must come from one item, not {sorted(items_seen)}")
 
 
 class ContainerJudge:
     """One fresh Claude session per call, modelled on `po.decide`: base image, pinned model, Read/Glob/Grep only,
     safe mode, egress `pins.egress_po`. Turns, transcripts, the reply and `model-pin.json` land in
-    `scoring_out/judge-calls/<label>/<NN|setup>/<prompt digest>-<k>/`; a pin violation raises. Each call runs in a
+    `scoring_out/judge-calls/<label>/<NN|setup|arm>/<prompt digest>-<k>/`; a pin violation raises. Each call runs in a
     fresh home (removed once its transcripts are collected), so no lens or arm can read an earlier call's session."""
 
     def __init__(self, pass_: str, cred: credentials.Credential | None = None, pins: config.Pins | None = None):
@@ -383,19 +389,22 @@ class ContainerJudge:
             rel = Path(inputs).resolve().relative_to(anon.resolve())
         except ValueError as e:
             raise PermissionError(f"a judge's inputs must be under {anon}: {inputs}") from e
+        if not rel.parts:
+            raise PermissionError(f"a judge's inputs must be one label's item or arm, not {anon} itself")
+        unit = rel.parts[1] if len(rel.parts) > 1 else "arm"      # an arm-unit call runs from the label's root
         digest, k = hashlib.sha256(prompt.encode()).hexdigest()[:12], 1
-        base = paths.scoring_out(self.pass_) / "judge-calls" / rel
+        base = paths.scoring_out(self.pass_) / "judge-calls" / (rel if len(rel.parts) > 1 else rel / "arm")
         while (base / f"{digest}-{k}").exists():
             k += 1
         d = base / f"{digest}-{k}"
-        slug = f"{rel.parts[0].replace(' ', '-')}-{rel.parts[1]}-{digest}-{k}"
+        slug = f"{rel.parts[0].replace(' ', '-')}-{unit}-{digest}-{k}"
         home = paths.judge_home(self.pass_) / slug              # fresh per call (R27)
         ms = mounts(home, Path(inputs), list(files))
         check_mounts(ms, self.pass_)
         d.mkdir(parents=True)
         shutil.rmtree(home, ignore_errors=True)
         (home / ".claude").mkdir(parents=True)
-        step = int(rel.name) if rel.name.isdigit() else 0
+        step = int(unit) if unit.isdigit() else 0
         env = judge_env(pins)
         before = transcripts.snapshot(home / ".claude")
         turns: list[session.TurnResult] = []

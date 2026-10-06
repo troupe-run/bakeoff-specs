@@ -214,6 +214,7 @@ def test_an_arm_unit_part_with_transcript_evidence_reads_every_step_transcript_a
     for f in files:
         assert (d / f).is_file()                                   # each one is a real file the judge can read
     assert not any("transcript" in f for f in judge.inputs_for("p", "setup_effort", "alpha", "arm")[1])
+    judge.check_mounts(judge.mounts(paths.judge_home("p") / "call-1", d, files), "p")      # the real mount path accepts it
 
 
 def test_a_step_without_a_transcript_makes_the_arm_unit_part_input_missing_not_silently_thinner(tmp_state):
@@ -549,6 +550,59 @@ def test_the_judge_mount_check_refuses_inputs_outside_slash_judge(item):
 
 def test_the_judge_mount_check_accepts_a_fresh_home_and_one_items_selected_inputs(item):
     judge.check_mounts(judge.mounts(paths.judge_home("p") / "call-1", item, FILES), "p")
+
+
+def _arm_fit(alpha="alpha"):
+    out, lab = anon_fixture(steps=("01", "03"))
+    d, files = judge.inputs_for("p", "fit", alpha, "arm")
+    return out, lab, d, files
+
+
+def test_the_judge_mount_check_accepts_an_arm_unit_call_of_setup_files_and_step_transcripts(tmp_state):
+    _, _, d, files = _arm_fit()
+    ms = judge.mounts(paths.judge_home("p") / "call-1", d, files)
+    judge.check_mounts(ms, "p")
+    assert {m.ctr for m in ms} == {"/home/actor", "/judge/01/transcript.md", "/judge/03/transcript.md",
+                                   "/judge/setup/checklist.json"} and all(m.ro for m in ms[1:])
+
+
+@pytest.mark.parametrize("extra", ["01/questions.md", "03/others-questions.md", "01/diff.patch", "03/gates.md",
+                                   "01/repo/", "01", "setup"])
+def test_the_judge_mount_check_refuses_an_arm_unit_call_that_also_reads_anything_else_of_the_arm(tmp_state, extra):
+    _, _, d, files = _arm_fit()
+    with pytest.raises(PermissionError):
+        judge.check_mounts(judge.mounts(paths.judge_home("p") / "call-1", d, files + [extra]), "p")
+
+
+def test_the_judge_mount_check_refuses_an_arm_unit_call_that_includes_a_second_label(tmp_state):
+    out, lab, d, files = _arm_fit()
+    other = out / "anon" / lab["beta"]
+    ms = judge.mounts(paths.judge_home("p") / "call-1", d, files)
+    ms.append(Mount(other / "setup" / "checklist.json", "/judge/setup/other.json", True))
+    with pytest.raises(PermissionError):
+        judge.check_mounts(ms, "p")
+    ms[-1] = Mount(other / "01" / "transcript.md", "/judge/01/other.md", True)
+    with pytest.raises(PermissionError):
+        judge.check_mounts(ms, "p")
+
+
+def test_the_container_judge_runs_an_arm_unit_fit_item_from_the_arm_root(tmp_state, monkeypatch):
+    out, lab, d, files = _arm_fit()
+    seen = fake_turns(monkeypatch, [("ok", OK)])
+    j = judge.ContainerJudge("p", credentials.dummy())
+    assert j.ask("judge fit", d, files) == OK
+    spec = session._spec(seen[0])
+    assert {x.ctr for x in spec.mounts} == {"/home/actor", "/judge/01/transcript.md", "/judge/03/transcript.md",
+                                            "/judge/setup/checklist.json", "/inbox/msg.md"}
+    assert j.last_dir.parent == out / "judge-calls" / lab["alpha"] / "arm"
+    assert "arm" in str(seen[0].config_dir) and lab["alpha"].replace(" ", "-") in str(seen[0].config_dir)
+
+
+def test_the_container_judge_refuses_to_run_from_anon_itself(tmp_state, monkeypatch):
+    out, _ = anon_fixture()
+    fake_turns(monkeypatch, [("ok", OK)])
+    with pytest.raises(PermissionError):
+        judge.ContainerJudge("p", credentials.dummy()).ask("p", out / "anon", ["x"])
 
 
 def test_judge_is_a_known_session_role():
