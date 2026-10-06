@@ -76,7 +76,7 @@ def test_a_second_not_applicable_by_default_is_judge_failed(tmp_path):
 def test_not_applicable_is_offered_only_by_rubrics_with_the_explicit_key():
     r = inputs.load_rubrics()
     assert r["research_first"].not_applicable is True and judge.na_allowed(r["research_first"])
-    assert [p for p, x in r.items() if x.not_applicable] == ["research_first"]
+    assert sorted(p for p, x in r.items() if x.not_applicable) == ["question_value", "research_first"]
     assert not judge.na_allowed(r["req_test_code"])
 
 
@@ -202,12 +202,29 @@ def test_inputs_for_selects_the_anonymised_stale_list_and_writes_nothing(tmp_sta
 
 def test_arm_unit_parts_read_the_anonymised_setup_record(tmp_state):
     out, lab = anon_fixture()
+    d, files = judge.inputs_for("p", "setup_effort", "alpha", "arm")
+    assert d == out / "anon" / lab["alpha"] and files == ["setup/checklist.json"]
+
+
+def test_an_arm_unit_part_with_transcript_evidence_reads_every_step_transcript_as_well_as_setup(tmp_state):
+    out, lab = anon_fixture(steps=("01", "03", "05"))
     d, files = judge.inputs_for("p", "fit", "alpha", "arm")
-    assert d == out / "anon" / lab["alpha"] / "setup" and files == ["checklist.json"]
+    assert d == out / "anon" / lab["alpha"]
+    assert files == ["01/transcript.md", "03/transcript.md", "05/transcript.md", "setup/checklist.json"]
+    for f in files:
+        assert (d / f).is_file()                                   # each one is a real file the judge can read
+    assert not any("transcript" in f for f in judge.inputs_for("p", "setup_effort", "alpha", "arm")[1])
+
+
+def test_a_step_without_a_transcript_makes_the_arm_unit_part_input_missing_not_silently_thinner(tmp_state):
+    out, lab = anon_fixture(steps=("01", "03"))
+    (out / "anon" / lab["alpha"] / "03" / "transcript.md").unlink()
+    d, files = judge.inputs_for("p", "fit", "alpha", "arm")
+    assert "03/transcript.md" in files and judge.absent(d, files) == ["03/transcript.md: absent"]
 
 
 def test_run_writes_each_verdict_under_the_real_arm_and_never_names_it_to_the_judge(tmp_state, monkeypatch):
-    anon_fixture()
+    _, lab = anon_fixture()
     its = [("req_test_code", "alpha", "01", "auditor"), ("fit", "beta", "arm", "claude-code-user")]
     monkeypatch.setattr(judge, "items", lambda pass_: its)
     j = judge.FakeJudge([OK, OK])
@@ -216,8 +233,8 @@ def test_run_writes_each_verdict_under_the_real_arm_and_never_names_it_to_the_ju
     assert v["score"] == 3 and v["status"] == "ok" and v["evidence"] == ["spec/003/spec.md:12"]
     assert judge.out_path("p", "fit", "beta", "arm", "claude-code-user").exists()
     assert not any("alpha" in p or "beta" in p for p in j.prompts)
-    assert [i.name for i in j.inputs] == ["01", "setup"]
-    assert j.files == [["repo/"], ["checklist.json"]]
+    assert [i.name for i in j.inputs] == ["01", lab["beta"]]
+    assert j.files == [["repo/"], ["01/transcript.md", "03/transcript.md", "setup/checklist.json"]]
 
 
 # ---- R24(d): missing inputs are not asked --------------------------------------------------------------------------

@@ -1,16 +1,16 @@
 # scoring/rubrics/fit.toml — setup and ergonomics: fit with Claude Code and with the arm's tracker.
 # Fit, not tracker quality: tracker quality is reported separately (design §2) and must not earn credit here. Judged
-# once per arm from the setup evidence (setup checklist, step-0 record, the method's installed commands and skills).
+# once per arm from the setup evidence (setup checklist, step-0 record, the method's installed commands and skills) and the arm's step transcripts, which show how the method and its tracker were used inside Claude Code.
 dimension = "setup"
 unit = "arm"
-evidence = ["setup"]
+evidence = ["setup", "transcript"]
 
 [levels]
 0 = "The method does not fit: its core workflow cannot be run from inside Claude Code, or it depends on a tracker integration that cannot work in the arm, so the method breaks without it."
 1 = "The method runs in Claude Code only with harness adaptations, overrides or disables Claude Code features (settings, memory, hooks) to work, or its tracker cannot be used from the arm at all."
 2 = "The method works in Claude Code but through shims or a separate CLI the model must drive from the shell, or its tracker integration is partial (one-way, or needs a server or remote the arm does not have, so that part goes unused)."
 3 = "The method is native to Claude Code (its own slash commands, skills or plugin, loaded from the arm's config) with one friction point, such as an ordering the model must remember or a tracker step that must be invoked by hand."
-4 = "The method is native to Claude Code, loaded from the arm's own config without workarounds, uses Claude Code's features as designed, and its tracking (its own, or the GitHub Issues baseline) works end to end from within the workflow with no extra server or credential."
+4 = "The method is native to Claude Code, loaded from the arm's own config without workarounds, uses Claude Code's features as designed, and its tracking (its own, or the GitHub Issues baseline) works end to end from within the workflow, with no workaround."
 
 [[lens]]
 name = "Claude Code power user"

@@ -24,3 +24,13 @@ def test_step_scoped_parts_name_the_steps_they_apply_to():
     assert rs["hand_edit"].steps == (2,) and rs["stale_updated"].steps == (3, 5, 7)
     assert rs["step6_spec_trace"].steps == (6,)
     assert rs["setup_effort"].unit == "arm" and rs["fit"].unit == "arm"
+
+
+def test_question_value_answers_no_question_as_not_applicable_and_fit_reads_transcripts():
+    rs = inputs.load_rubrics()
+    qv = rs["question_value"]
+    assert qv.not_applicable and qv.unit == "step"
+    assert not any("asked nothing" in qv.levels[n] and "no genuine ambiguity" in qv.levels[n] for n in range(5))
+    assert "two or more" in " ".join(qv.levels.values()) and "wasteful" in qv.levels[2]
+    assert rs["fit"].unit == "arm" and "transcript" in rs["fit"].evidence and "setup" in rs["fit"].evidence
+    assert "transcript" not in rs["setup_effort"].evidence

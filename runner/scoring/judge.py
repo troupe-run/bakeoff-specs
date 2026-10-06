@@ -119,7 +119,9 @@ def na_allowed(r: inputs.Rubric) -> bool:
 
 
 def prompt(rubric: inputs.Rubric, lens: dict, key: str, files: list[str]) -> str:
-    where = "as a whole, from its setup record" if key == "arm" else f"at step {int(key)}"
+    transcripts = any(f.endswith("/transcript.md") for f in files)
+    where = (("as a whole, from its setup record" + (" and its step transcripts" if transcripts else ""))
+             if key == "arm" else f"at step {int(key)}")
     levels = "\n".join(f"{n}: {rubric.levels[n]}" for n in range(5))
     listing = "\n".join(f"- /judge/{f}" for f in files)
     na = ("\n\nIf, and only if, the rubric or your lens says there is nothing to judge here, reply instead with\n"
@@ -184,8 +186,11 @@ def inputs_for(pass_: str, part: str, arm: str, key: str) -> tuple[Path, list[st
     r = inputs.load_rubrics()[part]
     base = paths.scoring_out(pass_) / "anon" / _label(pass_, arm)
     if r.unit == "arm":
-        d = base / "setup"
-        return d, (sorted(str(f.relative_to(d)) for f in d.rglob("*") if f.is_file()) if d.is_dir() else [])
+        setup = base / "setup"
+        files = sorted(f"setup/{f.relative_to(setup)}" for f in setup.rglob("*") if f.is_file()) if setup.is_dir() else []
+        if "transcript" in r.evidence and files:                 # the arm's own steps, every one it reached
+            files += sorted(f"{s.name}/transcript.md" for s in base.iterdir() if s.is_dir() and s.name.isdigit())
+        return base, sorted(files)
     d = base / key
     files = {_FILES[k] for k in r.evidence if k in _FILES}
     if part == "question_value":

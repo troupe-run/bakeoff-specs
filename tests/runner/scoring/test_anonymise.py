@@ -175,7 +175,7 @@ def test_fixture_leak_check_no_arm_tool_or_folder_name_survives_in_the_mini_fixt
     text = _all_text(anon)
     banned = ["speckit", "spec-kit", "specify", "openspec", "opsx", "ccsdd", "kiro", "superpowers", "speckitty",
               "kittify", "kitty-specs", "bakeoff-specs-", "Co-Authored-By", "Claude-Session", "github/"]
-    low = text.lower()
+    low = text.replace(".github/**", "").lower()        # the stale lists' generic legitimate path, not an owner/repo name
     assert [b for b in banned if b.lower() in low] == []
     assert not re.search(r"\bspecs/", text)                                   # the folder name, renamed to spec/
     assert "control group" in text                                            # the English word is left alone
