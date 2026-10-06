@@ -265,7 +265,7 @@ def test_a_test_summary_reporting_failures_sets_rework(output):
 SAMPLE = FIX / "phase-sample.json"
 
 
-@pytest.mark.skip(reason="awaiting owner check of the phase sample")
+@pytest.mark.skipif(not (paths.RESULTS / "pass1").is_dir(), reason="results/pass1 snapshot absent")
 def test_the_classifier_still_reproduces_the_owner_checked_sample():
     sample = json.loads(SAMPLE.read_text())
     assert not sample["checked_by"].startswith("pending")
