@@ -576,7 +576,7 @@ def mutmut_run_log_line(mutmut_argv: list[str], n_chosen: int, timeout_s: int) -
 
 
 def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.Pins,
-              log_dir: Path | None = None) -> dict[str, object]:
+              log_dir: Path | None = None, deselect: tuple[str, ...] = ()) -> dict[str, object]:
     """Mutation testing runs only on copy B (review C-1). The arm's own tests are the baseline: only the arm's
     pytest actually failing (rc 1) is `baseline_failed` — the arm's own result, not ours, and never scored.
     rc 5 means no tests were collected (`no_tests`), also not scored and not the arm's fault. Any other exit —
@@ -687,6 +687,9 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
     mutmut_argv = [".venv/bin/mutmut", "run", "--max-children", "4", *chosen]
     run_cmd = ["bash", "-c", run_script, "_", str(lim.mutation_seconds), *mutmut_argv]
     menv = mutation_env(copy)
+    if deselect:            # O5 (scoring re-run only): never the baseline above, which keeps every test
+        menv["PYTEST_ADDOPTS"] = " ".join(f"--deselect {shlex.quote(t)}" for t in deselect)
+        log.append("# O5 deselected from the mutmut runs: " + ", ".join(deselect))
     log.append("# listing, run and results containers: "
                + " ".join(f"{k}={v}" for k, v in menv.items())
                + "  (so `uv run` from inside mutants/ uses the prepared venv; the baseline above ran without it)")
@@ -714,7 +717,8 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
             except UnsafeFile as e:
                 log.append(f"# O1 plugin refused: {e}")
             else:
-                env2 = {**menv, "PYTEST_ADDOPTS": f"-p {NODEID_PLUGIN}"}
+                env2 = {**menv, "PYTEST_ADDOPTS": " ".join(filter(None, (menv.get("PYTEST_ADDOPTS"),
+                                                                         f"-p {NODEID_PLUGIN}")))}
                 run2_cmd = ["bash", "-c", run_script, "_", str(left), *mutmut_argv]
                 run_outcome = _run(p, copy, run2_cmd, left + 300, env=env2)
                 log.append(f"# O1 resumed with node IDs mapped to their function (PYTEST_ADDOPTS={env2['PYTEST_ADDOPTS']})\n"

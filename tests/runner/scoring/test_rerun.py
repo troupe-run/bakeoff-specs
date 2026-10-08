@@ -102,10 +102,11 @@ class Fake:
         self.calls.append(("prepare", sha, label, out_dir))
         return hidden.Prepared(self.a, self.b, {"quality": {"ok": self.ok}})
 
-    def mutation(self, p, copy, tg, out_dir, pins, log_dir=None):
+    def mutation(self, p, copy, tg, out_dir, pins, log_dir=None, deselect=()):
         if self.boom:
             raise self.boom
         self.calls.append(("mutation", copy, tg, out_dir, log_dir))
+        self.deselect = deselect
         (log_dir / "mutmut.log").write_text("log")
         return {**_orig(killed=3, survived=1), "nodeid_rewrites": 2}
 
@@ -289,3 +290,74 @@ def test_the_queue_logs_an_error_for_a_bad_item_and_carries_on(tmp_path):       
     ev = [json.loads(ln) for ln in log.read_text().splitlines()]
     assert [e["event"] for e in ev] == ["queue-start", "error", "start", "end", "queue-end"]
     assert ev[1]["item"] == "not-an-item" and "ValueError" in ev[1]["error"]
+
+
+# --- O5 (owner, 2026-10-09): one test deselected from ccsdd 07's mutmut runs -----------------------------------------
+
+O5_TEST = "tests/test_fetch.py::test_fetch_default_timeout_is_the_step_7_constant"
+
+
+def test_an_o5_rerun_deselects_only_the_ruled_test_and_records_it(tmp_state, monkeypatch):
+    _pass_step(tmp_state, step=7)
+    f = Fake(tmp_state).install(monkeypatch)
+    s = json.loads(rr.one("pass1", "ccsdd", 7, "O1+O2+O5", today="2026-10-09").read_text())
+    assert f.deselect == (O5_TEST,)
+    assert s["rerun"]["deselected"] == [O5_TEST] and s["rerun"]["reason"] == "O1+O2+O5"
+
+
+def test_a_rerun_without_o5_deselects_nothing(tmp_state, monkeypatch):
+    _pass_step(tmp_state, step=7)
+    f = Fake(tmp_state).install(monkeypatch)
+    s = json.loads(rr.one("pass1", "ccsdd", 7, "O1+O2").read_text())
+    assert f.deselect == () and "deselected" not in s["rerun"]
+
+
+def test_o5_is_refused_for_a_step_the_ruling_does_not_name(tmp_state, monkeypatch):
+    _pass_step(tmp_state, step=6)
+    f = Fake(tmp_state).install(monkeypatch)
+    with pytest.raises(ValueError, match="O5 names no deselected test for pass1 ccsdd 06"):
+        rr.one("pass1", "ccsdd", 6, "O1+O2+O5")
+    assert f.calls == []
+
+
+def test_a_crashed_rerun_gives_way_to_a_new_ruling_and_is_kept(tmp_state, monkeypatch):
+    d = _pass_step(tmp_state, step=7)
+    rd = d / "quality" / "rerun"
+    rd.mkdir()
+    (rd / "mutation.json").write_text(json.dumps({**CRASHED, "rerun": {"reason": "O1+O2", "harness_error": None}}))
+    (rd / "mutmut.log").write_text("first")
+    Fake(tmp_state).install(monkeypatch)
+    s = json.loads(rr.one("pass1", "ccsdd", 7, "O1+O2+O5").read_text())
+    assert s["score"] == 0.75
+    assert json.loads((rd / "attempt-1" / "mutation.json").read_text())["rerun"]["reason"] == "O1+O2"
+    assert (rd / "attempt-1" / "mutmut.log").read_text() == "first"
+
+
+def test_a_crashed_rerun_is_not_retried_under_the_same_ruling(tmp_state, monkeypatch):
+    d = _pass_step(tmp_state, step=7)
+    rd = d / "quality" / "rerun"
+    rd.mkdir()
+    (rd / "mutation.json").write_text(json.dumps({**CRASHED, "rerun": {"reason": "O1+O2", "harness_error": None}}))
+    Fake(tmp_state).install(monkeypatch)
+    with pytest.raises(FileExistsError):
+        rr.one("pass1", "ccsdd", 7, "O1+O2")
+
+
+def test_a_measured_rerun_never_gives_way_to_a_new_ruling(tmp_state, monkeypatch):
+    d = _pass_step(tmp_state, step=7)
+    rd = d / "quality" / "rerun"
+    rd.mkdir()
+    (rd / "mutation.json").write_text(json.dumps(_rerun(sha="abc123", reason="O1+O2", killed=3, survived=1)))
+    Fake(tmp_state).install(monkeypatch)
+    with pytest.raises(FileExistsError):
+        rr.one("pass1", "ccsdd", 7, "O1+O2+O5")
+
+
+def test_evidence_and_the_report_disclose_a_deselected_test(tmp_path):
+    rec = _rerun(reason="O1+O2+O5", killed=3, survived=1)
+    rec["rerun"]["deselected"] = [O5_TEST]
+    v = evidence.quality(_step(tmp_path, CRASHED, rec))["value"]
+    assert v["mutation_rerun"]["deselected"] == [O5_TEST]
+    from runner.scoring import report
+    line = report._quality_text("ccsdd 07", v, "results/pass1/ccsdd/07/quality/summary.json")
+    assert f"1 test deselected from mutmut's runs: {O5_TEST}" in line

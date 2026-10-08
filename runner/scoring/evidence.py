@@ -289,7 +289,8 @@ def quality(step_dir: Path) -> dict:
     elif rer is not None:
         m, m_src = rer, rer_src
         rerun_used = {"reason": rer["rerun"].get("reason"), "date": rer["rerun"].get("date"),
-                      "nodeid_rewrites": rer.get("nodeid_rewrites")}
+                      "nodeid_rewrites": rer.get("nodeid_rewrites"),
+                      **({"deselected": rer["rerun"]["deselected"]} if rer["rerun"].get("deselected") else {})}
     rem, rem_src, ignored = _remeasure(step_dir)
     if rem is not None:
         if rerun_used is not None:

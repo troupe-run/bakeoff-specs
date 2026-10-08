@@ -540,7 +540,9 @@ def _quality_text(name: str, v: dict, source: str) -> str:
         n = rr.get("nodeid_rewrites")
         m += (f"; re-run of the crashed original (ruling {rr.get('reason')}, {rr.get('date')}"
               + (f"; {n} node IDs mapped to their function, so each runs every parametrisation of its test: more "
-                 "tests per mutant, more timeout and partial risk" if n else "") + ")")
+                 "tests per mutant, more timeout and partial risk" if n else "")
+              + (f"; {len(rr['deselected'])} test{'s' if len(rr['deselected']) != 1 else ''} deselected from "
+                 f"mutmut's runs: {', '.join(rr['deselected'])}" if rr.get("deselected") else "") + ")")
     if v.get("rerun_ignored"):
         m += f"; re-run ignored: {v['rerun_ignored']}"
     return f"{name}: mypy {_f(v.get('mypy_errors'))}, ruff {_f(v.get('ruff_findings'))} {_src(source)}; {m}"

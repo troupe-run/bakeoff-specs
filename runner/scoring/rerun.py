@@ -9,11 +9,12 @@ quality stage prepares it.
 The original pass-1 evidence is never touched: the result goes to `quality/rerun/mutation.json` (the mutation
 summary plus a `rerun` provenance record: reason, ruling text, date, sha, method "mutmut") and
 `quality/rerun/mutmut.log`; a step that already has a rerun is refused, never overwritten, unless that rerun
-failed in the harness (`harness_error`): it is then kept in `quality/rerun/attempt-<n>/` and the step is retried. Only
+failed in the harness (`harness_error`), or crashed and a new ruling (a different reason) now applies: it is then kept
+in `quality/rerun/attempt-<n>/` and the step is retried. Only
 a step whose original mutation run is crashed is re-run. `evidence.quality`
 uses a current, measured rerun only in place of an original that is not measured, and says so.
 
-Run one step: `python -m runner.scoring.rerun <pass> <arm> <step> <O1|O2|O3>` (holds the runner lock; uses Docker,
+Run one step: `python -m runner.scoring.rerun <pass> <arm> <step> <O1|O2|O1+O2|O3|O1+O2+O5>` (holds the runner lock; uses Docker,
 so wrap it in the docker lock). Always writes a result: an exception is recorded as crashed with `harness_error`."""
 from __future__ import annotations
 
@@ -33,6 +34,13 @@ REASONS = {
     "O2": "the mutation baseline timeout (pins.limits.mutation_baseline_seconds) was raised for every arm",
     "O1+O2": "the raised baseline timeout (O2), then mutmut with the node-ID resume (O1)",
     "O3": "re-run unchanged: the original baseline was killed (rc 137) for a reason not attributable to the arm",
+    "O1+O2+O5": "O1+O2, with the tests named in DESELECT left out of mutmut's runs (never the baseline): each "
+                "inspects a function's default arguments, which mutmut's trampoline wrapper does not carry",
+}
+# O5 (owner, 2026-10-09): exactly which tests, for exactly which step. Pass 1 ccsdd 07's O1+O2 re-run crashed in
+# mutmut's stats phase on this one test (`assert None == {'timeout': 10}`); it passes on the arm's own code.
+DESELECT = {
+    ("pass1", "ccsdd", 7): ("tests/test_fetch.py::test_fetch_default_timeout_is_the_step_7_constant",),
 }
 
 
@@ -49,6 +57,11 @@ def one(pass_: str, arm: str, step: int, reason: str, pins: config.Pins | None =
         today: str | None = None) -> Path:
     if reason not in REASONS:
         raise ValueError(f"reason must be one of {sorted(REASONS)}, not {reason!r}")
+    deselect: tuple[str, ...] = ()
+    if "O5" in reason.split("+"):
+        deselect = DESELECT.get((pass_, arm, step), ())
+        if not deselect:
+            raise ValueError(f"O5 names no deselected test for {pass_} {arm} {step:02d}")
     p = Paths(pass_, arm)
     orig = evidence.read_json(p.step(step) / "quality" / "summary.json")
     state = None if values.is_missing(orig) else evidence.mutation((orig["value"] or {}).get("mutation") or {})["state"]
@@ -61,9 +74,10 @@ def one(pass_: str, arm: str, step: int, reason: str, pins: config.Pins | None =
         try:
             prev = json.loads(out.read_text())
             failed = bool(prev["rerun"]["harness_error"])
-        except (ValueError, KeyError, TypeError):
-            failed = False
-        if not failed:
+            superseded = prev.get("crashed") is True and prev["rerun"].get("reason") != reason   # a new ruling
+        except (ValueError, KeyError, TypeError, AttributeError):
+            failed = superseded = False
+        if not (failed or superseded):
             raise FileExistsError(f"{out} exists: a rerun is never overwritten")
         n = 1 + sum(1 for d in rd.glob("attempt-*") if d.is_dir())      # I-2: a harness failure may be retried;
         keep = rd / f"attempt-{n}"                                      # its record is kept beside the new one
@@ -76,6 +90,8 @@ def one(pass_: str, arm: str, step: int, reason: str, pins: config.Pins | None =
     sha = None if values.is_missing(git) else git["value"].get("sha_after")
     prov = {"reason": reason, "ruling": REASONS[reason], "method": METHOD, "sha": sha,
             "date": today or datetime.date.today().isoformat(), "harness_error": None}
+    if deselect:
+        prov["deselected"] = list(deselect)
     try:
         if not sha:
             raise RuntimeError(f"no recorded sha_after in {p.step(step) / 'git.json'}")
@@ -83,7 +99,8 @@ def one(pass_: str, arm: str, step: int, reason: str, pins: config.Pins | None =
         if prep.quality_copy is None or not prep.prep.get("quality", {}).get("ok"):
             raise RuntimeError("quality copy install failed")
         tg = quality.targets(prep.hidden_copy)
-        m = quality._mutation(p, prep.quality_copy, tg, rd, pins or config.load_pins(), log_dir=rd)
+        m = quality._mutation(p, prep.quality_copy, tg, rd, pins or config.load_pins(), log_dir=rd,
+                              **({"deselect": deselect} if deselect else {}))
     except Exception as e:                      # noqa: BLE001 -- a harness failure is recorded, never lost
         prov["harness_error"] = f"{type(e).__name__}: {e}"[:300]
         m = quality._mutation_placeholder("n/a")

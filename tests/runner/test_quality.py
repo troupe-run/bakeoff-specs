@@ -1260,3 +1260,37 @@ def test_the_nodeid_check_finds_ids_that_a_later_in_process_collection_renders_d
     cfg = _t.SimpleNamespace(args=list(bad))
     ns["pytest_configure"](cfg)
     assert cfg.args == ["tests/test_s.py::test_p"]
+
+
+DESELECTED = ("tests/test_fetch.py::test_fetch_default_timeout_is_the_step_7_constant",)
+
+
+def test_a_deselected_test_is_left_out_of_the_mutmut_run_and_results_but_not_the_baseline_or_listing(monkeypatch, tmp_path):   # O5
+    _venv(tmp_path)
+    baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
+    listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\nm.f__mutmut_2: not checked\n", "", False)
+    run = quality.ToolRun(0, "__run_rc=0\n", "", False)
+    results = quality.ToolRun(0, "m.f__mutmut_1: killed\nm.f__mutmut_2: survived\n__results_rc=0\n", "", False)
+    fake, calls = _rec_run([baseline_ok, listing, run, results])
+    monkeypatch.setattr(quality, "_run", fake)
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=2), deselect=DESELECTED)
+    assert r["crashed"] is False and r["score"] == 0.5
+    assert not (calls[0]["env"] or {}).get("PYTEST_ADDOPTS")              # the baseline still runs every test
+    assert not (calls[1]["env"] or {}).get("PYTEST_ADDOPTS")              # the listing is the original method's
+    for c in calls[2:]:                                                   # the run and the results containers
+        assert c["env"]["PYTEST_ADDOPTS"] == f"--deselect {DESELECTED[0]}"
+    assert f"deselected from the mutmut runs: {DESELECTED[0]}" in (tmp_path / "out" / "quality" / "mutmut.log").read_text()
+
+
+def test_a_deselected_test_stays_deselected_when_the_run_resumes_with_the_nodeid_rewrite(monkeypatch, tmp_path):   # O5+O1
+    _venv(tmp_path)
+    baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
+    listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\n", "", False)
+    run1 = quality.ToolRun(0, "__run_rc=1\n", "", False)
+    detect = quality.ToolRun(0, "__nodeid_unresolved=" + json.dumps(BAD) + "\n", "", False)
+    run2 = quality.ToolRun(0, "__run_rc=0\n", "", False)
+    results = quality.ToolRun(0, "m.f__mutmut_1: killed\n__results_rc=0\n", "", False)
+    fake, calls = _rec_run([baseline_ok, listing, run1, detect, run2, results])
+    monkeypatch.setattr(quality, "_run", fake)
+    quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=1), deselect=DESELECTED)
+    assert calls[4]["env"]["PYTEST_ADDOPTS"] == f"--deselect {DESELECTED[0]} -p {quality.NODEID_PLUGIN}"
