@@ -50,7 +50,8 @@ _TABLE = {
     "tracker_aliases": ["beads", "bead", "dolt"],   # every arm: the tracker (beads) and its database (dolt)
     # CLI forms, as regexes (non-capturing groups only); replacement is the key
     "cli_forms": {
-        "to_tracker_cli": [_lb(r"\w.-") + r"bd(?!\w)"],
+        # `_` is a separator, as the leak check reads it: `BD_GIT_HOOK`, `_bd_timeout` in the tracker's own hooks
+        "to_tracker_cli": [_lb(r"A-Za-z0-9.-") + r"bd(?![A-Za-z0-9])"],
         "to_method": [r"specify[-_ ]?cli", _lb(r"\w-") + r"specify\s+(?:init|check|version|bug|extension|workflow|integration)\b"],
     },
     "min_part": 4,

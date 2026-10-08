@@ -312,6 +312,16 @@ def test_short_aliases_match_on_word_boundaries_only():
     assert an.scrub("Obra wrote it; the kitty/x branch; use bd now", t) == "method wrote it; the method/x branch; use tracker-cli now"
 
 
+
+def test_the_tracker_cli_inside_shell_identifiers_is_scrubbed_as_the_leak_check_reads_it():   # pass 1 leak-check
+    from runner.scoring import leakcheck
+    t = an.pass_terms(["speckit", "speckitty", "ccsdd", "openspec", "superpowers", "control"])
+    hook = ('export BD_GIT_HOOK=1\n_bd_timeout=${tracker_HOOK_TIMEOUT:-300}\ncase "$_bd_timeout" in\n'
+            '# All settings can also be set via environment variables (BD_* prefix)\n')
+    out = an.scrub(hook, t)
+    assert not leakcheck.hits(out.lower(), "bd"), out
+    assert an.scrub("a cobra and a bdelloid and abd and bd2", t) == "a cobra and a bdelloid and abd and bd2"
+
 def test_english_specify_is_left_alone_but_the_cli_forms_go():
     t = an.pass_terms(["speckit"])
     assert an.scrub("specify it clearly", t) == "specify it clearly"
