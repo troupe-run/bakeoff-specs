@@ -691,7 +691,9 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
         menv["PYTEST_ADDOPTS"] = " ".join(f"--deselect {shlex.quote(t)}" for t in deselect)
         log.append("# O5 deselected from the mutmut runs: " + ", ".join(deselect))
     log.append("# listing, run and results containers: "
-               + " ".join(f"{k}={v}" for k, v in menv.items())
+               + " ".join(f"{k}={v}" for k, v in mutation_env(copy).items())
+               + ("; run and results only (not the listing): PYTEST_ADDOPTS=" + menv["PYTEST_ADDOPTS"]
+                  if deselect else "")
                + "  (so `uv run` from inside mutants/ uses the prepared venv; the baseline above ran without it)")
     t0 = time.monotonic()
     run_outcome = _run(p, copy, run_cmd, lim.mutation_seconds + 300, env=menv)

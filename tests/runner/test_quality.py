@@ -1,5 +1,6 @@
 import dataclasses
 import json
+import shlex
 import os
 import signal
 import stat
@@ -1265,7 +1266,7 @@ def test_the_nodeid_check_finds_ids_that_a_later_in_process_collection_renders_d
 DESELECTED = ("tests/test_fetch.py::test_fetch_default_timeout_is_the_step_7_constant",)
 
 
-def test_a_deselected_test_is_left_out_of_the_mutmut_run_and_results_but_not_the_baseline_or_listing(monkeypatch, tmp_path):   # O5
+def test_a_deselected_test_is_passed_as_deselect_to_the_run_and_results_containers_not_the_baseline_or_listing(monkeypatch, tmp_path):   # O5
     _venv(tmp_path)
     baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
     listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\nm.f__mutmut_2: not checked\n", "", False)
@@ -1294,3 +1295,15 @@ def test_a_deselected_test_stays_deselected_when_the_run_resumes_with_the_nodeid
     monkeypatch.setattr(quality, "_run", fake)
     quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=1), deselect=DESELECTED)
     assert calls[4]["env"]["PYTEST_ADDOPTS"] == f"--deselect {DESELECTED[0]} -p {quality.NODEID_PLUGIN}"
+
+
+def test_a_deselected_parametrised_id_survives_pytests_shlex_split_intact(monkeypatch, tmp_path):   # O5 quoting
+    _venv(tmp_path)
+    nid = "tests/t.py::test_x[a b-'c']"
+    fake, calls = _rec_run([quality.ToolRun(0, "5 passed\n", "", False),
+                            quality.ToolRun(0, "m.f__mutmut_1: not checked\n", "", False),
+                            quality.ToolRun(0, "__run_rc=0\n", "", False),
+                            quality.ToolRun(0, "m.f__mutmut_1: killed\n__results_rc=0\n", "", False)])
+    monkeypatch.setattr(quality, "_run", fake)
+    quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=1), deselect=(nid,))
+    assert shlex.split(calls[2]["env"]["PYTEST_ADDOPTS"]) == ["--deselect", nid]
