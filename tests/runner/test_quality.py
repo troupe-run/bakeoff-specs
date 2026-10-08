@@ -1235,7 +1235,7 @@ def test_the_mutation_baseline_runs_under_the_pinned_baseline_timeout(monkeypatc
     assert calls[0]["timeout"] == 4321 and r["crashed"] is True and r["nodeid_rewrites"] is None
 
 
-def test_the_pinned_baseline_timeout_fits_pass1_ccsdd_07():
+def test_the_baseline_timeout_pin_is_3600_per_O2():
     # O2: ccsdd 06's suite took 1301s at the copy root and 07's ran past the old fixed 1800s
     assert config.load_pins().limits.mutation_baseline_seconds == 3600
 

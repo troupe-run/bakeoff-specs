@@ -414,5 +414,6 @@ def test_the_appendix_discloses_a_mutmut_rerun_with_its_ruling_date_and_node_id_
     aggregate.run(p)
     line = next(ln for ln in _section(report.render(p), "## Appendix: alpha").splitlines() if "quality:" in ln)
     assert "mutation 0.75 (measured) via mutmut ([src](../../../results/p/alpha/01/quality/rerun/mutation.json))" in line
-    assert "; re-run of the crashed original (ruling O1, 2026-10-08; 2 node IDs mapped to their function)" in line
+    assert ("; re-run of the crashed original (ruling O1, 2026-10-08; 2 node IDs mapped to their function, so each "
+            "runs every parametrisation of its test: more tests per mutant, more timeout and partial risk)") in line
     assert report.NOT_LIKE_FOR_LIKE not in report.render(p)

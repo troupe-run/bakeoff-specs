@@ -15,7 +15,7 @@ def _orig(**c) -> dict:
     return quality.mutation_summary(counts, partial=c.get("not_checked", 0) > 0, baseline_failed=False)
 
 
-CRASHED = {**_orig(not_checked=200), "crashed": True, "score": None, "mutmut_run_rc": 1}
+CRASHED = {**_orig(not_checked=200), "crashed": True, "score": None, "mutmut_run_rc": 1, "baseline_rc": 0}
 STOP_EARLY = ("49 passed in 31.92s\nStopping early, because we could not find any test case for any mutant. It seems "
               "that the selected tests do not cover any code that we mutated.\n\n__run_rc=1\n")
 
@@ -166,7 +166,7 @@ def test_one_refuses_an_unknown_reason(tmp_state):
 
 def test_the_queue_runs_each_item_in_turn_records_failures_and_flags_unexpected_rewrites(tmp_path):
     from runner.scoring import rerun_queue
-    fake_lock = tmp_path / "lock.py"           # stands in for the docker-lock wrapper: argv[5:] = pass arm step reason
+    fake_lock = tmp_path / "lock.py"   # stands in for the docker-lock wrapper: argv = uv run python -m mod pass arm step reason
     fake_lock.write_text(
         "import json, sys\n"
         "a = sys.argv[1:]\n"
@@ -186,3 +186,106 @@ def test_the_queue_runs_each_item_in_turn_records_failures_and_flags_unexpected_
     assert ends[0]["result"]["score"] == 0.5 and ends[1]["result"] is None
     assert next(e for e in ev if e["event"] == "assertion")["arm"] == "speckitty"
     assert (tmp_path / "scoring" / "mutmut-rerun-ccsdd-02.out").exists()
+
+
+
+# --- fix round 1 (review of 35a8407) -------------------------------------------------------------------------------
+
+def test_a_rerun_never_replaces_an_original_that_is_not_crashed(tmp_path):            # I-1
+    bf = {**_orig(), "baseline_failed": True}
+    q = evidence.quality(_step(tmp_path / "a", bf, _rerun(killed=6, survived=2)))["value"]
+    assert q["mutation_state"] == "baseline_failed" and q["rerun_ignored"] == "the original run is baseline_failed"
+    nt = {**_orig(no_tests=5)}                                                          # unmeasured: no coverage
+    q = evidence.quality(_step(tmp_path / "b", nt, _rerun(killed=6, survived=2)))["value"]
+    assert q["mutation_state"] == "unmeasured" and q["rerun_ignored"] == "the original run is unmeasured"
+
+
+def test_a_rerun_replaces_an_o4_relabelled_crash(tmp_path):                             # I-1
+    q = evidence.quality(_step(tmp_path, CRASHED, _rerun(killed=6, survived=2), log="$ .venv/bin/mutmut run x\n" + STOP_EARLY))["value"]
+    assert q["mutation_state"] == "measured" and q["mutation_rerun"]["reason"] == "O1"
+
+
+def test_one_refuses_a_step_whose_original_is_not_crashed(tmp_state, monkeypatch):    # I-1
+    d = _pass_step(tmp_state)
+    (d / "quality" / "summary.json").write_text(json.dumps({"mutation": _orig(killed=3, survived=1)}))
+    f = Fake(tmp_state).install(monkeypatch)
+    with pytest.raises(ValueError, match="measured"):
+        rr.one("pass1", "ccsdd", 1, "O1")
+    assert f.calls == [] and not (d / "quality" / "rerun").exists()
+
+
+def test_a_harness_failed_rerun_can_be_retried_and_the_old_record_is_kept(tmp_state, monkeypatch):   # I-2
+    d = _pass_step(tmp_state)
+    Fake(tmp_state, boom=RuntimeError("docker went away")).install(monkeypatch)
+    rr.one("pass1", "ccsdd", 1, "O1")
+    Fake(tmp_state / "second").install(monkeypatch)
+    s = json.loads(rr.one("pass1", "ccsdd", 1, "O1").read_text())
+    assert s["score"] == 0.75 and s["rerun"]["harness_error"] is None
+    old = json.loads((d / "quality" / "rerun" / "attempt-1" / "mutation.json").read_text())
+    assert old["rerun"]["harness_error"] == "RuntimeError: docker went away"
+    with pytest.raises(FileExistsError):                  # a record without a harness error is final
+        rr.one("pass1", "ccsdd", 1, "O1")
+
+
+def test_evidence_says_a_rerun_hit_a_harness_error(tmp_path):                         # I-2
+    r = {**_rerun(), **{k: v for k, v in CRASHED.items()}}
+    r["rerun"] = {**r["rerun"], "harness_error": "RuntimeError: docker went away"}
+    q = evidence.quality(_step(tmp_path, CRASHED, r))["value"]
+    assert q["mutation_state"] == "crashed" and q["rerun_ignored"] == "harness error: RuntimeError: docker went away"
+
+
+def test_an_o3_rerun_whose_baseline_is_killed_again_makes_the_step_unmeasured(tmp_path):   # I-3
+    killed = {**_rerun(reason="O3", nodeid_rewrites=None), **{k: v for k, v in CRASHED.items()}, "baseline_rc": 137}
+    killed["rerun"] = _rerun(reason="O3")["rerun"]
+    orig = {**CRASHED, "baseline_rc": 137, "mutmut_run_rc": None}
+    q = evidence.quality(_step(tmp_path / "a", orig, killed))["value"]
+    assert q["mutation_state"] == "unmeasured" and q["mutation_why"] == evidence.KILLED_AGAIN
+    other = {**killed, "baseline_rc": 1}
+    q = evidence.quality(_step(tmp_path / "b", orig, other))["value"]
+    assert q["mutation_state"] == "crashed"
+
+
+def test_o4_needs_mutmut_run_rc_1_a_passing_baseline_and_the_message_after_the_run_line(tmp_path):   # M-3
+    run_log = "$ .venv/bin/mutmut run x\n" + STOP_EARLY
+    q = evidence.quality(_step(tmp_path / "a", {**CRASHED, "mutmut_run_rc": None}, log=run_log))["value"]
+    assert q["mutation_state"] == "crashed"
+    q = evidence.quality(_step(tmp_path / "b", {**CRASHED, "baseline_rc": 137}, log=run_log))["value"]
+    assert q["mutation_state"] == "crashed"
+    q = evidence.quality(_step(tmp_path / "c", CRASHED, log=STOP_EARLY + "$ .venv/bin/mutmut run x\n"))["value"]
+    assert q["mutation_state"] == "crashed"
+
+
+def test_a_rerun_superseded_by_a_measured_remeasure_says_so(tmp_path):                # M-4
+    from runner.scoring import remeasure as rm
+    d = _step(tmp_path, CRASHED, _rerun(killed=6, survived=2))
+    (d / "quality" / "remeasure.json").write_text(json.dumps(rm.summarise({"m1": "killed", "m2": "survived"}, sha="abc")))
+    q = evidence.quality(d)["value"]
+    assert q["mutation_method"] == "whole-suite-per-mutant" and q["mutation_rerun"] is None
+    assert q["rerun_ignored"] == "superseded by remeasure"
+
+
+def test_one_with_the_real_mutation_writes_its_log_only_in_the_rerun_folder(tmp_state, monkeypatch):   # M-2
+    d = _pass_step(tmp_state)
+    f = Fake(tmp_state)
+    monkeypatch.setattr(rr, "_prepare", f.prepare)
+    (f.b / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    responses = iter([quality.ToolRun(0, "5 passed\n", "", False),
+                      quality.ToolRun(0, "m.f__mutmut_1: not checked\n", "", False),
+                      quality.ToolRun(0, "__run_rc=0\n", "", False),
+                      quality.ToolRun(0, "m.f__mutmut_1: killed\n__results_rc=0\n", "", False)])
+    monkeypatch.setattr(quality, "_run", lambda p, copy, cmd, timeout, env=None: next(responses))
+    s = json.loads(rr.one("pass1", "ccsdd", 1, "O1").read_text())
+    rd = d / "quality" / "rerun"
+    assert s["score"] == 1.0 and (rd / "mutmut.log").exists()
+    assert not (rd / "quality").exists() and not (d / "quality" / "mutmut.log").exists()
+
+
+def test_the_queue_logs_an_error_for_a_bad_item_and_carries_on(tmp_path):                       # M-5
+    from runner.scoring import rerun_queue
+    fake_lock = tmp_path / "lock.py"
+    fake_lock.write_text("import json\nprint(json.dumps({'out': 'x', 'score': 1.0, 'nodeid_rewrites': None}))\n")
+    log = tmp_path / "q.log"
+    assert rerun_queue.main(["pass1", str(log), str(fake_lock), "not-an-item", "ccsdd:2:O1"]) == 0
+    ev = [json.loads(ln) for ln in log.read_text().splitlines()]
+    assert [e["event"] for e in ev] == ["queue-start", "error", "start", "end", "queue-end"]
+    assert ev[1]["item"] == "not-an-item" and "ValueError" in ev[1]["error"]

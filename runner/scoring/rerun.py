@@ -8,7 +8,9 @@ quality stage prepares it.
 
 The original pass-1 evidence is never touched: the result goes to `quality/rerun/mutation.json` (the mutation
 summary plus a `rerun` provenance record: reason, ruling text, date, sha, method "mutmut") and
-`quality/rerun/mutmut.log`; a step that already has a rerun is refused, never overwritten. `evidence.quality`
+`quality/rerun/mutmut.log`; a step that already has a rerun is refused, never overwritten, unless that rerun
+failed in the harness (`harness_error`): it is then kept in `quality/rerun/attempt-<n>/` and the step is retried. Only
+a step whose original mutation run is crashed is re-run. `evidence.quality`
 uses a current, measured rerun only in place of an original that is not measured, and says so.
 
 Run one step: `python -m runner.scoring.rerun <pass> <arm> <step> <O1|O2|O3>` (holds the runner lock; uses Docker,
@@ -48,10 +50,27 @@ def one(pass_: str, arm: str, step: int, reason: str, pins: config.Pins | None =
     if reason not in REASONS:
         raise ValueError(f"reason must be one of {sorted(REASONS)}, not {reason!r}")
     p = Paths(pass_, arm)
+    orig = evidence.read_json(p.step(step) / "quality" / "summary.json")
+    state = None if values.is_missing(orig) else evidence.mutation((orig["value"] or {}).get("mutation") or {})["state"]
+    if state != "crashed":                      # I-1: only a crashed original is ever re-run
+        raise ValueError(f"{p.step(step)}: the original mutation run is {state or 'missing'}, not crashed: "
+                         "nothing to re-run")
     rd = rerun_dir(p, step)
     out = rd / "mutation.json"
     if out.exists():
-        raise FileExistsError(f"{out} exists: a rerun is never overwritten")
+        try:
+            prev = json.loads(out.read_text())
+            failed = bool(prev["rerun"]["harness_error"])
+        except (ValueError, KeyError, TypeError):
+            failed = False
+        if not failed:
+            raise FileExistsError(f"{out} exists: a rerun is never overwritten")
+        n = 1 + sum(1 for d in rd.glob("attempt-*") if d.is_dir())      # I-2: a harness failure may be retried;
+        keep = rd / f"attempt-{n}"                                      # its record is kept beside the new one
+        keep.mkdir()
+        for name in ("mutation.json", "mutmut.log"):
+            if (rd / name).exists():
+                (rd / name).rename(keep / name)
     rd.mkdir(parents=True, exist_ok=True)
     git = evidence.read_json(p.step(step) / "git.json")
     sha = None if values.is_missing(git) else git["value"].get("sha_after")
