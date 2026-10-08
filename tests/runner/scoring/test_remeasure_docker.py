@@ -38,7 +38,10 @@ def test_spike_trampoline_honours_mutant_under_test_from_a_whole_suite_run(tmp_p
         log: list[str] = []
         ctl = rm.run_batch(p, prep.quality_copy, [rm.BASELINE_NAME, rm.SENTINEL_NAME], 600, log)
         print("\n".join(log))
-        assert ctl == {rm.BASELINE_NAME: 0, rm.SENTINEL_NAME: 1}
+        # the sentinel only has to FAIL the suite, as `remeasure._measure` requires (rc not 0, not a timeout): on
+        # ccsdd it raises while conftest imports a trampolined function, which is pytest rc 4, not 1 (2026-10-08)
+        assert ctl.get(rm.BASELINE_NAME) == 0, f"baseline from mutants/: rc {ctl.get(rm.BASELINE_NAME)} (None: timeout)"
+        assert ctl.get(rm.SENTINEL_NAME) not in (0, None), f"sentinel rc {ctl.get(rm.SENTINEL_NAME)}"
         first = quality.sample(names, config.load_pins().limits.mutation_sample)[:rm.BATCH]
         got = rm.run_batch(p, prep.quality_copy, first, 600, log)
         print(log[-1])
@@ -57,7 +60,8 @@ def test_remeasure_of_dry1_dryrun_01_writes_a_scored_summary():
         assert s["sha"] == sha and s["crashed"] is False, s["harness_error"]
         assert s["score"] is not None and s["method"] == "whole-suite-per-mutant"
         assert s["killed"] > 0 and s["score"] > 0       # dispatch reached at least one mutant (R32)
-        assert evidence.quality(qd.parent)["value"]["mutation_method"] == "whole-suite-per-mutant"
+        q = evidence.quality(qd.parent)["value"]
+        assert q["mutation_method"] == "whole-suite-per-mutant", q["remeasure_ignored"]
     finally:                                        # leave the shared results/dry1 snapshot as it was
         for f in created:
             shutil.rmtree(f) if f.is_dir() else f.unlink(missing_ok=True)

@@ -210,13 +210,14 @@ class Fake:
     """Every container-facing call `one()` makes, faked. `codes` maps a mutant name to its exit code."""
 
     def __init__(self, tmp_path: Path, names: list[str], codes: dict[str, int | None], *, baseline_rc: int | None = 0,
-                 control: dict[str, int | None] | None = None, quality_ok: bool = True, dead_batches: int = 0):
+                 control: dict[str, int | None] | None = None, quality_ok: bool = True, dead_batches: int = 0,
+                 baseline_s: float = 4.0):
         self.a, self.b = tmp_path / "a" / "copy", tmp_path / "b" / "copy"
         (self.a / "src" / "pkg").mkdir(parents=True)
         self.b.mkdir(parents=True)
         self.names, self.codes, self.baseline_rc = names, codes, baseline_rc
         self.control = control if control is not None else {"__baseline__": 0, "fail": 1}
-        self.quality_ok, self.dead_batches = quality_ok, dead_batches
+        self.quality_ok, self.dead_batches, self.baseline_s = quality_ok, dead_batches, baseline_s
         self.batches: list[list[str]] = []
         self.prepared: list[tuple] = []
         self.listed_targets: list[list[str]] = []
@@ -234,7 +235,7 @@ class Fake:
         return hidden.Prepared(self.a, self.b, {"quality": {"ok": self.quality_ok}})
 
     def baseline(self, p, copy):
-        return (self.baseline_rc, 4.0, "baseline output")
+        return (self.baseline_rc, self.baseline_s, "baseline output")
 
     def list_mutants(self, p, copy, tg):
         self.listed_targets.append(tg)
@@ -242,6 +243,8 @@ class Fake:
 
     def run_batch(self, p, copy, names, timeout, log=None, remaining=None):
         self.remaining.append(remaining)
+        if remaining is not None and remaining < timeout:   # the batch script starts no name: every one `skipped`
+            return {}
         if names in (["__baseline__", "fail"],):
             return {n: self.control[n] for n in names if n in self.control}
         self.batches.append(list(names))
@@ -317,6 +320,20 @@ def test_one_where_no_mutant_is_killed_and_all_survived_is_crashed_dispatch_unve
     s = _read(rm.one("p", "alpha", 3))
     assert s["crashed"] is True and s["score"] is None and s["survived"] == 5
     assert s["harness_error"] == "no mutant killed: dispatch unverified"
+
+
+def test_one_whose_per_mutant_timeout_cannot_fit_the_step_budget_is_crashed_naming_the_budget(tmp_state, monkeypatch):
+    # pass1/ccsdd/04: the arm's suite took 845.7s at the copy root (quality/mutmut.log), so the per-mutant timeout
+    # is 10x that, over the 3600s step budget: the batch script starts nothing, not even the control. That is the
+    # budget, not "the suite does not pass from mutants/" (docker spike, 2026-10-08).
+    _step(tmp_state)
+    names = ["pkg.m.x_f__mutmut_1"]
+    f = Fake(tmp_state, names, {names[0]: 1}, baseline_s=845.7).install(monkeypatch)
+    s = _read(rm.one("p", "alpha", 3))
+    assert s["crashed"] is True and s["score"] is None and f.batches == [] and s["budget_exhausted"] is True
+    assert s["mutant_timeout_s"] == 8457 and s["budget_s"] == rm.config.load_pins().limits.mutation_seconds
+    assert s["harness_error"] == (f"per-mutant timeout 8457s does not fit the step budget {s['budget_s']}s "
+                                  "(the suite took 845.7s at the copy root): nothing run")
 
 
 def test_one_without_a_recorded_sha_is_crashed_and_prepares_nothing(tmp_state, monkeypatch):
@@ -420,6 +437,25 @@ def test_evidence_ignores_a_stale_remeasure_and_says_why(tmp_path):
     assert q["remeasure_ignored"] == "stale: remeasure sha old, git.json sha_after abc"
 
 
+# The re-measure `one("dry1", "dryrun", 1)` wrote on 2026-10-08 (docker), verbatim: the step budget (3600s) ran out
+# after 70 of 200 sampled mutants (~50s each). evidence must NOT take it (R32: under half checked is unmeasured), so
+# the step keeps its mutmut score, and must say why.
+DRY1_REMEASURE = {
+    "baseline_failed": False, "baseline_rc": 0, "batches": 4, "budget_exhausted": True, "budget_s": 3600,
+    "caught_by_type_check": 0, "check_interrupted": 0, "crashed": False, "harness_error": None, "killed": 8,
+    "method": "whole-suite-per-mutant", "mutant_timeout_s": 60, "mutants_baseline_rc": 0, "no_tests": 0,
+    "not_checked": 130, "partial": True, "sample_size": 200, "sampled": True, "sampling": "seeded-sha256",
+    "score": 0.04, "segfault": 0, "sentinel_rc": 1, "sha": "abc", "skipped": 0, "survived": 62, "suspicious": 0,
+    "targets": ["src"], "timeout": 0, "total": 200, "unmeasured": None,
+}
+
+
+def test_evidence_ignores_the_dry1_remeasure_that_ran_out_of_budget_and_says_why(tmp_path):
+    q = evidence.quality(_quality_dir(tmp_path, DRY1_REMEASURE, _orig(killed=12, survived=4, no_tests=4)))["value"]
+    assert q["mutation_method"] == "mutmut" and q["mutation_score"] == 0.75
+    assert q["remeasure_ignored"] == "not measured: partial: under 50% of sampled mutants checked"
+
+
 def test_evidence_without_a_remeasure_is_unchanged(tmp_path):
     q = evidence.quality(_quality_dir(tmp_path, None))["value"]
     assert q["mutation_state"] == "crashed" and q["mutation_source"].endswith("summary.json")
@@ -515,6 +551,6 @@ def test_the_control_container_counts_against_the_budget(tmp_state, monkeypatch)
         return real_batch(*a, **k)
     monkeypatch.setattr(rm, "run_batch", slow_control)
     pins = config.load_pins()
-    pins = dataclasses.replace(pins, limits=dataclasses.replace(pins.limits, mutation_seconds=50, mutation_sample=0))
-    s = _read(rm.one("p", "alpha", 3, pins=pins))
-    assert f.remaining == [50] and f.batches == [] and s["budget_exhausted"] is True and s["not_checked"] == 5
+    pins = dataclasses.replace(pins, limits=dataclasses.replace(pins.limits, mutation_seconds=100, mutation_sample=0))
+    s = _read(rm.one("p", "alpha", 3, pins=pins))     # the control (60s timeout) fits in 100s, then 40s are left
+    assert f.remaining == [100] and f.batches == [] and s["budget_exhausted"] is True and s["not_checked"] == 5

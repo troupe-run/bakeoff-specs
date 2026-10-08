@@ -257,6 +257,10 @@ def _measure(p: Paths, step: int, pins: config.Pins, qd: Path, log: list[str]) -
     def left() -> int:
         return max(0, int(budget - (_clock() - start)))
 
+    if left() < t:                                  # the batch script would start nothing, not even the control:
+                                                    # say it is the budget, not "the suite does not pass" (rc None)
+        return crash(f"per-mutant timeout {t}s does not fit the step budget {budget}s (the suite took {secs:.1f}s "
+                     "at the copy root): nothing run", sampling=sampling, budget_exhausted=True, **common)
     ctl = run_batch(p, copy, [BASELINE_NAME, SENTINEL_NAME], t, log, remaining=left())     # counts against it
     common |= {"mutants_baseline_rc": ctl.get(BASELINE_NAME), "sentinel_rc": ctl.get(SENTINEL_NAME)}
     if ctl.get(BASELINE_NAME) != 0:
