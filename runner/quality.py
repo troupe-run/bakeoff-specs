@@ -61,6 +61,7 @@ import shlex
 import stat
 import subprocess
 import tempfile
+import time
 import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -486,6 +487,79 @@ _RESULTS_SCRIPT = ".venv/bin/mutmut results --all true"
 _LOG_NAMES_MAX = 5          # a sample longer than this is shown in mutmut.log as a count, not every name
 
 
+# --- O1 (owner, 2026-10-08): node IDs pytest cannot resolve inside mutmut's own process -------------------------
+# mutmut 3 runs pytest IN-PROCESS several times and passes the node IDs its stats run recorded back as arguments. An
+# ID that a second in-process collection renders differently cannot be found (pass 1 ccsdd: `ids=repr` over strings
+# holding "\n" gains a level of escaping on every collection after the first), pytest exits 4, and mutmut aborts the
+# whole run (`BadTestExecutionCommandsException`, `mutmut run` rc 1) with every mutant `not checked`. Only after such
+# a failure, the harness finds those IDs the same way (one full collection, then each ID resolved by a LATER
+# collection in the same process, bisecting), maps each to its function-level ID (a superset: every parametrisation
+# of that test) through a pytest plugin passed in `PYTEST_ADDOPTS`, and resumes `mutmut run` once on its saved stats
+# within what is left of the same `mutation_seconds`. A run that succeeds never gets here, so an arm without such IDs
+# runs exactly the original method; `nodeid_rewrites` records None (never checked), 0 or the count.
+
+NODEID_PLUGIN = "bk_nodeid_rewrite"
+_NODEID_MARKER = "__nodeid_unresolved"
+_NODEID_SCRIPT = r"""
+import contextlib, io, json, pytest
+def run(args, plugins=()):
+    b = io.StringIO()
+    with contextlib.redirect_stdout(b), contextlib.redirect_stderr(b):
+        return int(pytest.main(["--rootdir=.", "--collect-only", "-q", "-p", "no:cacheprovider", *args],
+                               plugins=list(plugins)))
+class C:
+    ids = []
+    def pytest_itemcollected(self, item):
+        C.ids.append(item.nodeid)
+def bad(ids):
+    if not ids or run(ids) == 0:
+        return []
+    if len(ids) == 1:
+        return ids
+    m = len(ids) // 2
+    return bad(ids[:m]) + bad(ids[m:])
+first = run([], [C()])
+out = bad(list(dict.fromkeys(C.ids))) if first == 0 else None
+print()
+print("%s=" + json.dumps(out))
+""" % _NODEID_MARKER
+
+
+def function_level_nodeid(nodeid: str) -> str:
+    """The node ID without its parametrisation, split exactly as pytest splits a command-line argument
+    (`arg.partition("[")`): it selects every parametrisation of that test."""
+    return nodeid.partition("[")[0]
+
+
+def parse_unresolved_nodeids(stdout: str) -> list[str] | None:
+    """The LAST anchored `__nodeid_unresolved=<json>` line (the arm's collection output could print a forged one
+    earlier). None unless it is a JSON list of node IDs that each carry a parametrisation (`::` and `[`)."""
+    found = re.findall(rf"(?m)^{_NODEID_MARKER}=(.*)$", stdout)
+    try:
+        got = json.loads(found[-1]) if found else None
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(got, list) or not all(isinstance(x, str) and "::" in x and "[" in x for x in got):
+        return None
+    return got
+
+
+def nodeid_plugin_source(unresolved: list[str]) -> str:
+    mapping = {n: function_level_nodeid(n) for n in unresolved}
+    return ('"""Written by the bake-off harness (owner ruling O1): maps node IDs pytest cannot resolve in mutmut\'s\n'
+            'process to their function-level IDs. Loaded only through PYTEST_ADDOPTS for a resumed mutmut run."""\n'
+            f"_MAP = {json.dumps(mapping, sort_keys=True)}\n\n\n"
+            "def pytest_configure(config):\n"
+            "    config.args = list(dict.fromkeys(_MAP.get(a, a) for a in config.args))\n")
+
+
+def _install_nodeid_plugin(copy: Path, unresolved: list[str]) -> None:
+    sps = sorted((copy / ".venv" / "lib").glob("python*/site-packages"))
+    if len(sps) != 1 or sps[0].is_symlink() or not sps[0].is_dir():
+        raise UnsafeFile(f"expected exactly one real site-packages directory in the copy's .venv, found {sps}")
+    _safe_write(sps[0] / f"{NODEID_PLUGIN}.py", nodeid_plugin_source(unresolved))
+
+
 def mutmut_run_log_line(mutmut_argv: list[str], n_chosen: int, timeout_s: int) -> str:
     """The `$ ` line mutmut.log records for container 1: the argv mutmut really received (venv binary, flags,
     the chosen mutant names -- elided to a count past `_LOG_NAMES_MAX`), then the sample size and the inner
@@ -501,7 +575,8 @@ def mutmut_run_log_line(mutmut_argv: list[str], n_chosen: int, timeout_s: int) -
     return f"$ {' '.join(shown)}  ({what}; under timeout {timeout_s}s)"
 
 
-def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.Pins) -> dict[str, object]:
+def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.Pins,
+              log_dir: Path | None = None) -> dict[str, object]:
     """Mutation testing runs only on copy B (review C-1). The arm's own tests are the baseline: only the arm's
     pytest actually failing (rc 1) is `baseline_failed` — the arm's own result, not ours, and never scored.
     rc 5 means no tests were collected (`no_tests`), also not scored and not the arm's fault. Any other exit —
@@ -553,16 +628,17 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
 
     def finish(counts: dict[str, int], *, partial: bool, baseline_failed: bool, crashed: bool = False,
               **extra: object) -> dict[str, object]:
-        qd = out_dir / "quality"
+        qd = log_dir or out_dir / "quality"         # log_dir: a scoring re-run's own folder (rerun.py, O1-O3)
         qd.mkdir(parents=True, exist_ok=True)
         summary = mutation_summary(counts, partial=partial, baseline_failed=baseline_failed, crashed=crashed,
                                    **extra)
         (qd / "mutmut.log").write_text("\n".join(log))
         return summary
 
-    common = dict(sampled=False, sample_size=0, mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0)
+    common = dict(sampled=False, sample_size=0, mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0,
+                  nodeid_rewrites=None)
 
-    baseline = _run(p, copy, ["bash", "-c", _BASELINE_SCRIPT], 1800)
+    baseline = _run(p, copy, ["bash", "-c", _BASELINE_SCRIPT], lim.mutation_baseline_seconds)     # O2
     log.append(f"$ {_BASELINE_SCRIPT}  (baseline)\n" + baseline.combined[-4000:])
     if baseline.timed_out:
         return finish(dict(ZERO_MUTATION), partial=False, baseline_failed=False, crashed=True,
@@ -596,7 +672,7 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
         else:
             sampling = "unavailable"          # listing unsupported (or refused/timed out): fall back to A
 
-    post_sample_common = dict(sampled=bool(chosen), sample_size=len(chosen))
+    post_sample_common: dict[str, object] = dict(sampled=bool(chosen), sample_size=len(chosen), nodeid_rewrites=None)
 
     # Container 1: the actual mutation run. Arm test code executes here (it IS the arm's own pytest suite,
     # run under each mutant), so anything it prints to stdout must never reach a stream this function later
@@ -614,6 +690,7 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
     log.append("# listing, run and results containers: "
                + " ".join(f"{k}={v}" for k, v in menv.items())
                + "  (so `uv run` from inside mutants/ uses the prepared venv; the baseline above ran without it)")
+    t0 = time.monotonic()
     run_outcome = _run(p, copy, run_cmd, lim.mutation_seconds + 300, env=menv)
     log.append(mutmut_run_log_line(mutmut_argv, len(chosen), lim.mutation_seconds) + "\n"
               + run_outcome.combined[-20000:])
@@ -622,6 +699,31 @@ def _mutation(p: Paths, copy: Path, tg: list[str], out_dir: Path, pins: config.P
                       sampling=sampling, baseline_rc=baseline.rc, timed_out=True,
                       mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0, **post_sample_common)
     run_rc = _last_marker(run_outcome.stdout, "__run_rc")
+    if run_rc not in (0, 124):                  # O1: only a failed run is checked for unresolvable node IDs
+        det = _run(p, copy, ["bash", "-c", 'cd mutants && exec ../.venv/bin/python -c "$1"', "_", _NODEID_SCRIPT],
+                   600, env=menv)
+        bad_ids = None if det.timed_out else parse_unresolved_nodeids(det.stdout)
+        post_sample_common["nodeid_rewrites"] = None if bad_ids is None else len(bad_ids)
+        log.append("# O1 check for node IDs pytest cannot resolve on a later in-process collection: "
+                   + ("timed out" if det.timed_out else "no valid result" if bad_ids is None
+                      else f"{len(bad_ids)}" + "".join(f"\n#   {n}" for n in bad_ids)))
+        left = lim.mutation_seconds - int(time.monotonic() - t0)
+        if bad_ids and left > 0:
+            try:
+                _install_nodeid_plugin(copy, bad_ids)
+            except UnsafeFile as e:
+                log.append(f"# O1 plugin refused: {e}")
+            else:
+                env2 = {**menv, "PYTEST_ADDOPTS": f"-p {NODEID_PLUGIN}"}
+                run2_cmd = ["bash", "-c", run_script, "_", str(left), *mutmut_argv]
+                run_outcome = _run(p, copy, run2_cmd, left + 300, env=env2)
+                log.append(f"# O1 resumed with node IDs mapped to their function (PYTEST_ADDOPTS={env2['PYTEST_ADDOPTS']})\n"
+                           + mutmut_run_log_line(mutmut_argv, len(chosen), left) + "\n" + run_outcome.combined[-20000:])
+                if run_outcome.timed_out:
+                    return finish(dict(ZERO_MUTATION), partial=False, baseline_failed=False, crashed=True,
+                                  sampling=sampling, baseline_rc=baseline.rc, timed_out=True,
+                                  mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0, **post_sample_common)
+                run_rc = _last_marker(run_outcome.stdout, "__run_rc")
 
     # Container 2: fresh, and runs nothing but `mutmut results` (fix round 3, item 1), so no line the arm's test
     # output printed during the run can reach its stdout. It does run the arm-writable `.venv/bin/mutmut`, so a
@@ -671,7 +773,8 @@ def _mutation_placeholder(sampling: str, *, crashed: bool = True, baseline_faile
     module returns the same keys, whatever went wrong (fix round 2, item 2)."""
     return mutation_summary(dict(ZERO_MUTATION), partial=False, baseline_failed=baseline_failed, crashed=crashed,
                             sampled=False, sample_size=0, sampling=sampling, baseline_rc=baseline_rc,
-                            timed_out=timed_out, mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0)
+                            timed_out=timed_out, mutmut_run_rc=None, mutmut_results_rc=None, missing_results=0,
+                            nodeid_rewrites=None)
 
 
 def run_all(p: Paths, prep: "hidden.Prepared", out_dir: Path, pins: config.Pins | None = None) -> dict[str, object]:

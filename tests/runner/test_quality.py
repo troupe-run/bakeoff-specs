@@ -518,8 +518,10 @@ def test_mutation_crashed_when_run_rc_is_outside_zero_or_124(monkeypatch, tmp_pa
     baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
     listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\n", "", False)
     run_container = quality.ToolRun(0, "__run_rc=1\n", "", False)
+    nodeid_check = quality.ToolRun(0, "__nodeid_unresolved=[]\n", "", False)    # O1: a failed run is checked
     results_container = quality.ToolRun(0, "m.f__mutmut_1: killed\n__results_rc=0\n", "", False)
-    monkeypatch.setattr(quality, "_run", _fake_run([baseline_ok, listing, run_container, results_container]))
+    monkeypatch.setattr(quality, "_run", _fake_run([baseline_ok, listing, run_container, nodeid_check,
+                                                     results_container]))
     r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=1))
     assert r["crashed"] is True and r["score"] is None
 
@@ -1124,3 +1126,137 @@ def test_no_tests_with_unresolved_mutants_and_no_real_verdict_is_crashed_never_a
     monkeypatch.setattr(quality, "_run", _fake_run(responses))
     r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=sample))
     assert r["crashed"] is True and r["score"] is None and r["unmeasured"] is None
+
+
+# --- O1/O2 (owner, 2026-10-08): pytest-unresolvable node IDs, and the baseline timeout pin --------------------------
+# pass 1 ccsdd 01-06: an `ids=repr` parametrisation whose ID gains a level of escaping on every in-process
+# re-collection after the first, so mutmut's "clean tests" run (the 2nd pytest.main in its process) cannot find the
+# node IDs its stats recorded (pytest exit 4 -> BadTestExecutionCommandsException -> `mutmut run` rc 1).
+
+BAD = ["tests/test_s.py::test_plain['1\\\\n'-'1\\\\n']", "tests/test_s.py::TestX::test_y['a\\\\n']"]
+
+
+def _rec_run(responses):
+    calls = []
+    it = iter(responses)
+    def fake(p, copy, cmd, timeout, env=None):
+        calls.append({"cmd": cmd, "timeout": timeout, "env": env})
+        return next(it)
+    return fake, calls
+
+
+def _venv(tmp_path):
+    sp = tmp_path / ".venv" / "lib" / "python3.12" / "site-packages"
+    sp.mkdir(parents=True)
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\n')
+    return sp
+
+
+def test_function_level_nodeid_drops_the_parametrisation_as_pytest_parses_it():
+    assert quality.function_level_nodeid(BAD[0]) == "tests/test_s.py::test_plain"
+    assert quality.function_level_nodeid(BAD[1]) == "tests/test_s.py::TestX::test_y"
+    assert quality.function_level_nodeid("tests/t.py::test_z") == "tests/t.py::test_z"
+
+
+def test_unresolved_nodeids_come_from_the_last_anchored_marker_only():
+    real = "__nodeid_unresolved=" + json.dumps(BAD)
+    assert quality.parse_unresolved_nodeids(f'__nodeid_unresolved=["forged"]\nnoise\n{real}\n') == BAD
+    assert quality.parse_unresolved_nodeids("__nodeid_unresolved=[]\n") == []
+    for bad in ("", "__nodeid_unresolved=null\n", "__nodeid_unresolved={}\n", "__nodeid_unresolved=[1]\n",
+                "__nodeid_unresolved=[not json\n", '__nodeid_unresolved=["no-selector"]\n'):
+        assert quality.parse_unresolved_nodeids(bad) is None, bad
+
+
+def test_the_nodeid_plugin_maps_only_the_listed_arguments_to_their_function(tmp_path):
+    ns: dict = {}
+    exec(quality.nodeid_plugin_source(BAD), ns)
+    cfg = types.SimpleNamespace(args=["tests/test_s.py::test_ok", BAD[0], BAD[1], "tests/test_s.py::test_plain"])
+    ns["pytest_configure"](cfg)
+    assert cfg.args == ["tests/test_s.py::test_ok", "tests/test_s.py::test_plain", "tests/test_s.py::TestX::test_y"]
+
+
+def test_a_failed_mutmut_run_with_unresolvable_nodeids_is_resumed_once_with_the_rewrite(monkeypatch, tmp_path):
+    sp = _venv(tmp_path)
+    baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
+    listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\nm.f__mutmut_2: not checked\n", "", False)
+    run1 = quality.ToolRun(0, "BadTestExecutionCommandsException\n__run_rc=1\n", "", False)
+    detect = quality.ToolRun(0, "__nodeid_unresolved=" + json.dumps(BAD) + "\n", "", False)
+    run2 = quality.ToolRun(0, "__run_rc=0\n", "", False)
+    results = quality.ToolRun(0, "m.f__mutmut_1: killed\nm.f__mutmut_2: survived\n__results_rc=0\n", "", False)
+    fake, calls = _rec_run([baseline_ok, listing, run1, detect, run2, results])
+    monkeypatch.setattr(quality, "_run", fake)
+    pins = _pins(mutation_sample=2)
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", pins)
+    assert r["crashed"] is False and r["score"] == 0.5 and r["mutmut_run_rc"] == 0
+    assert r["nodeid_rewrites"] == 2
+    assert calls[4]["env"]["PYTEST_ADDOPTS"] == f"-p {quality.NODEID_PLUGIN}"
+    assert "PYTEST_ADDOPTS" not in calls[2]["env"]              # the first run is exactly the original method
+    assert int(calls[4]["cmd"][4]) <= pins.limits.mutation_seconds    # one budget across both runs
+    ns: dict = {}
+    exec((sp / f"{quality.NODEID_PLUGIN}.py").read_text(), ns)
+    cfg = types.SimpleNamespace(args=[BAD[0]])
+    ns["pytest_configure"](cfg)
+    assert cfg.args == ["tests/test_s.py::test_plain"]
+    log = (tmp_path / "out" / "quality" / "mutmut.log").read_text()
+    assert "node IDs pytest cannot resolve" in log and BAD[0] in log
+
+
+def test_a_failed_mutmut_run_with_every_nodeid_resolvable_keeps_its_crash_and_is_not_resumed(monkeypatch, tmp_path):
+    sp = _venv(tmp_path)
+    baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
+    listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\n", "", False)
+    run1 = quality.ToolRun(0, "__run_rc=1\n", "", False)
+    detect = quality.ToolRun(0, "__nodeid_unresolved=[]\n", "", False)
+    results = quality.ToolRun(0, "m.f__mutmut_1: not checked\n__results_rc=0\n", "", False)
+    fake, calls = _rec_run([baseline_ok, listing, run1, detect, results])
+    monkeypatch.setattr(quality, "_run", fake)
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=1))
+    assert r["crashed"] is True and r["nodeid_rewrites"] == 0 and len(calls) == 5
+    assert not (sp / f"{quality.NODEID_PLUGIN}.py").exists()
+
+
+def test_a_successful_mutmut_run_never_checks_nodeids(monkeypatch, tmp_path):
+    _venv(tmp_path)
+    baseline_ok = quality.ToolRun(0, "5 passed\n", "", False)
+    listing = quality.ToolRun(0, "m.f__mutmut_1: not checked\n", "", False)
+    run1 = quality.ToolRun(0, "__run_rc=0\n", "", False)
+    results = quality.ToolRun(0, "m.f__mutmut_1: killed\n__results_rc=0\n", "", False)
+    fake, calls = _rec_run([baseline_ok, listing, run1, results])
+    monkeypatch.setattr(quality, "_run", fake)
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=1))
+    assert r["crashed"] is False and r["nodeid_rewrites"] is None and len(calls) == 4
+
+
+def test_the_mutation_baseline_runs_under_the_pinned_baseline_timeout(monkeypatch, tmp_path):
+    fake, calls = _rec_run([quality.ToolRun(None, "", "", True)])
+    monkeypatch.setattr(quality, "_run", fake)
+    pins = _pins(mutation_baseline_seconds=4321)
+    r = quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", pins)
+    assert calls[0]["timeout"] == 4321 and r["crashed"] is True and r["nodeid_rewrites"] is None
+
+
+def test_the_pinned_baseline_timeout_fits_pass1_ccsdd_07():
+    # O2: ccsdd 06's suite took 1301s at the copy root and 07's ran past the old fixed 1800s
+    assert config.load_pins().limits.mutation_baseline_seconds == 3600
+
+
+def test_the_nodeid_check_finds_ids_that_a_later_in_process_collection_renders_differently(tmp_path):
+    # the pass 1 ccsdd shape, in miniature: `ids=repr` over a string holding "\n" (run with this repo's own pytest)
+    import subprocess
+    import sys
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_s.py").write_text(
+        "import pytest\n\n\n"
+        "@pytest.mark.parametrize('t', ['plain', '1\\n'], ids=repr)\n"
+        "def test_p(t):\n    pass\n\n\n"
+        "def test_q():\n    pass\n")
+    out = subprocess.run([sys.executable, "-c", quality._NODEID_SCRIPT], cwd=tmp_path, capture_output=True, text=True,
+                         timeout=120).stdout
+    bad = quality.parse_unresolved_nodeids(out)
+    assert bad == ["tests/test_s.py::test_p['1\\\\n']"], out[-2000:]
+    ns: dict = {}
+    exec(quality.nodeid_plugin_source(bad), ns)
+    import types as _t
+    cfg = _t.SimpleNamespace(args=list(bad))
+    ns["pytest_configure"](cfg)
+    assert cfg.args == ["tests/test_s.py::test_p"]

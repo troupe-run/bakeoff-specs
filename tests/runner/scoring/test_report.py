@@ -401,3 +401,18 @@ def test_a_thin_panel_is_marked_in_the_dimension_detail(p):
     sec = _section(report.render(p), "## Dimensions")
     row = next(l for l in sec.splitlines() if l.startswith("| req_test_code · step 3 "))
     assert "0.62◦" in row and "◦ a thin panel" in sec
+
+
+def test_the_appendix_discloses_a_mutmut_rerun_with_its_ruling_date_and_node_id_mapping(p):
+    # O1-O4 (owner, 2026-10-08): a re-run's ruling and date, and its node-ID mapping, are shown beside the score
+    write_collected(p, "alpha", 1, quality=values.val(
+        {"mypy_errors": 0, "ruff_findings": 0, "mutation_score": 0.75, "mutation_state": "measured",
+         "mutation_why": None, "mutation_partial": False, "mutation_checked_fraction": 1.0,
+         "mutation_method": "mutmut", "remeasure_ignored": None, "rerun_ignored": None,
+         "mutation_rerun": {"reason": "O1", "date": "2026-10-08", "nodeid_rewrites": 2},
+         "mutation_source": "results/p/alpha/01/quality/rerun/mutation.json"}, "results/p/alpha/01/quality/summary.json"))
+    aggregate.run(p)
+    line = next(ln for ln in _section(report.render(p), "## Appendix: alpha").splitlines() if "quality:" in ln)
+    assert "mutation 0.75 (measured) via mutmut ([src](../../../results/p/alpha/01/quality/rerun/mutation.json))" in line
+    assert "; re-run of the crashed original (ruling O1, 2026-10-08; 2 node IDs mapped to their function)" in line
+    assert report.NOT_LIKE_FOR_LIKE not in report.render(p)

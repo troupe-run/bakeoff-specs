@@ -45,6 +45,8 @@ owner_reclassifies_first_breach = true       # OD14 B (A: false)
 attempts_no_progress = 3                     # design §9
 mutation_seconds = 3600                      # OD15 A cap; also the B safety cap
 mutation_sample = 200                        # OD15 B (A: 0 = no sampling)
+mutation_baseline_seconds = 3600             # O2 (owner, 2026-10-08): the mutation stage's baseline suite run;
+                                             # was a fixed 1800s, which pass 1 ccsdd 07's suite outgrew (06: 1301s)
 load_factor = 0.5                            # idle-machine preflight (host and Docker VM)
 cpus = "4"
 memory = "8g"

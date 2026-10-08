@@ -21,6 +21,7 @@ class Limits:
     attempts_no_progress: int
     mutation_seconds: int
     mutation_sample: int
+    mutation_baseline_seconds: int   # O2: timeout of quality._mutation's baseline suite run
     load_factor: float
     cpus: str
     memory: str

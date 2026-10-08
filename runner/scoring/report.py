@@ -535,6 +535,13 @@ def _quality_text(name: str, v: dict, source: str) -> str:
     m += f" {_src(v.get('mutation_source') or source)}"
     if v.get("remeasure_ignored"):
         m += f"; re-measure ignored: {v['remeasure_ignored']}"
+    rr = v.get("mutation_rerun")
+    if isinstance(rr, dict):                    # O1-O3: mutmut's own method re-run on a crashed original
+        n = rr.get("nodeid_rewrites")
+        m += (f"; re-run of the crashed original (ruling {rr.get('reason')}, {rr.get('date')}"
+              + (f"; {n} node IDs mapped to their function" if n else "") + ")")
+    if v.get("rerun_ignored"):
+        m += f"; re-run ignored: {v['rerun_ignored']}"
     return f"{name}: mypy {_f(v.get('mypy_errors'))}, ruff {_f(v.get('ruff_findings'))} {_src(source)}; {m}"
 
 

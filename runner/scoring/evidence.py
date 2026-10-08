@@ -216,25 +216,78 @@ def _remeasure(step_dir: Path) -> tuple[dict | None, str | None, str | None]:
     return m, r["source"], None
 
 
+SUBPROCESS_ONLY = "subprocess-only tests are invisible to mutmut"
+# O4 (owner, 2026-10-08): mutmut 3 attributes a test to a mutated function only inside its own process, so an arm whose
+# tests reach the code only through `subprocess` (pass 1 control 01-07) gets no test for any mutant and mutmut stops
+# with this message (exit 1). Under mutmut's method that is unmeasured, not a crash. The text is in the run's log
+# tail, which the arm's own output shares: forging it could only turn a crash (unscored) into unmeasured (unscored).
+_STOP_EARLY = "Stopping early, because we could not find any test case for any mutant"
+_LOG_LIMIT = 8 * 1024 * 1024
+
+
+def _subprocess_blind(step_dir: Path) -> bool:
+    try:
+        with open(step_dir / "quality" / "mutmut.log", "rb") as f:
+            return _STOP_EARLY.encode() in f.read(_LOG_LIMIT)
+    except OSError:
+        return False
+
+
+def _rerun(step_dir: Path) -> tuple[dict | None, str | None, str | None]:
+    """(the mutmut re-run's mutation dict, its source) when it is current and measured (O1-O3); otherwise (None,
+    None, why ignored) -- None for why when there is no rerun at all."""
+    r = read_json(step_dir / "quality" / "rerun" / "mutation.json")
+    if values.is_missing(r):
+        return None, None, None if r["why"] == "no such file" else r["why"]
+    m = r["value"]
+    if not isinstance(m, dict) or not isinstance(m.get("rerun"), dict):
+        return None, None, "unreadable: not a rerun record"
+    git = read_json(step_dir / "git.json")
+    sha_after = None if values.is_missing(git) else git["value"].get("sha_after")
+    if m["rerun"].get("sha") != sha_after or sha_after is None:
+        return None, None, f"stale: rerun sha {m['rerun'].get('sha')}, git.json sha_after {sha_after}"
+    ev = mutation(m)
+    if ev["state"] != "measured":
+        return None, None, f"not measured: {ev['why'] or ev['state']}"
+    return m, r["source"], None
+
+
 def quality(step_dir: Path) -> dict:
     """mypy and ruff from `quality/summary.json`. The mutation part (`mutation()`, over checked mutants only) comes
     from `quality/remeasure.json` (Task 20, the whole suite per mutant) when that is for the step's `sha_after` and
     measured; otherwise from the original mutmut run in the summary, and `remeasure_ignored` says why a present
-    re-measure was not used. `mutation_source`/`mutation_method` say where the mutation part came from."""
+    re-measure was not used. `mutation_source`/`mutation_method` say where the mutation part came from.
+
+    O1-O3 (owner, 2026-10-08): an original mutmut run that is not measured gives way to a current, measured mutmut
+    re-run in `quality/rerun/mutation.json` (`runner/scoring/rerun.py`; the same method, so `mutation_method` stays
+    "mutmut"), recorded in `mutation_rerun` (ruling, date, node IDs mapped); a measured original is never replaced, and
+    `rerun_ignored` says why a present re-run was not used. O4: an original crash that is mutmut's subprocess blind spot
+    (`_STOP_EARLY` in its log) is `unmeasured`, why `SUBPROCESS_ONLY`."""
     q = read_json(step_dir / "quality" / "summary.json")
     if values.is_missing(q):
         return q
     v, m = q["value"], q["value"].get("mutation", {})
-    m_src, method = q["source"], "mutmut"
+    m_src, method, rerun_used = q["source"], "mutmut", None
+    original = mutation(m if isinstance(m, dict) else {})
+    rer, rer_src, rerun_ignored = _rerun(step_dir)
+    if original["state"] == "measured" and (rer is not None or rerun_ignored is not None):
+        rerun_ignored = "the original run is measured"          # the original evidence is never replaced
+    elif rer is not None:
+        m, m_src = rer, rer_src
+        rerun_used = {"reason": rer["rerun"].get("reason"), "date": rer["rerun"].get("date"),
+                      "nodeid_rewrites": rer.get("nodeid_rewrites")}
     rem, rem_src, ignored = _remeasure(step_dir)
     if rem is not None:
         m, m_src, method = rem, rem_src, rem.get("method", "remeasure")
     ev = mutation(m if isinstance(m, dict) else {})
+    if ev["state"] == "crashed" and m_src == q["source"] and _subprocess_blind(step_dir):
+        ev = {**ev, "state": "unmeasured", "why": SUBPROCESS_ONLY}             # O4
     return values.val({"mypy_errors": None if v.get("mypy_crashed") else v.get("mypy_errors"),
                        "ruff_findings": None if v.get("ruff_crashed") else v.get("ruff_findings"),
                        "mutation_score": ev["score"], "mutation_state": ev["state"], "mutation_why": ev["why"],
                        "mutation_partial": ev["partial"], "mutation_checked_fraction": ev["checked_fraction"],
-                       "mutation_source": m_src, "mutation_method": method, "remeasure_ignored": ignored},
+                       "mutation_source": m_src, "mutation_method": method, "remeasure_ignored": ignored,
+                       "mutation_rerun": rerun_used if m_src == rer_src else None, "rerun_ignored": rerun_ignored},
                       q["source"])
 
 
