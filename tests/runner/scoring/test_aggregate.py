@@ -313,3 +313,15 @@ def test_arm_violations_never_collected_leaves_the_part_unscored(p):
 def test_the_highest_priced_arm_level_violation_is_not_uncounted(p):
     write_arm_violations(p, "alpha", [{"step": 1, "run": "b", "kind": "own-token-in-evidence"}])
     assert _viol(p)["score"] == pytest.approx(1 - inputs.load_violations().of("own-token-in-evidence"))
+
+
+def test_orchestrates_before_run_drift_and_stepflows_after_attempt_drift_are_distinct_events(p, monkeypatch):
+    """Pinned (R38 fix round 1, item 3): stepflow's post-attempt check (step-level run.json arm_violations: run and
+    attempt, no step) and orchestrate's pre-run verify (arm-level file, `before_run`) look at different moments, so the
+    same check id in the same step and run is two detections, both priced. Own-token scans cannot double up either:
+    stepflow redacts in place first, so orchestrate's later scan finds nothing left."""
+    monkeypatch.setattr(aggregate.inputs, "load_violations", lambda: inputs.ViolationSeverity(0.25, {}))
+    write_collected(p, "alpha", 1, violations=[{"run": "b", "attempt": 1, "kind": "setup-drift", "check": "common.origin"}])
+    write_arm_violations(p, "alpha", [{"step": 1, "run": "b", "kind": "setup-drift", "check": "common.origin",
+                                       "before_run": True}])
+    assert _viol(p)["score"] == pytest.approx(0.5)

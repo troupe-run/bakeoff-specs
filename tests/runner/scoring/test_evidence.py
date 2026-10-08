@@ -355,7 +355,19 @@ def test_other_kinds_are_deduped_by_step_run_and_kind(tmp_path):
     assert got == [("b", "own-token-in-evidence"), ("b", "link-in-home"), ("c", "own-token-in-evidence")]
 
 
-def test_records_with_neither_step_nor_run_are_told_apart_by_path(tmp_path):
+def test_stepless_runless_repairs_are_never_deduped_a_same_path_repeat_counts_twice(tmp_path):
+    """The checklist's link-in-home repairs are one-shot: a repeat on the same path means the arm re-created the link."""
     d = _arm_file(tmp_path, _jl({"kind": "link-in-home", "path": "/h/.config"},
-                                {"kind": "link-in-home", "path": "/h/.config/gh/hosts.yml"}))
-    assert len(evidence.arm_violations(d)["value"]) == 2
+                                {"kind": "link-in-home", "path": "/h/.config/gh/hosts.yml"},
+                                {"kind": "link-in-home", "path": "/h/.config"}))
+    assert [v["path"] for v in evidence.arm_violations(d)["value"]] == [
+        "/h/.config", "/h/.config/gh/hosts.yml", "/h/.config"]
+
+
+def test_an_unhashable_dedupe_field_is_a_corrupt_record_so_unmeasured(tmp_path):
+    for rec in ({"step": [1], "run": "b", "kind": "setup-drift", "check": "c"},
+                {"step": 1, "run": {"x": 1}, "kind": "own-token-in-evidence"},
+                {"step": 1, "run": "b", "kind": ["setup-drift"]},
+                {"step": 1, "run": "b", "kind": "setup-drift", "check": ["c"]}):
+        r = evidence.arm_violations(_arm_file(tmp_path, _jl(rec)))
+        assert values.is_missing(r) and "corrupt" in r["why"], rec

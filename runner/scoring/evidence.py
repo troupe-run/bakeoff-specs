@@ -291,8 +291,11 @@ def arm_violations(arm_dir: Path) -> dict:
     link repairs), the arm-level leaf of the violations part. An ABSENT file is none (the writers only create it on a
     violation); an unreadable one, or one with any malformed line, is unmeasured, never zero. Run "a" (discovery)
     entries are dropped. A drift check repeats before and after a restore, a scan repeats per run: setup-drift is
-    deduped by (step, run, check), every other kind by (step, run, kind); a record with neither step nor run (a home
-    repair) also keys on its path, so two different repairs stay two."""
+    deduped by (step, run, check), every other kind by (step, run, kind). A record with neither step nor run (the
+    checklist's link-in-home repairs, written while it sets up the N.a discovery PAT) is NEVER deduped and is counted
+    although it carries no run: a repair is one-shot, so a repeat, even on the same path, is the arm re-creating the
+    link, a new violation, and the link is the arm's leftover. A dedupe field that is a list or dict (the file is
+    arm-writable) makes the file corrupt, hence unmeasured, like a malformed line."""
     f = arm_dir / "arm-violations.jsonl"
     if not os.path.lexists(f):
         return values.val([], rel(f))
@@ -301,13 +304,18 @@ def arm_violations(arm_dir: Path) -> dict:
         return values.missing(rel(f), "unreadable: cannot be read as UTF-8" if got is None
                               else f"corrupt: {got[1]} line(s) are not JSON objects")
     out, seen = [], set()
-    for v in got[0]:
+    for n, v in enumerate(got[0]):
         if v.get("run") == "a":
             continue
-        key = (v.get("step"), v.get("run"), v.get("check") if v.get("kind") == "setup-drift" else None, v.get("kind"),
-               v.get("path") if v.get("step") is None and v.get("run") is None else None)
-        if key not in seen:
+        step, run, kind, check = v.get("step"), v.get("run"), v.get("kind"), v.get("check")
+        key = (step, run, check if kind == "setup-drift" else None, kind) if (step, run) != (None, None) else ("line", n)
+        try:
+            new = key not in seen
             seen.add(key)
+        except TypeError:
+            return values.missing(rel(f), f"corrupt: line record {n + 1} has a list or object where a step, run, kind "
+                                          "or check belongs")
+        if new:
             out.append(v)
     return values.val(out, rel(f))
 
