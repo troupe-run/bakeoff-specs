@@ -477,6 +477,10 @@ def run(pass_: str) -> Path:
     out = paths.scoring_out(pass_)
     anon, key_path, prev, tmp = out / "anon", out / KEY, out / KEY_PREV, out / "anon-tmp"
     salt = _existing_salt(pass_) or secrets.token_hex(16)   # R37: reuse the key's salt; a new one only without a key
+    # R39: leak-check.json is a verdict on the anon/ tree it was run over. Deleting it before anon/ is rebuilt (even
+    # if this run then fails) means the report can only ever show "has not run", never a stale "clean". Simpler and
+    # sturdier than a stamp: no comparison to get wrong, and `--stage leak-check` writes a fresh one over the new tree.
+    (out / "leak-check.json").unlink(missing_ok=True)
     for d in (anon, tmp):
         shutil.rmtree(d, ignore_errors=True)
     if key_path.exists():                           # no key until the whole run finished; its salt is kept in .prev

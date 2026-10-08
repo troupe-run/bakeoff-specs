@@ -515,3 +515,23 @@ def test_a_key_from_before_salts_keeps_its_pass_seeded_labels(world):
     (out / "anon-key.json").write_text(json.dumps(legacy))
     an.run("p1")
     assert _raw_key() == {"salt": "p1", "labels": legacy}
+
+
+def test_rerunning_anonymise_deletes_a_stale_leak_check_json(world):
+    """R39: leak-check.json describes the anon/ tree it was run over; a new anonymise makes a new tree, so the old
+    verdict must not survive to show a stale 'clean' in the report."""
+    lc = paths.scoring_out("p1") / "leak-check.json"
+    lc.parent.mkdir(parents=True, exist_ok=True)
+    lc.write_text('{"hits": [], "files": 3}')
+    an.run("p1")
+    assert not lc.exists()
+
+
+def test_a_failed_anonymise_run_also_leaves_no_stale_leak_check_json(world, monkeypatch):
+    lc = paths.scoring_out("p1") / "leak-check.json"
+    lc.parent.mkdir(parents=True, exist_ok=True)
+    lc.write_text('{"hits": [], "files": 3}')
+    monkeypatch.setattr(an, "labels", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    with pytest.raises(RuntimeError):
+        an.run("p1")
+    assert not lc.exists()
