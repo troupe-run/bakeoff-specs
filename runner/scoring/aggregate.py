@@ -21,6 +21,18 @@ def collected(pass_: str) -> dict[str, dict[int, dict]]:
     return out
 
 
+def arm_violations(pass_: str, arm: str) -> dict:
+    """R38: the arm's collected arm-level violations leaf; missing (never collected, or unreadable) is unmeasured."""
+    f = paths.scoring_out(pass_) / "collected-arm" / f"{arm}.json"
+    try:
+        rec = json.loads(f.read_text())["arm_violations"]
+    except FileNotFoundError:
+        return values.missing(str(f), "not collected (run the collect stage)")
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        return values.missing(str(f), f"unreadable: {e}")
+    return rec
+
+
 def read_verdicts(pass_: str) -> dict[tuple, dict]:
     f = paths.scoring_out(pass_) / "review" / "verdicts.jsonl"
     out: dict[tuple, dict] = {}
@@ -127,13 +139,18 @@ def _part_steps(pass_, part, arm, recs, base_recs, rubrics, verdicts, sc) -> dic
                 return {"arm": {"score": None, "why": f"violations evidence missing for steps {gone}"}}
             if not vs:
                 return {"arm": {"score": None, "why": "no run records"}}
+            armlv = arm_violations(pass_, arm)
+            if values.is_missing(armlv):                # R38: unmeasured, never a clean zero
+                return {"arm": {"score": None, "why": f"arm-level violations unmeasured: {armlv['why']}"}}
+            arm_list = armlv["value"]
             sev = inputs.load_violations()          # R36: each violation deducted by the severity of its kind
             kinds: dict[str, int] = {}
-            for v in (x for step in vs.values() for x in step):
+            for v in (x for step in [*vs.values(), arm_list] for x in step):
                 k = v.get("kind") if isinstance(v, dict) and isinstance(v.get("kind"), str) else "unknown"
                 kinds[k] = kinds.get(k, 0) + 1
             deducted = sum(sev.of(k) * n for k, n in kinds.items())
-            return {"arm": {"score": max(0.0, 1.0 - deducted), "deducted": deducted, "kinds": kinds}}
+            return {"arm": {"score": max(0.0, 1.0 - deducted), "deducted": deducted, "kinds": kinds,
+                             "arm_level": len(arm_list)}}
         return {"arm": _judged(pass_, part, arm, "arm", verdicts, _lens_names(rubrics[part]))}
     if part in MEASURED:
         return {str(n): _measured(part, r, base_recs.get(n), sc) for n, r in sorted(recs.items())}

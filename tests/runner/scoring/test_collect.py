@@ -113,3 +113,29 @@ def test_collect_records_the_reported_not_scored_evidence(mini_pass):
     assert {"owner_review", "tracker", "discovery", "runs"} <= set(rec)
     assert rec["owner_review"]["value"]["seconds"] >= 0 and rec["runs"]["value"]["attempts"] is not None
     assert "missing" in rec["tracker"] and "missing" in rec["discovery"]     # the mini fixture has neither file
+
+
+def test_collect_writes_each_arms_arm_level_violations_leaf(mini_pass):
+    (paths.RESULTS / mini_pass / "alpha" / "arm-violations.jsonl").write_text(
+        '{"step": 1, "run": "a", "kind": "own-token-in-evidence"}\n'
+        '{"step": 1, "run": "b", "kind": "own-token-in-evidence"}\n')
+    collect.run(mini_pass, docker=False)
+    out = paths.scoring_out(mini_pass) / "collected-arm"
+    a = json.loads((out / "alpha.json").read_text())["arm_violations"]
+    assert [v["run"] for v in a["value"]] == ["b"]
+    assert json.loads((out / "control.json").read_text())["arm_violations"]["value"] == []   # no file = none
+
+
+def test_collect_records_a_corrupt_arm_violations_file_as_missing(mini_pass):
+    (paths.RESULTS / mini_pass / "alpha" / "arm-violations.jsonl").write_text("{broken\n")
+    collect.run(mini_pass, docker=False)
+    a = json.loads((paths.scoring_out(mini_pass) / "collected-arm" / "alpha.json").read_text())["arm_violations"]
+    assert "missing" in a
+
+
+def test_a_collect_rerun_drops_a_stale_arm_level_leaf(mini_pass):
+    collect.run(mini_pass, docker=False)
+    stale = paths.scoring_out(mini_pass) / "collected-arm" / "ghost.json"
+    stale.write_text("{}")
+    collect.run(mini_pass, docker=False)
+    assert not stale.exists()

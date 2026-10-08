@@ -286,6 +286,32 @@ def violations(step_dir: Path) -> dict:
     return r if values.is_missing(r) else values.val(r["value"].get("arm_violations", []), r["source"])
 
 
+def arm_violations(arm_dir: Path) -> dict:
+    """R38: the violations in `results/<pass>/<arm>/arm-violations.jsonl` (orchestrate's step-end scans, the checklist's
+    link repairs), the arm-level leaf of the violations part. An ABSENT file is none (the writers only create it on a
+    violation); an unreadable one, or one with any malformed line, is unmeasured, never zero. Run "a" (discovery)
+    entries are dropped. A drift check repeats before and after a restore, a scan repeats per run: setup-drift is
+    deduped by (step, run, check), every other kind by (step, run, kind); a record with neither step nor run (a home
+    repair) also keys on its path, so two different repairs stay two."""
+    f = arm_dir / "arm-violations.jsonl"
+    if not os.path.lexists(f):
+        return values.val([], rel(f))
+    got = read_jsonl(f)
+    if got is None or got[1]:
+        return values.missing(rel(f), "unreadable: cannot be read as UTF-8" if got is None
+                              else f"corrupt: {got[1]} line(s) are not JSON objects")
+    out, seen = [], set()
+    for v in got[0]:
+        if v.get("run") == "a":
+            continue
+        key = (v.get("step"), v.get("run"), v.get("check") if v.get("kind") == "setup-drift" else None, v.get("kind"),
+               v.get("path") if v.get("step") is None and v.get("run") is None else None)
+        if key not in seen:
+            seen.add(key)
+            out.append(v)
+    return values.val(out, rel(f))
+
+
 # --- reported, not scored (spec §3, ruling R36) -------------------------------------------------------------------
 
 def _num(x) -> float:

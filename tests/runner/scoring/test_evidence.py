@@ -296,3 +296,66 @@ def test_runs_reads_attempts_interventions_harness_faults_and_park(tmp_path):
     assert v == {"attempts": 2, "interventions": ["owner-shell-commit:abc"], "parked": False,
                  "harness_faults": [{"kind": "infra-hidden", "signature": "pytest exit", "action": "rerun",
                                      "run": "b", "attempt": 1}]}
+
+
+# --- R38: arm-level violations (results/<pass>/<arm>/arm-violations.jsonl) ---------------------------------------
+
+def _arm_file(tmp_path, text: str | bytes):
+    d = tmp_path / "arm"
+    d.mkdir(exist_ok=True)
+    (d / "arm-violations.jsonl").write_bytes(text if isinstance(text, bytes) else text.encode())
+    return d
+
+
+def _jl(*recs):
+    return "".join(json.dumps(r) + "\n" for r in recs)
+
+
+def test_a_missing_arm_violations_file_means_none_not_unmeasured(tmp_path):
+    (tmp_path / "arm").mkdir()
+    r = evidence.arm_violations(tmp_path / "arm")
+    assert r["value"] == [] and not values.is_missing(r)
+
+
+def test_an_unreadable_arm_violations_file_is_unmeasured_not_zero(tmp_path):
+    for bad in (b"\xff\xfe not utf-8\n", '{"kind": "setup-drift"}\n{not json\n', '["not", "an object"]\n'):
+        r = evidence.arm_violations(_arm_file(tmp_path, bad))
+        assert values.is_missing(r), bad
+
+
+def test_a_directory_where_the_file_should_be_is_unmeasured(tmp_path):
+    d = tmp_path / "arm"
+    (d / "arm-violations.jsonl").mkdir(parents=True)
+    assert values.is_missing(evidence.arm_violations(d))
+
+
+def test_discovery_run_a_entries_are_dropped(tmp_path):
+    d = _arm_file(tmp_path, _jl({"step": 1, "run": "a", "kind": "own-token-in-evidence"},
+                                {"step": 1, "run": "b", "kind": "own-token-in-evidence"}))
+    assert [v["run"] for v in evidence.arm_violations(d)["value"]] == ["b"]
+
+
+def test_setup_drift_is_deduped_by_step_run_and_check(tmp_path):
+    d = _arm_file(tmp_path, _jl(
+        {"step": 2, "run": "b", "kind": "setup-drift", "check": "common.origin", "after_restore": False},
+        {"step": 2, "run": "b", "kind": "setup-drift", "check": "common.origin", "after_restore": True},   # same drift
+        {"step": 2, "run": "b", "kind": "setup-drift", "check": "common.git-identity"},                    # another check
+        {"step": 3, "run": "b", "kind": "setup-drift", "check": "common.origin"}))                         # another step
+    got = [(v["step"], v["check"]) for v in evidence.arm_violations(d)["value"]]
+    assert got == [(2, "common.origin"), (2, "common.git-identity"), (3, "common.origin")]
+
+
+def test_other_kinds_are_deduped_by_step_run_and_kind(tmp_path):
+    d = _arm_file(tmp_path, _jl(
+        {"step": 2, "run": "b", "kind": "own-token-in-evidence", "files": ["x"]},
+        {"step": 2, "run": "b", "kind": "own-token-in-evidence", "files": ["x", "y"]},     # a re-scan of the same step
+        {"step": 2, "run": "b", "kind": "link-in-home", "path": "/h/.config"},             # another kind
+        {"step": 2, "run": "c", "kind": "own-token-in-evidence", "files": ["x"]}))         # another run
+    got = [(v["run"], v["kind"]) for v in evidence.arm_violations(d)["value"]]
+    assert got == [("b", "own-token-in-evidence"), ("b", "link-in-home"), ("c", "own-token-in-evidence")]
+
+
+def test_records_with_neither_step_nor_run_are_told_apart_by_path(tmp_path):
+    d = _arm_file(tmp_path, _jl({"kind": "link-in-home", "path": "/h/.config"},
+                                {"kind": "link-in-home", "path": "/h/.config/gh/hosts.yml"}))
+    assert len(evidence.arm_violations(d)["value"]) == 2

@@ -74,7 +74,12 @@ def run(pass_: str, *, docker: bool = True) -> list[Path]:
     excl, rules = inputs.load_excluded(), inputs.load_phase_rules()
     out_dir, written = paths.scoring_out(pass_) / "collected", []
     shutil.rmtree(out_dir, ignore_errors=True)          # a re-run never leaves stale records
+    arm_dir = paths.scoring_out(pass_) / "collected-arm"
+    shutil.rmtree(arm_dir, ignore_errors=True)
     for arm in arms(paths.RESULTS / pass_):
+        arm_dir.mkdir(parents=True, exist_ok=True)      # R38: the arm-level violations leaf, beside the step records
+        (arm_dir / f"{arm}.json").write_text(values.dump(
+            {"arm": arm, "arm_violations": evidence.arm_violations(paths.RESULTS / pass_ / arm)}))
         prev, prev_n = None, None
         for n in STEPS:
             if not (paths.RESULTS / pass_ / arm / f"{n:02d}").is_dir():

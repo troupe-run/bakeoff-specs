@@ -35,12 +35,21 @@ def write_judged(pass_, part, arm, key, scores):
         f.write_text(json.dumps({"score": s, "status": "ok", "evidence": ["x"], "notes": ""}))
 
 
+def write_arm_violations(pass_, arm, value):
+    """The collected arm-level leaf (R38): `value` is a list of violations, or a values.missing(...)."""
+    rec = value if isinstance(value, dict) else values.val(value, "x")
+    f = paths.scoring_out(pass_) / "collected-arm" / f"{arm}.json"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(values.dump({"arm": arm, "arm_violations": rec}))
+
+
 @pytest.fixture
 def p(tmp_state, monkeypatch):
     (paths.RESULTS / "p").mkdir(parents=True)
     monkeypatch.setattr(aggregate.evidence, "all_fail", lambda d, arms: {})
     for arm in ("alpha", "control"):
         write_collected("p", arm, 1)
+        write_arm_violations("p", arm, [])
     return "p"
 
 
@@ -271,3 +280,36 @@ def test_a_lens_file_not_named_in_the_rubric_is_ignored_and_flagged(p):
     st = s["arms"]["alpha"]["dimensions"]["traceability"]["parts"]["req_test_code"]["steps"]["3"]
     assert st["score"] == 0.75 and "intruder" not in st["lenses"] and st["disputed"] is False
     assert "alpha: req_test_code 03: lens file(s) ['intruder'] are not lenses of the rubric; ignored" in s["flags"]
+
+
+def _viol(p):
+    return _scores(p)["arms"]["alpha"]["dimensions"]["setup"]["parts"]["violations"]["steps"]["arm"]
+
+
+def test_arm_level_violations_are_priced_with_the_step_ones(p, monkeypatch):
+    monkeypatch.setattr(aggregate.inputs, "load_violations",
+                        lambda: inputs.ViolationSeverity(0.1, {"own-token-in-evidence": 0.5, "link-in-home": 0.2}))
+    write_collected(p, "alpha", 1, violations=[{"kind": "setup-drift"}])
+    write_arm_violations(p, "alpha", [{"step": 1, "run": "b", "kind": "own-token-in-evidence"},
+                                      {"kind": "link-in-home", "path": "/h/.config"}])
+    st = _viol(p)
+    assert st["score"] == pytest.approx(1 - 0.1 - 0.5 - 0.2)
+    assert st["kinds"] == {"setup-drift": 1, "own-token-in-evidence": 1, "link-in-home": 1}
+    assert st["arm_level"] == 2
+
+
+def test_an_unreadable_arm_violations_file_leaves_the_part_unscored_not_clean(p):
+    write_arm_violations(p, "alpha", values.missing("results/p/alpha/arm-violations.jsonl", "unreadable: bad line"))
+    st = _viol(p)
+    assert st["score"] is None and "arm-level violations" in st["why"] and "unreadable" in st["why"]
+
+
+def test_arm_violations_never_collected_leaves_the_part_unscored(p):
+    (paths.scoring_out(p) / "collected-arm" / "alpha.json").unlink()
+    st = _viol(p)
+    assert st["score"] is None and "arm-level violations" in st["why"]
+
+
+def test_the_highest_priced_arm_level_violation_is_not_uncounted(p):
+    write_arm_violations(p, "alpha", [{"step": 1, "run": "b", "kind": "own-token-in-evidence"}])
+    assert _viol(p)["score"] == pytest.approx(1 - inputs.load_violations().of("own-token-in-evidence"))
