@@ -83,7 +83,9 @@ def plan_prompt(ask: str | None = None) -> str:
         "program is invoked as `troupe <args>`, so give args such as [\"config\", \"set\", \"retry\", \"-1e3\"]; "
         "--theatre defaults to the current directory. Commands run in order in the same theatre, each with a "
         f"{CMD_SECONDS}-second limit and no network; never use `watch` or anything that waits for input. `show` "
-        "lists files (relative to the theatre) to print whenever a command changed them.\n\n"
+        "lists files (relative to the theatre) to print whenever a command changed them. To edit a file BY HAND between "
+        "commands (as a person would in an editor), give a step {\"edit\": {\"path\": \".troupe/troupe.yml\", "
+        "\"content\": \"<the whole new file>\"}} in place of a command.\n\n"
         "Limits of the sandbox: every command runs with a login name set (LOGNAME and USER cannot be unset), so a "
         "case that needs no login name cannot be shown; env may set TROUPE_ACTOR and similar variables only. Do "
         "not pass --theatre or any path outside the theatre.\n\n"
@@ -111,6 +113,13 @@ def parse_plan(text: str) -> dict:
         raise judge.BadReply(f'"commands" must list 1 to {MAX_COMMANDS} commands')
     out_cmds = []
     for i, c in enumerate(cmds, 1):
+        if isinstance(c, dict) and "edit" in c:          # a hand edit between commands: the harness writes the file
+            e = c["edit"]
+            if not isinstance(e, dict) or not isinstance(e.get("path"), str) or not _REL.match(e["path"]) \
+                    or not isinstance(e.get("content"), str):
+                raise judge.BadReply(f'command {i}: "edit" must be {{"path": <relative path>, "content": <text>}}')
+            out_cmds.append({"edit": {"path": e["path"], "content": e["content"]}, "args": [], "env": {}})
+            continue
         if not isinstance(c, dict) or not isinstance(c.get("args"), list) or not c["args"] or not all(
                 isinstance(a, str) for a in c["args"]):
             raise judge.BadReply(f'command {i}: "args" must be a non-empty list of strings')
@@ -151,9 +160,15 @@ def script(plan: dict, impl: str) -> str:
     for i, c in enumerate(plan["commands"], 1):
         env = " ".join(f"{k}={q(v)}" for k, v in c["env"].items())
         argv = " ".join(q(a) for a in c["args"])
-        lines += [f"env {env} timeout -k 2 {CMD_SECONDS} uv run --quiet --project {q(impl)} troupe {argv} "
-                  f"</dev/null >\"$S/out\" 2>\"$S/err\"; rc=$?",
-                  f'echo "R {i} $rc $(head -c {CAP} "$S/out" | enc) $(head -c {CAP} "$S/err" | enc) '
+        if "edit" in c:                                  # by hand, as a person in an editor would: no troupe call
+            rel = c["edit"]["path"]
+            lines += [f"mkdir -p -- \"$(dirname -- {q(rel)})\"",
+                      f"printf %s {q(_b64(c['edit']['content']))} | base64 -d > {q(rel)}; : > \"$S/out\"; "
+                      f': > "$S/err"; rc=0']
+        else:
+            lines += [f"env {env} timeout -k 2 {CMD_SECONDS} uv run --quiet --project {q(impl)} troupe {argv} "
+                      f"</dev/null >\"$S/out\" 2>\"$S/err\"; rc=$?"]
+        lines += [f'echo "R {i} $rc $(head -c {CAP} "$S/out" | enc) $(head -c {CAP} "$S/err" | enc) '
                   f'$(wc -c < "$S/out" | tr -d " ") $(wc -c < "$S/err" | tr -d " ")"']
         for k, s in enumerate(plan["show"]):
             lines.append(
@@ -174,8 +189,8 @@ def parse_output(out: str, plan: dict) -> list[dict]:
             return base64.b64decode(x).decode(errors="replace")
         except ValueError:
             return ""
-    res = [{"args": c["args"], "env": c["env"], "rc": None, "stdout": "", "stderr": "", "files": {}}
-           for c in plan["commands"]]
+    res = [{"args": c["args"], "env": c["env"], "rc": None, "stdout": "", "stderr": "", "files": {},
+            **({"hand_edit": c["edit"]["path"]} if "edit" in c else {})} for c in plan["commands"]]
     for line in out.splitlines():
         p = line.split(" ")
         if p[0] == "R" and len(p) >= 3 and p[1].isdigit() and 1 <= int(p[1]) <= len(res) \
@@ -276,7 +291,8 @@ def _scrub_results(res: list[dict], arms: list[str]) -> list[dict]:
         x = re.sub(r"/work/bakeoff-specs-[\w.-]+", "/work/project", x)
         x = re.sub(r"/tmp/tmp\.\w+", "/theatre", x)
         return anonymise.scrub(x, terms)
-    return [{"args": r["args"], "env": r["env"], "rc": r["rc"], "stdout": s(r["stdout"]), "stderr": s(r["stderr"]),
+    return [{**({"hand_edit": r["hand_edit"]} if "hand_edit" in r else {}),
+             "args": r["args"], "env": r["env"], "rc": r["rc"], "stdout": s(r["stdout"]), "stderr": s(r["stderr"]),
              "files": {k: (None if v is None else s(v)) for k, v in r["files"].items()}} for r in res]
 
 
@@ -302,7 +318,8 @@ def by_route(t: dict, results: dict[str, list[dict]], clean=lambda x: x) -> list
 def write_prompt(runnable: bool) -> str:
     ran = ("/judge/results.json holds what actually happened: for each route, the outcomes of the implementations "
            "on it (identical ones merged, with a count), per command: exit code, stdout, stderr, and the files "
-           "listed after it; a shown file appears only after a command that changed it (null: deleted), and its "
+           "listed after it; a step with \"hand_edit\" is the file edited by hand (no troupe command ran). A shown "
+           "file appears only after a command that changed it (null: deleted), and its "
            "starting content is in plan.files. Report those results faithfully; mark an example \"observed\": true only when every "
            "route's result in it comes from results.json, and say plainly when arms on one route behaved "
            "differently (\"two arms: ...; one arm: ...\")."

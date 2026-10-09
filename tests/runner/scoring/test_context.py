@@ -383,3 +383,20 @@ def test_redo_without_only_is_refused(aligned):
     from runner.scoring import inputs
     with pytest.raises(inputs.InputError, match="need --only"):
         cx.run("p", judge.FakeJudge([]), FakeRunner(), redo=True)
+
+
+def test_a_hand_edit_step_rewrites_the_file_between_commands_without_running_troupe(fake_tools, tmp_path):
+    (tmp_path / "bin" / "uv").write_text("#!/bin/bash\ncat .troupe/troupe.yml\n")
+    plan = cx.parse_plan(json.dumps({**PLAN, "show": [".troupe/troupe.yml"], "commands": [
+        {"args": ["config", "show", "a"]},
+        {"edit": {"path": ".troupe/troupe.yml", "content": "note: by hand\n"}},
+        {"args": ["config", "history"]}]}))
+    r = _run(plan, fake_tools)
+    assert r[0]["stdout"] == "note: old\n" and r[1]["hand_edit"] == ".troupe/troupe.yml" and r[1]["rc"] == 0
+    assert r[1]["files"] == {".troupe/troupe.yml": "note: by hand\n"} and r[2]["stdout"] == "note: by hand\n"
+
+
+@pytest.mark.parametrize("bad", [{"edit": {"path": "../x", "content": "a"}}, {"edit": {"path": "x"}}, {"edit": "x"}])
+def test_a_hand_edit_outside_the_theatre_or_without_content_is_refused(bad):
+    with pytest.raises(judge.BadReply, match="edit"):
+        cx.parse_plan(json.dumps({**PLAN, "commands": [bad]}))
