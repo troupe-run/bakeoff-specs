@@ -476,7 +476,56 @@ def _failed_lines(failed: list[dict], dropped: list[dict]) -> list[str]:
     return out
 
 
-def render_sheet(topics: list[dict], arms: list[str], failed: list[dict] = (), dropped: list[dict] = ()) -> str:
+_FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
+
+
+def _unfenced(md: str) -> list[str]:
+    """The sheet's lines with every line inside a fenced block blanked: a file shown in a topic's context (which may
+    hold "rating:" or "## x") is never read as the owner's input."""
+    out, fence = [], None
+    for line in md.splitlines():
+        m = _FENCE.match(line)
+        if fence is None and m:
+            fence = m[1][0] * len(m[1])
+            out.append("")
+        elif fence is not None:
+            if m and m[1].startswith(fence):
+                fence = None
+            out.append("")
+        else:
+            out.append(line)
+    return out
+
+
+def _fenced(text: str) -> list[str]:
+    run = max((len(m) for m in re.findall(r"~+", text)), default=0)
+    fence = "~" * max(3, run + 1)
+    return [fence, *text.rstrip("\n").splitlines(), fence]
+
+
+def render_context(ctx: dict | None, clean) -> list[str]:
+    """A topic's context block: what is at stake, each example with every route's result, the trade-off."""
+    if not ctx:
+        return ["_No behaviour context for this topic._", ""]
+    c = ctx["context"]
+    out = [f"**What's at stake:** {clean(c['stakes'])}", ""]
+    if c["examples"]:
+        out += ["**What each route does** (run against every arm's final code):", ""]
+        for i, e in enumerate(c["examples"], 1):
+            how = "observed" if e["observed"] else "inferred, not run"
+            out += [f"**Example {i}:** {clean(e['input'])} _({how})_", ""]
+            if e["before"].strip():
+                out += ["Starting file:", "", *_fenced(e["before"]), ""]
+            out += [f"- Route {n}: {clean(r)}" for n, r in sorted(e["results"].items(), key=lambda x: int(x[0]))]
+            out.append("")
+    if c.get("in_practice", "").strip():
+        out += [f"**In practice:** {clean(c['in_practice'])}", ""]
+    out += [f"**Trade-off:** {clean(c['tradeoff'])}", ""]
+    return out
+
+
+def render_sheet(topics: list[dict], arms: list[str], failed: list[dict] = (), dropped: list[dict] = (),
+                 contexts: dict[str, dict] | None = None) -> str:
     """The owner's blind view: numbered routes with their text, reasoning, outcome and proposed rating; blank `rating:`
     and `reason:` lines. No labels; judge-written text is flattened to one line and scrubbed of every arm name given
     (and every configured method name) as a second guard."""
@@ -496,6 +545,8 @@ def render_sheet(topics: list[dict], arms: list[str], failed: list[dict] = (), d
         out += [f"# {title} ({len(ts)})", ""]
         for t in ts:
             out += [f"## {t['sheet_id']}", "", f"**Question:** {clean(t['question'])}  ", f"**Kind:** {k}", ""]
+            if contexts is not None:
+                out += render_context(contexts.get(t["id"]), clean)
             for r in t["routes"]:
                 prop = f"{r['proposed']} - {clean(r['proposed_why'])}" if r["proposed"] else "(none)"
                 out += [f"### Route {r['route_no']}", "",
@@ -526,11 +577,13 @@ def sheet(pass_: str) -> Path:
     tf, md = _dir(pass_) / "topics.json", _dir(pass_) / "rating-sheet.md"
     if not tf.exists():
         raise inputs.InputError(f"{tf} is missing: run the decisions-align stage first")
-    if md.exists() and re.search(r"^[ \t]*(?:[-*][ \t]+)?(?:rating|reason)[ \t]*:[ \t]*\S", md.read_text(), re.I | re.M):
+    if md.exists() and re.search(r"^[ \t]*(?:[-*][ \t]+)?(?:rating|reason)[ \t]*:[ \t]*\S",
+                                 "\n".join(_unfenced(md.read_text())), re.I | re.M):
         raise inputs.InputError(f"{md} already holds ratings: move it aside to write a fresh sheet")
     aligned, failed = json.loads(tf.read_text()), _failures(pass_)
     topics, dropped = aligned["topics"], aligned.get("dropped", [])
-    text = render_sheet(topics, _arms(pass_), failed, dropped)
+    from runner.scoring import context                     # lazy: context imports this module
+    text = render_sheet(topics, _arms(pass_), failed, dropped, context.load(pass_, _ordered(topics)))
     if leaks := leakcheck.check_text(text, _arms(pass_), labels(pass_)):
         raise inputs.InputError(f"the rating sheet would unblind the owner ({len(leaks)} hit(s)); nothing written:\n"
                                 + "\n".join(f"- {x}" for x in leaks[:40]))
@@ -563,7 +616,7 @@ def parse_sheet(md: str) -> dict[str, list[dict]]:
     got: dict[str, dict[int, dict]] = {}
     problems: list[str] = []
     topic, route = None, None
-    for line in md.splitlines():
+    for line in _unfenced(md):
         if m := _H2.match(line):
             topic, route = m[1], None
             if topic in got:

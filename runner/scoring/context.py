@@ -18,7 +18,7 @@ mapping never reaches a judge or the written context."""
 from __future__ import annotations
 import base64, json, re, shlex
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 from runner import paths
 from runner.scoring import anonymise, decisions as dz, inputs, judge, leakcheck, values
 
@@ -174,7 +174,8 @@ class ArmRunner:
     topic. The only reader of anon-key.json here: it needs the arm behind a label."""
 
     def __init__(self, pass_: str):
-        self.pass_, self._prep = pass_, {}
+        self.pass_ = pass_
+        self._prep: dict[str, tuple[Any, Path]] = {}
 
     def _copy(self, label: str):
         if label not in self._prep:
@@ -209,7 +210,6 @@ def _final_sha(p) -> str:
 
 
 def _scrub_results(res: list[dict], arms: list[str]) -> list[dict]:
-    clean = dz._cleaner(arms)
     terms = anonymise.pass_terms(arms)
 
     def s(x: str) -> str:
@@ -273,7 +273,7 @@ def parse_written(text: str, route_nos: list[int], labels: list[str]) -> dict:
     v = dz._json_value(text)
     if not isinstance(v, dict):
         raise judge.BadReply("needs one JSON object")
-    out = {k: dz._str(v, k, "context") for k in ("stakes", "tradeoff")}
+    out: dict[str, Any] = {k: dz._str(v, k, "context") for k in ("stakes", "tradeoff")}
     out["in_practice"] = v.get("in_practice") if isinstance(v.get("in_practice"), str) else ""
     exs = v.get("examples", [])
     if not isinstance(exs, list):
@@ -358,7 +358,7 @@ def run(pass_: str, j: judge.Judge, runner: Runner, *, retry_failed: bool = Fals
         files = ["topic.json"]
         if plan["runnable"]:
             results: dict[str, list[dict] | str] = {}
-            for lab in sorted({l for r in t["routes"] for l in r["labels"]}):
+            for lab in sorted({lab for r in t["routes"] for lab in r["labels"]}):
                 try:
                     results[lab] = _scrub_results(runner.run(lab, plan), arms)
                 except Exception as e:                               # noqa: BLE001 - one arm's sandbox, recorded

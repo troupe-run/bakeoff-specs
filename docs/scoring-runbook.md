@@ -63,7 +63,15 @@ resumable or idempotent unless noted.
 12. `--stage decisions-extract`, then `--stage decisions-align`. Align refuses while extractions failed; fix with
     `--retry-failed` on extract, or accept with `--allow-failed` (those labels then show as unrated "no
     evidence", never "not considered").
-13. `--stage decisions-sheet` writes `decisions/rating-sheet.md`. **The owner fills only that file.** Never open
+12a. `--stage decisions-context` (Docker: wrap it in the docker lock) writes `decisions/context/<topic>.json`. Per
+    topic it makes two judge calls: the first plans example commands and the second writes up their results. The
+    examples run in every arm's final code in the tester sandbox. It is resumable, and a topic is redone when a
+    re-alignment changed its routes. Run `--only T1 T5 T40` first and show the owner a few topics before the rest.
+    Failed topics are final unless `--retry-failed`, and the sheet shows them as "no behaviour context".
+13. `--stage decisions-sheet` writes `decisions/rating-sheet.md`. It refuses to write a sheet that names an arm or an
+    arm letter. Ratings are 1–5 or n/a and the reason is optional (spec §8.4, amended 2026-10-09). The owner can rate
+    in chat instead: `python -m runner.scoring.rate <pass> next | show T4 | set T4 4 2 5 n/a [--reason 2 "…"] |
+    progress` reads and writes only the blind sheet. **The owner fills only that file.** Never open
     `decisions/.import/` (it maps routes back to arms and would unblind the ratings). Then
     `--stage decisions-import`.
 14. `--stage judge`: resumable, so re-run after a crash. Failed items are final unless `--retry-failed`; items

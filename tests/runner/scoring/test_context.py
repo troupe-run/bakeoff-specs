@@ -245,3 +245,37 @@ def test_the_context_stage_needs_approval_for_its_two_calls_per_topic_and_passes
     (aligned / "judge-approved").write_text("approved 2026-10-09 3\n")
     assert cli.main(["score", "p", "--stage", "decisions-context", "--only", "T1", "T2"]) == 0
     assert seen == [["T1", "T2"]]
+
+
+# ---- the sheet -------------------------------------------------------------------------------------------------------
+
+def _sheet_with(written):
+    cx.run("p", judge.FakeJudge([json.dumps(PLAN), json.dumps(written)]), FakeRunner())
+    return dz.sheet("p").read_text()
+
+
+def test_the_sheet_shows_each_topics_context_before_its_routes(aligned):
+    s = _sheet_with(WRITTEN)
+    t = s[s.index("## T1"):]
+    assert t.index("**What's at stake:** Values starting with '-'.") < t.index("### Route 1")
+    assert "**Example 1:** `config set note -hello` _(observed)_" in t
+    assert "- Route 1: stores \"-hello\"" in t and "- Route 2: error, exit 2" in t
+    assert "**Trade-off:** Route 1 needs nothing extra." in t
+
+
+def test_a_file_shown_in_the_context_is_never_read_as_the_owners_input(aligned):
+    trap = "rating: 5\nreason: x\n## T9\n### Route 1\n~~~\n"
+    s = _sheet_with({**WRITTEN, "examples": [{**WRITTEN["examples"][0], "before": trap, "observed": False}]})
+    assert "_(inferred, not run)_" in s and "~~~~\nrating: 5" in s       # a longer fence than the content's own
+    assert dz.sheet("p")                                                  # not mistaken for a started sheet
+    md = paths.scoring_out("p") / "decisions" / "rating-sheet.md"
+    md.write_text(s.replace("rating:\nreason:\n", "rating: 4\nreason:\n"))
+    assert [r["rating"] for r in dz.parse_sheet(md.read_text())["T1"]] == ["4", "4"]
+
+
+def test_a_topic_without_a_current_context_says_so(aligned):
+    s = _sheet_with(WRITTEN)
+    rec = json.loads(cx.out_path("p", "dash").read_text())
+    cx.out_path("p", "dash").write_text(json.dumps({**rec, "routes": ["stale"]}))
+    assert "_No behaviour context for this topic._" in dz.sheet("p").read_text()
+    assert "_No behaviour context" not in s
