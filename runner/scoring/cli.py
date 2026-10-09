@@ -106,10 +106,18 @@ def _decisions_align(ns) -> None:
 
 def _decisions_context(ns) -> None:
     """Spends model quota (two calls per topic) and uses Docker (each label's final code in the tester sandbox)."""
+    from runner import preflight
+    from runner.checklist import NotReady
+    if faults.halted(ns.pass_):            # Docker and state/ scratch, as remeasure (R31)
+        raise inputs.InputError(f"HALTED ({faults.ledger_paths(ns.pass_)[1]}): {faults.halt_reason(ns.pass_)}")
     _approve(ns)
-    print(json.dumps(context.run(ns.pass_, judge.ContainerJudge(ns.pass_), context.ArmRunner(ns.pass_),
-                                 retry_failed=ns.retry_failed, only=getattr(ns, "only", None)), indent=2,
-                     sort_keys=True))
+    try:
+        with preflight.lock():
+            got = context.run(ns.pass_, judge.ContainerJudge(ns.pass_), context.ArmRunner(ns.pass_),
+                              retry_failed=ns.retry_failed, only=getattr(ns, "only", None))
+    except NotReady as e:
+        raise inputs.InputError(str(e)) from None
+    print(json.dumps(got, indent=2, sort_keys=True))
 
 
 def _remeasure(ns) -> None:

@@ -61,26 +61,28 @@ def check(anon: Path, arms: list[str]) -> list[tuple[str, str]]:
 
 # ---- text the owner reads blind (the rating sheet, its context) ----------------------------------------------------
 # An arm's letter tells the owner which route belongs to which arm, so they could follow one arm from topic to topic
-# (the 2026-10-09 sheet had ~25: "A pins ruamel", "C fixed chained includes", "C and F: a total deadline"). The
-# article "A" is English, so for it only a following word that reads as an arm's action counts; "(B)" and "option B"
-# are an option's own name, not an arm.
-_A_VERBS = ("and", "or", "also", "first", "then", "later", "only", "pins", "reworked", "fixed", "started", "added",
-            "dropped", "kept", "took", "chose", "uses", "used", "refuses", "refused", "re-renders", "copies", "was",
-            "had", "has", "did", "does", "checks", "writes", "wrote")
+# (the 2026-10-09 sheet had ~25: "A pins ruamel", "C and F: a total deadline", "(D also copies ...)", "per-event ids
+# (C pre-lineage-<seq>; D change null)"). A capital letter is also ordinary text ("A later step", "C extension",
+# "Plan B", "exit code E", "--level C"), and every false hit costs a re-ask, so a letter counts only where it is used
+# as an actor: before an arm's verb, paired with another label letter, or opening a parenthesised or `;` list item.
+_VERBS = ("also", "pins", "pinned", "reworked", "fixed", "started", "added", "dropped", "kept", "took", "chose", "uses",
+          "used", "refuses", "refused", "re-renders", "copies", "copied", "checks", "checked", "writes", "wrote",
+          "stamps", "validated", "rejects", "rejected", "reworded", "renamed", "moved", "switched", "missed")
 
 
 def label_refs(text: str, labels: list[str]) -> list[str]:
     """The places in `text` that name one of `labels` ("Arm A".."Arm F"): "Arm C", or the bare letter used as an
     arm's name. Each hit is returned with a little context; empty means clean."""
-    letters = sorted({l.split()[-1] for l in labels if re.fullmatch(r"Arm [A-Z]", l)})
+    letters = sorted({lab.split()[-1] for lab in labels if re.fullmatch(r"Arm [A-Z]", lab)})
     if not letters:
         return []
-    others = "".join(x for x in letters if x != "A")
-    pats = [r"\bArms?\s+[A-Z](?:\s*(?:,|and|or|&)\s*[A-Z])*\b"]
-    if others:
-        pats.append(rf"(?<![\w./'-])(?<!option )(?<!Option )[{others}](?![\w./')-])")
-    if "A" in letters:
-        pats.append(rf"(?<![\w./'-])A(?=:|\s+(?:{'|'.join(map(re.escape, _A_VERBS))})\b)")
+    x = f"[{''.join(letters)}]"
+    edge_l, edge_r = r"(?<![\w./'+-])", r"(?![\w./'+-])"
+    pats = [r"\bArms?\s+[A-Z](?:\s*(?:,|and|or|&)\s*[A-Z])*\b",
+            rf"{edge_l}{x}\s+(?:{'|'.join(map(re.escape, _VERBS))})\b",                 # "C fixed", "A pins"
+            rf"{edge_l}{x}\s*(?:,|and|or|&)\s*{x}{edge_r}",                            # "C and F", "B, D"
+            rf"(?:^|[(;])\s*{x}:",                                                       # "(C: owner", "; F: unwritable"
+            rf"[(;]\s*(?!A\s){x}\s+[a-z][\w<>*.-]*"]           # "(C pre-lineage", "; D change"; never "(A word"
     out = []
     for m in re.finditer("|".join(f"(?:{p})" for p in pats), text):
         out.append(text[max(0, m.start() - 20):m.end() + 20].replace("\n", " "))

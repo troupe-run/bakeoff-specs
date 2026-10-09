@@ -26,10 +26,15 @@ ITEM_PREFIX = "_decisions/context-"            # anon/<ITEM_PREFIX><topic id>/: 
 SPEC_FILES = ("contract.md",)                  # + every scenario/steps/*.md, concatenated into steps.md
 MAX_COMMANDS, MAX_FILES, CMD_SECONDS = 8, 6, 20
 CAP = 4000                                     # characters kept per stdout, stderr or file
-_REL = re.compile(r"^(?!/)(?!.*(?:^|/)\.\.(?:/|$))[\w.\-/]+$")
+# relative, no "..", no component starting with "-" (it would be read as an option by dirname/head)
+_REL = re.compile(r"^(?!/)(?!.*(?:^|/)\.\.(?:/|$))(?!.*(?:^|/)-)[\w.\-/]+$")
 _ENV = re.compile(r"^[A-Z][A-Z0-9_]*$")
-_ENV_DENY = {"PATH", "HOME", "USER", "LOGNAME", "PYTHONPATH", "UV_PROJECT", "UV_OFFLINE", "UV_CACHE_DIR",
-             "VIRTUAL_ENV", "LD_PRELOAD", "LD_LIBRARY_PATH"}
+_ENV_DENY = {"PATH", "HOME", "USER", "LOGNAME", "VIRTUAL_ENV", "TMPDIR", "SHELL", "IFS"}
+_ENV_DENY_PREFIX = ("UV_", "PYTHON", "LD_", "DYLD_", "BAKEOFF", "BASH")
+
+
+class RunFailed(RuntimeError):
+    """The harness could not run a plan in a label's code (no install, no container, no records): never a result."""
 
 
 def out_dir(pass_: str) -> Path:
@@ -54,10 +59,10 @@ def topic_view(t: dict, clean) -> dict:
                        for r in t["routes"]]}
 
 
-def fingerprint(t: dict) -> list[str]:
-    """What a context was written for: the routes' texts in sheet order. A re-alignment that changes them makes the
-    context stale (the sheet then shows none)."""
-    return [r["route"] for r in t["routes"]]
+def fingerprint(t: dict) -> list[list]:
+    """What a context was written for: each route's text and labels, in sheet order. A re-alignment that changes
+    either makes the context stale (the sheet then shows none). Kept in the context record, never on the sheet."""
+    return [[r["route"], sorted(r["labels"])] for r in t["routes"]]
 
 
 # ---- 1. plan ---------------------------------------------------------------------------------------------------------
@@ -76,7 +81,10 @@ def plan_prompt() -> str:
         "program is invoked as `troupe <args>`, so give args such as [\"config\", \"set\", \"retry\", \"-1e3\"]; "
         "--theatre defaults to the current directory. Commands run in order in the same theatre, each with a "
         f"{CMD_SECONDS}-second limit and no network; never use `watch` or anything that waits for input. `show` "
-        "lists files (relative to the theatre) to print after each command, so changes to them are visible.\n\n"
+        "lists files (relative to the theatre) to print whenever a command changed them.\n\n"
+        "Limits of the sandbox: every command runs with a login name set (LOGNAME and USER cannot be unset), so a "
+        "case that needs no login name cannot be shown; env may set TROUPE_ACTOR and similar variables only. Do "
+        "not pass --theatre or any path outside the theatre.\n\n"
         "If the question cannot be shown by running commands (it is about planning, process, documentation, test "
         "structure or internals with no visible effect), set \"runnable\" to false and say why.\n\n"
         "Reply with exactly one JSON object and nothing else:\n"
@@ -106,10 +114,14 @@ def parse_plan(text: str) -> dict:
             raise judge.BadReply(f'command {i}: "args" must be a non-empty list of strings')
         if c["args"][0] != "config" or (len(c["args"]) > 1 and c["args"][1] == "watch"):
             raise judge.BadReply(f"command {i}: only `troupe config <subcommand>` commands, never watch")
+        if any(a == "--theatre" or a.startswith("--theatre=") or "\x00" in a for a in c["args"]):
+            raise judge.BadReply(f"command {i}: no --theatre (the theatre is the current directory) and no NUL")
         env = c.get("env") or {}
-        if not isinstance(env, dict) or not all(isinstance(k, str) and _ENV.match(k) and k not in _ENV_DENY
-                                                and isinstance(x, str) for k, x in env.items()):
-            raise judge.BadReply(f'command {i}: "env" must map variable names to strings (not {sorted(_ENV_DENY)})')
+        if not isinstance(env, dict) or not all(
+                isinstance(k, str) and _ENV.match(k) and k not in _ENV_DENY and not k.startswith(_ENV_DENY_PREFIX)
+                and isinstance(x, str) and "\x00" not in x for k, x in env.items()):
+            raise judge.BadReply(f'command {i}: "env" must map variable names to strings (not {sorted(_ENV_DENY)} '
+                                 f"or {', '.join(_ENV_DENY_PREFIX)}*)")
         out_cmds.append({"args": c["args"], "env": env})
     if not isinstance(show, list) or not all(isinstance(s, str) and _REL.match(s) for s in show) or len(show) > MAX_FILES:
         raise judge.BadReply(f'"show" must list at most {MAX_FILES} relative paths')
@@ -124,26 +136,37 @@ def _b64(s: str) -> str:
 
 def script(plan: dict, impl: str) -> str:
     """Bash for the tester sandbox: a fresh theatre, the plan's files, then each command (`timeout`), printing one
-    `R`/`F` record per line with base64 fields so nothing the arm prints can forge a record."""
+    `R`/`F` record per line with base64 fields, so what the arm prints to its own stdout or stderr is never read as
+    a record. (An arm process that outlives its command could still write to the container's stdout; the harness's
+    record for a command is printed after it, and the last record wins.) A shown file is printed after a command
+    only when that command changed it (`S` once at the start, so the reader knows the starting content)."""
     q = shlex.quote
-    lines = ["set -u", 'T="$(mktemp -d)"', 'cd "$T"', "enc() { base64 -w0 2>/dev/null || base64; }"]
+    lines = ["set -u", 'T="$(mktemp -d)"', 'cd "$T"', 'S="$(mktemp -d)"', "enc() { base64 | tr -d '\\n'; }"]
     for rel, content in plan["files"].items():
-        lines += [f"mkdir -p \"$(dirname {q(rel)})\"", f"printf %s {q(_b64(content))} | base64 -d > {q(rel)}"]
+        lines += [f"mkdir -p -- \"$(dirname -- {q(rel)})\"", f"printf %s {q(_b64(content))} | base64 -d > {q(rel)}"]
+    for k, s in enumerate(plan["show"]):                   # snapshot k: the file as last printed ("-" = absent)
+        lines.append(f'if [ -f {q(s)} ]; then cp -- {q(s)} "$S/{k}"; else printf -- - > "$S/{k}.absent"; fi')
     for i, c in enumerate(plan["commands"], 1):
         env = " ".join(f"{k}={q(v)}" for k, v in c["env"].items())
         argv = " ".join(q(a) for a in c["args"])
         lines += [f"env {env} timeout -k 2 {CMD_SECONDS} uv run --quiet --project {q(impl)} troupe {argv} "
-                  f"</dev/null >\"$T.out\" 2>\"$T.err\"; rc=$?",
-                  f'echo "R {i} $rc $(head -c {CAP} "$T.out" | enc) $(head -c {CAP} "$T.err" | enc)"']
-        for s in plan["show"]:
-            lines.append(f'if [ -f {q(s)} ]; then echo "F {i} {_b64(s)} $(head -c {CAP} {q(s)} | enc)"; '
-                         f'else echo "F {i} {_b64(s)} -"; fi')
+                  f"</dev/null >\"$S/out\" 2>\"$S/err\"; rc=$?",
+                  f'echo "R {i} $rc $(head -c {CAP} "$S/out" | enc) $(head -c {CAP} "$S/err" | enc) '
+                  f'$(wc -c < "$S/out" | tr -d " ") $(wc -c < "$S/err" | tr -d " ")"']
+        for k, s in enumerate(plan["show"]):
+            lines.append(
+                f'if [ -f {q(s)} ]; then if [ -f "$S/{k}.absent" ] || ! cmp -s -- {q(s)} "$S/{k}"; then '
+                f'rm -f "$S/{k}.absent"; cp -- {q(s)} "$S/{k}"; '
+                f'echo "F {i} {_b64(s)} $(head -c {CAP} -- {q(s)} | enc) $(wc -c < {q(s)} | tr -d " ")"; fi; '
+                f'elif [ ! -f "$S/{k}.absent" ]; then rm -f "$S/{k}"; printf -- - > "$S/{k}.absent"; '
+                f'echo "F {i} {_b64(s)} -"; fi')
     return "\n".join(lines) + "\n"
 
 
 def parse_output(out: str, plan: dict) -> list[dict]:
-    """One result per command: {"args", "rc", "stdout", "stderr", "files": {path: text | None}}; a command with no
-    record (the sandbox died) has rc None."""
+    """One result per command: {"args", "rc", "stdout", "stderr", "files": {path: text | None}} - `files` holds only
+    the shown files that command changed (None: it deleted the file). Raises RunFailed when any command has no
+    record: the sandbox died or never started, which is the harness's failure, never the arm's result."""
     def dec(x: str) -> str:
         try:
             return base64.b64decode(x).decode(errors="replace")
@@ -153,19 +176,33 @@ def parse_output(out: str, plan: dict) -> list[dict]:
            for c in plan["commands"]]
     for line in out.splitlines():
         p = line.split(" ")
-        if p[0] == "R" and len(p) >= 3 and p[1].isdigit() and 1 <= int(p[1]) <= len(res):
+        if p[0] == "R" and len(p) >= 3 and p[1].isdigit() and 1 <= int(p[1]) <= len(res) \
+                and re.fullmatch(r"-?\d+", p[2]):
             r = res[int(p[1]) - 1]
-            r["rc"] = int(p[2]) if re.fullmatch(r"-?\d+", p[2]) else None
-            r["stdout"], r["stderr"] = dec(p[3]) if len(p) > 3 else "", dec(p[4]) if len(p) > 4 else ""
-        elif p[0] == "F" and len(p) == 4 and p[1].isdigit() and 1 <= int(p[1]) <= len(res):
-            res[int(p[1]) - 1]["files"][dec(p[2])] = None if p[3] == "-" else dec(p[3])
+            r["rc"] = int(p[2])
+            r["stdout"], r["stderr"] = _capped(p, 3, 5), _capped(p, 4, 6)
+        elif p[0] == "F" and len(p) >= 4 and p[1].isdigit() and 1 <= int(p[1]) <= len(res):
+            res[int(p[1]) - 1]["files"][dec(p[2])] = None if p[3] == "-" else _capped(p, 3, 4)
+    if missing := [str(i) for i, r in enumerate(res, 1) if r["rc"] is None]:
+        raise RunFailed(f"no record for command(s) {', '.join(missing)}: the sandbox did not finish them")
     for r in res:
         if r["rc"] == 124:
             r["stderr"] = (r["stderr"] + f"\n[harness: stopped after {CMD_SECONDS} s]").strip()
     return res
 
 
+def _capped(p: list[str], i: int, size_at: int) -> str:
+    """Field `i` decoded, with a marker when the full size (field `size_at`) was over CAP."""
+    try:
+        text = base64.b64decode(p[i]).decode(errors="replace") if len(p) > i else ""
+    except ValueError:
+        text = ""
+    size = int(p[size_at]) if len(p) > size_at and p[size_at].isdigit() else 0
+    return text + (f"\n[harness: {size - CAP} more bytes not shown]" if size > CAP else "")
+
+
 class Runner(Protocol):
+    def ready(self, labels: list[str]) -> None: ...
     def run(self, label: str, plan: dict) -> list[dict]: ...
 
 
@@ -175,24 +212,45 @@ class ArmRunner:
 
     def __init__(self, pass_: str):
         self.pass_ = pass_
-        self._prep: dict[str, tuple[Any, Path]] = {}
+        self._prep: dict[str, tuple[Any, Path] | str] = {}          # a failure is cached, never re-prepared
 
-    def _copy(self, label: str):
+    def _copy(self, label: str) -> tuple[Any, Path]:
         if label not in self._prep:
             from runner import hidden                 # lazy, as rerun.py does: Docker-only imports
             from runner.paths import Paths
             p = Paths(self.pass_, judge.anon_key(self.pass_)[label])
-            prep = hidden.prepare(p, _final_sha(p), "context-final", out_dir(self.pass_) / ".prep" / label,
-                                  require_main=False)
-            if not prep.prep.get("hidden", {}).get("ok"):
-                raise RuntimeError(f"{label}: installing the final code failed")
-            self._prep[label] = (p, prep.hidden_copy)
-        return self._prep[label]
+            try:                                      # install records stay in the arm's own state/, never results/
+                prep = hidden.prepare(p, _final_sha(p), "context-final", p.base / "context-prep", require_main=False)
+                ok = bool(prep.prep.get("hidden", {}).get("ok"))
+                self._prep[label] = (p, prep.hidden_copy) if ok else "installing the final code failed"
+            except Exception as e:                     # noqa: BLE001 - cached, reported by ready()/run()
+                self._prep[label] = f"preparing the final code failed: {type(e).__name__}"
+        got = self._prep[label]
+        if isinstance(got, str):
+            raise RunFailed(f"{label}: {got}")
+        return got
+
+    def ready(self, labels: list[str]) -> None:
+        """Every label prepared and `troupe config --help` answering, before any topic is spent on."""
+        probe = {"files": {}, "commands": [{"args": ["config", "--help"], "env": {}}], "show": []}
+        bad = []
+        for lab in labels:
+            try:
+                if self.run(lab, probe)[0]["rc"] != 0:
+                    bad.append(f"{lab}: `troupe config --help` failed")
+            except RunFailed as e:
+                bad.append(str(e))
+        if bad:
+            raise inputs.InputError("the context stage cannot run every arm's code; nothing spent:\n"
+                                    + "\n".join(f"- {b}" for b in bad))
 
     def run(self, label: str, plan: dict) -> list[dict]:
         from runner import hidden
         p, copy = self._copy(label)
-        out = hidden.run_script(p, copy, script(plan, f"/work/{copy.name}"))
+        try:
+            out = hidden.run_script(p, copy, script(plan, f"/work/{copy.name}"))
+        except Exception as e:                         # noqa: BLE001 - the harness's failure, never a result
+            raise RunFailed(f"{label}: the sandbox failed: {type(e).__name__}") from e
         return parse_output(out, plan)
 
 
@@ -220,22 +278,20 @@ def _scrub_results(res: list[dict], arms: list[str]) -> list[dict]:
              "files": {k: (None if v is None else s(v)) for k, v in r["files"].items()}} for r in res]
 
 
-def by_route(t: dict, results: dict[str, list[dict] | str]) -> list[dict]:
-    """[{"route_no", "route", "outcomes": [{"arms": n, "results": [...]} | {"arms": n, "error": why}]}]: arms on a
-    route with identical results merged into one outcome, counted, never named or numbered."""
+def by_route(t: dict, results: dict[str, list[dict]], clean=lambda x: x) -> list[dict]:
+    """[{"route_no", "route", "outcomes": [{"arms": n, "results": [...]}]}]: arms on a route with identical results
+    merged into one outcome and counted, never named or numbered."""
     out = []
     for r in t["routes"]:
         groups: list[dict] = []
         for lab in r["labels"]:
-            got = results.get(lab)
-            key = {"error": got} if isinstance(got, str) else {"results": got}
             for g in groups:
-                if {k: v for k, v in g.items() if k != "arms"} == key:
+                if g["results"] == results[lab]:
                     g["arms"] += 1
                     break
             else:
-                groups.append({"arms": 1, **key})
-        out.append({"route_no": r["route_no"], "route": r["route"], "outcomes": groups})
+                groups.append({"arms": 1, "results": results[lab]})
+        out.append({"route_no": r["route_no"], "route": clean(r["route"]), "outcomes": groups})
     return out
 
 
@@ -244,7 +300,8 @@ def by_route(t: dict, results: dict[str, list[dict] | str]) -> list[dict]:
 def write_prompt(runnable: bool) -> str:
     ran = ("/judge/results.json holds what actually happened: for each route, the outcomes of the implementations "
            "on it (identical ones merged, with a count), per command: exit code, stdout, stderr, and the files "
-           "listed after it. Report those results faithfully; mark an example \"observed\": true only when every "
+           "listed after it; a shown file appears only after a command that changed it (null: deleted), and its "
+           "starting content is in plan.files. Report those results faithfully; mark an example \"observed\": true only when every "
            "route's result in it comes from results.json, and say plainly when arms on one route behaved "
            "differently (\"two arms: ...; one arm: ...\")."
            if runnable else
@@ -269,7 +326,8 @@ def write_prompt(runnable: bool) -> str:
         '"tradeoff": "<one line: what each route costs>"}')
 
 
-def parse_written(text: str, route_nos: list[int], labels: list[str]) -> dict:
+def parse_written(text: str, route_nos: list[int], labels: list[str], arms: tuple[str, ...] | list[str] = (),
+                  runnable: bool = True) -> dict:
     v = dz._json_value(text)
     if not isinstance(v, dict):
         raise judge.BadReply("needs one JSON object")
@@ -288,13 +346,15 @@ def parse_written(text: str, route_nos: list[int], labels: list[str]) -> dict:
             raise judge.BadReply(f"example {i}: \"results\" must give every route {sorted(want, key=int)} a result")
         out["examples"].append({"input": dz._str(e, "input", f"example {i}", nonempty=True),
                                 "before": e.get("before") if isinstance(e.get("before"), str) else "",
-                                "results": got, "observed": e.get("observed") is True})
+                                "results": got, "observed": runnable and e.get("observed") is True})
     if not out["examples"] and not out["in_practice"].strip():
         raise judge.BadReply('give examples, or "in_practice" when there are none')
     texts = [out["stakes"], out["tradeoff"], out["in_practice"]] + [x for e in out["examples"]
                                                                      for x in (e["input"], e["before"], *e["results"].values())]
     if refs := [c for x in texts for c in leakcheck.label_refs(x, labels)]:
         raise judge.BadReply(f"the text names an arm ({'; '.join(refs[:3])}): refer to routes by number only")
+    if hits := leakcheck.check_text("\n".join(texts), list(arms), []):
+        raise judge.BadReply(f"the text names a method or tool ({hits[0]}): never name one")
     return out
 
 
@@ -336,13 +396,13 @@ def run(pass_: str, j: judge.Judge, runner: Runner, *, retry_failed: bool = Fals
     clean = dz._cleaner(arms)
     contract, steps = _spec_text()
     counts = {"written": 0, "failed": 0, "skipped": 0}
-    for t in _topics(pass_):
-        if only and t["sheet_id"] not in only and t["id"] not in only:
-            continue
+    todo = [t for t in _topics(pass_) if not only or t["sheet_id"] in only or t["id"] in only]
+    pending = [t for t in todo if _unfinished(out_path(pass_, t["id"]), t, retry_failed)]
+    counts["skipped"] = len(todo) - len(pending)
+    if pending:                     # every arm's code installed and answering before anything is spent (review F2/F5)
+        runner.ready(sorted({lab for t in pending for r in t["routes"] for lab in r["labels"]}))
+    for t in pending:
         f = out_path(pass_, t["id"])
-        if not _unfinished(f, t, retry_failed):
-            counts["skipped"] += 1
-            continue
         rec = {"routes": fingerprint(t)}
         item = item_dir(pass_, t["id"])
         view = topic_view(t, clean)
@@ -357,17 +417,20 @@ def run(pass_: str, j: judge.Judge, runner: Runner, *, retry_failed: bool = Fals
             continue
         files = ["topic.json"]
         if plan["runnable"]:
-            results: dict[str, list[dict] | str] = {}
-            for lab in sorted({lab for r in t["routes"] for lab in r["labels"]}):
-                try:
+            results: dict[str, list[dict]] = {}
+            try:
+                for lab in sorted({lab for r in t["routes"] for lab in r["labels"]}):
                     results[lab] = _scrub_results(runner.run(lab, plan), arms)
-                except Exception as e:                               # noqa: BLE001 - one arm's sandbox, recorded
-                    results[lab] = f"could not run: {type(e).__name__}"
+            except RunFailed as e:          # the harness's failure: the topic fails (retryable), never a result
+                dz._write(f, values.dump({**rec, "status": "context_failed", "why": f"run: {e}"}))
+                counts["failed"] += 1
+                continue
             dz._write(item / "results.json", values.dump({"plan": {k: plan[k] for k in ("files", "commands", "show")},
-                                                          "routes": by_route(t, results)}))
+                                                          "routes": by_route(t, results, clean)}))
             files.append("results.json")
         got, why, raw = dz._ask(j, write_prompt(plan["runnable"]), item, files,
-                                lambda x: parse_written(x, [r["route_no"] for r in t["routes"]], labs),
+                                lambda x: parse_written(x, [r["route_no"] for r in t["routes"]], labs, arms,
+                                                        plan["runnable"]),
                                 "one JSON object")
         if got is None:
             dz._write(f, values.dump({**rec, "status": "context_failed", "why": f"write: {why}", "raw": raw}))

@@ -54,7 +54,8 @@ LABELS = [f"Arm {x}" for x in "ABCDEF"]
     "10 s (C and F: a total deadline over DNS, connect and read)",
     "Rendered from the resolved value (D also copies an aliased include's content)",
     "per-event ids (C pre-lineage-<seq>; D change null)",
-    "Arm B took it", "Arms C and E", "(A: _Planner._add; B: apply._apply)"])
+    "Arm B took it", "Arms C and E", "(A: _Planner._add; B: apply._apply)", "E started at step 5",
+    "nothing (C: exit 3; F: unwritable target)"])
 def test_an_arm_letter_used_as_an_arms_name_is_found(text):
     assert leakcheck.label_refs(text, LABELS)
 
@@ -62,7 +63,9 @@ def test_an_arm_letter_used_as_an_arms_name_is_found(text):
 @pytest.mark.parametrize("text", [
     "A PyYAML loader subclass recording *name tokens", "A corrupted row should give exit 4",
     "(A) Nearest including file", "option (B) wins", "Option B was rejected", "E2E tests", "exit 2; a/b/c",
-    "the A-side of the diff", "U+2028 and LS", "Gives G and H"])          # G, H: not a label in this pass
+    "the A-side of the diff", "U+2028 and LS", "Gives G and H",           # G, H: not a label in this pass
+    "a C extension", "exit code E", "C++ bindings", "Plan B", "level: E", "--level C", "`config set level E`",
+    "A later step reworked it", "A first attempt failed"])                # the 2026-10-09 review's false hits
 def test_ordinary_text_is_not_an_arm_reference(text):
     assert leakcheck.label_refs(text, LABELS) == []
 

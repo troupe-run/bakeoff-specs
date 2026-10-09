@@ -431,14 +431,17 @@ def _ordered(topics: list[dict]) -> list[dict]:
     return out
 
 
-def _cleaner(arms: list[str]):
+def _cleaner(arms: list[str], flatten: bool = True):
+    """Judge-written text for the sheet: scrubbed of every arm name and label, flattened to one line (or, with
+    `flatten=False`, every space and line break kept: a file's content)."""
     terms = anonymise.pass_terms(arms)
     # `control` is an ordinary English word (anonymise's rule): its repo name is scrubbed by pass_terms, the word is not
     names = [re.escape(a) for a in sorted(arms, key=len, reverse=True) if a and a != "control"]
     own = re.compile(rf"(?<![A-Za-z0-9])(?:{'|'.join(names)})(?![A-Za-z0-9])", re.I) if names else None
 
     def clean(s) -> str:
-        s = anonymise.scrub(re.sub(r"\s+", " ", str(s or "")).strip(), terms)
+        s = str(s or "")
+        s = anonymise.scrub(re.sub(r"\s+", " ", s).strip() if flatten else s, terms)
         s = re.sub(r"\bArms? [A-Z]\b", "another arm", s)
         return own.sub("an arm", s) if own else s
     return clean
@@ -476,13 +479,19 @@ def _failed_lines(failed: list[dict], dropped: list[dict]) -> list[str]:
     return out
 
 
-_FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
+_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")          # CommonMark: indented 4+ is code, not a fence
 
 
-def _unfenced(md: str) -> list[str]:
+def _open_fence(md: str) -> bool:
+    """A fence opened and never closed (e.g. by the owner's own edit): everything after it would be hidden."""
+    return _unfenced(md, report_open=True) == []
+
+
+def _unfenced(md: str, report_open: bool = False) -> list[str]:
     """The sheet's lines with every line inside a fenced block blanked: a file shown in a topic's context (which may
-    hold "rating:" or "## x") is never read as the owner's input."""
-    out, fence = [], None
+    hold "rating:" or "## x") is never read as the owner's input. With `report_open`, [] when a fence is left open."""
+    out: list[str] = []
+    fence = None
     for line in md.splitlines():
         m = _FENCE.match(line)
         if fence is None and m:
@@ -494,6 +503,8 @@ def _unfenced(md: str) -> list[str]:
             out.append("")
         else:
             out.append(line)
+    if report_open and fence is not None:
+        return []
     return out
 
 
@@ -503,7 +514,7 @@ def _fenced(text: str) -> list[str]:
     return [fence, *text.rstrip("\n").splitlines(), fence]
 
 
-def render_context(ctx: dict | None, clean) -> list[str]:
+def render_context(ctx: dict | None, clean, block=lambda x: x) -> list[str]:
     """A topic's context block: what is at stake, each example with every route's result, the trade-off."""
     if not ctx:
         return ["_No behaviour context for this topic._", ""]
@@ -515,7 +526,7 @@ def render_context(ctx: dict | None, clean) -> list[str]:
             how = "observed" if e["observed"] else "inferred, not run"
             out += [f"**Example {i}:** {clean(e['input'])} _({how})_", ""]
             if e["before"].strip():
-                out += ["Starting file:", "", *_fenced(e["before"]), ""]
+                out += ["Starting file:", "", *_fenced(block(e["before"])), ""]
             out += [f"- Route {n}: {clean(r)}" for n, r in sorted(e["results"].items(), key=lambda x: int(x[0]))]
             out.append("")
     if c.get("in_practice", "").strip():
@@ -529,7 +540,7 @@ def render_sheet(topics: list[dict], arms: list[str], failed: list[dict] = (), d
     """The owner's blind view: numbered routes with their text, reasoning, outcome and proposed rating; blank `rating:`
     and `reason:` lines. No labels; judge-written text is flattened to one line and scrubbed of every arm name given
     (and every configured method name) as a second guard."""
-    clean = _cleaner(list(arms))
+    clean, block = _cleaner(list(arms)), _cleaner(list(arms), flatten=False)
     out = ["# Decision review: rating sheet", "",
            "Rate every route, one-offs first. Read the whole topic - every route - before rating any of it. After "
            "`rating:` write 1-5 or n/a; after `reason:` you may write one line (optional) - it becomes cited "
@@ -546,7 +557,7 @@ def render_sheet(topics: list[dict], arms: list[str], failed: list[dict] = (), d
         for t in ts:
             out += [f"## {t['sheet_id']}", "", f"**Question:** {clean(t['question'])}  ", f"**Kind:** {k}", ""]
             if contexts is not None:
-                out += render_context(contexts.get(t["id"]), clean)
+                out += render_context(contexts.get(t["id"]), clean, block)
             for r in t["routes"]:
                 prop = f"{r['proposed']} - {clean(r['proposed_why'])}" if r["proposed"] else "(none)"
                 out += [f"### Route {r['route_no']}", "",
@@ -577,8 +588,8 @@ def sheet(pass_: str) -> Path:
     tf, md = _dir(pass_) / "topics.json", _dir(pass_) / "rating-sheet.md"
     if not tf.exists():
         raise inputs.InputError(f"{tf} is missing: run the decisions-align stage first")
-    if md.exists() and re.search(r"^[ \t]*(?:[-*][ \t]+)?(?:rating|reason)[ \t]*:[ \t]*\S",
-                                 "\n".join(_unfenced(md.read_text())), re.I | re.M):
+    if md.exists() and (_open_fence(md.read_text()) or re.search(
+            r"^[ \t]*(?:[-*][ \t]+)?(?:rating|reason)[ \t]*:[ \t]*\S", "\n".join(_unfenced(md.read_text())), re.I | re.M)):
         raise inputs.InputError(f"{md} already holds ratings: move it aside to write a fresh sheet")
     aligned, failed = json.loads(tf.read_text()), _failures(pass_)
     topics, dropped = aligned["topics"], aligned.get("dropped", [])
