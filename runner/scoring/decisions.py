@@ -509,10 +509,20 @@ def _unfenced(md: str, report_open: bool = False) -> list[str]:
     return out
 
 
-def _fenced(text: str) -> list[str]:
+def _fenced(text: str, indent: str = "") -> list[str]:
     run = max((len(m) for m in re.findall(r"~+", text)), default=0)
-    fence = "~" * max(3, run + 1)
-    return [fence, *text.rstrip("\n").splitlines(), fence]
+    fence = indent + "~" * max(3, run + 1)
+    return [fence, *(indent + line for line in text.rstrip("\n").splitlines()), fence]
+
+
+def _result_lines(n: str, text: str, clean, block) -> list[str]:
+    """One route's result: on one line, or - when it holds line breaks (a file's lines) - its first line, then the
+    rest exactly as written in a fenced block under it (owner, 2026-10-09: "I don't understand the `prompt: |2`
+    thing" - the flattened ` / ` form hid the file's indentation)."""
+    head, sep, rest = text.strip("\n").partition("\n")
+    if not sep:
+        return [f"- Route {n}: {clean(head)}"]
+    return [f"- Route {n}: {clean(head)}", "", *_fenced(block(rest), "  "), ""]
 
 
 def render_context(ctx: dict | None, clean, block=lambda x: x) -> list[str]:
@@ -528,7 +538,8 @@ def render_context(ctx: dict | None, clean, block=lambda x: x) -> list[str]:
             out += [f"**Example {i}:** {clean(e['input'])} _({how})_", ""]
             if e["before"].strip():
                 out += ["Starting file:", "", *_fenced(block(e["before"])), ""]
-            out += [f"- Route {n}: {clean(r)}" for n, r in sorted(e["results"].items(), key=lambda x: int(x[0]))]
+            for n, r in sorted(e["results"].items(), key=lambda x: int(x[0])):
+                out += _result_lines(n, r, clean, block)
             out.append("")
     if c.get("in_practice", "").strip():
         out += [f"**In practice:** {clean(c['in_practice'])}", ""]
@@ -584,21 +595,35 @@ def _failures(pass_: str) -> list[dict]:
     return out
 
 
+def _structure(topics: list[dict]) -> list:
+    return [[t["id"], t["sheet_id"], [[r["route_no"], r["route"], r["labels"]] for r in t["routes"]]] for t in topics]
+
+
 def sheet(pass_: str) -> Path:
-    """rating-sheet.md + rating-sheet.json from topics.json. Refuses to overwrite a sheet the owner has started."""
+    """rating-sheet.md + rating-sheet.json from topics.json. A sheet the owner has started is rewritten (e.g. with new
+    context) only when its topics and routes are unchanged, and then every rating and reason is carried across;
+    otherwise it is refused."""
     tf, md = _dir(pass_) / "topics.json", _dir(pass_) / "rating-sheet.md"
     if not tf.exists():
         raise inputs.InputError(f"{tf} is missing: run the decisions-align stage first")
-    if md.exists() and (_open_fence(md.read_text()) or re.search(
-            r"^[ \t]*(?:[-*][ \t]+)?(?:rating|reason)[ \t]*:[ \t]*\S", "\n".join(_unfenced(md.read_text())), re.I | re.M)):
-        raise inputs.InputError(f"{md} already holds ratings: move it aside to write a fresh sheet")
-    aligned, failed = json.loads(tf.read_text()), _failures(pass_)
+    started = md.exists() and (_open_fence(md.read_text()) or bool(re.search(
+        r"^[ \t]*(?:[-*][ \t]+)?(?:rating|reason)[ \t]*:[ \t]*\S", "\n".join(_unfenced(md.read_text())), re.I | re.M)))
+    aligned = json.loads(tf.read_text())
+    if started:
+        old_map = _record(_import_map(pass_))
+        same = isinstance(old_map, dict) and _structure(old_map.get("topics", [])) == _structure(_ordered(aligned["topics"]))
+        if _open_fence(md.read_text()) or not same:
+            raise inputs.InputError(f"{md} already holds ratings: move it aside to write a fresh sheet")
+    failed = _failures(pass_)
     topics, dropped = aligned["topics"], aligned.get("dropped", [])
     from runner.scoring import context                     # lazy: context imports this module
     text = render_sheet(topics, _arms(pass_), failed, dropped, context.load(pass_, _ordered(topics)))
     if leaks := leakcheck.check_text(text, _arms(pass_), labels(pass_)):
         raise inputs.InputError(f"the rating sheet would unblind the owner ({len(leaks)} hit(s)); nothing written:\n"
                                 + "\n".join(f"- {x}" for x in leaks[:40]))
+    if started:
+        from runner.scoring import rate                     # lazy: rate imports this module
+        text = rate.carry(md.read_text(encoding="utf-8"), text)
     _write(md, text)
     _write(_import_map(pass_), values.dump({"topics": _ordered(topics), "failed": failed, "dropped": dropped,
                                             "key_sha256": judge.key_digest(pass_)}))      # R37

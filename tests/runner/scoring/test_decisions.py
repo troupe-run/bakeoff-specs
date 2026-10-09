@@ -508,12 +508,24 @@ def test_decisions_import_prints_the_sheets_problems_and_exits_1(tmp_state, caps
     assert "T1 route 1: no rating" in capsys.readouterr().out
 
 
-def test_sheet_refuses_to_overwrite_a_sheet_the_owner_has_started(tmp_state):
-    from runner.scoring import inputs
+def test_a_started_sheet_is_rewritten_with_its_ratings_carried_while_its_topics_are_unchanged(tmp_state):
     _aligned_pass()
     md = dz.sheet("p")
     assert dz.sheet("p") == md                              # a blank sheet may be rewritten
+    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: 5\nreason: kept\n", 1))
+    dz.sheet("p")                                            # e.g. new context: the owner's work survives
+    assert "rating: 5\nreason: kept\n" in md.read_text()
+
+
+def test_sheet_refuses_to_overwrite_a_started_sheet_whose_topics_changed(tmp_state):
+    from runner.scoring import inputs
+    _aligned_pass()
+    md = dz.sheet("p")
     md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: 5\nreason:\n", 1))
+    tf = paths.scoring_out("p") / "decisions" / "topics.json"
+    t = json.loads(tf.read_text())
+    t["topics"][0]["routes"][0]["route"] = "a different route"              # a re-alignment
+    tf.write_text(json.dumps(t))
     with pytest.raises(inputs.InputError, match="already holds ratings"):
         dz.sheet("p")
     assert "rating: 5" in md.read_text()

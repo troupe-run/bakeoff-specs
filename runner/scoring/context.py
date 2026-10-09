@@ -315,8 +315,10 @@ def write_prompt(runnable: bool) -> str:
         "\\\"-hello\\\"\".\n\n"
         f"{ran}\n\n"
         "Never name an implementation, arm, method or tool, and never use letters for arms; refer to routes by "
-        "number. Keep each result to one or two short lines; show a file's relevant lines when its content is the "
-        "point. Do not rate the routes.\n\n"
+        "number. Keep each result short. When a file's content is the point, give the outcome on the first line "
+        "(e.g. \"exit 0; the file now reads:\") and then the file's relevant lines EXACTLY as they are - real line "
+        "breaks in the JSON string, indentation and comments kept - never joined with \" / \" or flattened onto one "
+        "line. Do not rate the routes.\n\n"
         "Reply with exactly one JSON object and nothing else:\n"
         '{"stakes": "<one or two sentences: what is at stake for a user>", '
         '"examples": [{"input": "<what is typed, e.g. `config set retry -1e3`>", '

@@ -86,6 +86,28 @@ def set_ratings(md: str, tid: str, ratings: list[str], reasons: dict[int, str] |
     return "\n".join(lines) + ("\n" if md.endswith("\n") else "")
 
 
+def fields(md: str, tid: str) -> dict[int, dict[str, str]]:
+    """{route no: {"rating": text, "reason": text}} as written in topic `tid` (blank when not filled)."""
+    lines = md.splitlines()
+    for t, a, b in _sections(md):
+        if t == tid:
+            return {n: {k: (m[2].strip() if (m := dz._FIELD.match(lines[i])) else "") for k, i in f.items()}
+                    for n, f in _route_lines(md, a, b).items()}
+    return {}
+
+
+def carry(old: str, new: str) -> str:
+    """`new` with every rating and reason the owner wrote in `old` copied to the same topic and route."""
+    lines = new.splitlines()
+    for tid, a, b in _sections(new):
+        was = fields(old, tid)
+        for n, f in _route_lines(new, a, b).items():
+            for k, i in f.items():
+                if (v := was.get(n, {}).get(k, "")):
+                    lines[i] = f"{k}: {v}"
+    return "\n".join(lines) + ("\n" if new.endswith("\n") else "")
+
+
 def progress(md: str) -> dict:
     done, todo = 0, []
     for tid, _, _ in _sections(md):

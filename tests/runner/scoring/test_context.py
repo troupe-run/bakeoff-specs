@@ -356,3 +356,15 @@ def test_the_write_call_is_re_asked_when_a_starting_file_names_an_arm():
     with pytest.raises(judge.BadReply, match="names an arm"):
         cx.parse_written(json.dumps({**WRITTEN, "examples": [{**WRITTEN["examples"][0], "before": "# from Arm C"}]}),
                          [1, 2], ["Arm A", "Arm B", "Arm C"])
+
+
+def test_a_result_holding_a_file_is_shown_with_its_lines_and_indentation_kept(aligned):
+    yml = "exit 0; the file now reads:\nagent:\n  prompt: |2 # the prompt\n     indented first\n    second\n"
+    s = _sheet_with({**WRITTEN, "examples": [{**WRITTEN["examples"][0], "results": {"1": yml, "2": "exit 2"}}]})
+    assert ("- Route 1: exit 0; the file now reads:\n\n  ~~~\n  agent:\n    prompt: |2 # the prompt\n"
+            "       indented first\n      second\n  ~~~\n") in s
+    assert "- Route 2: exit 2" in s
+    md = paths.scoring_out("p") / "decisions" / "rating-sheet.md"
+    from runner.scoring import rate
+    filled = rate.set_ratings(md.read_text(), "T1", ["4", "2"])                       # the fenced file is skipped
+    assert [r["rating"] for r in dz.parse_sheet(filled)["T1"]] == ["4", "2"]
