@@ -4,7 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 from runner import faults, paths
-from runner.scoring import (aggregate, anonymise, collect, confidence, decisions, evidence, inputs, judge, leakcheck, page,
+from runner.scoring import (aggregate, anonymise, collect, confidence, context, decisions, evidence, inputs, judge, leakcheck, page,
                             remeasure, report, review, values)
 
 
@@ -59,9 +59,12 @@ def _report(ns) -> None:
 
 
 def _estimates(ns) -> tuple[dict, dict]:
-    """The judge stage's and the decision stages' (extract, align) estimates: one approval covers their total."""
+    """The judge stage's and the decision stages' (extract, align, context) estimates: one approval covers their
+    total."""
+    d = decisions.estimate(ns.pass_, retry_failed=ns.retry_failed)
+    c = context.estimate(ns.pass_, retry_failed=ns.retry_failed)
     return (judge.estimate(ns.pass_, retry_failed=ns.retry_failed),
-            decisions.estimate(ns.pass_, retry_failed=ns.retry_failed))
+            d | {"calls": d["calls"] + c["calls"], "context_calls": c["calls"]})
 
 
 def _approve(ns) -> None:
@@ -99,6 +102,14 @@ def _decisions_extract(ns) -> None:
 def _decisions_align(ns) -> None:
     _approve(ns)
     print(decisions.align(ns.pass_, judge.ContainerJudge(ns.pass_), allow_failed=ns.allow_failed))
+
+
+def _decisions_context(ns) -> None:
+    """Spends model quota (two calls per topic) and uses Docker (each label's final code in the tester sandbox)."""
+    _approve(ns)
+    print(json.dumps(context.run(ns.pass_, judge.ContainerJudge(ns.pass_), context.ArmRunner(ns.pass_),
+                                 retry_failed=ns.retry_failed, only=getattr(ns, "only", None)), indent=2,
+                     sort_keys=True))
 
 
 def _remeasure(ns) -> None:
@@ -144,6 +155,7 @@ STAGES = {
     "judge": _judge,
     "decisions-extract": _decisions_extract,
     "decisions-align": _decisions_align,
+    "decisions-context": _decisions_context,
     "decisions-sheet": lambda ns: print(decisions.sheet(ns.pass_)),
     "decisions-import": lambda ns: print(decisions.import_ratings(ns.pass_)),
     "review-sheet": lambda ns: print(review.sheet(ns.pass_)),

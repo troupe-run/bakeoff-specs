@@ -481,5 +481,7 @@ def register_score(sub):
     p.add_argument("--allow-failed", action="store_true",
                    help="decisions-align: align although some extractions failed (their arms become unrated "
                         "\"no evidence\", never \"not considered\")")
+    p.add_argument("--only", nargs="+", default=None, metavar="TOPIC",
+                   help="decisions-context: only these topics (sheet ids such as T4, or topic ids)")
     p.set_defaults(func=scli.score)
 REGISTRARS.append(register_score)
