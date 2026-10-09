@@ -26,7 +26,14 @@ def judged(score: float | None) -> float | None:
 
 
 def rating(r: str, table: dict[str, float] | None = None) -> float | None:
-    return (table or _RATINGS).get(r)
+    """A whole rating from the table; a half step ("3.5") midway between its neighbours; n/a (anything else) None."""
+    t = table or _RATINGS
+    if r in t:
+        return t[r]
+    lo, dot, half = str(r).partition(".")
+    if dot and half == "5" and lo in t and str(int(lo) + 1) in t:
+        return (t[lo] + t[str(int(lo) + 1)]) / 2
+    return None
 
 
 def rating_table(scales: dict[str, float]) -> dict[str, float]:

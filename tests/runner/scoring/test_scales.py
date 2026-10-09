@@ -54,3 +54,8 @@ def test_rating_with_custom_table():
     custom_table = {"1": 0.1, "3": 0.5, "5": 0.9}
     assert scales.rating("3", table=custom_table) == 0.5
     assert scales.rating("5", table=custom_table) == 0.9
+
+
+def test_a_half_step_scores_midway_and_off_scale_values_do_not_score():
+    assert scales.rating("3.5") == 0.625 and scales.rating("1.5") == 0.125
+    assert scales.rating("5.5") is None and scales.rating("0.5") is None and scales.rating("3.2") is None

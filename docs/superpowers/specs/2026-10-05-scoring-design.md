@@ -136,7 +136,7 @@ paths"; scored, after the owner has weighed in on what is a good or bad choice.
    - 1: wrong or harmful;
    - n/a: not a real choice, or it does not matter.
 
-   They score 0, .25, .5, .75 and 1, and n/a is not scored. A one-line reason is optional and, when given, becomes
+   They score 0, .25, .5, .75 and 1, half steps (such as 3.5, owner 2026-10-09) score midway between their neighbours, and n/a is not scored. A one-line reason is optional and, when given, becomes
    cited evidence. This replaces good · acceptable · poor · out of scope. A proposed rating, from the lens notes and
    outcomes, is shown; the owner's rating decides. Each topic first shows **what the routes do**: concrete inputs
    run against every arm's final code, side by side (plan `2026-10-09-decision-context.md`). The owner reads every

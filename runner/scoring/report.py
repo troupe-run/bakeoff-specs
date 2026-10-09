@@ -236,7 +236,7 @@ def _decisions(pass_: str) -> list[str]:
             reason = f" — {r['reason']}" if r.get("reason") else ""
             later = f" (later: {r['outcome']})" if r.get("outcome") else ""        # spec §8.6: did it survive?
             rating = r.get("rating", DASH)
-            rating = f"{rating}/5" if rating in ("1", "2", "3", "4", "5") else rating
+            rating = f"{rating}/5" if rating in decisions.RATINGS and rating != decisions.NA else rating
             lines[kind].append(f"  - {r.get('route', '?')} [{', '.join(r['arms'])}]: {rating}{reason}"
                                f"{later}")
     out = ["## Decision review", ""]

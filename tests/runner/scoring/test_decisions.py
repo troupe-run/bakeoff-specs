@@ -150,9 +150,9 @@ def test_n_a_may_be_written_as_the_owner_suggested(raw):
     assert got["t"][0]["rating"] == "n/a"
 
 
-@pytest.mark.parametrize("raw", ["0", "6", "good", "4.5", "3/5"])
+@pytest.mark.parametrize("raw", ["0", "6", "good", "4.2", "5.5", "0.5", "3/5"])
 def test_a_rating_off_the_1_to_5_scale_is_refused(raw):
-    with pytest.raises(ValueError, match="not one of 1, 2, 3, 4, 5, n/a"):
+    with pytest.raises(ValueError, match="not one of 1, 1.5, 2"):
         dz.parse_sheet(f"## t\n### Route 1\nrating: {raw}\nreason: x\n")
 
 
@@ -602,3 +602,8 @@ def test_the_sheet_stage_refuses_to_write_a_sheet_that_names_an_arm(tmp_state):
     with pytest.raises(inputs.InputError, match="would unblind the owner"):
         dz.sheet("p")
     assert not (paths.scoring_out("p") / "decisions" / "rating-sheet.md").exists()
+
+
+@pytest.mark.parametrize("raw,want", [("3.5", "3.5"), ("4.0", "4"), ("1.5", "1.5"), ("5", "5")])
+def test_half_steps_are_accepted(raw, want):
+    assert dz.parse_sheet(f"## t\n### Route 1\nrating: {raw}\nreason:\n")["t"][0]["rating"] == want

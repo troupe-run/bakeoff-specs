@@ -24,7 +24,8 @@ from pathlib import Path
 from runner import paths
 from runner.scoring import anonymise, collect, inputs, judge, leakcheck, values
 
-RATINGS = ("1", "2", "3", "4", "5", "n/a")       # owner, 2026-10-09: 1-5 with anchors, n/a is not scored
+# owner, 2026-10-09: 1-5 with anchors, half steps allowed ("can we do 3.5?"); n/a is not scored
+RATINGS = ("1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5", "n/a")
 NA = "n/a"
 _NA_FORMS = ("n/a", "na", "-1", "n.a.", "n.a")     # "-1" was the owner's own suggestion for out of scope
 ANCHORS = (("5", "what you'd want; nothing better was available"),
@@ -543,7 +544,7 @@ def render_sheet(topics: list[dict], arms: list[str], failed: list[dict] = (), d
     clean, block = _cleaner(list(arms)), _cleaner(list(arms), flatten=False)
     out = ["# Decision review: rating sheet", "",
            "Rate every route, one-offs first. Read the whole topic - every route - before rating any of it. After "
-           "`rating:` write 1-5 or n/a; after `reason:` you may write one line (optional) - it becomes cited "
+           "`rating:` write 1-5 (half steps such as 3.5 allowed) or n/a; after `reason:` you may write one line (optional) - it becomes cited "
            "evidence. Leave the `##` and `### Route` headings as they are.", "",
            "| Rating | Meaning |", "|---|---|", *(f"| {k} | {v} |" for k, v in ANCHORS), "",
            "Routes are anonymous: which arm took which route is hidden. \"not considered\" is a route too: if the "
@@ -618,6 +619,8 @@ def _rating(raw) -> str:
     """"4", 4, " 4 ", "**4**" -> "4"; "N/A", "na", "-1" -> "n/a"; anything else is returned (lower-cased) to be
     refused by the caller."""
     s = str(raw if raw is not None else "").strip().strip("`*").strip().lower()
+    if re.fullmatch(r"[1-5](?:\.0|\.5)?", s):
+        s = s.removesuffix(".0")                      # "4.0" is "4"; "3.5" stays
     return NA if s in _NA_FORMS else s
 
 
