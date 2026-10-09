@@ -224,11 +224,11 @@ def test_decision_review_lists_one_offs_divergent_and_unanimous(p):
     d = paths.scoring_out(p) / "decisions"
     d.mkdir()
     (d / "ratings.json").write_text(json.dumps({"topics": [
-        {"id": "t1", "question": "Q1?", "routes": [{"route": "A", "arms": ["alpha"], "rating": "good"},
-                                                   {"route": "not considered", "arms": ["control"], "rating": "poor"}]},
-        {"id": "t2", "question": "Q2?", "routes": [{"route": "A", "arms": ["alpha"], "rating": "good"},
-                                                   {"route": "B", "arms": ["control"], "rating": "poor"}]},
-        {"id": "t3", "question": "Q3?", "routes": [{"route": "A", "arms": ["alpha", "control"], "rating": "good"}]}]}))
+        {"id": "t1", "question": "Q1?", "routes": [{"route": "A", "arms": ["alpha"], "rating": "4"},
+                                                   {"route": "not considered", "arms": ["control"], "rating": "1"}]},
+        {"id": "t2", "question": "Q2?", "routes": [{"route": "A", "arms": ["alpha"], "rating": "4"},
+                                                   {"route": "B", "arms": ["control"], "rating": "1"}]},
+        {"id": "t3", "question": "Q3?", "routes": [{"route": "A", "arms": ["alpha", "control"], "rating": "4"}]}]}))
     sec = _section(report.render(p), "## Decision review")
     assert "### One-offs (1)\n\n- Q1?" in sec and "### Divergent (1)\n\n- Q2?" in sec \
         and "### Unanimous (1)\n\n- Q3?" in sec
@@ -328,11 +328,11 @@ def test_decision_review_uses_the_stored_kind_and_shows_each_routes_reason_and_o
     # recomputation's field) decides where it is listed
     (d / "ratings.json").write_text(json.dumps({"topics": [
         {"id": "t1", "question": "Q1?", "kind": "divergent",
-         "routes": [{"route": "A", "arms": ["alpha", "control"], "rating": "good", "reason": "fails loudly",
+         "routes": [{"route": "A", "arms": ["alpha", "control"], "rating": "4", "reason": "fails loudly",
                      "outcome": "reworked at step 5"}]}]}))
     sec = _section(report.render(p), "## Decision review")
     assert "### Divergent (1)\n\n- Q1?" in sec and "### Unanimous (0)" in sec
-    assert "good — fails loudly (later: reworked at step 5)" in sec
+    assert "4/5 — fails loudly (later: reworked at step 5)" in sec
 
 
 def test_reported_not_scored_shows_owner_time_tracker_n_a_and_re_runs(p):

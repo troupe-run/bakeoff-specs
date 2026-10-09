@@ -22,8 +22,9 @@ def test_deduction_floors_at_zero_and_passes_none_through():
     assert scales.deduction(None, 0.05) is None
 
 
-def test_out_of_scope_rating_is_not_a_score():
-    assert scales.rating("out_of_scope") is None and scales.rating("acceptable") == 0.67
+def test_n_a_rating_is_not_a_score_and_1_to_5_spread_evenly():
+    assert scales.rating("n/a") is None
+    assert [scales.rating(str(n)) for n in range(1, 6)] == [0.0, 0.25, 0.5, 0.75, 1.0]
 
 
 def test_churn_proves_add_one():
@@ -44,13 +45,12 @@ def test_ratio_negative_input_is_undefined():
 
 
 def test_rating_table_maps_scales_to_rating_keys():
-    scales_dict = {"rating_good": 1.0, "rating_acceptable": 0.67, "rating_poor": 0.0}
-    table = scales.rating_table(scales_dict)
-    assert table == {"good": 1.0, "acceptable": 0.67, "poor": 0.0}
+    table = scales.rating_table({"rating_1": 0.1, "rating_5": 0.9, "ratio_cap": 10.0})
+    assert table == {"1": 0.1, "2": 0.25, "3": 0.5, "4": 0.75, "5": 0.9}       # an absent key keeps its default
 
 
 def test_rating_with_custom_table():
     """rating() can use a custom table passed from weights.toml"""
-    custom_table = {"good": 0.9, "acceptable": 0.5, "poor": 0.1}
-    assert scales.rating("acceptable", table=custom_table) == 0.5
-    assert scales.rating("good", table=custom_table) == 0.9
+    custom_table = {"1": 0.1, "3": 0.5, "5": 0.9}
+    assert scales.rating("3", table=custom_table) == 0.5
+    assert scales.rating("5", table=custom_table) == 0.9

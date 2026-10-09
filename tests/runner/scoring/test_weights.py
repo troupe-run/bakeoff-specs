@@ -35,9 +35,7 @@ def test_scales_load_from_weights_toml_as_floats():
     assert isinstance(w.scales, dict)
     assert w.scales["ratio_cap"] == 10.0
     assert w.scales["lint_per_error"] == 0.05
-    assert w.scales["rating_good"] == 1.0
-    assert w.scales["rating_acceptable"] == 0.67
-    assert w.scales["rating_poor"] == 0.0
+    assert [w.scales[f"rating_{n}"] for n in range(1, 6)] == [0.0, 0.25, 0.5, 0.75, 1.0]
 
 
 def test_missing_scales_table_gives_empty_dict(tmp_path):

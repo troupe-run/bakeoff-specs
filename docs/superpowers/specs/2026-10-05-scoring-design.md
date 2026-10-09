@@ -127,9 +127,20 @@ paths"; scored, after the owner has weighed in on what is a good or bad choice.
      under "not considered", and that route is rated too: if the topic mattered, missing it is a weakness; if it
      did not, "not considered" can be acceptable and the one-off may have been over-engineering.
 4. **The owner rates routes, not arms.** Routes are shown as anonymous options with their reasoning and outcome;
-   which arm took which is hidden (the same anonymisation as §6). Ratings: **good · acceptable · poor · out of
-   scope** (not a real choice, or does not matter), each with a one-line reason that becomes cited evidence. A
-   proposed rating, from the lens notes and outcomes, is shown; the owner's rating decides.
+   which arm took which is hidden (the same anonymisation as §6), and no text may name an arm or its letter.
+   Ratings (**amended 2026-10-09, owner, before any rating was given**): **1–5 or n/a**:
+   - 5: what you'd want;
+   - 4: sound, with a minor cost;
+   - 3: works, with a real cost or risk;
+   - 2: wrong for some realistic case;
+   - 1: wrong or harmful;
+   - n/a: not a real choice, or it does not matter.
+
+   They score 0, .25, .5, .75 and 1, and n/a is not scored. A one-line reason is optional and, when given, becomes
+   cited evidence. This replaces good · acceptable · poor · out of scope. A proposed rating, from the lens notes and
+   outcomes, is shown; the owner's rating decides. Each topic first shows **what the routes do**: concrete inputs
+   run against every arm's final code, side by side (plan `2026-10-09-decision-context.md`). The owner reads every
+   route of a topic before rating any of them.
 5. **Score:** choice (6) = the owner's rating of each route the arm took, averaged over its topics; process (4) =
    options weighed, reason stated, recorded — judged by the lens panel.
 6. **Shown, not scored again: did the choice survive later steps,** or was it reworked? That already counts under

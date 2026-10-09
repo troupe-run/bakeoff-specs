@@ -22,9 +22,21 @@ from __future__ import annotations
 import copy, json, os, re
 from pathlib import Path
 from runner import paths
-from runner.scoring import anonymise, collect, inputs, judge, values
+from runner.scoring import anonymise, collect, inputs, judge, leakcheck, values
 
-RATINGS = ("good", "acceptable", "poor", "out_of_scope")
+RATINGS = ("1", "2", "3", "4", "5", "n/a")       # owner, 2026-10-09: 1-5 with anchors, n/a is not scored
+NA = "n/a"
+_NA_FORMS = ("n/a", "na", "-1", "n.a.", "n.a")     # "-1" was the owner's own suggestion for out of scope
+ANCHORS = (("5", "what you'd want; nothing better was available"),
+           ("4", "sound, with a minor cost or a missed nicety"),
+           ("3", "works, but with a real cost or risk you'd want fixed"),
+           ("2", "a problem: wrong for some realistic case"),
+           ("1", "wrong or harmful: loses data, misleads, or breaks a stated preference"),
+           ("n/a", "not a real choice, or it does not matter"))
+
+
+def _anchor_text() -> str:
+    return "; ".join(f"{k} = {v}" for k, v in ANCHORS)
 NOT_CONSIDERED = "not considered"
 NO_EVIDENCE = "no evidence"                     # unrated: a label whose extraction failed or had no input (R29)
 _RESERVED = (NOT_CONSIDERED, NO_EVIDENCE)
@@ -178,18 +190,23 @@ def parse_topics(text: str, labels: list[str]) -> list[dict]:
                 raise judge.BadReply(f"{where}: {sorted(held & set(ls))} already hold another route in this topic; "
                                      "describe a change of course as one route")
             held |= set(ls)
-            if r.get("proposed") not in RATINGS:
+            if (proposed := _rating(r.get("proposed"))) not in RATINGS:
                 raise judge.BadReply(f"{where}: \"proposed\" must be one of {', '.join(RATINGS)}")
             rs.append({"route": name, "labels": sorted(ls), "reason_given": _str(r, "reason_given", where),
-                       "outcome": _str(r, "outcome", where), "proposed": r["proposed"],
+                       "outcome": _str(r, "outcome", where), "proposed": proposed,
                        "proposed_why": _str(r, "proposed_why", where)})
         topic = {"id": tid, "question": _str(t, "question", f"topic {tid}", nonempty=True), "routes": rs}
+        texts = [topic["question"]] + [r[k] for r in rs for k in ("route", "reason_given", "outcome", "proposed_why")]
         if set(labels) - held:
             nc = t.get("not_considered")
-            if not isinstance(nc, dict) or nc.get("proposed") not in RATINGS:
+            if not isinstance(nc, dict) or _rating(nc.get("proposed")) not in RATINGS:
                 raise judge.BadReply(f"topic {tid}: needs \"not_considered\": {{\"proposed\": one of "
                                      f"{', '.join(RATINGS)}, \"why\": str}} (some labels never raised it)")
-            topic["not_considered"] = {"proposed": nc["proposed"], "why": _str(nc, "why", f"topic {tid} not_considered")}
+            topic["not_considered"] = {"proposed": _rating(nc["proposed"]), "why": _str(nc, "why", f"topic {tid} not_considered")}
+            texts.append(topic["not_considered"]["why"])
+        if refs := [c for x in texts for c in leakcheck.label_refs(x, labels)]:
+            raise judge.BadReply(f"topic {tid}: the text names an arm ({'; '.join(refs[:3])}): never name an arm or "
+                                 "its letter in any text; say \"one arm\", \"two arms\" or \"the other arms\"")
         out.append(topic)
     return out
 
@@ -332,9 +349,12 @@ def align_prompt(labs: list[str]) -> str:
             "answer is a route; list the labels that took it. A label sits on at most one route per topic: if it "
             "changed course at a later step, describe that as one route (\"X, reworked to Y at step 5\"). Never list "
             "a \"not considered\" route: labels that never raised the topic are added afterwards.\n\n"
+            "The owner rates these routes blind: never name an arm or its label in ANY text field - not \"Arm C\", "
+            "not a bare letter (\"C fixed it\", \"A pins it\", \"(D also copies)\") - and never say which arm did what "
+            "inside a route. Where arms on one route differ in detail, say \"one arm also ...\" or \"two arms ...\".\n\n"
             "For each route give \"reason_given\" (the reasoning the arms recorded), \"outcome\" (what became of it at "
-            "later steps: kept, reworked at step N, or unknown) and a proposed rating with a one-line why: good, "
-            "acceptable, poor, or out_of_scope (not a real choice, or does not matter). For each topic that some "
+            "later steps: kept, reworked at step N, or unknown) and a proposed rating with a one-line why, on this "
+            f"scale: {_anchor_text()}. For each topic that some "
             "labels never raised, also propose a rating for not considering it: if the topic mattered, missing it is "
             "a weakness; if it did not, not considering it can be acceptable.\n\n"
             f"Recorded preferences of the owner:\n{notes}\n\n"
@@ -462,9 +482,10 @@ def render_sheet(topics: list[dict], arms: list[str], failed: list[dict] = (), d
     (and every configured method name) as a second guard."""
     clean = _cleaner(list(arms))
     out = ["# Decision review: rating sheet", "",
-           "Rate every route, one-offs first. After `rating:` write one of good, acceptable, poor or out_of_scope "
-           "(not a real choice, or does not matter); after `reason:` write one line - it becomes cited evidence. "
-           "Leave the `##` and `### Route` headings as they are.", "",
+           "Rate every route, one-offs first. Read the whole topic - every route - before rating any of it. After "
+           "`rating:` write 1-5 or n/a; after `reason:` you may write one line (optional) - it becomes cited "
+           "evidence. Leave the `##` and `### Route` headings as they are.", "",
+           "| Rating | Meaning |", "|---|---|", *(f"| {k} | {v} |" for k, v in ANCHORS), "",
            "Routes are anonymous: which arm took which route is hidden. \"not considered\" is a route too: if the "
            "topic mattered, missing it is a weakness; if it did not, not considering it can be acceptable and "
            "deciding it may have been over-engineering. `proposed:` is the aligning judge's suggestion; your rating "
@@ -509,7 +530,11 @@ def sheet(pass_: str) -> Path:
         raise inputs.InputError(f"{md} already holds ratings: move it aside to write a fresh sheet")
     aligned, failed = json.loads(tf.read_text()), _failures(pass_)
     topics, dropped = aligned["topics"], aligned.get("dropped", [])
-    _write(md, render_sheet(topics, _arms(pass_), failed, dropped))
+    text = render_sheet(topics, _arms(pass_), failed, dropped)
+    if leaks := leakcheck.check_text(text, _arms(pass_), labels(pass_)):
+        raise inputs.InputError(f"the rating sheet would unblind the owner ({len(leaks)} hit(s)); nothing written:\n"
+                                + "\n".join(f"- {x}" for x in leaks[:40]))
+    _write(md, text)
     _write(_import_map(pass_), values.dump({"topics": _ordered(topics), "failed": failed, "dropped": dropped,
                                             "key_sha256": judge.key_digest(pass_)}))      # R37
     return md
@@ -525,8 +550,11 @@ _H3 = re.compile(r"^###\s+Route\s+(\d+)\s*$", re.I)
 _FIELD = re.compile(r"^[ \t]*(?:[-*][ \t]+)?(rating|reason)[ \t]*:(.*)$", re.I)
 
 
-def _rating(raw: str) -> str:
-    return re.sub(r"[\s-]+", "_", raw.strip().strip("`*").strip().lower())
+def _rating(raw) -> str:
+    """"4", 4, " 4 ", "**4**" -> "4"; "N/A", "na", "-1" -> "n/a"; anything else is returned (lower-cased) to be
+    refused by the caller."""
+    s = str(raw if raw is not None else "").strip().strip("`*").strip().lower()
+    return NA if s in _NA_FORMS else s
 
 
 def parse_sheet(md: str) -> dict[str, list[dict]]:
@@ -571,8 +599,7 @@ def parse_sheet(md: str) -> dict[str, list[dict]]:
                 problems.append(f"{tid} route {n}: no rating")
             elif _rating(raw) not in RATINGS:
                 problems.append(f"{tid} route {n}: rating {raw!r} is not one of {', '.join(RATINGS)}")
-            if not r.get("reason"):
-                problems.append(f"{tid} route {n}: no reason")
+            # the reason is optional (owner, 2026-10-09); when given it is cited as evidence
             out.setdefault(tid, []).append({"route_no": n, "rating": _rating(raw), "reason": r.get("reason", "")})
     if problems:
         raise SheetError("the rating sheet has problems:\n" + "\n".join(f"- {p}" for p in problems))

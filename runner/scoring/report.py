@@ -235,7 +235,9 @@ def _decisions(pass_: str) -> list[str]:
         for r in t["routes"]:
             reason = f" — {r['reason']}" if r.get("reason") else ""
             later = f" (later: {r['outcome']})" if r.get("outcome") else ""        # spec §8.6: did it survive?
-            lines[kind].append(f"  - {r.get('route', '?')} [{', '.join(r['arms'])}]: {r.get('rating', DASH)}{reason}"
+            rating = r.get("rating", DASH)
+            rating = f"{rating}/5" if rating in ("1", "2", "3", "4", "5") else rating
+            lines[kind].append(f"  - {r.get('route', '?')} [{', '.join(r['arms'])}]: {rating}{reason}"
                                f"{later}")
     out = ["## Decision review", ""]
     for kind, title in (("one-off", "One-offs"), ("divergent", "Divergent"), ("unanimous", "Unanimous")):

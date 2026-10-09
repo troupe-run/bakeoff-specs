@@ -29,9 +29,9 @@ def test_the_rating_sheet_shows_no_labels_or_arm_names(tmp_state):
     assert "**Kind:** one-off" in sheet and "rating:" in sheet
 
 
-def test_import_refuses_a_route_without_a_reason(tmp_state):
-    with pytest.raises(ValueError, match="reason"):
-        dz.parse_sheet("## actor-check-order\n### Route 1\nrating: good\nreason:\n")
+def test_a_route_rated_without_a_reason_is_accepted_with_an_empty_reason(tmp_state):
+    got = dz.parse_sheet("## actor-check-order\n### Route 1\nrating: 4\nreason:\n")      # optional (owner, 2026-10-09)
+    assert got["actor-check-order"] == [{"route_no": 1, "rating": "4", "reason": ""}]
 
 
 # ---- classification ------------------------------------------------------------------------------------------------
@@ -63,15 +63,15 @@ def test_report_classifies_topics_with_decisions_kind(tmp_state, monkeypatch):
     d = paths.scoring_out("p") / "decisions"
     d.mkdir(parents=True)
     (d / "ratings.json").write_text(json.dumps({"topics": [
-        {"id": "t1", "routes": [{"route": "A", "arms": ["alpha"], "rating": "good", "reason": "r"},
-                                {"route": "not considered", "arms": ["beta"], "rating": "poor", "reason": "r"}]}]}))
+        {"id": "t1", "routes": [{"route": "A", "arms": ["alpha"], "rating": "5", "reason": "r"},
+                                {"route": "not considered", "arms": ["beta"], "rating": "1", "reason": "r"}]}]}))
     assert "### Divergent (1)" in "\n".join(report._decisions("p")) and seen == [("t1", 2)]
 
 
 def test_not_considered_keeps_the_aligners_proposed_rating_for_that_route():
-    t = dict(T, not_considered={"proposed": "poor", "why": "it mattered"})
+    t = dict(T, not_considered={"proposed": "1", "why": "it mattered"})
     nc = dz.fill_not_considered(t, ["Arm A", "Arm B"])["routes"][-1]
-    assert nc["route"] == "not considered" and nc["proposed"] == "poor" and nc["proposed_why"] == "it mattered"
+    assert nc["route"] == "not considered" and nc["proposed"] == "1" and nc["proposed_why"] == "it mattered"
 
 
 def test_fill_not_considered_does_not_change_its_input():
@@ -84,7 +84,7 @@ def test_fill_not_considered_does_not_change_its_input():
 
 def _topic(id_, *routes, nc=None):
     t = {"id": id_, "question": f"{id_}?", "routes": [
-        {"route": r, "labels": ls, "reason_given": f"why {r}", "outcome": f"then {r}", "proposed": "acceptable",
+        {"route": r, "labels": ls, "reason_given": f"why {r}", "outcome": f"then {r}", "proposed": "3",
          "proposed_why": f"note {r}"} for r, ls in routes]}
     if nc:
         t["not_considered"] = {"proposed": nc, "why": "nc note"}
@@ -93,7 +93,7 @@ def _topic(id_, *routes, nc=None):
 
 TOPICS = [_topic("zz-unanimous", ("same", ["Arm A", "Arm B", "Arm C"])),
           _topic("mm-divergent", ("left", ["Arm A"]), ("right", ["Arm B", "Arm C"])),
-          _topic("aa-one-off", ("only me", ["Arm C"]), nc="poor")]
+          _topic("aa-one-off", ("only me", ["Arm C"]), nc="1")]
 
 
 def test_the_sheet_orders_one_offs_then_divergent_then_unanimous():
@@ -105,8 +105,8 @@ def test_the_sheet_orders_one_offs_then_divergent_then_unanimous():
 def test_each_route_shows_its_text_reasoning_outcome_and_proposed_rating_with_blank_owner_fields():
     s = dz.render_sheet(TOPICS, arms=[])
     one = s[s.index("## T1"):s.index("## T2")]
-    assert "only me" in one and "why only me" in one and "then only me" in one and "proposed: acceptable" in one
-    assert "not considered" in one and "proposed: poor" in one
+    assert "only me" in one and "why only me" in one and "then only me" in one and "proposed: 3" in one
+    assert "not considered" in one and "proposed: 1" in one
     assert one.count("\nrating:\n") == 2 and one.count("\nreason:\n") == 2
 
 
@@ -129,29 +129,36 @@ def test_judge_text_naming_a_label_or_an_arm_is_scrubbed_on_the_sheet():
 
 
 def test_judge_text_cannot_inject_a_heading_or_a_rating_line():
-    t = _topic("x", ("a\n## other-topic\nrating: good", ["Arm A"]))
+    t = _topic("x", ("a\n## other-topic\nrating: 5", ["Arm A"]))
     s = dz.render_sheet([t], arms=[])
-    assert "\n## other-topic" not in s and "\nrating: good" not in s
+    assert "\n## other-topic" not in s and "\nrating: 5" not in s
 
 
 def test_a_filled_sheet_round_trips_through_parse_sheet():
     s = dz.render_sheet(TOPICS, arms=[])
-    filled = s.replace("rating:\nreason:\n", "rating: good\nreason: fine\n")
+    filled = s.replace("rating:\nreason:\n", "rating: 5\nreason: fine\n")
     got = dz.parse_sheet(filled)
     assert sorted(got) == ["T1", "T2", "T3"]
-    assert got["T2"] == [{"route_no": 1, "rating": "good", "reason": "fine"},
-                                   {"route_no": 2, "rating": "good", "reason": "fine"}]
+    assert got["T2"] == [{"route_no": 1, "rating": "5", "reason": "fine"},
+                                   {"route_no": 2, "rating": "5", "reason": "fine"}]
     assert [r["route_no"] for r in got["T1"]] == [1, 2]
 
 
-def test_out_of_scope_may_be_written_with_spaces():
-    got = dz.parse_sheet("## t\n### Route 1\nrating: Out of scope\nreason: does not matter\n")
-    assert got["t"][0]["rating"] == "out_of_scope"
+@pytest.mark.parametrize("raw", ["n/a", "N/A", "na", "-1", "`n/a`"])
+def test_n_a_may_be_written_as_the_owner_suggested(raw):
+    got = dz.parse_sheet(f"## t\n### Route 1\nrating: {raw}\nreason: does not matter\n")
+    assert got["t"][0]["rating"] == "n/a"
+
+
+@pytest.mark.parametrize("raw", ["0", "6", "good", "4.5", "3/5"])
+def test_a_rating_off_the_1_to_5_scale_is_refused(raw):
+    with pytest.raises(ValueError, match="not one of 1, 2, 3, 4, 5, n/a"):
+        dz.parse_sheet(f"## t\n### Route 1\nrating: {raw}\nreason: x\n")
 
 
 def test_parse_sheet_names_the_topic_and_route_of_every_problem():
     md = ("## t1\n### Route 1\nrating: great\nreason: x\n### Route 2\nreason: y\n"
-          "## t2\n### Route 1\nrating: poor\nreason: z\n### Route 1\nrating: good\nreason: again\n")
+          "## t2\n### Route 1\nrating: 1\nreason: z\n### Route 1\nrating: 5\nreason: again\n")
     with pytest.raises(ValueError) as e:
         dz.parse_sheet(md)
     msg = str(e.value)
@@ -245,9 +252,9 @@ def test_extract_ignores_anon_entries_that_are_not_labelled_arms(tmp_state):
 # ---- align ---------------------------------------------------------------------------------------------------------
 
 ALIGNED = json.dumps({"topics": [
-    {"id": "actor-unset", "question": "What if TROUPE_ACTOR is unset?", "not_considered": {"proposed": "poor", "why": "w"},
+    {"id": "actor-unset", "question": "What if TROUPE_ACTOR is unset?", "not_considered": {"proposed": "1", "why": "w"},
      "routes": [{"route": "fail", "labels": ["Arm A"], "reason_given": "owner", "outcome": "kept",
-                 "proposed": "good", "proposed_why": "matches the owner's note"}]}]})
+                 "proposed": "5", "proposed_why": "matches the owner's note"}]}]})
 
 
 def _extracted(lab, nn, body):
@@ -265,7 +272,7 @@ def test_align_writes_topics_with_every_other_label_not_considered(tmp_state):
     t = json.loads(f.read_text())["topics"][0]
     assert f == paths.scoring_out("p") / "decisions" / "topics.json"
     assert [(r["route"], r["labels"]) for r in t["routes"]] == [("fail", ["Arm A"]), ("not considered", ["Arm B"])]
-    assert t["routes"][1]["proposed"] == "poor"
+    assert t["routes"][1]["proposed"] == "1"
 
 
 def test_align_reads_one_scrubbed_input_and_never_an_arm_name(tmp_state):
@@ -290,20 +297,20 @@ def test_align_refuses_while_an_extraction_has_not_run(tmp_state):
 
 
 @pytest.mark.parametrize("bad", [
-    '{"topics": [{"id": "x", "question": "q", "not_considered": {"proposed": "poor", "why": "w"}, '
-    '"routes": [{"route": "r", "labels": ["Arm Z"], "reason_given": "", "outcome": "", "proposed": "good", "proposed_why": ""}]}]}',
-    '{"topics": [{"id": "x", "question": "q", "not_considered": {"proposed": "poor", "why": "w"}, '
-    '"routes": [{"route": "not considered", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "good", "proposed_why": ""}]}]}',
-    '{"topics": [{"id": "x", "question": "q", "not_considered": {"proposed": "poor", "why": "w"}, '
+    '{"topics": [{"id": "x", "question": "q", "not_considered": {"proposed": "1", "why": "w"}, '
+    '"routes": [{"route": "r", "labels": ["Arm Z"], "reason_given": "", "outcome": "", "proposed": "5", "proposed_why": ""}]}]}',
+    '{"topics": [{"id": "x", "question": "q", "not_considered": {"proposed": "1", "why": "w"}, '
+    '"routes": [{"route": "not considered", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "5", "proposed_why": ""}]}]}',
+    '{"topics": [{"id": "x", "question": "q", "not_considered": {"proposed": "1", "why": "w"}, '
     '"routes": [{"route": "r", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "great", "proposed_why": ""}]}]}',
-    '{"topics": [{"id": "x", "question": "q", "not_considered": {"proposed": "poor", "why": "w"}, '
-    '"routes": [{"route": "r", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "good", "proposed_why": ""}, '
-    '{"route": "s", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "good", "proposed_why": ""}]}]}',
-    '{"topics": [{"id": "x", "question": "q", "not_considered": {"proposed": "poor", "why": "w"}, '
-    '"routes": [{"route": "same", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "good", "proposed_why": ""}, '
-    '{"route": "Same ", "labels": ["Arm B"], "reason_given": "", "outcome": "", "proposed": "good", "proposed_why": ""}]}]}',
-    '{"topics": [{"id": "Has Spaces", "question": "q", "not_considered": {"proposed": "poor", "why": "w"}, '
-    '"routes": [{"route": "r", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "good", "proposed_why": ""}]}]}'])
+    '{"topics": [{"id": "x", "question": "q", "not_considered": {"proposed": "1", "why": "w"}, '
+    '"routes": [{"route": "r", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "5", "proposed_why": ""}, '
+    '{"route": "s", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "5", "proposed_why": ""}]}]}',
+    '{"topics": [{"id": "x", "question": "q", "not_considered": {"proposed": "1", "why": "w"}, '
+    '"routes": [{"route": "same", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "5", "proposed_why": ""}, '
+    '{"route": "Same ", "labels": ["Arm B"], "reason_given": "", "outcome": "", "proposed": "5", "proposed_why": ""}]}]}',
+    '{"topics": [{"id": "Has Spaces", "question": "q", "not_considered": {"proposed": "1", "why": "w"}, '
+    '"routes": [{"route": "r", "labels": ["Arm A"], "reason_given": "", "outcome": "", "proposed": "5", "proposed_why": ""}]}]}'])
 def test_unusable_alignments_are_refused(bad):
     with pytest.raises(judge.BadReply):
         dz.parse_topics(bad, ["Arm A", "Arm B"])
@@ -361,10 +368,10 @@ def test_sheet_shows_no_evidence_routes_unrated_and_lists_failures_and_missing_i
     js = json.loads((md.parent / ".import" / "rating-sheet.json").read_text())
     assert [(r["route_no"], r["route"]) for r in js["topics"][0]["routes"]] == [(1, "fail")]
     assert js["topics"][0]["no_evidence"] == ["Arm B", "Arm C"]
-    md.write_text(text.replace("rating:\nreason:\n", "rating: good\nreason: s\n"))
+    md.write_text(text.replace("rating:\nreason:\n", "rating: 5\nreason: s\n"))
     f = dz.import_ratings("p")
     assert json.loads(f.read_text())["topics"][0]["routes"] == [
-        {"route": "fail", "arms": ["alpha"], "rating": "good", "reason": "s", "outcome": "kept"}]
+        {"route": "fail", "arms": ["alpha"], "rating": "5", "reason": "s", "outcome": "kept"}]
 
 
 def test_choice_averages_only_real_ratings_when_an_arm_had_no_evidence(tmp_state):
@@ -372,18 +379,18 @@ def test_choice_averages_only_real_ratings_when_an_arm_had_no_evidence(tmp_state
     d = paths.scoring_out("p") / "decisions"
     d.mkdir(parents=True)
     (d / "ratings.json").write_text(json.dumps({"topics": [
-        {"id": "a", "routes": [{"route": "x", "arms": ["alpha"], "rating": "good", "reason": "r"}]},
-        {"id": "b", "routes": [{"route": "y", "arms": ["alpha"], "rating": "poor", "reason": "r"},
-                               {"route": "z", "arms": ["beta"], "rating": "good", "reason": "r"}]}]}))
+        {"id": "a", "routes": [{"route": "x", "arms": ["alpha"], "rating": "5", "reason": "r"}]},
+        {"id": "b", "routes": [{"route": "y", "arms": ["alpha"], "rating": "1", "reason": "r"},
+                               {"route": "z", "arms": ["beta"], "rating": "5", "reason": "r"}]}]}))
     sc = inputs.load_weights().scales
     table = __import__("runner.scoring.scales", fromlist=["x"]).rating_table(sc)
-    assert aggregate._choice("p", "alpha", sc)["score"] == (table["good"] + table["poor"]) / 2
-    assert aggregate._choice("p", "beta", sc)["score"] == table["good"]       # topic a: no evidence, not a zero
+    assert aggregate._choice("p", "alpha", sc)["score"] == (table["5"] + table["1"]) / 2
+    assert aggregate._choice("p", "beta", sc)["score"] == table["5"]       # topic a: no evidence, not a zero
 
 
 def test_a_rating_written_under_a_no_evidence_route_is_refused():
     with pytest.raises(ValueError, match="T1: a rating line outside a route"):
-        dz.parse_sheet("## T1\n### Route 1\nrating: good\nreason: s\n### No evidence (unrated)\nrating: poor\n")
+        dz.parse_sheet("## T1\n### Route 1\nrating: 5\nreason: s\n### No evidence (unrated)\nrating: 1\n")
 
 
 def test_alignment_dropping_a_labels_decisions_is_recorded_and_counted_on_the_sheet(tmp_state):
@@ -412,19 +419,19 @@ def test_a_label_the_aligner_dropped_goes_to_the_unrated_no_evidence_route_never
 def test_import_writes_ratings_under_real_arm_names(tmp_state):
     _aligned_pass()
     md = dz.sheet("p")
-    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: good\nreason: sensible\n", 1)
-                  .replace("rating:\nreason:\n", "rating: poor\nreason: it mattered\n", 1))
+    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: 5\nreason: sensible\n", 1)
+                  .replace("rating:\nreason:\n", "rating: 1\nreason: it mattered\n", 1))
     f = dz.import_ratings("p")
     assert f == paths.scoring_out("p") / "decisions" / "ratings.json"
     assert json.loads(f.read_text()) == {"topics": [{"id": "actor-unset", "kind": "one-off", "routes": [
-        {"route": "fail", "arms": ["alpha"], "rating": "good", "reason": "sensible", "outcome": "kept"},
-        {"route": "not considered", "arms": ["beta"], "rating": "poor", "reason": "it mattered", "outcome": ""}]}]}
+        {"route": "fail", "arms": ["alpha"], "rating": "5", "reason": "sensible", "outcome": "kept"},
+        {"route": "not considered", "arms": ["beta"], "rating": "1", "reason": "it mattered", "outcome": ""}]}]}
 
 
 def test_import_refuses_a_sheet_with_a_route_left_unrated(tmp_state):
     _aligned_pass()
     md = dz.sheet("p")
-    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: good\nreason: sensible\n", 1))
+    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: 5\nreason: sensible\n", 1))
     with pytest.raises(ValueError, match="T1 route 2: no rating"):
         dz.import_ratings("p")
     assert not (paths.scoring_out("p") / "decisions" / "ratings.json").exists()
@@ -433,8 +440,8 @@ def test_import_refuses_a_sheet_with_a_route_left_unrated(tmp_state):
 def test_import_refuses_a_topic_or_route_the_sheet_never_had(tmp_state):
     _aligned_pass()
     md = dz.sheet("p")
-    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: good\nreason: s\n")
-                  + "### Route 3\nrating: good\nreason: s\n## T9\n### Route 1\nrating: good\nreason: s\n")
+    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: 5\nreason: s\n")
+                  + "### Route 3\nrating: 5\nreason: s\n## T9\n### Route 1\nrating: 5\nreason: s\n")
     with pytest.raises(ValueError) as e:
         dz.import_ratings("p")
     assert "T1 route 3: not on the sheet" in str(e.value) and "T9: not on the sheet" in str(e.value)
@@ -487,7 +494,7 @@ def test_decisions_sheet_and_import_stages_need_no_approval(tmp_state, capsys):
     _aligned_pass()
     assert cli.main(["score", "p", "--stage", "decisions-sheet"]) == 0
     md = paths.scoring_out("p") / "decisions" / "rating-sheet.md"
-    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: good\nreason: s\n"))
+    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: 5\nreason: s\n"))
     assert cli.main(["score", "p", "--stage", "decisions-import"]) == 0
     assert (paths.scoring_out("p") / "decisions" / "ratings.json").exists()
 
@@ -506,10 +513,10 @@ def test_sheet_refuses_to_overwrite_a_sheet_the_owner_has_started(tmp_state):
     _aligned_pass()
     md = dz.sheet("p")
     assert dz.sheet("p") == md                              # a blank sheet may be rewritten
-    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: good\nreason:\n", 1))
+    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: 5\nreason:\n", 1))
     with pytest.raises(inputs.InputError, match="already holds ratings"):
         dz.sheet("p")
-    assert "rating: good" in md.read_text()
+    assert "rating: 5" in md.read_text()
 
 
 def test_the_container_judges_mount_check_accepts_the_alignment_and_extraction_inputs(tmp_state):
@@ -559,8 +566,39 @@ def test_the_rating_import_refuses_when_the_key_changed_since_the_sheet(tmp_stat
     from runner.scoring import inputs
     _aligned_pass()
     md = dz.sheet("p")
-    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: good\nreason: sensible\n"))
+    md.write_text(md.read_text().replace("rating:\nreason:\n", "rating: 5\nreason: sensible\n"))
     _rekey()
     with pytest.raises(inputs.InputError, match="different anonymisation key"):
         dz.import_ratings("p")
     assert not (paths.scoring_out("p") / "decisions" / "ratings.json").exists()
+
+
+# ---- blinding: arm letters (2026-10-09) -----------------------------------------------------------------------------
+
+def test_an_alignment_whose_text_names_an_arm_is_re_asked_with_the_reason(tmp_state):
+    anon_fixture(arms=("alpha", "beta"), steps=("01",))
+    _extracted("Arm A", "01", D1)
+    _extracted("Arm B", "01", "[]")
+    leaky = ALIGNED.replace('"outcome": "kept"', '"outcome": "kept; B fixed it at step 5"')
+    j = judge.FakeJudge([leaky, ALIGNED])
+    dz.align("p", j)
+    assert len(j.prompts) == 2 and "names an arm" in j.prompts[1] and "B fixed it" in j.prompts[1]
+    assert "never name an arm or its label" in j.prompts[0]
+
+
+def test_the_scale_and_its_anchors_reach_the_aligner_and_the_sheet(tmp_state):
+    assert "3 = works, but with a real cost" in dz.align_prompt(["Arm A"])
+    s = dz.render_sheet(TOPICS, arms=[])
+    assert "| 1 | wrong or harmful" in s and "| n/a | not a real choice" in s
+
+
+def test_the_sheet_stage_refuses_to_write_a_sheet_that_names_an_arm(tmp_state):
+    from runner.scoring import inputs
+    _aligned_pass()
+    tf = paths.scoring_out("p") / "decisions" / "topics.json"
+    t = json.loads(tf.read_text())
+    t["topics"][0]["routes"][0]["outcome"] = "A reworked it at step 5"      # e.g. an older topics.json
+    tf.write_text(json.dumps(t))
+    with pytest.raises(inputs.InputError, match="would unblind the owner"):
+        dz.sheet("p")
+    assert not (paths.scoring_out("p") / "decisions" / "rating-sheet.md").exists()

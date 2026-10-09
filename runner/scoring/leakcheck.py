@@ -57,3 +57,38 @@ def check(anon: Path, arms: list[str]) -> list[tuple[str, str]]:
         low = rel.lower() + "\n" + f.read_bytes().decode("utf-8", errors="replace").lower()
         out.update((rel, w) for w in ws if hits(low, w))
     return sorted(out)
+
+
+# ---- text the owner reads blind (the rating sheet, its context) ----------------------------------------------------
+# An arm's letter tells the owner which route belongs to which arm, so they could follow one arm from topic to topic
+# (the 2026-10-09 sheet had ~25: "A pins ruamel", "C fixed chained includes", "C and F: a total deadline"). The
+# article "A" is English, so for it only a following word that reads as an arm's action counts; "(B)" and "option B"
+# are an option's own name, not an arm.
+_A_VERBS = ("and", "or", "also", "first", "then", "later", "only", "pins", "reworked", "fixed", "started", "added",
+            "dropped", "kept", "took", "chose", "uses", "used", "refuses", "refused", "re-renders", "copies", "was",
+            "had", "has", "did", "does", "checks", "writes", "wrote")
+
+
+def label_refs(text: str, labels: list[str]) -> list[str]:
+    """The places in `text` that name one of `labels` ("Arm A".."Arm F"): "Arm C", or the bare letter used as an
+    arm's name. Each hit is returned with a little context; empty means clean."""
+    letters = sorted({l.split()[-1] for l in labels if re.fullmatch(r"Arm [A-Z]", l)})
+    if not letters:
+        return []
+    others = "".join(x for x in letters if x != "A")
+    pats = [r"\bArms?\s+[A-Z](?:\s*(?:,|and|or|&)\s*[A-Z])*\b"]
+    if others:
+        pats.append(rf"(?<![\w./'-])(?<!option )(?<!Option )[{others}](?![\w./')-])")
+    if "A" in letters:
+        pats.append(rf"(?<![\w./'-])A(?=:|\s+(?:{'|'.join(map(re.escape, _A_VERBS))})\b)")
+    out = []
+    for m in re.finditer("|".join(f"(?:{p})" for p in pats), text):
+        out.append(text[max(0, m.start() - 20):m.end() + 20].replace("\n", " "))
+    return out
+
+
+def check_text(text: str, arms: list[str], labels: list[str]) -> list[str]:
+    """Every banned arm word (as `check`) and every label reference in `text`: a line each, empty means clean."""
+    low = text.lower()
+    return ([f"arm word {w!r}" for w in words(arms) if hits(low, w)]
+            + [f"arm label: …{c}…" for c in label_refs(text, labels)])

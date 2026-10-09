@@ -2,7 +2,8 @@
 from __future__ import annotations
 import math
 
-_RATINGS = {"good": 1.0, "acceptable": 0.67, "poor": 0.0}
+# The owner's decision ratings, 1 (wrong or harmful) to 5 (what you'd want); "n/a" is not a score (owner, 2026-10-09).
+_RATINGS = {"1": 0.0, "2": 0.25, "3": 0.5, "4": 0.75, "5": 1.0}
 
 
 def ratio_score(arm: float | None, control: float | None, cap: float = 10.0) -> float | None:
@@ -29,9 +30,5 @@ def rating(r: str, table: dict[str, float] | None = None) -> float | None:
 
 
 def rating_table(scales: dict[str, float]) -> dict[str, float]:
-    """Map rating_good/rating_acceptable/rating_poor from scales to good/acceptable/poor rating keys."""
-    return {
-        "good": scales.get("rating_good", 1.0),
-        "acceptable": scales.get("rating_acceptable", 0.67),
-        "poor": scales.get("rating_poor", 0.0),
-    }
+    """Map rating_1..rating_5 from scales to the "1".."5" rating keys."""
+    return {k: scales.get(f"rating_{k}", v) for k, v in _RATINGS.items()}
