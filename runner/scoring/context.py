@@ -67,7 +67,9 @@ def fingerprint(t: dict) -> list[list]:
 
 # ---- 1. plan ---------------------------------------------------------------------------------------------------------
 
-def plan_prompt() -> str:
+def plan_prompt(ask: str | None = None) -> str:
+    owner = (f"\n\nThe owner asked for this topic to be re-run with: {ask}\nMake sure the examples cover that."
+             if ask else "")
     return (
         "You are preparing a blind comparison of how several implementations of the same CLI behave. The owner must "
         "rate the routes in /judge/topic.json - different answers the implementations gave to one design question - "
@@ -91,7 +93,7 @@ def plan_prompt() -> str:
         '{"runnable": true, "why": "<one line: what the examples show>", '
         '"files": {".troupe/troupe.yml": "<content>"}, '
         '"commands": [{"args": ["config", "show", "x"], "env": {"TROUPE_ACTOR": "human:owner"}}], '
-        '"show": [".troupe/troupe.yml"]}')
+        '"show": [".troupe/troupe.yml"]}' + owner)
 
 
 def parse_plan(text: str) -> dict:
@@ -390,16 +392,24 @@ def _spec_text() -> tuple[str, str]:
 
 
 def run(pass_: str, j: judge.Judge, runner: Runner, *, retry_failed: bool = False,
-        only: list[str] | None = None) -> dict:
+        only: list[str] | None = None, redo: bool = False, ask: str | None = None) -> dict:
     """Context for every unfinished topic (or only the sheet ids / topic ids in `only`), one at a time. Each topic's
     record is written as it lands: `{"status": "ok", "routes", "runnable", "context"}` or
-    `{"status": "context_failed", "routes", "why", "raw"?}`."""
+    `{"status": "context_failed", "routes", "why", "raw"?}`. `redo` (with `only`) writes the named topics again,
+    keeping each earlier record as `<id>.<n>.json`; `ask` is the owner's request for what the examples must cover."""
+    if (redo or ask) and not only:
+        raise inputs.InputError("--redo and --ask need --only: name the topics to write again")
     arms, labs = dz._arms(pass_), dz.labels(pass_)
     clean = dz._cleaner(arms)
     contract, steps = _spec_text()
     counts = {"written": 0, "failed": 0, "skipped": 0}
     todo = [t for t in _topics(pass_) if not only or t["sheet_id"] in only or t["id"] in only]
-    pending = [t for t in todo if _unfinished(out_path(pass_, t["id"]), t, retry_failed)]
+    pending = [t for t in todo if redo or _unfinished(out_path(pass_, t["id"]), t, retry_failed)]
+    if redo:
+        for t in pending:
+            if (f := out_path(pass_, t["id"])).exists():
+                n = 1 + sum(1 for _ in out_dir(pass_).glob(f"{t['id']}.*.json"))
+                f.rename(f.with_name(f"{t['id']}.{n}.json"))
     counts["skipped"] = len(todo) - len(pending)
     if pending:                     # every arm's code installed and answering before anything is spent (review F2/F5)
         runner.ready(sorted({lab for t in pending for r in t["routes"] for lab in r["labels"]}))
@@ -411,7 +421,7 @@ def run(pass_: str, j: judge.Judge, runner: Runner, *, retry_failed: bool = Fals
         dz._write(item / "topic.json", values.dump(view))
         dz._write(item / "contract.md", contract)
         dz._write(item / "steps.md", steps)
-        plan, why, raw = dz._ask(j, plan_prompt(), item, ["topic.json", "contract.md", "steps.md"], parse_plan,
+        plan, why, raw = dz._ask(j, plan_prompt(ask), item, ["topic.json", "contract.md", "steps.md"], parse_plan,
                                  "one JSON object")
         if plan is None:
             dz._write(f, values.dump({**rec, "status": "context_failed", "why": f"plan: {why}", "raw": raw}))

@@ -294,7 +294,7 @@ def test_the_context_stage_needs_approval_for_its_two_calls_per_topic_and_passes
     monkeypatch.setattr(judge, "ContainerJudge", lambda pass_: judge.FakeJudge([]))
     monkeypatch.setattr(cx, "ArmRunner", lambda pass_: FakeRunner())
     seen = []
-    monkeypatch.setattr(cx, "run", lambda pass_, j, rn, retry_failed=False, only=None: seen.append(only) or {})
+    monkeypatch.setattr(cx, "run", lambda pass_, j, rn, retry_failed=False, only=None, **kw: seen.append(only) or {})
     (aligned / "judge-approved").write_text("approved 2026-10-09 2\n")       # 2 context + 1 align = 3
     assert cli.main(["score", "p", "--stage", "decisions-context"]) == 1 and seen == []
     (aligned / "judge-approved").write_text("approved 2026-10-09 3\n")
@@ -368,3 +368,18 @@ def test_a_result_holding_a_file_is_shown_with_its_lines_and_indentation_kept(al
     from runner.scoring import rate
     filled = rate.set_ratings(md.read_text(), "T1", ["4", "2"])                       # the fenced file is skipped
     assert [r["rating"] for r in dz.parse_sheet(filled)["T1"]] == ["4", "2"]
+
+
+def test_redo_writes_a_topic_again_with_the_owners_ask_and_keeps_the_earlier_record(aligned):
+    cx.run("p", judge.FakeJudge([json.dumps(PLAN), json.dumps(WRITTEN)]), FakeRunner())
+    j = judge.FakeJudge([json.dumps(PLAN), json.dumps({**WRITTEN, "stakes": "Again."})])
+    assert cx.run("p", j, FakeRunner(), only=["T1"], redo=True, ask="run a hand edit")["written"] == 1
+    assert "The owner asked for this topic to be re-run with: run a hand edit" in j.prompts[0]
+    assert json.loads(cx.out_path("p", "dash").read_text())["context"]["stakes"] == "Again."
+    assert json.loads((cx.out_dir("p") / "dash.1.json").read_text())["context"]["stakes"] == WRITTEN["stakes"]
+
+
+def test_redo_without_only_is_refused(aligned):
+    from runner.scoring import inputs
+    with pytest.raises(inputs.InputError, match="need --only"):
+        cx.run("p", judge.FakeJudge([]), FakeRunner(), redo=True)

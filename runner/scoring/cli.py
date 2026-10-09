@@ -114,7 +114,8 @@ def _decisions_context(ns) -> None:
     try:
         with preflight.lock():
             got = context.run(ns.pass_, judge.ContainerJudge(ns.pass_), context.ArmRunner(ns.pass_),
-                              retry_failed=ns.retry_failed, only=getattr(ns, "only", None))
+                              retry_failed=ns.retry_failed, only=getattr(ns, "only", None),
+                              redo=getattr(ns, "redo", False), ask=getattr(ns, "ask", None))
     except NotReady as e:
         raise inputs.InputError(str(e)) from None
     print(json.dumps(got, indent=2, sort_keys=True))

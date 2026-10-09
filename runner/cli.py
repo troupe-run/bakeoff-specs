@@ -483,5 +483,7 @@ def register_score(sub):
                         "\"no evidence\", never \"not considered\")")
     p.add_argument("--only", nargs="+", default=None, metavar="TOPIC",
                    help="decisions-context: only these topics (sheet ids such as T4, or topic ids)")
+    p.add_argument("--redo", action="store_true", help="decisions-context: write the --only topics again")
+    p.add_argument("--ask", default=None, help="decisions-context: the owner's request for what the examples cover")
     p.set_defaults(func=scli.score)
 REGISTRARS.append(register_score)
