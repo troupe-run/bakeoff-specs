@@ -56,9 +56,25 @@ def read_verdicts(pass_: str) -> dict[tuple, dict]:
     return out
 
 
-def _judged(pass_: str, part: str, arm: str, key: str, verdicts: dict, names: frozenset[str]) -> dict:
+def asked_question(rec: dict | None) -> bool | None:
+    """Owner rule, 2026-10-10: did the arm send the PO at least one message of kind `question`, in the step's N.a
+    (discovery) or N.b (scored) run? None when the question log is missing (unknown, never "asked none")."""
+    q = _v(rec.get("questions")) if rec else None
+    if q is None:
+        return None
+    return any(i.get("kind") == "question" for i in q.get("items", []))
+
+
+def _judged(pass_: str, part: str, arm: str, key: str, verdicts: dict, names: frozenset[str],
+            asked: bool | None = None, record_na: bool = False) -> dict:
     """One judged step from its lens files. Only files named after one of the rubric's lenses (`names`) count; any
-    other is ignored and listed (`ignored_lenses`, flagged by run()). Fewer than three ok lenses is a `thin` panel."""
+    other is ignored and listed (`ignored_lenses`, flagged by run()). Fewer than three ok lenses is a `thin` panel.
+
+    `record_na` (rubrics with `not_applicable = true`; owner rule, 2026-10-10): whether the step applies is decided
+    by the question log, not by judge vote. No `question`-kind message (`asked` False) makes the step not applicable
+    whatever the lenses scored; a question asked (`asked` True) ignores the not_applicable lenses and takes the median
+    of the scoring ones. An unknown log (`asked` None) falls back to the lenses: n/a only if no lens scored. An owner
+    verdict overrides either way."""
     d = paths.scoring_out(pass_) / "judged" / part / arm / key
     files = sorted(d.glob("*.json")) if d.is_dir() else []
     stray = sorted(f.stem for f in files if f.stem not in names)
@@ -66,10 +82,17 @@ def _judged(pass_: str, part: str, arm: str, key: str, verdicts: dict, names: fr
     ok = {n: j["score"] for n, j in lenses.items() if j.get("status") == "ok" and j.get("score") is not None}
     owner = verdicts.get((part, arm, key.lstrip("0") or key))
     extra = {"ignored_lenses": stray} if stray else {}
-    if not lenses and owner is None:
+    if record_na:
+        extra["asked"] = asked
+    if not lenses and owner is None and not (record_na and asked is False):
         return {"score": None, "why": "not judged"} | extra
+    if owner is None and record_na and asked is False:
+        return {"score": None, "why": "not applicable (no question asked)", "lenses": {}, "disputed": False,
+                "lenses_ignored": ok} | extra
     if owner is None and not ok and any(j.get("status") == "not_applicable" for j in lenses.values()):
-        return {"score": None, "why": "not applicable", "lenses": {}, "disputed": False} | extra
+        why = ("not applicable (a question was asked, but every lens answered not_applicable)"
+               if record_na and asked else "not applicable")
+        return {"score": None, "why": why, "lenses": {}, "disputed": False} | extra
     if owner is not None and owner["score"] is None:      # the owner ruled the step not applicable: unmeasured, never 0
         return {"score": None, "why": "not applicable", "lenses": ok, "disputed": False, "owner": owner} | extra
     used = owner["score"] if owner else (statistics.median(ok.values()) if ok else None)
@@ -194,7 +217,9 @@ def _part_steps(pass_, part, arm, recs, base_recs, rubrics, verdicts, sc) -> dic
     if part not in rubrics:
         raise inputs.InputError(f"weights.toml part {part!r} has no rubric in scoring/rubrics and is not a measured part")
     steps = [n for n in rubrics[part].steps if n in recs]
-    return {str(n): _judged(pass_, part, arm, f"{n:02d}", verdicts, _lens_names(rubrics[part])) for n in steps}
+    na = rubrics[part].not_applicable
+    return {str(n): _judged(pass_, part, arm, f"{n:02d}", verdicts, _lens_names(rubrics[part]),
+                            asked=asked_question(recs[n]) if na else None, record_na=na) for n in steps}
 
 
 def _lens_names(r: inputs.Rubric) -> frozenset[str]:
@@ -268,6 +293,8 @@ def run(pass_: str, baseline: str = "control") -> Path:
                 parts[part] = {"score": _part_score(steps), "steps": steps}
                 flags += [f"{arm}: {part} {f'{int(k):02d}' if k.isdigit() else k}: lens file(s) {st['ignored_lenses']} "
                           "are not lenses of the rubric; ignored" for k, st in steps.items() if st.get("ignored_lenses")]
+                flags += [f"{arm}: {part} {int(k):02d}: question log missing; n/a decided by the lenses, not the record"
+                          for k, st in steps.items() if "asked" in st and st["asked"] is None]
             dims[dim] = _dimension(dim, parts, w)
             if dims[dim]["score"] is None:
                 flags.append(f"{arm}: {dim} unmeasured")

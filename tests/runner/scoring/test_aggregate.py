@@ -424,3 +424,89 @@ def test_zero_lines_is_unmeasured_not_a_division(p):
     _quality_files(p, "alpha", 1, size={"type_lines": 0, "lint_lines": 0}, ruff=[])
     t, l = _cq(p)
     assert t["score"] is None and l["score"] is None
+
+
+# ---- interaction n/a decided by the question log, not by judge vote (owner rule, 2026-10-10) ----------------------
+
+def _qlog(*kinds, run="b"):
+    return {"items": [{"run": run, "n": i, "kind": k, "answered_by": "po", "escalated": [], "fallback": []}
+                      for i, k in enumerate(kinds, 1)], "skipped_lines": 0, "discovery": "absent"}
+
+
+def _write_lenses(pass_, part, arm, key, answers):
+    for lens, (st, sc) in zip(lens_names(part), answers):
+        f = paths.scoring_out(pass_) / "judged" / part / arm / key / f"{lens}.json"
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps({"score": sc, "status": st, "evidence": [], "notes": ""}))
+
+
+def _interaction_step(pass_, part, step, arm="alpha"):
+    return _scores(pass_)["arms"][arm]["dimensions"]["interaction"]["parts"][part]["steps"][str(step)]
+
+
+@pytest.mark.parametrize("part", ["question_value", "research_first"])
+def test_no_question_in_the_log_makes_the_step_na_even_when_lenses_scored(p, part):
+    write_collected(p, "alpha", 2, questions=_qlog("next_command", "step_done", "approval"))
+    _write_lenses(p, part, "alpha", "02", [("ok", 0), ("not_applicable", None), ("ok", 3)])
+    st = _interaction_step(p, part, 2)
+    assert st["score"] is None and st["why"] == "not applicable (no question asked)"
+    assert st["asked"] is False and st["disputed"] is False and st["lenses"] == {}
+
+
+@pytest.mark.parametrize("run", ["a", "b"])
+def test_a_question_in_either_run_ignores_na_lenses_and_takes_the_median_of_the_scorers(p, run):
+    write_collected(p, "alpha", 2, questions=_qlog("step_done", "question", run=run))
+    _write_lenses(p, "question_value", "alpha", "02", [("not_applicable", None), ("not_applicable", None), ("ok", 2)])
+    st = _interaction_step(p, "question_value", 2)
+    assert st["asked"] is True and st["score"] == 0.5 and st["lenses"] == {lens_names("question_value")[2]: 2}
+
+
+def test_a_question_asked_but_every_lens_na_is_unmeasured_and_says_so(p):
+    write_collected(p, "alpha", 2, questions=_qlog("question"))
+    _write_lenses(p, "research_first", "alpha", "02", [("not_applicable", None)] * 3)
+    st = _interaction_step(p, "research_first", 2)
+    assert st["score"] is None and "every lens answered not_applicable" in st["why"]
+
+
+def test_no_question_and_no_lens_files_is_na_not_unjudged(p):
+    write_collected(p, "alpha", 2, questions=_qlog("step_done"))
+    assert _interaction_step(p, "question_value", 2)["why"] == "not applicable (no question asked)"
+
+
+def _owner(pass_, part, step, score):
+    v = paths.scoring_out(pass_) / "review" / "verdicts.jsonl"
+    v.parent.mkdir(parents=True, exist_ok=True)
+    v.write_text(json.dumps({"part": part, "arm": "alpha", "step": step, "score": score, "reason": "r",
+                             "decided": "owner"}) + "\n")
+
+
+def test_an_owner_score_overrides_a_no_question_record(p):
+    write_collected(p, "alpha", 2, questions=_qlog("step_done"))
+    _write_lenses(p, "question_value", "alpha", "02", [("not_applicable", None)] * 3)
+    _owner(p, "question_value", 2, 3)
+    st = _interaction_step(p, "question_value", 2)
+    assert st["score"] == 0.75 and st["owner"]["score"] == 3
+
+
+def test_an_owner_na_overrides_a_question_asked_record(p):
+    write_collected(p, "alpha", 2, questions=_qlog("question"))
+    _write_lenses(p, "question_value", "alpha", "02", [("ok", 1), ("ok", 2), ("ok", 3)])
+    _owner(p, "question_value", 2, None)
+    st = _interaction_step(p, "question_value", 2)
+    assert st["score"] is None and st["why"] == "not applicable" and "owner" in st
+
+
+def test_a_missing_question_log_falls_back_to_the_lenses_and_is_flagged(p):
+    write_collected(p, "alpha", 2, questions=values.missing("x", "gone"))
+    _write_lenses(p, "question_value", "alpha", "02", [("ok", 0), ("not_applicable", None), ("ok", 2)])
+    s = _scores(p)
+    st = s["arms"]["alpha"]["dimensions"]["interaction"]["parts"]["question_value"]["steps"]["2"]
+    assert st["asked"] is None and st["score"] == 0.25
+    assert "alpha: question_value 02: question log missing; n/a decided by the lenses, not the record" in s["flags"]
+
+
+def test_parts_without_not_applicable_ignore_the_question_log(p):
+    write_collected(p, "alpha", 2, questions=_qlog("step_done"))
+    write_judged(p, "gates", "alpha", "02", [4, 4, 4])
+    st = _interaction_step(p, "gates", 2)
+    assert st["score"] == 1.0 and "asked" not in st

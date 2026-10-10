@@ -64,6 +64,12 @@ the decision review's unscored parts (§8).
   same step. Equal to control is the midpoint; the scale is capped at 10× worse and 10× better, so one bad control
   step or one blow-out cannot flatten everyone else.
 - **Judged parts:** 0–4 on an anchored rubric (every level described concretely), median of the three lenses.
+- **Not applicable decided by the record, not by vote (owner, 2026-10-10):** for parts whose rubric allows
+  `not_applicable` (value of questions, research before asking), a step is not applicable exactly when its question
+  log has no message of kind `question`, in the N.a or the N.b run. Then the lens scores are ignored. When a
+  question was asked, lenses that answered not applicable are ignored and the step is the median of the scoring
+  lenses. An owner verdict overrides either way. A missing question log falls back to the lenses (n/a only when no
+  lens scored) and is flagged.
 - **Across steps:** every step weighs the same. A part that applies only to some steps is averaged over those.
 
 ## 5. Time and phases (owner, Q2: A; Q6: C)
