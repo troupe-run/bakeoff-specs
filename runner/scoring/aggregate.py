@@ -179,31 +179,32 @@ def _raw(part: str, rec: dict) -> float | None:
     return x if isinstance(x, (int, float)) and not isinstance(x, bool) and x > 0 else None
 
 
-def per_passed(part: str, rec: dict) -> tuple[float | None, str | None]:
-    """(value per hidden test passed, None) or (None, why). Zero passed is (inf, None): no outcome, the worst score."""
+def step_value(part: str, rec: dict) -> tuple[float | None, str | None]:
+    """(raw time or cost for the step, None) or (None, why). An arm that passed no hidden test gets (inf, None): no
+    outcome, the worst score, so failing fast never wins (owner, 2026-10-10: raw totals, easier to understand)."""
     hh = _v(rec.get("hidden"))
     x = _raw(part, rec)
     if x is None or not hh:
         return None, f"{part} or passed tests missing"
-    return (x / hh["passed"] if hh["passed"] else math.inf), None
+    return (x if hh["passed"] else math.inf), None
 
 
 def _field_relative(part: str, n: int, rec: dict, field: dict[str, dict[int, dict]], sc: dict) -> dict:
-    """Owner rule, 2026-10-10, the same for every arm and step: time and cost per hidden test passed, on a log scale
+    """Owner rule, 2026-10-10, the same for every arm and step: raw time and cost per step, on a log scale
     against the median of the arms measured at this step: 0.5 - log10(arm / median) / (2 log10 ratio_cap), clamped
     to [0, 1]. The median arm scores 0.5, ratio_cap times cheaper or faster 1, ratio_cap times dearer or slower 0. An
     arm that passed no hidden test scores 0 and is left out of the median; an unmeasured value is unmeasured."""
-    mine, why = per_passed(part, rec)
+    mine, why = step_value(part, rec)
     if mine is None:
         return {"score": None, "why": why}
-    xs = [x for x in (per_passed(part, r[n])[0] for r in field.values() if n in r)
+    xs = [x for x in (step_value(part, r[n])[0] for r in field.values() if n in r)
           if x is not None and math.isfinite(x)]
     if not xs:
         return {"score": None, "why": "no arm passed a hidden test at this step"}
     med = statistics.median(xs)
     if not math.isfinite(mine):
-        return {"score": 0.0, "per_passed": None, "median": med, "arms": len(xs)}
-    return {"score": scales.ratio_score(mine, med, sc["ratio_cap"]), "per_passed": mine, "median": med,
+        return {"score": 0.0, "value": None, "median": med, "arms": len(xs)}
+    return {"score": scales.ratio_score(mine, med, sc["ratio_cap"]), "value": mine, "median": med,
             "arms": len(xs)}
 
 

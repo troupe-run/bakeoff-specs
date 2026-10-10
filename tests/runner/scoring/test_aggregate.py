@@ -189,13 +189,13 @@ def _tc(p, arm, step, seconds, usd, passed=10):
                     hidden={"passed": passed, "total": 10, "excluded": [], "per_test": {}})
 
 
-def test_time_and_cost_are_log_scored_against_the_median_arm_per_passed_test(p):
+def test_time_and_cost_are_raw_per_step_values_log_scored_against_the_median_arm(p):
     _tc(p, "control", 1, 100.0, 1.0)
     _tc(p, "alpha", 1, 1000.0, 0.1)
     _tc(p, "beta", 1, 300.0, 3.0)       # median of 100, 1000, 300 = 300 s; of 1.0, 0.1, 3.0 = $1.0
     write_arm_violations(p, "beta", [])
     t, c = _time_cost(p, "alpha", 1)
-    assert t["median"] == 30.0 and c["median"] == pytest.approx(0.1)          # per passed test (10 passed)
+    assert t["median"] == 300.0 and c["median"] == pytest.approx(1.0)         # raw per-step values
     assert t["score"] == pytest.approx(0.5 - math.log10(1000 / 300) / 2)       # slower than the median: below 0.5
     assert c["score"] == 1.0                                                  # 10x cheaper than the median: 1
     t, c = _time_cost(p, "beta", 1)
@@ -208,7 +208,7 @@ def test_time_and_cost_clamp_at_ratio_cap_and_po_and_discovery_cost_do_not_count
     _tc(p, "beta", 1, 10.0, 10.0)
     write_arm_violations(p, "beta", [])
     t, c = _time_cost(p, "alpha", 1)
-    assert t["score"] == 0.0 and c["score"] == 0.0 and c["median"] == 1.0   # median $10/10 passed; PO $99 ignored
+    assert t["score"] == 0.0 and c["score"] == 0.0 and c["median"] == 10.0  # raw median $10; PO and discovery $99 ignored
     t, c = _time_cost(p, "control", 1)
     assert t["score"] == 1.0 and c["score"] == 1.0
 
@@ -569,3 +569,12 @@ def test_size_missing_is_unmeasured_and_left_out_of_the_median(p):
     a = s["alpha"]["dimensions"]["code_quality"]["parts"]["size"]["steps"]["1"]
     c = s["control"]["dimensions"]["code_quality"]["parts"]["size"]["steps"]["1"]
     assert a == {"score": None, "why": "no size measured"} and c["score"] == 0.5 and c["arms"] == 1
+
+
+def test_an_arm_that_passed_no_hidden_test_scores_zero_on_time_and_cost(p):
+    _tc(p, "control", 1, 100.0, 1.0)
+    _tc(p, "alpha", 1, 1.0, 0.01, passed=0)            # fastest and cheapest, but nothing works
+    _tc(p, "beta", 1, 300.0, 3.0)
+    write_arm_violations(p, "beta", [])
+    t, c = _time_cost(p, "alpha", 1)
+    assert t["score"] == 0.0 and c["score"] == 0.0

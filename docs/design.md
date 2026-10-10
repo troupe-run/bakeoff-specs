@@ -205,7 +205,7 @@ written, and the feeds are secret-scanned with the step's evidence after every r
 | 15 | **Code and test quality** | Mutation score (5) · types: `mypy --strict` errors per 1,000 lines (3) · lint: ruff findings per 1,000 lines, a safe auto-fix counting 0.1 (2) · test names checked against what the tests assert (5) | measured · measured · measured · judged |
 | 10 | **Decision quality** | Choice: the owner's rating of each route the arm took, averaged over topics (6) · Process: options weighed, reason stated, decision recorded (4) | owner-rated · judged |
 | 10 | **Setup and ergonomics** | Setup effort (4) · fit with Claude Code and the arm's tracker (4) · arm violations, deduction by severity (2) | judged · judged · measured |
-| 5 | **Time to outcome** | Arm working time per hidden test passed | measured |
+| 5 | **Time to outcome** | Arm working time per step | measured |
 
 Internal splits not given are equal. All weights live in `scoring/weights.toml`. Reported, not scored: cost, time
 and cost by phase, outliers, owner review time, tracker quality, N.a runs, re-runs and harness faults.
@@ -216,7 +216,7 @@ and cost by phase, outliers, owner review time, tracker quality, N.a runs, re-ru
 
 - Coping with change 30 → 20, traceability 15 → 10, human interaction 15 → 10, code and test quality 10 → 15.
 - New dimension **Decision quality** (10): the owner rates the routes arms took, blind to which arm took them, plus a judged process part.
-- New dimension **Time to outcome** (5): arm working time per hidden test passed; cost stays reported, with outliers flagged either way.
+- New dimension **Time to outcome** (5): arm working time per step; cost stays reported, with outliers flagged either way.
 - "Number and value of questions" → **value of questions**: asking is never penalised for itself; the count is reported.
 - Owner review time is removed from the score and reported (the relay auto-continued uncontroversial reviews, so it measures the relay).
 - Judged parts are scored by a **panel of three lenses** (0-4, anchored rubric, median); disagreement is reported, not averaged away.

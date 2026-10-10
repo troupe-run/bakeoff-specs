@@ -43,7 +43,7 @@ change is deliberate overlap. Six of seven steps are change steps.
 | 15 | **Code and test quality** | Mutation score (4) · types: `mypy --strict` errors per 1,000 lines (3) · lint: ruff findings per 1,000 lines, a safe auto-fix counting 0.1 (2) · test names checked against what the tests assert (4) · size: source lines against the median arm (2; owner, 2026-10-10) | measured · measured · measured · judged · measured |
 | 10 | **Decision quality** | Choice: the owner's rating of each route the arm took, averaged over topics (6) · Process: options weighed, reason stated, decision recorded (4) — §8 | owner-rated · judged |
 | 10 | **Setup and ergonomics** | Setup effort (4) · fit with Claude Code and the arm's tracker (4) · arm violations, deduction by severity (2) | judged · judged · measured |
-| 5 | **Time to outcome** | Time: arm working time per hidden test passed (2.5) · cost: the scored run's arm USD per hidden test passed (2.5); each against the median arm at the step (owner, 2026-10-10) | measured · measured |
+| 5 | **Time to outcome** | Time: arm working time per step (2.5) · cost: the scored run's arm USD per step (2.5); each against the median arm at the step (owner, 2026-10-10) | measured · measured |
 
 Internal splits not given above are equal. All weights live in one file, `scoring/weights.toml` (single source
 of truth).
@@ -69,7 +69,7 @@ the decision review's unscored parts (§8).
 - **Control as the baseline where none exists:** collateral churn is scored on log(arm ÷ control) for the
   same step. Equal to control is the midpoint; the scale is capped at 10× worse and 10× better, so one bad control
   step or one blow-out cannot flatten everyone else.
-- **Time and cost against the median arm (owner, 2026-10-10):** per step and per hidden test passed,
+- **Time and cost against the median arm (owner, 2026-10-10):** per step, as raw values (owner: easier to understand),
   score = 0.5 − log10(arm ÷ median of the measured arms) ÷ (2 · log10 `ratio_cap`), clamped to [0, 1]: the median arm
   scores 0.5, 10× faster or cheaper 1, 10× slower or dearer 0. Cost is the scored run's arm cost; the PO's and the
   N.a discovery run's are excluded, as from time. An arm that passed no hidden test scores 0 and is left out of the
@@ -87,7 +87,7 @@ the decision review's unscored parts (§8).
 ## 5. Time and phases (owner, Q2: A; Q6: C)
 
 - **Arm working time** = wall-clock of the scored run's turns, minus waits on gates, the PO and the harness (hidden
-  tests, restores). Time lost to harness faults is excluded. Scored per hidden test passed, so a fast failure is
+  tests, restores). Time lost to harness faults is excluded. Scored as raw per-step values; an arm that passed no hidden test scores 0, so a fast failure is
   not "fast".
 - **Phases, two views, side by side:**
   - **The method's own:** one turn is one phase, labelled from its prompt (`/speckit-plan`, `/kiro-impl`, …).
