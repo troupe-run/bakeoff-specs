@@ -1,13 +1,13 @@
 {
   "evidence": [
-    "docs/decisions.md:9-10 (diff.patch:28-29) — decision 2 is rewritten with a reason: 'Since step 2, `show` reconciles first'",
-    "docs/decisions.md:11-15 (diff.patch:37-49) — new decisions explain the flock, the polling watch, exit 4 and retry, history without loadable files, and reconcile ordering",
-    "diff.patch:333-341 — test_import_is_not_reconciling is renamed to test_import_happens_once and its assertion about hand edits is dropped; no record says this test was replaced or why",
-    "diff.patch:187-198, 313-324 — the change computation is moved out of cli._set into store.diff with no stated reason (it is reuse by reconcile)",
-    "/judge/repo has no .git directory, so no commit messages are available"
+    "commits.md:5-10 (7708ad1: the only commit; it explains watch, reconcile-on-every-command and the flock)",
+    "repo/docs/decisions.md:11-15 (new decisions for the flock, polling, watch exit 4/retry, history not needing loadable files, reconcile ordering)",
+    "diff.patch:28-29 (decision 2 amended: 'Since step 2, show reconciles first', which explains dropping 'importing is not reconciling')",
+    "diff.patch:333-341 (test_import_is_not_reconciling is replaced by test_import_happens_once, but no record says the test was replaced or what took over its old assertion)",
+    "diff.patch:187-198, 313-324 (set's change computation moved into store.diff with no reason given)"
   ],
-  "notes": "",
-  "raw": "{\"score\": 3, \"evidence\": [\"docs/decisions.md:9-10 (diff.patch:28-29) — decision 2 is rewritten with a reason: 'Since step 2, `show` reconciles first'\", \"docs/decisions.md:11-15 (diff.patch:37-49) — new decisions explain the flock, the polling watch, exit 4 and retry, history without loadable files, and reconcile ordering\", \"diff.patch:333-341 — test_import_is_not_reconciling is renamed to test_import_happens_once and its assertion about hand edits is dropped; no record says this test was replaced or why\", \"diff.patch:187-198, 313-324 — the change computation is moved out of cli._set into store.diff with no stated reason (it is reuse by reconcile)\", \"/judge/repo has no .git directory, so no commit messages are available\"]}",
+  "notes": "The commit message and the new decisions 11-15 explain the additions and the behaviour change, and the reason is visible in amended decision 2. Two hunks have no stated reason: the rewritten test_import_is_not_reconciling (nothing says it was replaced or why) and the move of set's diff logic into store.diff.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"commits.md:5-10 (7708ad1: the only commit; it explains watch, reconcile-on-every-command and the flock)\", \"repo/docs/decisions.md:11-15 (new decisions for the flock, polling, watch exit 4/retry, history not needing loadable files, reconcile ordering)\", \"diff.patch:28-29 (decision 2 amended: 'Since step 2, show reconciles first', which explains dropping 'importing is not reconciling')\", \"diff.patch:333-341 (test_import_is_not_reconciling is replaced by test_import_happens_once, but no record says the test was replaced or what took over its old assertion)\", \"diff.patch:187-198, 313-324 (set's change computation moved into store.diff with no reason given)\"], \"notes\": \"The commit message and the new decisions 11-15 explain the additions and the behaviour change, and the reason is visible in amended decision 2. Two hunks have no stated reason: the rewritten test_import_is_not_reconciling (nothing says it was replaced or why) and the move of set's diff logic into store.diff.\"}\n```",
   "score": 3,
   "status": "ok"
 }

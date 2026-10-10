@@ -1,12 +1,13 @@
 {
   "evidence": [
-    "/judge/diff.patch:34-48 (docs/decisions.md entries 30-33 added for aliases, merge keys and --expand-alias)",
-    "/judge/diff.patch:18-22 (README describes the new alias behaviour)",
-    "/judge/diff.patch:98-100,187,245 (changes to existing Writer/_set/loader code that no record mentions)",
-    "/judge/repo has no .git, so there are no commit messages to trace"
+    "commit 2588180: links the change to troupe-run/repo#2, says why writes through an alias are now refused, and says that setting at the anchor now keeps the anchor and tag",
+    "docs/decisions.md:85-99 (new decisions 30-33 on refusing alias writes, merge-key resolution, how expanded copies are made, and recursive aliases)",
+    "README.md:18-22 (diff.patch:18-22): user-facing description of the alias behaviour and --expand-alias",
+    "diff.patch:377-389: change to anchor/tag preservation in writer.py, explained by the commit body and by decision 30",
+    "tests/test_aliases.py (diff.patch:552-557): new test file only; no existing tests modified or removed"
   ],
-  "notes": "The new alias and --expand-alias behaviour is explained in decisions.md 30-33 and the README. Nothing says the earlier alias handling was displaced, nothing links the change to the request or step, and the refactors of existing writer and loader code have no recorded reason.",
-  "raw": "```json\n{\"score\": 2, \"evidence\": [\"/judge/diff.patch:34-48 (docs/decisions.md entries 30-33 added for aliases, merge keys and --expand-alias)\", \"/judge/diff.patch:18-22 (README describes the new alias behaviour)\", \"/judge/diff.patch:98-100,187,245 (changes to existing Writer/_set/loader code that no record mentions)\", \"/judge/repo has no .git, so there are no commit messages to trace\"], \"notes\": \"The new alias and --expand-alias behaviour is explained in decisions.md 30-33 and the README. Nothing says the earlier alias handling was displaced, nothing links the change to the request or step, and the refactors of existing writer and loader code have no recorded reason.\"}\n```",
-  "score": 2,
+  "notes": "The single commit and decisions 30-33 explain every change: the new refusal of alias writes, merge-key reads, --expand-alias, recursive aliases, and the change in behaviour where the anchor and tag are now kept. No existing requirements or tests were modified or removed. The remaining hunks, such as content_start/node_end and the results plumbing in cli._set, are internal support covered by those decisions.",
+  "raw": "{\"score\": 4, \"evidence\": [\"commit 2588180: links the change to troupe-run/repo#2, says why writes through an alias are now refused, and says that setting at the anchor now keeps the anchor and tag\", \"docs/decisions.md:85-99 (new decisions 30-33 on refusing alias writes, merge-key resolution, how expanded copies are made, and recursive aliases)\", \"README.md:18-22 (diff.patch:18-22): user-facing description of the alias behaviour and --expand-alias\", \"diff.patch:377-389: change to anchor/tag preservation in writer.py, explained by the commit body and by decision 30\", \"tests/test_aliases.py (diff.patch:552-557): new test file only; no existing tests modified or removed\"], \"notes\": \"The single commit and decisions 30-33 explain every change: the new refusal of alias writes, merge-key reads, --expand-alias, recursive aliases, and the change in behaviour where the anchor and tag are now kept. No existing requirements or tests were modified or removed. The remaining hunks, such as content_start/node_end and the results plumbing in cli._set, are internal support covered by those decisions.\"}",
+  "score": 4,
   "status": "ok"
 }

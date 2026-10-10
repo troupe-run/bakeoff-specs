@@ -1,13 +1,12 @@
 {
   "evidence": [
-    "/judge/repo has no .git directory, so there are no commit messages, and there is no spec, change record or decision file in the repo",
-    "README.md:18-23 (diff.patch:18-23) describes the new lineage fields, which ties the additions to a feature only at a coarse level",
-    "src/troupe/store.py:156-157 (diff.patch:156-157) has an inline comment explaining the default for events recorded before lineage existed; no other hunk carries a reason",
-    "diff.patch:224-236 changes the signature of Troupe.record so that meta is required, and changes how reconcile and import record events, with no stated reason",
-    "README.md:5 still reads 'Step 1', so no record ties this step's diff to its request"
+    "commits.md:11-16 (c3397d4 gives reasons for --reason, the TROUPE_ACTOR format and the login default, the unknown actor for import/file, and replay of pre-lineage events with stored timestamps)",
+    "commits.md:5-8 (b88f379 gives the reason for the parse_actor call at src/troupe/cli.py:112 and for test_bad_actor at tests/test_config.py:292-302)",
+    "diff.patch:153-159 store.py _apply legacy defaults (via=None, unrecorded-<seq> change ids): the reason is only in a code comment and README.md:22-23, not in any commit",
+    "commits.md:7 refers to 'The Lineage rule', but no spec or record containing it exists in /judge/repo (grep for 'lineage' finds only code, tests and README)"
   ],
-  "notes": "",
-  "raw": "```json\n{\"score\": 1, \"evidence\": [\"/judge/repo has no .git directory, so there are no commit messages, and there is no spec, change record or decision file in the repo\", \"README.md:18-23 (diff.patch:18-23) describes the new lineage fields, which ties the additions to a feature only at a coarse level\", \"src/troupe/store.py:156-157 (diff.patch:156-157) has an inline comment explaining the default for events recorded before lineage existed; no other hunk carries a reason\", \"diff.patch:224-236 changes the signature of Troupe.record so that meta is required, and changes how reconcile and import record events, with no stated reason\", \"README.md:5 still reads 'Step 1', so no record ties this step's diff to its request\"]}\n```",
-  "score": 1,
+  "notes": "Both commit messages are specific, and they cover the additions and the signature changes to existing store/cli APIs. No existing tests or requirements were removed. However, the cited 'Lineage rule' has no record in the repo, and the legacy-event handling (via:null, synthetic change ids, timestamp backfill in configuration()) is justified only in code comments and README, not tied to the request.",
+  "raw": "{\"score\": 3, \"evidence\": [\"commits.md:11-16 (c3397d4 gives reasons for --reason, the TROUPE_ACTOR format and the login default, the unknown actor for import/file, and replay of pre-lineage events with stored timestamps)\", \"commits.md:5-8 (b88f379 gives the reason for the parse_actor call at src/troupe/cli.py:112 and for test_bad_actor at tests/test_config.py:292-302)\", \"diff.patch:153-159 store.py _apply legacy defaults (via=None, unrecorded-<seq> change ids): the reason is only in a code comment and README.md:22-23, not in any commit\", \"commits.md:7 refers to 'The Lineage rule', but no spec or record containing it exists in /judge/repo (grep for 'lineage' finds only code, tests and README)\"], \"notes\": \"Both commit messages are specific, and they cover the additions and the signature changes to existing store/cli APIs. No existing tests or requirements were removed. However, the cited 'Lineage rule' has no record in the repo, and the legacy-event handling (via:null, synthetic change ids, timestamp backfill in configuration()) is justified only in code comments and README, not tied to the request.\"}",
+  "score": 3,
   "status": "ok"
 }

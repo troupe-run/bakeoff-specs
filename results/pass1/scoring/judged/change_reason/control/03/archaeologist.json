@@ -1,13 +1,13 @@
 {
   "evidence": [
-    "/judge/diff.patch:9-11 (README swaps `config show PATH` for `get`/`show [PATH] [--sources]` but gives no reason for the rename)",
-    "/judge/diff.patch:75-81 (the existing `show` behaviour becomes `get`; nothing records why or what replaced it)",
-    "/judge/diff.patch:195-207 (test_show/test_show_errors renamed to test_get/test_get_errors with no explanation)",
-    "/judge/repo/README.md:3 (still reads 'Step 1: the configuration subsystem'; there is no step-3 record)",
-    "/judge/repo/ (no .git history, specs, ADRs or change records found; only source, tests and README)"
+    "commits.md:5 b3cec0d — subject only ('Split troupe config get (values) from show (values or sections as YAML, --sources)'), no body",
+    "diff.patch:49-55 (src/troupe/cli.py) — existing `show` renamed to `get` and redefined; the subject says what changed but not why, and cites no request or record",
+    "diff.patch:79-81 (src/troupe/cli.py) — the get error message now hints at `config show`; no commit text explains this",
+    "diff.patch:195-212 (tests/test_config.py) — test_show/test_show_errors renamed and reworked with no stated reason or replacement rationale",
+    "/judge/repo/README.md — the only .md in the repo; there is no spec or change record, and README:6 still says 'Step 1'"
   ],
-  "notes": "If I ran blame on the line where `show` became `get` (cli.py), the renamed tests, or the new Shower class in render.py, I would find no commit message, spec or change record explaining why. The README describes the new commands but never says why the old `show` behaviour was moved to `get` or what request led to it.",
-  "raw": "{\"score\": 0, \"evidence\": [\"/judge/diff.patch:9-11 (README swaps `config show PATH` for `get`/`show [PATH] [--sources]` but gives no reason for the rename)\", \"/judge/diff.patch:75-81 (the existing `show` behaviour becomes `get`; nothing records why or what replaced it)\", \"/judge/diff.patch:195-207 (test_show/test_show_errors renamed to test_get/test_get_errors with no explanation)\", \"/judge/repo/README.md:3 (still reads 'Step 1: the configuration subsystem'; there is no step-3 record)\", \"/judge/repo/ (no .git history, specs, ADRs or change records found; only source, tests and README)\"], \"notes\": \"If I ran blame on the line where `show` became `get` (cli.py), the renamed tests, or the new Shower class in render.py, I would find no commit message, spec or change record explaining why. The README describes the new commands but never says why the old `show` behaviour was moved to `get` or what request led to it.\"}",
-  "score": 0,
+  "notes": "If you blame cli.py:49 or test_config.py:195, you land on a single commit with only a subject line. It tells you `show` turned into `get` and that the new `show` prints sections, but it does not say why, and it points to no spec or record. Smaller behaviour changes, such as the new error hint and the reworked tests, have no explanation at all.",
+  "raw": "{\"score\": 1, \"evidence\": [\"commits.md:5 b3cec0d — subject only ('Split troupe config get (values) from show (values or sections as YAML, --sources)'), no body\", \"diff.patch:49-55 (src/troupe/cli.py) — existing `show` renamed to `get` and redefined; the subject says what changed but not why, and cites no request or record\", \"diff.patch:79-81 (src/troupe/cli.py) — the get error message now hints at `config show`; no commit text explains this\", \"diff.patch:195-212 (tests/test_config.py) — test_show/test_show_errors renamed and reworked with no stated reason or replacement rationale\", \"/judge/repo/README.md — the only .md in the repo; there is no spec or change record, and README:6 still says 'Step 1'\"], \"notes\": \"If you blame cli.py:49 or test_config.py:195, you land on a single commit with only a subject line. It tells you `show` turned into `get` and that the new `show` prints sections, but it does not say why, and it points to no spec or record. Smaller behaviour changes, such as the new error hint and the reworked tests, have no explanation at all.\"}",
+  "score": 1,
   "status": "ok"
 }

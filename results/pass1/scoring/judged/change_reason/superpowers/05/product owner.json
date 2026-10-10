@@ -1,13 +1,13 @@
 {
   "evidence": [
-    "/judge/repo/docs/decisions.md:15-17 (decision 5 rewritten to scope it to existing keys, with 'new keys: see 24')",
-    "/judge/repo/docs/decisions.md:66-84 (new decisions 24-29 for $ref overrides, conversion, errors, merge, removal, --in-include)",
-    "/judge/diff.patch:16-24 (README documents the mapping-form include and the new placement rules for set/--in-include)",
-    "/judge/diff.patch:374-381 (test_include_refused loses its 'set agents.coder.temp writes into coder.yaml' assertion, with no record of the change)",
-    "/judge/repo (no .git directory, so there are no commit messages to check)"
+    "commits.md:8-13 (26aa408 body explains the change in behaviour: new keys go in as overrides, existing values still change where they are set)",
+    "docs/decisions.md:16-17 in diff (decision 5 changed and points to new decision 24)",
+    "docs/decisions.md:46-64 in diff (new decisions 24-29 cover the additions, including --in-include)",
+    "diff.patch:374-380 tests/test_config.py (removed 'temp' assertion has no note of which test replaced it)",
+    "commits.md:5 (f219b7e has a subject and no body)"
   ],
-  "notes": "The new behaviour is recorded in docs/decisions.md 24-29 and the README, and decision 5 was changed in place with a pointer to its replacement, so a product owner can see what was added and what was displaced. However, the test_config.py hunk that silently drops an old assertion is not explained anywhere, the records never name the step or request, and no commit history was available to tie the hunks to the request.",
-  "raw": "{\"score\": 3, \"evidence\": [\"/judge/repo/docs/decisions.md:15-17 (decision 5 rewritten to scope it to existing keys, with 'new keys: see 24')\", \"/judge/repo/docs/decisions.md:66-84 (new decisions 24-29 for $ref overrides, conversion, errors, merge, removal, --in-include)\", \"/judge/diff.patch:16-24 (README documents the mapping-form include and the new placement rules for set/--in-include)\", \"/judge/diff.patch:374-381 (test_include_refused loses its 'set agents.coder.temp writes into coder.yaml' assertion, with no record of the change)\", \"/judge/repo (no .git directory, so there are no commit messages to check)\"], \"notes\": \"The new behaviour is recorded in docs/decisions.md 24-29 and the README, and decision 5 was changed in place with a pointer to its replacement, so a product owner can see what was added and what was displaced. However, the test_config.py hunk that silently drops an old assertion is not explained anywhere, the records never name the step or request, and no commit history was available to tie the hunks to the request.\"}",
+  "notes": "Additions are clearly tied to the request through commit 26aa408 and decisions 24-29, and the change to decision 5 says what replaced it. Two things are not fully explained: the removed test_config assertion has no note of which test replaced it, and commit f219b7e has a subject and no body (decision 29 does cover it).",
+  "raw": "{\"score\": 3, \"evidence\": [\"commits.md:8-13 (26aa408 body explains the change in behaviour: new keys go in as overrides, existing values still change where they are set)\", \"docs/decisions.md:16-17 in diff (decision 5 changed and points to new decision 24)\", \"docs/decisions.md:46-64 in diff (new decisions 24-29 cover the additions, including --in-include)\", \"diff.patch:374-380 tests/test_config.py (removed 'temp' assertion has no note of which test replaced it)\", \"commits.md:5 (f219b7e has a subject and no body)\"], \"notes\": \"Additions are clearly tied to the request through commit 26aa408 and decisions 24-29, and the change to decision 5 says what replaced it. Two things are not fully explained: the removed test_config assertion has no note of which test replaced it, and commit f219b7e has a subject and no body (decision 29 does cover it).\"}",
   "score": 3,
   "status": "ok"
 }

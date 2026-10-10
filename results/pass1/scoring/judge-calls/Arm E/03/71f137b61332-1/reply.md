@@ -1,0 +1,5 @@
+```json
+{"score": 1, "evidence": ["commits.md:5 (b3cec0d: subject only, no body)", "diff.patch:195-212 (test_show renamed to test_get and test_show_errors to test_get_errors with no explanation)", "diff.patch:75-81 (existing show behaviour moved to get; error message changed)", "repo/README.md (only doc; no spec or change record, and line 3 still says 'Step 1')"]}
+```
+
+**Notes:** There is one commit, b3cec0d. Its subject says what the step does: split `get` from `show` and add `--sources`. It has no body, and the repo has no spec or change record. That leaves the changed behaviour unexplained. The old `show` became `get`, existing tests were renamed and rewritten, and the error text changed, but nothing records why or which earlier requirement was replaced. A reason exists only at the coarse, whole-feature level.

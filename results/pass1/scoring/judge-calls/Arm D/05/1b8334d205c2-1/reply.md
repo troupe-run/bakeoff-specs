@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["commits.md:8-13 (26aa408 body explains mapping-form includes, new keys as overrides, existing values staying where they live)", "commits.md:5 (f219b7e has only a subject, no body; the reason for --in-include is in docs/decisions.md decision 29)", "diff.patch:35-38 (decision 5 edited to point at the new decision 24)", "diff.patch:46-64 (decisions 24-29 record the new behaviour)", "diff.patch:374-380 (test_include_refused drops the assertion that a new key goes into coder.yaml, with no note in the test or commit saying it moved to test_overrides.py::test_new_key_becomes_override_in_including_file)", "diff.patch:343-366 (anchor_of refactored into _colon_end with no reason given)"]}
+```

@@ -1,14 +1,13 @@
 {
   "evidence": [
-    "/judge/repo/DECISIONS.md:6",
-    "/judge/repo/DECISIONS.md:16",
-    "/judge/repo/README.md:48-54",
-    "/judge/diff.patch:159-179",
-    "/judge/diff.patch:221-245",
-    "no .git directory in /judge/repo, so there are no commit messages"
+    "commits.md:18-26 (5acd7df: says new keys under an include are \"now\" written as overrides, covers the mapping-form include, and keeps the exceptions for list appends and list items)",
+    "commits.md:11-15 (3f073d6: --in-include \"follows the step 1 rule instead of becoming an override\")",
+    "/judge/diff.patch:12-28 (DECISIONS.md gives reasons for CR-B, the disturbance check, and CR-A, the nearest include)",
+    "/judge/diff.patch:45-54 (README: the old write-back rule is rewritten, and the new override rule is described next to it)",
+    "/judge/diff.patch:322-355 (the yamldoc include() rewrite is linked only to the mapping-form commit as a whole)"
   ],
-  "notes": "The new features (mapping-form `$ref` overrides and `set --in-include`) can be traced to the request through the README and DECISIONS.md, which mention CR-A and CR-B. But there is no commit history, and no record says that the step-1 rule (new keys under an include are written into the included file) has been replaced by override-by-default, or why. The refactors to `remove` and `insert` (`siblings`/`container`) are also unexplained.",
-  "raw": "{\"score\": 2, \"evidence\": [\"/judge/repo/DECISIONS.md:6\", \"/judge/repo/DECISIONS.md:16\", \"/judge/repo/README.md:48-54\", \"/judge/diff.patch:159-179\", \"/judge/diff.patch:221-245\", \"no .git directory in /judge/repo, so there are no commit messages\"], \"notes\": \"The new features (mapping-form `$ref` overrides and `set --in-include`) can be traced to the request through the README and DECISIONS.md, which mention CR-A and CR-B. But there is no commit history, and no record says that the step-1 rule (new keys under an include are written into the included file) has been replaced by override-by-default, or why. The refactors to `remove` and `insert` (`siblings`/`container`) are also unexplained.\"}",
-  "score": 2,
+  "notes": "As product owner I can trace each addition and the changed write-back rule to the request. The commit messages and DECISIONS.md say the old step 1 behaviour (writing the new key into the included file) is replaced by overrides, and that --in-include keeps the old behaviour as an option. However, no change-request record or spec in the repo states the request itself; DECISIONS.md cites CR-A and CR-B, but the repo doesn't say what they are. Also, the large rewrite of include() in yamldoc.py is explained only at the level of the whole commit, not hunk by hunk.",
+  "raw": "{\"score\": 3, \"evidence\": [\"commits.md:18-26 (5acd7df: says new keys under an include are \\\"now\\\" written as overrides, covers the mapping-form include, and keeps the exceptions for list appends and list items)\", \"commits.md:11-15 (3f073d6: --in-include \\\"follows the step 1 rule instead of becoming an override\\\")\", \"/judge/diff.patch:12-28 (DECISIONS.md gives reasons for CR-B, the disturbance check, and CR-A, the nearest include)\", \"/judge/diff.patch:45-54 (README: the old write-back rule is rewritten, and the new override rule is described next to it)\", \"/judge/diff.patch:322-355 (the yamldoc include() rewrite is linked only to the mapping-form commit as a whole)\"], \"notes\": \"As product owner I can trace each addition and the changed write-back rule to the request. The commit messages and DECISIONS.md say the old step 1 behaviour (writing the new key into the included file) is replaced by overrides, and that --in-include keeps the old behaviour as an option. However, no change-request record or spec in the repo states the request itself; DECISIONS.md cites CR-A and CR-B, but the repo doesn't say what they are. Also, the large rewrite of include() in yamldoc.py is explained only at the level of the whole commit, not hunk by hunk.\"}",
+  "score": 3,
   "status": "ok"
 }

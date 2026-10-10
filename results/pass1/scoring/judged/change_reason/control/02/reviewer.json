@@ -1,13 +1,14 @@
 {
   "evidence": [
-    "/judge/repo has no .git directory, no spec, no change record and no commit messages; only the code and the README are available",
-    "/judge/diff.patch:16-19 (README paragraph describing reconcile/watch/lock; the only feature-level reason in the step, and README.md:5 context still says 'Step 1')",
-    "/judge/diff.patch:118-120 (store.record now saves only when config.pending_events is non-empty; existing behaviour changed with no reason given)",
-    "/judge/diff.patch:53-66 (cli.run restructured: lock added, ensure_imported replaced by reconcile, history special-cased; only an inline comment explains it)",
-    "/judge/diff.patch:81-93 (Editor.seen added; its purpose is explained only by a code comment, with nothing tying it to the request)"
+    "commits.md:5 (1f533bf subject: 'Add troupe config watch; reconcile hand edits before every command but history')",
+    "commits.md:7-8 (body explains the events.lock serialisation)",
+    "diff.patch:16-19 (README states that every command except history reconciles first and explains the lock)",
+    "diff.patch:58-66 (src/troupe/cli.py: existing commands now reconcile and history is exempt, matching the commit subject)",
+    "diff.patch:81-93 (src/troupe/editor.py: new `seen` byte tracking; no commit text or record gives a reason)",
+    "diff.patch:118-120 (src/troupe/store.py: `record` now saves only when events are pending; this changes existing behaviour without a stated reason)"
   ],
-  "notes": "The only reason for this step is the README paragraph that describes the watch/reconcile feature. There are no commits or records tying any hunk to the request, so changes to existing behaviour, such as store.record's conditional save and the reworked cli.run flow, can't be traced to why they were made (about 3-4 substantive hunks I couldn't approve).",
-  "raw": "```json\n{\"score\": 1, \"evidence\": [\"/judge/repo has no .git directory, no spec, no change record and no commit messages; only the code and the README are available\", \"/judge/diff.patch:16-19 (README paragraph describing reconcile/watch/lock; the only feature-level reason in the step, and README.md:5 context still says 'Step 1')\", \"/judge/diff.patch:118-120 (store.record now saves only when config.pending_events is non-empty; existing behaviour changed with no reason given)\", \"/judge/diff.patch:53-66 (cli.run restructured: lock added, ensure_imported replaced by reconcile, history special-cased; only an inline comment explains it)\", \"/judge/diff.patch:81-93 (Editor.seen added; its purpose is explained only by a code comment, with nothing tying it to the request)\"], \"notes\": \"The only reason for this step is the README paragraph that describes the watch/reconcile feature. There are no commits or records tying any hunk to the request, so changes to existing behaviour, such as store.record's conditional save and the reworked cli.run flow, can't be traced to why they were made (about 3-4 substantive hunks I couldn't approve).\"}\n```",
-  "score": 1,
+  "notes": "Commit 1f533bf and the README explain the new watch command, the reconcile-before-commands change to existing behaviour (with history exempt), and the lock. No spec or change record exists, and two substantive hunks have no stated reason: the save-only-if-pending change to `Troupe.record` and the `Editor.seen` tracking.",
+  "raw": "{\"score\": 3, \"evidence\": [\"commits.md:5 (1f533bf subject: 'Add troupe config watch; reconcile hand edits before every command but history')\", \"commits.md:7-8 (body explains the events.lock serialisation)\", \"diff.patch:16-19 (README states that every command except history reconciles first and explains the lock)\", \"diff.patch:58-66 (src/troupe/cli.py: existing commands now reconcile and history is exempt, matching the commit subject)\", \"diff.patch:81-93 (src/troupe/editor.py: new `seen` byte tracking; no commit text or record gives a reason)\", \"diff.patch:118-120 (src/troupe/store.py: `record` now saves only when events are pending; this changes existing behaviour without a stated reason)\"], \"notes\": \"Commit 1f533bf and the README explain the new watch command, the reconcile-before-commands change to existing behaviour (with history exempt), and the lock. No spec or change record exists, and two substantive hunks have no stated reason: the save-only-if-pending change to `Troupe.record` and the `Editor.seen` tracking.\"}",
+  "score": 3,
   "status": "ok"
 }

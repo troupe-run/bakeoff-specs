@@ -1,15 +1,15 @@
 {
   "evidence": [
-    "/judge/diff.patch:5667 (test_set_new_entries.py: in-code comment 'Overrides (step 5) replaces rule 2 under set; the step-1 behaviour is now `--in-include`')",
-    "/judge/diff.patch:1202 (research.md names the two step-1 tests whose expectations changed and their --in-include twins that keep step-1 output)",
-    "/judge/diff.patch:319 (contracts/cli.md: 'All step 1–4 sections stay in force except rule 2 under set PATH VALUE, replaced by Overrides')",
-    "/judge/diff.patch:897 (mission-review.md: the only step-1 test changes are the two the contract changes)",
-    "/judge/diff.patch:3536 (reconcile.py hunk tied to FR-004 in its docstring)",
-    "/judge/diff.patch:3572 (tree.py holder/MergedMapping hunks cite FR-001 and R-1)",
-    "/judge/diff.patch:535 (decision DM records approving the D-10, D-11 and D-7 spec amendments)"
+    "repo/spec/troupe-config-include-overrides-01M46FY4/plan.md:86-107",
+    "repo/spec/troupe-config-include-overrides-01M46FY4/research.md:54",
+    "repo/spec/troupe-config-include-overrides-01M46FY4/tasks.md:32",
+    "repo/spec/troupe-config-include-overrides-01M46FY4/spec.md:185",
+    "diff.patch:5667",
+    "commits.md:17-21 (ded0223)",
+    "commits.md:93-95 (ef7dc7b)"
   ],
-  "notes": "I couldn't find any substantive hunk without a reason. New code and tests cite FR or D-n IDs, the planning records name the two changed step-1 tests, and both the rule-2 replacement and the D-7 correction say what replaced them and why. Commit messages weren't available, so this score rests only on the spec and decision records.",
-  "raw": "```json\n{\"score\": 4, \"evidence\": [\"/judge/diff.patch:5667 (test_set_new_entries.py: in-code comment 'Overrides (step 5) replaces rule 2 under set; the step-1 behaviour is now `--in-include`')\", \"/judge/diff.patch:1202 (research.md names the two step-1 tests whose expectations changed and their --in-include twins that keep step-1 output)\", \"/judge/diff.patch:319 (contracts/cli.md: 'All step 1–4 sections stay in force except rule 2 under set PATH VALUE, replaced by Overrides')\", \"/judge/diff.patch:897 (mission-review.md: the only step-1 test changes are the two the contract changes)\", \"/judge/diff.patch:3536 (reconcile.py hunk tied to FR-004 in its docstring)\", \"/judge/diff.patch:3572 (tree.py holder/MergedMapping hunks cite FR-001 and R-1)\", \"/judge/diff.patch:535 (decision DM records approving the D-10, D-11 and D-7 spec amendments)\"], \"notes\": \"I couldn't find any substantive hunk without a reason. New code and tests cite FR or D-n IDs, the planning records name the two changed step-1 tests, and both the rule-2 replacement and the D-7 correction say what replaced them and why. Commit messages weren't available, so this score rests only on the spec and decision records.\"}\n```",
+  "notes": "Every changed source and test file can be traced to a reason. plan.md:86-107 maps each file to its concern, down to the docstring-only paths.py change. The two step-1 tests that were changed say what replaced them and why: overrides now replace rule 2 and the old behaviour moves to --in-include twins (research.md:54, T021, plus a comment in the test file). Spec changes and the step-1 behaviours the spec drops are recorded in commits and decision moments. The only hunks without a reason of their own are small helper refactors in collections.py (_flow_entries), and they fall inside the conversion concern the plan already covers.",
+  "raw": "```json\n{\"score\": 4, \"evidence\": [\"repo/spec/troupe-config-include-overrides-01M46FY4/plan.md:86-107\", \"repo/spec/troupe-config-include-overrides-01M46FY4/research.md:54\", \"repo/spec/troupe-config-include-overrides-01M46FY4/tasks.md:32\", \"repo/spec/troupe-config-include-overrides-01M46FY4/spec.md:185\", \"diff.patch:5667\", \"commits.md:17-21 (ded0223)\", \"commits.md:93-95 (ef7dc7b)\"], \"notes\": \"Every changed source and test file can be traced to a reason. plan.md:86-107 maps each file to its concern, down to the docstring-only paths.py change. The two step-1 tests that were changed say what replaced them and why: overrides now replace rule 2 and the old behaviour moves to --in-include twins (research.md:54, T021, plus a comment in the test file). Spec changes and the step-1 behaviours the spec drops are recorded in commits and decision moments. The only hunks without a reason of their own are small helper refactors in collections.py (_flow_entries), and they fall inside the conversion concern the plan already covers.\"}\n```",
   "score": 4,
   "status": "ok"
 }

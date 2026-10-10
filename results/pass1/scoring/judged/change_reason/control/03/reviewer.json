@@ -1,13 +1,13 @@
 {
   "evidence": [
-    "/judge/repo has no .git directory, so no commit messages are available to the reviewer",
-    "/judge/repo contains no spec, change record or decision log; it holds only README.md, src/ and tests/",
-    "/judge/diff.patch:6: the README header still reads 'Step 1: the configuration subsystem' and was not updated for this step",
-    "/judge/diff.patch:49-55: the existing `show` command is split into `get` and a new `show`; nothing explains why the old behaviour was renamed",
-    "/judge/diff.patch:195-212: test_show and test_show_errors are renamed and changed, with no stated reason or link to what replaced them"
+    "commits.md:5 (b3cec0d — subject only, empty body)",
+    "diff.patch:79-81 (existing `get` error message changed to add a `config show` hint; no reason given)",
+    "diff.patch:195-212 (existing test_show/test_show_errors renamed and reworked into test_get/test_get_errors; no record of what replaced them or why)",
+    "diff.patch:17-20 (README describes the new behaviour but is not a change record)",
+    "repo/README.md (the only .md in the repo; no spec or change record exists)"
   ],
-  "notes": "I could not approve any substantive hunk on reason: there are no commits, specs or change records, and the README only describes the new `get`/`show --sources` commands without tying them to the request. The breaking change to `show` and the rewritten tests are unexplained, so every hunk lacks a reason.",
-  "raw": "{\"score\": 0, \"evidence\": [\"/judge/repo has no .git directory, so no commit messages are available to the reviewer\", \"/judge/repo contains no spec, change record or decision log; it holds only README.md, src/ and tests/\", \"/judge/diff.patch:6: the README header still reads 'Step 1: the configuration subsystem' and was not updated for this step\", \"/judge/diff.patch:49-55: the existing `show` command is split into `get` and a new `show`; nothing explains why the old behaviour was renamed\", \"/judge/diff.patch:195-212: test_show and test_show_errors are renamed and changed, with no stated reason or link to what replaced them\"], \"notes\": \"I could not approve any substantive hunk on reason: there are no commits, specs or change records, and the README only describes the new `get`/`show --sources` commands without tying them to the request. The breaking change to `show` and the rewritten tests are unexplained, so every hunk lacks a reason.\"}",
-  "score": 0,
+  "notes": "There is one commit with a descriptive subject and no body, and no spec or change record that it points to. So the only reason given is at the feature level. As a result, the changed error message, the turning of `show` into a section/YAML command, and the rewritten existing tests (about 3 substantive hunks) can't be approved, because nothing explains why each one was made.",
+  "raw": "{\"score\": 1, \"evidence\": [\"commits.md:5 (b3cec0d — subject only, empty body)\", \"diff.patch:79-81 (existing `get` error message changed to add a `config show` hint; no reason given)\", \"diff.patch:195-212 (existing test_show/test_show_errors renamed and reworked into test_get/test_get_errors; no record of what replaced them or why)\", \"diff.patch:17-20 (README describes the new behaviour but is not a change record)\", \"repo/README.md (the only .md in the repo; no spec or change record exists)\"], \"notes\": \"There is one commit with a descriptive subject and no body, and no spec or change record that it points to. So the only reason given is at the feature level. As a result, the changed error message, the turning of `show` into a section/YAML command, and the rewritten existing tests (about 3 substantive hunks) can't be approved, because nothing explains why each one was made.\"}",
+  "score": 1,
   "status": "ok"
 }

@@ -1,14 +1,15 @@
 {
   "evidence": [
-    "/judge/diff.patch:44-45 (spec/001 D-1 is marked 'Superseded in part by step 2' and points to spec/002 FR-110–FR-122)",
-    "/judge/diff.patch:591-594 (spec/002 spec.md section 'What step 2 changes from step 1' names D-1 as superseded and confirms FR-042 and D-2 still hold)",
-    "/judge/diff.patch:565-569 (spec/002 spec.md Input quotes the step 2 request and the contract text word for word)",
-    "/judge/diff.patch:1568-1580 (the renamed test in tests/e2e/test_history.py has a comment saying FR-120/FR-121 supersede D-1)",
-    "/judge/diff.patch:1155-1163, 1191-1192 (the changes to open_theatre and set_value in commands.py cite FR-120, FR-121 and FR-130)",
-    "/judge/diff.patch:1088-1091 (cli.py theatre_display cites D-11)"
+    "commits.md:79-84 cd9b7dc (spec adds watch/reconcile and says it supersedes step 1 D-1, with open choices D-10..D-17)",
+    "commits.md:42-47 32a6eec (says why the step 1 test asserting hand edits are never recorded was changed to the step 2 rule)",
+    "diff.patch:43-45 spec/001-config-load-show-set/spec.md D-1 marked 'Superseded in part by step 2 … FR-110 – FR-122'",
+    "diff.patch:1568-1572 tests/e2e/test_history.py renamed test with comment 'Step 2 (FR-120, FR-121) supersedes step 1 D-1'",
+    "diff.patch:1155-1163 src/troupe/config/commands.py open_theatre docstring cites FR-120/FR-121 superseding D-1",
+    "diff.patch:1191-1192 set_value lock comment cites FR-130",
+    "commits.md:70-76 ebf44e2 (FR-114 reworded, with the reason)"
   ],
-  "notes": "The step 2 request appears word for word in spec/002, and the one earlier requirement it displaces (D-1) is marked superseded in place, with what replaced it and why. The changed test and the modified code hunks cite FR/D IDs. Only small refactors are unexplained (removing `type=Path`, the `error_line` helper), and no commit history was available to check.",
-  "raw": "{\"score\": 4, \"evidence\": [\"/judge/diff.patch:44-45 (spec/001 D-1 is marked 'Superseded in part by step 2' and points to spec/002 FR-110–FR-122)\", \"/judge/diff.patch:591-594 (spec/002 spec.md section 'What step 2 changes from step 1' names D-1 as superseded and confirms FR-042 and D-2 still hold)\", \"/judge/diff.patch:565-569 (spec/002 spec.md Input quotes the step 2 request and the contract text word for word)\", \"/judge/diff.patch:1568-1580 (the renamed test in tests/e2e/test_history.py has a comment saying FR-120/FR-121 supersede D-1)\", \"/judge/diff.patch:1155-1163, 1191-1192 (the changes to open_theatre and set_value in commands.py cite FR-120, FR-121 and FR-130)\", \"/judge/diff.patch:1088-1091 (cli.py theatre_display cites D-11)\"], \"notes\": \"The step 2 request appears word for word in spec/002, and the one earlier requirement it displaces (D-1) is marked superseded in place, with what replaced it and why. The changed test and the modified code hunks cite FR/D IDs. Only small refactors are unexplained (removing `type=Path`, the `error_line` helper), and no commit history was available to check.\"}",
+  "notes": "Every addition, plus the displaced step 1 requirement (D-1) and the rewritten history test, is tied to the step 2 request. Each says what replaced it and why, in both the commit bodies and in-file notes pointing to FR/D IDs. Only small CLI refactors are left: the `type=Path` removal and the `error_line` helper. Even these are partly explained by the D-11 docstring, so nothing substantive is left untraced.",
+  "raw": "{\"score\": 4, \"evidence\": [\"commits.md:79-84 cd9b7dc (spec adds watch/reconcile and says it supersedes step 1 D-1, with open choices D-10..D-17)\", \"commits.md:42-47 32a6eec (says why the step 1 test asserting hand edits are never recorded was changed to the step 2 rule)\", \"diff.patch:43-45 spec/001-config-load-show-set/spec.md D-1 marked 'Superseded in part by step 2 … FR-110 – FR-122'\", \"diff.patch:1568-1572 tests/e2e/test_history.py renamed test with comment 'Step 2 (FR-120, FR-121) supersedes step 1 D-1'\", \"diff.patch:1155-1163 src/troupe/config/commands.py open_theatre docstring cites FR-120/FR-121 superseding D-1\", \"diff.patch:1191-1192 set_value lock comment cites FR-130\", \"commits.md:70-76 ebf44e2 (FR-114 reworded, with the reason)\"], \"notes\": \"Every addition, plus the displaced step 1 requirement (D-1) and the rewritten history test, is tied to the step 2 request. Each says what replaced it and why, in both the commit bodies and in-file notes pointing to FR/D IDs. Only small CLI refactors are left: the `type=Path` removal and the `error_line` helper. Even these are partly explained by the D-11 docstring, so nothing substantive is left untraced.\"}",
   "score": 4,
   "status": "ok"
 }

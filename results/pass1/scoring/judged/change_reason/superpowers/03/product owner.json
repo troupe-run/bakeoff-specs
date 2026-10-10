@@ -1,13 +1,13 @@
 {
   "evidence": [
-    "/judge/docs/decisions.md:40-51 (diff) adds decisions 16-20, which explain the new `show` YAML output and `--sources` behaviour",
-    "/judge/docs/decisions.md:32 (diff): decision 2 is just reworded from `show` to `get`/`show`, with no reason given for the rename",
-    "/judge/src/troupe/cli.py:99-112 (diff): `show` used to refuse collections (exit 5); `get` now does that, and no record says this behaviour moved or why",
-    "/judge/tests/test_config.py:247-276 and /judge/tests/test_sync.py:570-647 (diff): many existing `show` assertions are switched to `get` with no explanation",
-    "/judge/repo has no .git directory, so there are no commit messages to trace"
+    "commit 363d949 'Add config get; make show print sections as YAML, with --sources'",
+    "docs/decisions.md:31-33 (diff.patch:31-32) decision 2 reworded from `show` to `get`/`show`",
+    "docs/decisions.md:40-51 (diff.patch:40-51) new decisions 16-20 explain show's YAML output, literal blocks, --sources comments and `..` paths",
+    "src/troupe/cli.py:103-115 (diff.patch:99-115) show no longer exits 5 on collections; get does and points at show",
+    "tests/test_config.py:247-261 (diff.patch:247-276) tests that asserted `show l`/`show m` exit 5 are moved to `get` with no recorded reason"
   ],
-  "notes": "",
-  "raw": "```json\n{\"score\": 2, \"evidence\": [\"/judge/docs/decisions.md:40-51 (diff) adds decisions 16-20, which explain the new `show` YAML output and `--sources` behaviour\", \"/judge/docs/decisions.md:32 (diff): decision 2 is just reworded from `show` to `get`/`show`, with no reason given for the rename\", \"/judge/src/troupe/cli.py:99-112 (diff): `show` used to refuse collections (exit 5); `get` now does that, and no record says this behaviour moved or why\", \"/judge/tests/test_config.py:247-276 and /judge/tests/test_sync.py:570-647 (diff): many existing `show` assertions are switched to `get` with no explanation\", \"/judge/repo has no .git directory, so there are no commit messages to trace\"]}\n```",
-  "score": 2,
+  "notes": "The commit body and new decisions 16-20 tie the additions and the main behaviour change (show now prints mappings and lists) to the request, and decision 2 is updated. Still, no record says that the old rule 'show refuses collections with exit 5' was dropped and replaced by get. The bulk rewrite of existing show tests to get (test_config.py, test_sync.py, conftest.py) is left for the reader to infer.",
+  "raw": "{\"score\": 3, \"evidence\": [\"commit 363d949 'Add config get; make show print sections as YAML, with --sources'\", \"docs/decisions.md:31-33 (diff.patch:31-32) decision 2 reworded from `show` to `get`/`show`\", \"docs/decisions.md:40-51 (diff.patch:40-51) new decisions 16-20 explain show's YAML output, literal blocks, --sources comments and `..` paths\", \"src/troupe/cli.py:103-115 (diff.patch:99-115) show no longer exits 5 on collections; get does and points at show\", \"tests/test_config.py:247-261 (diff.patch:247-276) tests that asserted `show l`/`show m` exit 5 are moved to `get` with no recorded reason\"], \"notes\": \"The commit body and new decisions 16-20 tie the additions and the main behaviour change (show now prints mappings and lists) to the request, and decision 2 is updated. Still, no record says that the old rule 'show refuses collections with exit 5' was dropped and replaced by get. The bulk rewrite of existing show tests to get (test_config.py, test_sync.py, conftest.py) is left for the reader to infer.\"}",
+  "score": 3,
   "status": "ok"
 }

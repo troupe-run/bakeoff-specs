@@ -1,14 +1,15 @@
 {
   "evidence": [
-    "/judge/diff.patch:1112 (spec.md Input line: links this work to the step 2 brief and builds on mission troupe-config-load-show-set-01M3XGPG)",
-    "/judge/diff.patch:1120 ('Supersedes step 1': names DM 01M3XGPT4E0D67ZJY8PT7Z9NAT and FR-008/FR-022 as displaced and says what replaces them)",
-    "/judge/diff.patch:1124-1133 (decision table D-1..D-8, each with a reason and a source)",
-    "/judge/diff.patch:3069-3079 (history.py hunk cites FR-005/D-5); /judge/diff.patch:3093-3106 (set_value.py cites D-7/FR-007/FR-015); /judge/diff.patch:3033 (cli.py cwd change cites D-8)",
-    "/judge/diff.patch:3718-3735 and 4045-4075 (step-1 tests renamed and rewritten, with comments citing FR-007 of the sync mission)",
-    "repo/spec/troupe-config-load-show-set-01M3XGPG/spec.md:117,131 (FR-008/FR-022 still say 'Open' with no superseded marker)"
+    "/judge/repo/spec/troupe-config-sync-files-01M3ZT6R/spec.md:14",
+    "/judge/repo/spec/troupe-config-sync-files-01M3ZT6R/spec.md:186",
+    "/judge/repo/spec/troupe-config-sync-files-01M3ZT6R/spec.md:158",
+    "/judge/diff.patch:4045-4047",
+    "/judge/diff.patch:4071-4075",
+    "commit 8e63090",
+    "commit 5102e12"
   ],
-  "notes": "Each code and test hunk, including changes to step-1 behaviour (hand edits are now recorded, history never reconciles, set reconciles first), points to an FR or decision in the new spec, and that spec says which step-1 requirements it replaces and why. It falls short of 4 because the displaced step-1 FR-008/FR-022 and decision record were never updated, so they still read as in force. There is also no git history, so I could not check any commit messages.",
-  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/diff.patch:1112 (spec.md Input line: links this work to the step 2 brief and builds on mission troupe-config-load-show-set-01M3XGPG)\", \"/judge/diff.patch:1120 ('Supersedes step 1': names DM 01M3XGPT4E0D67ZJY8PT7Z9NAT and FR-008/FR-022 as displaced and says what replaces them)\", \"/judge/diff.patch:1124-1133 (decision table D-1..D-8, each with a reason and a source)\", \"/judge/diff.patch:3069-3079 (history.py hunk cites FR-005/D-5); /judge/diff.patch:3093-3106 (set_value.py cites D-7/FR-007/FR-015); /judge/diff.patch:3033 (cli.py cwd change cites D-8)\", \"/judge/diff.patch:3718-3735 and 4045-4075 (step-1 tests renamed and rewritten, with comments citing FR-007 of the sync mission)\", \"repo/spec/troupe-config-load-show-set-01M3XGPG/spec.md:117,131 (FR-008/FR-022 still say 'Open' with no superseded marker)\"], \"notes\": \"Each code and test hunk, including changes to step-1 behaviour (hand edits are now recorded, history never reconciles, set reconciles first), points to an FR or decision in the new spec, and that spec says which step-1 requirements it replaces and why. It falls short of 4 because the displaced step-1 FR-008/FR-022 and decision record were never updated, so they still read as in force. There is also no git history, so I could not check any commit messages.\"}\n```",
-  "score": 3,
+  "notes": "The spec says outright that it replaces the step-1 rule (DM 01M3XGPT…, FR-008/FR-022) that hand edits never create events, and says why. C-002 limits the changes to FR-002–FR-007. The changed step-1 tests in test_set_history and test_history cite FR-007 or the 'history never reconciles' rule. The squashed code commit 8e63090 lists each behaviour it changes, and 5102e12 explains the history.py replay tolerance; only small conftest helper refactors have no stated reason.",
+  "raw": "{\"score\": 4, \"evidence\": [\"/judge/repo/spec/troupe-config-sync-files-01M3ZT6R/spec.md:14\", \"/judge/repo/spec/troupe-config-sync-files-01M3ZT6R/spec.md:186\", \"/judge/repo/spec/troupe-config-sync-files-01M3ZT6R/spec.md:158\", \"/judge/diff.patch:4045-4047\", \"/judge/diff.patch:4071-4075\", \"commit 8e63090\", \"commit 5102e12\"], \"notes\": \"The spec says outright that it replaces the step-1 rule (DM 01M3XGPT…, FR-008/FR-022) that hand edits never create events, and says why. C-002 limits the changes to FR-002–FR-007. The changed step-1 tests in test_set_history and test_history cite FR-007 or the 'history never reconciles' rule. The squashed code commit 8e63090 lists each behaviour it changes, and 5102e12 explains the history.py replay tolerance; only small conftest helper refactors have no stated reason.\"}",
+  "score": 4,
   "status": "ok"
 }
