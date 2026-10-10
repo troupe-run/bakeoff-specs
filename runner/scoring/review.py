@@ -143,6 +143,8 @@ def sheet(pass_: str) -> Path:
         raise inputs.InputError(f"{missing} not in anon-key.json: run the anonymise stage first")
     items.sort(key=lambda i: (i["part"], label_of[i["arm"]], i["step"] == "arm", str(i["step"]).zfill(3)))
     body, mapping = [], []
+    def na_hint(part: str) -> str:
+        return ", or n/a if the step is not applicable" if part in rubrics and rubrics[part].not_applicable else ""
     for n, i in enumerate(items, 1):
         lab, nn = label_of[i["arm"]], ("arm" if i["step"] == "arm" else f"{i['step']:02d}")
         where = "whole arm" if nn == "arm" else f"step {nn}"
@@ -150,7 +152,7 @@ def sheet(pass_: str) -> Path:
         heading = f"Item {n}: {i['part']}, {lab}, {where}"
         body.append(f"## {heading}\n\nRubric levels:\n\n{levels}\n\n"
                     f"{_lens_block(pass_, i['part'], i['arm'], nn, terms)}\n"
-                    f"Your verdict (a whole number 0 to 4, and a reason):\n\nscore:\nreason:\n")
+                    f"Your verdict (a whole number 0 to 4{na_hint(i['part'])}, and a reason):\n\nscore:\nreason:\n")
         mapping.append({"item": n, "heading": heading, "part": i["part"], "label": lab, "step": i["step"]})
     head = ("# Review sheet\n\nFill in `score:` (0 to 4) and `reason:` for every item, then run the review-import "
             "stage. Every item needs both.\n\n")
@@ -192,10 +194,14 @@ def _parse(text: str) -> tuple[dict[int, dict], list[str]]:
     return got, problems
 
 
-def _score(raw: str):
-    if not re.fullmatch(r"[0-4]", raw.strip("`* ")):
-        return None, f"must be a whole number 0 to 4, got {raw!r}"
-    return int(raw.strip("`* ")), None
+def _score(raw: str, na: bool = False):
+    """A whole number 0 to 4; or `n/a` (score None: unmeasured, never a 0) where the part's rubric allows it."""
+    v = raw.strip("`* ")
+    if na and v.lower() == "n/a":
+        return None, None
+    if not re.fullmatch(r"[0-4]", v):
+        return None, f"must be a whole number 0 to 4{' or n/a' if na else ''}, got {raw!r}"
+    return int(v), None
 
 
 def import_sheet(pass_: str, today: date | None = None, say=print) -> Path:
@@ -212,6 +218,7 @@ def import_sheet(pass_: str, today: date | None = None, say=print) -> Path:
     structure = m["items"]
     parsed, problems = _parse(md.read_text(encoding="utf-8"))
     arm_of, existing = judge.anon_key(pass_), aggregate.read_verdicts(pass_)
+    rubrics = inputs.load_rubrics()
     problems += [f"item {n}: not on the review sheet's list" for n in sorted(set(parsed) - {i["item"] for i in structure})]
     decided = f"owner {(today or date.today()).isoformat()}"
     rows, blank, already = [], 0, 0
@@ -229,7 +236,8 @@ def import_sheet(pass_: str, today: date | None = None, say=print) -> Path:
         if not raw and not reason:
             blank += 1
             continue
-        score, why = _score(raw) if raw else (None, "is blank")
+        na = it["part"] in rubrics and rubrics[it["part"]].not_applicable
+        score, why = _score(raw, na) if raw else (None, "is blank")
         if why:
             problems.append(f"item {n}: score {why}")
         if not reason:

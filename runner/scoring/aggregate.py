@@ -47,8 +47,9 @@ def read_verdicts(pass_: str) -> dict[tuple, dict]:
             r["reason"], r["decided"]
         except (json.JSONDecodeError, KeyError, TypeError) as e:
             raise inputs.InputError(f"{where}: bad row {line!r} ({e!r})") from e
-        if isinstance(r["score"], bool) or not isinstance(r["score"], (int, float)) or not 0 <= r["score"] <= 4:
-            raise inputs.InputError(f"{where}: score must be 0-4, got {r['score']!r}")
+        if r["score"] is not None and (isinstance(r["score"], bool) or not isinstance(r["score"], (int, float))
+                                       or not 0 <= r["score"] <= 4):
+            raise inputs.InputError(f"{where}: score must be 0-4 or null (not applicable), got {r['score']!r}")
         if key in out:
             raise inputs.InputError(f"{where}: duplicate verdict for {key}")
         out[key] = r
@@ -69,6 +70,8 @@ def _judged(pass_: str, part: str, arm: str, key: str, verdicts: dict, names: fr
         return {"score": None, "why": "not judged"} | extra
     if owner is None and not ok and any(j.get("status") == "not_applicable" for j in lenses.values()):
         return {"score": None, "why": "not applicable", "lenses": {}, "disputed": False} | extra
+    if owner is not None and owner["score"] is None:      # the owner ruled the step not applicable: unmeasured, never 0
+        return {"score": None, "why": "not applicable", "lenses": ok, "disputed": False, "owner": owner} | extra
     used = owner["score"] if owner else (statistics.median(ok.values()) if ok else None)
     out = {"score": scales.judged(used), "lenses": ok, "disputed": len(ok) >= 2 and max(ok.values()) - min(ok.values()) >= 2,
            "thin": len(ok) < 3} | extra

@@ -427,3 +427,33 @@ def test_the_review_import_refuses_when_the_key_changed_since_the_sheet(rv):
     with pytest.raises(inputs.InputError, match="different anonymisation key"):
         review.import_sheet(pass_)
     assert not (out / "review" / "verdicts.jsonl").exists()
+
+
+# ---- owner "n/a" (not applicable) verdicts -------------------------------------------------------------------------
+
+def test_n_a_is_a_score_only_where_the_rubric_allows_not_applicable():
+    assert review._score("n/a", na=True) == (None, None)
+    assert review._score("N/A", na=True) == (None, None)
+    assert review._score("n/a")[1] is not None and "0 to 4" in review._score("n/a")[1]
+    assert review._score("3", na=True) == (3, None)
+
+
+def test_n_a_on_a_part_whose_rubric_has_no_not_applicable_blocks_the_import(rv):
+    pass_, out, _ = rv
+    assert not inputs.load_rubrics()[PART].not_applicable
+    review.sheet(pass_)
+    _fill(pass_, score="n/a", reason="nothing to score")
+    with pytest.raises(inputs.InputError, match="0 to 4"):
+        review.import_sheet(pass_, today=date(2026, 10, 6))
+    assert _rows(out) == []
+
+
+def test_an_owner_n_a_verdict_makes_the_step_unmeasured_not_zero(rv):
+    pass_, out, _ = rv
+    (out / "review").mkdir(exist_ok=True)
+    (out / "review" / "verdicts.jsonl").write_text(json.dumps(
+        {"part": PART, "arm": "alpha", "step": 3, "score": None, "reason": "no question asked", "decided": "owner"}) + "\n")
+    v = aggregate.read_verdicts(pass_)
+    assert v[(PART, "alpha", "3")]["score"] is None
+    got = aggregate._judged(pass_, PART, "alpha", "03", v, frozenset({"auditor", "maintainer", "newcomer"}))
+    assert got["score"] is None and got["why"] == "not applicable" and got["owner"]["reason"] == "no question asked"
