@@ -211,6 +211,8 @@ def _dimensions(scores: dict) -> list[str]:
                 "the arm's appendix.", ""]
         if {"types", "lint"} & set(parts):
             out += [_per_kloc_rule(), ""]
+        if "size" in parts:
+            out += [_size_rule(), ""]
     return out
 
 
@@ -220,6 +222,14 @@ def _per_kloc_rule() -> str:
             f"ruff findings per 1,000 lines / {sc['lint_zero_per_kloc']:g}), harness ruleset, a finding with a safe "
             f"auto-fix counting {sc['lint_safe_fix_weight']:g}. Lines are non-blank *.py lines the tool checked: mypy its "
             "targets (src), ruff src and tests. The same rule for every arm and step.")
+
+
+def _size_rule() -> str:
+    sc = inputs.load_weights().scales
+    f, z = sc.get("size_plateau_fraction", 0.5), sc.get("size_zero_multiple", 4.0)
+    return (f"size (concision): source lines (non-blank *.py under mypy's targets, src; tests not counted) against the "
+            f"median arm at the step: 0.5 at the median, rising on a log scale to 1 at {f:g}× the median and flat below "
+            f"it, falling to 0 at {z:g}× the median. Unmeasured is never 0. The same rule for every arm and step.")
 
 
 def _per_kloc_lines(scores: dict, arm: str, n: int) -> list[str]:
@@ -238,6 +248,11 @@ def _per_kloc_lines(scores: dict, arm: str, n: int) -> list[str]:
         else:
             out.append(f"lint: {st['findings']} ruff findings ({st['safe_fixes']} safe-fix) = {st['weighted']:g} weighted / "
                        f"{st['lines']:,} lines = {st['per_kloc']:.2f} per KLOC → {st['score']:.2f}")
+    st = parts.get("size", {}).get("steps", {}).get(str(n))
+    if st is not None:
+        out.append(f"size: {DASH} ({st.get('why', 'unmeasured')})" if st["score"] is None else
+                   f"size: {st['lines']:,} source lines, median of {st['arms']} arms {st['median']:,g} "
+                   f"({st['lines'] / st['median']:.2f}×) → {st['score']:.2f}")
     return out
 
 

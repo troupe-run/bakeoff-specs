@@ -26,10 +26,11 @@ research_first = 3.3333333333333335
 gates = 3.333333333333333
 
 [parts.code_quality]
-mutation = 5
+mutation = 4               # owner, 2026-10-10: 5 -> 4 for size
 types = 3                  # mypy --strict errors per 1,000 lines mypy checked (owner, 2026-10-10)
 lint = 2                   # weighted ruff findings per 1,000 lines ruff checked (owner, 2026-10-10)
-test_names = 5
+test_names = 4             # owner, 2026-10-10: 5 -> 4 for size
+size = 2                   # concision: source lines (src, not tests) against the median arm (owner, 2026-10-10)
 
 [parts.decision_quality]
 choice = 6
@@ -52,6 +53,11 @@ ratio_cap = 10.0           # log scale, capped at 10x worse and 10x better (spec
 types_zero_per_kloc = 10   # 10 mypy errors per 1,000 lines = 0
 lint_zero_per_kloc = 10    # 10 weighted ruff findings per 1,000 lines = 0; harness ruleset (ruff.json), not the arm's
 lint_safe_fix_weight = 0.1 # a ruff finding with a safe auto-fix counts 0.1; every other finding counts 1
+# size (owner, 2026-10-10): source lines = quality/size.json type_lines (mypy's targets, src; tests not counted), m = the
+# median of the measured arms at the step. x <= m: min(1, 0.5 + 0.5 * log(m/x) / log(1/size_plateau_fraction));
+# x > m: max(0, 0.5 * (1 - log(x/m) / log(size_zero_multiple))). 0.5 at the median, 1 at half of it and below, 0 at 4x.
+size_plateau_fraction = 0.5
+size_zero_multiple = 4
 # decision ratings (owner, 2026-10-09): 1 wrong or harmful .. 5 what you'd want; n/a is not scored
 rating_1 = 0.0
 rating_2 = 0.25

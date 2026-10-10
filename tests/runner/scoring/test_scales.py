@@ -83,3 +83,26 @@ def test_a_reslice_mean_between_whole_ratings_scores_linearly_between_them():
     assert scales.rating("4.25") == 0.8125 and scales.rating("5.0") == 1.0 and scales.rating("1.0") == 0.0
     custom = {"1": 0.1, "2": 0.3, "3": 0.5, "4": 0.7, "5": 0.9}
     assert abs(scales.rating("3.25", custom) - 0.55) < 1e-9
+
+
+# ---- size (concision), owner 2026-10-10 ---------------------------------------------------------------------------
+
+def test_size_is_half_at_the_median_one_at_half_the_median_and_flat_below():
+    from runner.scoring.scales import size_score
+    assert size_score(1000, 1000) == 0.5
+    assert size_score(500, 1000) == pytest.approx(1.0)
+    assert size_score(100, 1000) == 1.0                         # below the plateau: no extra credit
+    assert size_score(707.1067811865476, 1000) == pytest.approx(0.75)
+
+
+def test_size_falls_to_zero_at_four_times_the_median_and_stays_there():
+    from runner.scoring.scales import size_score
+    assert size_score(4000, 1000) == pytest.approx(0.0, abs=1e-12)
+    assert size_score(2000, 1000) == pytest.approx(0.25)
+    assert size_score(9000, 1000) == 0.0
+
+
+@pytest.mark.parametrize("x, m", [(None, 1000), (1000, None), (0, 1000), (1000, 0)])
+def test_size_with_a_missing_or_empty_input_is_unmeasured(x, m):
+    from runner.scoring.scales import size_score
+    assert size_score(x, m) is None

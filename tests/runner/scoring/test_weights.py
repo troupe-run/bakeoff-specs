@@ -9,7 +9,7 @@ def test_shipped_weights_match_the_spec():
     assert w.parts["coping"] == {"regressions": 7, "stale_updated": 7, "churn": 3, "hand_edit": 3}
     assert w.parts["decision_quality"] == {"choice": 6, "process": 4}
     assert w.parts["setup"] == {"setup_effort": 4, "fit": 4, "violations": 2}
-    assert w.parts["code_quality"] == {"mutation": 5, "types": 3, "lint": 2, "test_names": 5}
+    assert w.parts["code_quality"] == {"mutation": 4, "types": 3, "lint": 2, "test_names": 4, "size": 2}
 
 
 def test_part_share_is_fraction_of_its_dimension():

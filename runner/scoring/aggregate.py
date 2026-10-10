@@ -7,7 +7,7 @@ from runner import faults, paths
 from runner.scoring import evidence, inputs, scales, values
 
 ARM_MEASURED = {"violations", "choice"}
-MEASURED = {"correctness", "regressions", "churn", "time", "cost", "mutation", "types", "lint", "violations", "choice"}
+MEASURED = {"correctness", "regressions", "churn", "time", "cost", "mutation", "types", "lint", "size", "violations", "choice"}
 FIELD_RELATIVE = {"time", "cost"}       # scored against the median arm at the step (owner, 2026-10-10)
 
 
@@ -218,6 +218,27 @@ def _choice(pass_: str, arm: str, sc: dict) -> dict:
     return {"score": sum(rs) / len(rs)} if rs else {"score": None, "why": "no rated routes"}
 
 
+def _source_lines(pass_: str, arm: str, n: int) -> tuple[int | None, str | None]:
+    """(non-blank *.py lines under mypy's targets, i.e. src without tests, from quality/size.json, None) or (None, why)."""
+    size = evidence.code_size(paths.RESULTS / pass_ / arm / f"{n:02d}")
+    if values.is_missing(size):
+        return None, size["why"]
+    x = size["value"]["type_lines"]
+    return (x, None) if x > 0 else (None, "no Python lines under mypy's targets")
+
+
+def _size(pass_: str, arm: str, n: int, field: dict[str, dict[int, dict]], sc: dict) -> dict:
+    """Owner rule, 2026-10-10, the same for every arm and step: source lines (`type_lines`, src only, so tests are not
+    counted) against the median of the measured arms at the step, scales.size_score. Unmeasured is never 0."""
+    mine, why = _source_lines(pass_, arm, n)
+    if mine is None:
+        return {"score": None, "why": why}
+    xs = [x for x in (_source_lines(pass_, a, n)[0] for a in sorted(field) if n in field[a]) if x is not None]
+    med = statistics.median(xs)
+    return {"score": scales.size_score(mine, med, sc.get("size_plateau_fraction", 0.5), sc.get("size_zero_multiple", 4.0)),
+            "lines": mine, "median": med, "arms": len(xs)}
+
+
 def _part_steps(pass_, part, arm, recs, base_recs, rubrics, verdicts, sc, field=None) -> dict[str, dict]:
     if part in ARM_MEASURED or (part in rubrics and rubrics[part].unit == "arm"):
         if part == "choice":
@@ -242,6 +263,8 @@ def _part_steps(pass_, part, arm, recs, base_recs, rubrics, verdicts, sc, field=
             return {"arm": {"score": max(0.0, 1.0 - deducted), "deducted": deducted, "kinds": kinds,
                              "arm_level": len(arm_list)}}
         return {"arm": _judged(pass_, part, arm, "arm", verdicts, _lens_names(rubrics[part]))}
+    if part == "size":
+        return {str(n): _size(pass_, arm, n, field or {arm: recs}, sc) for n in sorted(recs)}
     if part in FIELD_RELATIVE:
         return {str(n): _field_relative(part, n, r, field or {arm: recs}, sc) for n, r in sorted(recs.items())}
     if part in MEASURED:

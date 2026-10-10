@@ -58,6 +58,10 @@ def load_weights(path: Path | None = None) -> Weights:
             raise InputError(f"{path}: [scales] {k} must be a number, got {v!r}") from e
         if not math.isfinite(fv):
             raise InputError(f"{path}: [scales] {k} must be finite, got {fv!r}")
+        if k == "size_plateau_fraction" and not 0 < fv < 1:
+            raise InputError(f"{path}: [scales] size_plateau_fraction must be between 0 and 1, got {fv}")
+        if k == "size_zero_multiple" and fv <= 1:
+            raise InputError(f"{path}: [scales] size_zero_multiple must be > 1, got {fv}")
         if k == "ratio_cap" and fv <= 1:
             raise InputError(f"{path}: [scales] ratio_cap must be > 1, got {fv}")
         scales[k] = fv

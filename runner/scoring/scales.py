@@ -24,6 +24,18 @@ def per_kloc(count: float | None, lines: int | None, zero_per_kloc: float) -> fl
     return max(0.0, 1.0 - (count * 1000 / lines) / zero_per_kloc)
 
 
+def size_score(lines: float | None, median: float | None, plateau_fraction: float = 0.5,
+               zero_multiple: float = 4.0) -> float | None:
+    """Concision (owner, 2026-10-10): 0.5 at the median; smaller rises on a log scale to 1 at `plateau_fraction` of
+    the median and stays 1 below it (no extra credit for being smaller still); larger falls on a log scale to 0 at
+    `zero_multiple` times the median. None when either input is missing or not positive."""
+    if not lines or not median or lines <= 0 or median <= 0:
+        return None
+    if lines <= median:
+        return min(1.0, 0.5 + 0.5 * math.log(median / lines) / math.log(1 / plateau_fraction))
+    return max(0.0, 0.5 * (1 - math.log(lines / median) / math.log(zero_multiple)))
+
+
 def lint_weight(findings: list, safe_weight: float) -> float:
     """Weighted ruff findings: one with `fix.applicability == "safe"` counts `safe_weight`, every other one 1."""
     return sum(safe_weight if isinstance(f, dict) and isinstance(f.get("fix"), dict)

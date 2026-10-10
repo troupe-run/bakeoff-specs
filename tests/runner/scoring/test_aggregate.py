@@ -64,7 +64,8 @@ def test_a_dimension_with_one_unmeasured_part_reweights_the_rest(p):
     _quality_files(p, "alpha", 1, size={"type_lines": 1000, "lint_lines": 1000}, ruff=[])
     write_judged(p, "test_names", "alpha", "01", [4, 4, 4])
     s = _scores(p)["arms"]["alpha"]["dimensions"]["code_quality"]
-    assert s["unmeasured_parts"] == ["mutation"] and s["score"] == pytest.approx(15.0)
+    # types, lint, test_names full marks; size 0.5 (alone at the step, it is the median): 15 * (3+2+4+2*0.5) / 11
+    assert s["unmeasured_parts"] == ["mutation"] and s["score"] == pytest.approx(15 * 10 / 11)
 
 
 def test_owner_verdict_is_used_and_lenses_are_kept(p):
@@ -547,3 +548,24 @@ def test_parts_without_not_applicable_ignore_the_question_log(p):
     write_judged(p, "gates", "alpha", "02", [4, 4, 4])
     st = _interaction_step(p, "gates", 2)
     assert st["score"] == 1.0 and "asked" not in st
+
+
+# ---- size (concision): source lines against the median arm (owner, 2026-10-10) ------------------------------------
+
+def test_size_scores_source_lines_against_the_median_arm_and_ignores_test_lines(p):
+    write_collected(p, "beta", 1)
+    write_arm_violations(p, "beta", [])
+    _quality_files(p, "alpha", 1, size={"type_lines": 500, "lint_lines": 99999}, ruff=[])
+    _quality_files(p, "control", 1, size={"type_lines": 1000, "lint_lines": 2000}, ruff=[])
+    _quality_files(p, "beta", 1, size={"type_lines": 4000, "lint_lines": 4000}, ruff=[])
+    get = lambda a: _scores(p)["arms"][a]["dimensions"]["code_quality"]["parts"]["size"]["steps"]["1"]
+    assert get("control")["score"] == 0.5 and get("control")["median"] == 1000
+    assert get("alpha")["score"] == pytest.approx(1.0) and get("beta")["score"] == pytest.approx(0.0, abs=1e-12)
+
+
+def test_size_missing_is_unmeasured_and_left_out_of_the_median(p):
+    _quality_files(p, "control", 1, size={"type_lines": 1000, "lint_lines": 1000}, ruff=[])
+    s = _scores(p)["arms"]
+    a = s["alpha"]["dimensions"]["code_quality"]["parts"]["size"]["steps"]["1"]
+    c = s["control"]["dimensions"]["code_quality"]["parts"]["size"]["steps"]["1"]
+    assert a == {"score": None, "why": "no size measured"} and c["score"] == 0.5 and c["arms"] == 1
