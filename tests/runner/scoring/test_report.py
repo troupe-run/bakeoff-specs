@@ -417,3 +417,20 @@ def test_the_appendix_discloses_a_mutmut_rerun_with_its_ruling_date_and_node_id_
     assert ("; re-run of the crashed original (ruling O1, 2026-10-08; 2 node IDs mapped to their function, so each "
             "runs every parametrisation of its test: more tests per mutant, more timeout and partial risk)") in line
     assert report.NOT_LIKE_FOR_LIKE not in report.render(p)
+
+
+def test_code_quality_shows_types_and_lint_rows_states_the_rule_and_the_appendix_shows_the_inputs(p):
+    from tests.runner.scoring.test_aggregate import _quality_files
+    write_collected(p, "alpha", 1, quality={"mypy_errors": 3, "ruff_findings": 4, "mutation_score": 0.8,
+                                            "mutation_state": "measured"})
+    _quality_files(p, "alpha", 1, size={"type_lines": 1500, "lint_lines": 2000},
+                   ruff=[{"code": "I001", "fix": {"applicability": "safe"}}] * 3 + [{"code": "E501", "fix": None}])
+    aggregate.run(p)
+    md = report.render(p)
+    dims = _section(md, "## Dimensions")
+    assert "| types (3 pts) |" in dims and "| lint (2 pts) |" in dims and "mypy_lint" not in md
+    assert "per 1,000 lines / 10" in dims and "safe auto-fix counting 0.1" in dims
+    app = _section(md, "## Appendix: alpha")
+    assert "- types: 3 mypy errors / 1,500 lines = 2.00 per KLOC → 0.80" in app
+    assert "- lint: 4 ruff findings (3 safe-fix) = 1.3 weighted / 2,000 lines = 0.65 per KLOC → 0.94" in app
+    assert "- types: — (no size measured)" in _section(md, "## Appendix: control")

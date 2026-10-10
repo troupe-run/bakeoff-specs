@@ -1051,8 +1051,9 @@ def test_mypy_and_ruff_containers_get_no_extra_env(monkeypatch, tmp_state, tmp_p
         return _ok_run(p_, copy, cmd, timeout)
     monkeypatch.setattr(quality, "_run", fake)
     quality.run_all(_paths(), prep, tmp_path / "out")
-    tools = [t for t, _ in seen]
+    tools = [t for t, _ in seen if not t.startswith("/opt/harness/bin/python")]
     assert sum("mypy" in t for t in tools) == 1 and sum("ruff" in t for t in tools) == 2
+    assert len(seen) - len(tools) == 1                    # the size container, also with no extra env
     assert all(env is None for _, env in seen)
 
 
@@ -1307,3 +1308,41 @@ def test_a_deselected_parametrised_id_survives_pytests_shlex_split_intact(monkey
     monkeypatch.setattr(quality, "_run", fake)
     quality._mutation(_paths(), tmp_path, ["src"], tmp_path / "out", _pins(mutation_sample=1), deselect=(nid,))
     assert shlex.split(calls[2]["env"]["PYTEST_ADDOPTS"]) == ["--deselect", nid]
+
+
+# --- code size for the per-KLOC types/lint parts (owner, 2026-10-10) -------------------------------------------------
+
+def _size_fake(size_run):
+    def fake(p_, copy, cmd, timeout, env=None):
+        if cmd[0] == "/opt/harness/bin/python":
+            assert cmd[1] == "-I" and cmd[-1] == "src"           # the harness interpreter, isolated; mypy's targets
+            if isinstance(size_run, Exception):
+                raise size_run
+            return size_run
+        return _ok_run(p_, copy, cmd, timeout)
+    return fake
+
+
+def test_run_all_records_size_json_from_the_tools_file_lists(monkeypatch, tmp_state, tmp_path):
+    a = tmp_path / "a"
+    (a / "src").mkdir(parents=True)
+    prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
+    body = '{"lint_lines": 1200, "type_lines": 700, "lint_files": 9, "type_files": 4, "targets": ["src"]}\n'
+    monkeypatch.setattr(quality, "_run", _size_fake(quality.ToolRun(0, body, "", False)))
+    quality.run_all(_paths(), prep, tmp_path / "out")
+    s = json.loads((tmp_path / "out" / "quality" / "size.json").read_text())
+    assert (s["lint_lines"], s["type_lines"], s["source"]) == (1200, 700, "quality") and "ruff" in s["how"]
+
+
+@pytest.mark.parametrize("run, why", [(quality.ToolRun(3, "", "ruff failed", False), "rc 3"),
+                                      (quality.ToolRun(None, "", "", True), "timed out"),
+                                      (RuntimeError("boom"), "RuntimeError")])
+def test_run_all_size_failure_is_recorded_never_zero_lines(monkeypatch, tmp_state, tmp_path, run, why):
+    a = tmp_path / "a"
+    (a / "src").mkdir(parents=True)
+    prep = types.SimpleNamespace(hidden_copy=a, quality_copy=None, prep={})
+    monkeypatch.setattr(quality, "_run", _size_fake(run))
+    out = quality.run_all(_paths(), prep, tmp_path / "out")
+    s = json.loads((tmp_path / "out" / "quality" / "size.json").read_text())
+    assert s["lint_lines"] is None and s["type_lines"] is None and why in s["error"]
+    assert out["mypy_errors"] == 0 and out["ruff_findings"] == 0      # other phases unaffected

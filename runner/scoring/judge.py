@@ -141,7 +141,7 @@ def prompt(rubric: inputs.Rubric, lens: dict, key: str, files: list[str]) -> str
 
 def anon_key(pass_: str) -> dict[str, str]:
     """{label: arm}. Read on the host only; never mounted into, or quoted to, a judge."""
-    f = paths.scoring_out(pass_) / anonymise.KEY
+    f = anonymise.key_path(pass_)
     if not f.exists():
         raise inputs.InputError(f"{f} is missing: run the anonymise stage first")
     return anonymise.read_key(pass_)

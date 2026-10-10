@@ -202,7 +202,7 @@ written, and the feeds are secret-scanned with the step's evidence after every r
 | 20 | **Correctness** | Hidden tests passed per step, **all** tests at that step including earlier steps' (a regression deliberately costs twice) | measured |
 | 10 | **Traceability** | Requirement → test → code · change → reason · step 6's fix leaves a spec trace | judged |
 | 10 | **Quality of human interaction** | Value of questions, N.a and N.b both counted · research before asking, informed-choice framing (below) · gates at sensible points | judged |
-| 15 | **Code and test quality** | Mutation score · `mypy --strict` and lint · test names checked against what the tests assert | measured · measured · judged |
+| 15 | **Code and test quality** | Mutation score (5) · types: `mypy --strict` errors per 1,000 lines (3) · lint: ruff findings per 1,000 lines, a safe auto-fix counting 0.1 (2) · test names checked against what the tests assert (5) | measured · measured · measured · judged |
 | 10 | **Decision quality** | Choice: the owner's rating of each route the arm took, averaged over topics (6) · Process: options weighed, reason stated, decision recorded (4) | owner-rated · judged |
 | 10 | **Setup and ergonomics** | Setup effort (4) · fit with Claude Code and the arm's tracker (4) · arm violations, deduction by severity (2) | judged · judged · measured |
 | 5 | **Time to outcome** | Arm working time per hidden test passed | measured |

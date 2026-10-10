@@ -312,6 +312,29 @@ def quality(step_dir: Path) -> dict:
                       q["source"])
 
 
+def code_size(step_dir: Path) -> dict:
+    """`quality/size.json` (runner/scoring/size.py): non-blank *.py lines mypy (`type_lines`) and ruff (`lint_lines`)
+    checked. Missing, unreadable or a failed measurement (lines None) is missing, with why."""
+    s = read_json(step_dir / "quality" / "size.json")
+    if values.is_missing(s):
+        return values.missing(s["missing"], "no size measured" if s["why"] == "no such file" else s["why"])
+    v = s["value"]
+    if not isinstance(v, dict) or any(not isinstance(v.get(k), int) or isinstance(v.get(k), bool)
+                                      for k in ("lint_lines", "type_lines")):
+        why = v.get("error") if isinstance(v, dict) and v.get("error") else "no line counts"
+        return values.missing(s["source"], f"size not measured: {why}")
+    return s
+
+
+def ruff_list(step_dir: Path) -> dict:
+    """`quality/ruff.json`, the harness ruleset's findings (`ruff check --isolated`), never `ruff-arm.json`: an arm
+    cannot improve its lint part by configuring its own linter off."""
+    r = read_json(step_dir / "quality" / "ruff.json")
+    if not values.is_missing(r) and not isinstance(r["value"], list):
+        return values.missing(r["source"], "ruff.json is not a list of findings")
+    return r
+
+
 def read_jsonl(p: Path) -> tuple[list[dict], int] | None:
     """(objects, skipped malformed lines), or None when the file cannot be read (absent, unreadable, not UTF-8)."""
     try:

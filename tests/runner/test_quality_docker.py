@@ -29,3 +29,16 @@ def test_mutmut_can_list_mutants_without_running_them(prepared, tmp_path):    # 
     p, prep = prepared
     names = quality.list_mutants(p, prep.quality_copy, ["src"])
     assert len(names) > 0
+
+
+def test_size_in_the_container_matches_the_host_walk_of_the_same_copy(prepared):
+    """The quality stage's tool-listed file counts (ruff --show-files, mypy's sources) agree with the host walk the
+    pass-1 backfill uses, on the same tree."""
+    from runner.scoring import size
+    p, prep = prepared
+    r = quality._run(p, prep.hidden_copy, size.container_cmd(["src"]), 300)
+    got = size.parse_container(r.rc, r.stdout)
+    assert got is not None, r.combined
+    want = size.measure_tree(prep.hidden_copy, ["src"])
+    assert (got["lint_lines"], got["type_lines"]) == (want["lint_lines"], want["type_lines"])
+    assert 0 < got["type_lines"] < got["lint_lines"]

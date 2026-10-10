@@ -7,7 +7,7 @@ from runner import faults, paths
 from runner.scoring import evidence, inputs, scales, values
 
 ARM_MEASURED = {"violations", "choice"}
-MEASURED = {"correctness", "regressions", "churn", "time", "mutation", "mypy_lint", "violations", "choice"}
+MEASURED = {"correctness", "regressions", "churn", "time", "mutation", "types", "lint", "violations", "choice"}
 
 
 def _v(x):
@@ -83,8 +83,46 @@ def _judged(pass_: str, part: str, arm: str, key: str, verdicts: dict, names: fr
     return out
 
 
-def _measured(part: str, rec: dict, base: dict | None, sc: dict) -> dict:
+def _per_kloc(part: str, q: dict | None, step_dir: Path, sc: dict) -> dict:
+    """Owner rule, 2026-10-10, the same for every arm and step. `types`: mypy errors per 1,000 lines mypy checked;
+    `lint`: ruff findings (harness ruleset, quality/ruff.json; a safe auto-fix counts `lint_safe_fix_weight`) per 1,000
+    lines ruff checked. Each is normalised by its own tool's lines (quality/size.json): mypy runs over its targets
+    (src when there is one), ruff over the whole repo (src and tests). Score max(0, 1 - per_kloc / <part>_zero_per_kloc).
+    A crashed or timed-out tool, or no size measured, is unmeasured (None, with why), never 0."""
+    if not q:
+        return {"score": None, "why": "no quality results"}
+    size = evidence.code_size(step_dir)
+    if part == "types":
+        if q.get("mypy_errors") is None:
+            return {"score": None, "why": "mypy crashed or timed out"}
+        if values.is_missing(size):
+            return {"score": None, "why": size["why"]}
+        lines, n = size["value"]["type_lines"], q["mypy_errors"]
+        s = scales.per_kloc(n, lines, sc["types_zero_per_kloc"])
+        return ({"score": s, "errors": n, "lines": lines, "per_kloc": n * 1000 / lines} if s is not None
+                else {"score": None, "why": "no Python lines under mypy's targets"})
+    if q.get("ruff_findings") is None:
+        return {"score": None, "why": "ruff crashed or timed out"}
+    if values.is_missing(size):
+        return {"score": None, "why": size["why"]}
+    found = evidence.ruff_list(step_dir)
+    if values.is_missing(found):
+        return {"score": None, "why": f"ruff findings unreadable: {found['why']}"}
+    fs = found["value"]
+    if len(fs) != q["ruff_findings"]:
+        return {"score": None, "why": f"ruff.json holds {len(fs)} findings, the summary {q['ruff_findings']}"}
+    lines, w = size["value"]["lint_lines"], scales.lint_weight(fs, sc["lint_safe_fix_weight"])
+    s = scales.per_kloc(w, lines, sc["lint_zero_per_kloc"])
+    safe = sum(1 for f in fs if isinstance(f, dict) and isinstance(f.get("fix"), dict)
+               and f["fix"].get("applicability") == "safe")
+    return ({"score": s, "findings": len(fs), "safe_fixes": safe, "weighted": w, "lines": lines,
+             "per_kloc": w * 1000 / lines} if s is not None else {"score": None, "why": "no Python lines ruff checked"})
+
+
+def _measured(part: str, rec: dict, base: dict | None, sc: dict, pass_: str) -> dict:
     h, q = _v(rec["hidden"]), _v(rec["quality"])
+    if part in ("types", "lint"):
+        return _per_kloc(part, q, paths.RESULTS / pass_ / rec["arm"] / f"{rec['step']:02d}", sc)
     if part == "correctness":
         return {"score": h["passed"] / h["total"]} if h and h["total"] else {"score": None, "why": "no hidden results"}
     if part == "regressions":
@@ -96,10 +134,6 @@ def _measured(part: str, rec: dict, base: dict | None, sc: dict) -> dict:
         if q and q["mutation_state"] == "measured":
             return {"score": None, "why": "measured but no score"}
         return {"score": None, "why": (q.get("mutation_why") or q["mutation_state"]) if q else "no quality results"}
-    if part == "mypy_lint":
-        if q and q["mypy_errors"] is not None and q["ruff_findings"] is not None:
-            return {"score": scales.deduction(q["mypy_errors"] + q["ruff_findings"], sc["lint_per_error"])}
-        return {"score": None, "why": "mypy or ruff crashed"}
     if base is None:
         return {"score": None, "why": "no baseline for this step"}
     if part == "churn":
@@ -156,7 +190,7 @@ def _part_steps(pass_, part, arm, recs, base_recs, rubrics, verdicts, sc) -> dic
                              "arm_level": len(arm_list)}}
         return {"arm": _judged(pass_, part, arm, "arm", verdicts, _lens_names(rubrics[part]))}
     if part in MEASURED:
-        return {str(n): _measured(part, r, base_recs.get(n), sc) for n, r in sorted(recs.items())}
+        return {str(n): _measured(part, r, base_recs.get(n), sc, pass_) for n, r in sorted(recs.items())}
     if part not in rubrics:
         raise inputs.InputError(f"weights.toml part {part!r} has no rubric in scoring/rubrics and is not a measured part")
     steps = [n for n in rubrics[part].steps if n in recs]

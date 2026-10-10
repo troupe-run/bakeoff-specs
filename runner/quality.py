@@ -856,6 +856,18 @@ def run_all(p: Paths, prep: "hidden.Prepared", out_dir: Path, pins: config.Pins 
         ruff_arm, ruff_arm_crashed, ruff_arm_timed_out = None, True, False
         ruff_arm_error = f"{type(e).__name__}: {e}"[:200]
 
+    # Code size for the per-KLOC `types`/`lint` parts (runner/scoring/size.py): the files ruff and mypy themselves
+    # list for this copy, counted inside the container by the harness interpreter (never the arm's).
+    from runner.scoring import size
+    try:
+        sz_run = _run(p, a, size.container_cmd(tg), 600)
+        measured = None if sz_run.timed_out else size.parse_container(sz_run.rc, sz_run.stdout)
+        sz = size.record(measured, how=size.HOW_TOOLS, source="quality",
+                         error="timed out" if sz_run.timed_out else f"rc {sz_run.rc}: {sz_run.stderr.strip()[-200:]}")
+    except Exception as e:                       # noqa: BLE001 -- never lose the rest of the run's evidence
+        sz = size.record(None, how=size.HOW_TOOLS, source="quality", error=f"{type(e).__name__}: {e}"[:200])
+    (qd / "size.json").write_text(json.dumps(sz, indent=2, sort_keys=True) + "\n")
+
     try:
         versions = tool_versions()
     except Exception as e:                       # noqa: BLE001 -- never lose the rest of the run's evidence

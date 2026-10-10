@@ -209,6 +209,35 @@ def _dimensions(scores: dict) -> list[str]:
         out += ["Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was used; "
                 f"{THIN} a thin panel: fewer than three lenses answered. — unmeasured or not applicable; the reason is in "
                 "the arm's appendix.", ""]
+        if {"types", "lint"} & set(parts):
+            out += [_per_kloc_rule(), ""]
+    return out
+
+
+def _per_kloc_rule() -> str:
+    sc = inputs.load_weights().scales
+    return (f"types = max(0, 1 − mypy --strict errors per 1,000 lines / {sc['types_zero_per_kloc']:g}); lint = max(0, 1 − "
+            f"ruff findings per 1,000 lines / {sc['lint_zero_per_kloc']:g}), harness ruleset, a finding with a safe "
+            f"auto-fix counting {sc['lint_safe_fix_weight']:g}. Lines are non-blank *.py lines the tool checked: mypy its "
+            "targets (src), ruff src and tests. The same rule for every arm and step.")
+
+
+def _per_kloc_lines(scores: dict, arm: str, n: int) -> list[str]:
+    """The appendix's types/lint inputs for one step, from scores.json."""
+    parts = scores["arms"].get(arm, {}).get("dimensions", {}).get("code_quality", {}).get("parts", {})
+    out = []
+    for part in ("types", "lint"):
+        st = parts.get(part, {}).get("steps", {}).get(str(n))
+        if st is None:
+            continue
+        if st["score"] is None:
+            out.append(f"{part}: {DASH} ({st.get('why', 'unmeasured')})")
+        elif part == "types":
+            out.append(f"types: {st['errors']} mypy errors / {st['lines']:,} lines = {st['per_kloc']:.2f} per KLOC "
+                       f"→ {st['score']:.2f}")
+        else:
+            out.append(f"lint: {st['findings']} ruff findings ({st['safe_fixes']} safe-fix) = {st['weighted']:g} weighted / "
+                       f"{st['lines']:,} lines = {st['per_kloc']:.2f} per KLOC → {st['score']:.2f}")
     return out
 
 
@@ -605,6 +634,7 @@ def _appendix(pass_: str, arm: str, scores: dict, recs: dict[int, dict]) -> list
             out.append(f"- {_leaf_text(name, r[name])}")
         for sub in sorted(r.get("phases", {})):
             out.append(f"- {_leaf_text('phases.' + sub, r['phases'][sub])}")
+        out += [f"- {line}" for line in _per_kloc_lines(scores, arm, n)]
         out.append("")
     lens = _lens_lines(pass_, arm)
     out += ["### Lens verdicts", ""] + (lens or ["No judged parts for this arm."]) + [""]

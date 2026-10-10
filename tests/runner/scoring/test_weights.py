@@ -9,6 +9,7 @@ def test_shipped_weights_match_the_spec():
     assert w.parts["coping"] == {"regressions": 7, "stale_updated": 7, "churn": 3, "hand_edit": 3}
     assert w.parts["decision_quality"] == {"choice": 6, "process": 4}
     assert w.parts["setup"] == {"setup_effort": 4, "fit": 4, "violations": 2}
+    assert w.parts["code_quality"] == {"mutation": 5, "types": 3, "lint": 2, "test_names": 5}
 
 
 def test_part_share_is_fraction_of_its_dimension():
@@ -34,7 +35,9 @@ def test_scales_load_from_weights_toml_as_floats():
     w = inputs.load_weights()
     assert isinstance(w.scales, dict)
     assert w.scales["ratio_cap"] == 10.0
-    assert w.scales["lint_per_error"] == 0.05
+    assert "lint_per_error" not in w.scales
+    assert (w.scales["types_zero_per_kloc"], w.scales["lint_zero_per_kloc"], w.scales["lint_safe_fix_weight"]) == (
+        10.0, 10.0, 0.1)
     assert [w.scales[f"rating_{n}"] for n in range(1, 6)] == [0.0, 0.25, 0.5, 0.75, 1.0]
 
 

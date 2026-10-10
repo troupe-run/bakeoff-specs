@@ -27,7 +27,8 @@ gates = 3.333333333333333
 
 [parts.code_quality]
 mutation = 5
-mypy_lint = 5
+types = 3                  # mypy --strict errors per 1,000 lines mypy checked (owner, 2026-10-10)
+lint = 2                   # weighted ruff findings per 1,000 lines ruff checked (owner, 2026-10-10)
 test_names = 5
 
 [parts.decision_quality]
@@ -41,7 +42,11 @@ violations = 2
 
 [scales]
 ratio_cap = 10.0           # log scale relative to control: capped at 10x worse and 10x better (spec §4)
-lint_per_error = 0.05      # mypy + ruff: 1 - 0.05 per error, floor 0 (20 errors = 0)
+# types/lint (owner, 2026-10-10), the same for every arm and step: score = max(0, 1 - per_kloc / zero_per_kloc), where
+# per_kloc is per 1,000 non-blank *.py lines the tool checked (quality/size.json: mypy usually src only, ruff src+tests).
+types_zero_per_kloc = 10   # 10 mypy errors per 1,000 lines = 0
+lint_zero_per_kloc = 10    # 10 weighted ruff findings per 1,000 lines = 0; harness ruleset (ruff.json), not the arm's
+lint_safe_fix_weight = 0.1 # a ruff finding with a safe auto-fix counts 0.1; every other finding counts 1
 # decision ratings (owner, 2026-10-09): 1 wrong or harmful .. 5 what you'd want; n/a is not scored
 rating_1 = 0.0
 rating_2 = 0.25

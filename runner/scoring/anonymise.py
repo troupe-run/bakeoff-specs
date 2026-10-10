@@ -92,8 +92,13 @@ KEY = "anon-key.json"
 KEY_PREV = "anon-key.json.prev"          # the previous key while a re-run is in progress: its salt survives a crash
 
 
-def _key_file(pass_: str) -> Path:
-    return paths.scoring_out(pass_) / KEY
+def key_path(pass_: str) -> Path:
+    """Where the key is read from: `results/<pass>/scoring/anon-key.json`, or, once moved out of results/ (so git can
+    never publish it), `state/<pass>-scoring/anon-key.json`. Never copied back. The anonymise stage still WRITES it
+    under results/ (`run`)."""
+    here = paths.scoring_out(pass_) / KEY
+    moved = paths.STATE / f"{pass_}-scoring" / KEY
+    return moved if not here.exists() and moved.exists() else here
 
 
 def _parse_key(text: str) -> tuple[str | None, dict[str, str]]:
@@ -106,12 +111,12 @@ def _parse_key(text: str) -> tuple[str | None, dict[str, str]]:
 
 def read_key(pass_: str) -> dict[str, str]:
     """{label: arm} from anon-key.json; raises FileNotFoundError when there is none."""
-    return _parse_key(_key_file(pass_).read_text())[1]
+    return _parse_key(key_path(pass_).read_text())[1]
 
 
 def key_digest(pass_: str) -> str:
     """sha256 of anon-key.json's bytes: extractions and both sheets record it and refuse when it changed (R37)."""
-    return hashlib.sha256(_key_file(pass_).read_bytes()).hexdigest()
+    return hashlib.sha256(key_path(pass_).read_bytes()).hexdigest()
 
 
 def _existing_salt(pass_: str) -> str | None:
@@ -476,7 +481,7 @@ def run(pass_: str) -> Path:
     others-questions.md, [stale-list.toml], [UNSCRUBBED.txt], [MISSING.md + MISSING.json]}, <label>/setup/ and, last, scoring_out/anon-key.json.
     Evidence that is absent is named in MISSING.md, never written as a file that looks like input. Returns anon/."""
     out = paths.scoring_out(pass_)
-    anon, key_path, prev, tmp = out / "anon", out / KEY, out / KEY_PREV, out / "anon-tmp"
+    anon, key_out, prev, tmp = out / "anon", out / KEY, out / KEY_PREV, out / "anon-tmp"
     salt = _existing_salt(pass_) or secrets.token_hex(16)   # R37: reuse the key's salt; a new one only without a key
     # R39: leak-check.json is a verdict on the anon/ tree it was run over. Deleting it before anon/ is rebuilt (even
     # if this run then fails) means the report can only ever show "has not run", never a stale "clean". Simpler and
@@ -484,8 +489,8 @@ def run(pass_: str) -> Path:
     (out / "leak-check.json").unlink(missing_ok=True)
     for d in (anon, tmp):
         shutil.rmtree(d, ignore_errors=True)
-    if key_path.exists():                           # no key until the whole run finished; its salt is kept in .prev
-        os.replace(key_path, prev)
+    if key_out.exists():                           # no key until the whole run finished; its salt is kept in .prev
+        os.replace(key_out, prev)
     try:
         pass_dir = paths.RESULTS / pass_
         arms = collect.arms(pass_dir)
@@ -543,7 +548,7 @@ def run(pass_: str) -> Path:
                 _w(anon / lab[arm] / nn / "others-questions.md", "\n".join(parts) if parts else "(no other arm has this step)\n")
         for f in failures:
             print(f"anonymise: {f}", file=sys.stderr)
-        key_path.write_text(values.dump({"salt": salt, "labels": {lab[a]: a for a in arms}}), encoding="utf-8")  # last
+        key_out.write_text(values.dump({"salt": salt, "labels": {lab[a]: a for a in arms}}), encoding="utf-8")  # last
         prev.unlink(missing_ok=True)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)       # never left behind, even on a failure (never commit it)

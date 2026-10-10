@@ -51,6 +51,10 @@ resumable or idempotent unless noted.
    for every arm's names, aliases, tool folders and CLI forms, with a checker independent of the scrubber's regexes.
    It writes `leak-check.json` and exits non-zero naming each hit. Fix the scrub terms (or accept a hit as disclosed
    residue, with the owner) before judging; the report discloses the result.
+9a. `--stage size` writes `<arm>/<NN>/quality/size.json` (non-blank `*.py` lines mypy and ruff checked, for the
+   per-KLOC `types` and `lint` parts) from `anon/<label>/<NN>/repo/`, for steps whose quality run predates size.json;
+   a size.json the quality stage measured itself is never overwritten. It reads the anon key from
+   `results/<pass>/scoring/` or, once moved, `state/<pass>-scoring/`. Without it, `types` and `lint` are unmeasured.
 
 ## 5. Approval, then decisions and judging (spends model quota)
 

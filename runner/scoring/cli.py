@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from runner import faults, paths
 from runner.scoring import (aggregate, anonymise, collect, confidence, context, decisions, evidence, inputs, judge, leakcheck, page,
-                            remeasure, report, reslice, review, values)
+                            remeasure, report, reslice, review, size, values)
 
 
 def _scores(pass_: str) -> dict:
@@ -191,6 +191,8 @@ STAGES = {
                                                                collect.arms(paths.RESULTS / ns.pass_)), indent=2)),
     "collect": lambda ns: print(len(collect.run(ns.pass_, docker=not ns.no_docker)), "records"),
     "anonymise": lambda ns: print(anonymise.run(ns.pass_)),     # Docker (container git); rewrites anon/ and anon-key.json
+    # quality/size.json for steps whose quality run predates it, from the anonymised trees (needs the anon key)
+    "size": lambda ns: print(len(size.backfill(ns.pass_)), "size records"),
     "leak-check": _leak_check,
     "judge-estimate": _judge_estimate,
     "judge": _judge,

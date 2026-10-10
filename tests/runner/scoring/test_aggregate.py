@@ -60,6 +60,7 @@ def _scores(pass_):
 def test_a_dimension_with_one_unmeasured_part_reweights_the_rest(p):
     write_collected(p, "alpha", 1, quality={"mypy_errors": 0, "ruff_findings": 0, "mutation_score": None,
                                             "mutation_state": "crashed"})
+    _quality_files(p, "alpha", 1, size={"type_lines": 1000, "lint_lines": 1000}, ruff=[])
     write_judged(p, "test_names", "alpha", "01", [4, 4, 4])
     s = _scores(p)["arms"]["alpha"]["dimensions"]["code_quality"]
     assert s["unmeasured_parts"] == ["mutation"] and s["score"] == pytest.approx(15.0)
@@ -325,3 +326,101 @@ def test_orchestrates_before_run_drift_and_stepflows_after_attempt_drift_are_dis
     write_arm_violations(p, "alpha", [{"step": 1, "run": "b", "kind": "setup-drift", "check": "common.origin",
                                        "before_run": True}])
     assert _viol(p)["score"] == pytest.approx(0.5)
+
+
+# --- types and lint: per-KLOC, safe fixes weighted (owner, 2026-10-10) ----------------------------------------------
+
+def _quality_files(pass_, arm, step, *, size=None, ruff=None):
+    q = paths.RESULTS / pass_ / arm / f"{step:02d}" / "quality"
+    q.mkdir(parents=True, exist_ok=True)
+    if size is not None:
+        (q / "size.json").write_text(json.dumps(size))
+    if ruff is not None:
+        (q / "ruff.json").write_text(json.dumps(ruff))
+
+
+def _cq(pass_, arm="alpha", step="1"):
+    parts = _scores(pass_)["arms"][arm]["dimensions"]["code_quality"]["parts"]
+    return parts["types"]["steps"][step], parts["lint"]["steps"][step]
+
+
+SAFE, UNSAFE = {"code": "I001", "fix": {"applicability": "safe"}}, {"code": "B006", "fix": {"applicability": "unsafe"}}
+
+
+def test_types_and_lint_are_per_kloc_with_safe_fixes_weighted(p):
+    write_collected(p, "alpha", 1, quality={"mypy_errors": 4, "ruff_findings": 12, "mutation_score": 0.8,
+                                            "mutation_state": "measured"})
+    _quality_files(p, "alpha", 1, size={"type_lines": 2000, "lint_lines": 4000},
+                   ruff=[SAFE] * 10 + [UNSAFE, {"code": "E501", "fix": None}])
+    t, l = _cq(p)
+    assert t["score"] == pytest.approx(1 - (4 * 1000 / 2000) / 10) and t["lines"] == 2000 and t["errors"] == 4
+    assert l["weighted"] == pytest.approx(3.0) and l["safe_fixes"] == 10 and l["findings"] == 12
+    assert l["score"] == pytest.approx(1 - (3.0 * 1000 / 4000) / 10)
+
+
+def test_types_and_lint_floor_at_zero(p):
+    write_collected(p, "alpha", 1, quality={"mypy_errors": 50, "ruff_findings": 30, "mutation_score": 0.8,
+                                            "mutation_state": "measured"})
+    _quality_files(p, "alpha", 1, size={"type_lines": 1000, "lint_lines": 1000}, ruff=[UNSAFE] * 30)
+    t, l = _cq(p)
+    assert t["score"] == 0.0 and l["score"] == 0.0
+
+
+def test_twenty_unsorted_imports_cost_a_tenth_of_twenty_type_errors(p):
+    write_collected(p, "alpha", 1, quality={"mypy_errors": 20, "ruff_findings": 20, "mutation_score": 0.8,
+                                            "mutation_state": "measured"})
+    _quality_files(p, "alpha", 1, size={"type_lines": 10000, "lint_lines": 10000}, ruff=[SAFE] * 20)
+    t, l = _cq(p)
+    assert t["score"] == pytest.approx(0.8) and l["score"] == pytest.approx(0.98)
+
+
+def test_no_size_measured_leaves_both_parts_unmeasured_not_zero(p):
+    write_collected(p, "alpha", 1)
+    _quality_files(p, "alpha", 1, ruff=[])
+    t, l = _cq(p)
+    assert t == {"score": None, "why": "no size measured"} and l == {"score": None, "why": "no size measured"}
+    cq = _scores(p)["arms"]["alpha"]["dimensions"]["code_quality"]
+    assert {"types", "lint"} <= set(cq["unmeasured_parts"])
+
+
+def test_a_failed_size_measurement_is_unmeasured_with_its_reason(p):
+    write_collected(p, "alpha", 1)
+    _quality_files(p, "alpha", 1, size={"lint_lines": None, "type_lines": None, "error": "timed out"}, ruff=[])
+    t, l = _cq(p)
+    assert t["score"] is None and "timed out" in t["why"] and l["score"] is None
+
+
+def test_crashed_mypy_or_ruff_is_unmeasured_for_its_own_part_only(p):
+    write_collected(p, "alpha", 1, quality={"mypy_errors": None, "ruff_findings": 0, "mutation_score": 0.8,
+                                            "mutation_state": "measured"})
+    _quality_files(p, "alpha", 1, size={"type_lines": 100, "lint_lines": 100}, ruff=[])
+    t, l = _cq(p)
+    assert t == {"score": None, "why": "mypy crashed or timed out"} and l["score"] == 1.0
+    write_collected(p, "alpha", 1, quality={"mypy_errors": 0, "ruff_findings": None, "mutation_score": 0.8,
+                                            "mutation_state": "measured"})
+    t, l = _cq(p)
+    assert t["score"] == 1.0 and l == {"score": None, "why": "ruff crashed or timed out"}
+
+
+def test_lint_reads_the_harness_ruleset_never_the_arms_own_config(p):
+    write_collected(p, "alpha", 1, quality={"mypy_errors": 0, "ruff_findings": 2, "mutation_score": 0.8,
+                                            "mutation_state": "measured"})
+    _quality_files(p, "alpha", 1, size={"type_lines": 1000, "lint_lines": 1000}, ruff=[UNSAFE, UNSAFE])
+    (paths.RESULTS / p / "alpha" / "01" / "quality" / "ruff-arm.json").write_text("[]")    # the arm switched it off
+    assert _cq(p)[1]["score"] == pytest.approx(0.8)
+
+
+def test_lint_unreadable_or_disagreeing_findings_are_unmeasured(p):
+    write_collected(p, "alpha", 1, quality={"mypy_errors": 0, "ruff_findings": 3, "mutation_score": 0.8,
+                                            "mutation_state": "measured"})
+    _quality_files(p, "alpha", 1, size={"type_lines": 1000, "lint_lines": 1000}, ruff=[UNSAFE])
+    assert _cq(p)[1]["score"] is None and "summary 3" in _cq(p)[1]["why"]
+    (paths.RESULTS / p / "alpha" / "01" / "quality" / "ruff.json").unlink()
+    assert _cq(p)[1]["score"] is None and "unreadable" in _cq(p)[1]["why"]
+
+
+def test_zero_lines_is_unmeasured_not_a_division(p):
+    write_collected(p, "alpha", 1)
+    _quality_files(p, "alpha", 1, size={"type_lines": 0, "lint_lines": 0}, ruff=[])
+    t, l = _cq(p)
+    assert t["score"] is None and l["score"] is None

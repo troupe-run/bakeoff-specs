@@ -17,8 +17,17 @@ def churn_score(arm_lines: int, control_lines: int, cap: float = 10.0) -> float 
     return ratio_score(arm_lines + 1, control_lines + 1, cap)      # add-one: zero lines are defined
 
 
-def deduction(count: int | None, per: float) -> float | None:
-    return None if count is None else max(0.0, 1.0 - per * count)
+def per_kloc(count: float | None, lines: int | None, zero_per_kloc: float) -> float | None:
+    """max(0, 1 - (count per 1,000 lines) / zero_per_kloc); None when either input is missing or there are no lines."""
+    if count is None or not lines or lines <= 0:
+        return None
+    return max(0.0, 1.0 - (count * 1000 / lines) / zero_per_kloc)
+
+
+def lint_weight(findings: list, safe_weight: float) -> float:
+    """Weighted ruff findings: one with `fix.applicability == "safe"` counts `safe_weight`, every other one 1."""
+    return sum(safe_weight if isinstance(f, dict) and isinstance(f.get("fix"), dict)
+               and f["fix"].get("applicability") == "safe" else 1.0 for f in findings)
 
 
 def judged(score: float | None) -> float | None:

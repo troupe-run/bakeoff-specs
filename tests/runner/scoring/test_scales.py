@@ -17,9 +17,26 @@ def test_churn_zero_against_zero_is_the_midpoint():
     assert scales.churn_score(0, 0, 10.0) == 0.5
 
 
-def test_deduction_floors_at_zero_and_passes_none_through():
-    assert scales.deduction(7, 0.05) == pytest.approx(0.65) and scales.deduction(40, 0.05) == 0.0
-    assert scales.deduction(None, 0.05) is None
+def test_per_kloc_normalises_by_lines_and_floors_at_zero():
+    assert scales.per_kloc(5, 1000, 10) == pytest.approx(0.5)           # 5 per KLOC of a 10-per-KLOC zero point
+    assert scales.per_kloc(5, 2000, 10) == pytest.approx(0.75)          # the same count over twice the code
+    assert scales.per_kloc(0, 1000, 10) == 1.0
+    assert scales.per_kloc(10, 1000, 10) == 0.0 and scales.per_kloc(500, 1000, 10) == 0.0   # floor, never negative
+    assert scales.per_kloc(2.5, 500, 10) == pytest.approx(0.5)          # weighted (fractional) counts
+
+
+def test_per_kloc_is_unmeasured_without_a_count_or_lines():
+    assert scales.per_kloc(None, 1000, 10) is None
+    assert scales.per_kloc(3, None, 10) is None and scales.per_kloc(3, 0, 10) is None
+
+
+def test_lint_weight_counts_a_safe_fix_at_its_weight_and_everything_else_as_one():
+    fs = [{"code": "I001", "fix": {"applicability": "safe"}}, {"code": "F401", "fix": {"applicability": "safe"}},
+          {"code": "B006", "fix": {"applicability": "unsafe"}}, {"code": "E501", "fix": None},
+          {"code": "X", "fix": {"applicability": "displayonly"}}, {"code": "Y"}]
+    assert scales.lint_weight(fs, 0.1) == pytest.approx(0.2 + 4)
+    assert scales.lint_weight([], 0.1) == 0
+    assert scales.lint_weight([{"fix": {"applicability": "safe"}}] * 20, 0.1) == pytest.approx(2.0)
 
 
 def test_n_a_rating_is_not_a_score_and_1_to_5_spread_evenly():

@@ -40,7 +40,7 @@ change is deliberate overlap. Six of seven steps are change steps.
 | 20 | **Correctness** | Hidden tests passed per step, **all** tests at that step including earlier steps' (a regression deliberately costs twice) | measured |
 | 10 | **Traceability** | Requirement → test → code · change → reason · step 6's fix leaves a spec trace | judged |
 | 10 | **Quality of human interaction** | Value of questions, N.a and N.b both counted · research before asking, informed-choice framing (design §8) · gates at sensible points | judged |
-| 15 | **Code and test quality** | Mutation score · `mypy --strict` and lint · test names checked against what the tests assert | measured · measured · judged |
+| 15 | **Code and test quality** | Mutation score (5) · types: `mypy --strict` errors per 1,000 lines (3) · lint: ruff findings per 1,000 lines, a safe auto-fix counting 0.1 (2) · test names checked against what the tests assert (5) | measured · measured · measured · judged |
 | 10 | **Decision quality** | Choice: the owner's rating of each route the arm took, averaged over topics (6) · Process: options weighed, reason stated, decision recorded (4) — §8 | owner-rated · judged |
 | 10 | **Setup and ergonomics** | Setup effort (4) · fit with Claude Code and the arm's tracker (4) · arm violations, deduction by severity (2) | judged · judged · measured |
 | 5 | **Time to outcome** | Arm working time per hidden test passed | measured |
@@ -55,7 +55,11 @@ the decision review's unscored parts (§8).
 ## 4. Scales (owner, Q3: C)
 
 - **Natural scale where one exists:** pass rates and mutation scores as they are.
-- **Deductions with a floor:** mypy and lint error counts.
+- **Per 1,000 lines, with a floor (owner, 2026-10-10):** types = max(0, 1 − mypy errors per 1,000 lines mypy checked
+  ÷ 10); lint = max(0, 1 − ruff findings per 1,000 lines ruff checked ÷ 10), harness ruleset (`ruff --isolated`,
+  never the arm's config), a finding with a safe auto-fix counting 0.1. Lines are non-blank `*.py` lines the tool
+  checked (`quality/size.json`): mypy its targets (src), ruff src and tests. A crashed tool or an unmeasured size is
+  unmeasured, never 0.
 - **Control as the baseline where none exists:** time and collateral churn are scored on log(arm ÷ control) for the
   same step. Equal to control is the midpoint; the scale is capped at 10× worse and 10× better, so one bad control
   step or one blow-out cannot flatten everyone else.
