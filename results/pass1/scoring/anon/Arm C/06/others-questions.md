@@ -1,0 +1,576 @@
+## Arm A
+
+## Scored run
+
+### Question 1 (next_command, answered by po)
+
+Arm asked: I've finished the discovery for issue #2 and committed it on `main` as `2627541` (not pushed). Nothing in the code has changed yet, so the alias behaviour itself still has to be built.
+
+**What the issue really is.** I ran the reporter's file against current `main`. Both `set coder.settings.model sonnet` and `get` exit 4 with "anchor '&d' is not supported", and the file is left untouched. So the corruption they describe can't happen here, because anchors are still refused (decision H, which held them back until step 6). The issue is really the step 6 "Aliases" contract: files with anchors should load, and `set` should follow the new rules.
+
+**Path:** one new spec, `config-aliases`, plus short step-6 notes in the `config-foundation` and `config-set-writeback` specs. Your instructions said to proceed, so I chose this path myself instead of stopping to ask. It's easy to change if you'd rather go another way.
+
+**Approach:** this follows the same pattern as step 5.
+- When loading, every alias is replaced by the content of its anchor, and each node reached that way remembers which alias it came through.
+- That means `get`, `show`, `history`, reconcile and `watch` need no changes.
+- Before writing, `set` checks the path. If it passes through an alias, it refuses with exit 3 and mentions `--expand-alias`. A path that only touches the anchor is written at the anchor, so every alias sees the change.
+- `--expand-alias` first swaps the alias for a block-style copy with the `# expanded from *<name> by troupe` comment, then does the normal `set` on the copy. Both changes are written together and checked once.
+
+**Open choices for the requirements step.** The brief lists 12 with cautious defaults; these are the ones most worth your attention:
+1. **Merge keys (`<<`):** still exit 4 when loading. The contract only says they're never written.
+2. **Setting the alias's own key** (for example `set coder.settings {…}`): also exit 3 unless `--expand-alias` is given.
+3. **Key line that already has a comment:** expansion is refused with exit 3, rather than replacing or editing the user's comment.
+4. **Alias inside a flow collection:** expansion is refused with exit 3.
+5. **Several aliases on one path:** each is expanded, outermost first, and the copies don't repeat `&name`.
+
+**Files:**
+- `spec/spec/config-aliases/brief.md` (new)
+- `spec/steering/roadmap.md` (new "Step 6" section and spec list entry)
+
+**Next step:** run `/method-command config-aliases`, or `/method-command config-aliases` to go straight through requirements, design and tasks. The issue is fixed only once `/method-command config-aliases` has been run and committed. Afterwards, `config-foundation` and `config-set-writeback` need their notes added with `/method-command`.
+
+Reply: /method-command config-aliases
+
+### Question 2 (next_command, answered by po)
+
+Arm asked: ## Generated Feature Name
+`config-aliases`: I used the directory discovery had already created, since it held only `brief.md` and no `spec.json`. The name matches the step 6 contract section "Aliases".
+
+## Project Summary
+Step 6 lets anchors and aliases load and be read everywhere. `set` changes a value at its anchor, refuses a path reached through an alias with exit 3, and `set --expand-alias` makes a commented copy of the alias before setting the value in it (tracker issue #2).
+
+## Created Files
+- `/work/repo/spec/spec/config-aliases/spec.json`: language `en`, phase `initialized`, nothing approved yet.
+- `/work/repo/spec/spec/config-aliases/requirements.md`: the project description is the brief, with its headings moved down one level. That gives problem, current state, desired outcome, approach, scope and the 12 open choices.
+
+Both files are committed on `main` as `79cbad6` (not pushed).
+
+## Next Step
+```
+/method-command config-aliases
+```
+That step writes the requirements and settles the 12 open choices, using the cautious defaults proposed in the brief.
+
+Reply: /method-command config-aliases
+
+### Question 3 (approval, answered by po)
+
+Arm asked: ## Generated Requirements Summary
+The requirements are written as 10 numbered requirements, all in EARS form:
+- **Reading (1–3):** anchors, aliases and merge keys now load, which replaces the old exit 4 (decision H). `get`, `show`, `show --sources`, `history`, reconcile and `watch` all see the resolved configuration. Broken forms still exit 4: an undefined alias, an alias inside its own anchor, or an anchor on a key.
+- **Setting at an anchor (4):** the change is made at the anchor and shows up at every alias, with history events for every affected path. The anchor stays when its value is replaced.
+- **Refusal (5):** a path reached through an alias, including the alias's own key, exits 3. stderr names the file, PATH and `*name`, and mentions `--expand-alias`.
+- **`--expand-alias` (6–8):** it takes no value and combines with `--reason` and `--in-include`. It writes a block-style copy with `# expanded from *<name> by troupe`, then sets the value in the copy. Nested aliases are expanded outermost first. It refuses with exit 3 when the alias is inside a flow collection or the key's line already has a comment.
+- **Merge keys and safety (9–10):** troupe never writes `<<`, so any write through a merge key exits 3. Every write is checked by reading it back and is written atomically.
+
+**One change from the brief:** merge keys now load, instead of staying exit 4. The contract names them, so files that use them are now covered, and reading them can't change a byte. Writes through them are still refused.
+
+## Document Status
+- `spec/spec/config-aliases/requirements.md` now includes the contract text from issue #2 and 17 choices with cautious defaults for you to review.
+- `spec.json` is at phase `requirements-generated`.
+- `roadmap.md` now has the corrected merge-key note.
+- Committed on `main` as `7e9eb73`.
+
+## Review Gate
+Passed in two passes. The first fixed a contradiction: a no-change `set` through an alias now exits 3 in all cases (choice 17). It also fixed two sentences that weren't in EARS form.
+
+## Next Steps
+The decisions most worth your attention are choices 1, 2, 5, 6, 9 and 17. Once you approve:
+```
+/method-command config-aliases
+```
+Use `-y` to approve the requirements and go straight to design. `/method-command config-aliases` is optional.
+
+Reply: Approved. The requirements are consistent with the step 6 Aliases section and the earlier contract sections in force. Writes at an anchor change the anchor (Req 4). A path reached through an alias, including the alias's own key and no-op sets, exits 3 and mentions `--expand-alias` (Req 5). `--expand-alias` writes a block-style copy with `# expanded from *<name> by troupe` two spaces after the key, then sets the value in the copy and leaves the anchor and the other aliases unchanged (Req 7). Merge keys are never written (Req 9). The contract doesn't cover reading through merge keys, several aliases on one path, `--expand-alias` without an alias, an alias inside a flow collection, or a key line that already has a comment, so those are your choices. You chose and recorded each one, as the brief asks.
+
+### Question 4 (next_command, answered by po)
+
+Arm asked: I've recorded your approval of the `config-aliases` requirements, committed on `main` as `e04c3f6`:
+- **`spec.json`:** the requirements are marked as approved.
+- **`requirements.md`:** a "Product owner review (2026-10-06)" note now follows the list of choices. It separates two groups:
+  - **What you confirmed as the contract's meaning:** Requirements 4, 5, 7 and 9, plus choices 2 and 17 (the alias's own key and no-op sets).
+  - **Choices of ours that you accepted:** reading through merge keys (1), several aliases on one path (3), `--expand-alias` with no alias (9), an alias in a flow collection (5), a key line that already has a comment (6), and the rest of the recorded choices.
+
+The full decision records for these choices (alternatives considered, the reason, and what would make us revisit them) belong in `research.md`, which the design step creates.
+
+Next step:
+```
+/method-command config-aliases
+```
+
+Reply: /method-command config-aliases
+
+### Question 5 (approval, answered by po)
+
+Arm asked: ## Status
+The design is written to `spec/spec/config-aliases/design.md` (507 lines) and committed on `main` as `c9ec8ef`. `spec.json` is now at `design-generated`: design generated, not yet approved.
+
+## Discovery Type
+Light, because this extends existing code. A subagent analysed the loader, model, writeback and CLI, and I tested ruamel.yaml 0.19.1 directly.
+
+## Key Findings
+- **ruamel loses where an alias is written.** At an alias it hands back the anchored node itself, so the `*d` position is gone. Overriding `Composer.compose_node(parent, index)` records each occurrence exactly by parent and slot. It also catches aliases used as keys. Two more things the loader must now handle: recursive aliases compose without error, and a reused anchor name prints a warning to stderr.
+- **Writes at an anchor already have a mechanism.** The loader builds separate nodes for every place, and writes are keyed by where they are written in the file. Each alias place is therefore built again with the anchor's positions. Step 5's machinery for files included at several places then copies the anchor write to every alias place, and history gets an event for each path.
+- **The expansion runs in memory first.** `--expand-alias` expands one alias, reloads the configuration from memory, and repeats while aliases remain on PATH, outermost first. Then the normal `set` runs, with one atomic write and one read-back against the original files. The alias check runs before the "nothing to change" check, so a no-op `set` through an alias is still refused.
+
+## Review Gate
+Passed. All 51 requirement IDs are in the traceability table. Two local fixes were made: a missing allowed dependency, and the security note, which wasn't recorded in `research.md` yet.
+
+## Research Log
+`research.md` holds the investigation, 8 design decisions, records for all 17 approved choices, and the risks. One consequence comes from the design rather than a requirement: an anchored node that contains `<<` can't be copied without writing a merge key, so `--expand-alias` refuses it under 9.1.
+
+## Next Action
+Review the design, then:
+```
+/method-command config-aliases
+```
+Use `-y` to approve the design at the same time. `/method-command config-aliases` is an optional review before that.
+
+Reply: Approved. The design is consistent with the step 6 Aliases section and the earlier contract sections in force. A `set` at an anchor is written at the anchor, so it shows up at every alias. A `set` reached through an alias, including the alias's own key and a no-op, exits 3 before anything is written, and stderr mentions `--expand-alias`. `--expand-alias` swaps that one alias for a block-style copy, puts `  # expanded from *<name> by troupe` on the key's line (two spaces before `#`), and then sets the value in the copy. The anchor and the other aliases stay unchanged. Merge keys are never written. Every refusal happens before any write and names the file and PATH (Exit codes). The issue #2 end-to-end test checks the reporter's scenario byte for byte. The remaining behaviour (merge keys when reading, nested aliases, a flow-collection alias, a key line that already has a comment, copying an anchored node that holds `<<`, removing an anchor that is still used) is out of contract. You chose and recorded each one, as the brief asks.
+
+### Question 6 (next_command, answered by po)
+
+Arm asked: I've recorded your approval of the `config-aliases` design, committed on `main` as `171b912`:
+- **`spec.json`:** the design is marked as approved.
+- **`research.md`:** a "Product owner review of the design (2026-10-06)" note now sits before Risks & Mitigations. It separates two groups:
+  - **What you confirmed as the contract's meaning:** a `set` at an anchor is written at the anchor. A `set` through an alias, including the alias's own key and a no-op, exits 3 before any write and mentions `--expand-alias`. `--expand-alias` replaces that one alias with a commented block-style copy. Merge keys are never written. Every refusal comes first and names the file and PATH. The issue #2 end-to-end test checks the reporter's scenario byte for byte.
+  - **Choices of ours that you accepted:** reading merge keys, nested aliases, an alias in a flow collection, a key line that already has a comment, refusing to copy an anchored node that holds `<<`, and refusing to remove an anchor that is still used.
+
+Next step:
+```
+/method-command config-aliases
+```
+
+Reply: /method-command config-aliases
+
+### Question 7 (next_command, answered by po)
+
+Arm asked: The task plan isn't finalized. The second sanity review returned `NEEDS_FIXES` (review mode: `independent`), and the skill allows only one repair round, so I stopped. `spec.json` is unchanged and the plan isn't approved.
+
+Neither review returned `RETURN_TO_DESIGN`. Every finding has been applied to the draft, but they are unreviewed and uncommitted:
+- **Task plan (draft):** `spec/spec/config-aliases/tasks.md` (new).
+- **Design (already approved):** `design.md` now has four clarifications, so I need your approval before they're committed:
+  - **Provenance through `$ref` overrides:** `overrides.deep_merge` must keep `anchor`, `alias` and `merge` from the included side. Today it drops them. An alias behind `$ref` overrides would then lose its marker, and a write could reach the anchor.
+  - **Refusal order:** target resolution refuses first, then the alias guard, then the planner.
+  - **Checking the expanded write:** the widened intended configuration comes from the expanded document, while verification runs against the original files.
+  - **Copy containing `<<`:** refused with the merge-key message plus the alias name. I also removed a wrong diagram edge.
+
+**What the second review found, now fixed in the draft:**
+1. After 2.1 accepts anchors, an alias would load silently as a plain copy before 2.2 builds alias places. 2.1 now refuses aliases on load (exit 4) until 2.2 removes that refusal.
+2. The temporary `set` refusal had no test for a file that uses only an inline `<<`. 2.3 now pins one.
+3. A grep over all of `tests/` can't check traceability, because earlier specs use the same `Req N.M` numbers. The check is now limited to this spec's own test files.
+4. The design and task 3.6 gave different messages for the refusal to copy a node that holds `<<`. Both now use the merge-key message.
+5. 3.6 also needs `AliasSite` from 3.3, so it now depends on 3.3 as well.
+6. 3.4 lost its `(P)`, since it depends on 3.1.
+
+**Plan shape:** 5 groups, 16 sub-tasks, and all 51 requirement IDs covered. Three tasks are marked `(P)`: 1.2, 3.2 and 3.3. A temporary refusal stops `set` writing through an alias or merge key between 2.1 and 4.1.
+
+**Next:** to approve the design clarifications, re-run `/method-command config-aliases`. It picks up the draft, reviews it again from scratch, and only then writes and asks for approval.
+
+Reply: /method-command config-aliases
+
+### Question 8 (approval, answered by po)
+
+Arm asked: ## Status
+The task plan is written to `spec/spec/config-aliases/tasks.md` and committed on `main` as `8514a80`, with `spec.json` at `tasks-generated`. That commit also includes the design clarifications from the last run. They are recorded in `research.md` as found during planning, with no behaviour change. The main one: `deep_merge` must keep alias, anchor and merge-key information, otherwise aliases behind `$ref` overrides would escape the alias check.
+
+## Task Summary
+5 major tasks and 18 sub-tasks, each sized at 1–3 hours, covering all 51 requirements:
+1. **Foundation (1.1–1.2):** the model fields, the merge-key merge, and the composer that records where each alias is written.
+2. **Loading (2.1–2.4):** anchors, then aliases, then merge keys, then a check that every command reads the expanded configuration.
+3. **File layer (3.1–3.7):** layout, copying changes to every alias place, the alias check, keys next to `<<`, the two planner refusals, and the copy written by `--expand-alias`.
+4. **`set` (4.1–4.4):** the refusals, writes at anchors, the expansion step, and the CLI flag.
+5. **Validation (5.1–5.2):** the issue #2 scenario byte for byte, then the notes in the earlier specs and the traceability check.
+
+Tasks 1.2, 3.2 and 3.3 can run in parallel.
+
+Anchors start loading in 2.1, but the alias check only arrives in 4.1. Until then a temporary refusal, pinned by tests, stops `set` from writing through an alias or merge key.
+
+## Quality Validation
+- Every requirement is mapped to a task, and design coverage and dependencies were checked.
+- The task-plan review gate passed.
+- The task-graph sanity review, run by an independent subagent, returned `PASS` after one repair round. Its four minor suggestions are folded in.
+- Testing is part of every task, and each task names its test file.
+
+## Next Action
+Tasks generated. Approve and proceed to implementation?
+
+Reply: Approved. The task plan is consistent with the step 6 Aliases section and the earlier contract sections in force. A `set` at an anchor writes at the anchor and keeps `&name`, so the change shows at every alias, and history records events for each affected path (4.2, 5.1). A `set` reached through an alias exits 3 before any file changes, and stderr names the file and PATH and mentions `--expand-alias`. This includes the alias's own key and a no-op (3.3, 4.1, 5.1). `--expand-alias` swaps only that alias for a block-style copy with `  # expanded from *<name> by troupe` on the key's line, then sets the value in the copy. The anchor and the other aliases stay byte-identical (3.6, 3.7, 4.3, 4.4, 5.1). Merge keys are never written (3.4, 3.6). The design clarifications recorded in this commit are also consistent with the contract: keeping alias, anchor and merge-key provenance through `$ref` deep-merge, the order of refusals, and checking the expanded write against the original files. The temporary refusal of `set` between 2.1 and 4.1 means no intermediate commit can write through an alias. The remaining behaviour is out of contract, and you chose and recorded each one, as the brief asks. That covers removing an anchor that is still used, converting an anchored include, a no-op with `--expand-alias`, a flow-collection alias, a key line that already has a comment, and a copy that holds `<<`.
+
+### Question 9 (next_command, answered by po)
+
+Arm asked: Tasks approved. Start implementation with `/method-command config-aliases`.
+
+I've recorded the approval on `main` as `a821846`:
+- **`spec.json`:** tasks are marked approved and the spec is marked ready for implementation.
+- **`tasks.md`:** a "Product owner approval (2026-10-06)" note now sits above the task list. It covers the design clarifications, the temporary `set` refusal between tasks 2.1 and 4.1, and the out-of-contract choices you accepted.
+
+Issue #2 itself isn't fixed until implementation is done and committed.
+
+Reply: /method-command config-aliases
+
+## Arm B
+
+## Scored run
+
+### Question 1 (next_command, answered by po)
+
+Arm asked: I've written the plan for issue #2 as the change `config-anchors-and-aliases` in `spec/changes/config-anchors-and-aliases/`. `method validate --strict` passes. I haven't changed any code, and nothing is committed yet.
+
+**The bug on `main` today:** the reported behaviour can't happen on `main` as it stands. Anchors and aliases aren't supported, so the reporter's file fails to load with exit 4. To fix the issue, this change has to add anchor support with the contract's rules from the start.
+
+**Artifacts:**
+- **`proposal.md`**: the issue and what changes:
+  - anchors, aliases and `<<` merge keys load;
+  - setting a value at the anchor changes it for everyone;
+  - setting a path reached through an alias exits 3 and mentions `--expand-alias`;
+  - the new `set --expand-alias` flag gives that path its own copy;
+  - merge keys are never written.
+- **`spec/`**:
+  - `config-loading`: a new requirement for anchors, aliases and merge keys.
+  - `config-set`: four new requirements. One scenario is the issue's exact file and command.
+  - `config-cli`: `set` now lists `--expand-alias`.
+- **`design.md`**: how it's built. An alias is the same node as its anchor, so `get`, `show` and history need no changes. Two checks in the planner catch writes through an alias or a merge key. Expansion replaces one alias, reloads and plans again, which handles nested aliases. The copy is the anchored node as written.
+- **`tasks.md`**: 6 groups. Each feature group includes its own tests and README updates, ending with a full test run, validation and commits.
+
+**Choices I made where the contract is silent** (recorded in design.md D8; tell me if any should change):
+- **Merge keys:** `<<` is applied when reading. Setting a value that a merge key supplies exits 3, even with `--expand-alias`. Writing a local key instead would quietly shadow or drop other merged values.
+- **Anything holding `<<`:** deleting or replacing a mapping that contains a `<<` entry also exits 3.
+- **What the copy contains:** the node exactly as the user wrote it. Quoting and number formats are kept, nested aliases stay aliases, and include strings stay include strings.
+- **When the flag expands:** it expands every alias the set would otherwise be refused for, including nested ones. With no alias involved it does nothing, so re-running a command is safe.
+- **Existing comments:** if the alias's line already has a comment, it stays and the `# expanded from …` comment goes after it.
+- **Aliases inside `{…}` or `[…]`:** these can't be expanded and exit 3.
+- **Includes:** a path through an alias in an included file is refused, even when the write would go into an override.
+
+To start implementing, run `/method-command`.
+
+Reply: /method-command
+
+### Question 2 (step_done, answered by runner)
+
+Arm asked: ## Implementation complete
+
+**Change:** `config-anchors-and-aliases` (spec-driven), 23/23 tasks done, now archived.
+
+Issue #2 is fixed and committed on `main` in 8 small commits; nothing was pushed and no PR was opened. On the final commit all 668 tests pass, mypy, ruff and `ruff format --check` are clean, and all 8 main specs pass `method validate --strict`.
+
+**What changed:**
+- **Loading:** files with anchors, aliases and `<<` merge keys now load, where before they failed with exit 4. An alias reads exactly like the value at its anchor in `get`, `show` and history.
+- **Setting at the anchor:** `set defaults.model sonnet` changes the value at the anchor and keeps `&d`, so every agent using `*d` sees the new value. History records one event per affected path, all in one change.
+- **Setting through an alias** (the reported bug): `set coder.settings.model sonnet` now exits 3 and changes nothing. The message says where the anchor is, names `defaults.model` as the place to change it for everyone, and mentions `--expand-alias`.
+- **`set --expand-alias`:** for the issue's file it writes exactly what the contract specifies: `settings:  # expanded from *d by troupe`, then the new value. `defaults` and `reviewer` stay as they were. An end-to-end test runs the issue's file through `uv run troupe config`.
+- **Merge keys:** `set` never writes them. Any set that would change a `<<` entry, or a value one supplies, exits 3.
+
+**Problems found and fixed along the way:**
+- The check that re-reads files before writing expected only the set path to change. That refused every set at an anchor, because the aliases change too. It now follows aliases and merge keys.
+- Edits measured an alias entry by the anchored value elsewhere in the file. Deleting `settings: *d` produced a duplicate key; it now measures the `*d` text itself.
+- `set` could have written a new key named `<<` plain, which would turn it into a merge key. It is now quoted.
+
+**Things to know:**
+- I changed the wording of two tasks' "verify" steps because some of the tests they named don't depend on the code in question. The tests that do depend on it fail when that code is broken, which I checked.
+- One commit failed `ruff check` (two lines too long); the next commit fixes it.
+- Setting `coder.<<` on a mapping that holds a merge key is refused with a "duplicate key" message rather than the merge-key one. It's still exit 3 with no file changed.
+- The choices I made where the contract is silent are listed as README decisions 39–47.
+- Issue #2 on GitHub is still open. I didn't comment on it or close it; say if you want me to.
+
+Reply: /method-command
+
+### Question 3 (step_done, answered by po)
+
+Arm asked: ## Already archived
+
+There is nothing left to archive. `config-anchors-and-aliases` was archived during the last step of the implementation (task 6.3), and there are no active changes now.
+
+**Change:** config-anchors-and-aliases
+**Schema:** spec-driven
+**Archived to:** `spec/changes/archive/2026-10-06-config-anchors-and-aliases/`
+**Specs:** Synced into the main specs:
+- `config-loading`: 1 requirement added
+- `config-set`: 4 requirements added
+- `config-cli`: 1 requirement modified
+
+All artifacts were complete and all 23 tasks were done when it was archived, so there were no warnings. The archive is committed on `main` as `f64a6ba`, and the working tree is clean.
+
+The tests that changed on disk since I last read them are my own edits and formatting from that work; there is nothing new in them.
+
+Reply: 
+
+## Discovery run
+
+### Question 1 (next_command, answered by po)
+
+Arm asked: I've written the plan for issue #2 as the `config-aliases` change and committed it on `main` (`7875dd5`); nothing is pushed. It passes `method validate --strict`. No code has changed yet. The fix itself starts when you run `/method-command`.
+
+**What I found:** on current `main`, the reported behaviour can't happen. Any file with an anchor or alias fails to load (exit 4, README decision 8), so today the issue's file doesn't work at all. The plan adds alias support with the contract's rules, which means the reported bug can't happen once aliases load.
+
+**What the plan covers** (in `spec/changes/config-aliases/`):
+- **`proposal.md`**: why, what changes, and the four specs affected.
+- **Spec changes:**
+  - `config-loading`: anchors and aliases load, and a read through an alias gives the anchor's value. Undefined aliases, aliases used as keys, and YAML 1.1 merge keys (`<<: *d`) fail to load with exit 4.
+  - `config-set`: setting at an anchor changes it there and keeps the `&name`. Setting through an alias exits 3, and the error names the alias and `--expand-alias`. `--expand-alias` replaces the alias with a block-style copy and adds the exact comment the contract specifies. `set` never writes a `<<` key.
+  - `config-cli`: the new `--expand-alias` flag.
+  - `config-history`: a change at an anchor records one event for each path it changes, including every alias path. An expansion alone records nothing.
+- **`design.md`**: how it's built. An alias is the same node as its anchor in the loaded tree, so reads need no changes. The "no write through an alias" check lives in one place. Anchors are kept out of value spans, so every existing replace path keeps the `&name` without special cases.
+- **`tasks.md`**: 4 groups, each with its own tests and README updates.
+
+**Choices I made where the contract is silent** (each recorded with its reason in `design.md`):
+1. **Merge keys:** I read "never written" as "`set` never adds or changes a `<<` key." Reading `<<: *d` in a file stays refused (exit 4), as it effectively is today. A `<<` key without an alias still loads as an ordinary key.
+2. **Setting the alias path itself** (e.g. `coder.settings`) is refused too, not just paths below it. A parent value that would change something under an alias is also refused. Deleting an alias entry is allowed, since it changes nothing else.
+3. **`--expand-alias` expands every alias on the path**, outermost first, each with its own comment. It only expands aliases on the path you name, not ones a mapping value would reach further down.
+4. **The copy:** scalars keep the quoting and spelling written in the anchor, it uses block layout, and it has no anchors or comments. Aliases nested inside it stay aliases.
+5. **Edge cases:**
+   - A comment already on the alias line is kept, after troupe's.
+   - An alias inside a flow collection (`{s: *d}`) can't be expanded and exits 3.
+   - Setting a value it already has changes nothing, with or without the flag.
+
+The artifacts are ready for review. When you are ready, run `/method-command`.
+
+Reply: /method-command
+
+## Arm D
+
+## Scored run
+
+### Question 1 (step_done, answered by runner)
+
+Arm asked: Fixed and committed on `main` as `2588180`. Nothing pushed, and I didn't comment on the issue. All 115 tests pass, including 20 new ones in `tests/test_aliases.py`.
+
+**Cause:** the YAML parser (PyYAML) turns an alias like `*d` into the very same node as its anchor `&d`, so troupe couldn't tell the two apart. Setting `coder.settings.model` therefore edited the bytes at `defaults: &d`, and every agent sharing it changed. I reproduced this from the issue before fixing it.
+
+**Fix:** the loader now records where each `*name` is written and marks values reached through one. On the issue's example:
+- `set coder.settings.model sonnet` now exits 3. The error says `coder.settings` is an alias of `&d` and points to setting it at the anchor or using `--expand-alias`. Any write that would reach a shared value is refused too, such as setting the whole `coder` mapping.
+- `set coder.settings.model sonnet --expand-alias` gives:
+  ```yaml
+  coder:
+    settings:  # expanded from *d by troupe
+      model: sonnet
+  reviewer:
+    settings: *d
+  ```
+  `defaults` and `reviewer` are unchanged.
+- `set defaults.model sonnet` still changes it at the anchor, so everyone gets it.
+
+**Two other bugs I fixed on the way:**
+- **Anchored values:** setting a value that carries an anchor, like `x: &s opus`, used to be refused because the write dropped `&s`. The anchor (and any tag) is now kept.
+- **Recursive aliases:** a file like `a: &a {b: *a}` made every command hang. It's now a config error (exit 4).
+
+**Choices the contract left open** (recorded in `docs/decisions.md` items 30–33):
+- **Merge keys (`<<`):** these are now resolved when reading, so `get`/`show` show the merged values. They're never written. Setting a merged value exits 3. With `--expand-alias`, it gets its own explicit key next to the `<<`, which overrides the merged value without touching `<<`. If you'd rather that case always exit 3, it's a small change.
+- **The expanded copy** is the value as troupe reads it: nested aliases and merges are filled in, and an aliased include is copied as its contents, so the copy shares nothing with the anchor. Comments inside the anchored block aren't copied.
+- **Flow style:** an alias inside a flow collection (`{s: *d}`) can't take a block-style copy, so `--expand-alias` exits 3 there.
+
+One formatting detail: when a value on a line with a trailing comment gets longer, troupe keeps the comment where it was, so the gap before `#` can shrink to one space. Expanded copies are written with exactly two spaces, as the contract asks.
+
+The README documents the new flag.
+
+Reply: /method-command
+
+### Question 2 (step_done, answered by po)
+
+Arm asked: All 115 tests pass on the committed tree, and the working tree is clean.
+
+The skill's integration menu doesn't fit this case:
+
+- **Merge locally:** there's nothing to merge. The fix is already committed directly on `main` as `2588180`, in the main checkout. There's no feature branch or worktree.
+- **Push and open a PR:** you ruled this out ("Do not push and do not open pull requests").
+- **Keep as-is:** that's where things stand.
+
+So nothing is left to integrate or clean up. Your delivery condition is met: the work is committed on `main`, unpushed. If you'd also like me to post a note on issue #2, say so; I've left the tracker alone because a comment there is public.
+
+Reply: 
+
+## Arm E
+
+## Scored run
+
+### Question 1 (step_done, answered by po)
+
+Arm asked: Issue #2 is fixed and committed on `main` as `1c6749d`. All 56 tests pass, including 3 new ones for aliases. I didn't push or open a PR.
+
+**What was wrong:** On the current code, the reporter's `set coder.settings.model sonnet` was already refused (exit 3), but the message didn't mention `--expand-alias`. There were two real bugs:
+- `set defaults.model …` was also refused, because the alias copies under `coder` and `reviewer` counted as other settings being changed. Changing the value at the anchor is supposed to change it everywhere.
+- Replacing an anchored value such as `m: &m opus` would have dropped the `&m` and broken every alias that uses it.
+
+**What it does now:**
+- **Setting at an anchor** writes the value there and keeps `&name`. Every alias then sees the new value, and history records a change for each path that uses it.
+- **Setting through an alias** (including adding a new key under one) exits 3. The message names the alias and suggests `--expand-alias`. The file isn't touched.
+- **`set --expand-alias PATH VALUE`** replaces only that alias with a block-style copy, then sets the value in the copy. For the issue's example the file ends up as:
+  ```yaml
+  coder:
+    settings:  # expanded from *d by troupe
+      model: sonnet
+  reviewer:
+    settings: *d
+  ```
+  `defaults` and `reviewer` are unchanged.
+- **Any path containing `<<`** exits 3, since merge keys are never written.
+
+**Choices the contract didn't cover** (written up in `DECISIONS.md`):
+- `<<` is read as an ordinary key, not merged. The config is read with the YAML 1.2 rules, which don't have merge keys, so `get coder.model` won't find values pulled in by `<<: *d`. Say if you want merging supported.
+- Aliases nested inside the copied value are expanded in the copy too. Only the outer alias gets the comment.
+- An alias inside a flow collection like `{x: *m}` can't be expanded (exit 3), because a block-style copy and a trailing comment don't fit there.
+- For an alias that is a list item, the comment goes on the dash line and the copy goes below it.
+- A comment the user already had after the alias stays, after troupe's comment.
+
+The README documents the new behaviour and the `--expand-alias` flag. The code changes are in `yamldoc.py`, `editor.py` and `cli.py`.
+
+Reply: 
+
+## Arm F
+
+## Scored run
+
+### Question 1 (next_command, answered by po)
+
+Arm asked: I've fixed troupe-run/repo#2 and committed it to `main` as `8ec062d`. Nothing was pushed and no PR was opened.
+
+Slug: `yaml-alias-set` (auto-generated)
+
+**Assessment** (`spec/bugs/yaml-alias-set/assessment.md`): valid, high severity. I reproduced it: `set coder.settings.model sonnet` exited 0 and rewrote the value under `defaults: &d`, which changed `defaults` and `reviewer` too. Adding a new key below the alias did the same. The cause is that the YAML library treats `*d` and `&d` as the same node, so troupe couldn't tell "reached through an alias" from "reached through the anchor". I also found that replacing any anchored value deleted the `&name`. That made the write fail its own check, so "change it at the anchor" never worked either.
+
+**What changed now:**
+- **Through an alias:** setting a path that goes through an alias is refused with exit 3, and the error mentions `--expand-alias`. Nothing is written.
+- **At the anchor:** setting a value at the anchor keeps `&d` and changes every alias, so `set defaults.model sonnet` works as the issue expects.
+- **`set --expand-alias PATH VALUE`:** replaces that one alias with a block-style copy, then sets the value in the copy. For the issue's example, other aliases still point to the anchor and history records only the one path that changed:
+  ```yaml
+  coder:
+    settings:  # expanded from *d by troupe
+      model: sonnet
+  reviewer:
+    settings: *d
+  ```
+- **Replacing the alias itself** (e.g. `set coder.settings none`) changes only that alias. The contract doesn't settle this case; I logged it as an open question in the assessment.
+- **Merge keys:** any `set` whose path contains a `<<` segment is refused, so a merge key is never written.
+
+**Choices the contract didn't cover:**
+- `--expand-alias` refuses (exit 3) when the alias is inside a flow collection like `{settings: *d}`, because a block-style copy can't go there.
+- It also refuses if, after expanding, the value would land in a different file.
+- If the alias line already has a comment, the expansion comment goes in front of it: `k:  # expanded from *d by troupe  # mine`.
+
+**Tests:** the full suite passes on the committed code (795 passed, 1 skipped), and ruff and mypy are clean. There are 13 new end-to-end tests in `tests/e2e/test_set_alias.py`; 12 of them fail on the old code. I also gave the stand-in planner in `tests/unit/test_verify.py` the new keyword, the same change the previous step made for `--in-include`. The README documents the flag, and the fix report is in `spec/bugs/yaml-alias-set/fix.md`.
+
+**Not fixed:** troupe still reads `<<` as an ordinary key instead of merging it. A self-referencing anchor (`a: &a [*a]`) would still hang the loader, which was already true before this change.
+
+Next step: `/method-command slug=yaml-alias-set`.
+
+Reply: /method-command slug=yaml-alias-set
+
+### Question 2 (step_done, answered by runner)
+
+Arm asked: The fix is **verified**: the reported bug no longer happens. The report is in `spec/bugs/yaml-alias-set/test.md` and is committed to `main` as `32d38d2`. The working tree is clean, and nothing was pushed.
+
+Slug: `yaml-alias-set` (you gave it explicitly)
+
+**Re-running the bug through the real CLI on the committed code:**
+- **The issue's exact case:** `set coder.settings.model sonnet` now exits 3, the error mentions `--expand-alias`, and the file is left untouched.
+- **New key through an alias:** `set coder.settings.temperature 0.2` is refused the same way.
+- **Anchored scalar:** setting `m` gives `m: &x 6`, so the anchor survives and `y` follows it. Setting `y` replaces only that alias.
+- **`--expand-alias`:** gives `settings:  # expanded from *d by troupe` followed by `model: sonnet`. `reviewer.settings` still points to `*d`.
+- **Setting at the anchor:** `set defaults.model sonnet` changes only the anchored line, and every alias follows it.
+
+**Checks:**
+
+| Check | Result |
+|---|---|
+| New tests (`tests/e2e/test_set_alias.py`) | 13 passed |
+| Full suite | 795 passed, 1 skipped |
+| `ruff check`, `ruff format --check`, `mypy --strict` | all clean |
+
+These limits still apply and are listed in the report:
+- Merge keys (`<<`) are read as ordinary keys rather than merged. Writes through them are refused, which meets the contract.
+- `--expand-alias` refuses (exit 3) for an alias inside a flow collection like `{settings: *d}`, and when the change would land in a different file.
+- Replacing the alias itself (e.g. `set coder.settings '{a: 1}'`) is allowed and changes only that alias. The contract doesn't say either way, so you may want to decide whether it should be refused instead.
+
+Reply: /method-command
+
+### Question 3 (step_done, answered by po)
+
+Arm asked: ## Convergence Findings
+
+No gaps found for feature `spec/005-include-overrides`.
+
+| ID | Gap Type | Severity | Source | Evidence | Remaining Work |
+|----|----------|----------|--------|----------|----------------|
+| none | | | | | |
+
+**Summary metrics:**
+- **Requirements checked:** 23 FRs (FR-400–FR-408, FR-420–FR-427, FR-430–FR-432, FR-440, FR-441, FR-450), 5 SCs, the acceptance scenarios of US1–US4, and the 15 edge cases.
+- **Plan decisions checked:** D-40–D-48 and research O-1–O-7.
+  - The alias fix changed the verifier's identity rule (O-6). An alias now counts as the same node as its anchor. That is consistent with the existing content-identity rule, and the include-reference (by-site) comparison for overrides still works the same way.
+  - A node's start offset now skips a leading `&anchor`. That changes nothing for nodes without an anchor, which is every case in 005.
+- **Constitution principles checked:** all MUST statements. No violations within 005's scope.
+- **Evidence:** 005's own test files pass on the current code (109 passed). The full suite on the fix commit gave 795 passed, 1 skipped, and the only commit since then adds a report file. The previous convergence tasks (T025–T029) are all present and passing.
+- **Findings by gap type:** missing 0, partial 0, contradicts 0, unrequested 0. **By severity:** none.
+
+✅ Converged — the implementation satisfies the spec, plan, and tasks. `tasks.md` was not modified. There are no `before_converge` or `after_converge` hooks registered.
+
+**Outside 005's scope:**
+- **No spec for step 6:** the Aliases behaviour (step 6) is committed and tested, but no feature spec describes it yet. The bug's assessment and fix reports are the only written record. The constitution says spec, code and tests must agree. This command can't add that work to a different feature's `tasks.md`, so if you want it recorded properly, the next step is `/method-command` for step 6 using the Aliases contract section.
+- **Anchored include strings:** if an include string is anchored and aliased (`a: &i file:c.yaml`, `b: *i`), adding a new key under `a` is refused with exit 3 rather than written. That's the safe outcome, and 005 doesn't cover this case, but a step 6 spec might want to decide it.
+
+Next step: review. No further implement pass is needed for 005.
+
+Reply: 
+
+## Discovery run
+
+### Question 1 (question, answered by po+owner)
+
+Arm asked: I've assessed issue #2 and committed the assessment to `main` (3ff1a93). No source files are changed yet, so the bug itself is still unfixed.
+
+Slug: alias-set-changes-anchor (I generated it; no slug was given)
+
+- **Assessment:** `spec/bugs/alias-set-changes-anchor/assessment.md`
+- **Source:** fetched from GitHub with `gh`.
+- **Verdict:** valid. I reproduced it on `main`.
+- **Severity:** high. It silently changes other agents' settings with exit 0.
+
+**What I reproduced**
+- **The report:** `set coder.settings.model sonnet` exits 0 and rewrites `defaults: &d`, so `reviewer` changes too.
+- **`--expand-alias`:** the option doesn't exist yet; `set` rejects it with exit 2.
+- **New keys through an alias:** `set coder.settings.new 1` silently writes the key under `defaults`.
+- **Anchored scalars:** with `v: &v 1` and `w: *v`, `set v 2` deletes the `&v`. The write is then refused (exit 3) only because the file would no longer load. This breaks the contract's first rule.
+- **Merge keys:** `set 'x.<<' 7` writes a merge key, and `set 'x.<<.a' 7` changes the anchor. Both break "merge keys are never written".
+
+**Root cause:** the YAML parser hands back an alias as the very same object as its anchor, and the loader never records which nodes were reached through an alias. So the edit lands on the anchor's text. The check run before writing was built for a file included twice, and it accepts the extra changes as intended. Also, an anchored node's text starts at the `&name` token, so replacing the whole node drops the anchor.
+
+**Proposed fix:**
+- Record in the loader when a node is reached through an alias, separately for each YAML file so a file included twice isn't mistaken for one.
+- Refuse paths through an alias with exit 3 and a message naming `--expand-alias`; refuse any path containing `<<` the same way.
+- Keep the `&name` when replacing an anchored value.
+- Add `set --expand-alias`, which expands the alias in place and then makes the change as an ordinary set.
+
+**Four questions for you, in the assessment:**
+- Should reading resolve merge keys? Today `get x.a` fails when `a` comes from `<<: *b`.
+- Should expanding a flow-style anchor like `&d {model: opus}` convert it to block style, or refuse?
+- What should `--expand-alias` do when there's no alias on the path? I recommend running it as a plain set.
+- What if a path passes through more than one alias? I recommend expanding only the outermost one.
+
+Next step: `/method-command slug=alias-set-changes-anchor`
+
+Reply: On “Should reading (get/show) resolve merge keys, so that `get x.a` succeeds when `a` comes from `<<: *b`?”: The contract's Aliases section (from step 6) covers writing only: setting a value defined at an anchor changes it at the anchor; setting a path reached through an alias -> exit 3 with stderr mentioning `--expand-alias`; `set --expand-alias PATH VALUE` "replaces that alias with a block-style copy of the anchored node, puts the end-of-line comment `# expanded from *<name> by troupe` on the key's line ... and then sets the value in the copy. Nothing else changes; other aliases still refer to the anchor." Merge keys (`<<`) are never written. Flow-style anchor: the copy is block-style, as the contract says; the anchor itself does not change ("Nothing else changes"), so neither converting the anchor nor refusing is what the contract describes. Reading through merge keys, `--expand-alias` when the path has no alias, and paths through more than one alias: the contract does not define these. They are out of contract: your choice - state which you chose and why.
+
+On “Should `--expand-alias` on an alias whose anchor is flow-style (e.g. `&d {model: opus}`) convert the copy to block style, or refuse?”: Convert it. The contract says `set --expand-alias PATH VALUE` replaces the alias with a block-style copy of the anchored node, so the copy is written in block style whatever style the anchor uses. Nothing else changes, so the anchored node itself stays as it is.
+
+On “What should `set --expand-alias` do when the path does not pass through any alias?”: The contract's Aliases section (from step 6) covers writing only: setting a value defined at an anchor changes it at the anchor; setting a path reached through an alias -> exit 3 with stderr mentioning `--expand-alias`; `set --expand-alias PATH VALUE` "replaces that alias with a block-style copy of the anchored node, puts the end-of-line comment `# expanded from *<name> by troupe` on the key's line ... and then sets the value in the copy. Nothing else changes; other aliases still refer to the anchor." Merge keys (`<<`) are never written. Flow-style anchor: the copy is block-style, as the contract says; the anchor itself does not change ("Nothing else changes"), so neither converting the anchor nor refusing is what the contract describes. Reading through merge keys, `--expand-alias` when the path has no alias, and paths through more than one alias: the contract does not define these. They are out of contract: your choice - state which you chose and why.
+
+On “What should `set --expand-alias` do when the path passes through more than one alias?”: The contract's Aliases section (from step 6) covers writing only: setting a value defined at an anchor changes it at the anchor; setting a path reached through an alias -> exit 3 with stderr mentioning `--expand-alias`; `set --expand-alias PATH VALUE` "replaces that alias with a block-style copy of the anchored node, puts the end-of-line comment `# expanded from *<name> by troupe` on the key's line ... and then sets the value in the copy. Nothing else changes; other aliases still refer to the anchor." Merge keys (`<<`) are never written. Flow-style anchor: the copy is block-style, as the contract says; the anchor itself does not change ("Nothing else changes"), so neither converting the anchor nor refusing is what the contract describes. Reading through merge keys, `--expand-alias` when the path has no alias, and paths through more than one alias: the contract does not define these. They are out of contract: your choice - state which you chose and why.
+
+Escalated: ["Should reading (get/show) resolve merge keys, so that `get x.a` succeeds when `a` comes from `<<: *b`?", "What should `set --expand-alias` do when the path does not pass through any alias?", "What should `set --expand-alias` do when the path passes through more than one alias?"]
+
+### Question 2 (next_command, answered by po)
+
+Arm asked: I've recorded your answer and my three choices in the assessment and committed it to `main` (5863d66). Nothing is fixed yet. The decisions:
+
+1. **Flow-style anchors (your answer):** `--expand-alias` always writes the copy in block style. The anchored node itself stays exactly as written. The copy keeps each value's original spelling, including quotes and number formats.
+2. **Reading through merge keys: no change.** `get` and `show` keep showing `<<` as a plain key, so `get x.a` still fails (exit 5) when `a` only comes from `<<: *b`. Resolving merge keys on read would change what `get`, `show` and `history` print for files people already have. That's a new feature, not part of this bug. Writing stays safe because any path containing `<<` is refused with exit 3.
+3. **`--expand-alias` when the path has no alias: run a plain set.** The result is byte-for-byte what you'd get without the flag. With no alias there's nothing to expand, and the write changes only that path. Refusing wouldn't protect anything, and scripts that always pass the flag would fail for no reason.
+4. **A path through more than one alias: expand every alias on the path in one write,** starting with the outermost. Each expanded key gets its own `# expanded from *<name> by troupe` comment. Aliases that aren't on the path stay as they are. This changes my earlier recommendation to expand only the outermost alias. That would leave the value behind the inner alias, and setting it would change everything else using that inner anchor, which is exactly what this bug report objects to.
+
+I also settled one detail I had left open. If the anchored node contains its own anchor (`&x`), that `&x` is left out of the copy. Otherwise, later `*x` aliases would silently start pointing at the copy.
+
+I've added tests for each decision to the assessment's test list. The assessment has no open questions left.
+
+Next step: `/method-command slug=alias-set-changes-anchor`
+
+Reply: /method-command slug=alias-set-changes-anchor

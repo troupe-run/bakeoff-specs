@@ -1,0 +1,230 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "A",
+        "why": "Both show and set exit 4 for ~, ---, a scalar and a list, saying the top-level node was expected to be a mapping."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "B",
+        "why": "show prints the root (null, hello, - a) with exit 0, and set exits 5 with a path error that the root is a scalar or list."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "B",
+        "why": "show prints the root with exit 0, and set exits 5 with a path error that the root is a scalar or list."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "B",
+        "why": "show prints the root with exit 0, and set exits 5 with 'path not found: x (...)'."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "B",
+        "why": "show prints the root with exit 0, and set exits 5 with a path error that the root is not a mapping, or is a list."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "A",
+        "why": "Both show and set exit 4 with 'the top level must be a mapping' for every non-mapping root."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show",
+          "--theatre",
+          "tilde"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "tilde",
+          "x",
+          "1"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--theatre",
+          "dashes"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "dashes",
+          "x",
+          "1"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--theatre",
+          "scalar"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "scalar",
+          "x",
+          "1"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--theatre",
+          "list"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "list",
+          "x",
+          "1"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--theatre",
+          "empty"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "empty",
+          "x",
+          "1"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--theatre",
+          "comment"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "comment",
+          "x",
+          "1"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      "comment/.troupe/troupe.yml": "# only a comment here\n",
+      "dashes/.troupe/troupe.yml": "---\n",
+      "empty/.troupe/troupe.yml": "",
+      "list/.troupe/troupe.yml": "- a\n",
+      "scalar/.troupe/troupe.yml": "hello\n",
+      "tilde/.troupe/troupe.yml": "~\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      "tilde/.troupe/troupe.yml",
+      "dashes/.troupe/troupe.yml",
+      "scalar/.troupe/troupe.yml",
+      "list/.troupe/troupe.yml",
+      "empty/.troupe/troupe.yml",
+      "comment/.troupe/troupe.yml"
+    ],
+    "why": "Each non-mapping or empty root file gets its own theatre in a subdirectory. Running `config show` and then `config set x 1` in each shows the result. Route 1 should load the empty and comment-only files as an empty mapping and write `x: 1` into them. It should exit 4 for `~`, `---`, a bare scalar and a list, with stderr naming the file and the file left unchanged. Implementations that never considered this may crash, print null, or overwrite the root. The 12-step limit leaves no room for `config get x` or a final list of `.troupe`, so those were dropped; the printed files show what each `set` wrote."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "every command exits 4 saying the top level must be a mapping",
+            "id": "A"
+          },
+          {
+            "description": "show prints the root and set exits 5 with a not-found style message",
+            "id": "B"
+          }
+        ],
+        "id": "Q1",
+        "text": "a non-mapping root file (~, ---, a scalar, a list)"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "An empty or comment-only file is an empty mapping and can be written into; a non-mapping root (including ~ or ---) exits 4",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm C"
+      ]
+    ]
+  ],
+  "sheet_id": "T59",
+  "status": "ok"
+}

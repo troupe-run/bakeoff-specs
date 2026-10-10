@@ -1,0 +1,188 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "A",
+        "why": "Final listing shows only history.sqlite and troupe.yml."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "A",
+        "why": "Final listing shows only events.sqlite and troupe.yml."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "A",
+        "why": "Final listing shows only history.sqlite and troupe.yml."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "C",
+        "why": "Watch exited with code 137, and the final listing still has troupe-state.sqlite-shm and -wal next to the database and config."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "B",
+        "why": "Final listing shows events.sqlite, troupe.yml and a 0-byte events.lock."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "B",
+        "why": "Final listing shows events.sqlite3, troupe.yml and a 0-byte events.sqlite3.lock."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      },
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: haiku\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "--theatre",
+          ".",
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGTERM",
+        "watch": "stop"
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "model: opus\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Lists every file under the theatre with its size: after a set, after history+get, after a watch that picks up a hand edit and is stopped with SIGINT, and after a second watch stopped with SIGTERM. Leftover .db-wal/.db-shm files, and whether the wal is zero-size or not, show whether each implementation closes the history store explicitly, and whether the main db file alone holds the data after a set. Because of the 12-step limit, history and get share one listing, and the SIGTERM watch, which has no edit of its own, is listed once at the end."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "only the database and config",
+            "id": "A"
+          },
+          {
+            "description": "database, config and an empty lock file",
+            "id": "B"
+          },
+          {
+            "description": "-wal/-shm side files left after watch was force-killed (exit 137)",
+            "id": "C"
+          }
+        ],
+        "id": "Q1",
+        "text": "what is left in .troupe"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "One store instance per command, closed explicitly at the end so no -wal/-shm files remain",
+      [
+        "Arm A",
+        "Arm C"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T74",
+  "status": "ok"
+}

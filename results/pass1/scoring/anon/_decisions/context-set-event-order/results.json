@@ -1,0 +1,563 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agent",
+          "{temp: 0.5, model: sonnet, beta: 3}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tools",
+          "[sed]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agent",
+          "{temp: 0.5, model: sonnet, beta: 3}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "agent:\n  zeta: 1\n  model: opus\n  alpha: 2\ntools:\n  - grep\n  - sed\n  - awk\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent.zeta\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:49.007089Z\", \"reason\": null, \"change\": \"e5ad2eca-7f4d-4306-9265-231b7d6941b6\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agent.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:49.007089Z\", \"reason\": null, \"change\": \"e5ad2eca-7f4d-4306-9265-231b7d6941b6\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agent.alpha\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:49.007089Z\", \"reason\": null, \"change\": \"e5ad2eca-7f4d-4306-9265-231b7d6941b6\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"tools.0\", \"old\": null, \"new\": \"grep\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:49.007089Z\", \"reason\": null, \"change\": \"e5ad2eca-7f4d-4306-9265-231b7d6941b6\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"tools.1\", \"old\": null, \"new\": \"sed\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:49.007089Z\", \"reason\": null, \"change\": \"e5ad2eca-7f4d-4306-9265-231b7d6941b6\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"tools.2\", \"old\": null, \"new\": \"awk\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:49.007089Z\", \"reason\": null, \"change\": \"e5ad2eca-7f4d-4306-9265-231b7d6941b6\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agent",
+                "{temp: 0.5, model: sonnet, beta: 3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agent:\n  model: sonnet\n  temp: 0.5\n  beta: 3\ntools:\n  - grep\n  - sed\n  - awk\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[sed]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agent:\n  model: sonnet\n  temp: 0.5\n  beta: 3\ntools:\n  - sed\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agent",
+                "{temp: 0.5, model: sonnet, beta: 3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent.zeta\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:49.007089Z\", \"reason\": null, \"change\": \"e5ad2eca-7f4d-4306-9265-231b7d6941b6\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agent.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:49.007089Z\", \"reason\": null, \"change\": \"e5ad2eca-7f4d-4306-9265-231b7d6941b6\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agent.alpha\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:49.007089Z\", \"reason\": null, \"change\": \"e5ad2eca-7f4d-4306-9265-231b7d6941b6\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"tools.0\", \"old\": null, \"new\": \"grep\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:49.007089Z\", \"reason\": null, \"change\": \"e5ad2eca-7f4d-4306-9265-231b7d6941b6\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"tools.1\", \"old\": null, \"new\": \"sed\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:49.007089Z\", \"reason\": null, \"change\": \"e5ad2eca-7f4d-4306-9265-231b7d6941b6\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"tools.2\", \"old\": null, \"new\": \"awk\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:49.007089Z\", \"reason\": null, \"change\": \"e5ad2eca-7f4d-4306-9265-231b7d6941b6\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"agent.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:49.590710Z\", \"reason\": null, \"change\": \"bcf38a35-f5ef-4734-af4a-a0371e7f7aa7\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"agent.temp\", \"old\": null, \"new\": 0.5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:49.590710Z\", \"reason\": null, \"change\": \"bcf38a35-f5ef-4734-af4a-a0371e7f7aa7\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"agent.beta\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:49.590710Z\", \"reason\": null, \"change\": \"bcf38a35-f5ef-4734-af4a-a0371e7f7aa7\"}\n{\"seq\": 10, \"op\": \"remove\", \"path\": \"agent.zeta\", \"old\": 1, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:49.590710Z\", \"reason\": null, \"change\": \"bcf38a35-f5ef-4734-af4a-a0371e7f7aa7\"}\n{\"seq\": 11, \"op\": \"remove\", \"path\": \"agent.alpha\", \"old\": 2, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:49.590710Z\", \"reason\": null, \"change\": \"bcf38a35-f5ef-4734-af4a-a0371e7f7aa7\"}\n{\"seq\": 12, \"op\": \"set\", \"path\": \"tools.0\", \"old\": \"grep\", \"new\": \"sed\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:50.177657Z\", \"reason\": null, \"change\": \"b0f9251b-c471-4dc8-8f19-7147779557b2\"}\n{\"seq\": 13, \"op\": \"remove\", \"path\": \"tools.1\", \"old\": \"sed\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:50.177657Z\", \"reason\": null, \"change\": \"b0f9251b-c471-4dc8-8f19-7147779557b2\"}\n{\"seq\": 14, \"op\": \"remove\", \"path\": \"tools.2\", \"old\": \"awk\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:50.177657Z\", \"reason\": null, \"change\": \"b0f9251b-c471-4dc8-8f19-7147779557b2\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent.zeta\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:58.816089Z\", \"reason\": null, \"change\": \"0cf0b414-75b3-40f3-9178-23454c12a3e7\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agent.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:58.816089Z\", \"reason\": null, \"change\": \"0cf0b414-75b3-40f3-9178-23454c12a3e7\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agent.alpha\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:58.816089Z\", \"reason\": null, \"change\": \"0cf0b414-75b3-40f3-9178-23454c12a3e7\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"tools.0\", \"old\": null, \"new\": \"grep\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:58.816089Z\", \"reason\": null, \"change\": \"0cf0b414-75b3-40f3-9178-23454c12a3e7\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"tools.1\", \"old\": null, \"new\": \"sed\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:58.816089Z\", \"reason\": null, \"change\": \"0cf0b414-75b3-40f3-9178-23454c12a3e7\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"tools.2\", \"old\": null, \"new\": \"awk\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:58.816089Z\", \"reason\": null, \"change\": \"0cf0b414-75b3-40f3-9178-23454c12a3e7\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agent",
+                "{temp: 0.5, model: sonnet, beta: 3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agent:\n  model: sonnet\n  temp: 0.5\n  beta: 3\ntools:\n  - grep\n  - sed\n  - awk\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[sed]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agent:\n  model: sonnet\n  temp: 0.5\n  beta: 3\ntools:\n  - sed\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agent",
+                "{temp: 0.5, model: sonnet, beta: 3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent.zeta\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:58.816089Z\", \"reason\": null, \"change\": \"0cf0b414-75b3-40f3-9178-23454c12a3e7\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agent.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:58.816089Z\", \"reason\": null, \"change\": \"0cf0b414-75b3-40f3-9178-23454c12a3e7\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agent.alpha\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:58.816089Z\", \"reason\": null, \"change\": \"0cf0b414-75b3-40f3-9178-23454c12a3e7\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"tools.0\", \"old\": null, \"new\": \"grep\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:58.816089Z\", \"reason\": null, \"change\": \"0cf0b414-75b3-40f3-9178-23454c12a3e7\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"tools.1\", \"old\": null, \"new\": \"sed\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:58.816089Z\", \"reason\": null, \"change\": \"0cf0b414-75b3-40f3-9178-23454c12a3e7\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"tools.2\", \"old\": null, \"new\": \"awk\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:58.816089Z\", \"reason\": null, \"change\": \"0cf0b414-75b3-40f3-9178-23454c12a3e7\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"agent.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:59.284289Z\", \"reason\": null, \"change\": \"cd951fe8-daf3-46c1-ac7a-9c12f4cb007c\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"agent.temp\", \"old\": null, \"new\": 0.5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:59.284289Z\", \"reason\": null, \"change\": \"cd951fe8-daf3-46c1-ac7a-9c12f4cb007c\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"agent.beta\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:59.284289Z\", \"reason\": null, \"change\": \"cd951fe8-daf3-46c1-ac7a-9c12f4cb007c\"}\n{\"seq\": 10, \"op\": \"remove\", \"path\": \"agent.zeta\", \"old\": 1, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:59.284289Z\", \"reason\": null, \"change\": \"cd951fe8-daf3-46c1-ac7a-9c12f4cb007c\"}\n{\"seq\": 11, \"op\": \"remove\", \"path\": \"agent.alpha\", \"old\": 2, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:59.284289Z\", \"reason\": null, \"change\": \"cd951fe8-daf3-46c1-ac7a-9c12f4cb007c\"}\n{\"seq\": 12, \"op\": \"set\", \"path\": \"tools.0\", \"old\": \"grep\", \"new\": \"sed\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:59.744537Z\", \"reason\": null, \"change\": \"b9f6e6ec-b5c1-418f-ba19-77931a5633ae\"}\n{\"seq\": 13, \"op\": \"remove\", \"path\": \"tools.1\", \"old\": \"sed\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:59.744537Z\", \"reason\": null, \"change\": \"b9f6e6ec-b5c1-418f-ba19-77931a5633ae\"}\n{\"seq\": 14, \"op\": \"remove\", \"path\": \"tools.2\", \"old\": \"awk\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:59.744537Z\", \"reason\": null, \"change\": \"b9f6e6ec-b5c1-418f-ba19-77931a5633ae\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent.zeta\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:04.825354Z\", \"reason\": null, \"change\": \"5dc0e1c9-1897-4fa5-b3bb-b92d215031a2\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agent.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:04.825354Z\", \"reason\": null, \"change\": \"5dc0e1c9-1897-4fa5-b3bb-b92d215031a2\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agent.alpha\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:04.825354Z\", \"reason\": null, \"change\": \"5dc0e1c9-1897-4fa5-b3bb-b92d215031a2\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"tools.0\", \"old\": null, \"new\": \"grep\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:04.825354Z\", \"reason\": null, \"change\": \"5dc0e1c9-1897-4fa5-b3bb-b92d215031a2\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"tools.1\", \"old\": null, \"new\": \"sed\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:04.825354Z\", \"reason\": null, \"change\": \"5dc0e1c9-1897-4fa5-b3bb-b92d215031a2\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"tools.2\", \"old\": null, \"new\": \"awk\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:04.825354Z\", \"reason\": null, \"change\": \"5dc0e1c9-1897-4fa5-b3bb-b92d215031a2\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agent",
+                "{temp: 0.5, model: sonnet, beta: 3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agent:\n  temp: 0.5\n  model: sonnet\n  beta: 3\ntools:\n  - grep\n  - sed\n  - awk\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[sed]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agent:\n  temp: 0.5\n  model: sonnet\n  beta: 3\ntools:\n  - sed\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agent",
+                "{temp: 0.5, model: sonnet, beta: 3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent.zeta\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:04.825354Z\", \"reason\": null, \"change\": \"5dc0e1c9-1897-4fa5-b3bb-b92d215031a2\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agent.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:04.825354Z\", \"reason\": null, \"change\": \"5dc0e1c9-1897-4fa5-b3bb-b92d215031a2\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agent.alpha\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:04.825354Z\", \"reason\": null, \"change\": \"5dc0e1c9-1897-4fa5-b3bb-b92d215031a2\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"tools.0\", \"old\": null, \"new\": \"grep\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:04.825354Z\", \"reason\": null, \"change\": \"5dc0e1c9-1897-4fa5-b3bb-b92d215031a2\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"tools.1\", \"old\": null, \"new\": \"sed\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:04.825354Z\", \"reason\": null, \"change\": \"5dc0e1c9-1897-4fa5-b3bb-b92d215031a2\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"tools.2\", \"old\": null, \"new\": \"awk\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:04.825354Z\", \"reason\": null, \"change\": \"5dc0e1c9-1897-4fa5-b3bb-b92d215031a2\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"agent.temp\", \"old\": null, \"new\": 0.5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:05.365957Z\", \"reason\": null, \"change\": \"0b0a6625-a9c4-4392-afd5-4a8aa1a0c4bb\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"agent.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:05.365957Z\", \"reason\": null, \"change\": \"0b0a6625-a9c4-4392-afd5-4a8aa1a0c4bb\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"agent.beta\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:05.365957Z\", \"reason\": null, \"change\": \"0b0a6625-a9c4-4392-afd5-4a8aa1a0c4bb\"}\n{\"seq\": 10, \"op\": \"remove\", \"path\": \"agent.zeta\", \"old\": 1, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:05.365957Z\", \"reason\": null, \"change\": \"0b0a6625-a9c4-4392-afd5-4a8aa1a0c4bb\"}\n{\"seq\": 11, \"op\": \"remove\", \"path\": \"agent.alpha\", \"old\": 2, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:05.365957Z\", \"reason\": null, \"change\": \"0b0a6625-a9c4-4392-afd5-4a8aa1a0c4bb\"}\n{\"seq\": 12, \"op\": \"set\", \"path\": \"tools.0\", \"old\": \"grep\", \"new\": \"sed\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:05.905782Z\", \"reason\": null, \"change\": \"dd5be3c3-eb65-4ef4-a76c-17e2b9e5007f\"}\n{\"seq\": 13, \"op\": \"remove\", \"path\": \"tools.1\", \"old\": \"sed\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:05.905782Z\", \"reason\": null, \"change\": \"dd5be3c3-eb65-4ef4-a76c-17e2b9e5007f\"}\n{\"seq\": 14, \"op\": \"remove\", \"path\": \"tools.2\", \"old\": \"awk\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:05.905782Z\", \"reason\": null, \"change\": \"dd5be3c3-eb65-4ef4-a76c-17e2b9e5007f\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Leaf diff of before/after; set events in new document order, then remove events in old document order",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent.zeta\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:55.562031Z\", \"reason\": null, \"change\": \"633be0dc-bf33-4b1b-ba95-2e3aeb35cf28\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agent.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:55.562031Z\", \"reason\": null, \"change\": \"633be0dc-bf33-4b1b-ba95-2e3aeb35cf28\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agent.alpha\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:55.562031Z\", \"reason\": null, \"change\": \"633be0dc-bf33-4b1b-ba95-2e3aeb35cf28\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"tools.0\", \"old\": null, \"new\": \"grep\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:55.562031Z\", \"reason\": null, \"change\": \"633be0dc-bf33-4b1b-ba95-2e3aeb35cf28\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"tools.1\", \"old\": null, \"new\": \"sed\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:55.562031Z\", \"reason\": null, \"change\": \"633be0dc-bf33-4b1b-ba95-2e3aeb35cf28\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"tools.2\", \"old\": null, \"new\": \"awk\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:55.562031Z\", \"reason\": null, \"change\": \"633be0dc-bf33-4b1b-ba95-2e3aeb35cf28\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agent",
+                "{temp: 0.5, model: sonnet, beta: 3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agent:\n  temp: 0.5\n  model: sonnet\n  beta: 3\ntools:\n  - grep\n  - sed\n  - awk\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[sed]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agent:\n  temp: 0.5\n  model: sonnet\n  beta: 3\ntools:\n  - sed\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agent",
+                "{temp: 0.5, model: sonnet, beta: 3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent.zeta\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:55.562031Z\", \"reason\": null, \"change\": \"633be0dc-bf33-4b1b-ba95-2e3aeb35cf28\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agent.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:55.562031Z\", \"reason\": null, \"change\": \"633be0dc-bf33-4b1b-ba95-2e3aeb35cf28\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agent.alpha\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:55.562031Z\", \"reason\": null, \"change\": \"633be0dc-bf33-4b1b-ba95-2e3aeb35cf28\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"tools.0\", \"old\": null, \"new\": \"grep\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:55.562031Z\", \"reason\": null, \"change\": \"633be0dc-bf33-4b1b-ba95-2e3aeb35cf28\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"tools.1\", \"old\": null, \"new\": \"sed\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:55.562031Z\", \"reason\": null, \"change\": \"633be0dc-bf33-4b1b-ba95-2e3aeb35cf28\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"tools.2\", \"old\": null, \"new\": \"awk\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:55.562031Z\", \"reason\": null, \"change\": \"633be0dc-bf33-4b1b-ba95-2e3aeb35cf28\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"agent.temp\", \"old\": null, \"new\": 0.5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:56.123057Z\", \"reason\": null, \"change\": \"2b07d055-8dc6-4f24-a8db-678e902d1194\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"agent.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:56.123057Z\", \"reason\": null, \"change\": \"2b07d055-8dc6-4f24-a8db-678e902d1194\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"agent.beta\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:56.123057Z\", \"reason\": null, \"change\": \"2b07d055-8dc6-4f24-a8db-678e902d1194\"}\n{\"seq\": 10, \"op\": \"remove\", \"path\": \"agent.zeta\", \"old\": 1, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:56.123057Z\", \"reason\": null, \"change\": \"2b07d055-8dc6-4f24-a8db-678e902d1194\"}\n{\"seq\": 11, \"op\": \"remove\", \"path\": \"agent.alpha\", \"old\": 2, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:56.123057Z\", \"reason\": null, \"change\": \"2b07d055-8dc6-4f24-a8db-678e902d1194\"}\n{\"seq\": 12, \"op\": \"set\", \"path\": \"tools.0\", \"old\": \"grep\", \"new\": \"sed\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:56.680188Z\", \"reason\": null, \"change\": \"334af84c-99e0-4ad8-833d-7eb1f1ad42cc\"}\n{\"seq\": 13, \"op\": \"remove\", \"path\": \"tools.1\", \"old\": \"sed\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:56.680188Z\", \"reason\": null, \"change\": \"334af84c-99e0-4ad8-833d-7eb1f1ad42cc\"}\n{\"seq\": 14, \"op\": \"remove\", \"path\": \"tools.2\", \"old\": \"awk\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:56.680188Z\", \"reason\": null, \"change\": \"334af84c-99e0-4ad8-833d-7eb1f1ad42cc\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent.zeta\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:01.642565Z\", \"reason\": null, \"change\": \"a4c935ed-3dc3-4358-9d84-d80de88f1f49\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agent.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:01.642565Z\", \"reason\": null, \"change\": \"a4c935ed-3dc3-4358-9d84-d80de88f1f49\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agent.alpha\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:01.642565Z\", \"reason\": null, \"change\": \"a4c935ed-3dc3-4358-9d84-d80de88f1f49\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"tools.0\", \"old\": null, \"new\": \"grep\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:01.642565Z\", \"reason\": null, \"change\": \"a4c935ed-3dc3-4358-9d84-d80de88f1f49\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"tools.1\", \"old\": null, \"new\": \"sed\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:01.642565Z\", \"reason\": null, \"change\": \"a4c935ed-3dc3-4358-9d84-d80de88f1f49\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"tools.2\", \"old\": null, \"new\": \"awk\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:01.642565Z\", \"reason\": null, \"change\": \"a4c935ed-3dc3-4358-9d84-d80de88f1f49\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agent",
+                "{temp: 0.5, model: sonnet, beta: 3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agent:\n  model: sonnet\n  temp: 0.5\n  beta: 3\ntools:\n  - grep\n  - sed\n  - awk\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[sed]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agent:\n  model: sonnet\n  temp: 0.5\n  beta: 3\ntools:\n  - sed\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agent",
+                "{temp: 0.5, model: sonnet, beta: 3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent.zeta\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:01.642565Z\", \"reason\": null, \"change\": \"a4c935ed-3dc3-4358-9d84-d80de88f1f49\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agent.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:01.642565Z\", \"reason\": null, \"change\": \"a4c935ed-3dc3-4358-9d84-d80de88f1f49\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agent.alpha\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:01.642565Z\", \"reason\": null, \"change\": \"a4c935ed-3dc3-4358-9d84-d80de88f1f49\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"tools.0\", \"old\": null, \"new\": \"grep\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:01.642565Z\", \"reason\": null, \"change\": \"a4c935ed-3dc3-4358-9d84-d80de88f1f49\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"tools.1\", \"old\": null, \"new\": \"sed\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:01.642565Z\", \"reason\": null, \"change\": \"a4c935ed-3dc3-4358-9d84-d80de88f1f49\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"tools.2\", \"old\": null, \"new\": \"awk\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:37:01.642565Z\", \"reason\": null, \"change\": \"a4c935ed-3dc3-4358-9d84-d80de88f1f49\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"agent.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:02.163712Z\", \"reason\": null, \"change\": \"e04fffac-7625-4f31-a3f6-8d05746148f5\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"agent.temp\", \"old\": null, \"new\": 0.5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:02.163712Z\", \"reason\": null, \"change\": \"e04fffac-7625-4f31-a3f6-8d05746148f5\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"agent.beta\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:02.163712Z\", \"reason\": null, \"change\": \"e04fffac-7625-4f31-a3f6-8d05746148f5\"}\n{\"seq\": 10, \"op\": \"remove\", \"path\": \"agent.zeta\", \"old\": 1, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:02.163712Z\", \"reason\": null, \"change\": \"e04fffac-7625-4f31-a3f6-8d05746148f5\"}\n{\"seq\": 11, \"op\": \"remove\", \"path\": \"agent.alpha\", \"old\": 2, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:02.163712Z\", \"reason\": null, \"change\": \"e04fffac-7625-4f31-a3f6-8d05746148f5\"}\n{\"seq\": 12, \"op\": \"set\", \"path\": \"tools.0\", \"old\": \"grep\", \"new\": \"sed\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:02.673927Z\", \"reason\": null, \"change\": \"45792c42-ea8f-43ab-9244-17bd27c9f06c\"}\n{\"seq\": 13, \"op\": \"remove\", \"path\": \"tools.1\", \"old\": \"sed\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:02.673927Z\", \"reason\": null, \"change\": \"45792c42-ea8f-43ab-9244-17bd27c9f06c\"}\n{\"seq\": 14, \"op\": \"remove\", \"path\": \"tools.2\", \"old\": \"awk\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:37:02.673927Z\", \"reason\": null, \"change\": \"45792c42-ea8f-43ab-9244-17bd27c9f06c\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Leaf diff with one event per changed/new/removed leaf; order not pinned",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent.zeta\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:52.500259Z\", \"reason\": null, \"change\": \"e750a76b-a8f3-44a2-9639-3403d4411b2e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agent.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:52.500259Z\", \"reason\": null, \"change\": \"e750a76b-a8f3-44a2-9639-3403d4411b2e\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agent.alpha\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:52.500259Z\", \"reason\": null, \"change\": \"e750a76b-a8f3-44a2-9639-3403d4411b2e\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"tools.0\", \"old\": null, \"new\": \"grep\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:52.500259Z\", \"reason\": null, \"change\": \"e750a76b-a8f3-44a2-9639-3403d4411b2e\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"tools.1\", \"old\": null, \"new\": \"sed\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:52.500259Z\", \"reason\": null, \"change\": \"e750a76b-a8f3-44a2-9639-3403d4411b2e\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"tools.2\", \"old\": null, \"new\": \"awk\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:52.500259Z\", \"reason\": null, \"change\": \"e750a76b-a8f3-44a2-9639-3403d4411b2e\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agent",
+                "{temp: 0.5, model: sonnet, beta: 3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agent:\n  model: sonnet\n  temp: 0.5\n  beta: 3\ntools:\n  - grep\n  - sed\n  - awk\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[sed]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agent:\n  model: sonnet\n  temp: 0.5\n  beta: 3\ntools:\n  - sed\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agent",
+                "{temp: 0.5, model: sonnet, beta: 3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent.zeta\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:52.500259Z\", \"reason\": null, \"change\": \"e750a76b-a8f3-44a2-9639-3403d4411b2e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agent.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:52.500259Z\", \"reason\": null, \"change\": \"e750a76b-a8f3-44a2-9639-3403d4411b2e\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agent.alpha\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:52.500259Z\", \"reason\": null, \"change\": \"e750a76b-a8f3-44a2-9639-3403d4411b2e\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"tools.0\", \"old\": null, \"new\": \"grep\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:52.500259Z\", \"reason\": null, \"change\": \"e750a76b-a8f3-44a2-9639-3403d4411b2e\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"tools.1\", \"old\": null, \"new\": \"sed\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:52.500259Z\", \"reason\": null, \"change\": \"e750a76b-a8f3-44a2-9639-3403d4411b2e\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"tools.2\", \"old\": null, \"new\": \"awk\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:36:52.500259Z\", \"reason\": null, \"change\": \"e750a76b-a8f3-44a2-9639-3403d4411b2e\"}\n{\"seq\": 7, \"op\": \"remove\", \"path\": \"agent.zeta\", \"old\": 1, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:53.040772Z\", \"reason\": null, \"change\": \"8b17a734-30c1-4a0f-82e2-e892f269085d\"}\n{\"seq\": 8, \"op\": \"remove\", \"path\": \"agent.alpha\", \"old\": 2, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:53.040772Z\", \"reason\": null, \"change\": \"8b17a734-30c1-4a0f-82e2-e892f269085d\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"agent.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:53.040772Z\", \"reason\": null, \"change\": \"8b17a734-30c1-4a0f-82e2-e892f269085d\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"agent.temp\", \"old\": null, \"new\": 0.5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:53.040772Z\", \"reason\": null, \"change\": \"8b17a734-30c1-4a0f-82e2-e892f269085d\"}\n{\"seq\": 11, \"op\": \"set\", \"path\": \"agent.beta\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:53.040772Z\", \"reason\": null, \"change\": \"8b17a734-30c1-4a0f-82e2-e892f269085d\"}\n{\"seq\": 12, \"op\": \"remove\", \"path\": \"tools.1\", \"old\": \"sed\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:53.577210Z\", \"reason\": null, \"change\": \"21115879-7212-4adb-a6f1-c70daa2e28b9\"}\n{\"seq\": 13, \"op\": \"remove\", \"path\": \"tools.2\", \"old\": \"awk\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:53.577210Z\", \"reason\": null, \"change\": \"21115879-7212-4adb-a6f1-c70daa2e28b9\"}\n{\"seq\": 14, \"op\": \"set\", \"path\": \"tools.0\", \"old\": \"grep\", \"new\": \"sed\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:36:53.577210Z\", \"reason\": null, \"change\": \"21115879-7212-4adb-a6f1-c70daa2e28b9\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Leaf diff; remove events in old document order before set events",
+      "route_no": 3
+    }
+  ]
+}

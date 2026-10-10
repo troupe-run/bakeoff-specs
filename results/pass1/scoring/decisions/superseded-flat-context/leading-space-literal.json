@@ -1,0 +1,95 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "agent:\n  prompt: old  # the prompt\n  note: x",
+        "input": "`config set agent.prompt \"  indented first\\nsecond\\n\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; file gets one quoted line: `prompt: \"  indented first\\nsecond\\n\" # the prompt`",
+          "2": "exit 0; file gets one quoted line: `prompt: \"  indented first\\nsecond\\n\" # the prompt`",
+          "3": "two arms: exit 0; file gets a block `prompt: |2   # the prompt` / `      indented first` / `    second`. One arm: same quoted line as routes 1 and 2",
+          "4": "exit 0; file gets a block `prompt: |2   # the prompt` / `      indented first` / `    second`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set agent.note \"line one\\n  line two\\n\"` (first line not indented)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; file gets a plain block `note: |` / `    line one` / `      line two`, with no `2`",
+          "2": "exit 0; same plain `note: |` block",
+          "3": "all arms: exit 0; same plain `note: |` block",
+          "4": "exit 0; same plain `note: |` block"
+        }
+      },
+      {
+        "before": "steps:\n  - name: a\n    text: old",
+        "input": "`config set steps.0.text \"    deep\\nok\"` (no trailing newline)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; file gets `text: \"    deep\\nok\"`",
+          "2": "exit 0; file gets `text: \"    deep\\nok\"`",
+          "3": "two arms: exit 0; file gets `text: |2-` / `          deep` / `      ok`. One arm: file gets `text: \"    deep\\nok\"`",
+          "4": "exit 0; file gets `text: |2-` / `          deep` / `      ok`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show` after the three sets",
+        "observed": true,
+        "results": {
+          "1": "prints blocks `prompt: |2 …` and `text: |2- …`, even though the file holds quoted strings",
+          "2": "prints the quoted strings, matching the file",
+          "3": "all arms: print blocks `prompt: |2 …` and `text: |2- …`. For the arm that wrote quoted strings, this differs from its file",
+          "4": "prints blocks `prompt: |2 …` and `text: |2- …`, matching the file"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get steps.0.text`",
+        "observed": true,
+        "results": {
+          "1": "prints `    deep` / `ok`, leading spaces kept",
+          "2": "prints `    deep` / `ok`, leading spaces kept",
+          "3": "all arms: print `    deep` / `ok`, leading spaces kept",
+          "4": "prints `    deep` / `ok`, leading spaces kept"
+        }
+      }
+    ],
+    "in_practice": "On every route, `config get` returns the exact value, including leading spaces, and the `# the prompt` comment survives in the file. The difference is how troupe.yml looks. Route 2 and route 1 write the value as one quoted line. Route 4 and two of three arms on route 3 write an indented block marked `|2`. Values whose first line is not indented get an ordinary `|` block on every route. `config show` prints blocks on every route except route 2, so on route 1 (and one arm on route 3) the screen does not match the file.",
+    "stakes": "When a multi-line value starts with spaces, such as an indented prompt, the user either finds it as a readable indented block in troupe.yml or as one quoted line full of `\\n`. `config show` may also print it differently from what the file holds. The stored value is the same on every route.",
+    "tradeoff": "Route 1: file and `show` disagree. Route 2: indented values become hard-to-read quoted lines. Routes 3 and 4: readable blocks with a `|2` marker (one arm on route 3 quoted instead)."
+  },
+  "plan_why": "Sets multi-line strings whose first line starts with spaces (top-level mapping and compact list item, with and without a trailing newline) and one that doesn't, so you can see whether the file gets `|2`, a double-quoted scalar, or a plain `|`. Then it reads the values back to check they parse and survive intact.",
+  "routes": [
+    [
+      "Always `2`",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "Double-quote instead",
+      [
+        "Arm D"
+      ]
+    ],
+    [
+      "Indicator only when needed",
+      [
+        "Arm C",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

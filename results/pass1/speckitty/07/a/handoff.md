@@ -1,0 +1,29 @@
+# Step 7 — remote includes and a schema
+
+- Includes can now point at `https://` URLs (shared team configuration). They are read-only from troupe's
+  point of view: refuse changes to their values, and tell the user which include line to change instead.
+- The configuration is described by a JSON Schema at `.troupe/troupe.schema.json`. Some settings are URLs
+  that must never be treated as includes; the schema marks those with `"format": "uri"`, and a `!literal` tag
+  marks any other value that must be taken literally.
+
+Contract sections added: Remote includes and schema.
+
+---
+
+## Remote includes and schema (from step 7)
+
+- A string starting `https://` or `http://` is also an include; it is fetched when the configuration loads
+  (YAML if the URL path ends `.yml`/`.yaml`, otherwise text). A failed fetch → exit 4.
+- Changing a value that comes from a remote include → exit 3; stderr contains the include string exactly as
+  written in the local file. (New keys under a remote include become local overrides, per step 5.)
+- `<dir>/.troupe/troupe.schema.json` (JSON Schema 2020-12), if present, describes the configuration. A string
+  whose schema — found through `properties`, `items` and `additionalProperties` — has `"format": "uri"` is a
+  literal, not an include. A string tagged `!literal` is a literal.
+- The loaded configuration must validate against the schema, else exit 4. A `set` that would make it invalid
+  → exit 3.
+- `set PATH VALUE` where `VALUE` is a string that would be read as an include and the schema does not mark
+  `PATH` as `format: uri` writes it tagged `!literal`, unless `--include` is given.
+
+---
+
+Delivery: this request is done when its work is committed on the `main` branch of this repository — the `main` branch is what gets tested. Do not push and do not open pull requests.

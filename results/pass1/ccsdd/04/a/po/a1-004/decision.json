@@ -1,0 +1,9 @@
+{
+  "kind": "approval",
+  "reply": "Approved. The requirements match the Lineage section (from step 4). Every history event has the five members. `via` is always one of the three contract values. Imports and file-originated events have the unknown actor, and `cli` events take theirs from `TROUPE_ACTOR`. Each import, file reconcile and command gets its own `change`. Lineage is stored, so it survives restarts. On the three choices you flagged: (1) The contract gives the `TROUPE_ACTOR` rule for 'a CLI command' and does not limit it to `set`, so checking it on every subcommand is consistent. (2) A set but empty `TROUPE_ACTOR` is neither unset nor `human:<id>`/`agent:<id>`, so it falls under 'anything else \u2192 exit 2'. (3) The contract says nothing about giving `--reason` twice, so that is your choice, and the brief's standing answer lets you choose behaviour the contract leaves open as long as you say what you chose. You have stated it.",
+  "answers": [],
+  "approved": true,
+  "command": null,
+  "arguments": "",
+  "significant": false
+}

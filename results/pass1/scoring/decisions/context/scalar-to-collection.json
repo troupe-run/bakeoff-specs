@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "name: alpha    # project name",
+        "input": "`config set name \"{a: 1, b: x}\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output (all four arms); the file now reads:\nname:          # project name\n  a: 1\n  b: x",
+          "2": "exit 0, no output (both arms); the file now reads:\nname:          # project name\n  a: 1\n  b: x"
+        }
+      },
+      {
+        "before": "limits: 5  # max",
+        "input": "`config set limits \"[x, y]\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output (all four arms); the file now reads:\nlimits:    # max\n  - x\n  - y",
+          "2": "exit 0, no output (both arms); the file now reads:\nlimits:    # max\n  - x\n  - y"
+        }
+      },
+      {
+        "before": "tags:\n  - one   # first\n  - two  # second",
+        "input": "`config set tags.0 \"{k: v, m: w}\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output. Two arms: the dash stays alone with the comment and the map goes below:\ntags:\n  -       # first\n    k: v\n    m: w\n  - two  # second\nTwo arms: the first key moves onto the dash line and the comment follows it:\ntags:\n  - k: v  # first\n    m: w\n  - two  # second",
+          "2": "exit 0, no output (both arms); the dash stays alone with the comment:\ntags:\n  -       # first\n    k: v\n    m: w\n  - two  # second"
+        }
+      },
+      {
+        "before": "tags:\n  - two  # second",
+        "input": "`config set tags.1 \"[p, q]\"` (right after the previous command)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output. Two arms:\n  -      # second\n    - p\n    - q\nTwo arms (nested list starts on the dash line):\n  - - p  # second\n    - q",
+          "2": "exit 0, no output (both arms):\n  -      # second\n    - p\n    - q"
+        }
+      },
+      {
+        "before": "agents:\n  coder: file:agents/coder.yaml  # c",
+        "input": "`config set agents.coder.temperature 0.3`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output (all four arms); agents/coder.yaml is untouched, and troupe.yml now reads:\nagents:\n  coder:  # c\n    $ref: file:agents/coder.yaml\n    temperature: 0.3",
+          "2": "exit 0, no output (both arms); agents/coder.yaml is untouched, and troupe.yml now reads:\nagents:\n  coder:  # c\n    $ref: file:agents/coder.yaml\n    temperature: 0.3"
+        }
+      }
+    ],
+    "in_practice": "Every command worked on both routes, and no comment was lost. Map keys gave the same result everywhere: the old value is blanked, the comment stays at its column, and the new collection goes below. The only difference is on list entries. Route 2 and half of route 1's arms leave a bare `-` holding the comment. The other half of route 1's arms put the first line of the new item on the dash line (`- k: v  # first`, `- - p  # second`), which is what route 1 says it does. When the include reference became a map, all arms moved the comment so it sits right after `coder:` instead of keeping its old column.",
+    "stakes": "When a plain value that has a trailing comment (`name: alpha    # project name`) is replaced with a nested map or list, the routes differ only on list entries. All arms keep the comment. They differ on whether the new item's first line moves onto the dash line or the dash is left alone with the comment and everything goes below it.",
+    "tradeoff": "Route 1 promises compact list items, but only half its arms produced them; the rest left the same bare-dash layout as route 2. Route 2 never considered the case, yet behaved consistently and keeps the comment's column, at the cost of a lone `-` line."
+  },
+  "plan_why": "Replaces commented scalars (a mapping value, a list item, and a value with extra spaces before its comment) with block mappings and lists, plus the step-5 include conversion, to show where each version puts the comment, the new collection and the list-item layout.",
+  "routes": [
+    [
+      "Value removed; comment stays at its column on the key (or dash) line; the collection goes below; list items become compact",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

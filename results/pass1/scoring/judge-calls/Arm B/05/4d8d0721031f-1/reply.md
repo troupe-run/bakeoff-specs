@@ -1,0 +1,3 @@
+```json
+{"score": 4, "evidence": ["/judge/transcript.md:172", "/judge/transcript.md:171", "/judge/gates.md:1"], "notes": "gates.md lists no gates, but at the end of step 5 the transcript asks whether to sync the specs before archiving or archive without syncing. That question came before any spec or archive change, so the answer could still change the outcome cheaply. It fits on one screen: a table of what each spec would gain, a note that nothing blocks the sync, and two options with a recommendation, so the owner can see in a minute what they are approving."}
+```

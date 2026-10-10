@@ -1,0 +1,17 @@
+{
+  "evidence": [
+    "/judge/repo/tests/test_cli_actor.py:1-10",
+    "/judge/repo/tests/test_cli_actor.py:60",
+    "/judge/repo/tests/test_e2e_reason.py:101",
+    "/judge/repo/tests/test_e2e_reason.py:246",
+    "/judge/repo/tests/test_store_legacy.py:3",
+    "/judge/repo/spec/spec/config-lineage/requirements.md:131-134",
+    "/judge/repo/spec/spec/config-lineage/requirements.md:166-171",
+    "/judge/repo/spec/spec/config-lineage/tasks.md:65-72",
+    "/judge/repo/spec/spec/config-lineage/design.md:114-119"
+  ],
+  "notes": "I sampled three step-4 tests (test_cli_actor, test_e2e_reason, test_store_legacy). Each test docstring names the requirement IDs it proves, and those IDs match the current text in config-lineage/requirements.md (2.1-2.4, 6.1-6.6, 7.2-7.3). tasks.md also links each test file to its requirements. Two gaps keep this from a 4: the per-test 'Req N.M' IDs carry no spec prefix, so only the module docstring tells them apart from other specs' Requirements 6 and 7. The e2e tests reach the code only through the CLI subprocess, so you need design.md to find the module under test, while unit tests like test_cli_actor import the code directly.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/repo/tests/test_cli_actor.py:1-10\", \"/judge/repo/tests/test_cli_actor.py:60\", \"/judge/repo/tests/test_e2e_reason.py:101\", \"/judge/repo/tests/test_e2e_reason.py:246\", \"/judge/repo/tests/test_store_legacy.py:3\", \"/judge/repo/spec/spec/config-lineage/requirements.md:131-134\", \"/judge/repo/spec/spec/config-lineage/requirements.md:166-171\", \"/judge/repo/spec/spec/config-lineage/tasks.md:65-72\", \"/judge/repo/spec/spec/config-lineage/design.md:114-119\"], \"notes\": \"I sampled three step-4 tests (test_cli_actor, test_e2e_reason, test_store_legacy). Each test docstring names the requirement IDs it proves, and those IDs match the current text in config-lineage/requirements.md (2.1-2.4, 6.1-6.6, 7.2-7.3). tasks.md also links each test file to its requirements. Two gaps keep this from a 4: the per-test 'Req N.M' IDs carry no spec prefix, so only the module docstring tells them apart from other specs' Requirements 6 and 7. The e2e tests reach the code only through the CLI subprocess, so you need design.md to find the module under test, while unit tests like test_cli_actor import the code directly.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/diff.patch:1290-1311 (spec/spec/config-set/spec.md: the 'Creating new keys' rule now points to the override rule, and the scenario 'New key inside an included mapping' was rewritten to the override behaviour)",
+    "/judge/diff.patch:1345-1475 (main config-set spec adds the requirements 'New keys under includes are written as overrides' and 'Writing new keys into the included file on request')",
+    "/judge/diff.patch:1140-1200 (config-loading spec adds the requirement 'Mapping-form includes and overrides')",
+    "/judge/diff.patch:2788-2798 (tests/test_set_targets.py: the old test asserting a write into the included file was replaced by its opposite)",
+    "/judge/diff.patch:5-10,14-82 (README: the command table, the Includes section, mapping form, --in-include and exit 4 were all updated)",
+    "/judge/repo/src/troupe/cli.py:47 (--in-include help text)",
+    "/judge/repo/tests/test_set_in_include.py:125-144 (history events, including actor and via, checked for the new-key write)"
+  ],
+  "notes": "Every stale item was updated: the step-1 new-key rule now has the override exception, mapping-form includes are specified next to the string Includes rule, the old included-file test was inverted, and the README, CLI help and specs describe the new behaviour and --in-include. I found nothing left that would mislead a maintainer; the only small gap is that no test checks lineage on an override write by name, though the test of the same set without --in-include checks its actor and via fields.",
+  "raw": "{\"score\": 4, \"evidence\": [\"/judge/diff.patch:1290-1311 (spec/spec/config-set/spec.md: the 'Creating new keys' rule now points to the override rule, and the scenario 'New key inside an included mapping' was rewritten to the override behaviour)\", \"/judge/diff.patch:1345-1475 (main config-set spec adds the requirements 'New keys under includes are written as overrides' and 'Writing new keys into the included file on request')\", \"/judge/diff.patch:1140-1200 (config-loading spec adds the requirement 'Mapping-form includes and overrides')\", \"/judge/diff.patch:2788-2798 (tests/test_set_targets.py: the old test asserting a write into the included file was replaced by its opposite)\", \"/judge/diff.patch:5-10,14-82 (README: the command table, the Includes section, mapping form, --in-include and exit 4 were all updated)\", \"/judge/repo/src/troupe/cli.py:47 (--in-include help text)\", \"/judge/repo/tests/test_set_in_include.py:125-144 (history events, including actor and via, checked for the new-key write)\"], \"notes\": \"Every stale item was updated: the step-1 new-key rule now has the override exception, mapping-form includes are specified next to the string Includes rule, the old included-file test was inverted, and the README, CLI help and specs describe the new behaviour and --in-include. I found nothing left that would mislead a maintainer; the only small gap is that no test checks lineage on an override write by name, though the test of the same set without --in-include checks its actor and via fields.\"}",
+  "score": 4,
+  "status": "ok"
+}

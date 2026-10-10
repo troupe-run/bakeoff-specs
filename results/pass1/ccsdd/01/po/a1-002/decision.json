@@ -1,0 +1,64 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "Should `show` read the YAML files on disk rather than the stored history, so a hand edit is never shown stale?",
+      "reply": "Confirmed. The files are the truth. `show` and `set` always read the files as they are on disk. The stored projection is only the change history, so a hand edit shows up in `show` but produces no history event. A later `set` records its `old` value as what was in the file.",
+      "escalate": false,
+      "cited": "Brief, Escalated answers (files are the truth)"
+    },
+    {
+      "question": "Should a `set` that would have to change more than one file be refused with exit 3?",
+      "reply": null,
+      "escalate": true,
+      "cited": "set PATH VALUE"
+    },
+    {
+      "question": "Should a `set` whose re-read in-memory result is not the intended configuration exit 3 with no file changed?",
+      "reply": "Confirmed. Exit 3 means the write was refused and no file changed, so refusing in that case and leaving every file untouched matches the contract.",
+      "escalate": false,
+      "cited": "General, Exit codes"
+    },
+    {
+      "question": "Should a `set` whose value starts with `file:` be written as a plain string but refused with exit 3 if its target is missing or forms a cycle?",
+      "reply": null,
+      "escalate": true,
+      "cited": "Includes; set PATH VALUE"
+    },
+    {
+      "question": "Is it acceptable to write files through a hidden temporary file next to the target and then atomically rename it, given that a hard kill mid-write could leave the temporary file behind?",
+      "reply": "Acceptable, as long as no extra file is left behind once any command finishes, successfully or not. The implementation must not create or modify any file except as the write-back rules require. A crash mid-write is not something the contract defines.",
+      "escalate": false,
+      "cited": "General, State"
+    },
+    {
+      "question": "Should Infinity and NaN appear in history as the JSON strings \".inf\", \"-.inf\" and \".nan\"?",
+      "reply": null,
+      "escalate": true,
+      "cited": "history [PATH]"
+    },
+    {
+      "question": "Should a malformed path such as `a..b` exit 2?",
+      "reply": null,
+      "escalate": true,
+      "cited": "General, Paths and Exit codes"
+    },
+    {
+      "question": "Should YAML anchors in a configuration file cause exit 4?",
+      "reply": "Your choice. Anchors, aliases and merge keys are out of contract for now, so you may decide how to handle them; just say what you chose (as you have).",
+      "escalate": false,
+      "cited": "General, Out of contract; Brief, Standing answers"
+    },
+    {
+      "question": "Should duplicate keys, explicit tags and files that are not UTF-8 cause exit 4?",
+      "reply": null,
+      "escalate": true,
+      "cited": "General, Exit codes"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

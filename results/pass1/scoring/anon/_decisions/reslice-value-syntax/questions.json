@@ -1,0 +1,68 @@
+{
+  "questions": [
+    {
+      "groups": [
+        {
+          "description": "refused (exit 2)",
+          "id": "REFUSE"
+        },
+        {
+          "description": "writes null",
+          "id": "NULL"
+        }
+      ],
+      "id": "EMPTY",
+      "text": "set empty \"\""
+    },
+    {
+      "groups": [
+        {
+          "description": "refused, and the message gives the fix (quote it to make a string, or use flow style such as {a: 1})",
+          "id": "REFUSE"
+        },
+        {
+          "description": "refused (exit 2), but the message gives no fix",
+          "id": "REFUSE_NOFIX"
+        },
+        {
+          "description": "writes a nested map",
+          "id": "MAP"
+        }
+      ],
+      "id": "BLOCK",
+      "text": "set block \"a: b\""
+    },
+    {
+      "groups": [
+        {
+          "description": "writes the string '5'",
+          "id": "HONOUR"
+        },
+        {
+          "description": "refused (exit 2)",
+          "id": "REFUSE"
+        },
+        {
+          "description": "drops the tag and writes the number 5",
+          "id": "NUMBER"
+        }
+      ],
+      "id": "TAG",
+      "text": "set tagged \"!!str 5\""
+    },
+    {
+      "groups": [
+        {
+          "description": "refused (exit 2)",
+          "id": "REFUSE"
+        },
+        {
+          "description": "drops the anchor and writes 1",
+          "id": "DROP"
+        }
+      ],
+      "id": "ANCHOR",
+      "text": "set anchored \"&n 1\""
+    }
+  ]
+}

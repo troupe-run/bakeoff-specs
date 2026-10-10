@@ -1,0 +1,339 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "prompt",
+          "\"You are a reviewer.\\n\\nBe terse.\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "notes",
+          "\"alpha\\ngamma\\nbeta\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "notes",
+          "\"alpha\\ngamma\\nbeta\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "code",
+          "\"  indented first\\nchanged\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "prompt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# agent prompts\nprompt: |  # system prompt, keep short\n    You are a coder.\n    \n    Be terse.\nnotes: |-\n  alpha\n  beta\n# end of notes\ncode: |2\n    indented first\n  normal\nafter: 1  # sentinel\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"You are a reviewer.\\n\\nBe terse.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agent prompts\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n    \n    Be terse.\nnotes: |-\n  alpha\n  beta\n# end of notes\ncode: |2\n    indented first\n  normal\nafter: 1  # sentinel\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"alpha\\ngamma\\nbeta\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agent prompts\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n    \n    Be terse.\nnotes: |-\n  alpha\n  gamma\n  beta\n# end of notes\ncode: |2\n    indented first\n  normal\nafter: 1  # sentinel\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"alpha\\ngamma\\nbeta\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agent prompts\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n    \n    Be terse.\nnotes: |\n  alpha\n  gamma\n  beta\n# end of notes\ncode: |2\n    indented first\n  normal\nafter: 1  # sentinel\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "code",
+                "\"  indented first\\nchanged\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: code: value cannot be written back faithfully\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You are a reviewer.\n\nBe terse.\n"
+            }
+          ]
+        }
+      ],
+      "route": "Line diff with difflib so unchanged lines keep their bytes",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"You are a reviewer.\\n\\nBe terse.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agent prompts\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n\n    Be terse.\nnotes: |-\n  alpha\n  beta\n# end of notes\ncode: |2\n    indented first\n  normal\nafter: 1  # sentinel\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"alpha\\ngamma\\nbeta\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agent prompts\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n\n    Be terse.\nnotes: |-\n  alpha\n  gamma\n  beta\n# end of notes\ncode: |2\n    indented first\n  normal\nafter: 1  # sentinel\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"alpha\\ngamma\\nbeta\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agent prompts\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n\n    Be terse.\nnotes: |\n  alpha\n  gamma\n  beta\n# end of notes\ncode: |2\n    indented first\n  normal\nafter: 1  # sentinel\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "code",
+                "\"  indented first\\nchanged\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agent prompts\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n\n    Be terse.\nnotes: |\n  alpha\n  gamma\n  beta\n# end of notes\ncode: \"  indented first\\nchanged\\n\"\nafter: 1  # sentinel\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You are a reviewer.\n\nBe terse.\n"
+            }
+          ]
+        },
+        {
+          "arms": 3,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"You are a reviewer.\\n\\nBe terse.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agent prompts\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n\n    Be terse.\nnotes: |-\n  alpha\n  beta\n# end of notes\ncode: |2\n    indented first\n  normal\nafter: 1  # sentinel\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"alpha\\ngamma\\nbeta\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agent prompts\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n\n    Be terse.\nnotes: |-\n  alpha\n  gamma\n  beta\n# end of notes\ncode: |2\n    indented first\n  normal\nafter: 1  # sentinel\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"alpha\\ngamma\\nbeta\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agent prompts\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n\n    Be terse.\nnotes: |\n  alpha\n  gamma\n  beta\n# end of notes\ncode: |2\n    indented first\n  normal\nafter: 1  # sentinel\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "code",
+                "\"  indented first\\nchanged\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agent prompts\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n\n    Be terse.\nnotes: |\n  alpha\n  gamma\n  beta\n# end of notes\ncode: |2\n    indented first\n  changed\nafter: 1  # sentinel\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You are a reviewer.\n\nBe terse.\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

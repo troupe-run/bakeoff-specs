@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\nretry: 3  # attempts\nlimit: 10\ntag: stable",
+        "input": "`config set retry -1e3`",
+        "observed": true,
+        "results": {
+          "1": "exit 0. The file now reads `retry: -1e3 # attempts` and the comment is kept.",
+          "2": "All five arms: exit 2, \"the following arguments are required: value\", file unchanged. Only the error wording differs: two arms print the full usage block and the others print one line, and one of those one-liners adds \"(see 'troupe config set --help')\"."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set limit -.inf`",
+        "observed": true,
+        "results": {
+          "1": "exit 0. The file now reads `limit: -.inf`.",
+          "2": "All five arms: exit 2, \"required: value\" error, file unchanged."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set --reason -rollback tag -beta`",
+        "observed": true,
+        "results": {
+          "1": "exit 0. The file now reads `tag: -beta`, and history records `\"new\": \"-beta\", \"reason\": \"-rollback\"`.",
+          "2": "All five arms: exit 2, \"argument --reason: expected one argument\", nothing set and no history entry."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show` (after the three commands above)",
+        "observed": true,
+        "results": {
+          "1": "`retry: -1000.0`, `limit: -.inf`, `tag: -beta`. The file still holds `-1e3`, but show prints it as a float.",
+          "2": "All five arms: `retry: 3`, `limit: 10`, `tag: stable`, so nothing changed."
+        }
+      }
+    ],
+    "in_practice": "On route 1, a word starting with a single dash in a value position is taken as the value, and that includes the text given to --reason. Long options such as --reason are still read as options. On route 2, every such value is rejected with a usage error. These runs did not test whether typing `--` before the value works around this on route 2.",
+    "stakes": "Whether a user can set a config value that starts with a dash (a negative number like -1e3, -.inf, or text like -beta) by typing it directly. The other outcome is a usage error where nothing is saved.",
+    "tradeoff": "Route 1 accepts dash-leading values but depends on overriding a private internal of the argument parser. Route 2 keeps the stock parser but rejects every dash-leading value with exit 2."
+  },
+  "plan_why": "Shows whether values that start with a single dash and do not look like plain negative numbers (-1e3, -.inf, -beta), and a --reason text starting with '-', are accepted without '--' (route 1) or rejected as usage errors with exit 2 (plain argparse when the question was never considered).",
+  "routes": [
+    [
+      "Override argparse's private _parse_optional (via a parser subclass) so single-dash VALUEs are positional",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

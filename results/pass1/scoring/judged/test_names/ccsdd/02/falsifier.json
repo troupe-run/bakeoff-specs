@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "tests/test_reconcile.py:164",
+    "tests/test_reconcile.py:156",
+    "tests/test_recorded.py:81",
+    "tests/test_reconcile.py:393",
+    "tests/test_reconcile.py:381",
+    "tests/test_reconcile.py:317"
+  ],
+  "notes": "I checked the first 30 new step-2 tests (test_recorded.py, then test_reconcile.py; diff order assumed). Every name's claim is asserted (e.g. never_writes_user_files compares bytes, one_consecutive_batch checks seq numbers) and none overclaims. A few names say less than the body: nan_and_inf_unchanged_give_nothing also asserts a -0.0→0.0 set (:164), and null_valued_leaf_set_and_null_leaf_kept (:156) and import_set_remove_set_again_follows_re_creation (:81) don't name the expected result.",
+  "raw": "{\"score\": 3, \"evidence\": [\"tests/test_reconcile.py:164\", \"tests/test_reconcile.py:156\", \"tests/test_recorded.py:81\", \"tests/test_reconcile.py:393\", \"tests/test_reconcile.py:381\", \"tests/test_reconcile.py:317\"], \"notes\": \"I checked the first 30 new step-2 tests (test_recorded.py, then test_reconcile.py; diff order assumed). Every name's claim is asserted (e.g. never_writes_user_files compares bytes, one_consecutive_batch checks seq numbers) and none overclaims. A few names say less than the body: nan_and_inf_unchanged_give_nothing also asserts a -0.0→0.0 set (:164), and null_valued_leaf_set_and_null_leaf_kept (:156) and import_set_remove_set_again_follows_re_creation (:81) don't name the expected result.\"}",
+  "score": 3,
+  "status": "ok"
+}

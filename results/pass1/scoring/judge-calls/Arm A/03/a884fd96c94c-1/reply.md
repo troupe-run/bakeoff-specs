@@ -1,0 +1,5 @@
+```json
+{"score": 3, "evidence": ["repo/spec/spec/config-get-show/tasks.md:37", "repo/spec/spec/config-get-show/tasks.md:80", "repo/tests/test_cli_get.py:9", "repo/tests/test_cli_get.py:121", "repo/tests/test_e2e_show_sources.py:232", "repo/tests/test_e2e_show_sources.py:251", "repo/spec/spec/config-foundation/requirements.md:206", "repo/tests/test_theatre.py:1", "repo/tests/test_theatre.py:277", "repo/tests/test_e2e_reconcile.py:132"]}
+```
+
+I sampled five requirements and four are linked and correct. Three are new in config-get-show: 1.2 is tested at test_cli_get.py:121, 5.4 at test_e2e_show_sources.py:251 and 4.5 at test_e2e_show_sources.py:232. The fourth is config-file-sync 1.2, tested at test_e2e_reconcile.py:132. In each case the code is reached through the task's `_Boundary`/`_Requirements` entries. The fifth, foundation 6.7, was changed at this step and is only partly correct. Its spec note correctly points to get-show 1.2, but the unit test at test_theatre.py:277 cites a bare "Req 1.2" inside a module whose header lists only config-foundation IDs, where 1.2 means something else. Test IDs generally carry no spec prefix, so a few links are ambiguous.

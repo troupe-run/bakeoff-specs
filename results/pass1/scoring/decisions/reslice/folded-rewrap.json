@@ -1,0 +1,140 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "W",
+        "why": "In step 3, the moved, unchanged 'Third paragraph' was re-wrapped onto new lines ('...with odd' / 'spacing.') instead of keeping its original two lines."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "W",
+        "why": "In step 3, the moved, unchanged 'Third paragraph' was re-wrapped to 'as it was,   with odd' / 'spacing.' and lost its original line breaks."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "K",
+        "why": "In steps 3 and 4, the moved 'Third paragraph' kept its original bytes ('Third paragraph is left exactly' / 'as it was,   with odd spacing.')."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "W",
+        "why": "In step 3, the moved, unchanged 'Third paragraph' was re-wrapped to new line breaks instead of keeping its original lines."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "W",
+        "why": "In step 3, the moved, unchanged 'Third paragraph' was re-wrapped ('...with odd' / 'spacing.')."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "W",
+        "why": "In step 3, the moved, unchanged 'Third paragraph' was re-wrapped instead of keeping its original bytes."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "brief",
+          "\"The quick brown fox jumps over the lazy dog and keeps running until it reaches the river.\\nShort para width now grows much longer than before.\\nThird paragraph is left exactly as it was,   with odd spacing.\\n\""
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "brief",
+          "\"A brand new opening paragraph that has no counterpart in the old value at all, so it wraps wide.\\nThe quick brown fox jumps over the lazy dog and keeps running until it reaches the river.\\nShort para width now grows much longer than before.\\nThird paragraph is left exactly as it was,   with odd spacing.\\n\""
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "brief",
+          "\"Third paragraph is left exactly as it was,   with odd spacing.\\nThe quick brown fox jumps over the lazy dog and keeps running until it reaches the river.\\nA brand new opening paragraph that has no counterpart in the old value at all, so it wraps wide.\\nShort para width now grows much longer than before.\\n\""
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "brief",
+          "\"Third paragraph is left exactly as it was,   with odd spacing.\\nThe quick brown fox jumps over the lazy dog and keeps\\trunning until it reaches the river today.\\nA brand new opening paragraph that has no counterpart in the old value at all, so it wraps wide.\\nShort para width now grows much longer than before.\\n\""
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "brief",
+          "\"Third paragraph is left exactly as it was,   with odd spacing.\\n  this line is more indented\\n\""
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "team: alpha\nbrief: >\n  The quick brown fox jumps over the lazy dog and keeps\n  running until it reaches the river.\n\n  Short para\n  width.\n\n  Third paragraph is left exactly\n  as it was,   with odd spacing.\nnext: 1  # tail\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Edits a folded (>) value step by step to show what the shared route does: an unchanged paragraph keeps its odd line breaks and spacing byte for byte; a changed paragraph is re-wrapped at that paragraph's old width; a new paragraph is wrapped at the value's widest old line; reordering paragraphs; a TAB at a likely break point; and a more-indented line, which is refused with exit 3."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "a moved unchanged paragraph keeps its original bytes",
+            "id": "K"
+          },
+          {
+            "description": "a moved unchanged paragraph is re-wrapped",
+            "id": "W"
+          }
+        ],
+        "id": "Q1",
+        "text": "re-wrapping when unchanged paragraphs are only reordered"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Align paragraphs with difflib; unchanged paragraphs keep their bytes; changed ones re-wrap at the old width (default 80)",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T96",
+  "status": "ok"
+}

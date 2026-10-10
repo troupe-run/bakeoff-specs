@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "big: 1234567890…(the same 10 digits repeated, several thousand digits in all)",
+        "input": "`config get big` (a stored integer several thousand digits long)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, nothing on stderr; prints the whole number on one line (the capture cut off the last 131 bytes); no digit-limit error",
+          "2": "exit 0, nothing on stderr; prints the whole number on one line (the capture cut off the last 131 bytes); no digit-limit error"
+        }
+      },
+      {
+        "before": "f: 1e3",
+        "input": "`config show f`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints `1000.0`",
+          "2": "exit 0; prints `1000.0`"
+        }
+      },
+      {
+        "before": "ninf: -.inf",
+        "input": "`config get ninf`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints `-inf`",
+          "2": "exit 0; prints `-inf`"
+        }
+      },
+      {
+        "before": "hex: 0x1F",
+        "input": "`config get hex`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints `31` (decimal, not `0x1F`)",
+          "2": "exit 0; prints `31` (decimal, not `0x1F`)"
+        }
+      },
+      {
+        "before": "n: ~",
+        "input": "`config get n`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints `null`",
+          "2": "exit 0; prints `null`"
+        }
+      }
+    ],
+    "in_practice": "All three implementations on each route gave identical results on every command. You can't tell the routes apart from what a user sees here. Both print YAML values in their resolved form rather than as written: `1e3` becomes `1000.0`, `0x1F` becomes `31`, `~` becomes `null` and `-.inf` becomes `-inf`. Every output ends with one newline.",
+    "stakes": "When you read a setting with `config get` or `config show`, the value printed is what scripts and people will copy. A huge integer, a float written as `1e3`, a hex number, `-.inf` or a YAML null each need to come out in a predictable form without crashing. In these tests both routes printed exactly the same thing for every case.",
+    "tradeoff": "Route 1 sets the printing rules on purpose: lower-case null/true/false, floats in full form, integers as plain digits. One of its implementations dropped special handling for very long integers as unneeded. Route 2 never addressed printing at all, yet its output matched route 1 on every case tested."
+  },
+  "plan_why": "Prints different kinds of scalars with get/show: an integer of 4400 digits (over Python's 4300-digit str() limit, the handling one implementation removed), a float written in exponent form, negative infinity, a hex integer and a null written as ~; this shows whether each prints Python repr/str forms with lower-case null and one trailing newline, or fails.",
+  "routes": [
+    [
+      "null/true/false lower-case, floats via repr, ints via str, one trailing newline",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

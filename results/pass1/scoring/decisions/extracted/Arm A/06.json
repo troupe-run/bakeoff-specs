@@ -1,0 +1,495 @@
+[
+  {
+    "decision": "Treat issue #2 as the step 6 'Aliases' contract work rather than a corruption bug, because on current main any file with an anchor already exits 4",
+    "options": [],
+    "reason": "Running the reporter's file on main gives exit 4 'anchor not supported' and leaves the file untouched, so the corruption described cannot happen",
+    "recorded_at": "/judge/questions.md:7"
+  },
+  {
+    "decision": "Proceed with one new spec, config-aliases, plus step-6 notes in config-foundation and config-set-writeback, without stopping to ask the owner",
+    "options": [],
+    "reason": "The instructions said to proceed, so the arm chose the path itself; it is easy to change",
+    "recorded_at": "/judge/questions.md:9"
+  },
+  {
+    "decision": "Loader expands aliases into the tree, and every node reached through an alias records that alias (AliasRef provenance), so readers need no change",
+    "options": [
+      "Keep aliases as a separate node kind that each reader resolves",
+      "Expand without recording provenance",
+      "Event-level parser instead of composer"
+    ],
+    "reason": "Follows the step 5 pattern; readers would drift apart with per-reader resolution; expanding without provenance is the reported bug; a parser rewrite is unnecessary",
+    "recorded_at": "spec/spec/config-aliases/brief.md:61; research.md:106"
+  },
+  {
+    "decision": "Render the expanded copy with the project's own emitter, not by re-dumping with ruamel",
+    "options": [
+      "Re-dump the anchored subtree with ruamel"
+    ],
+    "reason": "ruamel decides quoting, widths and float forms, which breaks the byte-surgical contract",
+    "recorded_at": "spec/spec/config-aliases/brief.md:84"
+  },
+  {
+    "decision": "Do not write the expansion as `<<: *d` plus an override key",
+    "options": [
+      "Write `<<: *d` plus an override"
+    ],
+    "reason": "Forbidden by the contract: merge keys are never written",
+    "recorded_at": "spec/spec/config-aliases/brief.md:86"
+  },
+  {
+    "decision": "Scope out creating new anchors or aliases from VALUE, renaming or removing anchors, expanding every alias at once, Windows, and concurrent writers",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/spec/config-aliases/brief.md:97"
+  },
+  {
+    "decision": "Reuse the existing brief directory as the feature name config-aliases",
+    "options": [],
+    "reason": "Discovery had already created it with only brief.md, and the name matches the contract section 'Aliases'",
+    "recorded_at": "/judge/questions.md:35"
+  },
+  {
+    "decision": "Choice 1: merge keys load (Requirement 2), which departs from the brief's default of keeping exit 4",
+    "options": [
+      "Keep exit 4 for merge keys (the brief's proposal)"
+    ],
+    "reason": "The contract names merge keys, so files with them are in contract, and loading cannot change a byte; writes through them are still refused",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:247; research.md:237"
+  },
+  {
+    "decision": "Choice 2: a PATH that names the alias's own key counts as reached through the alias and exits 3 unless --expand-alias is given",
+    "options": [
+      "Allow replacing the alias itself"
+    ],
+    "reason": "The literal reading is safer, and --expand-alias covers the need",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:252"
+  },
+  {
+    "decision": "Choice 3: when PATH passes through several aliases, --expand-alias expands each one, outermost first, each with its own comment",
+    "options": [
+      "Expand only the first and refuse the rest"
+    ],
+    "reason": "Otherwise the command could never succeed",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:255; research.md:242"
+  },
+  {
+    "decision": "Choice 4: a copy never repeats inner anchors, and inner aliases are copied as aliases",
+    "options": [
+      "Copy the anchors",
+      "Expand the inner aliases too"
+    ],
+    "reason": "Copying anchors redefines names and silently changes later aliases; expanding inner aliases changes more than was asked",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:257; research.md:244"
+  },
+  {
+    "decision": "Choice 5: for a `- *d` list item the comment goes on the item's line, and an alias inside a flow collection is refused with exit 3",
+    "options": [],
+    "reason": "A block copy cannot be written inside flow style",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:260"
+  },
+  {
+    "decision": "Choice 6: when the key's line already has an end-of-line comment, --expand-alias is refused with exit 3",
+    "options": [
+      "Replace the existing comment",
+      "Append the troupe comment"
+    ],
+    "reason": "Both alternatives lose or alter the user's text",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:263; research.md:250"
+  },
+  {
+    "decision": "Choice 7: the copy holds values only, in block style at the file's indentation, keeps source styles, and does not copy comments",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:265"
+  },
+  {
+    "decision": "Choice 8: when an anchored node is replaced, the anchor stays on the new value",
+    "options": [],
+    "reason": "The contract says the change is made at the anchor",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:268"
+  },
+  {
+    "decision": "Choice 9: --expand-alias with no alias on PATH is accepted, and the set runs as without it",
+    "options": [],
+    "reason": "Same as the --in-include choice 3",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:270"
+  },
+  {
+    "decision": "Choice 10: --expand-alias with a VALUE equal to the current value still expands and records no event",
+    "options": [],
+    "reason": "Expanding is what was asked, and no leaf value changes",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:272"
+  },
+  {
+    "decision": "Choice 11: a collection replacement that would change values reached through aliases below PATH is refused, or expanded with the flag",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:274"
+  },
+  {
+    "decision": "Choice 12: removing an anchored node that a later alias still uses is refused with exit 3",
+    "options": [],
+    "reason": "The file would no longer load",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:276"
+  },
+  {
+    "decision": "Choice 13: anchors on includes load, and converting an anchored scalar-form include to mapping form is refused with exit 3",
+    "options": [],
+    "reason": "No written rule says where the anchor goes during the conversion",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:278"
+  },
+  {
+    "decision": "Choice 14: --sources labels a value reached through an alias with the file of its anchored node",
+    "options": [],
+    "reason": "Aliases are local to one file",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:282"
+  },
+  {
+    "decision": "Choice 15: undefined aliases, recursive aliases, anchors on keys, aliases as keys, bad merge values and a merge key in $ref overrides exit 4 on load; a reused anchor name is accepted as YAML specifies",
+    "options": [],
+    "reason": "YAML specifies that each alias refers to the most recent definition",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:284"
+  },
+  {
+    "decision": "Choice 16: merged keys take the place of the `<<` entry, in the order of the merged mappings",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:289"
+  },
+  {
+    "decision": "Choice 17: a no-op set through an alias is still refused with exit 3",
+    "options": [],
+    "reason": "The contract's rule has no exception for no-op sets, and the user learns about the sharing either way; this fixed a contradiction found in the review gate",
+    "recorded_at": "spec/spec/config-aliases/requirements.md:291; /judge/gates.md:20"
+  },
+  {
+    "decision": "Merge keys whose value is not a mapping or a list of mappings, a merge key in mapping-form include overrides, and a quoted `<<` (an ordinary key) are handled as stated in Requirement 2.3/2.4",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/spec/config-aliases/requirements.md (Requirement 2)"
+  },
+  {
+    "decision": "Design Decision 1: record alias occurrences with a composer subclass that overrides compose_node(parent, index)",
+    "options": [
+      "Match the n-th revisit by id(node) to AliasEvents from a second parse",
+      "Search the source text for *name",
+      "Composer hook"
+    ],
+    "reason": "Exact and independent of visiting order; the other options are order-dependent or fragile",
+    "recorded_at": "spec/spec/config-aliases/research.md:115"
+  },
+  {
+    "decision": "Decision 2: alias places are rebuilt nodes that carry the anchored node's origins, so writes replicate through the step 5 with_other_places machinery",
+    "options": [],
+    "reason": "Readers see per-path nodes; written locations are shared, so a write at the anchor replicates",
+    "recorded_at": "spec/spec/config-aliases/research.md:133"
+  },
+  {
+    "decision": "Decision 3: an anchored node's span excludes its &name property, and the layout treats the property as part of the indicator",
+    "options": [
+      "Keep the span at & and teach every edit path to skip the property"
+    ],
+    "reason": "Every existing replacement then keeps &name without per-rule changes",
+    "recorded_at": "spec/spec/config-aliases/research.md:144"
+  },
+  {
+    "decision": "Decision 4: merge keys become a merged view, with the written mapping kept (MergeKey) and merged entries marked via_merge, in a new merge_keys.py",
+    "options": [],
+    "reason": "Same shape as step 5's include.form; a merge key inside $ref overrides is refused rather than combining two mechanisms",
+    "recorded_at": "spec/spec/config-aliases/research.md:156"
+  },
+  {
+    "decision": "Decision 5: one guard (alias_sites) decides refuse, expand or proceed before planning and before the no-op check",
+    "options": [],
+    "reason": "One place for 'reached through an alias'; running before the no-op check keeps 5.3 and 8.6",
+    "recorded_at": "spec/spec/config-aliases/research.md:168"
+  },
+  {
+    "decision": "The guard keeps conservative leftovers on purpose: a new key below an include whose $ref is an alias is refused, whole-subtree changes count on every side, and a deep-merged entry keeps via_merge",
+    "options": [],
+    "reason": "The guard does not decide where new content is written",
+    "recorded_at": "spec/spec/config-aliases/research.md:182"
+  },
+  {
+    "decision": "Decision 6: expand in memory, reload, and repeat; then run the unchanged set pipeline, with one atomic write and verification against the original document",
+    "options": [
+      "Plan the expansion edits and the set edits in one _Planner"
+    ],
+    "reason": "The edits overlap and apply_edits refuses that; positions inside the copy do not exist in the loaded document",
+    "recorded_at": "spec/spec/config-aliases/research.md:191"
+  },
+  {
+    "decision": "Decision 7: add a new copy renderer over the written anchored node instead of reusing render_yaml or render_block_value",
+    "options": [
+      "cli render_yaml",
+      "collection_render.render_block_value"
+    ],
+    "reason": "render_yaml loses quoting and line endings and is in the CLI layer; NewValue cannot hold aliases or includes as written",
+    "recorded_at": "spec/spec/config-aliases/research.md:209; research.md:98"
+  },
+  {
+    "decision": "Decision 8: removing a used anchor and converting an anchored include are refused explicitly in the planner",
+    "options": [
+      "Rely on the read-back failure"
+    ],
+    "reason": "The read-back would also fail, but with a message that does not name the anchor",
+    "recorded_at": "spec/spec/config-aliases/research.md:219"
+  },
+  {
+    "decision": "The 4.7 refusal fires whenever an include root carries an anchor, including chains converted at an inner include (stricter than needed)",
+    "options": [],
+    "reason": "Conservative: nothing is written; revisit if users need overrides below anchored include chains",
+    "recorded_at": "spec/spec/config-aliases/research.md:228"
+  },
+  {
+    "decision": "--expand-alias on an anchored node that holds `<<` is refused with the merge-key message plus the alias name",
+    "options": [],
+    "reason": "The copy would have to write `<<` (9.1)",
+    "recorded_at": "spec/spec/config-aliases/research.md:265"
+  },
+  {
+    "decision": "Add no limit on exponential alias expansion (billion laughs)",
+    "options": [
+      "Add a limit"
+    ],
+    "reason": "Configurations are small, local and hand-edited, and no limit is in the contract; revisit for untrusted sources",
+    "recorded_at": "spec/spec/config-aliases/research.md:301"
+  },
+  {
+    "decision": "Keep ruamel pinned at 0.19.1 and rely on its non-public compose_node signature, with tests that pin the recorded spans",
+    "options": [],
+    "reason": "The composer hook depends on it",
+    "recorded_at": "spec/spec/config-aliases/research.md:129; tasks.md:23"
+  },
+  {
+    "decision": "Silence ReusedAnchorWarning narrowly around composing",
+    "options": [],
+    "reason": "A reused name is valid YAML, and the warning would reach stderr",
+    "recorded_at": "spec/spec/config-aliases/research.md:52; src/troupe/config/compose.py"
+  },
+  {
+    "decision": "Design clarification: overrides.deep_merge keeps the anchor, alias and merge fields from the included side",
+    "options": [],
+    "reason": "Otherwise an alias behind $ref overrides would lose its marker and the guard would miss it",
+    "recorded_at": "spec/spec/config-aliases/research.md:281"
+  },
+  {
+    "decision": "Refusal order: target resolution first, then the alias guard, then planner refusals",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/spec/config-aliases/research.md:284"
+  },
+  {
+    "decision": "The widened intended configuration comes from the expanded document, while verification runs against the original files",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/spec/config-aliases/research.md:285"
+  },
+  {
+    "decision": "Stop task-plan generation after the second sanity review returned NEEDS_FIXES, and ask for approval of the design clarifications before committing",
+    "options": [],
+    "reason": "The skill allows only one repair round, and the design was already approved",
+    "recorded_at": "/judge/questions.md:146"
+  },
+  {
+    "decision": "Add a temporary set refusal (exit 3) for any configuration with an anchor, alias or merge key between tasks 2.1 and 4.1",
+    "options": [],
+    "reason": "So that no intermediate commit can write through an alias",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:25"
+  },
+  {
+    "decision": "In task 2.1, refuse aliases on load (exit 4, 'not supported yet') until task 2.2 builds alias places",
+    "options": [],
+    "reason": "Keeps an alias from silently loading as a plain copy",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:54; /judge/questions.md:157"
+  },
+  {
+    "decision": "Put every test for this spec in a fixed list of new files, and limit the traceability check to those files",
+    "options": [
+      "grep all of tests/"
+    ],
+    "reason": "Earlier specs use the same Req N.M numbers",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:10; tasks.md:201"
+  },
+  {
+    "decision": "Remove (P) from task 3.4 and make 3.6 depend on 3.3",
+    "options": [],
+    "reason": "3.4 depends on 3.1; 3.6 needs AliasSite from 3.3",
+    "recorded_at": "/judge/questions.md:161"
+  },
+  {
+    "decision": "Run implementation autonomously, with a fresh implementer, an independent reviewer and a commit for each sub-task",
+    "options": [],
+    "reason": "",
+    "recorded_at": "/judge/transcript.md:187"
+  },
+  {
+    "decision": "Give MERGE_KEY a single home in config/constants.py, imported by the loader and yaml_style",
+    "options": [],
+    "reason": "structure.md: 'one decision, one place'",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:206,210"
+  },
+  {
+    "decision": "Where several aliases are used as keys in one mapping, record only the first",
+    "options": [],
+    "reason": "That is enough for the alias-as-key refusal",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:207; src/troupe/config/compose.py"
+  },
+  {
+    "decision": "Detect tags next to anchors by a token scan (_tags_next_to_anchors); an anchor on an include is recorded with its span in the including file",
+    "options": [],
+    "reason": "ruamel starts an anchored node's marks at the anchor",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:208"
+  },
+  {
+    "decision": "Alias-place roots also carry the anchor field, and every consumer must check alias before anchor; accept `$ref: *i`",
+    "options": [],
+    "reason": "An alias place is a full rebuild",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:209"
+  },
+  {
+    "decision": "Refuse includes as merge sources (exit 4), refuse `<<: *list`, and let `<<: []` merge nothing",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:210"
+  },
+  {
+    "decision": "A merged entry reused by deep_merge keeps via_merge, so the guard treats it as reached through a merge key",
+    "options": [],
+    "reason": "Conservative",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:210"
+  },
+  {
+    "decision": "FileLayout.entry_slot raises ValueError for via_merge entries; callers must refuse or resolve to own entries first",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:211"
+  },
+  {
+    "decision": "The merge-key precedence rule lives only in merge_keys.merged_pairs, shared by merge_mapping and _Rebuild",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:212"
+  },
+  {
+    "decision": "The planner keeps its own backstop refusal for any PATH through a merged entry; a whole replacement of a mapping with `<<` is refused; new keys take the style of the last own entry",
+    "options": [],
+    "reason": "A backstop behind the guard",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:214"
+  },
+  {
+    "decision": "_entry_bounds removes an anchored list item together with its &name",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:215"
+  },
+  {
+    "decision": "Expander refusals name site.path, and the setter re-raises them with the user's PATH; expand.py may import writeback.value (one dependency beyond the design)",
+    "options": [],
+    "reason": "expand_alias has no PATH",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:216"
+  },
+  {
+    "decision": "An anchored empty null expands to `key:  # expanded from *d by troupe`, and a full-line comment between a key and an alias on the next line is refused",
+    "options": [],
+    "reason": "So the comment is never lost",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:216"
+  },
+  {
+    "decision": "At the end of a file without a final line break, the copy adds no final break unless its last line ends a clip or keep block scalar",
+    "options": [],
+    "reason": "config-set-writeback 11.6",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:217"
+  },
+  {
+    "decision": "In the explicit-key test, pin the indentation step with an earlier nested mapping instead of changing the layout's step detection",
+    "options": [
+      "Change the layout's step detection"
+    ],
+    "reason": "The column-4 step comes from existing layout behaviour after `? `, which is outside this spec",
+    "recorded_at": "/judge/transcript.md:879; tasks.md:217"
+  },
+  {
+    "decision": "Add task 3.8 during implementation: replicate a replacement of an anchored node itself to its alias places (WrittenChanges.anchored)",
+    "options": [],
+    "reason": "Review of 3.5 found that read-back refused a correct write",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:135,218"
+  },
+  {
+    "decision": "Keep one space before the comment after `&d 5`",
+    "options": [],
+    "reason": "config-set-writeback 12.2",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:218"
+  },
+  {
+    "decision": "Add task 3.9: an anchored block list item replaced by a mapping keeps `- &d` alone on its line, with the mapping below (has_property)",
+    "options": [
+      "`- &d k: 1` (compact form)"
+    ],
+    "reason": "YAML reads the compact form's anchor as belonging to the key, so read-back refused it",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:141,219"
+  },
+  {
+    "decision": "Also fix a flow item replaced by a mapping and a mapping item replaced by a list in task 3.9",
+    "options": [],
+    "reason": "",
+    "recorded_at": "/judge/transcript.md:963"
+  },
+  {
+    "decision": "Guard: treat a change of collection kind as removing every child (_same_kind)",
+    "options": [],
+    "reason": "Fixes a guard crash when a mapping is replaced by a list",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:220"
+  },
+  {
+    "decision": "After each expansion round, refuse (exit 3, EXPANSION_CHANGES_VALUES) if the configuration changed, and refuse a stuck expansion (EXPANSION_STUCK) instead of raising RuntimeError",
+    "options": [
+      "Reviewer's wording naming the inner alias (*e)"
+    ],
+    "reason": "Safety net for a copied inner alias that binds to a redefined anchor; the message names the expanded alias because the setter cannot tell which inner alias rebound",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:221; /judge/transcript.md:1146"
+  },
+  {
+    "decision": "Replace the closure in _expanded with a module-level helper, _alias_refusal",
+    "options": [],
+    "reason": "",
+    "recorded_at": "/judge/transcript.md:1143"
+  },
+  {
+    "decision": "After expanding an empty mapping alias, setting a key in it gives `s: {k: 1} # expanded...` with one space before the comment",
+    "options": [],
+    "reason": "7.7 applies the usual comment rules (config-set-writeback 12.2); confirmed by the reviewer",
+    "recorded_at": "spec/spec/config-aliases/tasks.md:222; /judge/transcript.md:1189"
+  },
+  {
+    "decision": "Implement --expand-alias as an argparse store_true flag, so `--expand-alias=TEXT` is argparse's usage error (exit 2)",
+    "options": [],
+    "reason": "Same rules as --in-include",
+    "recorded_at": "src/troupe/cli/set_command.py (diff.patch:1751)"
+  },
+  {
+    "decision": "Check each recorded alias span against the source text, and treat a mismatch as an internal load error",
+    "options": [],
+    "reason": "Guards against changes to the ruamel internal hook",
+    "recorded_at": "src/troupe/config/compose.py; research.md:291"
+  },
+  {
+    "decision": "Update earlier specs only by adding step-6 notes (never rewriting earlier text) and mark decision H as superseded",
+    "options": [],
+    "reason": "",
+    "recorded_at": "/judge/transcript.md:1234,1247"
+  },
+  {
+    "decision": "Update the loader docstring to describe decision H as narrowed by config-aliases",
+    "options": [],
+    "reason": "",
+    "recorded_at": "/judge/transcript.md:1240"
+  },
+  {
+    "decision": "Commit on main without pushing",
+    "options": [],
+    "reason": "",
+    "recorded_at": "/judge/questions.md:5"
+  }
+]

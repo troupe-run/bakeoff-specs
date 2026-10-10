@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/repo/spec/004-config-lineage/tasks.md:129-137 (T015 maps each test_lineage_change test to US2 scenarios / FR-305; implementation at src/troupe/config/store.py:137,145)",
+    "/judge/repo/tests/e2e/test_lineage_errors.py:1-2 (cites FR-322, FR-323, D-31, D-32, SC-303); code at /judge/repo/src/troupe/cli.py:72",
+    "/judge/repo/tests/e2e/test_lineage_when_why.py:1 (cites FR-330, FR-331, FR-304); code at /judge/repo/src/troupe/cli.py:40 and /judge/repo/src/troupe/config/commands.py:132",
+    "/judge/repo/tests/e2e/test_get.py:1 (cites FR-201, from an earlier step); code at /judge/repo/src/troupe/config/commands.py:99",
+    "/judge/repo/tests/e2e/test_reconcile.py:1 (cites FR-110 to FR-122, from an earlier step); code at /judge/repo/src/troupe/config/sync.py:1",
+    "/judge/repo/tests/e2e/test_history.py:1 vs :38 (the FR-300 key-order test sits in a file whose docstring cites only FR-040 to FR-044); /judge/repo/tests/e2e/test_usage.py:30-34 (FR-332 cases carry no FR ID in the file)"
+  ],
+  "notes": "I sampled five requirements: FR-305, FR-322 and FR-330 from this step, and FR-201 and FR-110 from earlier steps. All five link correctly through FR IDs in test docstrings or tasks.md entries, and the code cites the same IDs; the score is 3, not 4, because the links are file-level and two new-step requirements outside the sample (FR-300, FR-332) are linked only via tasks.md, with no matching ID in their test files.",
+  "raw": "{\"score\": 3, \"evidence\": [\"/judge/repo/spec/004-config-lineage/tasks.md:129-137 (T015 maps each test_lineage_change test to US2 scenarios / FR-305; implementation at src/troupe/config/store.py:137,145)\", \"/judge/repo/tests/e2e/test_lineage_errors.py:1-2 (cites FR-322, FR-323, D-31, D-32, SC-303); code at /judge/repo/src/troupe/cli.py:72\", \"/judge/repo/tests/e2e/test_lineage_when_why.py:1 (cites FR-330, FR-331, FR-304); code at /judge/repo/src/troupe/cli.py:40 and /judge/repo/src/troupe/config/commands.py:132\", \"/judge/repo/tests/e2e/test_get.py:1 (cites FR-201, from an earlier step); code at /judge/repo/src/troupe/config/commands.py:99\", \"/judge/repo/tests/e2e/test_reconcile.py:1 (cites FR-110 to FR-122, from an earlier step); code at /judge/repo/src/troupe/config/sync.py:1\", \"/judge/repo/tests/e2e/test_history.py:1 vs :38 (the FR-300 key-order test sits in a file whose docstring cites only FR-040 to FR-044); /judge/repo/tests/e2e/test_usage.py:30-34 (FR-332 cases carry no FR ID in the file)\"], \"notes\": \"I sampled five requirements: FR-305, FR-322 and FR-330 from this step, and FR-201 and FR-110 from earlier steps. All five link correctly through FR IDs in test docstrings or tasks.md entries, and the code cites the same IDs; the score is 3, not 4, because the links are file-level and two new-step requirements outside the sample (FR-300, FR-332) are linked only via tasks.md, with no matching ID in their test files.\"}",
+  "score": 3,
+  "status": "ok"
+}

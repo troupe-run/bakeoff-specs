@@ -1,0 +1,65 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# agents roster\nagents:\n  - name: coder   # first key\n    model: opus   # model\n    temp: 0.2\n  - name: reviewer\n    model: sonnet  # keep me\nretry: 3",
+        "input": "`config set agents.0 \"{model: opus, temp: 0.2}\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 3; the file is unchanged. stderr: `/theatre/.troupe/troupe.yml: agents.0: this change cannot be written: an entry to remove shares its first line with content that remains`",
+          "2": "exit 0; the file now reads:\nagents:\n  - model: opus   # model\n    temp: 0.2\n  - name: reviewer\n    model: sonnet  # keep me",
+          "3": "two arms: exit 0; the file now reads:\nagents:\n  - model: opus   # model\n    temp: 0.2\n  - name: reviewer\n    model: sonnet  # keep me\none arm: the same, but the `# model` comment is dropped as well:\nagents:\n  - model: opus\n    temp: 0.2\n  - name: reviewer\n    model: sonnet  # keep me\none more arm: the same as that one (exit 0, `# model` dropped). So two arms keep `# model` and two drop it."
+        }
+      },
+      {
+        "before": "",
+        "input": "then `config set agents.1 \"{model: haiku}\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 3; the file is unchanged. stderr: `/theatre/.troupe/troupe.yml: agents.1: this change cannot be written: an entry to remove shares its first line with content that remains`",
+          "2": "exit 0; the file now reads:\nagents:\n  - model: opus   # model\n    temp: 0.2\n  - model: haiku   # keep me\nretry: 3",
+          "3": "two arms: exit 0, with the same file as route 2 (`  - model: haiku   # keep me`); two arms: exit 0, but every comment in the list is gone:\nagents:\n  - model: opus\n    temp: 0.2\n  - model: haiku\nretry: 3"
+        }
+      },
+      {
+        "before": "",
+        "input": "then `config show agents` and `config history agents`",
+        "observed": true,
+        "results": {
+          "1": "`show` prints the original list (coder/opus/0.2, reviewer/sonnet). `history` lists only the 5 import entries; no change is recorded.",
+          "2": "`show` prints:\n- model: opus\n  temp: 0.2\n- model: haiku\n`history` adds three entries after the imports: remove agents.0.name \"coder\", remove agents.1.name \"reviewer\", and set agents.1.model sonnet -> haiku, all with actor human:owner.",
+          "3": "all four arms: `show` gives the same output as route 2. `history` records the same three changes, but lists the set of agents.1.model before the remove of agents.1.name."
+        }
+      }
+    ],
+    "in_practice": "On every route that writes the file, the `# first key` comment disappears along with the `name:` line it was on. On routes 2 and 3, the old second line's comment moves up onto the dash line, so `# keep me` ends up next to `haiku` even though it was written for `sonnet`. On route 1, the user can't make this change through the command at all and has to edit the file by hand.",
+    "stakes": "When a list entry is replaced and its old first key (`name`) has to go, the user either gets the change refused, with the file left alone, or gets it written, in which case the comments in that entry may or may not survive.",
+    "tradeoff": "Route 1 never touches the file but refuses an ordinary replace. Route 2 makes the change and keeps the remaining comments, though one of them can end up on a line it wasn't written for. Route 3 also makes the change, but whether the comments survive depends on the implementation (half of its arms strip them)."
+  },
+  "plan_why": "Replaces a compact list item `- name: …` with a mapping that drops its first key. This shows whether an implementation refuses with exit 3 (route 1), moves the next key up onto the dash line (route 2) or does something else (route 3). The first case keeps the other keys unchanged; the second also changes one and has comments on the line.",
+  "routes": [
+    [
+      "Exit 3",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "Pull the next entry up into the dash line",
+      [
+        "Arm B"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

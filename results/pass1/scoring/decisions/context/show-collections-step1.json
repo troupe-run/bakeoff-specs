@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# team config\nagents:\n  coder:\n    model: opus  # main model\n    temperature: 0.2\n  tools: [grep, \"read file\"]\nretry: 3\n",
+        "input": "`config get agents`",
+        "observed": true,
+        "results": {
+          "1": "Exit 5, prints nothing, file unchanged. Two arms, same meaning, different wording. One arm: `troupe: agents: is a mapping, not a scalar; use `troupe config show agents` to print it`. The other: `troupe: agents: is a mapping, not a scalar (use `troupe config show agents`)`",
+          "2": "Exit 5, prints nothing, file unchanged. Four arms, same meaning, different wording. One arm names the file instead of the program: `/theatre/.troupe/troupe.yml: agents: is a mapping, not a value; print it with `troupe config show agents``. The others: `troupe: agents: is a mapping, not a scalar (use `troupe config show agents` to print it)`; `troupe: agents is a mapping, not a scalar; use 'troupe config show agents'`; `troupe: error: agents: is a mapping, not a scalar; use `troupe config show agents` to print it`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get agents.tools`",
+        "observed": true,
+        "results": {
+          "1": "Exit 5, prints nothing. Both arms say `agents.tools` is a list, not a scalar, and point to `troupe config show agents.tools`",
+          "2": "Exit 5, prints nothing. All four arms say it is a list and point to `troupe config show agents.tools`. One arm starts the message with the file path and says \"not a value\" instead of \"not a scalar\""
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show agents`",
+        "observed": true,
+        "results": {
+          "1": "Exit 0 (both arms); prints:\ncoder:\n  model: opus\n  temperature: 0.2\ntools:\n  - grep\n  - read file",
+          "2": "Exit 0 (all four arms); prints the same:\ncoder:\n  model: opus\n  temperature: 0.2\ntools:\n  - grep\n  - read file"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show agents.tools`",
+        "observed": true,
+        "results": {
+          "1": "Exit 0; prints:\n- grep\n- read file",
+          "2": "Exit 0; prints:\n- grep\n- read file"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show agents.coder.temperature`",
+        "observed": true,
+        "results": {
+          "1": "Exit 0; prints `0.2`",
+          "2": "Exit 0; prints `0.2`"
+        }
+      }
+    ],
+    "in_practice": "Both routes behave the same for the user: `get` on a section fails with exit 5 and tells you to use `show`, and `show` prints any section or single value as plain YAML. `show` drops the file's comments (`# main model`) and the quotes around \"read file\". Nothing was ever written to the file. The only differences are the error message wording, which varies between arms even within the same route. One arm on route 2 starts the message with the config file's path instead of `troupe:`.",
+    "stakes": "Whether asking for a whole section (a mapping or a list) with `config get` fails with a pointer to `config show`, and whether `config show` prints that section readably. In practice both routes behave the same and differ only in the wording of the error.",
+    "tradeoff": "Route 1 made exit 5 an explicit decision, so its result is a recorded choice. Route 2 got the same behaviour without anyone deciding it, so nothing guarantees it will stay that way, and its error wording varies the most."
+  },
+  "plan_why": "Runs get and show on a mapping, a list and a scalar. In the final code, show on a mapping or list prints YAML and get exits 5 with a message mentioning 'config show', so this checks whether the step-1 choice (exit 5 vs not considered) still shows.",
+  "routes": [
+    [
+      "Exit 5",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

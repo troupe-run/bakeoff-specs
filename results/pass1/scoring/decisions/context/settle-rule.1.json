@@ -1,0 +1,39 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "",
+        "input": "Save a file in an editor that empties the file first and then writes the new content",
+        "observed": false,
+        "results": {
+          "1": "nothing is recorded while the file is empty; the software records the file once it reads the same on two checks in a row, with the full new content",
+          "2": "the empty file may be recorded as the latest version, and the full content is recorded only on a later pass, if it is noticed at all"
+        }
+      }
+    ],
+    "in_practice": "Route 1 adds a short wait after each change and accepts a file only once it has stopped changing. A file that keeps changing, such as a growing log, may be picked up late or not until it goes quiet. Route 2 was not considered as an alternative. In practice it means acting on the file the moment a change is seen, which is faster but trusts whatever is on disk at that instant.",
+    "stakes": "If a file is picked up while an editor is partway through saving it, the software can record an empty or half-written version as if the user meant it. That can overwrite good data or trigger needless follow-up work.",
+    "tradeoff": "Route 1 costs a small delay and repeated reads before each file is recorded. Route 2 costs the risk of recording empty or half-saved files."
+  },
+  "plan_why": "The routes differ only in timing: whether `watch` waits until a file being saved reads the same on consecutive checks before reconciling. Showing that needs a running `watch` and a file changing at the same moment (an editor emptying and rewriting it). Commands here run one after another, `watch` is not allowed, and every file is fully written before any command starts. So each command's reconcile sees a settled file and both routes record the same events.",
+  "routes": [
+    [
+      "Reconcile only after the bytes read the same on consecutive checks",
+      [
+        "Arm B",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm C",
+        "Arm D",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

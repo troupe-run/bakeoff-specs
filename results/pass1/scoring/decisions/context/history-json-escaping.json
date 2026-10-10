@@ -1,0 +1,65 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "name: café\ngreeting: \"こんにちは\"\nmood: 🎭\nrôle: naïve\nnote: \"tab\\there\"",
+        "input": "`config history` (right after the existing config is imported)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; non-ASCII text comes out as escape codes, e.g.:\n{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"caf\\u00e9\", ...}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"mood\", \"old\": null, \"new\": \"\\ud83c\\udfad\", ...}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"r\\u00f4le\", \"old\": null, \"new\": \"na\\u00efve\", ...}",
+          "2": "exit 0; text is printed as is, e.g.:\n{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"café\", ...}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"mood\", \"old\": null, \"new\": \"🎭\", ...}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"rôle\", \"old\": null, \"new\": \"naïve\", ...}",
+          "3": "all four arms: exit 0; text is printed as is, the same as route 2 (\"café\", \"🎭\", \"rôle\", \"naïve\")"
+        }
+      },
+      {
+        "before": "",
+        "input": "`TROUPE_ACTOR=human:zoë config set greeting '\"Grüß dich 👋 — ok\"'`, then `config history greeting`",
+        "observed": true,
+        "results": {
+          "1": "set: exit 0, no output, and the config file gets `greeting: \"Grüß dich 👋 — ok\"`. history: exit 0; the new entry reads:\n{\"seq\": 6, \"op\": \"set\", \"path\": \"greeting\", \"old\": \"\\u3053\\u3093\\u306b\\u3061\\u306f\", \"new\": \"Gr\\u00fc\\u00df dich \\ud83d\\udc4b \\u2014 ok\", \"actor\": {\"kind\": \"human\", \"id\": \"zo\\u00eb\"}, \"via\": \"cli\", ...}",
+          "2": "set: exit 0, and the config file is the same as in route 1. history: exit 0; the new entry reads:\n{\"seq\": 6, \"op\": \"set\", \"path\": \"greeting\", \"old\": \"こんにちは\", \"new\": \"Grüß dich 👋 — ok\", \"actor\": {\"kind\": \"human\", \"id\": \"zoë\"}, \"via\": \"cli\", ...}",
+          "3": "all four arms: the same as route 2 (readable `\"new\": \"Grüß dich 👋 — ok\"` and `\"id\": \"zoë\"`)"
+        }
+      },
+      {
+        "before": "",
+        "input": "`TROUPE_ACTOR=agent:代理 config set rôle '\"line sep ünïcode\"' --reason 'pourquoi pas — 理由'` (the value has an invisible U+2028 line separator between \"line\" and \"sep\"), then `config history rôle`",
+        "observed": true,
+        "results": {
+          "1": "set: exit 0; the config line now reads (unquoted, with the raw separator character):\nrôle: line sep ünïcode\nhistory: exit 0; the separator is escaped, so the entry stays on one visible line:\n{\"seq\": 7, \"op\": \"set\", \"path\": \"r\\u00f4le\", \"old\": \"na\\u00efve\", \"new\": \"line\\u2028sep \\u00fcn\\u00efcode\", \"actor\": {\"kind\": \"agent\", \"id\": \"\\u4ee3\\u7406\"}, \"via\": \"cli\", ..., \"reason\": \"pourquoi pas \\u2014 \\u7406\\u7531\", ...}",
+          "2": "set: exit 0; the config line now reads (quoted, with the raw separator character):\nrôle: \"line sep ünïcode\"\nhistory: exit 0; the raw separator character is written inside the entry:\n{\"seq\": 7, \"op\": \"set\", \"path\": \"rôle\", \"old\": \"naïve\", \"new\": \"line sep ünïcode\", \"actor\": {\"kind\": \"agent\", \"id\": \"代理\"}, \"via\": \"cli\", ..., \"reason\": \"pourquoi pas — 理由\", ...}",
+          "3": "The arms on this route wrote the config file differently. Two arms: exit 0; the config line now reads\nrôle: \"line\\Lsep ünïcode\"\nOne arm: exit 0; it reads (unquoted, raw separator)\nrôle: line sep ünïcode\nOne arm: exit 0; it reads (quoted, raw separator)\nrôle: \"line sep ünïcode\"\nAll four arms printed the same history: the raw separator inside the entry, as in route 2 (`\"new\": \"line sep ünïcode\"`, `\"id\": \"代理\"`)."
+        }
+      }
+    ],
+    "in_practice": "On all three routes, history entries list their fields in the same order (seq, op, path, old, new, actor, via, at, reason, change), and a tab is printed as `\\t`. The only difference in the history output is escaping. Route 1 prints only plain ASCII, which is hard for a person to read (`zo\\u00eb`, `\\u4ee3\\u7406`) but always stays one entry per line. Routes 2 and 3 print readable text. They also pass a U+2028 character through raw, and some line-based readers split on it. On route 3, how that value is written to the config file depended on the arm.",
+    "stakes": "This is about how the change history prints non-English text: as readable characters (`café`, `zoë`, `代理`, 👋) or as `\\u` escape codes. It also covers what happens to an invisible line-separator character (U+2028) inside a value, which some line-by-line readers treat as a line break.",
+    "tradeoff": "Route 1 is safe but hard to read: names, values and reasons in non-English text show up as escape codes. Route 2 is readable but passes raw U+2028 into the history output. Route 3 gives the same history output as route 2, but its arms disagreed on how to write that value to the config file."
+  },
+  "plan_why": "Prints history JSON Lines for non-ASCII values, keys, reasons and actor ids (accents, CJK, an emoji outside the BMP, U+2028). This shows whether each implementation writes these characters literally or as \\uXXXX escapes, and whether keys keep a fixed order.",
+  "routes": [
+    [
+      "ASCII escaping",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "ensure_ascii=False with keys in a fixed order",
+      [
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

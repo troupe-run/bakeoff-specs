@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "How a history line's seq is derived",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "None recorded",
+      "route": "Keep the history log in the aggregate's state and number seq by position in that log",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Gapless and starting at 1 by construction, with no counter to maintain",
+      "route": "seq = originator_version - 1; the created/started event is not a history line",
+      "route_no": 2
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

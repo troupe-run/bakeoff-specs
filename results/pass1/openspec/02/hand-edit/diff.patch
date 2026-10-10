@@ -1,0 +1,67 @@
+commit 8f6131a481604ac6451675cebde2c01e886a4c45
+Author:     Sam Teammate <sam.teammate@troupe.run>
+AuthorDate: Fri Oct 2 21:30:48 2026 +0000
+Commit:     Sam Teammate <sam.teammate@troupe.run>
+CommitDate: Fri Oct 2 21:30:48 2026 +0000
+
+    Let TROUPE_THEATRE set the default theatre
+
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index a010a80..9871188 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -1,6 +1,7 @@
+ """Command-line entry point: `troupe config <show|set|history> [--theatre DIR] …`."""
+ 
+ import argparse
++import os
+ import sys
+ from collections.abc import Sequence
+ from pathlib import Path
+@@ -19,7 +20,11 @@ class _Parser(argparse.ArgumentParser):
+ 
+ def _parser() -> argparse.ArgumentParser:
+     theatre = _Parser(add_help=False)
+-    theatre.add_argument("--theatre", default=argparse.SUPPRESS, help="theatre directory (default: current)")
++    theatre.add_argument(
++        "--theatre",
++        default=argparse.SUPPRESS,
++        help="theatre directory (default: $TROUPE_THEATRE, else current)",
++    )
+ 
+     parser = _Parser(prog="troupe", parents=[theatre])
+     groups = parser.add_subparsers(dest="group", required=True, parser_class=_Parser)
+@@ -39,7 +44,7 @@ def _parser() -> argparse.ArgumentParser:
+ def run(argv: Sequence[str]) -> str:
+     """Run a command and return what it prints; raises TroupeError on failure."""
+     args = _parser().parse_args(argv)
+-    theatre = Path(getattr(args, "theatre", "."))
++    theatre = Path(getattr(args, "theatre", os.environ.get("TROUPE_THEATRE") or "."))
+     if args.command == "show":
+         return commands.show(theatre, parse_path(args.path))
+     if args.command == "set":
+diff --git a/tests/test_cli.py b/tests/test_cli.py
+index 37a1cfe..89ce1b9 100644
+--- a/tests/test_cli.py
++++ b/tests/test_cli.py
+@@ -15,6 +15,20 @@ def test_theatre_defaults_to_the_current_directory(
+     assert (r.code, r.out) == (0, "x\n")
+ 
+ 
++def test_theatre_defaults_to_troupe_theatre_but_the_option_wins(
++    tmp_path: Path, run: Callable[..., Result], monkeypatch: pytest.MonkeyPatch
++) -> None:
++    env, opt = Theatre(tmp_path / "env", run), Theatre(tmp_path / "opt", run)
++    env.write("troupe.yml", "model: env\n")
++    opt.write("troupe.yml", "model: opt\n")
++    monkeypatch.setenv("TROUPE_THEATRE", str(env.root))
++    assert run("show", "model").out == "env\n"
++    assert run("--theatre", str(opt.root), "show", "model").out == "opt\n"
++    monkeypatch.setenv("TROUPE_THEATRE", "")
++    monkeypatch.chdir(opt.root)
++    assert run("show", "model").out == "opt\n"
++
++
+ def test_theatre_option_may_come_before_the_subcommand(
+     make: Callable[[str], Theatre], run: Callable[..., Result]
+ ) -> None:

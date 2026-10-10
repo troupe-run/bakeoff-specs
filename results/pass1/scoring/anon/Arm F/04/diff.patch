@@ -1,0 +1,2257 @@
+diff --git a/README.md b/README.md
+index 6da5b24..b5c99d9 100644
+--- a/README.md
++++ b/README.md
+@@ -8,7 +8,7 @@ disturbing the hand-written files, and records every change as an event.
+ ```sh
+ uv run troupe config get PATH           [--theatre DIR]   # print a scalar setting
+ uv run troupe config show [PATH] [--sources] [--theatre DIR]   # print a setting or a section as YAML
+-uv run troupe config set PATH VALUE     [--theatre DIR]   # change it in the file that holds it
++uv run troupe config set PATH VALUE [--reason TEXT] [--theatre DIR]   # change it in the file that holds it
+ uv run troupe config history [PATH]     [--theatre DIR]   # list changes as JSON Lines
+ uv run troupe config watch              [--theatre DIR]   # record hand edits as they happen
+ ```
+@@ -32,6 +32,17 @@ uv run troupe config watch              [--theatre DIR]   # record hand edits as
+   events, whatever was edited in the files since the last command. `watch` does the same within
+   2 seconds of each edit until you stop it (Ctrl-C or SIGTERM); a formatting- or comment-only edit
+   records nothing, and a `set` made while `watch` runs is recorded once.
++- Every history line also says who made the change, how, when, why, and what changed with it:
++
++  ```text
++  {"seq": 3, "op": "set", "path": "b.0", "old": "x", "new": "z", "actor": {"kind": "agent", "id": "coder-7"}, "via": "cli", "at": "2026-10-04T09:06:00.000003Z", "reason": "trim", "change": "5c2f…"}
++  ```
++
++  `actor` comes from `TROUPE_ACTOR=human:<id>` or `agent:<id>` (unset → you, by login name;
++  anything else → exit 2, for every command). `via` is `cli`, `file` (a hand edit) or `import`
++  (the first command); hand edits and imports have actor `{"kind": "unknown", "id": null}`.
++  `reason` is the text given with `set --reason`, else `null`. All events one `set`, one
++  reconcile or the import records share one `change` and one UTC `at`.
+ - State (the event store) lives in `<theatre>/.troupe/events.sqlite3`, with
+   `events.sqlite3.lock` beside it so that concurrent commands record each change once.
+ 
+@@ -54,4 +65,5 @@ uv run ruff check . && uv run ruff format --check .
+ 
+ Specification, design decisions and task list: [`spec/001-config-load-show-set/`](spec/001-config-load-show-set/)
+ (load, show, set, history) and [`spec/002-config-file-sync/`](spec/002-config-file-sync/) (sync with
+-files, watch) and [`spec/003-config-get-show/`](spec/003-config-get-show/) (get, show as YAML).
++files, watch) and [`spec/003-config-get-show/`](spec/003-config-get-show/) (get, show as YAML) and
++[`spec/004-config-lineage/`](spec/004-config-lineage/) (lineage).
+diff --git a/spec/001-config-load-show-set/contracts/cli.md b/spec/001-config-load-show-set/contracts/cli.md
+index 5e7679d..1950e68 100644
+--- a/spec/001-config-load-show-set/contracts/cli.md
++++ b/spec/001-config-load-show-set/contracts/cli.md
+@@ -2,6 +2,8 @@
+ 
+ > Step 3: `show PATH` below is now `get PATH`; `show` prints sections as YAML — see
+ > `spec/003-config-get-show/contracts/cli.md`.
++> Step 4: history lines gain lineage fields (`actor`, `via`, `at`, `reason`, `change`) and `set`
++> gains `--reason TEXT` — see `spec/004-config-lineage/contracts/cli.md`.
+ 
+ The product owner's contract (quoted in `spec.md` input) is normative; this file fixes the command
+ surface the implementation exposes and the exact output shapes tests check.
+diff --git a/spec/002-config-file-sync/spec.md b/spec/002-config-file-sync/spec.md
+index fd25e57..a14347b 100644
+--- a/spec/002-config-file-sync/spec.md
++++ b/spec/002-config-file-sync/spec.md
+@@ -311,4 +311,5 @@ otherwise non-local file systems where change notification is unreliable.
+ - A theatre has at most one `watch` running at a time.
+ - Hand edits are saved files; unsaved editor buffers are not visible to troupe.
+ - History needs no field to tell hand edits from `set` commands: the contract asks for `set`/`remove`
+-  events and does not ask for a source, so none is invented (Principle V).
++  events and does not ask for a source, so none is invented (Principle V). *(Superseded by step 4:
++  `via` tells hand edits from `set`; see `spec/004-config-lineage/spec.md`.)*
+diff --git a/spec/004-config-lineage/checklists/requirements.md b/spec/004-config-lineage/checklists/requirements.md
+new file mode 100644
+index 0000000..036a88e
+--- /dev/null
++++ b/spec/004-config-lineage/checklists/requirements.md
+@@ -0,0 +1,41 @@
++# Specification Quality Checklist: troupe configuration — lineage (Step 4)
++
++**Purpose**: Validate specification completeness and quality before proceeding to planning
++**Created**: 2026-10-04
++**Feature**: [spec.md](../spec.md)
++
++## Content Quality
++
++- [x] No implementation details (languages, frameworks, APIs)
++- [x] Focused on user value and business needs
++- [x] Written for non-technical stakeholders
++- [x] All mandatory sections completed
++
++## Requirement Completeness
++
++- [x] No [NEEDS CLARIFICATION] markers remain
++- [x] Requirements are testable and unambiguous
++- [x] Success criteria are measurable
++- [x] Success criteria are technology-agnostic (no implementation details)
++- [x] All acceptance scenarios are defined
++- [x] Edge cases are identified
++- [x] Scope is clearly bounded
++- [x] Dependencies and assumptions identified
++
++## Feature Readiness
++
++- [x] All functional requirements have clear acceptance criteria
++- [x] User scenarios cover primary flows
++- [x] Feature meets measurable outcomes defined in Success Criteria
++- [x] No implementation details leak into specification
++
++## Notes
++
++- The technical terms in the spec (JSON Lines fields, RFC 3339, `TROUPE_ACTOR`, exit codes,
++  stdout/stderr) are the user-facing vocabulary of the CLI fixed by the contract.
++- Open points the contract leaves to the implementer are resolved and recorded as D-30 … D-38
++  (Principle V). The most consequential is D-30: an invocation's import and reconcile are separate
++  `change` units from the `set`'s own change, so hand edits are never attributed to the CLI actor.
++  D-31 checks `TROUPE_ACTOR` on every command, not only `set`.
++- Event stores recorded before step 4 are declared out of contract rather than given guessed lineage.
++- Validation passed on the first iteration.
+diff --git a/spec/004-config-lineage/contracts/cli.md b/spec/004-config-lineage/contracts/cli.md
+new file mode 100644
+index 0000000..d246752
+--- /dev/null
++++ b/spec/004-config-lineage/contracts/cli.md
+@@ -0,0 +1,46 @@
++# CLI Contract: `troupe config` (Step 4 additions)
++
++The contracts of steps 1–3 (`spec/00{1,2,3}-*/contracts/cli.md`) stay in force. This file adds the
++lineage fields, `TROUPE_ACTOR` and `set --reason`.
++
++## Invocation
++
++```text
++uv run troupe config set PATH VALUE [--reason TEXT] [--theatre DIR]
++```
++
++`--reason` is accepted only by `set`; `--reason` without TEXT, or on any other subcommand → exit 2.
++
++## Environment
++
++| Variable | Values | Effect |
++|---|---|---|
++| `TROUPE_ACTOR` | unset | actor of `set`'s events: `{"kind": "human", "id": <login name, or null if unknown>}` |
++| | `human:<id>` / `agent:<id>`, `<id>` non-empty | actor `{"kind": "human"/"agent", "id": "<id>"}`; `<id>` is everything after the first `:` |
++| | anything else (incl. empty, `human:`, `Human:x`, `robot:x`) | every `config` subcommand exits 2, stderr `troupe: error: TROUPE_ACTOR: …` naming the value; nothing loaded, recorded or written |
++
++## `history` line format
++
++Each line is one JSON object with keys in this order:
++
++| Key | Value |
++|---|---|
++| `seq`, `op`, `path`, `old`, `new` | as step 1 |
++| `actor` | `{"kind": "human" \| "agent" \| "unknown", "id": string \| null}` |
++| `via` | `"import"` \| `"cli"` \| `"file"` |
++| `at` | RFC 3339 UTC, `YYYY-MM-DDTHH:MM:SS.ffffffZ` |
++| `reason` | string \| null |
++| `change` | opaque string; equal for events of one unit, distinct between units |
++
++Examples:
++
++```text
++{"seq": 1, "op": "import", "path": "a", "old": null, "new": 1, "actor": {"kind": "unknown", "id": null}, "via": "import", "at": "2026-10-04T09:00:00.000001Z", "reason": null, "change": "0b6e…"}
++{"seq": 2, "op": "set", "path": "a", "old": 1, "new": 2, "actor": {"kind": "unknown", "id": null}, "via": "file", "at": "2026-10-04T09:05:00.000002Z", "reason": null, "change": "a91d…"}
++{"seq": 3, "op": "set", "path": "b.0", "old": "x", "new": "z", "actor": {"kind": "agent", "id": "coder-7"}, "via": "cli", "at": "2026-10-04T09:06:00.000003Z", "reason": "trim", "change": "5c2f…"}
++{"seq": 4, "op": "remove", "path": "b.1", "old": "y", "new": null, "actor": {"kind": "agent", "id": "coder-7"}, "via": "cli", "at": "2026-10-04T09:06:00.000003Z", "reason": "trim", "change": "5c2f…"}
++```
++
++## Exit codes
++
++Unchanged. New exit-2 causes: invalid `TROUPE_ACTOR` (any subcommand); `--reason` misuse.
+diff --git a/spec/004-config-lineage/data-model.md b/spec/004-config-lineage/data-model.md
+new file mode 100644
+index 0000000..3511220
+--- /dev/null
++++ b/spec/004-config-lineage/data-model.md
+@@ -0,0 +1,67 @@
++# Data Model: troupe configuration — lineage (Step 4)
++
++Entities from steps 1–3 (theatre, configuration file, include, leaf, projection, reconcile, watched
++file set, YAML view) are unchanged. Step 4 adds lineage to every event.
++
++## Actor
++
++| Field | Type | Rules |
++|---|---|---|
++| `kind` | `"human"` \| `"agent"` \| `"unknown"` | |
++| `id` | string \| null | non-empty when given by `TROUPE_ACTOR`; the login name or null when `TROUPE_ACTOR` is unset; always null for `unknown` |
++
++Sources (FR-310, FR-320 – FR-322):
++
++| Situation | Actor |
++|---|---|
++| import, reconcile (by any command or `watch`) | `{"kind": "unknown", "id": null}` (`UNKNOWN_ACTOR`) |
++| `set`'s own events, `TROUPE_ACTOR=human:<id>` / `agent:<id>` | `{"kind": "human"/"agent", "id": "<id>"}` (id = text after the first `:`, exact) |
++| `set`'s own events, `TROUPE_ACTOR` unset | `{"kind": "human", "id": <login name or null>}` |
++| `TROUPE_ACTOR` set to anything else (incl. `""`, `human:`) | no actor: every command exits 2 before loading |
++
++## Lineage
++
++One value per **unit** (an import, a reconcile, or a `set`'s own change), stamped on each of the
++unit's events.
++
++| Field | Type | Rules |
++|---|---|---|
++| `actor` | Actor | see above |
++| `via` | `"import"` \| `"file"` \| `"cli"` | import → `import`; reconcile → `file`; `set` → `cli` |
++| `at` | string | `YYYY-MM-DDTHH:MM:SS.ffffffZ`, UTC, taken once when the unit begins (research L-4) |
++| `reason` | string \| null | `set --reason TEXT` → TEXT exactly (`""` allowed); otherwise null; always null for `import`/`file` |
++| `change` | string | random UUID string, fresh per unit (research L-3) |
++
++Invariants: all events of a unit have identical lineage; distinct units have distinct `change`;
++lineage never changes once recorded.
++
++## Event (`LeafChanged`, extended)
++
++| Field | Type | Since |
++|---|---|---|
++| `op` | `import` \| `set` \| `remove` | step 1 |
++| `path` | dotted string | step 1 |
++| `old`, `new` | scalar \| null | step 1 |
++| `actor_kind`, `actor_id`, `via`, `at`, `reason`, `change` | string \| null | step 4 |
++
++`seq` is the event's position in the stream (from 1), as before.
++
++## HistoryRecord / history line
++
++`HistoryRecord(seq, op, path, old, new, lineage)`; printed by `history` as one JSON object per line:
++
++```json
++{"seq": 4, "op": "set", "path": "a", "old": 1, "new": 2, "actor": {"kind": "agent", "id": "coder-7"}, "via": "cli", "at": "2026-10-04T09:15:02.123456Z", "reason": "raise for load test", "change": "6f1c…"}
++```
++
++## Units recorded by one invocation
++
++```text
++set PATH VALUE on a theatre:
++  never imported → [import unit: via import]          (no reconcile: step 1 FR-042)
++  imported       → [reconcile unit: via file]          (only if something differs)
++  then           → [set unit: via cli, actor, reason]  (only if something changes)
++get / show       → import unit or reconcile unit, as above
++history          → import unit if never imported; nothing otherwise
++watch            → import unit or reconcile unit at start; one reconcile unit per later reconcile
++```
+diff --git a/spec/004-config-lineage/plan.md b/spec/004-config-lineage/plan.md
+new file mode 100644
+index 0000000..a33cd8c
+--- /dev/null
++++ b/spec/004-config-lineage/plan.md
+@@ -0,0 +1,147 @@
++# Implementation Plan: troupe configuration — lineage (Step 4)
++
++**Branch**: `main` (spec dir `004-config-lineage`) | **Date**: 2026-10-04 | **Spec**: [spec.md](spec.md)
++
++**Input**: Feature specification from `spec/004-config-lineage/spec.md`
++
++## Summary
++
++Stamp every recorded event with lineage — actor, via, at, reason, change — and print it from
++`history`. Lineage is stored as extra arguments of the existing `LeafChanged` event, so it is
++persisted and replayed by `eventsourcing` with the event itself (research L-1). A new
++`config/lineage.py` holds the `Actor`/`Lineage` values, `TROUPE_ACTOR` parsing, the login-name lookup
++and the timestamp format (L-2 – L-6). Each `ConfigStore` call that saves a unit (import, reconcile,
++`set`) takes one `Lineage`, so every event of a unit shares `change` and `at` by construction. The
++CLI validates `TROUPE_ACTOR` for every subcommand before anything is loaded, and `set` gains
++`--reason TEXT`.
++
++## Technical Context
++
++**Language/Version**: Python 3.12+ (managed with `uv`)
++
++**Primary Dependencies**: unchanged — `eventsourcing` 9.5 (SQLite), `ruamel.yaml`. Standard library
++only for the new parts (`uuid`, `datetime`, `getpass`). No new dependency.
++
++**Storage**: unchanged files (`<theatre>/.troupe/events.sqlite3`, lock file); the stored
++`LeafChanged` event gains six fields.
++
++**Testing**: pytest; end-to-end tests drive the real CLI on real theatres with controlled
++`TROUPE_ACTOR` and `LOGNAME`, parse `history` JSON Lines and check lineage values, grouping and
++timestamps (bounded by times taken before and after each command); unit tests for actor parsing,
++login-name fallback and timestamp format.
++
++**Target Platform**: macOS and Linux
++
++**Project Type**: CLI (single Python package, `src/` layout)
++
++**Performance Goals**: none (constitution).
++
++**Constraints**: lineage immutable once recorded; invalid actor detected before any load or write;
++`mypy --strict` and ruff clean.
++
++**Scale/Scope**: one new module, changes to `store.py`, `sync.py`, `commands.py`, `cli.py`, test
++fixtures; README.
++
++No NEEDS CLARIFICATION remains: every technical point is resolved in [research.md](research.md).
++
++## Constitution Check
++
++*GATE: Must pass before Phase 0 research. Re-checked after Phase 1 design (below).*
++
++| Principle / constraint | How the plan satisfies it | Status |
++|---|---|---|
++| I. User's files are sacred | No change to loading or write-back. An invalid `TROUPE_ACTOR` or `--reason` misuse is rejected before loading, so no file is touched (tests compare theatre bytes before and after). The `TROUPE_ACTOR` error names the variable (and FR-008's "path or file" is about configuration; the actor has neither). | PASS |
++| II. Tests that prove behaviour | Each FR-300 – FR-332 and each acceptance scenario maps to an e2e test on real theatres through the real CLI (actor per source, `via` per unit, grouping across import/reconcile/set in one invocation, reason scoping, `at` bounds and format, persistence across processes with a different actor, every invalid actor form on every subcommand). `conftest` removes any inherited `TROUPE_ACTOR` so tests cannot pass by accident of the developer's environment. | PASS |
++| III. Done means verified | Gates in [quickstart.md](quickstart.md) — pytest, `mypy --strict`, ruff — run and shown. | PASS |
++| IV. One decision, one place | `lineage.py`: env var name, actor grammar, unknown actor, login-name rule, `at` format, change-id rule. Which unit gets which `via`/actor: `open_theatre` (import, file) and `set_value` (cli). JSON field order: `history`. Pre-step-4 stores: no code (L-8). | PASS |
++| V. Deliver what was asked | Every contract bullet maps to FRs; open choices recorded (spec D-30 – D-38, research L-1 – L-8). Nothing beyond the contract is added (no actor on reads, no lineage filters). | PASS |
++| VI. Traceability | Spec supersedes step 2's "no source field" assumption explicitly; README gains `TROUPE_ACTOR`, `--reason` and the history fields in the same change as the code; code comments at `lineage.py` and the stamping sites cite the spec. | PASS |
++| Tech constraints | Python 3.12+/uv; `uv run troupe config …`; history stays in the `eventsourcing` store; config location unchanged; macOS/Linux (`getpass` login name); no perf work. | PASS |
++
++## Project Structure
++
++### Documentation (this feature)
++
++```text
++spec/004-config-lineage/
++├── plan.md              # This file
++├── research.md          # Phase 0 output
++├── data-model.md        # Phase 1 output
++├── quickstart.md        # Phase 1 output
++├── contracts/cli.md     # Phase 1 output
++└── tasks.md             # Phase 2 output (/method-command)
++```
++
++### Source Code (repository root)
++
++```text
++src/troupe/
++├── cli.py                     # + `set --reason TEXT`; actor_from_env() before dispatch; actor → set_value
++└── config/
++    ├── lineage.py             # NEW: ACTOR_ENV, Actor, UNKNOWN_ACTOR, Lineage.begin, actor_from_env,
++    │                          #      login_name, format_at, new_change_id (L-2 – L-6)
++    ├── store.py               # LeafChanged + lineage args; HistoryRecord.lineage;
++    │                          # import_leaves(leaves, lineage), record(events, lineage)
++    ├── sync.py                # reconcile stamps Lineage.begin(UNKNOWN_ACTOR, "file")
++    └── commands.py            # open_theatre: import lineage; set_value(actor, reason); history prints lineage
++tests/
++├── conftest.py                # strip TROUPE_ACTOR from inherited env; set LOGNAME; history helper unchanged
++├── e2e/
++│   ├── test_lineage_actor.py      # US1: actor + via per source; TROUPE_ACTOR forms; login name
++│   ├── test_lineage_change.py     # US2: grouping within units, distinct across units, PATH filter
++│   ├── test_lineage_when_why.py   # US3: --reason scoping, "" reason, at format/bounds/shared per unit
++│   ├── test_lineage_persist.py    # US4: lineage identical across processes and actors
++│   ├── test_lineage_watch.py      # watch reconcile → file/unknown; set under watch keeps its lineage
++│   ├── test_lineage_errors.py     # invalid TROUPE_ACTOR on every subcommand → 2, nothing recorded/written
++│   ├── test_history.py            # existing exact-line assertions updated to include lineage keys
++│   └── test_usage.py              # + --reason misuse
++└── unit/
++    └── test_lineage.py        # actor_from_env grammar; login_name fallback; format_at
++```
++
++Existing tests that compare whole history lines (`test_history.py`, `test_reconcile.py`,
++`test_watch*.py`, `test_state.py`) are updated to compare the step 1 fields and check lineage
++separately, so they keep proving what they proved.
++
++**Structure Decision**: Keep the existing layout; lineage is one new decision area and gets one new
++module.
++
++## Design overview
++
++1. **`lineage.py`**
++   - `ACTOR_ENV = "TROUPE_ACTOR"`; `ActorKind = Literal["human", "agent", "unknown"]`;
++     `Actor(kind, id)`; `UNKNOWN_ACTOR = Actor("unknown", None)`.
++   - `actor_from_env(environ: Mapping[str, str]) -> Actor`: absent → `Actor("human", login_name())`;
++     `kind, sep, ident = value.partition(":")`; valid iff `sep` and `kind in ("human", "agent")` and
++     `ident`; else `UsageError(f"{ACTOR_ENV}: {value!r} is not human:<id> or agent:<id>")`.
++   - `login_name()`: `getpass.getuser()` or `None` on `OSError`/`KeyError`/empty.
++   - `format_at(moment)`: `%Y-%m-%dT%H:%M:%S.%fZ` of a UTC datetime.
++   - `Lineage(actor, via, at, reason, change)`; `Lineage.begin(actor, via, reason=None)` sets
++     `at = format_at(datetime.now(UTC))`, `change = str(uuid4())`.
++2. **`store.py`**: `TheatreConfig.change(op, path, old, new, actor_kind, actor_id, via, at, reason,
++   change)`; the applied body appends `HistoryRecord(seq, op, path, old, new, Lineage(...))`.
++   `import_leaves(leaves, lineage)` and `record(events, lineage)` pass the lineage's fields for each
++   event; `record` still returns early on an empty list.
++3. **`sync.reconcile(loaded, store)`**: `store.record(events, Lineage.begin(UNKNOWN_ACTOR, "file"))`.
++4. **`commands.py`**
++   - `open_theatre`: `store.import_leaves(..., Lineage.begin(UNKNOWN_ACTOR, "import"))`.
++   - `set_value(theatre, path_text, value_text, actor, reason)`: after `apply_set`,
++     `store.record(events, Lineage.begin(actor, "cli", reason))` — begun after the reconcile, so its
++     `change` and `at` are its own.
++   - `history`: entry adds `actor: {"kind", "id"}`, `via`, `at`, `reason`, `change` after `new`.
++5. **`cli.py`**: `set` gets `--reason` (`metavar="TEXT"`, default `None`); in `run`, after
++   `parse_args`, `actor = actor_from_env(os.environ)` for every subcommand, then dispatch; only `set`
++   uses it.
++6. **Docs**: README — `TROUPE_ACTOR`, `set --reason`, history line example with lineage; link to
++   `spec/004-config-lineage/`.
++
++## Post-design Constitution Check
++
++Re-evaluated after writing research.md, data-model.md, contracts/cli.md and quickstart.md: all rows
++above remain PASS. The deliberate non-handling of pre-step-4 stores (L-8) follows Principle V and the
++spec's "Out of contract" list rather than adding speculative migration code. No violation;
++Complexity Tracking is empty.
++
++## Complexity Tracking
++
++No constitution violations to justify.
+diff --git a/spec/004-config-lineage/quickstart.md b/spec/004-config-lineage/quickstart.md
+new file mode 100644
+index 0000000..fdd872e
+--- /dev/null
++++ b/spec/004-config-lineage/quickstart.md
+@@ -0,0 +1,49 @@
++# Quickstart: validate step 4 (lineage)
++
++Prerequisites: `uv sync` at the repository root.
++
++## Gates (Principle III — run and show the output)
++
++```sh
++uv run pytest
++uv run mypy --strict src tests
++uv run ruff check . && uv run ruff format --check .
++```
++
++## Manual walk-through
++
++```sh
++T=$(mktemp -d); mkdir -p $T/.troupe
++printf 'a: 1\nb: [x, y]\n' > $T/.troupe/troupe.yml
++
++uv run troupe config history --theatre $T
++#  3 import lines: actor unknown/null, via "import", same "change", reason null
++
++TROUPE_ACTOR=agent:coder-7 uv run troupe config set b '[z]' --reason trim --theatre $T
++uv run troupe config history b --theatre $T
++#  b.0 set + b.1 remove: actor agent/coder-7, via "cli", reason "trim", one shared "change"
++#  and one shared "at" ending in Z
++
++sed -i.bak 's/a: 1/a: 2/' $T/.troupe/troupe.yml
++TROUPE_ACTOR=human:alice uv run troupe config get a --theatre $T     # prints 2
++uv run troupe config history a --theatre $T
++#  last line: via "file", actor unknown/null — alice is not credited
++
++uv run troupe config set a 3 --theatre $T                          # TROUPE_ACTOR unset
++uv run troupe config history a --theatre $T | tail -1
++#  actor {"kind": "human", "id": "<your login name>"}, reason null
++
++TROUPE_ACTOR=robot:x uv run troupe config history --theatre $T; echo "exit $?"
++#  exit 2, stderr names TROUPE_ACTOR, nothing printed on stdout
++TROUPE_ACTOR= uv run troupe config get a --theatre $T; echo "exit $?"     # exit 2
++uv run troupe config get a --reason x --theatre $T; echo "exit $?"       # exit 2
++```
++
++Re-running `config history` in a new shell with a different `TROUPE_ACTOR` prints the earlier lines
++byte-for-byte unchanged (SC-304).
++
++## What the tests cover
++
++See [contracts/cli.md](contracts/cli.md) for the line format and [data-model.md](data-model.md) for
++which unit gets which lineage. The automated suite checks each spec acceptance scenario end-to-end on
++real theatres through the real CLI.
+diff --git a/spec/004-config-lineage/research.md b/spec/004-config-lineage/research.md
+new file mode 100644
+index 0000000..8f4866b
+--- /dev/null
++++ b/spec/004-config-lineage/research.md
+@@ -0,0 +1,98 @@
++# Research: troupe configuration — lineage (Step 4)
++
++Each entry gives the decision, why it was made, and what else was considered. Behaviour choices the
++contract leaves open are in `spec.md` (D-30 … D-38). This file records the technical choices for step 4
++(L-1 … L-8). Research from steps 1–3 (R-*, B-*, S-*, G-*) stays in force. Library behaviour was checked
++against the locked `eventsourcing` 9.5.5 on 2026-10-04.
++
++## L-1 Lineage is stored in the existing `LeafChanged` event
++
++- **Decision**: `TheatreConfig.change` (the `@event("LeafChanged")` method) gains the arguments
++  `actor_kind`, `actor_id`, `via`, `at`, `reason`, `change` (all `str` or `None`). `eventsourcing`
++  persists every argument of a decorated method in the stored event and replays them when the
++  aggregate is rebuilt, so lineage survives restarts with no new table or file (FR-306). The applied
++  method appends them to the `HistoryRecord` it already builds.
++- **Rationale**: One stream, one event type, one place that turns events into history (Principle IV).
++  The event store is already the constitution-mandated home of history; lineage is part of each event's
++  facts and must be exactly as durable and atomic as the event itself.
++- **Alternatives**: A side table keyed by `seq` — two writes that could disagree; a second event type
++  per unit ("ChangeStarted") — complicates replay and `history` filtering for no gain.
++
++## L-2 One `Lineage` value per unit, created where the unit is recorded
++
++- **Decision**: New module `config/lineage.py` holds `Actor` (kind, id), `Lineage` (actor, via, at,
++  reason, change) and the constructors `Lineage.begin(actor, via, reason=None)` (fresh `change` and
++  `at`) plus the constants `UNKNOWN_ACTOR`. `ConfigStore.import_leaves(leaves, lineage)` and
++  `ConfigStore.record(events, lineage)` stamp every event of the call with the one lineage. Callers:
++  `open_theatre` creates `Lineage.begin(UNKNOWN_ACTOR, "import")` for the import and
++  `Lineage.begin(UNKNOWN_ACTOR, "file")` for the reconcile; `set_value` creates
++  `Lineage.begin(actor, "cli", reason)` for its own events.
++- **Rationale**: Each `store` call already saves one unit atomically (step 2 FR-115), so "one call, one
++  lineage" gives FR-303 (same `at`) and FR-305 (same `change`) by construction. The mapping
++  "import/file → unknown actor" lives in `open_theatre`, the single place both are recorded (FR-310).
++  `record` returns early on an empty list, so a unit with no events leaves no trace.
++- **Alternatives**: Pass lineage per event — allows a unit with mixed lineage by mistake.
++
++## L-3 `change` is a random UUID (version 4) as a string
++
++- **Decision**: `change = str(uuid.uuid4())`.
++- **Rationale**: Unique across processes without coordination (a `set` and `watch` may record at
++  nearly the same moment; the theatre lock already serialises them, but uniqueness does not depend on
++  it). Opaque, as spec D-37 requires. 122 random bits make a collision within one history negligible.
++- **Alternatives**: A counter stored in the aggregate — needs a read-modify-write and would let users
++  read meaning into it; `seq` of the unit's first event — not known before saving and empty units have
++  none; timestamp-based ids — can collide when the clock is moved back.
++
++## L-4 `at` is captured once per unit, in UTC, with microseconds
++
++- **Decision**: `at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")`, taken in `Lineage.begin`,
++  i.e. immediately before the unit's events are computed and saved — inside the command's run, so it
++  lies between the command's start and end (spec US3 scenario 5). The format function is one named
++  function `format_at` in `lineage.py`.
++- **Rationale**: RFC 3339 with a `Z` suffix as the contract requires (`isoformat()` would give
++  `+00:00`). Microseconds keep successive units distinguishable. Stored as the formatted string, so
++  `history` prints exactly what was recorded (FR-306).
++- **Alternatives**: `eventsourcing`'s own per-event `timestamp` — differs between events of one save,
++  violating FR-303, and its format is the library's, not the contract's.
++
++## L-5 `TROUPE_ACTOR` is parsed once in the CLI, before any command runs
++
++- **Decision**: `lineage.actor_from_env(environ) -> Actor` implements FR-320 – FR-322: unset → human
++  with `login_name()`; `human:<id>` / `agent:<id>` with non-empty id (split on the first `:`, exact,
++  case-sensitive) → that actor; anything else → `UsageError` naming `TROUPE_ACTOR` and the value
++  (exit 2). `cli.run` calls it right after argument parsing and before dispatch, for every subcommand,
++  and passes the actor to `commands.set_value` (FR-323, spec D-31). The environment variable name is
++  the constant `ACTOR_ENV` in `lineage.py`.
++- **Rationale**: Argument parsing does not touch the theatre, so checking right after it guarantees
++  nothing is loaded, imported, reconciled or written when the actor is invalid. One function decides
++  validity (Principle IV).
++- **Alternatives**: Check only in `set` — rejected by spec D-31.
++
++## L-6 The login name is `getpass.getuser()`, else null
++
++- **Decision**: `login_name() -> str | None` returns `getpass.getuser()`, and `None` if it raises
++  (`OSError`, or `KeyError` when the uid has no passwd entry), or returns an empty string (spec D-34).
++- **Rationale**: `getpass.getuser()` is the standard way to get the login name on macOS and Linux: it
++  reads `LOGNAME`, `USER`, `LNAME`, `USERNAME`, then the password database. `os.getlogin()` needs a
++  controlling terminal and fails for agents and CI runs. Tests set `LOGNAME` to a known value to check
++  FR-321, and remove all four variables and run under a uid without a passwd entry only where the
++  environment allows (otherwise that path is covered by a unit test that injects the failure).
++- **Alternatives**: `pwd.getpwuid(os.getuid())` alone — ignores `LOGNAME`, which is how the system
++  reports the login name of a session.
++
++## L-7 `history` prints the lineage fields after `new`, actor as a nested object
++
++- **Decision**: `commands.history` builds each entry as
++  `{seq, op, path, old, new, actor: {kind, id}, via, at, reason, change}` and dumps it with the existing
++  `json.dumps(..., ensure_ascii=False)` (spec D-38). Reasons with newlines, quotes or non-ASCII are
++  therefore valid JSON strings.
++- **Rationale**: Existing keys keep their order and spelling; consumers reading by key are unaffected.
++
++## L-8 Stores recorded before step 4 are not migrated
++
++- **Decision**: No defaults are given to the new event arguments. A store written by steps 1–3 is out
++  of contract (spec "Out of contract"); the plan adds no migration and no inferred lineage.
++- **Rationale**: Principle V (invent nothing) and the spec's "say so explicitly rather than guessing":
++  inferring `via` for old `set` events (CLI or hand edit?) is impossible. Behaviour on such a store
++  is undefined and untested; no code is added for it (Principle IV: build for the current stage).
++- **Alternatives**: Defaults `unknown`/`null` — would print a `via` that might be false.
+diff --git a/spec/004-config-lineage/spec.md b/spec/004-config-lineage/spec.md
+new file mode 100644
+index 0000000..47c4a90
+--- /dev/null
++++ b/spec/004-config-lineage/spec.md
+@@ -0,0 +1,322 @@
++# Feature Specification: troupe configuration — lineage (Step 4)
++
++**Feature Branch**: `main` (delivery is on `main`; no feature branch)
++
++**Created**: 2026-10-04
++
++**Status**: Draft
++
++**Input**: User description: "Step 4 — lineage. Configuration changes in troupe are made by people
++and by AI agents. We need a history we can audit: for any setting, who changed it (a human or an
++agent, and which one), how (CLI, file edit, or first import), when (UTC timestamp), why (optional
++`troupe config set --reason "…"`), and what else changed with it (one change id per command). Where
++something is genuinely unknown, say so explicitly rather than guessing. Lineage must survive restarts
++and be readable through `troupe config history`. Contract sections added: Lineage."
++
++The product owner's contract section **Lineage** is normative, together with the sections already in
++force from steps 1–3 (see `spec/001-config-load-show-set/spec.md`,
++`spec/002-config-file-sync/spec.md`, `spec/003-config-get-show/spec.md`). The requirements below
++restate it so each rule is individually testable; where this spec and the contract appear to differ,
++the contract wins and this spec is corrected. Choices the contract leaves open are recorded under
++**Decisions on open points**.
++
++Contract text (verbatim):
++
++> Every `history` event also has:
++> - `"actor"`: `{"kind": "human" | "agent" | "unknown", "id": <string or null>}`
++> - `"via"`: `"import"` | `"cli"` | `"file"`
++> - `"at"`: RFC 3339 UTC timestamp ending in `Z`
++> - `"reason"`: the text given with `set --reason TEXT`, else `null`
++> - `"change"`: a string identifying the command (or file reconcile, or import) that produced the
++>   event; every event one command produces has the same `change`, and no two commands share one
++>
++> A CLI command's actor comes from the `TROUPE_ACTOR` environment variable, `human:<id>` or
++> `agent:<id>` (anything else → exit 2); unset → `{"kind": "human", "id": <login name>}`. Imports and
++> file-originated events have actor `{"kind": "unknown", "id": null}`.
++
++**What step 4 changes from steps 1–3.** Every `history` line gains five fields (FR-300). `set` gains
++an option `--reason TEXT` (FR-330). Every `config` command reads `TROUPE_ACTOR` and refuses an
++invalid value with exit 2 (FR-320 – FR-323). Step 2's closing assumption ("History needs no field to
++tell hand edits from `set` commands") is superseded: `via` now tells them apart. Nothing else about
++loading, writing back, reconciling, `get`, `show` or `watch` changes.
++
++## User Scenarios & Testing *(mandatory)*
++
++The users are the people who review and audit a theatre's configuration — developers, and the
++operators of the AI agents that also change it. When a setting has a surprising value, they want to
++know who set it, how, when and why, and which other settings were changed in the same action; and
++they want the record to admit what it does not know instead of inventing an author.
++
++### User Story 1 - Know who changed a setting, and how (Priority: P1)
++
++An auditor lists a setting's history and sees, for each change, whether it was made by a named human,
++a named agent, or an unknown author (a hand edit or the first import), and whether it came through the
++command line, a file edit, or the import.
++
++**Why this priority**: "Who changed it?" is the core of auditing changes made by both people and
++agents; without it the other fields have no context.
++
++**Independent Test**: On a fresh theatre, run `config history` (import), `config set` with
++`TROUPE_ACTOR` unset, `human:alice` and `agent:coder-7`, make a hand edit followed by `config get`,
++then compare each `config history` line's `actor` and `via` with the expected values.
++
++**Acceptance Scenarios**:
++
++1. **Given** a theatre never used before with leaf `a: 1`, **When** the user runs `config history`,
++   **Then** the `import` event has `"actor": {"kind": "unknown", "id": null}` and `"via": "import"`.
++2. **Given** an imported theatre and `TROUPE_ACTOR=agent:coder-7`, **When** the user runs
++   `config set a 2`, **Then** the `set` event has `"actor": {"kind": "agent", "id": "coder-7"}` and
++   `"via": "cli"`.
++3. **Given** `TROUPE_ACTOR=human:alice`, **When** the user runs `config set a 3`, **Then** the event's
++   actor is `{"kind": "human", "id": "alice"}`.
++4. **Given** `TROUPE_ACTOR` is unset and the command runs as login name `dev`, **When** the user runs
++   `config set a 4`, **Then** the event's actor is `{"kind": "human", "id": "dev"}`.
++5. **Given** an imported theatre, **When** the user edits `a: 4` to `a: 5` in their editor and then runs
++   `config get a` with `TROUPE_ACTOR=agent:coder-7`, **Then** the reconcile `set` event has
++   `"actor": {"kind": "unknown", "id": null}` and `"via": "file"` — the agent that ran `get` is not
++   credited with the hand edit.
++6. **Given** `watch` is running, **When** the user edits a value by hand, **Then** the recorded event
++   has actor `{"kind": "unknown", "id": null}` and `"via": "file"`.
++7. **Given** `TROUPE_ACTOR` is `robot:x`, `human`, `agent:`, `Human:alice` or the empty string,
++   **When** the user runs any `config` command, **Then** the exit code is 2, stdout is empty, stderr
++   names `TROUPE_ACTOR`, and nothing is recorded or written.
++
++---
++
++### User Story 2 - See which settings changed together (Priority: P1)
++
++An auditor sees that several history lines share one `change` value and so were made by one action —
++for example a `set` that replaced a list, or one hand edit that touched several keys — and can tell
++them apart from the next action.
++
++**Why this priority**: A multi-value change is only reviewable as a unit if its events can be grouped;
++it is the other half of the contract's new information.
++
++**Independent Test**: Run commands that produce several events each (import of several leaves; a
++`set` replacing a list; a hand edit of two keys reconciled by `show`; a `set` preceded by an
++unreconciled hand edit on a never-imported theatre) and check that `change` values are equal within
++each unit and different between units.
++
++**Acceptance Scenarios**:
++
++1. **Given** a theatre never used before with leaves `a: 1` and `b: [x, y]`, **When** the user runs
++   `config history`, **Then** the three `import` events share one `change` value.
++2. **Given** `b: [x, y]`, **When** the user runs `config set b '[z]'`, **Then** the `set` event for
++   `b.0` and the `remove` event for `b.1` share one `change` value, different from the import's.
++3. **Given** an imported theatre, **When** the user edits two keys by hand and runs `config show`,
++   **Then** the two reconcile events share one `change` value.
++4. **Given** an imported theatre with an unreconciled hand edit of `a`, **When** the user runs
++   `config set b 5`, **Then** the reconcile event for `a` and the `set` event for `b` have different
++   `change` values (the hand edit and the command are different actions).
++5. **Given** two separate `config set` commands that each record events, **When** the user lists
++   history, **Then** their `change` values differ, even if they set the same path to values that
++   alternate.
++6. **Given** history listed with a PATH filter, **When** a unit's events are partly outside the
++   filter, **Then** the printed events keep their `change` value (the value is the same as in the
++   unfiltered listing).
++
++---
++
++### User Story 3 - Know when and why (Priority: P2)
++
++A developer or agent changing a setting gives a reason (`config set --reason "…"`); an auditor later
++sees the reason and the UTC time of every change.
++
++**Why this priority**: Time and reason complete the audit trail, but are only useful once who and
++what-else are recorded.
++
++**Independent Test**: Note the UTC time before and after each command; run `config set` with and
++without `--reason`; check `at` lies between the two times, ends in `Z`, parses as RFC 3339, and
++`reason` is the given text or null.
++
++**Acceptance Scenarios**:
++
++1. **Given** an imported theatre, **When** the user runs
++   `config set a 2 --reason "raise for load test"`, **Then** the event has
++   `"reason": "raise for load test"`.
++2. **Given** an imported theatre, **When** the user runs `config set a 3` without `--reason`, **Then**
++   the event has `"reason": null`; import and reconcile events always have `"reason": null`.
++3. **Given** `config set b '[z]' --reason "trim"` replacing `[x, y]`, **When** history is listed,
++   **Then** both events of that `set` carry `"reason": "trim"`.
++4. **Given** an unreconciled hand edit, **When** the user runs `config set c 1 --reason "x"`, **Then**
++   the reconcile event's reason is null and only the `set` event's reason is `"x"`.
++5. **Given** any recorded event, **When** history is listed, **Then** `at` is an RFC 3339 UTC
++   timestamp ending in `Z`, no earlier than the start and no later than the end of the command (or
++   `watch` reconcile) that recorded it, and every event of one `change` has the same `at`.
++6. **Given** `--reason` given to `get`, `show`, `history` or `watch`, or `--reason` with no text,
++   **When** the command runs, **Then** the exit code is 2 and nothing is recorded.
++
++---
++
++### User Story 4 - The audit trail survives restarts (Priority: P1)
++
++Lineage is recorded with the events, so a later, separate command — after a reboot, or in a new
++terminal with a different `TROUPE_ACTOR` — lists exactly the same lineage for earlier events.
++
++**Why this priority**: An audit trail that is lost or rewritten is not an audit trail.
++
++**Independent Test**: Record events with several actors and reasons, then run `config history` in new
++processes with `TROUPE_ACTOR` unset and set to a different actor, and check every earlier line is
++byte-for-byte identical.
++
++**Acceptance Scenarios**:
++
++1. **Given** events recorded by earlier commands, **When** `config history` runs in a new process,
++   **Then** each earlier event's `actor`, `via`, `at`, `reason` and `change` are unchanged.
++2. **Given** events recorded with `TROUPE_ACTOR=agent:a`, **When** history is listed with
++   `TROUPE_ACTOR=human:b`, **Then** the earlier events still show `agent:a`'s actor.
++
++---
++
++### Edge Cases
++
++- **Actor ids with unusual text**: everything after the first `:` is the id, kept exactly
++  (`agent:team:coder` → id `team:coder`; spaces and non-ASCII kept). An empty id (`human:`) → exit 2.
++- **`TROUPE_ACTOR` set to the empty string** → exit 2 (it is set, and is neither form).
++- **`TROUPE_ACTOR` invalid on a command that would record nothing** (`history`, a `get` with nothing
++  to reconcile): still exit 2 — the variable is checked before anything else.
++- **Login name cannot be determined** with `TROUPE_ACTOR` unset: actor is
++  `{"kind": "human", "id": null}` — the author is a human, but which one is unknown; no name is guessed.
++- **A `set` that changes nothing** (with or without `--reason`): no event is recorded, so its reason
++  and actor appear nowhere.
++- **A command whose reconcile records events and then fails** (exit 3 or 5): the reconcile events stand
++  with their own lineage (`via` `file`, unknown actor); the failed command's own events do not exist.
++- **First command on a theatre with `TROUPE_ACTOR` set**: the import events still have the unknown
++  actor and `via` `import`.
++- **`set` with `--reason` while `watch` runs**: exactly the `set`'s events, with its actor, reason and
++  `change`; the write-back records nothing (step 2 FR-130).
++- **Reason text containing newlines, quotes or non-ASCII**: kept exactly; history prints it as a valid
++  JSON string.
++- **`--reason ""`**: the reason was given, so `reason` is the empty string `""`, not null.
++- **Several hand edits reconciled together** (step 2 D-14): they share one `change` and one `at`.
++- **A reconcile, import or command that records no events**: no `change` value appears for it.
++- **Clock set to a non-UTC time zone**: `at` is still in UTC with a `Z` suffix.
++
++## Requirements *(mandatory)*
++
++### Functional Requirements
++
++Numbering continues from step 3 (FR-001 – FR-044, FR-100 – FR-131, FR-200 – FR-226 remain in force) at
++FR-300.
++
++**History fields**
++
++- **FR-300**: Every line `config history [PATH]` prints MUST contain, in addition to step 1's `seq`,
++  `op`, `path`, `old` and `new`, the fields `actor`, `via`, `at`, `reason` and `change`, in that order
++  after `new`.
++- **FR-301**: `actor` MUST be a JSON object with exactly the keys `kind` (`"human"`, `"agent"` or
++  `"unknown"`) and `id` (a string, or null).
++- **FR-302**: `via` MUST be `"import"` for events recorded by importing a theatre (step 1 FR-042),
++  `"file"` for events recorded by reconciling (step 2 FR-110, whether triggered by a command or by
++  `watch`), and `"cli"` for the events a `set` records for its own change (step 1 FR-043).
++- **FR-303**: `at` MUST be an RFC 3339 timestamp in UTC ending in `Z`, recording when the event was
++  recorded; all events of one `change` MUST have the same `at`.
++- **FR-304**: `reason` MUST be the exact text given with `set --reason TEXT` on events with `via`
++  `"cli"`, and null when no reason was given and on every `import` and `file` event.
++- **FR-305**: `change` MUST be a non-empty string. All events recorded by one import share one
++  `change`; all events recorded by one reconcile share one `change`; all events a `set` records for its
++  own change share one `change`. No two of these units — in the same theatre's history — share a
++  `change` value.
++- **FR-306**: The lineage of an event MUST NOT change after it is recorded: every later listing, by any
++  process, with any `TROUPE_ACTOR`, MUST print the same values. Lineage MUST be persisted with the
++  events under `<dir>/.troupe/` (step 1 FR-003, FR-040).
++
++**Actors**
++
++- **FR-310**: Events with `via` `"import"` or `"file"` MUST have actor `{"kind": "unknown", "id": null}`.
++- **FR-311**: Events with `via` `"cli"` MUST have the actor of the command that recorded them (FR-320 –
++  FR-322).
++
++**`TROUPE_ACTOR`**
++
++- **FR-320**: When `TROUPE_ACTOR` is `human:<id>` or `agent:<id>` with a non-empty `<id>`, the command's
++  actor MUST be `{"kind": "human" | "agent", "id": <id>}`, where `<id>` is everything after the first
++  `:`, kept exactly. The prefixes are case-sensitive.
++- **FR-321**: When `TROUPE_ACTOR` is unset, the command's actor MUST be
++  `{"kind": "human", "id": <login name>}`, the login name of the user running the command; if no login
++  name can be determined, `id` MUST be null.
++- **FR-322**: When `TROUPE_ACTOR` is set to any other value (including the empty string and an empty
++  `<id>`), every `config` command (`get`, `show`, `set`, `history`, `watch`) MUST exit 2, with empty
++  stdout and a stderr message naming `TROUPE_ACTOR`.
++- **FR-323**: `TROUPE_ACTOR` MUST be checked before the configuration is loaded, so an exit 2 for it
++  records nothing (no import, no reconcile) and changes no file.
++
++**`set --reason`**
++
++- **FR-330**: `config set PATH VALUE` MUST accept an optional `--reason TEXT`; TEXT is recorded as
++  given (FR-304). `--reason` without TEXT MUST exit 2.
++- **FR-331**: `--reason` MUST apply only to the events the `set` records for its own change, not to
++  import or reconcile events recorded by the same invocation.
++- **FR-332**: Commands other than `set` MUST NOT accept `--reason` (exit 2 as an unknown option).
++
++### Decisions on open points
++
++Recorded per Constitution Principles V and VI.
++
++- **D-30 One invocation, up to three changes.** The contract says a `change` identifies "the command
++  (or file reconcile, or import)". A `set` invocation may first import a never-imported theatre and/or
++  reconcile hand edits before its own change (steps 1 and 2). These are separate units with separate
++  `change` values: the import and the reconcile were not made by the command's actor and have their own
++  `via` and actor (FR-310), so grouping them with the `set` would attribute a hand edit to the CLI
++  user. "Every event one command produces" is read as the events of the command's own change.
++- **D-31 `TROUPE_ACTOR` is checked by every command.** The contract makes it "a CLI command's actor"
++  and says anything else exits 2, without limiting it to `set`. Checking it everywhere means an agent
++  learns of a misconfigured identity on its first command, not on its first write — the conservative
++  choice.
++- **D-32 Empty values are invalid.** `TROUPE_ACTOR=""` and `human:` / `agent:` (empty id) are neither
++  "unset" nor `human:<id>` / `agent:<id>` with an id, so they exit 2 rather than silently falling back
++  to the login name or recording an empty id.
++- **D-33 Id text is kept exactly.** Everything after the first `:` is the id, with no trimming or case
++  folding, so an audit shows exactly what the caller declared.
++- **D-34 Unknown login name.** If the login name cannot be determined, `id` is null rather than a guess
++  (e.g. a numeric user id or `"unknown"`), following "say so explicitly rather than guessing".
++- **D-35 One time per change.** All events of one `change` share one `at`, the moment the change is
++  recorded (they are recorded together, step 2 FR-115). The contract fixes the format but not the
++  precision; fractional seconds may appear. `at` reports the system clock and is not promised to
++  increase with `seq` if the clock is moved back.
++- **D-36 `--reason ""` is a given reason.** The contract says "the text given"; an empty text was given,
++  so it is recorded as `""`.
++- **D-37 `change` values are opaque.** The contract asks only that they identify a unit uniquely; their
++  form is not part of the contract, and users MUST NOT rely on it beyond equality.
++- **D-38 Field order.** Lineage fields follow step 1's fields in the contract's order (FR-300), so
++  existing consumers reading by key are unaffected and lines stay readable.
++
++### Out of contract
++
++In addition to the lists of steps 1–3: event stores recorded before step 4 (their events carry no
++lineage; how they would be listed is not defined, and a theatre's store is expected to be created by a
++step 4 build); verifying that `TROUPE_ACTOR` tells the truth (it is a declaration, not
++authentication); an actor or reason for hand edits (an editor gives troupe no author).
++
++### Key Entities
++
++- **Event**: as in steps 1–2 (`seq`, `op`, `path`, `old`, `new`), now with lineage.
++- **Lineage**: the immutable facts recorded with an event — actor, via, at, reason, change.
++- **Actor**: who made a change — kind (`human`, `agent`, `unknown`) and an id or null.
++- **Change**: one unit of recording — an import, a reconcile, or a `set`'s own change — identified by
++  a value shared by all its events and by no other unit.
++
++## Success Criteria *(mandatory)*
++
++### Measurable Outcomes
++
++- **SC-301**: For every way an event is recorded (import, reconcile by a command, reconcile by `watch`,
++  `set`), 100% of history lines carry all five lineage fields with the values FR-300 – FR-311 require.
++- **SC-302**: Across at least 10 consecutive commands, each recording one or more events, the `change`
++  values group events exactly by unit: equal within each unit, distinct between units, zero exceptions.
++- **SC-303**: Every invalid `TROUPE_ACTOR` form listed in the edge cases yields exit 2 on every `config`
++  command, with zero events recorded and zero file bytes changed.
++- **SC-304**: History listed in a new process, with a different `TROUPE_ACTOR`, is byte-for-byte
++  identical for all previously recorded events.
++- **SC-305**: An auditor can answer who, how, when, why and what-else for any setting from
++  `config history PATH` alone, with no other source.
++- **SC-306**: No event credits a named human or agent with a change they did not make through the CLI:
++  every `import` and `file` event has the unknown actor.
++
++## Assumptions
++
++- Steps 1–3's contract sections, requirements and decisions remain in force, except step 2's closing
++  assumption about a source field, as noted above.
++- `TROUPE_ACTOR` is set by whoever launches a human's or an agent's session; troupe trusts it.
++- The system clock is reasonably accurate; troupe does not correct it.
++- Users run on macOS or Linux, where a login name is normally available.
+diff --git a/spec/004-config-lineage/tasks.md b/spec/004-config-lineage/tasks.md
+new file mode 100644
+index 0000000..306655d
+--- /dev/null
++++ b/spec/004-config-lineage/tasks.md
+@@ -0,0 +1,259 @@
++---
++
++description: "Task list for troupe configuration — lineage (Step 4)"
++---
++
++# Tasks: troupe configuration — lineage (Step 4)
++
++**Input**: Design documents from `spec/004-config-lineage/`
++
++**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/cli.md, quickstart.md
++
++**Tests**: MANDATORY. Constitution Principle II overrides the template's "tests are optional". Every
++behaviour gets a test that fails when it breaks. End-to-end tests run the real `troupe` CLI (the
++`theatre` fixture in `tests/conftest.py`: `theatre.write(relpath, text)` writes under `.troupe/`,
++`theatre.config(*args)` runs `troupe config … --theatre <root>` and returns `Result(code, out, err)`,
++`theatre.run(*args, env={...})` runs with extra environment variables, `theatre.snapshot()` gives every
++file's bytes, `assert_failed(result, code, mention)` checks a non-zero exit with empty stdout and
++`mention` in stderr, `set_ok(theatre, path, value)` runs a successful `set`, `start_watch()` starts
++`config watch`, `wait_for_history(theatre, predicate, since)` polls the store). Write each test task's
++tests first and see them fail. Once the implementation passes, break the behaviour deliberately once
++to confirm the test catches it.
++
++**Organization**: Grouped by user story (spec.md): US1 who and how — actor and via (P1), US2 what
++changed together — change (P1), US3 when and why — at and `--reason` (P2), US4 survives restarts (P1).
++US4 is ordered after US3 because it checks all five fields, but it does not need US3's `--reason` to
++be meaningful (it can run with reasons omitted).
++
++## Format: `[ID] [P?] [Story] Description`
++
++- **[P]**: Can run in parallel (different files, no dependency on an incomplete task)
++- **[Story]**: US1 / US2 / US3 / US4
++
++## Path Conventions
++
++Single project: `src/troupe/`, `tests/` at the repository root (plan.md → Project Structure).
++
++---
++
++## Phase 1: Setup (Shared Infrastructure)
++
++**Purpose**: Confirm the step 3 baseline is green, and make the test harness independent of the
++developer's own `TROUPE_ACTOR` before any lineage behaviour exists.
++
++- [X] T001 Run the gates on the unchanged tree and record the output: `uv sync`, `uv run pytest`, `uv run mypy --strict src tests`, `uv run ruff check .`, `uv run ruff format --check .`; if anything fails, stop and report it before step 4 work begins
++- [X] T002 In `tests/conftest.py` add a module constant `INHERITED_ENV_DROPPED = ("TROUPE_THEATRE", "TROUPE_ACTOR")` and use it in both `Theatre.run` and `start_watch` instead of the literal `"TROUPE_THEATRE"` filter, so an actor exported in the developer's shell can never decide a test's outcome (plan: Constitution Check II). Also set `LOGNAME` to the fixed value `TEST_LOGIN = "troupe-tester"` in that base environment (callers' `env` still overrides it), so FR-321's login name is known in every test (research L-6: `getpass.getuser()` reads `LOGNAME` first). Run the suite: still green
++
++---
++
++## Phase 2: Foundational (Blocking Prerequisites)
++
++**Purpose**: Lineage values, storage in the event, stamping at the three recording sites, and the
++`history` output. Every story's tests read these fields, so this phase blocks all stories.
++
++**⚠️ CRITICAL**: No user story work can begin until this phase is complete.
++
++### Tests for the foundation
++
++- [X] T003 [P] Create `tests/unit/test_lineage.py` (tests first; they fail until T005):
++  - `test_actor_from_env_unset_is_human_with_login_name`: `actor_from_env({}, login=lambda: "dev") == Actor("human", "dev")` — see T005 for the injectable `login` parameter;
++  - `test_actor_from_env_unset_with_unknown_login_has_null_id`: `login=lambda: None` → `Actor("human", None)` (FR-321, D-34);
++  - `test_actor_from_env_accepts_human_and_agent`: parametrised `"human:alice"` → `Actor("human", "alice")`, `"agent:coder-7"` → `Actor("agent", "coder-7")`, `"agent:team:coder"` → id `"team:coder"`, `"human: spaced "` → id `" spaced "`, `"agent:café"` → id `"café"` (FR-320, D-33);
++  - `test_actor_from_env_rejects_anything_else`: parametrised `""`, `"human"`, `"human:"`, `"agent:"`, `"Human:alice"`, `"AGENT:x"`, `"robot:x"`, `":x"`, `"unknown:x"` → raises `UsageError` (exit code 2) whose message contains `"TROUPE_ACTOR"` and the value's `repr` (FR-322, D-32);
++  - `test_login_name_is_none_when_lookup_fails`: monkeypatch `getpass.getuser` to raise `OSError`, then `KeyError`, then return `""` → `login_name() is None` each time (research L-6);
++  - `test_format_at_is_rfc3339_utc_with_z`: `format_at(datetime(2026, 10, 4, 9, 5, 7, 123, tzinfo=UTC)) == "2026-10-04T09:05:07.000123Z"`; a non-UTC aware datetime (`timezone(timedelta(hours=2))`) is converted to UTC before formatting (research L-4, spec edge case "non-UTC time zone");
++  - `test_begin_gives_fresh_change_and_current_at`: two `Lineage.begin(UNKNOWN_ACTOR, "file")` calls → different `change`, both non-empty; `at` parses with `datetime.strptime(at, "%Y-%m-%dT%H:%M:%S.%fZ")` and lies between UTC times taken before and after the call (FR-303, FR-305, research L-3)
++- [X] T004 [P] Extend `tests/unit/test_reconcile.py` (which builds a real theatre and `ConfigStore`): update its `import_leaves` / `reconcile` calls to the new signatures from T006/T007 and add `test_reconcile_stamps_one_file_lineage`: after an import and a hand edit changing two leaves, `reconcile(...)` records two events whose `HistoryRecord.lineage` are equal, have `via == "file"`, actor `UNKNOWN_ACTOR`, `reason is None`, and a `change` different from the import events' `change`; `test_empty_reconcile_records_nothing`: a second reconcile adds no record (spec edge case "records no events")
++
++### Implementation for the foundation
++
++- [X] T005 Create `src/troupe/config/lineage.py` (module docstring: "Who, how, when, why and with-what-else for every recorded event — spec FR-300 – FR-332, D-30 – D-38; research L-2 – L-6. Each decision below lives only here (Principle IV)."). Contents:
++  - `ACTOR_ENV = "TROUPE_ACTOR"`; `type ActorKind = Literal["human", "agent", "unknown"]`; `type Via = Literal["import", "file", "cli"]`; `CLI_ACTOR_KINDS: tuple[ActorKind, ...] = ("human", "agent")`;
++  - `@dataclass(frozen=True) class Actor: kind: ActorKind; id: str | None`; `UNKNOWN_ACTOR = Actor("unknown", None)` (FR-310: imports and file events);
++  - `login_name() -> str | None`: `getpass.getuser()`, returning `None` on `OSError` or `KeyError` or an empty result (D-34, research L-6);
++  - `actor_from_env(environ: Mapping[str, str], login: Callable[[], str | None] = login_name) -> Actor`: if `ACTOR_ENV not in environ` → `Actor("human", login())`; else `kind, sep, ident = value.partition(":")`; valid iff `sep and kind in CLI_ACTOR_KINDS and ident` → `Actor(kind, ident)` (id kept exactly, D-33); otherwise `raise UsageError(f"{ACTOR_ENV}: {value!r} is not human:<id> or agent:<id>")` ("anything else → exit 2", FR-322; the empty string is "anything else", D-32);
++  - `format_at(moment: datetime) -> str`: `moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")` ("RFC 3339 UTC timestamp ending in `Z`", research L-4);
++  - `new_change_id() -> str`: `str(uuid.uuid4())` (opaque, unique per unit, D-37, research L-3);
++  - `@dataclass(frozen=True) class Lineage: actor: Actor; via: Via; at: str; reason: str | None; change: str` with `@classmethod begin(cls, actor: Actor, via: Via, reason: str | None = None) -> Lineage` that sets `at=format_at(datetime.now(UTC))`, `change=new_change_id()` — comment: "one Lineage per recorded unit (import, reconcile, or a set's own change): every event of the unit shares change and at (FR-303, FR-305, D-30)"
++  Run T003 to green
++- [X] T006 In `src/troupe/config/store.py`: (a) `HistoryRecord` gains `lineage: Lineage`; (b) `TheatreConfig.change` becomes `change(self, op, path, old, new, actor_kind: str, actor_id: str | None, via: str, at: str, reason: str | None, change: str)` — the `@event("LeafChanged")` arguments are what `eventsourcing` persists and replays, so lineage survives restarts with the event (FR-306, research L-1); its body rebuilds `Lineage(Actor(actor_kind, actor_id), via, at, reason, change)` (use `typing.cast` to the `Literal` types) and appends it to the `HistoryRecord`; no defaults for the new arguments (research L-8: pre-step-4 stores are out of contract); (c) add a private helper `_apply(aggregate, item: LeafEvent, lineage: Lineage)` passing the lineage's fields; (d) `import_leaves(self, leaves, lineage: Lineage)` and `record(self, events, lineage: Lineage)` stamp every event of the call with that one lineage; `record` keeps its early return on an empty list (an empty unit leaves no trace)
++- [X] T007 Stamp the units at their recording sites: in `src/troupe/config/sync.py` `reconcile` calls `store.record(events, Lineage.begin(UNKNOWN_ACTOR, "file"))` (docstring: "file-originated events have the unknown actor and via `file` — FR-302, FR-310"); in `src/troupe/config/commands.py` `open_theatre` calls `store.import_leaves(leaves(loaded.root), Lineage.begin(UNKNOWN_ACTOR, "import"))`; `set_value(theatre, path_text, value_text, actor: Actor, reason: str | None)` records its events with `Lineage.begin(actor, "cli", reason)`, created after `open_theatre` returns so the `set`'s `change` and `at` are its own (D-30, FR-331); in `src/troupe/cli.py` pass `actor=actor_from_env(os.environ)` and `reason=None` for now (T013 and T019 complete the CLI). Run T004 to green
++- [X] T008 In `src/troupe/config/commands.py` `history`: build each entry as `{"seq", "op", "path", "old", "new", "actor": {"kind": l.actor.kind, "id": l.actor.id}, "via": l.via, "at": l.at, "reason": l.reason, "change": l.change}` in exactly that key order (FR-300, D-38), keep `json.dumps(entry, ensure_ascii=False)`
++- [X] T009 Keep the existing tests proving what they proved: in `tests/conftest.py` add `CORE_FIELDS = ("seq", "op", "path", "old", "new")`; `Theatre.history()` returns each line reduced to `CORE_FIELDS` (docstring: "step 1's fields only; lineage is checked by `Theatre.events()`"), and a new `Theatre.events(path: str | None = None) -> list[dict[str, Any]]` returns full lines with `env` passthrough (`events(path, env={...})` for running `history` under a given `TROUPE_ACTOR`); `recorded()` keeps building core-field dicts. In `tests/e2e/test_history.py` change `test_non_ascii_strings_are_written_literally` to check the raw line starts with `'{"seq": 1, "op": "import", "path": "name", "old": null, "new": "café 🎭", "actor": '` and still contains `café 🎭` literally. Add `test_history_line_keys_in_contract_order` in `tests/e2e/test_history.py`: after an import and a `set`, every parsed line's `list(keys)` equals `["seq", "op", "path", "old", "new", "actor", "via", "at", "reason", "change"]` and `list(line["actor"])` equals `["kind", "id"]` (FR-300, FR-301). Run the whole suite to green; deliberately swap `via` and `at` in T008 and confirm the key-order test fails; restore. Commit ("why": every event now carries its lineage, stored with the event itself)
++
++**Checkpoint**: every event has lineage; `history` prints it; the step 1–3 suite is green.
++
++---
++
++## Phase 3: User Story 1 - Know who changed a setting, and how (Priority: P1) 🎯 MVP
++
++**Goal**: Each event names its actor (human/agent/unknown and id) and `via` (import/cli/file);
++`TROUPE_ACTOR` is honoured and an invalid value is refused by every command before anything happens
++(FR-302, FR-310, FR-311, FR-320 – FR-323).
++
++**Independent Test**: Import, `set` under unset / `human:alice` / `agent:coder-7`, hand edit then
++`get`, a hand edit under `watch`; compare `actor` and `via` per line; invalid actors on every
++subcommand exit 2 with nothing recorded (spec US1 scenarios 1–7).
++
++### Tests for User Story 1
++
++- [X] T010 [P] [US1] Create `tests/e2e/test_lineage_actor.py` (use `theatre.events()`):
++  - `test_import_events_have_unknown_actor_via_import`: fresh theatre `a: 1\nb: [x, y]\n`, run with `env={"TROUPE_ACTOR": "agent:coder-7"}` `config history` → every line `actor == {"kind": "unknown", "id": None}`, `via == "import"` (US1-1, spec edge case "first command with TROUPE_ACTOR set");
++  - `test_set_events_have_the_cli_actor`: parametrised `("agent:coder-7", {"kind": "agent", "id": "coder-7"})`, `("human:alice", {"kind": "human", "id": "alice"})`, `("agent:team:coder", {"kind": "agent", "id": "team:coder"})`, `("human:Zoë Q", {"kind": "human", "id": "Zoë Q"})`: import, then `theatre.run("config", "set", "a", "2", env={"TROUPE_ACTOR": value})` → the last line has that actor and `via == "cli"` (US1-2, US1-3, FR-320);
++  - `test_set_without_troupe_actor_uses_the_login_name`: run `set a 2` with `TROUPE_ACTOR` absent and `env={"LOGNAME": "dev"}` → actor `{"kind": "human", "id": "dev"}` (US1-4, FR-321);
++  - `test_set_without_any_login_name_has_null_id`: run with `LOGNAME`, `USER`, `LNAME`, `USERNAME` all removed from the environment (pass a base env built without them — add a `drop: tuple[str, ...]` parameter to `Theatre.run` in `tests/conftest.py` for this) only if `pwd.getpwuid(os.getuid())` raises `KeyError` in the test process, else `pytest.skip("uid has a passwd entry; covered by tests/unit/test_lineage.py")` — state in the docstring that the e2e path is environment-dependent (research L-6, D-34);
++  - `test_hand_edit_reconciled_by_a_command_has_unknown_actor_via_file`: import, write `a: 5`, run `get a` with `TROUPE_ACTOR=agent:coder-7` → stdout `5\n`; last line `actor == {"kind": "unknown", "id": None}`, `via == "file"` (US1-5, FR-310, SC-306);
++  - `test_reconcile_then_set_in_one_command_have_their_own_via`: import, hand edit `a`, then `set b 5` under `TROUPE_ACTOR=human:alice` → the `a` event is `file`/unknown and the `b` event is `cli`/alice (D-30)
++- [X] T011 [P] [US1] Create `tests/e2e/test_lineage_errors.py`: `INVALID = ["", "human", "human:", "agent:", "Human:alice", "robot:x", ":x", "unknown:x"]`; `SUBCOMMANDS = [("get", "a"), ("show",), ("show", "a"), ("set", "a", "9"), ("history",)]`; `test_invalid_troupe_actor_exits_2_and_records_nothing` parametrised over both on (i) a never-imported theatre and (ii) an imported theatre with an unreconciled hand edit: `assert_failed(result, 2, "TROUPE_ACTOR")`, `theatre.snapshot()` unchanged, and the store is unchanged (`(theatre.root / ".troupe" / STORE_FILENAME).exists()` is False for (i); for (ii) `recorded(theatre)` equals what it was before) — run `history` for (ii)'s check without `TROUPE_ACTOR` (FR-322, FR-323, SC-303); `test_invalid_troupe_actor_stops_watch`: `start_watch(env={"TROUPE_ACTOR": "robot:x"})` → the process exits 2, stdout empty, stderr names `TROUPE_ACTOR`, no store created (D-31)
++- [X] T012 [P] [US1] Create `tests/e2e/test_lineage_watch.py`: `test_watch_hand_edit_has_unknown_actor_via_file` — import, `start_watch(env={"TROUPE_ACTOR": "agent:w"})`, edit `a: 1` → `a: 2`, `wait_for_history` until the `set` appears, stop the watcher, then `theatre.events()[-1]` has actor unknown/null and `via == "file"` (US1-6); `test_set_under_watch_keeps_its_own_lineage` — with `watch` running, `theatre.run("config", "set", "a", "3", env={"TROUPE_ACTOR": "human:alice"})`, wait 3 s, stop → exactly one new event, `via == "cli"`, actor alice (spec edge case "set under watch"; step 2 FR-130)
++
++### Implementation for User Story 1
++
++- [X] T013 [US1] In `src/troupe/cli.py` `run`: right after `parse_args`, `actor = actor_from_env(os.environ)` for every subcommand, before the theatre path is used or any command dispatched (FR-323, D-31; comment citing research L-5); pass `actor` to `commands.set_value`. Confirm `UsageError` from `actor_from_env` reaches `main`'s handler (exit 2, `troupe: error: TROUPE_ACTOR: …` on stderr, empty stdout). Run T010 – T012 to green
++- [X] T014 [US1] Deliberately (a) move the `actor_from_env` call into `set_value` only and confirm T011 fails for `get`/`show`/`history`/`watch`; (b) stamp reconcile events with the command's actor and confirm T010's `…_via_file` tests fail; (c) treat `""` as unset and confirm T011 fails; restore. Commit ("why": every change names who made it, and hand edits are never credited to the CLI user)
++
++**Checkpoint**: who and how are answered for every event.
++
++---
++
++## Phase 4: User Story 2 - See which settings changed together (Priority: P1)
++
++**Goal**: `change` is equal within each unit (import, reconcile, a `set`'s own change) and distinct
++between units (FR-305, D-30, D-37).
++
++**Independent Test**: Multi-event import, list-replacing `set`, two-key hand edit, reconcile + `set`
++in one invocation, repeated `set`s, PATH-filtered history (spec US2 scenarios 1–6).
++
++### Tests for User Story 2
++
++- [X] T015 [P] [US2] Create `tests/e2e/test_lineage_change.py` (use `theatre.events()`):
++  - `test_import_events_share_one_change`: `a: 1\nb: [x, y]\n` → the three import lines have one `change`, a non-empty string (US2-1);
++  - `test_one_set_shares_one_change_across_set_and_remove`: `set b '[z]'` → `b.0` set and `b.1` remove share a `change` different from the import's (US2-2);
++  - `test_one_hand_edit_reconcile_shares_one_change`: edit `a` and `b.0` by hand, `config show` → the two reconcile lines share a `change` (US2-3; step 2 D-14 coalescing);
++  - `test_reconcile_and_set_in_one_invocation_are_separate_changes`: hand edit `a`, then `set c 1` → two distinct `change` values (US2-4, D-30);
++  - `test_first_set_on_a_fresh_theatre_separates_import_and_set`: fresh theatre, `set a 2` as the first command → import lines share one `change`, the set line has another (D-30);
++  - `test_changes_are_distinct_across_many_commands`: 10 `set`s alternating `a` between `1` and `2` (plus one `set b '[z, w, v]'` producing several events) → group lines by `change`: each group is exactly one command's events (verify by `seq` ranges recorded per command), and the number of distinct `change` values equals the number of units (US2-5, SC-302);
++  - `test_filtered_history_keeps_change_values`: `config history b` lines are a subset (as whole dicts) of the unfiltered lines, so `change` is identical (US2-6);
++  - `test_set_that_changes_nothing_leaves_no_change`: `set a 1` when `a` is already 1 → no new line, the set of `change` values is unchanged (spec edge case "records no events")
++
++### Implementation for User Story 2
++
++- [X] T016 [US2] Run T015; the foundation (T005 – T007) should already satisfy it. Fix any gap in `src/troupe/config/store.py` / `src/troupe/config/commands.py` (e.g. a `Lineage.begin` created before the reconcile and reused for the `set`). Deliberately (a) create one `Lineage` in `open_theatre` and reuse it for the `set`'s events and confirm `…separate_changes` fails; (b) call `Lineage.begin` per event in `store.record` and confirm `…shares_one_change` tests fail; restore. Commit ("why": a multi-value change can be reviewed as one unit)
++
++**Checkpoint**: what-else-changed is answered for every event.
++
++---
++
++## Phase 5: User Story 3 - Know when and why (Priority: P2)
++
++**Goal**: `at` is an RFC 3339 UTC time ending in `Z`, shared within a unit, inside the recording
++command's run; `set --reason TEXT` is recorded on the `set`'s own events only (FR-303, FR-304,
++FR-330 – FR-332, D-35, D-36).
++
++**Independent Test**: Note UTC times around each command; `set` with and without `--reason`;
++reason scoping when a reconcile happens in the same invocation; `--reason` misuse → exit 2 (spec US3
++scenarios 1–6).
++
++### Tests for User Story 3
++
++- [X] T017 [P] [US3] Create `tests/e2e/test_lineage_when_why.py` (use `theatre.events()`):
++  - `test_reason_is_recorded_on_the_sets_events`: `set a 2 --reason "raise for load test"` → `reason == "raise for load test"` (US3-1);
++  - `test_reason_is_null_without_reason_and_on_import_and_file_events`: `set a 3` → `reason is None`; every `import` and `file` line in the history has `reason is None` (US3-2, FR-304);
++  - `test_reason_applies_to_every_event_of_the_set`: `set b '[z]' --reason trim` replacing `[x, y]` → both lines `reason == "trim"` (US3-3);
++  - `test_reason_does_not_apply_to_the_reconcile_in_the_same_command`: hand edit `a`, then `set c 1 --reason x` → the `a` line's reason is None, the `c` line's is `"x"` (US3-4, FR-331);
++  - `test_reason_text_is_kept_exactly`: parametrised `""` (→ `""`, not None, D-36), `"line one\nline two"`, `'say "hi"'`, `"café 🎭"`, `"--looks-like-an-option"` (passed as `--reason=--looks-like-an-option`) → recorded exactly; the raw `history` line is valid JSON (spec edge case "reason text");
++  - `test_at_is_rfc3339_utc_within_the_command`: for an import (`history`), a reconcile (`get` after a hand edit) and a `set`, take `datetime.now(UTC)` before and after each command; the event's `at` ends with `Z`, parses with `datetime.strptime(at, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)`, and lies within `[before, after]` (US3-5, FR-303);
++  - `test_at_is_shared_within_a_unit`: the two lines of `set b '[z]'` and the three import lines each have one `at` (FR-303, D-35);
++  - `test_at_is_utc_whatever_the_time_zone`: run `set` with `env={"TZ": "America/New_York"}` → `at` still within the UTC bounds (spec edge case "non-UTC time zone")
++- [X] T018 [P] [US3] In `tests/e2e/test_usage.py` add exit-2 cases that record nothing and change no file: `("config", "set", "a", "2", "--reason")` (no TEXT, FR-330), `("config", "get", "a", "--reason", "x")`, `("config", "show", "--reason", "x")`, `("config", "history", "--reason", "x")`, `("config", "watch", "--reason", "x")` (FR-332)
++
++### Implementation for User Story 3
++
++- [X] T019 [US3] In `src/troupe/cli.py` add `set_parser.add_argument("--reason", metavar="TEXT", default=None, help="why the change is made (recorded in history)")` and pass `reason=args.reason` to `commands.set_value` (replacing T007's `None`). Run T017 – T018 to green; deliberately (a) pass the reason to the reconcile lineage too and confirm `…reconcile_in_the_same_command` fails; (b) use `datetime.now()` (local time) in `Lineage.begin` and confirm the `TZ` test fails; (c) map `""` to `None` and confirm the `""` case fails; restore. Commit ("why": auditors can see when each change was made and the reason given for it)
++
++**Checkpoint**: when and why are answered for every event.
++
++---
++
++## Phase 6: User Story 4 - The audit trail survives restarts (Priority: P1)
++
++**Goal**: Lineage is persisted with the events and is printed identically by every later process,
++whatever its `TROUPE_ACTOR` (FR-306, SC-304).
++
++**Independent Test**: Record events with several actors and reasons, then list history from new
++processes with `TROUPE_ACTOR` unset and set to a different actor; earlier lines are byte-identical
++(spec US4 scenarios 1–2).
++
++### Tests for User Story 4
++
++- [X] T020 [P] [US4] Create `tests/e2e/test_lineage_persist.py`: build history with an import, a `set` under `agent:a` with `--reason r1`, a hand edit reconciled by `show`, and a `set` under `human:b`; capture `theatre.config("history").out` (raw text); then (a) run `history` again with `TROUPE_ACTOR` unset, (b) with `env={"TROUPE_ACTOR": "human:other", "LOGNAME": "someone-else"}`, (c) after one more `set` under `agent:c`: the earlier output is a byte-for-byte prefix of each later output (US4-1, US4-2, SC-304); also check, by reading the store through a fresh `ConfigStore(theatre.root).history()` in the test process, that each `HistoryRecord.lineage` equals the corresponding parsed line (lineage is in the store, not recomputed at print time — FR-306)
++
++### Implementation for User Story 4
++
++- [X] T021 [US4] Run T020; the foundation (T006) should already satisfy it. Deliberately make `history` print the *current* command's actor for `cli` events (instead of the stored one) and confirm T020 (b) fails; restore. Commit ("why": an audit trail that changes after the fact is not an audit trail)
++
++**Checkpoint**: all four stories work.
++
++---
++
++## Phase 7: Polish & Cross-Cutting Concerns
++
++- [X] T022 [P] Update `README.md`: add `[--reason TEXT]` to the `set` line; a short "Lineage" paragraph: each history line also has `actor`, `via`, `at`, `reason`, `change`; `TROUPE_ACTOR=human:<id>|agent:<id>` (unset → your login name; anything else → exit 2); hand edits and the first import are recorded with actor `unknown`; one example line from `spec/004-config-lineage/contracts/cli.md`; add `spec/004-config-lineage/` to the links
++- [X] T023 [P] Traceability notes in earlier specs: in `spec/002-config-file-sync/spec.md` Assumptions, append to the "History needs no field…" bullet "*(Superseded by step 4: `via` tells hand edits from `set`; see `spec/004-config-lineage/spec.md`.)*"; in `spec/001-config-load-show-set/contracts/cli.md` add a one-line note that history lines gain lineage fields in step 4
++- [X] T024 Walk through `spec/004-config-lineage/quickstart.md` by hand and confirm each expected output
++- [X] T025 Run the full gates and show output: `uv run pytest`, `uv run mypy --strict src tests`, `uv run ruff check .`, `uv run ruff format --check .`; report any failure with its output. Commit polish ("why": docs and earlier specs agree with lineage, Principle VI)
++
++---
++
++## Dependencies & Execution Order
++
++### Phase Dependencies
++
++- **Setup (Phase 1)**: none — T001 then T002.
++- **Foundational (Phase 2)**: after Setup; blocks every story. T003, T004 (tests) in parallel; T005 → T006 → T007 → T008 → T009.
++- **US1 (Phase 3)**: after Phase 2. T010 – T012 in parallel, then T013 → T014.
++- **US2 (Phase 4)**: after Phase 2; independent of US1 (its tests use `TROUPE_ACTOR` only incidentally). T015 → T016.
++- **US3 (Phase 5)**: after Phase 2; T019 edits `src/troupe/cli.py`, so do it after T013 if both are in flight.
++- **US4 (Phase 6)**: after Phase 2; its fixture uses `TROUPE_ACTOR` (US1) and `--reason` (US3) — run after T013 and T019, or drop `--reason r1` if done earlier.
++- **Polish (Phase 7)**: after all stories.
++
++### Within Each User Story
++
++- Tests first and failing; implementation; green; deliberate break; commit.
++
++### Parallel Opportunities
++
++- T003 ∥ T004 (different test files).
++- T010 ∥ T011 ∥ T012 (three new test files).
++- After Phase 2: T015 (US2 tests) ∥ T017/T018 (US3 tests) ∥ US1 tests.
++- T022 ∥ T023.
++
++## Parallel Example: User Story 1
++
++```text
++Task: "T010 Create tests/e2e/test_lineage_actor.py"
++Task: "T011 Create tests/e2e/test_lineage_errors.py"
++Task: "T012 Create tests/e2e/test_lineage_watch.py"
++```
++
++## Implementation Strategy
++
++### MVP First (User Story 1)
++
++1. Phase 1 (baseline, harness isolation) → Phase 2 (lineage stored and printed).
++2. Phase 3: actor and via, `TROUPE_ACTOR` validation. **Stop and validate**: who/how answered.
++
++### Incremental Delivery
++
++1. Foundation → every line carries lineage (with `reason` always null until US3).
++2. + US1 → who and how, invalid actors refused.
++3. + US2 → grouping proven.
++4. + US3 → `--reason`, timestamp guarantees.
++5. + US4 → persistence proven.
++6. Polish → docs, gates.
++
++## Notes
++
++- Commit after each phase with a message that says why (Principle VI).
++- Never mark a task done without showing test, mypy and ruff output (Principle III).
++- Pre-step-4 stores are out of contract (research L-8): add no migration or defaults.
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index d12ab5e..f8aa940 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -7,6 +7,7 @@ from collections.abc import Sequence
+ from pathlib import Path
+ 
+ from troupe.config import commands
++from troupe.config.lineage import actor_from_env
+ from troupe.errors import TroupeError
+ 
+ PROG = "troupe"
+@@ -35,6 +36,9 @@ def _parser() -> argparse.ArgumentParser:
+     set_parser = add("set", "change a setting and write it back to its file")
+     set_parser.add_argument("path", metavar="PATH")
+     set_parser.add_argument("value", metavar="VALUE")
++    set_parser.add_argument(
++        "--reason", metavar="TEXT", default=None, help="why the change is made (kept in history)"
++    )
+     add("history", "list configuration changes as JSON Lines").add_argument(
+         "path", metavar="PATH", nargs="?"
+     )
+@@ -64,6 +68,9 @@ def _report(message: str) -> None:
+ def run(argv: Sequence[str]) -> str:
+     """Run a command and return its stdout; raises TroupeError on failure."""
+     args = _parser().parse_args(argv)
++    # Every subcommand checks TROUPE_ACTOR before the theatre is touched, so an invalid actor
++    # imports, reconciles and writes nothing (spec FR-322, FR-323, D-31; research L-5).
++    actor = actor_from_env(os.environ)
+     theatre = Path(args.theatre or os.environ.get(THEATRE_ENV) or ".")
+     if args.subcommand == "watch":
+         return commands.watch(theatre, theatre_display(args.theatre), _announce, _report)
+@@ -72,7 +79,7 @@ def run(argv: Sequence[str]) -> str:
+     if args.subcommand == "show":
+         return commands.show(theatre, args.path, sources=args.sources)
+     if args.subcommand == "set":
+-        return commands.set_value(theatre, args.path, args.value)
++        return commands.set_value(theatre, args.path, args.value, actor=actor, reason=args.reason)
+     return commands.history(theatre, args.path)
+ 
+ 
+diff --git a/src/troupe/config/commands.py b/src/troupe/config/commands.py
+index 943eb16..01398df 100644
+--- a/src/troupe/config/commands.py
++++ b/src/troupe/config/commands.py
+@@ -9,6 +9,7 @@ from pathlib import Path
+ from troupe.config import view
+ from troupe.config.edit.apply import apply_set
+ from troupe.config.leaves import leaves
++from troupe.config.lineage import UNKNOWN_ACTOR, Actor, Lineage
+ from troupe.config.loader import Loaded, load
+ from troupe.config.lock import theatre_lock
+ from troupe.config.paths import ConfigPath, dotted_is_within, is_index
+@@ -37,7 +38,7 @@ def open_theatre(theatre: Path, *, reconcile: bool) -> tuple[Loaded, ConfigStore
+     loaded = load(theatre)
+     store = ConfigStore(theatre)
+     if not store.is_imported():
+-        store.import_leaves(leaves(loaded.root))
++        store.import_leaves(leaves(loaded.root), Lineage.begin(UNKNOWN_ACTOR, "import"))
+     elif reconcile:
+         reconcile_files(loaded, store)
+     return loaded, store
+@@ -116,7 +117,9 @@ def show(theatre: Path, path_text: str | None, *, sources: bool) -> str:
+     return view.render(node, theatre, sources=sources)
+ 
+ 
+-def set_value(theatre: Path, path_text: str, value_text: str) -> str:
++def set_value(
++    theatre: Path, path_text: str, value_text: str, actor: Actor, reason: str | None
++) -> str:
+     path = ConfigPath.parse(path_text)
+     value = parse_value(value_text)
+     # The lock spans load, write and record, so the write-back is recorded before `watch` can
+@@ -124,7 +127,9 @@ def set_value(theatre: Path, path_text: str, value_text: str) -> str:
+     with theatre_lock(theatre):
+         loaded, store = open_theatre(theatre, reconcile=True)
+         events = apply_set(theatre, loaded, path, value, before_write=store.check_writable)
+-        store.record(events)
++        # Begun after open_theatre, so any import or reconcile above is a unit of its own with
++        # its own change and at, and is never credited to this command's actor (spec D-30).
++        store.record(events, Lineage.begin(actor, "cli", reason))
+     return ""
+ 
+ 
+@@ -143,6 +148,12 @@ def history(theatre: Path, path_text: str | None) -> str:
+             "path": record.path,
+             "old": record.old,
+             "new": record.new,
++            # Lineage fields follow step 1's, in the contract's order (spec FR-300, D-38).
++            "actor": {"kind": record.lineage.actor.kind, "id": record.lineage.actor.id},
++            "via": record.lineage.via,
++            "at": record.lineage.at,
++            "reason": record.lineage.reason,
++            "change": record.lineage.change,
+         }
+         lines.append(json.dumps(entry, ensure_ascii=False) + "\n")
+     return "".join(lines)
+diff --git a/src/troupe/config/lineage.py b/src/troupe/config/lineage.py
+new file mode 100644
+index 0000000..1dab42c
+--- /dev/null
++++ b/src/troupe/config/lineage.py
+@@ -0,0 +1,86 @@
++"""Who, how, when, why and with-what-else for every recorded event.
++
++Spec FR-300 to FR-332, D-30 to D-38; research L-2 to L-6. Each decision below lives only here
++(Principle IV): the environment variable, the actor grammar, the unknown actor, the login-name
++rule, the timestamp format and the change-id rule.
++"""
++
++import getpass
++import uuid
++from collections.abc import Callable, Mapping
++from dataclasses import dataclass
++from datetime import UTC, datetime
++from typing import Literal
++
++from troupe.errors import UsageError
++
++ACTOR_ENV = "TROUPE_ACTOR"
++
++type ActorKind = Literal["human", "agent", "unknown"]
++type Via = Literal["import", "file", "cli"]
++
++CLI_ACTOR_KINDS: tuple[ActorKind, ...] = ("human", "agent")
++
++
++@dataclass(frozen=True)
++class Actor:
++    kind: ActorKind
++    id: str | None
++
++
++# Imports and file-originated events have no known author (FR-310).
++UNKNOWN_ACTOR = Actor("unknown", None)
++
++
++def login_name() -> str | None:
++    """The login name of the user running the command, or None if it cannot be determined:
++    null rather than a guess (spec D-34; research L-6 for why not `os.getlogin`)."""
++    try:
++        name = getpass.getuser()
++    except (OSError, KeyError):
++        return None
++    return name or None
++
++
++def actor_from_env(
++    environ: Mapping[str, str], login: Callable[[], str | None] = login_name
++) -> Actor:
++    """A CLI command's actor from TROUPE_ACTOR (FR-320 to FR-322).
++
++    Unset → a human with the login name. `human:<id>` / `agent:<id>` with a non-empty id → that
++    actor, the id being everything after the first `:`, kept exactly (D-33). Anything else,
++    including the empty string and an empty id, is a usage error (D-32).
++    """
++    if ACTOR_ENV not in environ:
++        return Actor("human", login())
++    value = environ[ACTOR_ENV]
++    kind, separator, ident = value.partition(":")
++    for allowed in CLI_ACTOR_KINDS:
++        if separator and ident and kind == allowed:
++            return Actor(allowed, ident)
++    raise UsageError(f"{ACTOR_ENV}: {value!r} is not human:<id> or agent:<id>")
++
++
++def format_at(moment: datetime) -> str:
++    """RFC 3339 in UTC ending in `Z`, with microseconds (research L-4)."""
++    return moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
++
++
++def new_change_id() -> str:
++    """Opaque and unique per recorded unit (spec D-37, research L-3)."""
++    return str(uuid.uuid4())
++
++
++@dataclass(frozen=True)
++class Lineage:
++    actor: Actor
++    via: Via
++    at: str
++    reason: str | None
++    change: str
++
++    @classmethod
++    def begin(cls, actor: Actor, via: Via, reason: str | None = None) -> "Lineage":
++        """One Lineage per recorded unit (an import, a reconcile, or a set's own change): every
++        event of the unit shares its change and at (FR-303, FR-305, D-30)."""
++        return cls(actor, via, format_at(datetime.now(UTC)), reason, new_change_id())
+diff --git a/src/troupe/config/store.py b/src/troupe/config/store.py
+index 2bc0c48..cce0768 100644
+--- a/src/troupe/config/store.py
++++ b/src/troupe/config/store.py
+@@ -6,6 +6,7 @@ from collections.abc import Iterator
+ from contextlib import contextmanager
+ from dataclasses import dataclass
+ from pathlib import Path
++from typing import cast
+ from uuid import NAMESPACE_URL, UUID, uuid5
+ 
+ from eventsourcing.application import AggregateNotFoundError, Application
+@@ -14,6 +15,7 @@ from eventsourcing.persistence import PersistenceError
+ 
+ from troupe.config.files import TROUPE_DIR
+ from troupe.config.leaves import LeafEvent, Op
++from troupe.config.lineage import Actor, ActorKind, Lineage, Via
+ from troupe.config.scalars import Scalar
+ from troupe.errors import LoadError, WriteRefused
+ 
+@@ -28,6 +30,7 @@ class HistoryRecord:
+     path: str
+     old: Scalar
+     new: Scalar
++    lineage: Lineage
+ 
+ 
+ class TheatreConfig(Aggregate):
+@@ -41,13 +44,44 @@ class TheatreConfig(Aggregate):
+         self.leaves: dict[str, Scalar] = {}
+         self.log: list[HistoryRecord] = []
+ 
++    # The lineage arguments are stored in each event and replayed with it, so lineage survives
++    # restarts and never changes once recorded (spec FR-306, research L-1). They have no
++    # defaults: stores recorded before step 4 are out of contract (research L-8).
+     @event("LeafChanged")
+-    def change(self, op: Op, path: str, old: Scalar, new: Scalar) -> None:
++    def change(
++        self,
++        op: Op,
++        path: str,
++        old: Scalar,
++        new: Scalar,
++        actor_kind: str,
++        actor_id: str | None,
++        via: str,
++        at: str,
++        reason: str | None,
++        change: str,
++    ) -> None:
+         if op == "remove":
+             self.leaves.pop(path, None)
+         else:
+             self.leaves[path] = new
+-        self.log.append(HistoryRecord(len(self.log) + 1, op, path, old, new))
++        actor = Actor(cast(ActorKind, actor_kind), actor_id)
++        lineage = Lineage(actor, cast(Via, via), at, reason, change)
++        self.log.append(HistoryRecord(len(self.log) + 1, op, path, old, new, lineage))
++
++    def apply(self, item: LeafEvent, lineage: Lineage) -> None:
++        self.change(
++            item.op,
++            item.path,
++            item.old,
++            item.new,
++            lineage.actor.kind,
++            lineage.actor.id,
++            lineage.via,
++            lineage.at,
++            lineage.reason,
++            lineage.change,
++        )
+ 
+ 
+ class _ConfigApplication(Application[UUID]):
+@@ -99,20 +133,23 @@ class ConfigStore:
+     def is_imported(self) -> bool:
+         return self._get() is not None
+ 
+-    def import_leaves(self, leaves: dict[str, Scalar]) -> None:
++    def import_leaves(self, leaves: dict[str, Scalar], lineage: Lineage) -> None:
++        """Record the import, every event stamped with the one `lineage` (FR-305)."""
+         aggregate = TheatreConfig()
+         for path, value in leaves.items():
+-            aggregate.change("import", path, None, value)
++            aggregate.apply(LeafEvent("import", path, None, value), lineage)
+         with self._guard():
+             self._app.save(aggregate)
+ 
+-    def record(self, events: list[LeafEvent]) -> None:
++    def record(self, events: list[LeafEvent], lineage: Lineage) -> None:
++        """Record one unit, every event stamped with the one `lineage` (FR-303, FR-305); a unit
++        with no events leaves no trace."""
+         if not events:
+             return
+         aggregate = self._get()
+         assert aggregate is not None, "record() before import"
+         for item in events:
+-            aggregate.change(item.op, item.path, item.old, item.new)
++            aggregate.apply(item, lineage)
+         with self._guard():
+             self._app.save(aggregate)
+ 
+diff --git a/src/troupe/config/sync.py b/src/troupe/config/sync.py
+index 5e34338..fe75e69 100644
+--- a/src/troupe/config/sync.py
++++ b/src/troupe/config/sync.py
+@@ -1,6 +1,7 @@
+ """Reconcile: compare the files with the recorded configuration (spec FR-110 to FR-116)."""
+ 
+ from troupe.config.leaves import LeafEvent, diff_events, leaves
++from troupe.config.lineage import UNKNOWN_ACTOR, Lineage
+ from troupe.config.loader import Loaded
+ from troupe.config.store import ConfigStore
+ 
+@@ -11,7 +12,8 @@ def reconcile(loaded: Loaded, store: ConfigStore) -> list[LeafEvent]:
+     Leaves are compared type-exactly, so formatting- and comment-only edits record nothing. Sets
+     come in file order, removes in projection order (research S-1). The events are saved in one
+     go, so they are recorded all together or not at all; no difference records nothing.
++    File-originated events have the unknown actor and via `file` (FR-302, FR-310).
+     """
+     events = diff_events(store.leaves(), leaves(loaded.root))
+-    store.record(events)
++    store.record(events, Lineage.begin(UNKNOWN_ACTOR, "file"))
+     return events
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 9c1f9d6..a5d697c 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -17,6 +17,25 @@ import pytest
+ from troupe.config.store import STORE_FILENAME, ConfigStore
+ 
+ TROUPE = shutil.which("troupe")
++# Inherited variables that would let the developer's shell decide a test's outcome.
++INHERITED_ENV_DROPPED = ("TROUPE_THEATRE", "TROUPE_ACTOR")
++# The login name every test runs under, unless it overrides LOGNAME (`getpass.getuser()` reads
++# LOGNAME first; research L-6).
++TEST_LOGIN = "troupe-tester"
++
++# The fields of a history line from step 1; step 4 adds lineage after them.
++CORE_FIELDS = ("seq", "op", "path", "old", "new")
++
++
++def base_env(drop: tuple[str, ...] = ()) -> dict[str, str]:
++    """The environment for a child `troupe` process, before a test's own additions."""
++    dropped = (*INHERITED_ENV_DROPPED, *drop)
++    environ = {k: v for k, v in os.environ.items() if k not in dropped}
++    if "LOGNAME" not in drop:
++        environ["LOGNAME"] = TEST_LOGIN
++    return environ
++
++
+ COMMAND = [TROUPE] if TROUPE else [sys.executable, "-m", "troupe"]
+ 
+ 
+@@ -49,11 +68,12 @@ class Theatre:
+         theatre: bool = True,
+         cwd: Path | None = None,
+         env: dict[str, str] | None = None,
++        drop: tuple[str, ...] = (),
+     ) -> "Result":
+         argv = [*COMMAND, *args]
+         if theatre:
+             argv += ["--theatre", str(self.root)]
+-        environ = {k: v for k, v in os.environ.items() if k != "TROUPE_THEATRE"} | (env or {})
++        environ = base_env(drop) | (env or {})
+         done = subprocess.run(
+             argv, capture_output=True, cwd=cwd or self.root, env=environ, check=False
+         )
+@@ -63,7 +83,14 @@ class Theatre:
+         return self.run("config", *args)
+ 
+     def history(self, path: str | None = None) -> list[dict[str, Any]]:
+-        result = self.config("history", *([path] if path else []))
++        """Step 1's fields only; lineage is checked by `Theatre.events()`."""
++        return [{k: e[k] for k in CORE_FIELDS} for e in self.events(path)]
++
++    def events(
++        self, path: str | None = None, env: dict[str, str] | None = None
++    ) -> list[dict[str, Any]]:
++        """The full `config history` lines, lineage included."""
++        result = self.run("config", "history", *([path] if path else []), env=env)
+         assert result.code == 0, result.err
+         return [json.loads(line) for line in result.out.splitlines()]
+ 
+@@ -175,7 +202,7 @@ def start_watch(theatre: Theatre) -> Iterator[Callable[..., Watcher]]:
+         argv = [*COMMAND, "config", "watch", *extra]
+         if theatre_arg:
+             argv += ["--theatre", str(theatre.root)]
+-        environ = {k: v for k, v in os.environ.items() if k != "TROUPE_THEATRE"} | (env or {})
++        environ = base_env() | (env or {})
+         watcher = Watcher(argv, cwd or theatre.root, environ)
+         started.append(watcher)
+         watcher.first_line()
+diff --git a/tests/e2e/test_history.py b/tests/e2e/test_history.py
+index d741453..2547ef4 100644
+--- a/tests/e2e/test_history.py
++++ b/tests/e2e/test_history.py
+@@ -32,7 +32,27 @@ def test_output_is_json_lines_with_keys_in_order(theatre: Theatre) -> None:
+     result = _ready(theatre).config("history")
+     lines = result.out.splitlines()
+     assert result.out.endswith("\n") and len(lines) == 6
+-    assert list(json.loads(lines[0])) == ["seq", "op", "path", "old", "new"]
++    assert list(json.loads(lines[0]))[:5] == ["seq", "op", "path", "old", "new"]
++
++
++def test_history_line_keys_in_contract_order(theatre: Theatre) -> None:
++    set_ok(_ready(theatre), "a", "2")
++    lines = [json.loads(line) for line in theatre.config("history").out.splitlines()]
++    assert {line["op"] for line in lines} == {"import", "set"}
++    for line in lines:
++        assert list(line) == [
++            "seq",
++            "op",
++            "path",
++            "old",
++            "new",
++            "actor",
++            "via",
++            "at",
++            "reason",
++            "change",
++        ]
++        assert list(line["actor"]) == ["kind", "id"]
+ 
+ 
+ def test_history_does_not_import_twice(theatre: Theatre) -> None:
+@@ -124,8 +144,9 @@ def test_seq_stays_contiguous_over_many_sets(theatre: Theatre) -> None:
+ 
+ def test_non_ascii_strings_are_written_literally(theatre: Theatre) -> None:
+     theatre.write("troupe.yml", "name: café 🎭\n")
+-    assert theatre.config("history").out == (
+-        '{"seq": 1, "op": "import", "path": "name", "old": null, "new": "café 🎭"}\n'
++    out = theatre.config("history").out
++    assert out.startswith(
++        '{"seq": 1, "op": "import", "path": "name", "old": null, "new": "café 🎭", "actor": '
+     )
+ 
+ 
+diff --git a/tests/e2e/test_lineage_actor.py b/tests/e2e/test_lineage_actor.py
+new file mode 100644
+index 0000000..cfa869b
+--- /dev/null
++++ b/tests/e2e/test_lineage_actor.py
+@@ -0,0 +1,86 @@
++"""Who changed it, and how: `actor` and `via` (spec US1, FR-302, FR-310, FR-311, FR-320, FR-321)."""
++
++import os
++import pwd
++
++import pytest
++
++from tests.conftest import Theatre
++
++UNKNOWN = {"kind": "unknown", "id": None}
++
++
++def _imported(theatre: Theatre, text: str = "a: 1\nb: [x, y]\n") -> Theatre:
++    theatre.write("troupe.yml", text)
++    theatre.events()
++    return theatre
++
++
++def test_import_events_have_unknown_actor_via_import(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: 1\nb: [x, y]\n")
++    events = theatre.events(env={"TROUPE_ACTOR": "agent:coder-7"})
++    assert len(events) == 3
++    for event in events:
++        assert (event["actor"], event["via"]) == (UNKNOWN, "import")
++
++
++@pytest.mark.parametrize(
++    ("value", "actor"),
++    [
++        ("agent:coder-7", {"kind": "agent", "id": "coder-7"}),
++        ("human:alice", {"kind": "human", "id": "alice"}),
++        ("agent:team:coder", {"kind": "agent", "id": "team:coder"}),
++        ("human:Zoë Q", {"kind": "human", "id": "Zoë Q"}),
++    ],
++)
++def test_set_events_have_the_cli_actor(theatre: Theatre, value: str, actor: dict[str, str]) -> None:
++    _imported(theatre)
++    result = theatre.run("config", "set", "a", "2", env={"TROUPE_ACTOR": value})
++    assert result.code == 0, result
++    event = theatre.events()[-1]
++    assert (event["path"], event["actor"], event["via"]) == ("a", actor, "cli")
++
++
++def test_set_without_troupe_actor_uses_the_login_name(theatre: Theatre) -> None:
++    _imported(theatre)
++    assert theatre.run("config", "set", "a", "2", env={"LOGNAME": "dev"}).code == 0
++    assert theatre.events()[-1]["actor"] == {"kind": "human", "id": "dev"}
++
++
++def test_set_without_any_login_name_has_null_id(theatre: Theatre) -> None:
++    """Environment-dependent: with every login variable removed, the login name comes from the
++    password database, so this end-to-end path only exists for a uid without an entry. The
++    fallback itself is covered by tests/unit/test_lineage.py (research L-6, spec D-34)."""
++    try:
++        pwd.getpwuid(os.getuid())
++    except KeyError:
++        pass
++    else:
++        pytest.skip("uid has a passwd entry; covered by tests/unit/test_lineage.py")
++    _imported(theatre)
++    drop = ("LOGNAME", "USER", "LNAME", "USERNAME")
++    assert theatre.run("config", "set", "a", "2", drop=drop).code == 0
++    assert theatre.events()[-1]["actor"] == {"kind": "human", "id": None}
++
++
++def test_hand_edit_reconciled_by_a_command_has_unknown_actor_via_file(theatre: Theatre) -> None:
++    _imported(theatre)
++    theatre.write("troupe.yml", "a: 5\nb: [x, y]\n")
++    result = theatre.run("config", "get", "a", env={"TROUPE_ACTOR": "agent:coder-7"})
++    assert (result.code, result.out) == (0, "5\n")
++    event = theatre.events()[-1]
++    assert (event["path"], event["actor"], event["via"]) == ("a", UNKNOWN, "file")
++
++
++def test_reconcile_then_set_in_one_command_have_their_own_via(theatre: Theatre) -> None:
++    _imported(theatre)
++    theatre.write("troupe.yml", "a: 5\nb: [x, y]\n")
++    result = theatre.run("config", "set", "c", "5", env={"TROUPE_ACTOR": "human:alice"})
++    assert result.code == 0, result
++    hand_edit, own = theatre.events()[-2:]
++    assert (hand_edit["path"], hand_edit["actor"], hand_edit["via"]) == ("a", UNKNOWN, "file")
++    assert (own["path"], own["actor"], own["via"]) == (
++        "c",
++        {"kind": "human", "id": "alice"},
++        "cli",
++    )
+diff --git a/tests/e2e/test_lineage_change.py b/tests/e2e/test_lineage_change.py
+new file mode 100644
+index 0000000..c6b47c9
+--- /dev/null
++++ b/tests/e2e/test_lineage_change.py
+@@ -0,0 +1,88 @@
++"""What else changed with it: `change` groups each unit's events (spec US2, FR-305, D-30)."""
++
++from typing import Any
++
++from tests.conftest import Theatre, set_ok
++
++
++def _imported(theatre: Theatre, text: str = "a: 1\nb: [x, y]\n") -> list[dict[str, Any]]:
++    theatre.write("troupe.yml", text)
++    return theatre.events()
++
++
++def _changes(events: list[dict[str, Any]]) -> set[str]:
++    return {e["change"] for e in events}
++
++
++def test_import_events_share_one_change(theatre: Theatre) -> None:
++    events = _imported(theatre)
++    assert len(events) == 3
++    (change,) = _changes(events)
++    assert isinstance(change, str) and change
++
++
++def test_one_set_shares_one_change_across_set_and_remove(theatre: Theatre) -> None:
++    imported = _imported(theatre)
++    set_ok(theatre, "b", "[z]")
++    own = theatre.events()[3:]
++    assert [(e["op"], e["path"]) for e in own] == [("set", "b.0"), ("remove", "b.1")]
++    assert len(_changes(own)) == 1
++    assert _changes(own) != _changes(imported)
++
++
++def test_one_hand_edit_reconcile_shares_one_change(theatre: Theatre) -> None:
++    _imported(theatre)
++    theatre.write("troupe.yml", "a: 2\nb: [w, y]\n")
++    assert theatre.config("show").code == 0
++    reconciled = theatre.events()[3:]
++    assert [e["path"] for e in reconciled] == ["a", "b.0"]
++    assert len(_changes(reconciled)) == 1
++
++
++def test_reconcile_and_set_in_one_invocation_are_separate_changes(theatre: Theatre) -> None:
++    _imported(theatre)
++    theatre.write("troupe.yml", "a: 2\nb: [x, y]\n")
++    set_ok(theatre, "c", "1")
++    hand_edit, own = theatre.events()[3:]
++    assert (hand_edit["path"], own["path"]) == ("a", "c")
++    assert hand_edit["change"] != own["change"]
++
++
++def test_first_set_on_a_fresh_theatre_separates_import_and_set(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: 1\nb: [x, y]\n")
++    set_ok(theatre, "a", "2")
++    events = theatre.events()
++    imports, own = events[:3], events[3:]
++    assert {e["op"] for e in imports} == {"import"} and len(_changes(imports)) == 1
++    assert len(own) == 1 and own[0]["change"] not in _changes(imports)
++
++
++def test_changes_are_distinct_across_many_commands(theatre: Theatre) -> None:
++    units: list[list[int]] = [[e["seq"] for e in _imported(theatre)]]
++    commands = [("a", str(2 - i % 2)) for i in range(10)] + [("b", "[z, w, v]")]
++    for path, value in commands:
++        seen = len(theatre.history())
++        set_ok(theatre, path, value)
++        units.append([e["seq"] for e in theatre.history()[seen:]])
++    assert all(units)
++    by_change: dict[str, list[int]] = {}
++    for event in theatre.events():
++        by_change.setdefault(event["change"], []).append(event["seq"])
++    assert sorted(by_change.values()) == sorted(units)
++    assert len(by_change) == len(units) == 12
++
++
++def test_filtered_history_keeps_change_values(theatre: Theatre) -> None:
++    _imported(theatre)
++    set_ok(theatre, "b", "[z]")
++    set_ok(theatre, "a", "5")
++    everything = theatre.events()
++    filtered = theatre.events("b")
++    assert filtered and all(line in everything for line in filtered)
++    assert len(filtered) < len(everything)
++
++
++def test_set_that_changes_nothing_leaves_no_change(theatre: Theatre) -> None:
++    before = _imported(theatre)
++    set_ok(theatre, "a", "1")
++    assert theatre.events() == before
+diff --git a/tests/e2e/test_lineage_errors.py b/tests/e2e/test_lineage_errors.py
+new file mode 100644
+index 0000000..37b409c
+--- /dev/null
++++ b/tests/e2e/test_lineage_errors.py
+@@ -0,0 +1,54 @@
++"""An invalid `TROUPE_ACTOR` is refused by every command before anything happens (spec FR-322,
++FR-323, D-31, D-32, SC-303)."""
++
++from collections.abc import Callable
++
++import pytest
++
++from tests.conftest import Theatre, Watcher, assert_failed, recorded
++from troupe.config.store import STORE_FILENAME
++
++INVALID = ["", "human", "human:", "agent:", "Human:alice", "robot:x", ":x", "unknown:x"]
++SUBCOMMANDS = [("get", "a"), ("show",), ("show", "a"), ("set", "a", "9"), ("history",)]
++
++
++def _store_exists(theatre: Theatre) -> bool:
++    return (theatre.root / ".troupe" / STORE_FILENAME).exists()
++
++
++@pytest.mark.parametrize("value", INVALID)
++@pytest.mark.parametrize("args", SUBCOMMANDS, ids=" ".join)
++def test_invalid_troupe_actor_on_a_new_theatre_exits_2_and_records_nothing(
++    theatre: Theatre, value: str, args: tuple[str, ...]
++) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    before = theatre.snapshot()
++    result = theatre.run("config", *args, env={"TROUPE_ACTOR": value})
++    assert_failed(result, 2, "TROUPE_ACTOR")
++    assert theatre.snapshot() == before
++    assert not _store_exists(theatre)
++
++
++@pytest.mark.parametrize("value", INVALID)
++@pytest.mark.parametrize("args", SUBCOMMANDS, ids=" ".join)
++def test_invalid_troupe_actor_with_a_pending_hand_edit_exits_2_and_records_nothing(
++    theatre: Theatre, value: str, args: tuple[str, ...]
++) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.history()
++    theatre.write("troupe.yml", "a: 2\n")
++    before_files = theatre.snapshot()
++    before_events = recorded(theatre)
++    result = theatre.run("config", *args, env={"TROUPE_ACTOR": value})
++    assert_failed(result, 2, "TROUPE_ACTOR")
++    assert theatre.snapshot() == before_files
++    assert recorded(theatre) == before_events
++
++
++def test_invalid_troupe_actor_stops_watch(
++    theatre: Theatre, start_watch: Callable[..., Watcher]
++) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    watcher = start_watch(env={"TROUPE_ACTOR": "robot:x"})
++    assert_failed(watcher.stop(), 2, "TROUPE_ACTOR")
++    assert not _store_exists(theatre)
+diff --git a/tests/e2e/test_lineage_persist.py b/tests/e2e/test_lineage_persist.py
+new file mode 100644
+index 0000000..2fed740
+--- /dev/null
++++ b/tests/e2e/test_lineage_persist.py
+@@ -0,0 +1,52 @@
++"""Lineage survives restarts and never changes once recorded (spec US4, FR-306, SC-304)."""
++
++import json
++
++from tests.conftest import Theatre
++from troupe.config.store import ConfigStore
++
++
++def _set(theatre: Theatre, *args: str, actor: str) -> None:
++    result = theatre.run("config", "set", *args, env={"TROUPE_ACTOR": actor})
++    assert result.code == 0, result
++
++
++def _history(theatre: Theatre, env: dict[str, str] | None = None) -> str:
++    result = theatre.run("config", "history", env=env)
++    assert result.code == 0, result
++    return result.out
++
++
++def test_lineage_is_identical_in_later_processes_whatever_their_actor(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: 1\nb: [x, y]\n")
++    _history(theatre)  # import
++    _set(theatre, "a", "2", "--reason", "r1", actor="agent:a")
++    theatre.write("troupe.yml", "a: 2\nb: [w, y]\n")
++    assert theatre.config("show").code == 0  # reconcile
++    _set(theatre, "b", "[z]", actor="human:b")
++    earlier = _history(theatre)
++
++    assert _history(theatre) == earlier
++    other = _history(theatre, env={"TROUPE_ACTOR": "human:other", "LOGNAME": "someone-else"})
++    assert other == earlier
++    _set(theatre, "a", "3", actor="agent:c")
++    later = _history(theatre)
++    assert later.startswith(earlier) and later != earlier
++
++
++def test_lineage_is_read_from_the_store(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    _set(theatre, "a", "2", "--reason", "r1", actor="agent:a")
++    lines = [json.loads(line) for line in _history(theatre).splitlines()]
++    records = ConfigStore(theatre.root).history()
++    assert len(records) == len(lines) == 2
++    for record, line in zip(records, lines, strict=True):
++        lineage = record.lineage
++        assert line["actor"] == {"kind": lineage.actor.kind, "id": lineage.actor.id}
++        assert (line["via"], line["at"], line["reason"], line["change"]) == (
++            lineage.via,
++            lineage.at,
++            lineage.reason,
++            lineage.change,
++        )
++    assert records[1].lineage.actor.id == "a"
+diff --git a/tests/e2e/test_lineage_watch.py b/tests/e2e/test_lineage_watch.py
+new file mode 100644
+index 0000000..6516870
+--- /dev/null
++++ b/tests/e2e/test_lineage_watch.py
+@@ -0,0 +1,39 @@
++"""Lineage of events recorded while `watch` runs (spec US1 scenario 6; edge case "set under
++watch")."""
++
++import time
++from collections.abc import Callable
++from typing import Any
++
++from tests.conftest import Theatre, Watcher, recorded, wait_for_history
++
++type Start = Callable[..., Watcher]
++UNKNOWN = {"kind": "unknown", "id": None}
++
++
++def test_watch_hand_edit_has_unknown_actor_via_file(theatre: Theatre, start_watch: Start) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    watcher = start_watch(env={"TROUPE_ACTOR": "agent:w"})
++    since = time.monotonic()
++    theatre.write("troupe.yml", "a: 2\n")
++
++    def has_set(events: list[dict[str, Any]]) -> bool:
++        return any(e["op"] == "set" for e in events)
++
++    wait_for_history(theatre, has_set, since)
++    assert watcher.stop().code == 0
++    event = theatre.events()[-1]
++    assert (event["op"], event["actor"], event["via"]) == ("set", UNKNOWN, "file")
++
++
++def test_set_under_watch_keeps_its_own_lineage(theatre: Theatre, start_watch: Start) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    watcher = start_watch()
++    before = len(recorded(theatre))
++    result = theatre.run("config", "set", "a", "3", env={"TROUPE_ACTOR": "human:alice"})
++    assert result.code == 0, result
++    time.sleep(3)
++    assert watcher.stop().code == 0
++    new = theatre.events()[before:]
++    assert len(new) == 1
++    assert (new[0]["via"], new[0]["actor"]) == ("cli", {"kind": "human", "id": "alice"})
+diff --git a/tests/e2e/test_lineage_when_why.py b/tests/e2e/test_lineage_when_why.py
+new file mode 100644
+index 0000000..8024647
+--- /dev/null
++++ b/tests/e2e/test_lineage_when_why.py
+@@ -0,0 +1,110 @@
++"""When and why: `at` and `set --reason` (spec US3, FR-303, FR-304, FR-330, FR-331, D-35, D-36)."""
++
++import json
++from collections.abc import Callable
++from datetime import UTC, datetime
++from typing import Any
++
++import pytest
++
++from tests.conftest import Result, Theatre, set_ok
++
++AT_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
++
++
++def _imported(theatre: Theatre, text: str = "a: 1\nb: [x, y]\n") -> Theatre:
++    theatre.write("troupe.yml", text)
++    theatre.events()
++    return theatre
++
++
++def _set(theatre: Theatre, *args: str, env: dict[str, str] | None = None) -> None:
++    result = theatre.run("config", "set", *args, env=env)
++    assert (result.code, result.out) == (0, ""), result
++
++
++def test_reason_is_recorded_on_the_sets_events(theatre: Theatre) -> None:
++    _set(_imported(theatre), "a", "2", "--reason", "raise for load test")
++    assert theatre.events()[-1]["reason"] == "raise for load test"
++
++
++def test_reason_is_null_without_reason_and_on_import_and_file_events(theatre: Theatre) -> None:
++    _imported(theatre)
++    theatre.write("troupe.yml", "a: 2\nb: [x, y]\n")
++    _set(theatre, "a", "3")
++    events = theatre.events()
++    assert events[-1]["via"] == "cli" and events[-1]["reason"] is None
++    assert {e["via"] for e in events[:-1]} == {"import", "file"}
++    assert all(e["reason"] is None for e in events)
++
++
++def test_reason_applies_to_every_event_of_the_set(theatre: Theatre) -> None:
++    _set(_imported(theatre), "b", "[z]", "--reason", "trim")
++    own = theatre.events()[3:]
++    assert [(e["op"], e["reason"]) for e in own] == [("set", "trim"), ("remove", "trim")]
++
++
++def test_reason_does_not_apply_to_the_reconcile_in_the_same_command(theatre: Theatre) -> None:
++    _imported(theatre)
++    theatre.write("troupe.yml", "a: 2\nb: [x, y]\n")
++    _set(theatre, "c", "1", "--reason", "x")
++    hand_edit, own = theatre.events()[3:]
++    assert (hand_edit["path"], hand_edit["reason"]) == ("a", None)
++    assert (own["path"], own["reason"]) == ("c", "x")
++
++
++@pytest.mark.parametrize(
++    "reason",
++    ["", "line one\nline two", 'say "hi"', "café 🎭", "--looks-like-an-option"],
++    ids=["empty", "newline", "quotes", "non-ascii", "option-like"],
++)
++def test_reason_text_is_kept_exactly(theatre: Theatre, reason: str) -> None:
++    _set(_imported(theatre), "a", "2", f"--reason={reason}")
++    raw = theatre.config("history").out.splitlines()[-1]
++    assert json.loads(raw)["reason"] == reason
++
++
++def _bounded(
++    theatre: Theatre, command: Callable[[], Result], env_note: str = ""
++) -> tuple[datetime, datetime]:
++    before = datetime.now(UTC)
++    result = command()
++    after = datetime.now(UTC)
++    assert result.code == 0, (env_note, result)
++    return before, after
++
++
++def _at(event: dict[str, Any]) -> datetime:
++    at = event["at"]
++    assert isinstance(at, str) and at.endswith("Z")
++    return datetime.strptime(at, AT_FORMAT).replace(tzinfo=UTC)
++
++
++def test_at_is_rfc3339_utc_within_the_command(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    lo, hi = _bounded(theatre, lambda: theatre.config("history"))
++    assert lo <= _at(theatre.events()[-1]) <= hi  # import
++    theatre.write("troupe.yml", "a: 2\n")
++    lo, hi = _bounded(theatre, lambda: theatre.config("get", "a"))
++    event = theatre.events()[-1]
++    assert event["via"] == "file" and lo <= _at(event) <= hi  # reconcile
++    lo, hi = _bounded(theatre, lambda: theatre.config("set", "a", "3"))
++    event = theatre.events()[-1]
++    assert event["via"] == "cli" and lo <= _at(event) <= hi  # set
++
++
++def test_at_is_shared_within_a_unit(theatre: Theatre) -> None:
++    _imported(theatre)
++    set_ok(theatre, "b", "[z]")
++    events = theatre.events()
++    assert len({e["at"] for e in events[:3]}) == 1
++    assert len({e["at"] for e in events[3:]}) == 1
++
++
++def test_at_is_utc_whatever_the_time_zone(theatre: Theatre) -> None:
++    _imported(theatre)
++    lo, hi = _bounded(
++        theatre,
++        lambda: theatre.run("config", "set", "a", "2", env={"TZ": "America/New_York"}),
++    )
++    assert lo <= _at(theatre.events()[-1]) <= hi
+diff --git a/tests/e2e/test_reconcile.py b/tests/e2e/test_reconcile.py
+index f44eaf1..84c5278 100644
+--- a/tests/e2e/test_reconcile.py
++++ b/tests/e2e/test_reconcile.py
+@@ -23,9 +23,7 @@ def test_show_picks_up_a_hand_edit_and_records_it(theatre: Theatre) -> None:
+     _imported(theatre, "a: 1\n")
+     theatre.write("troupe.yml", "a: 2\n")
+     assert _show(theatre, "a") == "2\n"
+-    assert theatre.config("history").out.splitlines()[-1] == (
+-        '{"seq": 2, "op": "set", "path": "a", "old": 1, "new": 2}'
+-    )
++    assert theatre.history()[-1] == {"seq": 2, "op": "set", "path": "a", "old": 1, "new": 2}
+ 
+ 
+ @pytest.mark.parametrize(
+diff --git a/tests/e2e/test_usage.py b/tests/e2e/test_usage.py
+index b48c1df..92aff9d 100644
+--- a/tests/e2e/test_usage.py
++++ b/tests/e2e/test_usage.py
+@@ -5,6 +5,7 @@ from pathlib import Path
+ import pytest
+ 
+ from tests.conftest import Theatre, assert_failed
++from troupe.config.store import STORE_FILENAME
+ 
+ 
+ @pytest.fixture
+@@ -26,13 +27,21 @@ def ready(theatre: Theatre) -> Theatre:
+         ("config", "set", "a"),
+         ("config", "show", "a", "extra"),
+         ("config", "show", "a", "--bogus"),
++        ("config", "set", "a", "2", "--reason"),
++        ("config", "get", "a", "--reason", "x"),
++        ("config", "show", "--reason", "x"),
++        ("config", "history", "--reason", "x"),
++        ("config", "watch", "--reason", "x"),
+     ],
+ )
+ def test_bad_command_lines_exit_2(ready: Theatre, args: tuple[str, ...]) -> None:
++    before = ready.snapshot()
+     result = ready.run(*args)
+     assert result.code == 2, result
+     assert result.out == ""
+     assert result.err != ""
++    assert ready.snapshot() == before
++    assert not (ready.root / ".troupe" / STORE_FILENAME).exists()
+ 
+ 
+ def test_invalid_value_exits_2_naming_the_value(ready: Theatre) -> None:
+diff --git a/tests/unit/test_lineage.py b/tests/unit/test_lineage.py
+new file mode 100644
+index 0000000..59b9b70
+--- /dev/null
++++ b/tests/unit/test_lineage.py
+@@ -0,0 +1,98 @@
++"""Lineage values (spec FR-303, FR-305, FR-320 to FR-322; research L-3 to L-6)."""
++
++import getpass
++from datetime import UTC, datetime, timedelta, timezone
++
++import pytest
++
++from troupe.config.lineage import (
++    UNKNOWN_ACTOR,
++    Actor,
++    Lineage,
++    actor_from_env,
++    format_at,
++    login_name,
++)
++from troupe.errors import UsageError
++
++AT_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
++
++
++def test_actor_from_env_unset_is_human_with_login_name() -> None:
++    assert actor_from_env({}, login=lambda: "dev") == Actor("human", "dev")
++
++
++def test_actor_from_env_unset_with_unknown_login_has_null_id() -> None:
++    assert actor_from_env({}, login=lambda: None) == Actor("human", None)
++
++
++@pytest.mark.parametrize(
++    ("value", "expected"),
++    [
++        ("human:alice", Actor("human", "alice")),
++        ("agent:coder-7", Actor("agent", "coder-7")),
++        ("agent:team:coder", Actor("agent", "team:coder")),
++        ("human: spaced ", Actor("human", " spaced ")),
++        ("agent:café", Actor("agent", "café")),
++    ],
++)
++def test_actor_from_env_accepts_human_and_agent(value: str, expected: Actor) -> None:
++    assert actor_from_env({"TROUPE_ACTOR": value}, login=lambda: "dev") == expected
++
++
++@pytest.mark.parametrize(
++    "value",
++    ["", "human", "human:", "agent:", "Human:alice", "AGENT:x", "robot:x", ":x", "unknown:x"],
++)
++def test_actor_from_env_rejects_anything_else(value: str) -> None:
++    with pytest.raises(UsageError) as caught:
++        actor_from_env({"TROUPE_ACTOR": value}, login=lambda: "dev")
++    assert caught.value.exit_code == 2
++    assert "TROUPE_ACTOR" in caught.value.message
++    assert repr(value) in caught.value.message
++
++
++@pytest.mark.parametrize("failure", [OSError("no login"), KeyError("uid"), ""])
++def test_login_name_is_none_when_lookup_fails(
++    monkeypatch: pytest.MonkeyPatch, failure: BaseException | str
++) -> None:
++    def getuser() -> str:
++        if isinstance(failure, BaseException):
++            raise failure
++        return failure
++
++    monkeypatch.setattr(getpass, "getuser", getuser)
++    assert login_name() is None
++
++
++def test_login_name_is_getuser(monkeypatch: pytest.MonkeyPatch) -> None:
++    monkeypatch.setattr(getpass, "getuser", lambda: "someone")
++    assert login_name() == "someone"
++
++
++def test_format_at_is_rfc3339_utc_with_z() -> None:
++    assert format_at(datetime(2026, 10, 4, 9, 5, 7, 123, tzinfo=UTC)) == (
++        "2026-10-04T09:05:07.000123Z"
++    )
++
++
++def test_format_at_converts_other_time_zones_to_utc() -> None:
++    moment = datetime(2026, 10, 4, 11, 5, 7, tzinfo=timezone(timedelta(hours=2)))
++    assert format_at(moment) == "2026-10-04T09:05:07.000000Z"
++
++
++def test_begin_gives_fresh_change_and_current_at() -> None:
++    before = datetime.now(UTC)
++    first = Lineage.begin(UNKNOWN_ACTOR, "file")
++    second = Lineage.begin(UNKNOWN_ACTOR, "file")
++    after = datetime.now(UTC)
++    assert first.change and second.change and first.change != second.change
++    for lineage in (first, second):
++        at = datetime.strptime(lineage.at, AT_FORMAT).replace(tzinfo=UTC)
++        assert before <= at <= after
++        assert (lineage.actor, lineage.via, lineage.reason) == (UNKNOWN_ACTOR, "file", None)
++
++
++def test_begin_keeps_actor_via_and_reason() -> None:
++    lineage = Lineage.begin(Actor("agent", "a"), "cli", "why")
++    assert (lineage.actor, lineage.via, lineage.reason) == (Actor("agent", "a"), "cli", "why")
+diff --git a/tests/unit/test_lock.py b/tests/unit/test_lock.py
+index 4e2500f..98c341d 100644
+--- a/tests/unit/test_lock.py
++++ b/tests/unit/test_lock.py
+@@ -8,6 +8,7 @@ import pytest
+ 
+ from troupe.config import commands
+ from troupe.config.leaves import LeafEvent
++from troupe.config.lineage import Actor, Lineage
+ from troupe.config.lock import LOCK_FILENAME, theatre_lock
+ from troupe.config.store import ConfigStore
+ from troupe.errors import LoadError
+@@ -80,11 +81,11 @@ def test_set_records_its_events_with_the_lock_held(
+     held: list[bool] = []
+     original = ConfigStore.record
+ 
+-    def record(self: ConfigStore, events: list[LeafEvent]) -> None:
++    def record(self: ConfigStore, events: list[LeafEvent], lineage: Lineage) -> None:
+         held.append(not lock_is_free(theatre / ".troupe" / LOCK_FILENAME))
+-        original(self, events)
++        original(self, events, lineage)
+ 
+     monkeypatch.setattr(ConfigStore, "record", record)
+-    commands.set_value(theatre, "a", "2")
++    commands.set_value(theatre, "a", "2", Actor("human", "t"), None)
+     assert held and all(held)
+     assert (theatre / ".troupe" / "troupe.yml").read_bytes() == b"a: 2\n"
+diff --git a/tests/unit/test_reconcile.py b/tests/unit/test_reconcile.py
+index 3cbb594..e877f30 100644
+--- a/tests/unit/test_reconcile.py
++++ b/tests/unit/test_reconcile.py
+@@ -5,6 +5,7 @@ from pathlib import Path
+ import pytest
+ 
+ from troupe.config.leaves import LeafEvent, leaves
++from troupe.config.lineage import UNKNOWN_ACTOR, Lineage
+ from troupe.config.loader import load
+ from troupe.config.store import ConfigStore
+ from troupe.config.sync import reconcile
+@@ -23,7 +24,9 @@ def _write(theatre: Path, text: str | bytes, name: str = "troupe.yml") -> None:
+ 
+ def _imported(tmp_path: Path, text: str) -> Path:
+     theatre = _theatre(tmp_path, text)
+-    ConfigStore(theatre).import_leaves(leaves(load(theatre).root))
++    ConfigStore(theatre).import_leaves(
++        leaves(load(theatre).root), Lineage.begin(UNKNOWN_ACTOR, "import")
++    )
+     return theatre
+ 
+ 
+@@ -115,3 +118,21 @@ def test_reconcile_events_are_persisted(tmp_path: Path) -> None:
+         (2, "set", "a", 1, 2),
+     ]
+     assert ConfigStore(theatre).leaves() == {"a": 2}
++
++
++def test_reconcile_stamps_one_file_lineage(tmp_path: Path) -> None:
++    theatre = _imported(tmp_path, "a: 1\nb: 2\n")
++    _write(theatre, "a: 10\nb: 20\n")
++    _reconcile(theatre)
++    imported, first, second = (r.lineage for r in ConfigStore(theatre).history()[1:])
++    assert first == second
++    assert (first.via, first.actor, first.reason) == ("file", UNKNOWN_ACTOR, None)
++    assert first.change != imported.change
++
++
++def test_empty_reconcile_records_nothing(tmp_path: Path) -> None:
++    theatre = _imported(tmp_path, "a: 1\n")
++    _write(theatre, "a: 2\n")
++    _reconcile(theatre)
++    assert _reconcile(theatre) == []
++    assert len(ConfigStore(theatre).history()) == 2

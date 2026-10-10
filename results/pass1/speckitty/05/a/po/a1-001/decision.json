@@ -1,0 +1,16 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "When includes are nested (troupe.yml includes agents/team.yaml, which includes agents/coder.yaml) and a new key's deepest existing ancestor comes from agents/coder.yaml, which file gets the override: the nearest including file (agents/team.yaml) or the outermost root file (troupe.yml)?",
+      "reply": "(A), the nearest including file. The override goes in the file that contains the include reference for the file the deepest existing ancestor comes from. In your example that is agents/team.yaml: `coder: file:coder.yaml` is converted to mapping form there and `temperature: 0.3` is added as an override beside `$ref`. The root file is not changed.",
+      "escalate": false,
+      "cited": "contract.md: Overrides (from step 5), 'A new key whose deepest existing ancestor comes from an included file is written as an override in the file that contains the include reference (the *including* file)'"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

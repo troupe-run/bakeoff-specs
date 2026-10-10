@@ -1,0 +1,49 @@
+```json
+{
+  "stakes": "When someone types an unusual VALUE (nothing at all, `a: b`, `!!str 5`, `&n 1`), the result is one of three things: it gets written into troupe.yml, possibly in a different form than they meant, or it is refused with exit 2 and the file is left alone. One case is easy to miss: `!!str 5` can end up stored as the number 5 instead of the string \"5\".",
+  "examples": [
+    {
+      "input": "`config set empty \"\"`",
+      "before": "name: demo  # project\nretries: 3\n",
+      "results": {
+        "1": "exit 0; the file gains:\nempty: null",
+        "2": "Two arms: exit 2, nothing written (\"empty: VALUE is not a single flow node: VALUE is empty or contains only comments\" / \"troupe: error: invalid VALUE '': expected a YAML flow node\"). One arm: exit 0, the file gains:\nempty: null",
+        "3": "Both arms: exit 0, the file gains:\nempty: null"
+      },
+      "observed": true
+    },
+    {
+      "input": "`config set block \"a: b\"`",
+      "before": "",
+      "results": {
+        "1": "exit 0; the file gains a nested mapping:\nblock:\n  a: b",
+        "2": "All three arms: exit 2, nothing written. The messages differ, e.g. \"block: VALUE is not a single flow node: block mapping (write it in flow style, e.g. {a: 1} or [a, b])\"",
+        "3": "Both arms: exit 2, nothing written. One arm's message is \"troupe: invalid VALUE 'a: b': must be a single flow node (quote it to make a string)\""
+      },
+      "observed": true
+    },
+    {
+      "input": "`config set tagged \"!!str 5\"`",
+      "before": "",
+      "results": {
+        "1": "exit 0; the tag is dropped and the value is stored as a plain number:\ntagged: 5",
+        "2": "One arm: exit 2, \"explicit tag '!!str' (tags are refused)\". One arm: exit 0, stored as a number:\ntagged: 5\nOne arm: exit 0, stored as a string:\ntagged: '5'",
+        "3": "One arm: exit 0, stored as a string:\ntagged: '5'\nOne arm: exit 2, \"troupe: cannot parse VALUE '!!str 5': anchors and tags are not supported at line 1\""
+      },
+      "observed": true
+    },
+    {
+      "input": "`config set anchored \"&n 1\"`",
+      "before": "",
+      "results": {
+        "1": "exit 0; the anchor is dropped silently:\nanchored: 1",
+        "2": "One arm: exit 2, \"anchor '&n' (anchors and aliases are refused)\". Two arms: exit 0, anchor dropped:\nanchored: 1",
+        "3": "Both arms: exit 2, nothing written (e.g. \"troupe: invalid VALUE '&n 1': anchors (&) and aliases (*) cannot be written\")"
+      },
+      "observed": true
+    }
+  ],
+  "in_practice": "Route 1 accepts everything it is given. Route 2 is described as refusing empty input, block collections, tags and anchors with exit 2, but only one of its three arms did all of that. The other two refused `a: b`, and between them they also wrote an empty value as null, wrote tags and anchors, and stored `!!str 5` either as the number 5 or as '5'. Every arm on route 2 and route 3 refused `a: b`. Wherever `!!str 5` was accepted, it came out either as the number 5 (route 1 and one route-2 arm) or as '5' (the others).",
+  "tradeoff": "Route 1 never refuses, but it quietly turns `a: b` into a mapping, an empty value into null, and `!!str 5` into the number 5. Route 2 aims to refuse anything outside one plain value, so the user has to quote or rewrite, but its arms did not behave the same way. Route 3 refuses block mappings and anchors and stores an empty value as null, and its arms disagree on tags."
+}
+```

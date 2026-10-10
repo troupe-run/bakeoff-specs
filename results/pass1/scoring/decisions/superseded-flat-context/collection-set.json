@@ -1,0 +1,85 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "coder:\n    model: 'opus'      # main model\n    # sampling knobs\n    temperature: 0.2\n    retries: 3  # keep low",
+        "input": "`config set agents.coder \"{model: opus, temperature: 0.5, max_tokens: 100}\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 0. Keeps `model: 'opus'      # main model` and `# sampling knobs` exactly as they were. `temperature` changes to 0.5, the `retries` line and its comment are removed, and `max_tokens: 100` is added. Same in all four arms.",
+          "2": "exit 0. The block becomes plain `model: opus` / `temperature: 0.5` / `max_tokens: 100`. The quotes, `# main model` and `# sampling knobs` are all gone.",
+          "3": "exit 0. Same as route 2: a plain three-line block with no comments or quotes."
+        }
+      },
+      {
+        "before": "tools:\n  - git   # vcs\n  # search tools\n  - grep\n  - curl  # fetch",
+        "input": "`config set tools \"[git, grep, rg, jq]\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 0. Result: `- git   # vcs` / `# search tools` / `- grep` / `- rg    # fetch` / `- jq`. curl's `# fetch` comment now sits on rg. Same in all four arms.",
+          "2": "exit 0. Result: plain `- git` / `- grep` / `- rg` / `- jq`. All three comments are gone.",
+          "3": "exit 0. Same as route 2: a plain list with no comments."
+        }
+      },
+      {
+        "before": "limits: {cpu: 1, mem: 2}  # caps",
+        "input": "`config set limits \"{cpu: 1, mem: 4, gpu: 0}\"`",
+        "observed": true,
+        "results": {
+          "1": "Three arms: `limits: {cpu: 1, mem: 4, gpu: 0} # caps` (one space before the comment). One arm: `limits: {cpu: 1, mem: 4, gpu: 0}  # caps` (keeps the original two spaces). All exit 0.",
+          "2": "exit 0. `limits: {cpu: 1, mem: 4, gpu: 0} # caps`: stays on one line and keeps the comment.",
+          "3": "exit 0. Switches to block style: `limits:                   # caps`, then `cpu: 1`, `mem: 4`, `gpu: 0` on separate indented lines."
+        }
+      },
+      {
+        "before": "",
+        "input": "then `config set tools \"[grep]\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 0. Result: `tools:` / `- grep  # vcs` / `# search tools`. git's `# vcs` comment now sits on grep, and a stray comment is left under it. Same in all four arms.",
+          "2": "exit 0. Result: `tools:` / `- grep`. Nothing else is left.",
+          "3": "exit 0. Same as route 2: `tools:` / `- grep`."
+        }
+      },
+      {
+        "before": "",
+        "input": "then `config history`",
+        "observed": true,
+        "results": {
+          "1": "exit 0. Lists each change on its own line: temperature 0.2→0.5, max_tokens added, retries removed, tools.2 curl→rg, tools.3 jq added, limits.mem 2→4, limits.gpu 0 added, and so on. One arm lists the retries removal before the two sets; the other three list it after.",
+          "2": "exit 0. The same per-change entries as route 1.",
+          "3": "exit 0. The same per-change entries as route 1."
+        }
+      }
+    ],
+    "in_practice": "All three routes store the same values and record the same per-change history. They differ only in how the file looks afterwards. Route 1 never touches lines you didn't change, but because it matches list entries by position, an old comment can end up describing a different item (`# fetch` on rg, `# vcs` on grep). Routes 2 and 3 rewrite the whole block and drop every comment and quote style inside it. Route 3 also turned a one-line `{...}` mapping into a multi-line block.",
+    "stakes": "When someone sets a whole mapping or list that already exists in troupe.yml, the routes differ on what happens to the hand-written comments and layout around it. One route keeps them but can leave a comment on the wrong entry. The other routes give a clean block but drop every comment inside it.",
+    "tradeoff": "Route 1 keeps your comments, but they can end up next to the wrong entry. Route 2 gives a clean block but loses every comment inside it. Route 3 is like route 2 but can also change a one-line mapping into a multi-line block."
+  },
+  "plan_why": "Sets a mapping and lists onto existing collections that have comments and quoting. Each new value keeps some entries, changes some, adds one and drops one. The file shows whether untouched entries keep their bytes and comments (merge) or the whole block is rewritten and its comments are lost (replace). History shows which leaf events each route emits.",
+  "routes": [
+    [
+      "Merge entry-wise (keep, change, append, delete); unchanged entries keep their bytes and comments",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "Replace the collection's whole span in the old style; comments inside it go with it",
+      [
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm C"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

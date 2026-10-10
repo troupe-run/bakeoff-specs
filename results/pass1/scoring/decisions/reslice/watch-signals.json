@@ -1,0 +1,181 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "C",
+        "why": "All three stops (SIGTERM twice, SIGINT once) exited 0 with empty stderr, and no -wal/-shm files were left"
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "K",
+        "why": "Both SIGTERM stops exited 143, but the SIGINT stop did not exit by itself and was force-killed with 137"
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "S",
+        "why": "Both SIGTERM stops exited 143 and the SIGINT stop exited 130 with a KeyboardInterrupt traceback; it was never force-killed"
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "S",
+        "why": "Both SIGTERM stops exited 143 (leaving -wal/-shm files) and the SIGINT stop printed a KeyboardInterrupt traceback; it was never force-killed with 137"
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "C",
+        "why": "All three stops exited 0 with empty stderr"
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "S",
+        "why": "Both SIGTERM stops exited 143; the SIGINT stop exited 0, so it does not always exit cleanly, and it was never force-killed"
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "retry: 5\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGTERM",
+        "watch": "stop"
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      },
+      {
+        "args": [
+          "config",
+          "watch",
+          "--theatre",
+          "."
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGTERM",
+        "watch": "stop"
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      },
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "retry: 6\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "retry: 4\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Three watch runs in one theatre. Run A: `config watch` with no flag, a hand edit from retry 4 to 5, a 3 s wait, then SIGTERM; .troupe is listed so any leftover -wal/-shm files and their sizes show. Run B: `config watch --theatre .` stopped with SIGTERM right away, with no edit, then .troupe is listed again. Run C: a hand edit to 6 and SIGINT straight after, so the signal can arrive during a reconcile. The final `config history` shows whether the 5 and 6 changes were each recorded whole, with no partial events. Every stop reports the exit code (0 expected) and stderr (no traceback). Limits: the harness sends one signal per stop, so a double SIGINT cannot be sent and Run C sends one SIGINT just after the edit instead. To fit 12 steps, the history after Run A and the listing after Run C were dropped; the final history includes Run A's events."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "always exits 0 cleanly",
+            "id": "C"
+          },
+          {
+            "description": "stops promptly but exits 143 or 130 (or prints a traceback)",
+            "id": "S"
+          },
+          {
+            "description": "sometimes doesn't stop and is force-killed (137), leaving -wal/-shm",
+            "id": "K"
+          }
+        ],
+        "id": "Q1",
+        "text": "stopping watch with SIGINT/SIGTERM"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Handlers only set a flag/Event; an in-progress reconcile finishes; exit 0; previous handlers restored",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T117",
+  "status": "ok"
+}

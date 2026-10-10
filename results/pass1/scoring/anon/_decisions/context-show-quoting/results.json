@@ -1,0 +1,195 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "flags",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "flags.extra",
+          "on"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "flags"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "flags:\n  enabled: 'yes'\n  legacy: \"off\"\n  short: 'y'\n  mixed: 'On'\n  time: '1:30'\n  big: '1_000'\n  real: 'true'\n  number: '42'\n  plain: hello\n'yes': 1\n'on': 'no'\n'true': x\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "flags:\n  enabled: 'yes'\n  legacy: 'off'\n  short: 'y'\n  mixed: 'On'\n  time: '1:30'\n  big: '1_000'\n  real: 'true'\n  number: '42'\n  plain: hello\n'yes': 1\n'on': 'no'\n'true': x\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "flags",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "enabled: 'yes' # from .troupe/troupe.yml\nlegacy: 'off' # from .troupe/troupe.yml\nshort: 'y' # from .troupe/troupe.yml\nmixed: 'On' # from .troupe/troupe.yml\ntime: '1:30' # from .troupe/troupe.yml\nbig: '1_000' # from .troupe/troupe.yml\nreal: 'true' # from .troupe/troupe.yml\nnumber: '42' # from .troupe/troupe.yml\nplain: hello # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "flags.extra",
+                "on"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "flags:\n  enabled: 'yes'\n  legacy: \"off\"\n  short: 'y'\n  mixed: 'On'\n  time: '1:30'\n  big: '1_000'\n  real: 'true'\n  number: '42'\n  plain: hello\n  extra: on\n'yes': 1\n'on': 'no'\n'true': x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "flags"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "enabled: 'yes'\nlegacy: 'off'\nshort: 'y'\nmixed: 'On'\ntime: '1:30'\nbig: '1_000'\nreal: 'true'\nnumber: '42'\nplain: hello\nextra: 'on'\n"
+            }
+          ]
+        }
+      ],
+      "route": "Plain only if both YAML 1.2 and 1.1 readers read it back unchanged",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 5,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "flags:\n  enabled: yes\n  legacy: off\n  short: y\n  mixed: On\n  time: 1:30\n  big: 1_000\n  real: 'true'\n  number: '42'\n  plain: hello\nyes: 1\non: no\n'true': x\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "flags",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "enabled: yes # from .troupe/troupe.yml\nlegacy: off # from .troupe/troupe.yml\nshort: y # from .troupe/troupe.yml\nmixed: On # from .troupe/troupe.yml\ntime: 1:30 # from .troupe/troupe.yml\nbig: 1_000 # from .troupe/troupe.yml\nreal: 'true' # from .troupe/troupe.yml\nnumber: '42' # from .troupe/troupe.yml\nplain: hello # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "flags.extra",
+                "on"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "flags:\n  enabled: 'yes'\n  legacy: \"off\"\n  short: 'y'\n  mixed: 'On'\n  time: '1:30'\n  big: '1_000'\n  real: 'true'\n  number: '42'\n  plain: hello\n  extra: on\n'yes': 1\n'on': 'no'\n'true': x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "flags"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "enabled: yes\nlegacy: off\nshort: y\nmixed: On\ntime: 1:30\nbig: 1_000\nreal: 'true'\nnumber: '42'\nplain: hello\nextra: on\n"
+            }
+          ]
+        }
+      ],
+      "route": "set's plain/single/double chain; keys plain only when they read back as strings",
+      "route_no": 2
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 4, "evidence": ["/judge/gates.md:3-23", "/judge/gates.md:16-19", "/judge/transcript.md:455", "/judge/transcript.md:470-473"], "notes": "The one recorded gate is the plan approval, which came after the spec and before any code. It names the five parts, the order of operations inside `set`, and three choices for the owner to confirm, so it can be judged in about a minute. When an implementer departed from the owner's earlier ruling on folded values, the arm enforced that ruling in review instead of quietly changing the requirement, so no extra gate was needed."}
+```

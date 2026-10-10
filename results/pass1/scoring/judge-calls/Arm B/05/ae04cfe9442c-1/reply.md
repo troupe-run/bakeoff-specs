@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["/judge/transcript.md:2-15", "/judge/transcript.md:41", "/judge/transcript.md:171-172", "/judge/questions.md:17-23", "/judge/questions.md:156-158"], "notes": "Before both questions the arm did research on the point. For Q1 it read the specs, the loader and edit code, and the archived lineage change (lines 2-15). For Q5 it checked the archive instructions, status and change list (line 171). In each question it said what it found, and Q5 gave options with a recommendation and a reason (earlier changes were archived this way). Q1 falls short of a 4: most of its six choices are stated as decisions rather than options with consequences, only item 1 names an alternative, and items 3 and 6 give no reason."}
+```

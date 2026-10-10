@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "Store failures during watch",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "So no hand edit is lost",
+      "route": "Report and retry like load errors",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Stop rather than run on silently",
+      "route": "Unexpected non-load exceptions end watch through the normal error path",
+      "route_no": 2
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

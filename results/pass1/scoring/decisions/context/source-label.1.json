@@ -1,0 +1,48 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "",
+        "input": "Theatre folder `/home/u/show` contains `scenes`, a symlink to `/data/scenes`; the user refers to `scenes/act1.txt`",
+        "observed": false,
+        "results": {
+          "1": "named `scenes/act1.txt`, as the user wrote it",
+          "2": "named `../../../data/scenes/act1.txt`, the file's real location relative to the theatre"
+        }
+      },
+      {
+        "before": "",
+        "input": "The same file is reached once as `scenes/act1.txt` and once as `/data/scenes/act1.txt`",
+        "observed": false,
+        "results": {
+          "1": "two different names (`scenes/act1.txt` and `../../../data/scenes/act1.txt`), so it can look like two separate files",
+          "2": "both get the same name, so it is recognised as one file"
+        }
+      }
+    ],
+    "in_practice": "Nothing could be run, so the examples above are illustrations only. With no symlinks, both routes give the same names, with / separators and ../ for files outside the theatre. Route 1 keeps the names users wrote and matches how watch already names files, but one file reached through a symlink can show up under more than one name. Route 2 always names a file by where it really is on disk, matching the files set would write, so duplicates collapse to one name. The cost is that names can look unfamiliar and climb out of the theatre with ../ when a symlink points elsewhere. Route 2 started out like route 1 and was changed during planning.",
+    "stakes": "When the software reports or records a source file, the name either looks like the path the user typed or like the file's real location on disk. This only matters when symlinks are involved, but then it decides whether people recognise the name and whether two names for one file are treated as the same file.",
+    "tradeoff": "Route 1 costs consistency (one file can have several names, and the names can differ from what set writes); route 2 costs recognisability (names can differ from what the user typed and from what watch shows)."
+  },
+  "plan_why": "The two routes only name a file differently when a symlink is involved: route 1 keeps the symlinked path as written, and route 2 resolves it to the real file. The sandbox can only create regular files from the list and run troupe commands, so no symlink can be made. Without symlinks, both routes give the same theatre-relative '/'-separated name: '..' segments inside the theatre collapse the same way, and a file outside the theatre cannot be created. Any example would print identical `show --sources` output for every implementation and show nothing that separates the routes.",
+  "routes": [
+    [
+      "Lexical path relative to the theatre with / separators; ../ outside; symlinks not resolved",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "Real paths with symlinks resolved, relative to the resolved theatre (reworked from lexical during planning)",
+      [
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

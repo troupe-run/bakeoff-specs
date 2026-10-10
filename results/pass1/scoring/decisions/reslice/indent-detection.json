@@ -1,0 +1,130 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "1",
+    "Arm C": "1",
+    "Arm D": "2",
+    "Arm E": "1",
+    "Arm F": "2"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "F",
+        "why": "In the flush-list tester.yaml, the new steps items are written flush with their 'steps:' key ('   - lint'), which matches the file's existing tools list."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "I",
+        "why": "In the flush-list tester.yaml, the new steps items are indented under 'steps:' ('      - lint'), while the existing tools list is flush, so the file now mixes styles."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.planner",
+          "{model: sonnet, tools: [read, grep], limits: {retries: 3}}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.limits.timeout",
+          "30"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--in-include",
+          "agents.tester.opts",
+          "{mode: strict, steps: [lint, test]}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--expand-alias",
+          "reviewer.settings.model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.tester.extra",
+          "{level: 2, tags: [a, b]}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/tester.yaml": "model: haiku\nlimits:\n   retries: 2\ntools:\n- read\n- grep\n",
+      ".troupe/troupe.yml": "# main config, 4-space indent, indented sequences\nagents:\n    coder:\n        model: opus\n        tools:\n            - read\n            - write\n    tester: file:agents/tester.yaml\ndefaults: &d\n    model: opus\n    flags:\n        - fast\nreviewer:\n    settings: *d\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/tester.yaml"
+    ],
+    "why": "Writes new nested mappings and lists into a 4-space-indented main file with indented sequences, into a 3-space included file with flush sequences, and into an alias expansion. This shows which indent step and sequence offset each implementation picks for new content and whether it follows each file's own layout."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "follows the file's flush list style",
+            "id": "F"
+          },
+          {
+            "description": "indents the new items, mixing styles",
+            "id": "I"
+          }
+        ],
+        "id": "Q1",
+        "text": "indentation of new list items in a file with flush lists"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Detect from the file's existing nesting, defaulting to 2",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T99",
+  "status": "ok"
+}

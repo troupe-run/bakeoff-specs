@@ -1,0 +1,164 @@
+[
+  {
+    "decision": "Support mapping-form includes: a mapping with a `$ref: file:…` key is an include, and its other keys are overrides deep-merged into the included content (mappings merge; scalars and lists replace)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "README.md (diff.patch:48-51); questions.md:8; transcript.md:23 commit 5acd7df"
+  },
+  {
+    "decision": "A mapping only counts as an include if its `$ref` value is a scalar string starting with `file:`; any other mapping stays an ordinary mapping",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/yamldoc.py ref_of, diff.patch:395-402)"
+  },
+  {
+    "decision": "Overrides on a non-YAML (text) include are a load error with exit 4",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:8; README.md (diff.patch:54); src/troupe/yamldoc.py diff.patch:331-332"
+  },
+  {
+    "decision": "A `$ref` with no other keys that points at a text file still works as a text include",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:8; diff.patch:386-387"
+  },
+  {
+    "decision": "A mapping-form root with no overrides still gets an override node, so that new keys go next to `$ref`. Non-mapping content with no overrides returns the plain include",
+    "options": [],
+    "reason": "so new keys go next to `$ref`",
+    "recorded_at": "transcript.md:12"
+  },
+  {
+    "decision": "When an included file is itself an include, the nearer include counts (the inner include metadata is not overwritten)",
+    "options": [],
+    "reason": "the nearer one counts",
+    "recorded_at": "transcript.md:13; diff.patch:356"
+  },
+  {
+    "decision": "A new key under included content is written as an override in the including file, and the shared included file is left unchanged",
+    "options": [],
+    "reason": "Included files are shared",
+    "recorded_at": "questions.md:9; README.md (diff.patch:50-51)"
+  },
+  {
+    "decision": "A scalar-form include is rewritten into mapping form (`key:  # c` / `$ref: file:…` / overrides), keeping the comment on the key line and following the file's own indentation step",
+    "options": [],
+    "reason": "matches the contract example exactly",
+    "recorded_at": "questions.md:10; transcript.md:23 commit message"
+  },
+  {
+    "decision": "If the include value sits on its own line, that line is replaced. A multi-line ref scalar is re-rendered as a single scalar. A missing final newline is added before the overrides are appended at EOF",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/editor.py to_mapping_form, diff.patch:189-210)"
+  },
+  {
+    "decision": "The mapping-form conversion also covers flow mappings (`{$ref: …, t: 1}` inline) and list items (`- $ref: … # ic` / `  t: 2`)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:11"
+  },
+  {
+    "decision": "If a key on the path already has an override mapping, the new key goes inside that existing override (climb to the nearest override)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:12; diff.patch:165"
+  },
+  {
+    "decision": "Appending list items, and adding new keys inside list items, still writes to the file that holds the list",
+    "options": [],
+    "reason": "overrides cannot address list items",
+    "recorded_at": "questions.md:13; diff.patch:167; README.md (diff.patch:51)"
+  },
+  {
+    "decision": "Setting an existing value changes the override if the value is overridden; otherwise it changes the file the value comes from",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:13; tests/test_config.py (diff.patch:442)"
+  },
+  {
+    "decision": "Removal and insertion work on the sibling entries in the same collection node (container), including the `$ref` entry, sorted in file order, so mappings with entries from two files are handled",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:14; diff.patch:213-219"
+  },
+  {
+    "decision": "With nested includes, the override goes in the file holding the nearest include reference (e.g. outer.yaml), not the top-level file",
+    "options": [
+      "nearest include reference",
+      "always the top-level file"
+    ],
+    "reason": "follows the contract wording 'the file that contains the include reference'; values already overridden there stay together",
+    "recorded_at": "DECISIONS.md:16; questions.md:18"
+  },
+  {
+    "decision": "Changing an existing value in a file included in several places is still refused with exit 3, as before CR-A",
+    "options": [],
+    "reason": "the change would alter every place that includes the file; the check existed before CR-A",
+    "recorded_at": "questions.md:19"
+  },
+  {
+    "decision": "Add a README paragraph on mapping-form includes",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:15; diff.patch:48-54"
+  },
+  {
+    "decision": "Add `--in-include` as a store_true flag on `set` and pass it through set/assign/create, including the recursive sets",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:27; diff.patch:66,96-130"
+  },
+  {
+    "decision": "With `--in-include`, a new key skips override routing and follows the step 1 rule. Under a mapping-form include or merged mapping, it goes into the included file's mapping by walking `base` links",
+    "options": [],
+    "reason": "contract says step 1 rule",
+    "recorded_at": "transcript.md:27; questions.md:45; diff.patch:146-149"
+  },
+  {
+    "decision": "Each merged node keeps a `base` link to the included mapping underneath it",
+    "options": [],
+    "reason": "to make writing into the included side possible",
+    "recorded_at": "questions.md:45; diff.patch:257,390,412"
+  },
+  {
+    "decision": "With a scalar-form include, `--in-include` leaves the include reference in the including file unchanged",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:44"
+  },
+  {
+    "decision": "`--in-include` has no effect on existing values",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:46"
+  },
+  {
+    "decision": "Keep the disturbance check: `--in-include` is refused with exit 3 when the included file is also included elsewhere",
+    "options": [
+      "keep refusing with exit 3",
+      "skip the check because the write is deliberate"
+    ],
+    "reason": "the contract calls it the step 1 rule, which has the check; refusing loses nothing; skipping would silently change settings the user never named (fallback: safest assumption)",
+    "recorded_at": "DECISIONS.md:6; questions.md:50-54; transcript.md:35"
+  },
+  {
+    "decision": "Create DECISIONS.md to record choices where the contract is silent, and point to it from the README",
+    "options": [],
+    "reason": "fallback instruction to record the decision with its reason",
+    "recorded_at": "DECISIONS.md:1; transcript.md:37; diff.patch:53"
+  },
+  {
+    "decision": "Add a test that `--in-include` exits 3 and leaves the files untouched when there is another includer, and that a plain `set` then works as an override",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:69; diff.patch:496-504"
+  },
+  {
+    "decision": "Update the README usage line and include notes for `--in-include`, including the refusal",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:48; diff.patch:38,52-53"
+  }
+]

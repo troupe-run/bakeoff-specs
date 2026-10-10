@@ -1,0 +1,155 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "RULE",
+        "why": "Malformed paths give 'segments must not be empty (no leading, trailing or doubled '.')' with exit 2. The empty path instead says 'PATH is empty'."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "PROBLEM",
+        "why": "Every case says \"invalid path '...': empty segment\" with exit 2."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "PROBLEM",
+        "why": "Every case says \"invalid path '...': empty segment\" with exit 2."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "BARE",
+        "why": "Says 'usage error: invalid path: '...'' with no rule or problem given, exit 2."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "BARE",
+        "why": "Says only 'invalid path: '...'' with exit 2."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "PROBLEM",
+        "why": "Says \"invalid path '...': path segments must not be empty\" with exit 2."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "a..b",
+          "1"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          ""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "models.",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "models..default"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "models:\n  default: opus  # main model\nretry: 3\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Shows what each implementation does with malformed paths (`a..b`, an empty path, a trailing dot) in set, get and history: whether it exits 2 with a clear message or treats the path as some other error or a real key, and whether troupe.yml gets changed. The final history shows anything that was recorded."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "states the rule: segments must not be empty (no leading, trailing or doubled '.')",
+            "id": "RULE"
+          },
+          {
+            "description": "states the problem, e.g. 'empty segment' / 'path segments must not be empty'",
+            "id": "PROBLEM"
+          },
+          {
+            "description": "bare 'invalid path'",
+            "id": "BARE"
+          }
+        ],
+        "id": "Q1",
+        "text": "malformed PATH error wording (all exit 2)"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Exit 2 before the theatre is opened (history too), with a clear message",
+      [
+        "Arm A",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "sheet_id": "T47",
+  "status": "ok"
+}

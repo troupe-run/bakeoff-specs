@@ -1,0 +1,22 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "What should `troupe config show PATH --sources` print when PATH names a single scalar: (A) the scalar as YAML with a `# from <file>` comment, (B) exactly what `get` prints, ignoring `--sources`, or (C) the plain value followed by a separate `# from <file>` line?",
+      "reply": "The contract doesn't define `--sources` for a scalar PATH. `show` on a scalar prints it like `get`, while `--sources` is defined as \"the same YAML\" with `# from <file>` comments. Treat this case as out of contract. The choice is yours: state which option you chose and why.",
+      "escalate": false,
+      "cited": "Brief, Escalated answers (show PATH --sources on a scalar); Brief, Standing answers (out of contract: engineer chooses and says what they chose); Contract, get and show (from step 3)"
+    },
+    {
+      "question": "Are there any corrections to the listed choices (YAML layout, multi-line strings as literal blocks, source comment on the block header line, source paths relative to the theatre directory, show reconciling first, exit 5 for a missing path and for get on a mapping or list with a pointer to config show, help text and tests moving to get)?",
+      "reply": "No corrections. None of the listed choices contradicts the contract. Where a choice covers something the contract doesn't specify, such as YAML layout details or `../` paths for targets outside the theatre, it is yours to make, as long as you record what you chose.",
+      "escalate": false,
+      "cited": "Contract, get and show (from step 3); Contract, General (exit codes); Contract, Sync with files (every other command except history reconciles first); Brief, Standing answers"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

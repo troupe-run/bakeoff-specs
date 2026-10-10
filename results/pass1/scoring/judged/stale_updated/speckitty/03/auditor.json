@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "src/troupe/cli.py:66-74 (diff.patch:2375-2385): `show` PATH is now optional (nargs='?'), `--sources` was added, `get` was added with the help text 'print the scalar at PATH'",
+    "src/troupe/commands/show.py (diff.patch:2445-2514): the non-scalar exit-5 branch is gone and mappings and lists now render as YAML",
+    "src/troupe/commands/get.py:25 SECTION_REFUSAL: \"...use 'troupe config show {path}'\"",
+    "tests/integration/test_cli_basics.py:40-160 (diff.patch:2828-2906): the usage-error and scalar tests now call `get`; the only remaining show-exits-5 test is for a missing path (test_show.py:341)",
+    "spec/troupe-config-get-show-01M411XB/spec.md:148 C-001: the step-3 section 'replaces \"show PATH (step 1 and 2)\"'",
+    "spec/troupe-config-load-show-set-01M3XGPG/spec.md:92,118 and contracts/cli.md:9,21: these were left unchanged and still say `show PATH` prints a scalar and exits 5 on a mapping or list"
+  ],
+  "notes": "The code, parser, help text, tests and the error that points `get` users to `config show` were all updated, and there is no README to change. The step-1 spec and contract still describe `show` as scalar-only with exit 5. The new spec's C-001 retires them, but the old files were not marked as superseded. No test enforces the old behaviour.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"src/troupe/cli.py:66-74 (diff.patch:2375-2385): `show` PATH is now optional (nargs='?'), `--sources` was added, `get` was added with the help text 'print the scalar at PATH'\", \"src/troupe/commands/show.py (diff.patch:2445-2514): the non-scalar exit-5 branch is gone and mappings and lists now render as YAML\", \"src/troupe/commands/get.py:25 SECTION_REFUSAL: \\\"...use 'troupe config show {path}'\\\"\", \"tests/integration/test_cli_basics.py:40-160 (diff.patch:2828-2906): the usage-error and scalar tests now call `get`; the only remaining show-exits-5 test is for a missing path (test_show.py:341)\", \"spec/troupe-config-get-show-01M411XB/spec.md:148 C-001: the step-3 section 'replaces \\\"show PATH (step 1 and 2)\\\"'\", \"spec/troupe-config-load-show-set-01M3XGPG/spec.md:92,118 and contracts/cli.md:9,21: these were left unchanged and still say `show PATH` prints a scalar and exits 5 on a mapping or list\"], \"notes\": \"The code, parser, help text, tests and the error that points `get` users to `config show` were all updated, and there is no README to change. The step-1 spec and contract still describe `show` as scalar-only with exit 5. The new spec's C-001 retires them, but the old files were not marked as superseded. No test enforces the old behaviour.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

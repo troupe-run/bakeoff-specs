@@ -1,0 +1,182 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.coder"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.notes",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.coder.indented_first"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "agents:\n  coder:\n    prompt: \"line one\\nline two\\n\"\n    no_final_newline: \"first\\nsecond\"\n    keep_trailing: \"para\\n\\n\\n\"\n    indented_first: \"  indented start\\nnext\\n\"\n    trailing_spaces: \"spaces after   \\nend\\n\"\n    has_cr: \"windows\\r\\nline\\r\\n\"\n    has_control: \"bell\\u0007here\\nok\\n\"\n    leading_blank: \"\\nafter blank\\n\"\n    single_line: \"just one line\"\n  notes:\n    - \"item one\\nitem two\\n\"\n    - \"tab\\there\\nnext\"\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 5,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    prompt: |\n      line one\n      line two\n    no_final_newline: |-\n      first\n      second\n    keep_trailing: |+\n      para\n\n\n    indented_first: |2\n        indented start\n      next\n    trailing_spaces: |\n      spaces after   \n      end\n    has_cr: \"windows\\r\\nline\\r\\n\"\n    has_control: \"bell\\ahere\\nok\\n\"\n    leading_blank: |\n\n      after blank\n    single_line: just one line\n  notes:\n    - |\n      item one\n      item two\n    - |-\n      tab\there\n      next\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "prompt: |\n  line one\n  line two\nno_final_newline: |-\n  first\n  second\nkeep_trailing: |+\n  para\n\n\nindented_first: |2\n    indented start\n  next\ntrailing_spaces: |\n  spaces after   \n  end\nhas_cr: \"windows\\r\\nline\\r\\n\"\nhas_control: \"bell\\ahere\\nok\\n\"\nleading_blank: |\n\n  after blank\nsingle_line: just one line\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.notes",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- | # from .troupe/troupe.yml\n  item one\n  item two\n- |- # from .troupe/troupe.yml\n  tab\there\n  next\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.indented_first"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "  indented start\nnext\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    prompt: |\n      line one\n      line two\n    no_final_newline: |-\n      first\n      second\n    keep_trailing: |+\n      para\n\n\n    indented_first: \"  indented start\\nnext\\n\"\n    trailing_spaces: |\n      spaces after   \n      end\n    has_cr: \"windows\\r\\nline\\r\\n\"\n    has_control: \"bell\\ahere\\nok\\n\"\n    leading_blank: |\n\n      after blank\n    single_line: just one line\n  notes:\n    - |\n      item one\n      item two\n    - |-\n      tab\there\n      next\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "prompt: |\n  line one\n  line two\nno_final_newline: |-\n  first\n  second\nkeep_trailing: |+\n  para\n\n\nindented_first: \"  indented start\\nnext\\n\"\ntrailing_spaces: |\n  spaces after   \n  end\nhas_cr: \"windows\\r\\nline\\r\\n\"\nhas_control: \"bell\\ahere\\nok\\n\"\nleading_blank: |\n\n  after blank\nsingle_line: just one line\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.notes",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- | # from .troupe/troupe.yml\n  item one\n  item two\n- |- # from .troupe/troupe.yml\n  tab\there\n  next\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.indented_first"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "  indented start\nnext\n"
+            }
+          ]
+        }
+      ],
+      "route": "Literal block when it can hold them exactly, else double-quoted",
+      "route_no": 1
+    }
+  ]
+}

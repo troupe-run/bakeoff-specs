@@ -1,0 +1,358 @@
+[
+  {
+    "decision": "The loader builds the merged view as the configuration tree, and every merged mapping keeps its layers (base and override)",
+    "options": [
+      "Merged view with layers on nodes",
+      "Keep the physical tree and merge on read in every reader",
+      "An overlay side table keyed by path"
+    ],
+    "reason": "Readers see the contract's value without changes, and provenance travels with the node; merging on read would make readers drift; an overlay would be a second source of truth",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:49-71; brief.md:46-71"
+  },
+  {
+    "decision": "Do not always write new keys in the root file; write them in the file holding the include reference",
+    "options": [
+      "Always the root file",
+      "The file holding the include reference"
+    ],
+    "reason": "Contradicts the contract ('the file that contains the include reference')",
+    "recorded_at": "repo/spec/spec/config-include-overrides/brief.md:72-73"
+  },
+  {
+    "decision": "A $ref whose value is not a file: include string is refused with exit 4 (choice 1)",
+    "options": [
+      "Treat it as an ordinary key",
+      "Exit 4"
+    ],
+    "reason": "$ref is reserved now, and a typo must not silently become an ordinary key",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:230-232; research.md:102-104; Gate 1"
+  },
+  {
+    "decision": "Overrides on a YAML include whose content is not a mapping are refused with exit 4 (choice 2)",
+    "options": [
+      "The overrides replace the content",
+      "Exit 4"
+    ],
+    "reason": "Replacing would silently drop the included content",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:233-235; research.md:105-106"
+  },
+  {
+    "decision": "A bare mapping-form include behaves exactly like the scalar form for YAML and text targets; only 'with sibling keys' is refused for non-YAML targets (choice 3)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:236-237"
+  },
+  {
+    "decision": "Merged key order: included keys in their order (an overridden key keeps its place), then the override-only keys in written order (choice 4)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:238-239"
+  },
+  {
+    "decision": "With nested includes, the including file is the one holding the reference of the nearest include, even when that file is itself included (choice 5)",
+    "options": [
+      "Always the root file",
+      "The innermost include's reference file"
+    ],
+    "reason": "The contract names 'the file that contains the include reference'",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:240-241; research.md:107-109"
+  },
+  {
+    "decision": "A new key whose ancestor is written both in the included file and in an override goes into the override (choice 6)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:242-243"
+  },
+  {
+    "decision": "A $ref segment in a PATH: get/show treat it as not found (exit 5); set refuses it with exit 3 (choice 7)",
+    "options": [],
+    "reason": "Writing a $ref key would turn a mapping into an include or break an existing one",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:244-246"
+  },
+  {
+    "decision": "Replacing the whole value of a mapping-form include is refused with exit 3 when the value would change (choice 8)",
+    "options": [],
+    "reason": "Same as for a scalar-form include (rule 4)",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:247-249"
+  },
+  {
+    "decision": "When a collection replacement removes a key below an include, the key is removed from every file it is written in (choice 9)",
+    "options": [
+      "Refuse with exit 3",
+      "Remove from every layer"
+    ],
+    "reason": "'Existing settings still change where they live', and the result is exactly the requested configuration",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:250-251; research.md:110-112"
+  },
+  {
+    "decision": "A $ref mapping in VALUE is written as given and verified as an include on read-back (choice 10, Decision 5)",
+    "options": [],
+    "reason": "The read-back proves that the written mapping loads as the include it describes",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:252-254; research.md:124-131"
+  },
+  {
+    "decision": "The conversion follows the contract example for the comment position (`coder:  # c`), overriding config-set-writeback 11.5 for this conversion only (choice 11, Decision 6)",
+    "options": [
+      "Follow the example",
+      "Apply 11.5 (comment kept at its column)"
+    ],
+    "reason": "The step 5 contract is the newer and more specific text",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:255-259; research.md:133-142"
+  },
+  {
+    "decision": "The conversion uses its own edit plan instead of reusing _replace_value",
+    "options": [],
+    "reason": "_replace_value re-renders the value and re-aligns the comment, but the include string's bytes must be kept",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:14-17,40-47"
+  },
+  {
+    "decision": "Converting an include string that is not on its owner's line is refused with exit 3",
+    "options": [],
+    "reason": "Conservative default, consistent with the existing 14.9 refusals; guessing could misplace the comment",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:144-149"
+  },
+  {
+    "decision": "When every entry of a nested override is removed, prune that override's own entry upward, but never past a $ref mapping",
+    "options": [],
+    "reason": "Writes the requested configuration instead of refusing it, and leaves no empty override",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:114-122"
+  },
+  {
+    "decision": "A written mapping that loses every key becomes `{}`, never null; refuse with exit 3 if no written entry can hold it (Decision 9)",
+    "options": [
+      "Refuse with exit 3",
+      "Leave null",
+      "Write {}"
+    ],
+    "reason": "The file keeps the requested type, which matches step 1's flow behaviour",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:167-180; tasks.md:148"
+  },
+  {
+    "decision": "Placement walk: a merged mapping places into its override side, a bare mapping include into its $ref mapping, a scalar include is converted, and a list item or the root uses the step 1 rule",
+    "options": [],
+    "reason": "This is the contract's rule; overrides cannot address list items",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:73-86"
+  },
+  {
+    "decision": "Rework the placement walk after validation to follow the layers holding the ancestor's content and stop at the innermost include; keep chained includes as IncludeRef.inner",
+    "options": [
+      "Keep writing into the outermost including file",
+      "Innermost include"
+    ],
+    "reason": "The first walk did not implement choice 5 for chained includes",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:87-98; tasks.md:150; questions.md Q8"
+  },
+  {
+    "decision": "A root file that is just `file:x.yaml` is converted to a root $ref mapping, so new keys go into troupe.yml rather than x.yaml",
+    "options": [],
+    "reason": "Follows Req 4.1",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:95-96; questions.md Q9"
+  },
+  {
+    "decision": "New keys that share a written mapping or include are merged before rendering (one insertion or conversion each)",
+    "options": [],
+    "reason": "Fixes a refusal when one set adds keys under two sibling sections",
+    "recorded_at": "repo/spec/spec/config-include-overrides/tasks.md:150"
+  },
+  {
+    "decision": "Split the planner work into tasks 3.4–3.7, move the resolve_target root change to 3.3, and add boundaries, after the first task review",
+    "options": [],
+    "reason": "The independent reviewer's findings",
+    "recorded_at": "transcript.md:75"
+  },
+  {
+    "decision": "Move the old rule-2 test rewrite and the conversion switch-over into task 3.5; until then 3.4 keeps the step 1 behaviour",
+    "options": [
+      "Move the rewrite into 3.5",
+      "Merge 3.4 and 3.5"
+    ],
+    "reason": "The reviewer's blocking finding: the test would fail in 3.4",
+    "recorded_at": "transcript.md:80-82"
+  },
+  {
+    "decision": "Continue after the second failed task review instead of stopping as the skill requires",
+    "options": [
+      "Stop",
+      "Apply the prescribed fix and continue"
+    ],
+    "reason": "The fix was exactly what the reviewer asked for",
+    "recorded_at": "Gate 1; questions.md Q9"
+  },
+  {
+    "decision": "Start task 1.1 while the reviewer re-checked the plan, then revert the model edit and stop for the owner",
+    "options": [],
+    "reason": "The task was stable either way; only the owner can start implementation",
+    "recorded_at": "transcript.md:77,85-86"
+  },
+  {
+    "decision": "Put CR-B into the existing config-include-overrides spec instead of creating a new spec",
+    "options": [
+      "New spec",
+      "Extend the existing spec"
+    ],
+    "reason": "The option only chooses between two rules for one decision, which this spec already owns",
+    "recorded_at": "Gate 3; spec/steering/roadmap.md (transcript.md:97); research.md:163-164"
+  },
+  {
+    "decision": "--in-include is implemented as a flag that bypasses the placement walk and uses the deepest ancestor's included side",
+    "options": [
+      "A flag bypassing the walk",
+      "A separate set-in-include command",
+      "Applying the option to existing values too"
+    ],
+    "reason": "The contract names an option of set and speaks only of a new key",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:151-165"
+  },
+  {
+    "decision": "--in-include changes only where new keys are written (choice 12)",
+    "options": [],
+    "reason": "'Existing settings still change where they live'",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:262-263"
+  },
+  {
+    "decision": "'The included file' is the step 1 rule's file: the innermost one for nested includes, the included side when the ancestor is in both, and the including file when it is only in an override (choice 13)",
+    "options": [],
+    "reason": "In-include names the step 1 rule",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:264-267"
+  },
+  {
+    "decision": "--in-include is accepted and does nothing when no include is involved (choice 14)",
+    "options": [
+      "Refuse",
+      "Accept as a no-op"
+    ],
+    "reason": "",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:268-269; Gate 3"
+  },
+  {
+    "decision": "--in-include takes no value, may appear anywhere, combines with --reason, and --in-include=TEXT exits 2 (choice 15)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "repo/spec/spec/config-include-overrides/requirements.md:270-271"
+  },
+  {
+    "decision": "With --in-include, the key written to the included side is placed before the override-only keys in the intended tree",
+    "options": [],
+    "reason": "Keeps the ordered read-back comparison",
+    "recorded_at": "Gate 3; research.md:160-162"
+  },
+  {
+    "decision": "No independent review of the task plan for the CR-B additions",
+    "options": [],
+    "reason": "",
+    "recorded_at": "Gate 3"
+  },
+  {
+    "decision": "Renumber the tasks: the new 3.8 and 4.3 are added, and the old 4.3 becomes 4.4",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:105"
+  },
+  {
+    "decision": "Interim: a contentless include VALUE equals any loaded include with the same string, so it is a no-op over overrides (later superseded)",
+    "options": [],
+    "reason": "Pre-existing leniency, recorded for validation",
+    "recorded_at": "repo/spec/spec/config-include-overrides/tasks.md:145"
+  },
+  {
+    "decision": "Interim exit-3 refusal in task 3.6 for a merged mapping replaced by a mapping, removed in 3.7",
+    "options": [],
+    "reason": "",
+    "recorded_at": "repo/spec/spec/config-include-overrides/tasks.md:147-148"
+  },
+  {
+    "decision": "Setting a mapping-form include root to a mapping equal to its merged value exits 3",
+    "options": [],
+    "reason": "7.5 says 'as for a scalar-form include'",
+    "recorded_at": "repo/spec/spec/config-include-overrides/tasks.md:149"
+  },
+  {
+    "decision": "A list item with extra spaces after `-` cannot be converted (read-back refusal, exit 3)",
+    "options": [],
+    "reason": "Step 1 already behaves this way",
+    "recorded_at": "repo/spec/spec/config-include-overrides/tasks.md:146"
+  },
+  {
+    "decision": "Add a test pinning the exit-3 refusal for a middle file shared by two includes before reporting",
+    "options": [],
+    "reason": "The validator asked for it",
+    "recorded_at": "transcript.md:1056"
+  },
+  {
+    "decision": "An include's own string over an include that has overrides is refused with exit 3 (choice 16, Decision 10)",
+    "options": [
+      "No-op",
+      "Remove the overrides",
+      "Exit 3"
+    ],
+    "reason": "Dropping the overrides changes the value (choice 8 / rule 4); a silent no-op would hide that the overrides were kept",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:195-206; requirements.md:286-291; questions.md Q9-Q10"
+  },
+  {
+    "decision": "A VALUE adding an override to a scalar-form include is refused with exit 3 even when the included file already holds it",
+    "options": [],
+    "reason": "Follows the updated 7.5 wording",
+    "recorded_at": "questions.md Q10"
+  },
+  {
+    "decision": "A new key whose including file is shared is written in that file and appears at every place (choice 17, Decision 11)",
+    "options": [
+      "Exit 3",
+      "Fall back to the outer file",
+      "Write in the middle file"
+    ],
+    "reason": "The PO applied the contract definition (choice 5)",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:208-217; requirements.md:292-295"
+  },
+  {
+    "decision": "Limit choice 17 to keys placed by the override rule; existing values, --in-include, list items and two-place VALUEs keep the refusal (later reversed)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md Q10; tasks.md:153"
+  },
+  {
+    "decision": "Every write to a file included at more than one place follows the placement rules (choice 18, Decision 12)",
+    "options": [],
+    "reason": "The PO: no contract rule refuses such a write",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:219-240; requirements.md:296-304"
+  },
+  {
+    "decision": "One VALUE with conflicting values for the same shared location is refused with exit 3; agreeing values are written once",
+    "options": [
+      "Exit 3",
+      "Pick one value"
+    ],
+    "reason": "No single write can satisfy both; refusing cannot lose data",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:237-239; requirements.md:301-304"
+  },
+  {
+    "decision": "The shared-file mechanism records edits as WrittenChanges and recomputes the configuration with and without them; this replaces the by_override flag",
+    "options": [],
+    "reason": "",
+    "recorded_at": "repo/spec/spec/config-include-overrides/research.md:228-236; tasks.md:154"
+  },
+  {
+    "decision": "A text include kept at one place and changed at another is refused with the generic read-back message, not the conflict message",
+    "options": [],
+    "reason": "",
+    "recorded_at": "repo/spec/spec/config-include-overrides/tasks.md:155; questions.md Q11"
+  },
+  {
+    "decision": "Rewrite two step-1 tests that expected 'file included twice → refused', and make the concurrency test get its refusal another way",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md Q11"
+  },
+  {
+    "decision": "Add a note to config-set-writeback 14.2 that a file included twice no longer causes a refusal by itself",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md Q11"
+  },
+  {
+    "decision": "Do task 6.3 (bookkeeping) directly instead of delegating it",
+    "options": [],
+    "reason": "It is bookkeeping",
+    "recorded_at": "transcript.md:1363"
+  }
+]

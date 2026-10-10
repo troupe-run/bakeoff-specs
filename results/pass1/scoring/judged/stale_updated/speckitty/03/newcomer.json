@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "src/troupe/cli.py: diff.patch:2375-2385 — `get` added; `show` PATH now nargs='?' with --sources and the help text changed",
+    "src/troupe/commands/get.py:22 — the error for a mapping or list now points at 'troupe config show {path}'",
+    "src/troupe/commands/show.py: diff.patch:2500-2514 — the old non-scalar → exit 5 branch was removed and sections are rendered as YAML",
+    "tests/integration/test_history.py:101 and tests/integration/test_cli_basics.py:55 — tests now use `get` for scalar reads and list get/show; no test still asserts that `show` on a mapping exits 5",
+    "spec/troupe-config-get-show-01M411XB/spec.md:1191 (diff.patch) — C-001 says the step-3 section replaces 'show PATH (step 1 and 2)'",
+    "spec/troupe-config-load-show-set-01M3XGPG/spec.md:92,118 — the old FR-009 still says `show` on a mapping or list exits 5, with no superseded marker",
+    "spec/troupe-config-load-show-set-01M3XGPG/contracts/cli.md:9,21 — the old contract still gives `show PATH` scalar-only behaviour and exit 5 on a mapping or list"
+  ],
+  "notes": "The code, help text, tests and new step-3 spec agree, and the new spec says the old show section is replaced. A newcomer reading the step-1 spec and contract would still see `show` described as scalar-only with exit 5, because those files were not marked superseded; no test enforces that old behaviour.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"src/troupe/cli.py: diff.patch:2375-2385 — `get` added; `show` PATH now nargs='?' with --sources and the help text changed\", \"src/troupe/commands/get.py:22 — the error for a mapping or list now points at 'troupe config show {path}'\", \"src/troupe/commands/show.py: diff.patch:2500-2514 — the old non-scalar → exit 5 branch was removed and sections are rendered as YAML\", \"tests/integration/test_history.py:101 and tests/integration/test_cli_basics.py:55 — tests now use `get` for scalar reads and list get/show; no test still asserts that `show` on a mapping exits 5\", \"spec/troupe-config-get-show-01M411XB/spec.md:1191 (diff.patch) — C-001 says the step-3 section replaces 'show PATH (step 1 and 2)'\", \"spec/troupe-config-load-show-set-01M3XGPG/spec.md:92,118 — the old FR-009 still says `show` on a mapping or list exits 5, with no superseded marker\", \"spec/troupe-config-load-show-set-01M3XGPG/contracts/cli.md:9,21 — the old contract still gives `show PATH` scalar-only behaviour and exit 5 on a mapping or list\"], \"notes\": \"The code, help text, tests and new step-3 spec agree, and the new spec says the old show section is replaced. A newcomer reading the step-1 spec and contract would still see `show` described as scalar-only with exit 5, because those files were not marked superseded; no test enforces that old behaviour.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

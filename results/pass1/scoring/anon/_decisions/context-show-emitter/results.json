@@ -1,0 +1,303 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.reviewer",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "flags"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.coder.tools",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "model: opus\ntemperature: 0.2\ntools:\n  - name: grep\n    args: [\"-n\", \"x: y\", \"#tag\"]\n  - shell\nnotes: \"line one\\nline two\"\nfolded: >\n  first part\n  of a sentence\n",
+      ".troupe/banner.txt": "  indented first line\nsecond line",
+      ".troupe/prompt.txt": "You are a coder.\nBe terse.\n",
+      ".troupe/troupe.yml": "name: \"troupe\"   # project name\nversion: '1.0'\nreleased: 2026-10-09\nflags: [on, \"true\", yes, \"null\", null, 0x1F, '', \"café — ok\"]\n\"key: with # colon\": plain\nagents:\n  coder: file:agents/coder.yaml  # shared coder\n  reviewer:\n    $ref: file:agents/coder.yaml\n    temperature: 0.7\n    tools:\n      - review\nprompt: file:prompt.txt\nbanner: file:banner.txt\nempty_map: {}\nempty_list: []\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/coder.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 4,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: troupe\nversion: '1.0'\nreleased: 2026-10-09\nflags:\n  - on\n  - 'true'\n  - yes\n  - 'null'\n  - null\n  - 31\n  - ''\n  - café — ok\n'key: with # colon': plain\nagents:\n  coder:\n    model: opus\n    temperature: 0.2\n    tools:\n      - name: grep\n        args:\n          - -n\n          - 'x: y'\n          - '#tag'\n      - shell\n    notes: |-\n      line one\n      line two\n    folded: |\n      first part of a sentence\n  reviewer:\n    model: opus\n    temperature: 0.7\n    tools:\n      - review\n    notes: |-\n      line one\n      line two\n    folded: |\n      first part of a sentence\nprompt: |\n  You are a coder.\n  Be terse.\nbanner: |2-\n    indented first line\n  second line\nempty_map: {}\nempty_list: []\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: troupe # from .troupe/troupe.yml\nversion: '1.0' # from .troupe/troupe.yml\nreleased: 2026-10-09 # from .troupe/troupe.yml\nflags:\n  - on # from .troupe/troupe.yml\n  - 'true' # from .troupe/troupe.yml\n  - yes # from .troupe/troupe.yml\n  - 'null' # from .troupe/troupe.yml\n  - null # from .troupe/troupe.yml\n  - 31 # from .troupe/troupe.yml\n  - '' # from .troupe/troupe.yml\n  - café — ok # from .troupe/troupe.yml\n'key: with # colon': plain # from .troupe/troupe.yml\nagents:\n  coder:\n    model: opus # from .troupe/agents/coder.yaml\n    temperature: 0.2 # from .troupe/agents/coder.yaml\n    tools:\n      - name: grep # from .troupe/agents/coder.yaml\n        args:\n          - -n # from .troupe/agents/coder.yaml\n          - 'x: y' # from .troupe/agents/coder.yaml\n          - '#tag' # from .troupe/agents/coder.yaml\n      - shell # from .troupe/agents/coder.yaml\n    notes: |- # from .troupe/agents/coder.yaml\n      line one\n      line two\n    folded: | # from .troupe/agents/coder.yaml\n      first part of a sentence\n  reviewer:\n    model: opus # from .troupe/agents/coder.yaml\n    temperature: 0.7 # from .troupe/troupe.yml\n    tools:\n      - review # from .troupe/troupe.yml\n    notes: |- # from .troupe/agents/coder.yaml\n      line one\n      line two\n    folded: | # from .troupe/agents/coder.yaml\n      first part of a sentence\nprompt: | # from .troupe/prompt.txt\n  You are a coder.\n  Be terse.\nbanner: |2- # from .troupe/banner.txt\n    indented first line\n  second line\nempty_map: {}\nempty_list: []\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.reviewer",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus # from .troupe/agents/coder.yaml\ntemperature: 0.7 # from .troupe/troupe.yml\ntools:\n  - review # from .troupe/troupe.yml\nnotes: |- # from .troupe/agents/coder.yaml\n  line one\n  line two\nfolded: | # from .troupe/agents/coder.yaml\n  first part of a sentence\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "flags"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- on\n- 'true'\n- yes\n- 'null'\n- null\n- 31\n- ''\n- café — ok\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.tools",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- name: grep # from .troupe/agents/coder.yaml\n  args:\n    - -n # from .troupe/agents/coder.yaml\n    - 'x: y' # from .troupe/agents/coder.yaml\n    - '#tag' # from .troupe/agents/coder.yaml\n- shell # from .troupe/agents/coder.yaml\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: troupe\nversion: '1.0'\nreleased: '2026-10-09'\nflags:\n  - 'on'\n  - 'true'\n  - 'yes'\n  - 'null'\n  - null\n  - 31\n  - ''\n  - café — ok\n'key: with # colon': plain\nagents:\n  coder:\n    model: opus\n    temperature: 0.2\n    tools:\n      - name: grep\n        args:\n          - -n\n          - 'x: y'\n          - '#tag'\n      - shell\n    notes: |-\n      line one\n      line two\n    folded: |\n      first part of a sentence\n  reviewer:\n    model: opus\n    temperature: 0.7\n    tools:\n      - review\n    notes: |-\n      line one\n      line two\n    folded: |\n      first part of a sentence\nprompt: |\n  You are a coder.\n  Be terse.\nbanner: |2-\n    indented first line\n  second line\nempty_map: {}\nempty_list: []\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: troupe # from .troupe/troupe.yml\nversion: '1.0' # from .troupe/troupe.yml\nreleased: '2026-10-09' # from .troupe/troupe.yml\nflags:\n  - 'on' # from .troupe/troupe.yml\n  - 'true' # from .troupe/troupe.yml\n  - 'yes' # from .troupe/troupe.yml\n  - 'null' # from .troupe/troupe.yml\n  - null # from .troupe/troupe.yml\n  - 31 # from .troupe/troupe.yml\n  - '' # from .troupe/troupe.yml\n  - café — ok # from .troupe/troupe.yml\n'key: with # colon': plain # from .troupe/troupe.yml\nagents:\n  coder:\n    model: opus # from .troupe/agents/coder.yaml\n    temperature: 0.2 # from .troupe/agents/coder.yaml\n    tools:\n      - name: grep # from .troupe/agents/coder.yaml\n        args:\n          - -n # from .troupe/agents/coder.yaml\n          - 'x: y' # from .troupe/agents/coder.yaml\n          - '#tag' # from .troupe/agents/coder.yaml\n      - shell # from .troupe/agents/coder.yaml\n    notes: |- # from .troupe/agents/coder.yaml\n      line one\n      line two\n    folded: | # from .troupe/agents/coder.yaml\n      first part of a sentence\n  reviewer:\n    model: opus # from .troupe/agents/coder.yaml\n    temperature: 0.7 # from .troupe/troupe.yml\n    tools:\n      - review # from .troupe/troupe.yml\n    notes: |- # from .troupe/agents/coder.yaml\n      line one\n      line two\n    folded: | # from .troupe/agents/coder.yaml\n      first part of a sentence\nprompt: | # from .troupe/prompt.txt\n  You are a coder.\n  Be terse.\nbanner: |2- # from .troupe/banner.txt\n    indented first line\n  second line\nempty_map: {}\nempty_list: []\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.reviewer",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus # from .troupe/agents/coder.yaml\ntemperature: 0.7 # from .troupe/troupe.yml\ntools:\n  - review # from .troupe/troupe.yml\nnotes: |- # from .troupe/agents/coder.yaml\n  line one\n  line two\nfolded: | # from .troupe/agents/coder.yaml\n  first part of a sentence\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "flags"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- 'on'\n- 'true'\n- 'yes'\n- 'null'\n- null\n- 31\n- ''\n- café — ok\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.tools",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- name: grep # from .troupe/agents/coder.yaml\n  args:\n    - -n # from .troupe/agents/coder.yaml\n    - 'x: y' # from .troupe/agents/coder.yaml\n    - '#tag' # from .troupe/agents/coder.yaml\n- shell # from .troupe/agents/coder.yaml\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: troupe\nversion: '1.0'\nreleased: 2026-10-09\nflags:\n  - on\n  - 'true'\n  - yes\n  - 'null'\n  - null\n  - 31\n  - ''\n  - café — ok\n'key: with # colon': plain\nagents:\n  coder:\n    model: opus\n    temperature: 0.2\n    tools:\n      - name: grep\n        args:\n          - -n\n          - 'x: y'\n          - '#tag'\n      - shell\n    notes: |-\n      line one\n      line two\n    folded: |\n      first part of a sentence\n  reviewer:\n    model: opus\n    temperature: 0.7\n    tools:\n      - review\n    notes: |-\n      line one\n      line two\n    folded: |\n      first part of a sentence\nprompt: |\n  You are a coder.\n  Be terse.\nbanner: \"  indented first line\\nsecond line\"\nempty_map: {}\nempty_list: []\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: troupe # from .troupe/troupe.yml\nversion: '1.0' # from .troupe/troupe.yml\nreleased: 2026-10-09 # from .troupe/troupe.yml\nflags:\n  - on # from .troupe/troupe.yml\n  - 'true' # from .troupe/troupe.yml\n  - yes # from .troupe/troupe.yml\n  - 'null' # from .troupe/troupe.yml\n  - null # from .troupe/troupe.yml\n  - 31 # from .troupe/troupe.yml\n  - '' # from .troupe/troupe.yml\n  - café — ok # from .troupe/troupe.yml\n'key: with # colon': plain # from .troupe/troupe.yml\nagents:\n  coder:\n    model: opus # from .troupe/agents/coder.yaml\n    temperature: 0.2 # from .troupe/agents/coder.yaml\n    tools:\n      - name: grep # from .troupe/agents/coder.yaml\n        args:\n          - -n # from .troupe/agents/coder.yaml\n          - 'x: y' # from .troupe/agents/coder.yaml\n          - '#tag' # from .troupe/agents/coder.yaml\n      - shell # from .troupe/agents/coder.yaml\n    notes: |- # from .troupe/agents/coder.yaml\n      line one\n      line two\n    folded: | # from .troupe/agents/coder.yaml\n      first part of a sentence\n  reviewer:\n    model: opus # from .troupe/agents/coder.yaml\n    temperature: 0.7 # from .troupe/troupe.yml\n    tools:\n      - review # from .troupe/troupe.yml\n    notes: |- # from .troupe/agents/coder.yaml\n      line one\n      line two\n    folded: | # from .troupe/agents/coder.yaml\n      first part of a sentence\nprompt: | # from .troupe/prompt.txt\n  You are a coder.\n  Be terse.\nbanner: \"  indented first line\\nsecond line\" # from .troupe/banner.txt\nempty_map: {}\nempty_list: []\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.reviewer",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus # from .troupe/agents/coder.yaml\ntemperature: 0.7 # from .troupe/troupe.yml\ntools:\n  - review # from .troupe/troupe.yml\nnotes: |- # from .troupe/agents/coder.yaml\n  line one\n  line two\nfolded: | # from .troupe/agents/coder.yaml\n  first part of a sentence\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "flags"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- on\n- 'true'\n- yes\n- 'null'\n- null\n- 31\n- ''\n- café — ok\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.tools",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- name: grep # from .troupe/agents/coder.yaml\n  args:\n    - -n # from .troupe/agents/coder.yaml\n    - 'x: y' # from .troupe/agents/coder.yaml\n    - '#tag' # from .troupe/agents/coder.yaml\n- shell # from .troupe/agents/coder.yaml\n"
+            }
+          ]
+        }
+      ],
+      "route": "Own emitter over the source-mapped tree; lines tagged with sources; --sources only adds comments",
+      "route_no": 1
+    }
+  ]
+}

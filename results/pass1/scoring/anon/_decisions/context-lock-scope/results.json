@@ -1,0 +1,993 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 10\nmodel: opus\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 0.3
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "timeout",
+          "30",
+          "--reason",
+          "cli during watch"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "agent:bot"
+        }
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: haiku\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 0.3
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "model",
+          "sonnet",
+          "--reason",
+          "same key right after hand edit"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 3  # attempts\ntimeout: 10\nmodel: opus\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:15.738534Z\", \"reason\": null, \"change\": \"14248a08-e536-412f-962b-a8a911f8c076\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:15.738534Z\", \"reason\": null, \"change\": \"14248a08-e536-412f-962b-a8a911f8c076\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:15.738534Z\", \"reason\": null, \"change\": \"14248a08-e536-412f-962b-a8a911f8c076\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:15.738534Z\", \"reason\": null, \"change\": \"14248a08-e536-412f-962b-a8a911f8c076\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 10\nmodel: opus\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "timeout",
+                "30",
+                "--reason",
+                "cli during watch"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: opus\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet",
+                "--reason",
+                "same key right after hand edit"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: sonnet\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:15.738534Z\", \"reason\": null, \"change\": \"14248a08-e536-412f-962b-a8a911f8c076\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:15.738534Z\", \"reason\": null, \"change\": \"14248a08-e536-412f-962b-a8a911f8c076\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:15.738534Z\", \"reason\": null, \"change\": \"14248a08-e536-412f-962b-a8a911f8c076\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:15.738534Z\", \"reason\": null, \"change\": \"14248a08-e536-412f-962b-a8a911f8c076\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:34:16.544142Z\", \"reason\": null, \"change\": \"c016d343-437b-47c6-9cdc-19c04babbf4c\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"timeout\", \"old\": 10, \"new\": 30, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:34:17.414170Z\", \"reason\": \"cli during watch\", \"change\": \"13e9cc65-4346-4420-89e4-4e216109f764\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:34:17.562608Z\", \"reason\": null, \"change\": \"d278ac67-ee93-48fe-bb55-fded6a74682c\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"model\", \"old\": \"haiku\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:34:18.581808Z\", \"reason\": \"same key right after hand edit\", \"change\": \"e7b0b10a-197c-40ba-9e4f-d642f8036b61\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  74 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:23.508209Z\", \"reason\": null, \"change\": \"6bccc1f8-50d8-46e7-b27a-9b42f8dad40d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:23.508209Z\", \"reason\": null, \"change\": \"6bccc1f8-50d8-46e7-b27a-9b42f8dad40d\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:23.508209Z\", \"reason\": null, \"change\": \"6bccc1f8-50d8-46e7-b27a-9b42f8dad40d\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:23.508209Z\", \"reason\": null, \"change\": \"6bccc1f8-50d8-46e7-b27a-9b42f8dad40d\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 10\nmodel: opus\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "timeout",
+                "30",
+                "--reason",
+                "cli during watch"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: opus\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet",
+                "--reason",
+                "same key right after hand edit"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: sonnet\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:23.508209Z\", \"reason\": null, \"change\": \"6bccc1f8-50d8-46e7-b27a-9b42f8dad40d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:23.508209Z\", \"reason\": null, \"change\": \"6bccc1f8-50d8-46e7-b27a-9b42f8dad40d\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:23.508209Z\", \"reason\": null, \"change\": \"6bccc1f8-50d8-46e7-b27a-9b42f8dad40d\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:23.508209Z\", \"reason\": null, \"change\": \"6bccc1f8-50d8-46e7-b27a-9b42f8dad40d\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:34:24.450407Z\", \"reason\": null, \"change\": \"72f50f81-d816-46bc-8026-6a5142132dd9\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"timeout\", \"old\": 10, \"new\": 30, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:34:24.927349Z\", \"reason\": \"cli during watch\", \"change\": \"7dfb201a-7774-40cc-8b41-2fdaf041e315\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:34:25.278452Z\", \"reason\": null, \"change\": \"92fd9b36-3214-4fbf-931f-886f5c1e5a6b\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"model\", \"old\": \"haiku\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:34:25.812000Z\", \"reason\": \"same key right after hand edit\", \"change\": \"853ecc6b-b1de-4de2-b982-01fa7e88cd54\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  74 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:30.638758Z\", \"reason\": null, \"change\": \"1ca12c96-548f-43a7-aaa5-380214d59e65\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:30.638758Z\", \"reason\": null, \"change\": \"1ca12c96-548f-43a7-aaa5-380214d59e65\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:30.638758Z\", \"reason\": null, \"change\": \"1ca12c96-548f-43a7-aaa5-380214d59e65\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:30.638758Z\", \"reason\": null, \"change\": \"1ca12c96-548f-43a7-aaa5-380214d59e65\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 10\nmodel: opus\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "timeout",
+                "30",
+                "--reason",
+                "cli during watch"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: opus\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet",
+                "--reason",
+                "same key right after hand edit"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: sonnet\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "Exception ignored in: <module 'threading' from '/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/threading.py'>\nTraceback (most recent call last):\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/threading.py\", line 1575, in _shutdown\n    def _shutdown():\n    \nKeyboardInterrupt: \n",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:30.638758Z\", \"reason\": null, \"change\": \"1ca12c96-548f-43a7-aaa5-380214d59e65\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:30.638758Z\", \"reason\": null, \"change\": \"1ca12c96-548f-43a7-aaa5-380214d59e65\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:30.638758Z\", \"reason\": null, \"change\": \"1ca12c96-548f-43a7-aaa5-380214d59e65\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:30.638758Z\", \"reason\": null, \"change\": \"1ca12c96-548f-43a7-aaa5-380214d59e65\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:34:31.421742Z\", \"reason\": null, \"change\": \"f7fbdc82-397b-42b1-b33e-d59a30853b37\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"timeout\", \"old\": 10, \"new\": 30, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:34:32.078735Z\", \"reason\": \"cli during watch\", \"change\": \"8b032ac2-8bd4-4c64-97bf-dc9293595923\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:34:32.187132Z\", \"reason\": null, \"change\": \"e4628a4b-22f4-479c-a244-c969f848808f\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"model\", \"old\": \"haiku\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:34:32.985355Z\", \"reason\": \"same key right after hand edit\", \"change\": \"1ad5a4d6-52d1-4320-b17b-a01b394c919e\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  74 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:37.729739Z\", \"reason\": null, \"change\": \"dad53b0a-d2ba-4df8-9955-e65dfebab617\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:37.729739Z\", \"reason\": null, \"change\": \"dad53b0a-d2ba-4df8-9955-e65dfebab617\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:37.729739Z\", \"reason\": null, \"change\": \"dad53b0a-d2ba-4df8-9955-e65dfebab617\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:37.729739Z\", \"reason\": null, \"change\": \"dad53b0a-d2ba-4df8-9955-e65dfebab617\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 10\nmodel: opus\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "timeout",
+                "30",
+                "--reason",
+                "cli during watch"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: opus\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet",
+                "--reason",
+                "same key right after hand edit"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: sonnet\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 137,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:37.729739Z\", \"reason\": null, \"change\": \"dad53b0a-d2ba-4df8-9955-e65dfebab617\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:37.729739Z\", \"reason\": null, \"change\": \"dad53b0a-d2ba-4df8-9955-e65dfebab617\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:37.729739Z\", \"reason\": null, \"change\": \"dad53b0a-d2ba-4df8-9955-e65dfebab617\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:37.729739Z\", \"reason\": null, \"change\": \"dad53b0a-d2ba-4df8-9955-e65dfebab617\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:34:38.402570Z\", \"reason\": null, \"change\": \"6d496604-f110-436c-a57b-f2e2529c6323\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"timeout\", \"old\": 10, \"new\": 30, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:34:39.089180Z\", \"reason\": \"cli during watch\", \"change\": \"16647388-432e-411d-a1aa-642808fe53f0\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:34:39.121962Z\", \"reason\": null, \"change\": \"d433bc57-51c0-4b27-8183-bd8254a33949\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"model\", \"old\": \"haiku\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:34:39.918661Z\", \"reason\": \"same key right after hand edit\", \"change\": \"eb4895b7-a6bd-43f1-b46f-5e4c07ec262d\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/troupe-state.sqlite  12288 bytes\n.troupe/troupe.yml  74 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:46.378694Z\", \"reason\": null, \"change\": \"06ca9c55-1141-4797-b0e5-c43cfdb3979d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:46.378694Z\", \"reason\": null, \"change\": \"06ca9c55-1141-4797-b0e5-c43cfdb3979d\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:46.378694Z\", \"reason\": null, \"change\": \"06ca9c55-1141-4797-b0e5-c43cfdb3979d\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:46.378694Z\", \"reason\": null, \"change\": \"06ca9c55-1141-4797-b0e5-c43cfdb3979d\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 10\nmodel: opus\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "timeout",
+                "30",
+                "--reason",
+                "cli during watch"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: opus\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet",
+                "--reason",
+                "same key right after hand edit"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: sonnet\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:46.378694Z\", \"reason\": null, \"change\": \"06ca9c55-1141-4797-b0e5-c43cfdb3979d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:46.378694Z\", \"reason\": null, \"change\": \"06ca9c55-1141-4797-b0e5-c43cfdb3979d\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:46.378694Z\", \"reason\": null, \"change\": \"06ca9c55-1141-4797-b0e5-c43cfdb3979d\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:46.378694Z\", \"reason\": null, \"change\": \"06ca9c55-1141-4797-b0e5-c43cfdb3979d\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:34:47.053039Z\", \"reason\": null, \"change\": \"0888558c-7f45-4f55-b58a-6ee3eae5e067\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"timeout\", \"old\": 10, \"new\": 30, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:34:47.760902Z\", \"reason\": \"cli during watch\", \"change\": \"eb0f2912-b9b8-45f9-a500-8284fd3cefc3\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:34:47.886365Z\", \"reason\": null, \"change\": \"06da0345-0582-4847-9037-61773aefe1c6\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"model\", \"old\": \"haiku\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:34:48.619486Z\", \"reason\": \"same key right after hand edit\", \"change\": \"ac2af5ee-ecb7-4bcd-b0e2-cd7e52bf1af0\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  74 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:53.611654Z\", \"reason\": null, \"change\": \"2bc9a2c4-0f70-4812-b2c3-12b3e43583c9\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:53.611654Z\", \"reason\": null, \"change\": \"2bc9a2c4-0f70-4812-b2c3-12b3e43583c9\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:53.611654Z\", \"reason\": null, \"change\": \"2bc9a2c4-0f70-4812-b2c3-12b3e43583c9\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:53.611654Z\", \"reason\": null, \"change\": \"2bc9a2c4-0f70-4812-b2c3-12b3e43583c9\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 10\nmodel: opus\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "timeout",
+                "30",
+                "--reason",
+                "cli during watch"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: opus\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet",
+                "--reason",
+                "same key right after hand edit"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nname: demo\nretry: 5  # attempts\ntimeout: 30\nmodel: sonnet\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:53.611654Z\", \"reason\": null, \"change\": \"2bc9a2c4-0f70-4812-b2c3-12b3e43583c9\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:53.611654Z\", \"reason\": null, \"change\": \"2bc9a2c4-0f70-4812-b2c3-12b3e43583c9\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:53.611654Z\", \"reason\": null, \"change\": \"2bc9a2c4-0f70-4812-b2c3-12b3e43583c9\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:34:53.611654Z\", \"reason\": null, \"change\": \"2bc9a2c4-0f70-4812-b2c3-12b3e43583c9\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:34:54.347317Z\", \"reason\": null, \"change\": \"2accb2f5-ac06-43a4-8ab2-c60c6f1731e2\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"timeout\", \"old\": 10, \"new\": 30, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:34:55.013951Z\", \"reason\": \"cli during watch\", \"change\": \"56ebef6b-1992-4944-ad37-70f094189f08\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:34:55.163837Z\", \"reason\": null, \"change\": \"0f7a6a5e-43c5-448f-8673-e6c996712fe5\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"model\", \"old\": \"haiku\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:34:55.931288Z\", \"reason\": \"same key right after hand edit\", \"change\": \"718229e6-83cc-40ea-93f3-c6b409c9565c\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  74 bytes\n"
+            }
+          ]
+        }
+      ],
+      "route": "Every command (history too) takes it; set holds it through load, reconcile, write and record; watch holds it only per reconcile",
+      "route_no": 1
+    }
+  ]
+}

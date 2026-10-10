@@ -1,0 +1,30 @@
+{
+  "kind": "divergent",
+  "question": "Writes into a file included at more than one place",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Step 1 and --in-include need such writes",
+      "route": "Allowed; only override writes are matched by reference so writes into a twice-included file keep working",
+      "route_no": 1
+    },
+    {
+      "outcome": "Reworked at step 5",
+      "reasoning_given": "The owner said no contract rule refuses such a write",
+      "route": "Refused at step 1, reworked at step 5 to follow the placement rules (conflicting values exit 3)",
+      "route_no": 2
+    },
+    {
+      "outcome": "Kept; one arm also refuses --in-include in that case at step 5",
+      "reasoning_given": "Cautious choice on a contract gap; the change alters every includer",
+      "route": "Refused with exit 3",
+      "route_no": 3
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 4
+    }
+  ]
+}

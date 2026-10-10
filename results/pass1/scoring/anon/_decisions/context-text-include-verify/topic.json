@@ -1,0 +1,30 @@
+{
+  "kind": "divergent",
+  "question": "How the read-back check compares text-include content in CRLF files",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Verification failed because the expected value was not CRLF-converted",
+      "route": "Compare against a CRLF-converted expectation",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "None recorded",
+      "route": "Compare against the raw content written",
+      "route_no": 2
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "The check tripped on CRLF text includes",
+      "route": "Normalise line endings before comparing",
+      "route_no": 3
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 4
+    }
+  ]
+}

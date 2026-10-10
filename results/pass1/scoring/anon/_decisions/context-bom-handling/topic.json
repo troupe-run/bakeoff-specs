@@ -1,0 +1,18 @@
+{
+  "kind": "one-off",
+  "question": "How a UTF-8 BOM is handled",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "ruamel mark indices count a leading U+FEFF",
+      "route": "Decode as plain UTF-8 so the BOM stays in the text and is written back unchanged",
+      "route_no": 1
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

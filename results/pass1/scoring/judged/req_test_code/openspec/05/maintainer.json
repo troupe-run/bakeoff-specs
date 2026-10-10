@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "/judge/repo/tests/test_set_in_include.py:1 — the module docstring names the spec capability and the step: \"(config-set, step 5 CR-B)\"",
+    "/judge/repo/tests/test_set_in_include.py:28-99 — the param ids (into-the-included-file, merged-ancestor, nested-includes-innermost-file, …) match the scenario titles in spec/spec/config-set/spec.md:403-454 one for one",
+    "/judge/repo/tests/test_set_overrides.py:1 — same module-level link: \"(config-set, step 5 CR-A)\"",
+    "/judge/repo/spec/changes/archive/2026-10-05-config-set-in-include/tasks.md:9-13 — the task entries link the test files to the requirement scenarios and to the code they exercise (cli.py, commands.set_value, new_key_target, physical_mapping in edit/apply.py)",
+    "/judge/repo/tests/test_cli.py:83 — test_set_takes_an_optional_in_include_anywhere matches the task 2.4 entry"
+  ],
+  "notes": "For the three sampled step-5 tests (in-include params, the CLI flag-position test, override test), the failing test leads to the spec file through its docstring and to the exact scenario through near-verbatim names. Tasks.md also names the code. But the tests only call the CLI and never name the code, and the links work at module and name level rather than through per-scenario IDs, so getting to the code takes a hop through tasks.md or a search.",
+  "raw": "{\"score\": 3, \"evidence\": [\"/judge/repo/tests/test_set_in_include.py:1 — the module docstring names the spec capability and the step: \\\"(config-set, step 5 CR-B)\\\"\", \"/judge/repo/tests/test_set_in_include.py:28-99 — the param ids (into-the-included-file, merged-ancestor, nested-includes-innermost-file, …) match the scenario titles in spec/spec/config-set/spec.md:403-454 one for one\", \"/judge/repo/tests/test_set_overrides.py:1 — same module-level link: \\\"(config-set, step 5 CR-A)\\\"\", \"/judge/repo/spec/changes/archive/2026-10-05-config-set-in-include/tasks.md:9-13 — the task entries link the test files to the requirement scenarios and to the code they exercise (cli.py, commands.set_value, new_key_target, physical_mapping in edit/apply.py)\", \"/judge/repo/tests/test_cli.py:83 — test_set_takes_an_optional_in_include_anywhere matches the task 2.4 entry\"], \"notes\": \"For the three sampled step-5 tests (in-include params, the CLI flag-position test, override test), the failing test leads to the spec file through its docstring and to the exact scenario through near-verbatim names. Tasks.md also names the code. But the tests only call the CLI and never name the code, and the links work at module and name level rather than through per-scenario IDs, so getting to the code takes a hop through tasks.md or a search.\"}",
+  "score": 3,
+  "status": "ok"
+}

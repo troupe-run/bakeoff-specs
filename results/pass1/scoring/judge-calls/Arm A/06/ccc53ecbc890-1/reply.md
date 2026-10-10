@@ -1,0 +1,4 @@
+```json
+{"score": 3, "evidence": ["spec/spec/config-aliases/tasks.md:3", "tests/test_set_alias_refusals.py:77", "tests/writeback/test_alias_guard.py:106", "tests/test_e2e_aliases.py:701", "tests/test_e2e_reason.py:101", "tests/test_set_in_include.py:155", "spec/spec/config-foundation/requirements.md:180", "tests/test_loader.py:1", "spec/spec/config-aliases/tasks.md:198"]}
+{"notes": "Four of the five sampled requirements are linked and correct: aliases 5.1 and 7.1 (both new this step), lineage 6.1 and include-overrides 10.1. Each has a per-test `Req N.M` docstring, and the task entries name the modules, so the code is reachable from the test. The fifth, config-foundation 3.9 (\"anchors, aliases and merge keys exit 4\"), is superseded text that has no step-6 note yet (task 5.2 is still open), and test_loader.py links to it only through a module-level range \"Requirements 3.1-3.9\", so that link points at text no longer in force."}
+```

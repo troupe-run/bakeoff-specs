@@ -1,0 +1,4441 @@
+{
+  "topics": [
+    {
+      "id": "actor-fallback",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "{kind: human, id: null}"
+        }
+      ]
+    },
+    {
+      "id": "actor-validation",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Every command, first"
+        }
+      ]
+    },
+    {
+      "id": "atomic-write",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Atomic write: a save is all or nothing. A crash between files in a multi-file save can still leave a mix, but that's an edge case and hard to avoid.",
+          "route": "Temp file in the same directory, fsync, copy permissions, os.replace; only changed files are touched"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "A crash mid-write can leave a truncated config.",
+          "route": "Write in place with newline='' only when the text changed, no temp files"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "3",
+          "reason": "Not considered; same risk as an in-place write.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "bom-handling",
+      "kind": "one-off",
+      "routes": [
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Deliberately preserves the file beyond its config values (BOM, comments, layout), which matters",
+          "route": "Decode as plain UTF-8 so the BOM stays in the text and is written back unchanged"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "4",
+          "reason": "Preserved the BOM in practice, but by luck rather than design; file fidelity (BOM, comments, layout) matters",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "both-config-names",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "PROBLEM"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group PROBLEM",
+          "route": "Exit 4 in both cases",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "PROBLEM"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group PROBLEM",
+          "route": "not considered",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "openspec",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "FIX"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group FIX",
+          "route": "not considered",
+          "route_rating": "4.5"
+        }
+      ]
+    },
+    {
+      "id": "change-detection",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Poll file bytes with the stdlib every 0.1-0.25 s; no watcher library, no mtime"
+        }
+      ]
+    },
+    {
+      "id": "chomping",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "QUOTED"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group QUOTED",
+          "route": "Keep the old indicator if it can represent the value, otherwise choose strip/clip/keep from trailing newlines; keep-chomped trailing blank lines count as part of the value",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "speckit",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "BLOCK"
+          },
+          "outcome": "Kept",
+          "rating": "4.5",
+          "reason": "Q1: behaviour group BLOCK",
+          "route": "Keep the old indicator if it can represent the value, otherwise choose strip/clip/keep from trailing newlines; keep-chomped trailing blank lines count as part of the value",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "REFUSE"
+          },
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Q1: behaviour group REFUSE",
+          "route": "Keep the old indicator if it can represent the value, otherwise choose strip/clip/keep from trailing newlines; keep-chomped trailing blank lines count as part of the value",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "QUOTED_MISMATCH"
+          },
+          "outcome": "Kept",
+          "rating": "2",
+          "reason": "Q1: behaviour group QUOTED_MISMATCH",
+          "route": "Keep the old indicator if it can represent the value, otherwise choose strip/clip/keep from trailing newlines; keep-chomped trailing blank lines count as part of the value",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "groups": {
+            "Q1": "BLOCK"
+          },
+          "outcome": "Kept",
+          "rating": "4.5",
+          "reason": "Q1: behaviour group BLOCK",
+          "route": "Render a lone newline value as |+ instead of refusing it",
+          "route_rating": "4.5"
+        }
+      ]
+    },
+    {
+      "id": "collection-set",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Mixed: keeps comments, but a comment tied to a changed value (temperature 0.2 'tuned low for code' -> 0.5) goes stale. Value and comment should move as a unit; not always the case. (One arm also logs the removal first in history.)",
+          "route": "Merge entry-wise (keep, change, append, delete); unchanged entries keep their bytes and comments"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Mixed: a clean block, but it drops comments on unchanged entries too.",
+          "route": "Replace the collection's whole span in the old style; comments inside it go with it"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "outcome": "",
+          "rating": "3",
+          "reason": "Same as route 2.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "comment-column",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "KEEP"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group KEEP",
+          "route": "Keep its column if possible, else one space before #; also when a flow collection grows",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "DRIFT"
+          },
+          "outcome": "Kept",
+          "rating": "1",
+          "reason": "Q1: behaviour group DRIFT",
+          "route": "Keep its column if possible, else one space before #; also when a flow collection grows",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "KEEP"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group KEEP",
+          "route": "not considered",
+          "route_rating": "5"
+        }
+      ]
+    },
+    {
+      "id": "comment-spacing",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Doesn't matter: every arm prints identical output.",
+          "route": "One space before #, no alignment"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Doesn't matter: identical output.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "compact-first-key-delete",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "groups": {
+            "Q1": "REFUSE"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group REFUSE",
+          "route": "Exit 3",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "WRITE_KEEP"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group WRITE_KEEP",
+          "route": "Pull the next entry up into the dash line",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "speckit",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "WRITE_STRIP"
+          },
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Q1: behaviour group WRITE_STRIP",
+          "route": "not considered",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "WRITE_KEEP"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group WRITE_KEEP",
+          "route": "not considered",
+          "route_rating": "5"
+        }
+      ]
+    },
+    {
+      "id": "complex-keys",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "FILE"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group FILE",
+          "route": "Exit 4",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "NEITHER"
+          },
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Q1: behaviour group NEITHER",
+          "route": "Exit 4",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "openspec",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "FILE_LINE"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group FILE_LINE",
+          "route": "not considered",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "FILE"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group FILE",
+          "route": "not considered",
+          "route_rating": "4.5"
+        }
+      ]
+    },
+    {
+      "id": "concurrency-scope",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "A clear, reasonable promise: one watch plus one other command.",
+          "route": "One watch plus one other command; editor saves during a set and multiple watches/sets are out of contract"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Not addressed; scope.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "crlf-text-include-show",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "Reworked at step 3",
+          "rating": "3",
+          "reason": "Competing requirements (block shape vs fidelity). Keeps the block shape but hides raw CRs, so show doesn't read back. +1 for raising the conflict.",
+          "route": "Double-quoted at first; reworked so every text include is a literal block of the exact text"
+        },
+        {
+          "arms": [
+            "openspec",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Quoting is valid here, and the only way to preserve fidelity. Marked down because one arm over-quotes values that don't need it.",
+          "route": "Double-quoted with escapes"
+        },
+        {
+          "arms": [
+            "control",
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "2",
+          "reason": "Block shape, but silently drops the CRs from show.",
+          "route": "Literal block with CRLF turned into LF; get keeps the bytes"
+        }
+      ]
+    },
+    {
+      "id": "dash-values",
+      "kind": "one-off",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "Kept; also governs --reason -x at step 4",
+          "rating": "2",
+          "reason": "Departs from the CLI convention that a dash-leading argument is an option unless after --; consistency beats flexibility",
+          "route": "Override argparse's private _parse_optional (via a parser subclass) so single-dash VALUEs are positional"
+        },
+        {
+          "arms": [
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "4",
+          "reason": "Matches the standard CLI convention (dash-leading values need --); consistency beats flexibility",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "digit-segments",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "control"
+          ],
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Creating the list when .0 is addressed is what I'd expect.",
+          "route": "A `0` segment under a missing parent creates a new list; any other index exits 5"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Refuses an obvious request; supporting it only through other, less obvious syntax is confusing.",
+          "route": "Missing segments are created only as mapping keys; a missing digit segment exits 5; index == length appends, larger indexes exit 5"
+        }
+      ]
+    },
+    {
+      "id": "duplicate-keys",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "RAISE"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group RAISE",
+          "route": "Exit 4 (load error)",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "RAISE"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group RAISE",
+          "route": "not considered",
+          "route_rating": "2.5"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "LAST"
+          },
+          "outcome": "",
+          "rating": "2",
+          "reason": "Q1: behaviour group LAST",
+          "route": "not considered",
+          "route_rating": "2.5"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "FIRST_DISAGREE"
+          },
+          "outcome": "",
+          "rating": "1",
+          "reason": "Q1: behaviour group FIRST_DISAGREE",
+          "route": "not considered",
+          "route_rating": "2.5"
+        }
+      ]
+    },
+    {
+      "id": "empty-change",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Doesn't matter: every arm behaves identically.",
+          "route": "Save and stamp nothing when there are no events"
+        },
+        {
+          "arms": [
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Doesn't matter: identical behaviour.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "empty-collections-write",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Nothing to choose between: every arm behaves identically, and YAML forces [] and {}.",
+          "route": "Write {} or [] in flow form"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Identical behaviour.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "empty-text-include-show",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Nothing to choose between: identical behaviour.",
+          "route": "`|-`"
+        },
+        {
+          "arms": [
+            "control",
+            "speckit"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Identical behaviour.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "empty-value-position",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec",
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Nothing to choose between: identical behaviour.",
+          "route": "Right after the ':' indicator rather than at the parser's mark"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Identical behaviour.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "entry-deletion",
+      "kind": "one-off",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Consistent and predictable: comments never lost, and it refuses rather than guesses",
+          "route": "Whole block lines (interior comments go, trailing ones stay); a flow deletion only on one line, otherwise exit 3"
+        },
+        {
+          "arms": [
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "2",
+          "reason": "Behaviour varied by arm, with comments silently lost; consistency and predictability are critical",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "error-output",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "groups": {
+            "Q1": "FIX"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group FIX",
+          "route": "Typed errors each carry an exit code and only the CLI converts them; stdout is buffered and empty on any failure",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "BARE"
+          },
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Q1: behaviour group BARE",
+          "route": "Typed errors each carry an exit code and only the CLI converts them; stdout is buffered and empty on any failure",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "FACTS"
+          },
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Q1: behaviour group FACTS",
+          "route": "Typed errors each carry an exit code and only the CLI converts them; stdout is buffered and empty on any failure",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "FACTS"
+          },
+          "outcome": "",
+          "rating": "3",
+          "reason": "Q1: behaviour group FACTS",
+          "route": "not considered",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "FIX"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group FIX",
+          "route": "not considered",
+          "route_rating": "3.5"
+        }
+      ]
+    },
+    {
+      "id": "event-store",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept; event classes were versioned at step 4",
+          "rating": "n/a",
+          "reason": "",
+          "route": "eventsourcing with SQLite under .troupe/, one aggregate per theatre with a fixed id, each command's events saved in one save"
+        }
+      ]
+    },
+    {
+      "id": "file-value",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "DROP"
+          },
+          "outcome": "Superseded at step 7",
+          "rating": "2",
+          "reason": "Q1: behaviour group DROP",
+          "route": "Verify a file: string as the written text",
+          "route_rating": "2"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "DROP"
+          },
+          "outcome": "Reworked at step 1 in two arms; superseded at step 7 by writing !literal unless --include",
+          "rating": "2",
+          "reason": "Q1: behaviour group DROP",
+          "route": "Write it as a string and let the read-back load decide; a missing, cyclic or unloadable target exits 3",
+          "route_rating": "2"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "KEEP_EXIT3"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group KEEP_EXIT3",
+          "route": "not considered",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "KEEP_EXIT4"
+          },
+          "outcome": "",
+          "rating": "3",
+          "reason": "Q1: behaviour group KEEP_EXIT4",
+          "route": "not considered",
+          "route_rating": "3.5"
+        }
+      ]
+    },
+    {
+      "id": "flow-replacement-style",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "BLOCK"
+          },
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Q1: behaviour group BLOCK",
+          "route": "Block style (the 'new collection value' rule read literally; owner confirmed)",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "INLINE_GAP"
+          },
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Q1: behaviour group INLINE_GAP",
+          "route": "Render in the old one's style; new collections inside a flow parent use flow",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "INLINE_GAP"
+          },
+          "outcome": "",
+          "rating": "3",
+          "reason": "Q1: behaviour group INLINE_GAP",
+          "route": "not considered",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "INLINE_KEPT"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group INLINE_KEPT",
+          "route": "not considered",
+          "route_rating": "3"
+        }
+      ]
+    },
+    {
+      "id": "fold-markers",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "No arm leaks anything; the only difference is the !literal mark in show, already rated in T8 and T26.",
+          "route": "Strip them from folded values (also under !literal)"
+        },
+        {
+          "arms": [
+            "control",
+            "openspec",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Same: no leaks; the !literal difference is already rated.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "folded-more-indented",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "Reworked at step 1 from refusing any edit, then kept",
+          "rating": "5",
+          "reason": "Refuses exactly what the contract refuses; prose around an indented line stays editable.",
+          "route": "Edit allowed; existing indented runs are kept as opaque units; only adding a new more-indented line exits 3"
+        },
+        {
+          "arms": [
+            "control",
+            "openspec",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Contract-aligned refusal, but blocks prose edits around an existing indented line.",
+          "route": "Refuse (exit 3) a change that would introduce a more-indented line"
+        },
+        {
+          "arms": [
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Refuses legitimate edits the contract permits.",
+          "route": "Refuse any change to a folded value that already has more-indented lines"
+        }
+      ]
+    },
+    {
+      "id": "folded-rewrap",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "W"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group W",
+          "route": "Align paragraphs with difflib; unchanged paragraphs keep their bytes; changed ones re-wrap at the old width (default 80)",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "K"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group K",
+          "route": "Align paragraphs with difflib; unchanged paragraphs keep their bytes; changed ones re-wrap at the old width (default 80)",
+          "route_rating": "4"
+        }
+      ]
+    },
+    {
+      "id": "fuzz-testing",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Covers edge cases and unusual file shapes, which is where production issues come from, not the happy path",
+          "route": "Random set sequences or seeded property tests over LF/CRLF, flow, block and includes, with no new dependency"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "speckit"
+          ],
+          "outcome": "",
+          "rating": "3",
+          "reason": "Leaves edge-case write-back untested; production issues come from unusual cases, not the happy path",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "get-reconcile",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Nothing to choose between: every arm picks up hand edits on get and logs them.",
+          "route": "Yes, like show"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Identical behaviour.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "get-show-split",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "get keeps step-1 scalar show; collections exit 5 with a message naming the path and `troupe config show`; show takes an optional PATH"
+        }
+      ]
+    },
+    {
+      "id": "history-filter",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Identical matching everywhere; the error describes the issue at the location (empty segment).",
+          "route": "No matches print nothing and exit 0"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Error names the location but not the issue.",
+          "route": "Path prefix (segment awareness not stated)"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Error describes the issue.",
+          "route": "Plain string prefix; an unknown path prints nothing and exits 0"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Error names the location but not the issue.",
+          "route": "The path itself or a dotted-segment prefix"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "speckitty"
+          ],
+          "outcome": "",
+          "rating": "4",
+          "reason": "Both arms describe the issue.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "history-json-escaping",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "groups": {
+            "Q1": "ASCII",
+            "Q2": "RAW_UNQUOTED"
+          },
+          "outcome": "Kept",
+          "rating": "1.5",
+          "reason": "Q1: behaviour group ASCII; Q2: behaviour group RAW_UNQUOTED",
+          "route": "ASCII escaping",
+          "route_rating": "1.5"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "READABLE",
+            "Q2": "RAW_QUOTED"
+          },
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Q1: behaviour group READABLE; Q2: behaviour group RAW_QUOTED",
+          "route": "ensure_ascii=False with keys in a fixed order",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "READABLE",
+            "Q2": "RAW_UNQUOTED"
+          },
+          "outcome": "",
+          "rating": "3",
+          "reason": "Q1: behaviour group READABLE; Q2: behaviour group RAW_UNQUOTED",
+          "route": "not considered",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "speckitty",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "READABLE",
+            "Q2": "ESCAPED"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group READABLE; Q2: behaviour group ESCAPED",
+          "route": "not considered",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "READABLE",
+            "Q2": "RAW_QUOTED"
+          },
+          "outcome": "",
+          "rating": "3",
+          "reason": "Q1: behaviour group READABLE; Q2: behaviour group RAW_QUOTED",
+          "route": "not considered",
+          "route_rating": "3.5"
+        }
+      ]
+    },
+    {
+      "id": "history-loads-files",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "WORKS"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group WORKS",
+          "route": "No; once state exists it reads recorded events without loading",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "FAILS"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group FAILS",
+          "route": "Yes; broken files make history exit 4; at step 7 schema and remote fetches apply to it too",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "openspec",
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "FAILS"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group FAILS",
+          "route": "not considered",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "WORKS"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group WORKS",
+          "route": "not considered",
+          "route_rating": "4.5"
+        }
+      ]
+    },
+    {
+      "id": "history-reconcile",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Never reconciles; still imports a never-imported theatre"
+        }
+      ]
+    },
+    {
+      "id": "history-source-field",
+      "kind": "one-off",
+      "routes": [
+        {
+          "arms": [
+            "speckit"
+          ],
+          "outcome": "Superseded at step 4 by via",
+          "rating": "n/a",
+          "reason": "Not a real choice: every route records hand edits the same way (via: file); some justified it, one didn't, same effect.",
+          "route": "No source field"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Not a real choice: same behaviour as route 1.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "import-timing",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Nothing to choose between: one clean import in every arm.",
+          "route": "The first command against a theatre imports it (persistence after a later failure not stated)"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Identical behaviour.",
+          "route": "The first command whose configuration loads imports it; the import stands even if that command then exits 2, 3 or 5; a load failure records nothing"
+        }
+      ]
+    },
+    {
+      "id": "include-resolution",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "EXIT3"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group EXIT3",
+          "route": "YAML include by .yml/.yaml suffix (case-sensitive), else text; paths relative to the including file; cycles and missing or non-UTF-8 targets exit 4",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "EXIT4"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group EXIT4",
+          "route": "YAML include by .yml/.yaml suffix (case-sensitive), else text; paths relative to the including file; cycles and missing or non-UTF-8 targets exit 4",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "EXIT3"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group EXIT3",
+          "route": "not considered",
+          "route_rating": "5"
+        }
+      ]
+    },
+    {
+      "id": "include-root-replace",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec",
+            "superpowers"
+          ],
+          "outcome": "Kept; extended at step 5 to mapping-form includes",
+          "rating": "4",
+          "reason": "Proposed accepted: safe; refusing a no-op is a little unfriendly.",
+          "route": "Exit 3 always, even when the new value is identical (including changes through an ancestor)"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control"
+          ],
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Proposed accepted: safe and idempotent.",
+          "route": "Exit 3 only when the value would change; an identical value is a no-op"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Proposed accepted: reasonable scoping; the no-op case left open.",
+          "route": "Rule 4 applies only to the root of a YAML include; a text include is edited in place"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "outcome": "",
+          "rating": "3",
+          "reason": "Proposed accepted: contract rule 4 needs a definite answer.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "indent-detection",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "F"
+          },
+          "outcome": "Kept; one arm made detection anchor-aware at step 6",
+          "rating": "5",
+          "reason": "Q1: behaviour group F",
+          "route": "Detect from the file's existing nesting, defaulting to 2",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "speckit",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "I"
+          },
+          "outcome": "Kept; one arm made detection anchor-aware at step 6",
+          "rating": "3",
+          "reason": "Q1: behaviour group I",
+          "route": "Detect from the file's existing nesting, defaulting to 2",
+          "route_rating": "4.5"
+        }
+      ]
+    },
+    {
+      "id": "insert-position",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Nothing to choose between: identical files.",
+          "route": "After trailing comments indented at least to the entry column; blank lines stay below the new entry"
+        },
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Identical behaviour.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "layout-refusals",
+      "kind": "one-off",
+      "routes": [
+        {
+          "arms": [
+            "control"
+          ],
+          "outcome": "Kept",
+          "rating": "3.5",
+          "reason": "Edge case; every arm handled these layouts correctly, and the extra refusal check was never triggered",
+          "route": "Block sequences whose dash layout does not match the parsed items exit 4"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "3",
+          "reason": "Edge case; handled every unusual layout correctly without a dedicated check",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "leading-space-literal",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "Kept",
+          "rating": "2",
+          "reason": "Quoted line in the file but show prints a block: file and screen disagree, which is confusing and error-prone",
+          "route": "Always `2`"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Quoted line with \\n is less readable than a block, though show at least matches the file",
+          "route": "Double-quote instead"
+        },
+        {
+          "arms": [
+            "control",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "3.5",
+          "reason": "Blocks are more readable and match shell/cat usage; one arm quoted instead and its show did not match its file",
+          "route": "Indicator only when needed"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "outcome": "",
+          "rating": "4",
+          "reason": "Readable block with the comment kept on its line, and show matches the file",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "legacy-via",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "2",
+          "reason": "Leaves a missing field every reader must handle.",
+          "route": "No migration"
+        },
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Uniform, but invents a source that will sometimes be wrong.",
+          "route": "cli"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Uniform, but invents a source that will sometimes be wrong.",
+          "route": "file"
+        },
+        {
+          "arms": [
+            "control",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Closest: honest about what isn't known. Would be better with a distinct explicit value (e.g. 'unknown') rather than null.",
+          "route": "null"
+        }
+      ]
+    },
+    {
+      "id": "line-endings",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "CRLF if any CRLF: works, but can mix endings inside a new block.",
+          "route": "CRLF if any CRLF appears in the file, else LF"
+        },
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Copying the line above is probably the most predictable.",
+          "route": "Copy the preceding line's ending"
+        },
+        {
+          "arms": [
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "First line's ending: predictable rule, but a new line can differ from its neighbour.",
+          "route": "Taken from the file's first line break; LF for empty or LF-only files"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "outcome": "",
+          "rating": "4",
+          "reason": "Same behaviour as route 3.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "literal-comment",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "On the `|` header line"
+        }
+      ]
+    },
+    {
+      "id": "literal-line-diff",
+      "kind": "one-off",
+      "routes": [
+        {
+          "arms": [
+            "control"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Two questions, averaged. Reproduces a valid file: 3 (refuses some edits it could make). Detects a fidelity problem when writing: 5.",
+          "route": "Line diff with difflib so unchanged lines keep their bytes"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "5",
+          "reason": "Two questions, averaged. Reproduces a valid file: 5. Detects a fidelity problem when writing: n/a, so not counted.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "locate-and-lock",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Nothing to choose between in what was tested.",
+          "route": "Locate the config first, then lock"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Identical in what was tested; the rename race wasn't exercised.",
+          "route": "Lock, then re-locate under the lock"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Identical behaviour.",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "lock-failure",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Exit 4 naming .troupe or the lock file; keep step-1 missing-config errors"
+        },
+        {
+          "arms": [
+            "control",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "lock-mechanism",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Correct, no extra state",
+          "route": "Exclusive blocking fcntl.flock on the .troupe directory itself; no lock file"
+        },
+        {
+          "arms": [
+            "control",
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Works; leaves an extra file",
+          "route": "fcntl.flock on a lock file in .troupe/"
+        }
+      ]
+    },
+    {
+      "id": "lock-scope",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Every command (history too) takes it; set holds it through load, reconcile, write and record; watch holds it only per reconcile"
+        }
+      ]
+    },
+    {
+      "id": "lock-wait",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "2",
+          "reason": "Waits indefinitely and silently behind another holder: bad, but it catches the nested acquire",
+          "route": "Block without timeout; a nested acquire in one process raises"
+        },
+        {
+          "arms": [
+            "control",
+            "speckit",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "1",
+          "reason": "Unconsidered; can freeze on its own nested acquire (unverified), worse than waiting on another process",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "login-lookup",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "getpass.getuser"
+        }
+      ]
+    },
+    {
+      "id": "long-keys",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "groups": {
+            "Q1": "B"
+          },
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Q1: behaviour group B",
+          "route": "Leave unhandled",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group A",
+          "route": "Leave unhandled",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "openspec",
+            "speckit",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group A",
+          "route": "not considered",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "C"
+          },
+          "outcome": "",
+          "rating": "2",
+          "reason": "Q1: behaviour group C",
+          "route": "not considered",
+          "route_rating": "3.5"
+        }
+      ]
+    },
+    {
+      "id": "malformed-path",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "groups": {
+            "Q1": "RULE"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group RULE",
+          "route": "Exit 2 before the theatre is opened (history too), with a clear message",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "PROBLEM"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group PROBLEM",
+          "route": "Exit 2 before the theatre is opened (history too), with a clear message",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "openspec",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "PROBLEM"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group PROBLEM",
+          "route": "not considered",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "BARE"
+          },
+          "outcome": "",
+          "rating": "3",
+          "reason": "Q1: behaviour group BARE",
+          "route": "not considered",
+          "route_rating": "3.5"
+        }
+      ]
+    },
+    {
+      "id": "multi-file-set",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group A",
+          "route": "Compute and verify every file first, then write each; nothing is written if any check fails",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "speckit",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "B"
+          },
+          "outcome": "Kept",
+          "rating": "2",
+          "reason": "Q1: behaviour group B",
+          "route": "Compute and verify every file first, then write each; nothing is written if any check fails",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "Reworked at step 1, then kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group A",
+          "route": "Refuse multi-file sets, reworked within step 1 to: verify all, write each atomically, roll back on failure, and name any file that could not be restored",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group A",
+          "route": "not considered",
+          "route_rating": "5"
+        }
+      ]
+    },
+    {
+      "id": "multiline-show",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Literal block when it can hold them exactly, else double-quoted"
+        }
+      ]
+    },
+    {
+      "id": "multiline-write",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Literal block in block context; double-quoted in flow context or when a literal block cannot hold it exactly"
+        }
+      ]
+    },
+    {
+      "id": "net-edits",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "May be recorded as their net difference"
+        },
+        {
+          "arms": [
+            "control",
+            "openspec",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "new-entry-style",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group A",
+          "route": "Copy the preceding sibling's style (after a merge deletes the last entry, the last remaining one), else the minimal style",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "B"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group B",
+          "route": "Copy the preceding sibling's style (after a merge deletes the last entry, the last remaining one), else the minimal style",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "B"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group B",
+          "route": "not considered",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "speckit",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "C"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group C",
+          "route": "not considered",
+          "route_rating": "4.5"
+        }
+      ]
+    },
+    {
+      "id": "no-state-on-load-failure",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckitty",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group A",
+          "route": "Open or create the store only after the configuration loads and arguments are valid",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "B"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group B",
+          "route": "Open or create the store only after the configuration loads and arguments are valid",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "C"
+          },
+          "outcome": "",
+          "rating": "2",
+          "reason": "Q1: behaviour group C",
+          "route": "not considered",
+          "route_rating": "2"
+        }
+      ]
+    },
+    {
+      "id": "nonfinite-history",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Valid JSON, but infinity and the string '.inf' are logged identically; neither route marks the type",
+          "route": "YAML-style strings .inf/-.inf/.nan (encoded with allow_nan=False)"
+        },
+        {
+          "arms": [
+            "control",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "2",
+          "reason": "Keeps the number but bare Infinity/NaN break strict JSON Lines readers",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "nonstring-keys",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec"
+          ],
+          "outcome": "Kept; at step 6 a new key named << is also written quoted",
+          "rating": "5",
+          "reason": "Quotes every ambiguous key in the file, including '<<'",
+          "route": "Quote any new key whose plain form would not read back as a string"
+        },
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "Kept; the show renderer later applied the general rule",
+          "rating": "2",
+          "reason": "File left with true:/null:/1e3: keys other readers take as non-strings; show hides it",
+          "route": "Quote keys spelled << (found in review)"
+        },
+        {
+          "arms": [
+            "control",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "4",
+          "reason": "Quotes ambiguous keys, but refuses a valid quoted '<<' key (clear message)",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "pre-step6-anchors-tags",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "speckitty"
+          ],
+          "outcome": "Replaced at step 6 by full alias support",
+          "rating": "2",
+          "reason": "Refuses to even read a valid file (exit 4 on everything)",
+          "route": "Anchors, aliases, merge keys and tags exit 4"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "outcome": "Replaced at step 6",
+          "rating": "4",
+          "reason": "Reads correctly; refuses both edits clearly",
+          "route": "Honour explicit core tags; other tags, anchors and aliases exit 4"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "outcome": "Kept",
+          "rating": "1",
+          "reason": "Wrong types, phantom << key, drops !!str tag, silent shared change",
+          "route": "Ignore tags: plain scalars always resolved, quoted or block scalars stay strings"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "outcome": "At step 6 this arm found silent writes through aliases (exit 0) and fixed them",
+          "rating": "2",
+          "reason": "Right types, but phantom << key, drops tag, silent shared change",
+          "route": "Leave anchors/aliases/merge keys out of contract, undefined and untested; do not flag loss of explicit tags"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "3",
+          "reason": "Wrong types on read and silent anchor change, but refusals offer fixes and the tag is kept",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "reconcile-baseline",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "The recorded configuration (projection of the events), diffed leaf by leaf against the loaded files"
+        }
+      ]
+    },
+    {
+      "id": "reconcile-diff",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "One shared diff function for set and reconcile"
+        },
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Separate small reconcile diff reusing the shared scalar comparison"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "reconcile-persist",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Yes; saved in their own save before the command body"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "reconcile-remove-order",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group A",
+          "route": "Order of the seq that created each leaf",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "B"
+          },
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Q1: behaviour group B",
+          "route": "Projection order (when leaves were first recorded)",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "speckit",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group A",
+          "route": "Projection order (when leaves were first recorded)",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group A",
+          "route": "Sets in document order, then removes (order unstated)",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group A",
+          "route": "not considered",
+          "route_rating": "4"
+        }
+      ]
+    },
+    {
+      "id": "reconcile-trigger",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "A store reconcile method called before every command except history"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "One session/open function decides for every command (default-on flag, a command list, or a required keyword)"
+        }
+      ]
+    },
+    {
+      "id": "replay-tolerance",
+      "kind": "one-off",
+      "routes": [
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "SET_FIRST"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group SET_FIRST",
+          "route": "pop(path, None)",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "speckit",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "SET_FIRST"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group SET_FIRST",
+          "route": "not considered",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "SWAP"
+          },
+          "outcome": "",
+          "rating": "2",
+          "reason": "Q1: behaviour group SWAP",
+          "route": "not considered",
+          "route_rating": "5"
+        }
+      ]
+    },
+    {
+      "id": "root-shape",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group A",
+          "route": "An empty or comment-only file is an empty mapping and can be written into; a non-mapping root (including ~ or ---) exits 4",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "control",
+            "openspec",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "B"
+          },
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Q1: behaviour group B",
+          "route": "An empty or comment-only file is an empty mapping and can be written into; a non-mapping root (including ~ or ---) exits 4",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "B"
+          },
+          "outcome": "",
+          "rating": "3",
+          "reason": "Q1: behaviour group B",
+          "route": "not considered",
+          "route_rating": "3"
+        }
+      ]
+    },
+    {
+      "id": "scalar-print-format",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "null/true/false lower-case, floats via repr, ints via str, one trailing newline"
+        },
+        {
+          "arms": [
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "scalar-quoting",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept; one arm fixed its printable check (NBSP, emoji) after review",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Keep the existing style if it can hold the value; otherwise plain, then single, then double"
+        }
+      ]
+    },
+    {
+      "id": "scalar-resolver",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Own YAML 1.2 core-schema resolver for both file values and VALUE"
+        }
+      ]
+    },
+    {
+      "id": "scalar-to-collection",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "Kept; at step 5 the include conversion follows the contract example instead",
+          "rating": "4",
+          "reason": "Q1: behaviour group A",
+          "route": "Value removed; comment stays at its column on the key (or dash) line; the collection goes below; list items become compact",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "control",
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "B"
+          },
+          "outcome": "Kept; at step 5 the include conversion follows the contract example instead",
+          "rating": "3",
+          "reason": "Q1: behaviour group B",
+          "route": "Value removed; comment stays at its column on the key (or dash) line; the collection goes below; list items become compact",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "openspec",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group A",
+          "route": "not considered",
+          "route_rating": "4"
+        }
+      ]
+    },
+    {
+      "id": "seq-numbering",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Keep the history log in the aggregate's state and number seq by position in that log"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "seq = originator_version - 1; the created/started event is not a history line"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "set-below-scalar",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Exit 5; a scalar or null parent is not a mapping (a bare `key:` counts as null)"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "set-event-order",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "speckit",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Leaf diff of before/after; set events in new document order, then remove events in old document order"
+        },
+        {
+          "arms": [
+            "control",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Leaf diff with one event per changed/new/removed leaf; order not pinned"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Leaf diff; remove events in old document order before set events"
+        }
+      ]
+    },
+    {
+      "id": "settle-rule",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "control",
+            "openspec"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Reconcile only after the bytes read the same on consecutive checks"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "shared-include-writes",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "W"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group W",
+          "route": "Allowed; only override writes are matched by reference so writes into a twice-included file keep working",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "groups": {
+            "Q1": "W"
+          },
+          "outcome": "Reworked at step 5",
+          "rating": "4",
+          "reason": "Q1: behaviour group W",
+          "route": "Refused at step 1, reworked at step 5 to follow the placement rules (conflicting values exit 3)",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "R2"
+          },
+          "outcome": "Kept; one arm also refuses --in-include in that case at step 5",
+          "rating": "2",
+          "reason": "Q1: behaviour group R2",
+          "route": "Refused with exit 3",
+          "route_rating": "2.5"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "R1"
+          },
+          "outcome": "Kept; one arm also refuses --in-include in that case at step 5",
+          "rating": "3",
+          "reason": "Q1: behaviour group R1",
+          "route": "Refused with exit 3",
+          "route_rating": "2.5"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "R2"
+          },
+          "outcome": "",
+          "rating": "2",
+          "reason": "Q1: behaviour group R2",
+          "route": "not considered",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "W"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group W",
+          "route": "not considered",
+          "route_rating": "3"
+        }
+      ]
+    },
+    {
+      "id": "show-collections-step1",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "outcome": "Replaced at step 3 by get/show",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Exit 5"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "show-emitter",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Own emitter over the source-mapped tree; lines tagged with sources; --sources only adds comments"
+        }
+      ]
+    },
+    {
+      "id": "show-file-strings",
+      "kind": "one-off",
+      "routes": [
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "DROP"
+          },
+          "outcome": "Kept",
+          "rating": "2",
+          "reason": "Q1: behaviour group DROP",
+          "route": "Print plain",
+          "route_rating": "2"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "speckit",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "DROP"
+          },
+          "outcome": "",
+          "rating": "2",
+          "reason": "Q1: behaviour group DROP",
+          "route": "not considered",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "KEEP"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group KEEP",
+          "route": "not considered",
+          "route_rating": "3"
+        }
+      ]
+    },
+    {
+      "id": "show-floats",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "P"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group P",
+          "route": "repr when finite; .inf/-.inf/.nan otherwise",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "N"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group N",
+          "route": "repr when finite; .inf/-.inf/.nan otherwise",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "control",
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "N"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group N",
+          "route": "not considered",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "P"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group P",
+          "route": "not considered",
+          "route_rating": "4.5"
+        }
+      ]
+    },
+    {
+      "id": "show-layout",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "2-space indent, compact items, {} and []"
+        }
+      ]
+    },
+    {
+      "id": "show-quoting",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "outcome": "Reworked at step 3",
+          "rating": "5",
+          "reason": "Quotes anything a YAML 1.1 or 1.2 reader would misread; output reads back the same",
+          "route": "Plain only if both YAML 1.2 and 1.1 readers read it back unchanged"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "2",
+          "reason": "Prints yes/off/On/1:30 bare; YAML 1.1 readers get booleans and numbers",
+          "route": "set's plain/single/double chain; keys plain only when they read back as strings"
+        }
+      ]
+    },
+    {
+      "id": "show-readback",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Round-trip tests"
+        }
+      ]
+    },
+    {
+      "id": "show-scalar",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Printed exactly as get prints it through the same function"
+        }
+      ]
+    },
+    {
+      "id": "source-label",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "groups": {
+            "Q1": "S",
+            "Q2": "G"
+          },
+          "outcome": "Kept",
+          "rating": "3.5",
+          "reason": "Q1: behaviour group S; Q2: behaviour group G",
+          "route": "Lexical path relative to the theatre with / separators; ../ outside; symlinks not resolved",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "L",
+            "Q2": "F"
+          },
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Q1: behaviour group L; Q2: behaviour group F",
+          "route": "Lexical path relative to the theatre with / separators; ../ outside; symlinks not resolved",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "R",
+            "Q2": "F"
+          },
+          "outcome": "Kept",
+          "rating": "3.5",
+          "reason": "Q1: behaviour group R; Q2: behaviour group F",
+          "route": "Lexical path relative to the theatre with / separators; ../ outside; symlinks not resolved",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "R",
+            "Q2": "G"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group R; Q2: behaviour group G",
+          "route": "Lexical path relative to the theatre with / separators; ../ outside; symlinks not resolved",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "L",
+            "Q2": "H"
+          },
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Q1: behaviour group L; Q2: behaviour group H",
+          "route": "Lexical path relative to the theatre with / separators; ../ outside; symlinks not resolved",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "R",
+            "Q2": "G"
+          },
+          "outcome": "Reworked at step 3",
+          "rating": "5",
+          "reason": "Q1: behaviour group R; Q2: behaviour group G",
+          "route": "Real paths with symlinks resolved, relative to the resolved theatre (reworked from lexical during planning)",
+          "route_rating": "5"
+        }
+      ]
+    },
+    {
+      "id": "source-of-truth",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept; the 'hand edits produce no events' part was superseded by reconcile at step 2 in every arm",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Files on disk are authoritative; show and set read the files; the store is change history only"
+        }
+      ]
+    },
+    {
+      "id": "sources-scalar",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "One-scalar YAML with the comment; a text include becomes a literal block"
+        }
+      ]
+    },
+    {
+      "id": "sources-scope",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "show only; get --sources exits 2"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "store-environment",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Configure the store through explicit constructor settings and ignore the process environment"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "speckit",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "store-errors",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "speckit",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "U"
+          },
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Q1: behaviour group U",
+          "route": "Exit 4 naming the store (sqlite, persistence and OS errors; corrupt or unknown lineage values)",
+          "route_rating": "n/a"
+        },
+        {
+          "arms": [
+            "control",
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "T"
+          },
+          "outcome": "",
+          "rating": "1",
+          "reason": "Q1: behaviour group T",
+          "route": "not considered",
+          "route_rating": "1"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "U"
+          },
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "Q1: behaviour group U",
+          "route": "not considered",
+          "route_rating": "1"
+        }
+      ]
+    },
+    {
+      "id": "store-lifetime",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group A",
+          "route": "One store instance per command, closed explicitly at the end so no -wal/-shm files remain",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group A",
+          "route": "not considered",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "C"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group C",
+          "route": "not considered",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "control",
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "B"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group B",
+          "route": "not considered",
+          "route_rating": "4.5"
+        }
+      ]
+    },
+    {
+      "id": "tab-quoting",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Single quotes (tests changed from the double-quoted expectation)"
+        },
+        {
+          "arms": [
+            "control",
+            "speckit"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "test-strategy",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Byte-exact CLI tests against temporary theatres (in-process or subprocess), plus a real `uv run troupe` smoke test"
+        }
+      ]
+    },
+    {
+      "id": "text-include-values",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "outcome": "Reworked at step 1, then kept",
+          "rating": "3",
+          "reason": "Accepts non-strings on LF files but refuses on CRLF: a hidden rule; silently replaces a prompt with a stray value",
+          "route": "Any VALUE on an LF target (non-strings written as typed); refuse only a non-string for a CRLF target. Reworked from an early draft that refused mappings and lists"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "One clear rule: text only, clear refusal; forces quoting",
+          "route": "Only strings (otherwise exit 3); CRLF endings of the target are preserved"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit"
+          ],
+          "outcome": "",
+          "rating": "4",
+          "reason": "Same as route 2",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "text-include-verify",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Accepts mixed endings, normalises to the file's CRLF silently",
+          "route": "Compare against a CRLF-converted expectation"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Same as route 1",
+          "route": "Compare against the raw content written"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Refuses mixed endings with a vague message that names neither the problem nor the fix",
+          "route": "Normalise line endings before comparing"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "",
+          "rating": "4",
+          "reason": "Same as route 1",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "theatre-option",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "TWO"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group TWO",
+          "route": "Both at the config level and the subcommand level, defaulting to `.`",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "speckit",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "SUB_ONLY"
+          },
+          "outcome": "Kept (one arm reworked at step 1)",
+          "rating": "3",
+          "reason": "Q1: behaviour group SUB_ONLY",
+          "route": "Only after the subcommand, defaulting to the current directory. One arm added it before the subcommand, then removed it",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "ANYWHERE"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group ANYWHERE",
+          "route": "not considered",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "TWO"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group TWO",
+          "route": "not considered",
+          "route_rating": "4.5"
+        }
+      ]
+    },
+    {
+      "id": "typed-equality",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Type-strict: 1, 1.0, true and '1' differ; NaN equals NaN; a type change counts as a change"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "unicode-breaks",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Same issue as T33 Q2; not double-counted",
+          "route": "Leave strings with U+FEFF in plain or single quotes"
+        },
+        {
+          "arms": [
+            "control",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept; one arm left a read-back difference with ruamel for the owner",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Only inside double quotes (written literally there)"
+        },
+        {
+          "arms": [
+            "openspec",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "value-spelling",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "C"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group C",
+          "route": "Canonical plain form (true/false, null, decimal int, repr(float), .inf/.nan)",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "K"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group K",
+          "route": "Keep VALUE's own spelling (floats fall back to repr; .inf/.nan for non-finite)",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "K"
+          },
+          "outcome": "",
+          "rating": "5",
+          "reason": "Q1: behaviour group K",
+          "route": "not considered",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "C"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group C",
+          "route": "not considered",
+          "route_rating": "4.5"
+        }
+      ]
+    },
+    {
+      "id": "value-syntax",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "ANCHOR": "DROP",
+            "BLOCK": "MAP",
+            "EMPTY": "NULL",
+            "TAG": "NUMBER"
+          },
+          "outcome": "Kept",
+          "rating": "2.5",
+          "reason": "ANCHOR: behaviour group DROP; BLOCK: behaviour group MAP; EMPTY: behaviour group NULL; TAG: behaviour group NUMBER",
+          "route": "Compose VALUE as a single flow-sequence item; empty or whitespace-only VALUE becomes null",
+          "route_rating": "2.5"
+        },
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "groups": {
+            "ANCHOR": "REFUSE",
+            "BLOCK": "REFUSE",
+            "EMPTY": "REFUSE",
+            "TAG": "REFUSE"
+          },
+          "outcome": "Kept; anchors/aliases still exit 2 at step 6 and tags at step 7",
+          "rating": "4.75",
+          "reason": "ANCHOR: behaviour group REFUSE; BLOCK: behaviour group REFUSE; EMPTY: behaviour group REFUSE; TAG: behaviour group REFUSE",
+          "route": "Exactly one scalar or flow node; empty input, block collections, multi-document, tags and anchors exit 2",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "ANCHOR": "DROP",
+            "BLOCK": "REFUSE_NOFIX",
+            "EMPTY": "NULL",
+            "TAG": "NUMBER"
+          },
+          "outcome": "Kept; anchors/aliases still exit 2 at step 6 and tags at step 7",
+          "rating": "2.75",
+          "reason": "ANCHOR: behaviour group DROP; BLOCK: behaviour group REFUSE_NOFIX; EMPTY: behaviour group NULL; TAG: behaviour group NUMBER",
+          "route": "Exactly one scalar or flow node; empty input, block collections, multi-document, tags and anchors exit 2",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "groups": {
+            "ANCHOR": "DROP",
+            "BLOCK": "REFUSE_NOFIX",
+            "EMPTY": "REFUSE",
+            "TAG": "HONOUR"
+          },
+          "outcome": "Kept; anchors/aliases still exit 2 at step 6 and tags at step 7",
+          "rating": "4.25",
+          "reason": "ANCHOR: behaviour group DROP; BLOCK: behaviour group REFUSE_NOFIX; EMPTY: behaviour group REFUSE; TAG: behaviour group HONOUR",
+          "route": "Exactly one scalar or flow node; empty input, block collections, multi-document, tags and anchors exit 2",
+          "route_rating": "4"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "ANCHOR": "REFUSE",
+            "BLOCK": "REFUSE",
+            "EMPTY": "NULL",
+            "TAG": "HONOUR"
+          },
+          "outcome": "",
+          "rating": "4.5",
+          "reason": "ANCHOR: behaviour group REFUSE; BLOCK: behaviour group REFUSE; EMPTY: behaviour group NULL; TAG: behaviour group HONOUR",
+          "route": "not considered",
+          "route_rating": "4.5"
+        },
+        {
+          "arms": [
+            "speckitty"
+          ],
+          "groups": {
+            "ANCHOR": "REFUSE",
+            "BLOCK": "REFUSE_NOFIX",
+            "EMPTY": "NULL",
+            "TAG": "REFUSE"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "ANCHOR: behaviour group REFUSE; BLOCK: behaviour group REFUSE_NOFIX; EMPTY: behaviour group NULL; TAG: behaviour group REFUSE",
+          "route": "not considered",
+          "route_rating": "4.5"
+        }
+      ]
+    },
+    {
+      "id": "verify-before-write",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Re-parse the edited text and compare only the value at PATH with VALUE"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept; later widened with allowances for include conversion, aliases and schema checks",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Reload the whole configuration from the edited in-memory texts; require PATH to read back as VALUE and nothing else to change; otherwise exit 3 with no write"
+        }
+      ]
+    },
+    {
+      "id": "watch-baseline",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "The exact texts the last load read (all includes plus both root names, absent files as None), rebuilt after each sync"
+        }
+      ]
+    },
+    {
+      "id": "watch-dir",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept",
+          "rating": "4.5",
+          "reason": "Shows the absolute cwd when no directory is given; a home-relative path (~/Projects/theatre) would be better still",
+          "route": "--theatre or TROUPE_THEATRE as given; the absolute cwd when neither is set"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Shows a bare '.', uninformative",
+          "route": "As given, falling back to '.'"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "outcome": "",
+          "rating": "3",
+          "reason": "Shows a bare '.', uninformative",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "watch-readiness",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "After handlers are installed and the initial import or reconcile; skipped if a stop came during start"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "watch-runtime-errors",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept; at step 7 one arm retries failed fetches only after a local change",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Report on stderr (each distinct message once), record nothing, retry every tick, resume when it loads"
+        }
+      ]
+    },
+    {
+      "id": "watch-signals",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control"
+          ],
+          "groups": {
+            "Q1": "C"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group C",
+          "route": "Handlers only set a flag/Event; an in-progress reconcile finishes; exit 0; previous handlers restored",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "groups": {
+            "Q1": "K"
+          },
+          "outcome": "Kept",
+          "rating": "2",
+          "reason": "Q1: behaviour group K",
+          "route": "Handlers only set a flag/Event; an in-progress reconcile finishes; exit 0; previous handlers restored",
+          "route_rating": "3.5"
+        },
+        {
+          "arms": [
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "S"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group S",
+          "route": "Handlers only set a flag/Event; an in-progress reconcile finishes; exit 0; previous handlers restored",
+          "route_rating": "3.5"
+        }
+      ]
+    },
+    {
+      "id": "watch-start-failure",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Exit 4 without the line"
+        },
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "watch-stdout",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "openspec",
+            "speckitty"
+          ],
+          "groups": {
+            "Q1": "A"
+          },
+          "outcome": "Kept",
+          "rating": "5",
+          "reason": "Q1: behaviour group A",
+          "route": "Only the watching line; diagnostics on stderr; events visible through history",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "groups": {
+            "Q1": "D"
+          },
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Q1: behaviour group D",
+          "route": "Only the watching line; diagnostics on stderr; events visible through history",
+          "route_rating": "5"
+        },
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "groups": {
+            "Q1": "X"
+          },
+          "outcome": "",
+          "rating": "2",
+          "reason": "Q1: behaviour group X",
+          "route": "not considered",
+          "route_rating": "3"
+        },
+        {
+          "arms": [
+            "control"
+          ],
+          "groups": {
+            "Q1": "D"
+          },
+          "outcome": "",
+          "rating": "4",
+          "reason": "Q1: behaviour group D",
+          "route": "not considered",
+          "route_rating": "3"
+        }
+      ]
+    },
+    {
+      "id": "watch-store-errors",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "Untested: no store write failure could be triggered",
+          "route": "Report and retry like load errors"
+        },
+        {
+          "arms": [
+            "openspec"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Unexpected non-load exceptions end watch through the normal error path"
+        },
+        {
+          "arms": [
+            "control",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "watch-store-lifetime",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "control",
+            "openspec"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "One store/app for the whole run"
+        },
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Open per sync inside the lock"
+        },
+        {
+          "arms": [
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "n/a",
+          "reason": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "write-record-order",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "openspec",
+            "speckitty"
+          ],
+          "outcome": "Kept (reconcile at step 2 later records such missed changes as hand edits)",
+          "rating": "2",
+          "reason": "Files first; a failed or crashed record leaves a change with no event (owner prefers events first)",
+          "route": "Write files, then record; a failed write records nothing; a crash between them can lose an event"
+        },
+        {
+          "arms": [
+            "ccsdd"
+          ],
+          "outcome": "Kept",
+          "rating": "4",
+          "reason": "Files first, but restores files and exits 4 if recording fails: closest to files and history never disagreeing",
+          "route": "Write files, then record; if recording fails, restore the files and exit 4 naming the store"
+        },
+        {
+          "arms": [
+            "speckit"
+          ],
+          "outcome": "Kept",
+          "rating": "3",
+          "reason": "Refuses up front when not writable; the crash window remains",
+          "route": "Write then record, but refuse up front (exit 3) when the target, its directory or the store is not writable; other store failures exit 4"
+        },
+        {
+          "arms": [
+            "control",
+            "superpowers"
+          ],
+          "outcome": "",
+          "rating": "2",
+          "reason": "Never considered",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "writeback-technique",
+      "kind": "unanimous",
+      "routes": [
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty",
+            "superpowers"
+          ],
+          "outcome": "Kept",
+          "rating": "n/a",
+          "reason": "",
+          "route": "Splice replacement text into the original at the node's span; never re-serialise the file"
+        }
+      ]
+    },
+    {
+      "id": "yaml-parser",
+      "kind": "divergent",
+      "routes": [
+        {
+          "arms": [
+            "superpowers"
+          ],
+          "outcome": "Kept; a loader subclass was added at step 6 to locate aliases",
+          "rating": "n/a",
+          "reason": "",
+          "route": "PyYAML compose for node positions, with custom YAML 1.2 core resolution"
+        },
+        {
+          "arms": [
+            "ccsdd",
+            "control",
+            "openspec",
+            "speckit",
+            "speckitty"
+          ],
+          "outcome": "Kept through step 7; later extended with composer hooks for aliases",
+          "rating": "n/a",
+          "reason": "",
+          "route": "ruamel.yaml compose only (nodes and marks); never use its dumper"
+        }
+      ]
+    }
+  ]
+}

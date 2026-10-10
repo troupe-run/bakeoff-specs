@@ -1,0 +1,5 @@
+```json
+{"score": 3, "evidence": ["/judge/transcript.md:735-737 (before Q9 the arm read config-set-writeback 2.8, rule 4 and 7.5 in requirements/design/research)", "/judge/questions.md:135 (Q9 decision 1 gives the options and recommends exit 3, with a reason)", "/judge/questions.md:136 (Q9 decision 2 gives three options but recommends none)", "/judge/questions.md:155-161 (Q10 lists the cases kept limited and flags the list-item case, but does not recommend an answer)", "/judge/transcript.md:955-974 (before the final questions the arm grepped requirements for choice 5 and nested-include rules)", "/judge/questions.md:13-19 (Q1 sets out its decisions as choices already made and points to requirements.md)"]}
+```
+
+The arm researched every question before asking it. The transcript shows it reading the spec requirements, design, research.md and the earlier writeback spec on each point, and each question says what it found and where. It falls short of 4 because Q9's second decision and the Q10 list-item case give options without a clear recommendation, and some of the Q1 and Q3 choices have no reason attached.

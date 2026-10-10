@@ -1,0 +1,139 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "2",
+    "Arm E": "2",
+    "Arm F": "3"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "A",
+        "why": "After 'green' is dropped, new key gold is written double-quoted like the remaining last entry \"blue\", and red/blue keep their original quoting."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "B",
+        "why": "New key gold is written single-quoted like the deleted 'green' entry, and the remaining entries keep their original quoting."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "C",
+        "why": "The teams section is rewritten unquoted (red, blue, gold), so \"blue\" loses its quotes."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.planner",
+          "haiku"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tags.2",
+          "gamma"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "teams",
+          "{red: one, blue: two, gold: four}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "fresh.name",
+          "x y"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\ntags:\n  - alpha\n  - \"beta\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'green': 'three'\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Shows which quoting new keys and list items get: the style of the entry just before them (not the first entry), the last remaining entry's style after a whole-mapping set deletes the last key, and plain style when there is no sibling."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "the new key copies the quoting of the last REMAINING entry; other entries untouched",
+            "id": "A"
+          },
+          {
+            "description": "the new key copies the quoting of an entry this same command deleted; other entries untouched",
+            "id": "B"
+          },
+          {
+            "description": "the section is rewritten as given (unquoted), existing entries lose their quotes",
+            "id": "C"
+          }
+        ],
+        "id": "Q1",
+        "text": "quoting when config set replaces a section and drops its last entry"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Copy the preceding sibling's style (after a merge deletes the last entry, the last remaining one), else the minimal style",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T50",
+  "status": "ok"
+}

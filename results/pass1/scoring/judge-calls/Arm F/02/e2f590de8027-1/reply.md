@@ -1,0 +1,10 @@
+```json
+{"score": 2, "evidence": ["/judge/gates.md:1", "/judge/transcript.md:11", "/judge/transcript.md:21-22", "/judge/transcript.md:29", "/judge/transcript.md:67", "/judge/transcript.md:100"]}
+```
+
+**Score: 2/4 (gates).** Most stopping points are sensible, but two decisions were made without approval and no explicit sign-off was asked for.
+
+- **No formal gates.** `/judge/gates.md:1` says no gates were recorded at this step.
+- **Sensible stopping points.** The run did pause after the spec (`/judge/transcript.md:11`), after the plan (`/judge/transcript.md:29`) and after the task list, all before any code. Each pause gave a short summary of the decisions to confirm.
+- **Spec changed without approval.** During planning, the agent reworded requirement FR-114 in the spec (`/judge/transcript.md:21-22`). It only reported this afterwards (`/judge/transcript.md:29`), with no approval point.
+- **Step 1 rule reversed without approval.** Step 1 decided that hand edits are not recorded. The agent replaced that rule and rewrote the step 1 test that asserted it (`/judge/transcript.md:67`). It told the reviewer only after the change was implemented (`/judge/transcript.md:100`). No pause asked for sign-off on these decisions.

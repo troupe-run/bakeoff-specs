@@ -1,0 +1,7 @@
+`spec-kitty merge` failed again, the same way as the first time, but nothing was lost. The step‑2 code was already on `main` (`8e63090`) and the retry didn't touch it. (The bare command can't find the mission, so I ran it with `--mission troupe-config-sync-files-01M3ZT6R`.)
+
+- **Why it fails:** the lanes were already merged into the mission branch, so it skipped them. The final squash into `feat/troupe-config-sync-files` then conflicted on `data-model.md`, `meta.json`, `quickstart.md` and `research.md`. The mission branch doesn't carry those planning files, so git treats them as deleted. Step 1's merge fails for the same reason.
+- **What it broke:** on failure it reverted WP04's `done` status, leaving the board at 3/4 done. I set WP04 back to `done` with `move-task --to done --force`, recording why in the event history (its code is on `main`). The board is back to 4/4. Step 1 did the same.
+- **Recorded:** a note in `research.md` (R‑11) says the merge was retried and what happened. That's commit `3b401de`. `main` is fast-forwarded to it, the checkout is on `main`, the working tree is clean, and nothing was pushed.
+
+Running `spec-kitty merge` again will fail the same way and revert WP04's status again. The merge work is already done by hand, so there's no need to retry it.

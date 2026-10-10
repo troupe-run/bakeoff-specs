@@ -1,0 +1,12 @@
+{
+  "kind": "unanimous",
+  "question": "How a folded scalar is re-wrapped after a change",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Inserting or removing a paragraph leaves the others byte-identical; the contract requires re-wrapping. One arm made re-wrapping reordered paragraphs a required fix; another never breaks next to a TAB",
+      "route": "Align paragraphs with difflib; unchanged paragraphs keep their bytes; changed ones re-wrap at the old width (default 80)",
+      "route_no": 1
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# team config\nagents:\n  coder: opus  # main model\n  reviewer:\n  planner: null  # tbd\nretry: 3\n",
+        "input": "`config set agents.coder.model sonnet`",
+        "observed": true,
+        "results": {
+          "1": "exit 5, file unchanged. Each of the four arms words the error differently: \"…agents.coder.model: not found: a scalar value has no children (at segment 'model')\"; \"agents.coder is a scalar, not a mapping or list\"; \"agents.coder is a scalar\"; \"its parent is a scalar, not a mapping or list\"",
+          "2": "exit 5, file unchanged. The two arms word the error differently: \"path not found: agents.coder.model (agents.coder is not a mapping or list)\"; \"agents.coder is not a mapping or list\""
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set agents.reviewer.model haiku` (`reviewer:` is a bare key with no value)",
+        "observed": true,
+        "results": {
+          "1": "exit 5, file unchanged. One arm says \"not found: a null value has no children (at segment 'model')\"; the other three call the empty key \"a scalar\"",
+          "2": "exit 5, file unchanged; \"agents.reviewer is not a mapping or list\" (both arms, with the same small wording difference as above)"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set agents.planner.model opus` (`planner: null  # tbd`)",
+        "observed": true,
+        "results": {
+          "1": "exit 5, file unchanged. One arm says \"a null value has no children\"; the other three say \"agents.planner is a scalar\" or \"its parent is a scalar\"",
+          "2": "exit 5, file unchanged; \"agents.planner is not a mapping or list\""
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set agents.tester.model haiku` (tester does not exist yet)",
+        "observed": true,
+        "results": {
+          "1": "exit 0 (all four arms); the file now reads:\n# team config\nagents:\n  coder: opus  # main model\n  reviewer:\n  planner: null  # tbd\n  tester:\n    model: haiku\nretry: 3",
+          "2": "exit 0 (both arms); the file now reads:\n# team config\nagents:\n  coder: opus  # main model\n  reviewer:\n  planner: null  # tbd\n  tester:\n    model: haiku\nretry: 3"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show` (after the four commands above)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints:\nagents:\n  coder: opus\n  reviewer: null\n  planner: null\n  tester:\n    model: haiku\nretry: 3",
+          "2": "exit 0; same output as route 1"
+        }
+      }
+    ],
+    "in_practice": "The two routes act the same: a plain value is never turned into a section, an empty `key:` or `null` key is also refused, and a missing key is created along with its parents while comments are kept. The only difference is the error text. Most of route 1's arms call the empty or null key \"a scalar\", and one arm calls it \"a null value\". Route 2's messages say \"not a mapping or list\" and never name the kind of value.",
+    "stakes": "Whether `config set` on a path under a key that already holds a plain value (`coder: opus`) or is empty/null (`reviewer:`, `planner: null`) gets refused or overwritten. A refusal leaves the file untouched; an overwrite would replace an existing setting. Both routes behaved the same in every run: they refuse those paths with exit 5, and only the error wording differs.",
+    "tradeoff": "Route 1: an empty `reviewer:` can't be filled in with a nested setting until it is edited by hand, and most of its messages call that empty key \"a scalar\". Route 2: the same refusal, with a vaguer message that never explains why the path was rejected."
+  },
+  "plan_why": "Shows what `set` does when the path goes below a scalar string, a bare `key:` (null) or an explicit `null`: refuse with exit 5 and leave the file untouched, or turn the parent into a mapping. A path with missing intermediate keys under a real mapping, and a final `show`, are included as controls.",
+  "routes": [
+    [
+      "Exit 5; a scalar or null parent is not a mapping (a bare `key:` counts as null)",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

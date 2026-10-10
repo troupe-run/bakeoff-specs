@@ -1,0 +1,740 @@
+diff --git a/README.md b/README.md
+index 2f1cbc9..8a33b2d 100644
+--- a/README.md
++++ b/README.md
+@@ -5,7 +5,7 @@ AI orchestration. This package currently provides the configuration subsystem:
+ ```
+ uv run troupe config get PATH [--theatre DIR]
+ uv run troupe config show [PATH] [--sources] [--theatre DIR]
+-uv run troupe config set PATH VALUE [--in-include] [--reason TEXT] [--theatre DIR]
++uv run troupe config set PATH VALUE [--in-include] [--expand-alias] [--reason TEXT] [--theatre DIR]
+ uv run troupe config history [PATH] [--theatre DIR]
+ uv run troupe config watch [--theatre DIR]
+ ```
+@@ -20,6 +20,11 @@ uv run troupe config watch [--theatre DIR]
+   an included section is added as an override in the including file, which never touches the shared
+   include. List items and keys inside list items stay in the file that holds the list.
+   With `--in-include`, a new key is written into the included file instead.
++- Aliases: setting a value defined at an anchor (`&name`) changes it there, and so everywhere `*name` is
++  used. Setting a path reached through an alias, or through a merge key (`<<: *name`), exits 3; with
++  `--expand-alias`, that alias is replaced by a block-style copy of the anchored value (its key's line
++  ends `  # expanded from *name by troupe`) and the value is set in the copy. Merge keys are resolved
++  when reading and never written.
+ - The configuration is held as an event-sourced projection (`eventsourcing`, SQLite at
+   `.troupe/troupe-state.sqlite`); `history` lists per-leaf `import`/`set`/`remove` events.
+ - Every command except `history` first reconciles the projection with the files (hand edits become
+diff --git a/docs/decisions.md b/docs/decisions.md
+index 7f8e3fa..d78b3a3 100644
+--- a/docs/decisions.md
++++ b/docs/decisions.md
+@@ -82,3 +82,18 @@ corrupt user data or to contradict the contract.
+     ancestor comes from; under a merged mapping, that is the included file (never the overrides, even if
+     they already hold part of the path). Existing values still change where they are set, and without
+     any include the flag changes nothing.
++30. **Aliases are found where they are written.** PyYAML composes an alias to the anchored node itself, so
++    the loader records the position of every `*name` and marks the values reached through one. A write
++    that would reach an aliased value anywhere (also by setting an enclosing mapping or list) exits 3,
++    even when the value would not change. Replacing an anchored value keeps its anchor and tag.
++31. **Merge keys are resolved when reading** (explicit keys win, then earlier merged mappings; merged keys
++    sit where the merge key is). A merged value is reached through its alias: setting it exits 3, and so
++    does any write that would remove it or touch `<<`. With `--expand-alias` it gets an explicit key
++    beside the merge key (`model: sonnet  # expanded from *b by troupe`), which overrides the merged one
++    without writing `<<`. A value merged from a mapping written in place (`<<: {..}`) is not expanded.
++32. **The expanded copy is the anchored value as read**: nested aliases and merge keys are resolved, and
++    an aliased include (`&f file:x.yml`) is copied as its content, so the copy shares nothing with the
++    anchor. Comments inside the anchored value are not copied. An alias inside a flow collection cannot
++    take a block-style copy: `--expand-alias` exits 3 there. Without an alias on the path,
++    `--expand-alias` changes nothing.
++33. **A recursive alias (`a: &a {b: *a}`) is a configuration error (exit 4).**
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index 8125958..99db25b 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -27,7 +27,7 @@ from .config import (
+ )
+ from .dump import dump, source_namer
+ from .store import STATE_FILE, ConfigStore, diff, lineage
+-from .writer import Writer
++from .writer import Writer, expand, node_val, shared_on_path
+ from .yamlcore import ValueError_, format_scalar, parse_value, same
+ 
+ 
+@@ -71,6 +71,11 @@ def _parser() -> argparse.ArgumentParser:
+                 action="store_true",
+                 help="write a new key into the included file instead of as an override in the including file",
+             )
++            p.add_argument(
++                "--expand-alias",
++                action="store_true",
++                help="replace the alias on PATH with its own copy of the anchored value, then set the copy",
++            )
+     return parser
+ 
+ 
+@@ -150,7 +155,7 @@ def run(argv: list[str]) -> int:
+             _reconcile(store, cfg)
+             if args.cmd == "set":
+                 how = lineage("cli", actor, args.reason)
+-                return _set(theatre, cfg, store, segs, args.path, value, how, args.in_include)
++                return _set(theatre, cfg, store, segs, args.path, value, how, args.in_include, args.expand_alias)
+ 
+     if args.cmd in ("get", "show"):
+         item = lookup(cfg.root, segs, args.path) if segs is not None else cfg.root
+@@ -198,11 +203,34 @@ def _reconcile(store: ConfigStore, cfg: Config) -> None:
+ 
+ 
+ def _set(
+-    theatre: Path, cfg, store: ConfigStore, segs: list[str], path: str, value, how: dict, in_include: bool = False
++    theatre: Path,
++    cfg,
++    store: ConfigStore,
++    segs: list[str],
++    path: str,
++    value,
++    how: dict,
++    in_include: bool = False,
++    expand_alias: bool = False,
+ ) -> int:
+-    writer = Writer(in_include)
+-    writer.set_path(cfg.root, segs, value, path)
+-    results = {p: t for p, t in writer.results().items() if p not in writer.docs or t != writer.docs[p].text}
++    planned: dict[Path, str] = {}
++    target = cfg
++    shared, depth = shared_on_path(cfg.root, segs) if expand_alias else (None, 0)
++    if shared is not None:
++        # Give the aliased use its own copy, then set the value in the copy.
++        expander = Writer()
++        expand(expander, shared, value if depth == len(segs) else node_val(shared.node))
++        planned = expander.results()
++        if depth < len(segs):
++            try:
++                target = load(theatre, overrides=planned)
++            except ConfigError as exc:
++                raise WriteRefused(f"{path}: cannot expand the alias faithfully ({exc})") from exc
++    if shared is None or depth < len(segs):
++        writer = Writer(in_include)
++        writer.set_path(target.root, segs, value, path)
++        planned.update(writer.results())
++    results = {p: t for p, t in planned.items() if p not in cfg.docs or t != cfg.docs[p].text}
+     if not results:
+         return 0
+     # Check the planned write before touching any file.
+@@ -211,7 +239,7 @@ def _set(
+         written = lookup(new_cfg.root, segs, path)
+     except (ConfigError, PathNotFound) as exc:
+         raise WriteRefused(f"{path}: cannot write this change faithfully ({exc})") from exc
+-    expected = writer.raw.get(written.include, value.value) if written.kind == "text" else value.py()
++    expected = results.get(written.include, value.value) if written.kind == "text" else value.py()
+     if not same(written.py(), expected):
+         raise WriteRefused(f"{path}: cannot write this change faithfully")
+     for p, text in results.items():
+diff --git a/src/troupe/config.py b/src/troupe/config.py
+index aa12daa..26f8b04 100644
+--- a/src/troupe/config.py
++++ b/src/troupe/config.py
+@@ -27,6 +27,45 @@ class WriteRefused(Exception):
+ 
+ _BREAK = re.compile(r"\r\n|\r|\n")
+ 
++MERGE = "<<"
++
++
++@dataclass(frozen=True)
++class Alias:
++    """An alias (`*name`) in a file: the anchor's name and the span of the `*name` token."""
++
++    name: str
++    start: int
++    end: int
++
++
++MERGE_INLINE = Alias(MERGE, -1, -1)  # `merged` of a value merged from a mapping written in place
++
++
++def is_merge(key: yaml.Node) -> bool:
++    return isinstance(key, yaml.ScalarNode) and key.value == MERGE and key.style is None
++
++
++class _Loader(yaml.SafeLoader):
++    """Composes like SafeLoader, and records where each alias is used.
++
++    An alias composes to the anchored node itself, so the node cannot tell its uses apart; `aliases` maps
++    (id of the collection, id of the key node or the item index) to the alias used there.
++    """
++
++    def __init__(self, stream: str):
++        super().__init__(stream)
++        self.aliases: dict[tuple[int, Any], Alias] = {}
++
++    def compose_node(self, parent, index):
++        if index is not None and self.check_event(yaml.AliasEvent):
++            event = self.peek_event()
++            node = super().compose_node(parent, index)
++            at = id(index) if isinstance(index, yaml.Node) else index
++            self.aliases[(id(parent), at)] = Alias(event.anchor, event.start_mark.index, event.end_mark.index)
++            return node
++        return super().compose_node(parent, index)
++
+ 
+ class Doc:
+     """A YAML file: its text, composed node tree, line index, and pending edits."""
+@@ -34,10 +73,14 @@ class Doc:
+     def __init__(self, path: Path, text: str):
+         self.path = path
+         self.text = text
++        loader = _Loader(text)
+         try:
+-            self.root: yaml.Node | None = yaml.compose(text, Loader=yaml.SafeLoader)
++            self.root: yaml.Node | None = loader.get_single_node()
+         except yaml.YAMLError as exc:
+             raise ConfigError(f"{path}: invalid YAML: {str(exc).splitlines()[0]}") from exc
++        finally:
++            loader.dispose()
++        self.aliases = loader.aliases
+         self.line_starts = [0] + [m.end() for m in _BREAK.finditer(text)]
+         self.newline = "\r\n" if "\r\n" in text else "\n"
+         self.indent = _detect_indent(self.root)
+@@ -75,6 +118,10 @@ class Doc:
+         return idx - self.line_start(self.line_of(idx))
+ 
+     # edits ------------------------------------------------------------------
++    def alias_at(self, parent: yaml.Node, at: yaml.Node | int) -> Alias | None:
++        """The alias used as the value of key node (or item index) `at` of collection `parent`, if any."""
++        return self.aliases.get((id(parent), id(at) if isinstance(at, yaml.Node) else at))
++
+     def edit(self, start: int, end: int, new: str) -> None:
+         if self.text[start:end] == new:
+             return
+@@ -92,9 +139,12 @@ class Doc:
+ 
+ 
+ def _detect_indent(root: yaml.Node | None) -> int:
+-    stack = [root]
++    stack, seen = [root], set()
+     while stack:
+         node = stack.pop()
++        if id(node) in seen:  # aliases share nodes, and may even be recursive
++            continue
++        seen.add(id(node))
+         if isinstance(node, yaml.MappingNode):
+             for k, v in node.value:
+                 if (
+@@ -132,6 +182,9 @@ class Item:
+         `$ref` mapping (mapping form) that includes it.
+     parts: for a mapping merged from an include and its overrides, the merged mappings (included part
+         first); `doc`/`node` are then the overrides' mapping, where new keys go.
++    alias: the alias this value is used through, when it is written `*name` here.
++    merged: the alias of the mapping a merge key (`<<`) of the parent mapping takes this value from
++        (`MERGE_INLINE` if that mapping is written in place).
+     """
+ 
+     kind: str
+@@ -145,6 +198,8 @@ class Item:
+     flow: bool = False  # inside a flow collection
+     ref: "tuple[Doc, yaml.Node] | None" = None
+     parts: "list[Item] | None" = None
++    alias: Alias | None = None
++    merged: Alias | None = None
+ 
+     @property
+     def yaml_include(self) -> bool:
+@@ -189,20 +244,34 @@ def load(theatre: Path, overrides: dict[Path, str] | None = None) -> Config:
+             docs[p] = Doc(p, text_of(p))
+         return docs[p]
+ 
+-    def build(doc: Doc, node: yaml.Node | None, stack: tuple[Path, ...], flow: bool) -> Item:
++    def build(doc: Doc, node: yaml.Node | None, stack: tuple[Path, ...], flow: bool, nodes: tuple = ()) -> Item:
+         if node is None:
+             return Item("scalar", doc, None, None)
++        if isinstance(node, (yaml.MappingNode, yaml.SequenceNode)):
++            if any(n is node for n in nodes):
++                raise ConfigError(f"{doc.path}: recursive alias")
++            nodes = nodes + (node,)
+         if isinstance(node, yaml.MappingNode):
+             ref = None
+             item = Item("map", doc, node, {}, flow=flow)
++            explicit = {k.value for k, _ in node.value if isinstance(k, yaml.ScalarNode) and not is_merge(k)}
+             for k, v in node.value:
+                 if not isinstance(k, yaml.ScalarNode):
+                     raise ConfigError(f"{doc.path}: complex mapping keys are not supported")
+                 if k.value == "$ref":
+                     ref = v
+                     continue
+-                child = build(doc, v, stack, bool(node.flow_style))
++                if is_merge(k):
++                    # Merged keys sit where the merge key is; explicit keys win, then earlier mappings.
++                    for source, alias in merge_sources(doc, node, k, v, stack, nodes):
++                        for key, child in source.value.items():
++                            if key not in explicit and key not in item.value:
++                                child.parent, child.merged = item, alias or MERGE_INLINE
++                                item.value[key] = child
++                    continue
++                child = build(doc, v, stack, bool(node.flow_style), nodes)
+                 child.parent, child.key, child.key_node = item, k.value, k
++                child.alias = doc.alias_at(node, k)
+                 item.value[k.value] = child
+             if ref is None:
+                 return item
+@@ -223,8 +292,9 @@ def load(theatre: Path, overrides: dict[Path, str] | None = None) -> Config:
+         if isinstance(node, yaml.SequenceNode):
+             item = Item("seq", doc, node, [], flow=flow)
+             for i, v in enumerate(node.value):
+-                child = build(doc, v, stack, bool(node.flow_style))
++                child = build(doc, v, stack, bool(node.flow_style), nodes)
+                 child.parent, child.key = item, i
++                child.alias = doc.alias_at(node, i)
+                 item.value.append(child)
+             return item
+         value = scalar_value(node)
+@@ -235,6 +305,21 @@ def load(theatre: Path, overrides: dict[Path, str] | None = None) -> Config:
+             return item
+         return Item("scalar", doc, node, value, flow=flow)
+ 
++    def merge_sources(
++        doc: Doc, node: yaml.Node, k: yaml.Node, v: yaml.Node, stack: tuple[Path, ...], nodes: tuple
++    ) -> list[tuple[Item, Alias | None]]:
++        """The mappings merged by merge key `k` (value `v`): one mapping, or a list of them."""
++        if isinstance(v, yaml.SequenceNode):
++            sources = [(x, doc.alias_at(v, i)) for i, x in enumerate(v.value)]
++        else:
++            sources = [(v, doc.alias_at(node, k))]
++        out = []
++        for source, alias in sources:
++            if not isinstance(source, yaml.MappingNode):
++                raise ConfigError(f"{doc.path}: a merge key (<<) must merge mappings")
++            out.append((build(doc, source, stack, bool(node.flow_style), nodes), alias))
++        return out
++
+     def include(doc: Doc, node: yaml.Node, value: str, stack: tuple[Path, ...], flow: bool) -> Item:
+         target = (doc.path.parent / value[5:]).resolve()
+         if target in stack:
+@@ -263,6 +348,7 @@ def merge(base: Item, over: Item) -> Item:
+         return over
+     item = Item("map", over.doc, over.node, {}, flow=over.flow, parts=[base, over])
+     item.parent, item.key, item.key_node = over.parent, over.key, over.key_node
++    item.alias, item.merged = over.alias, over.merged
+     for k, child in base.value.items():
+         if k in over.value:
+             child = merge(child, over.value[k])
+diff --git a/src/troupe/writer.py b/src/troupe/writer.py
+index 3a788ee..8340609 100644
+--- a/src/troupe/writer.py
++++ b/src/troupe/writer.py
+@@ -12,9 +12,10 @@ from pathlib import Path
+ 
+ import yaml
+ 
+-from .config import Doc, Item, PathNotFound, WriteRefused
++from .config import MERGE, MERGE_INLINE, Doc, Item, PathNotFound, WriteRefused, is_merge
+ from .yamlcore import (
+     Val,
++    scalar_value,
+     chomp_for,
+     chomp_ok,
+     literal_lines,
+@@ -52,9 +53,12 @@ class Writer:
+         item = root
+         for i, seg in enumerate(segs):
+             last = i == len(segs) - 1
++            if seg == MERGE:
++                raise WriteRefused(f"{path}: merge keys (<<) are never written")
+             if item.kind == "map":
+                 if seg in item.value:
+                     item = item.value[seg]
++                    _check_shared(item, path, ".".join(segs[: i + 1]))
+                     continue
+                 rest = segs[i + 1 :]
+                 if any(s.isdigit() for s in rest):
+@@ -70,6 +74,7 @@ class Writer:
+                 idx = int(seg)
+                 if idx < len(item.value):
+                     item = item.value[idx]
++                    _check_shared(item, path, ".".join(segs[: i + 1]))
+                     continue
+                 if idx == len(item.value) and last:
+                     self.append_items(item, [value])
+@@ -92,6 +97,7 @@ class Writer:
+     def assign(self, item: Item, v: Val) -> None:
+         if same(item.py(), v.py()):
+             return
++        _check_shared(item, "", "")
+         if item.yaml_include:
+             raise WriteRefused(f"value comes from include {item.include}; refusing to replace it")
+         if item.kind == "text":
+@@ -101,6 +107,8 @@ class Writer:
+             kept = [k for k in item.value if k in v.value]
+             if kept or not item.value:
+                 gone = [k for k in item.value if k not in v.value]
++                for k in gone:
++                    _check_shared(item.value[k], "", "")
+                 if gone:
+                     self.delete_keys(item, gone)
+                 for k in kept:
+@@ -135,16 +143,19 @@ class Writer:
+         if node is None or item.parent is None:
+             raise WriteRefused(f"{doc.path}: cannot replace the document root")
+         style = style_name(node)
++        # An anchor or tag on the value stays, and so do the aliases of that anchor.
++        s, props_end = content_start(doc, node)
+         if item.flow:
+             text = render_flow(v, style if style in ("plain", "single", "double") else None)
+-            self._replace_inline(doc, node.start_mark.index, node_end(doc, node), text, needs_space=False)
++            self._replace_inline(doc, s, node_end(doc, node), text, needs_space=props_end == s)
+             return
+ 
+         anchor = anchor_of(item)
+         # column of the parent key, or of the item's dash
+         pcol = item.key_node.start_mark.column if item.parent.kind == "map" else doc.col(anchor - 1)
++        if props_end is not None:
++            anchor = props_end  # the value follows its properties as it would follow the ':' or '-'
+         indent = doc.indent
+-        s = node.start_mark.index
+         end = node_end(doc, node)
+ 
+         # old regions: inline part (on the anchor line) and body (following lines)
+@@ -400,6 +411,124 @@ class Writer:
+             i = j + 1
+ 
+ 
++# ---------------------------------------------------------------------- aliases
++
++
++def _check_shared(item: Item, path: str, at: str) -> None:
++    """Refuse to write a value that is shared through an alias or comes from a merge key."""
++    where = f"{path}: {at}" if at and at != path else (path or "value")
++    if item.alias is not None:
++        name = item.alias.name
++        raise WriteRefused(
++            f"{where} is an alias (*{name}); writing it would change every use of &{name}."
++            f" Set it at the anchor, or use --expand-alias to give this use its own copy"
++        )
++    if item.merged is not None:
++        source = "a mapping" if item.merged is MERGE_INLINE else f"*{item.merged.name}"
++        raise WriteRefused(
++            f"{where} comes from a merge key (<<: {source}), and merge keys are never written."
++            f" Set it at the anchor, or use --expand-alias to give it its own key here"
++        )
++
++
++def shared_on_path(root: Item, segs: list[str]) -> tuple[Item | None, int]:
++    """The first value on the path reached through an alias or a merge key, and its depth (number of segments)."""
++    item = root
++    for i, seg in enumerate(segs):
++        if item.kind == "map" and seg in item.value:
++            item = item.value[seg]
++        elif item.kind == "seq" and seg.isdigit() and int(seg) < len(item.value):
++            item = item.value[int(seg)]
++        else:
++            break
++        if item.alias is not None or item.merged is not None:
++            return item, i + 1
++    return None, 0
++
++
++def node_val(node: yaml.Node) -> Val:
++    """A node's value as a `Val` (aliases followed, merge keys resolved), for writing a copy of it."""
++    if isinstance(node, yaml.MappingNode):
++        explicit = {k.value for k, _ in node.value if not is_merge(k)}
++        out: dict[str, Val] = {}
++        for k, v in node.value:
++            if not isinstance(k, yaml.ScalarNode):
++                raise WriteRefused("complex mapping keys are not supported")
++            if not is_merge(k):
++                out[k.value] = node_val(v)
++                continue
++            for source in v.value if isinstance(v, yaml.SequenceNode) else [v]:
++                for key, x in node_val(source).value.items():
++                    if key not in explicit and key not in out:
++                        out[key] = x
++        return Val("map", out)
++    if isinstance(node, yaml.SequenceNode):
++        return Val("seq", [node_val(v) for v in node.value])
++    value = scalar_value(node)
++    if isinstance(value, str):
++        return Val("str", value)
++    return Val("other", value, src=node.value if node.value != "" else "null")
++
++
++def expand(writer: Writer, item: Item, v: Val) -> None:
++    """Give `item`, used through an alias or merged by a merge key, its own copy `v` in its file.
++
++    An alias is replaced by `v`; a merged value gets an explicit key beside the merge key. The key's line
++    says where the copy came from.
++    """
++    shared = item.alias or item.merged
++    if shared is MERGE_INLINE:
++        raise WriteRefused(f"{item.key}: comes from a mapping merged in place (<<); set it there")
++    if item.flow or item.parent.node is None or item.parent.node.flow_style:
++        raise WriteRefused(f"{item.key}: cannot expand *{shared.name} in a flow collection into block style")
++    doc, parent = item.parent.doc, item.parent
++    comment = f"  # expanded from *{shared.name} by troupe"
++    indent = doc.indent
++    block = v.is_collection and v.value
++    if v.multiline and not block:
++        inline = render_double(v.value)
++    elif v.is_collection and not block:
++        inline = "{}" if v.kind == "map" else "[]"
++    else:
++        inline = render_inline_scalar(v, None, False) if not block else ""
++
++    if item.merged is not None:
++        pairs = parent.node.value
++        col = pairs[0][0].start_mark.column
++        key_style = style_name(pairs[-1][0])
++        head = " " * col + render_str(item.key, key_style, False) + ":"
++        if block:
++            lines = [head + comment] + block_lines(v, col + indent, indent)
++        else:
++            lines = [head + " " + inline + comment]
++        writer._block_insert(doc, parent.node, col, lines)
++        writer.docs[doc.path] = doc
++        return
++
++    alias = item.alias
++    if parent.kind == "map":
++        head_end = _colon_end(doc, item.key_node, item.key)
++        col = item.key_node.start_mark.column + indent
++    else:
++        head_end = _dash_before(doc, alias.start) + 1
++        col = doc.col(head_end - 1) + max(2, indent)
++    if not block:
++        writer._edit(doc, alias.start, alias.end, inline + comment)
++        return
++    writer._edit(doc, head_end, alias.end, comment)
++    pos = doc.line_end(doc.line_of(alias.end))
++    writer._edit(doc, pos, pos, "".join(doc.newline + ln for ln in block_lines(v, col, indent)))
++
++
++def _dash_before(doc: Doc, idx: int) -> int:
++    i = idx - 1
++    while i >= 0 and doc.text[i] in " \t\r\n":
++        i -= 1
++    if i < 0 or doc.text[i] != "-":
++        raise PathNotFound(f"{doc.path}: cannot locate list item")
++    return i
++
++
+ # ---------------------------------------------------------------------- rendering new block content
+ 
+ 
+@@ -532,10 +661,30 @@ def _empty_doc(doc: Doc) -> bool:
+     return doc.root is None
+ 
+ 
++def content_start(doc: Doc, node: yaml.Node) -> tuple[int, int | None]:
++    """Where a node's content starts, after its properties (anchor, tag), and where those end (None: none)."""
++    text, i = doc.text, node.start_mark.index
++    props_end = None
++    while i < len(text) and text[i] in "&!":
++        while i < len(text) and text[i] not in " \t\r\n":
++            i += 1
++        props_end = i
++        while i < len(text):
++            if text[i] in " \t\r\n":
++                i += 1
++            elif text[i] == "#":
++                i = doc.line_end(doc.line_of(i))
++            else:
++                break
++    if props_end is not None and isinstance(node, yaml.ScalarNode) and i > node.end_mark.index:
++        i = props_end  # an empty scalar
++    return i, props_end
++
++
+ def node_end(doc: Doc, node: yaml.Node) -> int:
+     """End index of a node's content (block scalars: last content line, without its line break)."""
+     if isinstance(node, yaml.ScalarNode):
+-        s, e = node.start_mark.index, node.end_mark.index
++        s, e = content_start(doc, node)[0], node.end_mark.index
+         if node.style in ("|", ">"):
+             hm = _HEADER.match(doc.text, s)
+             if "+" in hm.group(0):
+diff --git a/tests/test_aliases.py b/tests/test_aliases.py
+new file mode 100644
+index 0000000..7c4a416
+--- /dev/null
++++ b/tests/test_aliases.py
+@@ -0,0 +1,183 @@
++SHARED = "defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n"
++
++
++def test_set_at_anchor_changes_every_alias(theatre):
++    theatre.write("troupe.yml", SHARED)
++    theatre.set("defaults.model", "sonnet")
++    assert theatre.read() == SHARED.replace("opus", "sonnet")
++    assert theatre.get("coder.settings.model") == "sonnet\n"
++    assert theatre.get("reviewer.settings.model") == "sonnet\n"
++
++
++def test_set_anchored_scalar_keeps_anchor(theatre):
++    theatre.write("troupe.yml", "x: &s opus  # c\ny: *s\nz: !!str &t a\nw: *t\n")
++    theatre.set("x", "haiku")
++    theatre.set("z", "b")
++    assert theatre.read() == "x: &s haiku # c\ny: *s\nz: !!str &t b\nw: *t\n"
++    assert theatre.get("y") == "haiku\n"
++    assert theatre.get("w") == "b\n"
++
++
++def test_set_anchored_collection_keeps_anchor(theatre):
++    theatre.write("troupe.yml", "a: &l [1, 2]\nb: *l\n")
++    theatre.set("a", "[3]")
++    assert theatre.read() == "a: &l [3]\nb: *l\n"
++
++
++def test_set_through_alias_is_refused(theatre):
++    theatre.write("troupe.yml", SHARED)
++    for path, value in [
++        ("coder.settings.model", "sonnet"),
++        ("coder.settings.new", "1"),
++        ("coder.settings", "{model: sonnet}"),
++        ("coder.settings", "1"),
++        ("coder", "{settings: {model: sonnet}}"),
++    ]:
++        code, _, err = theatre.run("set", path, value)
++        assert code == 3, path
++        assert "--expand-alias" in err
++    assert theatre.read() == SHARED
++
++
++def test_set_through_alias_refused_even_if_unchanged(theatre):
++    theatre.write("troupe.yml", SHARED)
++    code, _, err = theatre.run("set", "coder.settings.model", "opus")
++    assert code == 3 and "--expand-alias" in err
++
++
++def test_expand_alias(theatre):
++    theatre.write("troupe.yml", SHARED)
++    theatre.set("coder.settings.model", "sonnet", "--expand-alias")
++    assert theatre.read() == (
++        "defaults: &d\n  model: opus\ncoder:\n  settings:  # expanded from *d by troupe\n    model: sonnet\n"
++        "reviewer:\n  settings: *d\n"
++    )
++    assert theatre.get("reviewer.settings.model") == "opus\n"
++    assert theatre.get("defaults.model") == "opus\n"
++    hist = [(e["path"], e["new"]) for e in theatre.history() if e["op"] == "set"]
++    assert hist == [("coder.settings.model", "sonnet")]
++
++
++def test_expand_alias_new_key(theatre):
++    theatre.write("troupe.yml", SHARED)
++    theatre.set("coder.settings.t", "0.3", "--expand-alias")
++    assert theatre.read() == (
++        "defaults: &d\n  model: opus\ncoder:\n  settings:  # expanded from *d by troupe\n    model: opus\n"
++        "    t: 0.3\nreviewer:\n  settings: *d\n"
++    )
++
++
++def test_expand_alias_keeps_trailing_comment(theatre):
++    theatre.write("troupe.yml", "d: &d\n  m: 1\nc: *d  # mine\n")
++    theatre.set("c.m", "2", "--expand-alias")
++    assert theatre.read() == "d: &d\n  m: 1\nc:  # expanded from *d by troupe  # mine\n  m: 2\n"
++
++
++def test_expand_alias_scalar(theatre):
++    theatre.write("troupe.yml", "x: &s opus\ny: *s\nz: *s\n")
++    theatre.set("y", "sonnet", "--expand-alias")
++    assert theatre.read() == "x: &s opus\ny: sonnet  # expanded from *s by troupe\nz: *s\n"
++
++
++def test_expand_alias_whole_value(theatre):
++    theatre.write("troupe.yml", SHARED)
++    theatre.set("coder.settings", "{model: haiku, t: 1}", "--expand-alias")
++    assert theatre.read() == (
++        "defaults: &d\n  model: opus\ncoder:\n  settings:  # expanded from *d by troupe\n    model: haiku\n"
++        "    t: 1\nreviewer:\n  settings: *d\n"
++    )
++
++
++def test_expand_alias_list_item(theatre):
++    theatre.write("troupe.yml", "d: &d\n  m: 1\nl:\n  - *d\n  - *d\n")
++    theatre.set("l.0.m", "2", "--expand-alias")
++    assert theatre.read() == "d: &d\n  m: 1\nl:\n  -  # expanded from *d by troupe\n    m: 2\n  - *d\n"
++    assert theatre.get("l.1.m") == "1\n"
++
++
++def test_expand_alias_copies_nested_content(theatre):
++    theatre.write("troupe.yml", "d: &d\n  m: 1\n  p:\n    q: [a, b]\n    r: 'x y'\nc: *d\n")
++    theatre.set("c.p.q.0", "z", "--expand-alias")
++    assert theatre.read() == (
++        "d: &d\n  m: 1\n  p:\n    q: [a, b]\n    r: 'x y'\n"
++        "c:  # expanded from *d by troupe\n  m: 1\n  p:\n    q:\n      - z\n      - b\n    r: x y\n"
++    )
++
++
++def test_expand_alias_in_flow_is_refused(theatre):
++    text = "d: &d {m: 1}\nc: {s: *d}\n"
++    theatre.write("troupe.yml", text)
++    theatre.set("c.s.m", "2", "--expand-alias", expect=3)
++    assert theatre.read() == text
++
++
++def test_expand_alias_without_alias_is_a_plain_set(theatre):
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.set("a", "2", "--expand-alias")
++    assert theatre.read() == "a: 2\n"
++
++
++MERGED = "base: &b\n  model: opus\n  t: 1\ncoder:\n  <<: *b\n  t: 2\n"
++
++
++def test_merge_keys_are_read(theatre):
++    theatre.write("troupe.yml", MERGED)
++    assert theatre.get("coder.model") == "opus\n"
++    assert theatre.get("coder.t") == "2\n"
++    code, out, _ = theatre.run("show", "coder")
++    assert out == "model: opus\nt: 2\n"
++
++
++def test_merge_keys_are_never_written(theatre):
++    theatre.write("troupe.yml", MERGED)
++    # An explicit key beside the merge is an ordinary value.
++    theatre.set("coder.t", "3")
++    assert theatre.read() == MERGED.replace("t: 2", "t: 3")
++    # A merged value is reached through the alias.
++    code, _, err = theatre.run("set", "coder.model", "sonnet")
++    assert code == 3 and "--expand-alias" in err
++    theatre.set("coder.<<", "{}", expect=3)
++    # Removing a merged key would mean writing the merge key.
++    theatre.set("coder", "{t: 3}", expect=3)
++    assert theatre.read() == MERGED.replace("t: 2", "t: 3")
++    # A new key goes beside the merge key.
++    theatre.set("coder.new", "x")
++    assert theatre.read() == MERGED.replace("t: 2", "t: 3\n  new: x")
++
++
++def test_expand_merged_value_adds_explicit_key(theatre):
++    theatre.write("troupe.yml", MERGED + "other:\n  <<: *b\n")
++    theatre.set("coder.model", "sonnet", "--expand-alias")
++    assert theatre.read() == MERGED + "  model: sonnet  # expanded from *b by troupe\nother:\n  <<: *b\n"
++    assert theatre.get("other.model") == "opus\n"
++    assert theatre.get("base.model") == "opus\n"
++
++
++def test_expand_merged_mapping_copies_it(theatre):
++    theatre.write("troupe.yml", "b: &b\n  p:\n    m: 1\n    n: 2\nc:\n  <<: *b\n  t: 1\n")
++    theatre.set("c.p.m", "5", "--expand-alias")
++    assert theatre.read() == (
++        "b: &b\n  p:\n    m: 1\n    n: 2\nc:\n  <<: *b\n  t: 1\n  p:  # expanded from *b by troupe\n"
++        "    m: 5\n    n: 2\n"
++    )
++
++
++def test_merge_of_inline_mapping_is_not_expanded(theatre):
++    text = "c:\n  <<: {m: 1}\n"
++    theatre.write("troupe.yml", text)
++    theatre.set("c.m", "2", "--expand-alias", expect=3)
++    assert theatre.read() == text
++
++
++def test_expand_alias_resolves_merges_in_copy(theatre):
++    theatre.write("troupe.yml", "b: &b\n  m: 1\nd: &d\n  <<: *b\n  n: 2\nc: *d\n")
++    theatre.set("c.n", "3", "--expand-alias")
++    assert theatre.read() == (
++        "b: &b\n  m: 1\nd: &d\n  <<: *b\n  n: 2\nc:  # expanded from *d by troupe\n  m: 1\n  n: 3\n"
++    )
++
++
++def test_recursive_alias_is_a_config_error(theatre):
++    theatre.write("troupe.yml", "a: &a\n  b: *a\n")
++    code, _, err = theatre.run("show")
++    assert code == 4 and "recursive alias" in err

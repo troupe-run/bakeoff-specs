@@ -1,0 +1,62 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "m:\n  b: 3\n  z: 9\n  a: 2\n  c: 4\nn:\n  b: 3\n  z: 9\n  a: 2\n  c: 4\n(z and a came from the original file, b and c were added later with `config set`, and the file was then reordered by hand)",
+        "input": "hand-edit `.troupe/troupe.yml` so that `m` becomes `m: 0`, then `config history m`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the history ends with: set m = 0, then remove m.z, m.a, m.b, m.c (seq 11–15)",
+          "2": "two arms: set m = 0, then remove m.z, m.a, m.b, m.c (seq 11–15); one arm: remove m.z, m.a, m.b, m.c first, then set m = 0 last (seq 11–15)",
+          "3": "exit 0; the history ends with: set m = 0, then remove m.z, m.a, m.b, m.c (seq 11–15)",
+          "4": "exit 0; the history ends with: set m = 0, then remove m.z, m.a, m.b, m.c (seq 11–15)"
+        }
+      },
+      {
+        "before": "m: 0\nn:\n  b: 3\n  z: 9\n  a: 2\n  c: 4\n",
+        "input": "`config set n 0`, then `config history n`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads `m: 0` / `n: 0`; the history ends with: set n = 0, then remove n.b, n.z, n.a, n.c (seq 16–20)",
+          "2": "exit 0; the file now reads `m: 0` / `n: 0`. Two arms: set n = 0, then remove n.b, n.z, n.a, n.c; one arm: remove n.b, n.z, n.a, n.c first, then set n = 0 last",
+          "3": "exit 0; the file now reads `m: 0` / `n: 0`; the history ends with: set n = 0, then remove n.b, n.z, n.a, n.c (seq 16–20)",
+          "4": "exit 0; the file now reads `m: 0` / `n: 0`; the history ends with: set n = 0, then remove n.b, n.z, n.a, n.c (seq 16–20)"
+        }
+      }
+    ],
+    "in_practice": "In these runs, every route logged the removes in the same order. A hand edit logs them in the order the keys were first created (z, a, b, c), not in the order they appear in the file (b, z, a, c). `config set` on the command line logs them in file order (b, z, a, c). The only visible difference is one of the three arms on route 2, which logs the replacing value after the removes instead of before. Files, `config get` output and exit codes were identical on every route.",
+    "stakes": "When a whole section is replaced (by editing the file or with `config set`), `config history` lists one remove event per key that disappeared. The order of those events is what someone reading the audit trail sees, and what any tool replaying the history depends on.",
+    "tradeoff": "Route 1 follows the order keys were created, which stays stable however the file is rearranged. Route 2 uses the order keys were first recorded, and its arms disagree on whether the new value comes before or after the removes. Route 3 sets the order for sets but leaves the order of removes unstated. Route 4 never addressed the question, though in this test it behaved like the others."
+  },
+  "plan_why": "Shows the order of remove events when the m branch's leaves (created z, a, b, c; file order b, z, a, c; z last changed by hand) disappear, once by a hand edit that is then reconciled (m: 0) and once by `config set n 0` on an identical twin branch n. History for each branch shows where the removes sit relative to each other and to the set.",
+  "routes": [
+    [
+      "Order of the seq that created each leaf",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "Projection order (when leaves were first recorded)",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "Sets in document order, then removes (order unstated)",
+      [
+        "Arm D"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

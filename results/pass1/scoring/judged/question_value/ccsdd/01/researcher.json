@@ -1,0 +1,17 @@
+{
+  "evidence": [
+    "/judge/questions.md:50-58",
+    "/judge/questions.md:63",
+    "/judge/questions.md:65",
+    "/judge/questions.md:67",
+    "/judge/questions.md:71",
+    "/judge/questions.md:77",
+    "/judge/questions.md:81",
+    "/judge/questions.md:89-94",
+    "/judge/others-questions.md:188"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/questions.md:50-58\", \"/judge/questions.md:63\", \"/judge/questions.md:65\", \"/judge/questions.md:67\", \"/judge/questions.md:71\", \"/judge/questions.md:77\", \"/judge/questions.md:81\", \"/judge/questions.md:89-94\", \"/judge/others-questions.md:188\"]}\n```\n\nThe real questions are the nine in Q2 (`questions.md:50-58`). The other turns are status reports or hand-offs at command boundaries.\n\nSeven of the nine were genuinely open:\n- **Five were escalated** (`questions.md:81`): the multi-file `set` refusal, a `file:` VALUE, Inf/NaN in history, `a..b`, and duplicate keys / tags / non-UTF-8 files.\n- **Anchors** got \"out of contract: your choice\" (`questions.md:77`).\n- **Show reads files, not history** was a real ambiguity. Other arms asked it too (`others-questions.md:188`).\n\nTwo answers visibly changed the build. The multi-file `set` refusal was reversed (`questions.md:89-92`). The temp-file question produced the no-leftover-file rule and its tests (`questions.md:71`, `questions.md:94`).\n\nOne question was within reach. Exit 3 \"with no file changed\" after the in-memory re-read check is already the contract's meaning of exit 3. The PO answered by pointing back to the contract (`questions.md:67`). Because one question was within reach, the score is 3 and not 4.",
+  "score": 3,
+  "status": "ok"
+}

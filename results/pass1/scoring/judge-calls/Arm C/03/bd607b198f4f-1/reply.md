@@ -1,0 +1,8 @@
+{"score": 3, "evidence": ["/judge/transcript.md:13", "/judge/transcript.md:16", "/judge/repo/spec/troupe-config-get-show-01M411XB/spec.md:18", "/judge/repo/spec/troupe-config-get-show-01M411XB/decisions/DM-01M411YHFR2PMJEJWMHX4KN9C4.md:26", "/judge/repo/spec/troupe-config-get-show-01M411XB/plan.md:15", "/judge/repo/spec/troupe-config-get-show-01M411XB/research.md:5-9", "/judge/repo/spec/troupe-config-get-show-01M411XB/research.md:86-88", "/judge/repo/spec/troupe-config-get-show-01M411XB/research.md:90-94", "/judge/repo/spec/troupe-config-get-show-01M411XB/tasks/WP01-yaml-renderer/review-cycle-1.md:27", "/judge/transcript.md:145"]}
+
+Arm X records its decisions well, but not well enough for a 4. The question the product owner left as "your choice" was how `show PATH --sources` prints a single scalar. That choice is in the repo with options A, B and C, the chosen option and a reason specific to this project: the decision record DM-01M411YHFR2PMJEJWMHX4KN9C4 and spec.md:18. The other choices the contract left open are R-1 and D-1 through D-10 in research.md, each with a project-specific rationale. D-10 was added during review.
+
+Three gaps keep this from a 4:
+- **Alternatives:** only R-1 lists the options it rejected. D-1 through D-10 list none.
+- **Refusal wording:** the wording `get` uses to refuse a mapping or list (research.md:86-88) has no reason.
+- **Keys over 1024 characters:** the reason for leaving this gap out of scope is in the external tracker issue (transcript line 145). The repo only says "out of scope (tracker)" in review-cycle-1.md:27.

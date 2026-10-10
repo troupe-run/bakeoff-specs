@@ -1,0 +1,343 @@
+$ .venv/bin/python -m pytest -q -p no:cacheprovider -x  (baseline)
+........................................................................ [  3%]
+........................................................................ [  7%]
+........................................................................ [ 11%]
+........................................................................ [ 15%]
+........................................................................ [ 18%]
+........................................................................ [ 22%]
+........................................................................ [ 26%]
+........................................................................ [ 30%]
+........................................................................ [ 34%]
+........................................................................ [ 37%]
+........................................................................ [ 41%]
+........................................................................ [ 45%]
+........................................................................ [ 49%]
+........................................................................ [ 52%]
+........................................................................ [ 56%]
+........................................................................ [ 60%]
+........................................................................ [ 64%]
+........................................................................ [ 68%]
+........................................................................ [ 71%]
+........................................................................ [ 75%]
+........................................................................ [ 79%]
+........................................................................ [ 83%]
+........................................................................ [ 87%]
+........................................................................ [ 90%]
+........................................................................ [ 94%]
+........................................................................ [ 98%]
+..............................                                           [100%]
+1902 passed in 247.20s (0:04:07)
+
+# listing, run and results containers: UV_PROJECT_ENVIRONMENT=/work/bakeoff-specs-ccsdd/.venv  (so `uv run` from inside mutants/ uses the prepared venv; the baseline above ran without it)
+$ .venv/bin/mutmut run --max-children 4 troupe.cli.main.x_add_show_subparser__mutmut_1 troupe.cli.main.x_add_show_subparser__mutmut_22 ... <198 more>  (sampled 200; under timeout 3600s)
+ollection_render.py::test_multi_line_string_inside_new_collections', "tests/test_scalars.py::test_plain_scalar_is_typed_by_the_core_schema['2001-12-14'-'2001-12-14']", 'tests/test_loader_includes.py::test_text_include_is_the_exact_file_text[mixed\\r\\nends\\nlone\\rcr]', 'tests/writeback/test_block_scalar.py::test_wrapped_paragraph_reloads_from_a_folded_block[8-a \\tb c]', 'tests/writeback/test_collection_render.py::test_render_block_value_preferred_style', 'tests/writeback/test_layout_values.py::test_insertion_above_less_indented_comment', "tests/test_scalars.py::test_plain_scalar_is_typed_by_the_core_schema['e3'-'e3']", 'tests/writeback/test_scalar_render.py::test_double_quoted_escape_table[U+0086]', 'tests/writeback/test_collection_render.py::test_compact_list_item_lists', 'tests/writeback/test_block_scalar.py::test_existing_chomping_changes_only_when_required[Chomping.CLIP-a\\n\\n-Chomping.KEEP]', 'tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[x]-Context.FLOW_VALUE-False-True]', 'tests/writeback/test_block_scalar.py::test_wrapped_paragraph_reloads_from_a_folded_block[3-alpha\\t beta gamma\\t\\tdelta epsilon]', "tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back['x'-Context.BLOCK_VALUE-False-True]", 'tests/writeback/test_scalar_render.py::test_render_key[true-Context.BLOCK_KEY-ScalarStyle.PLAIN-true]', 'tests/writeback/test_verify.py::test_unloadable_new_include_target_is_refused', 'tests/test_render.py::test_show_output_formats_each_scalar[nan-nan\\n]', 'tests/test_paths_resolve.py::test_parse_rejects_empty_path_naming_it_explicitly', 'tests/writeback/test_planner_includes.py::test_dropped_yaml_include_removes_only_the_directive_entry', 'tests/writeback/test_scalar_render.py::test_double_quoted_escape_table[U+0087]', 'tests/writeback/test_block_rewrite.py::test_folded_more_indented_block_replaced_by_one_paragraph', 'tests/test_loader.py::test_plain_and_quoted_scalar_span_is_the_exact_written_text[keys6-yes-ScalarStyle.PLAIN-yes-lf]', 'tests/test_scalars.py::test_results_are_plain_builtins[1_0]', 'tests/writeback/test_compare.py::test_one_one_point_zero_true_and_string_one_are_pairwise_different[1.0-1_0]', 'tests/writeback/test_scalar_render.py::test_double_quoted_escape_table[U+0017]', 'tests/writeback/test_block_scalar.py::test_wrapped_paragraph_reloads_from_a_folded_block[None-alpha\\t beta gamma\\t\\tdelta epsilon]', 'tests/test_scalars.py::test_results_are_plain_builtins[1e3]', 'tests/writeback/test_block_scalar.py::test_existing_chomping_fits_only_matching_trailing_breaks[Chomping.CLIP-a-False]', 'tests/test_theatre.py::test_failed_import_closes_the_store_before_reraising', 'tests/writeback/test_block_scalar.py::test_wrapped_paragraph_reloads_from_a_folded_block[5-Second para changed now and longer.]', 'tests/writeback/test_planner_in_place.py::test_double_quoted_scalar_keeps_style_and_escapes_minimally', 'tests/test_paths_resolve.py::test_resolve_not_found_in_nested_include_names_innermost_file', 'tests/writeback/test_edits.py::test_value_reaching_the_column_gets_exactly_one_space', 'tests/writeback/test_scalar_render.py::test_representability_table[`x-Context.BLOCK_VALUE-False-True]', 'tests/writeback/test_layout_values.py::test_item_slots_of_empty_items_come_from_their_dashes', 'tests/writeback/test_edits.py::test_no_edits_returns_the_text_unchanged', 'tests/test_render.py::test_show_output_formats_each_scalar[\\n-\\n]', 'tests/writeback/test_planner_add.py::test_new_root_key_goes_below_every_trailing_comment', 'tests/writeback/test_scalar_render.py::test_render_key[x,y-Context.BLOCK_KEY-None-x,y]', 'tests/writeback/test_target.py::test_path_errors_exit_5_naming_path_and_the_root_file[m:\\n  k: v\\n-m.k.z]', 'tests/writeback/test_compare.py::test_falsy_values_of_different_types_differ[0-False]', 'tests/test_loader.py::test_refused_file_raises_a_load_error_naming_the_file_and_key_path[anchor-after-tag]', 'tests/writeback/test_block_rewrite.py::test_folded_chomping_change', 'tests/writeback/test_planner_replace.py::test_last_block_mapping_replaced_by_literal_block_at_end_of_file', 'tests/writeback/test_planner_add.py::test_missing_intermediate_mappings_are_created_under_the_first_missing_key', 'tests/test_render.py::test_history_line_path_and_strings_round_trip_with_special_characters', 'tests/writeback/test_value.py::test_text_that_cannot_be_encoded_as_utf8_is_refused_as_such[a\\udcff]', "tests/test_scalars.py::test_plain_scalar_is_typed_by_the_core_schema['0o17'-15]", "tests/test_scalars.py::test_plain_scalar_is_typed_by_the_core_schema['+.nan'-'+.nan']", 'tests/writeback/test_block_scalar.py::test_existing_chomping_fits_only_matching_trailing_breaks[Chomping.STRIP-a\\n-False]', 'tests/writeback/test_target.py::test_new_key_below_yaml_include_targets_the_included_mapping', 'tests/writeback/test_scalar_render.py::test_representability_table[- x-Context.BLOCK_VALUE-False-True]', 'tests/test_paths_resolve.py::test_resolve_not_found_names_deepest_file_and_path[tags.x-troupe.yml]', 'tests/writeback/test_planner_merge.py::test_block_deletion_and_append_at_a_file_end_without_line_break', 'tests/writeback/test_block_scalar.py::test_wrapped_paragraph_reloads_from_a_folded_block[17-a \\tb c]', 'tests/writeback/test_planner_merge.py::test_block_mapping_merge_changes_deletes_and_appends', 'tests/writeback/test_atomic.py::test_keeps_permission_bits_despite_umask[493]', "tests/test_scalars.py::test_plain_scalar_is_typed_by_the_core_schema['.nan'-nan]", 'tests/test_loader.py::test_refused_file_raises_a_load_error_naming_the_file_and_key_path[duplicate-in-flow]', 'tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[bell\\x07-Context.BLOCK_VALUE-False-False]', 'tests/writeback/test_value.py::test_scalars_are_typed_by_the_core_schema_and_keep_their_spelling[0.2-expected0]', 'tests/writeback/test_leaf_diff.py::test_removed_leaves_give_remove_events_with_old', 'tests/test_loader_includes.py::test_text_include_is_the_exact_file_text[no final newline]', 'tests/writeback/test_edits.py::test_inline_edit_on_crlf_file', 'tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[x,y-Context.FLOW_VALUE-False-True]', 'tests/writeback/test_compare.py::test_one_one_point_zero_true_and_string_one_are_pairwise_different[1_1-1_0]', 'tests/test_render.py::test_show_output_formats_each_scalar[-0.0--0.0\\n]', 'tests/test_theatre.py::test_show_value_returns_the_scalar_at_path[notes-None]', 'tests/writeback/test_planner_add.py::test_lone_surrogate_in_a_new_key_value_is_refused_with_path_and_file', 'tests/writeback/test_block_rewrite.py::test_literal_rewrite_keeps_indentation_indicator', 'tests/writeback/test_scalar_render.py::test_double_quoted_escape_table[U+0088]', "tests/test_loader.py::test_plain_and_quoted_scalar_span_is_the_exact_written_text[keys1-'it''s'-ScalarStyle.SINGLE_QUOTED-it's-crlf]", 'tests/writeback/test_scalar_render.py::test_render_scalar_flow_value_quotes_flow_indicators', 'tests/writeback/test_scalar_render.py::test_representability_table[true-Context.BLOCK_KEY-True-True]', 'tests/test_e2e_history.py::test_history_lists_recorded_set_and_remove_events_with_consecutive_seq', 'tests/writeback/test_planner_add.py::test_intermediate_mappings_in_a_flow_mapping_are_flow', 'tests/writeback/test_scalar_render.py::test_representability_table[~-Context.BLOCK_KEY-True-True]', 'tests/test_loader.py::test_refused_file_raises_a_load_error_naming_the_file_and_key_path[root-sequence]', 'tests/writeback/test_layout.py::test_step_four_is_detected', "tests/writeback/test_value.py::test_bad_keys_are_refused_naming_the_key[[{x: 1, x: 2}]-'x']", "tests/test_scalars.py::test_plain_scalar_is_typed_by_the_core_schema['0x1F'-31]", 'tests/writeback/test_layout_values.py::test_entries_column', 'tests/writeback/test_edits.py::test_insertion_at_start_of_replacement_goes_before_it', 'tests/writeback/test_layout_values.py::test_insertion_point_in_an_included_file', "tests/writeback/test_scalar_render.py::test_render_scalar[value2-ScalarStyle.PLAIN-'0.2']", 'tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[a: b-Context.BLOCK_KEY-False-True]', 'tests/writeback/test_value.py::test_values_that_are_not_a_single_flow_node_are_refused[[&a x, *a]]', 'tests/writeback/test_planner_merge.py::test_new_keys_copy_the_last_surviving_entry[deleted-double-quoted-last-entry]', 'tests/writeback/test_block_rewrite.py::test_folded_changed_separator', 'tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[x-Context.BLOCK_VALUE-True-True]', 'tests/test_loader_includes.py::test_missing_or_non_regular_target_names_target_and_including_file[]', 'tests/writeback/test_planner_merge.py::test_appended_list_items_copy_the_last_kept_item', 'tests/test_paths_resolve.py::test_resolve_returns_node_and_include_is_transparent', 'tests/test_theatre.py::test_failed_load_creates_no_history_state', 'tests/writeback/test_edits.py::test_shorter_value_moves_comment_back_to_its_column', 'tests/writeback/test_block_scalar.py::test_wrapped_paragraph_reloads_from_a_folded_block[None-alpha \\tbeta gamma delta \\t epsilon zeta]', 'tests/writeback/test_planner_in_place.py::test_literal_block_rewrite_keeps_header_comment', 'tests/writeback/test_block_rewrite.py::test_folded_refuses_putting_in_a_more_indented_line[first-line-without-indicator]', 'tests/writeback/test_scalar_render.py::test_representability_table[file:inc.yaml-Context.BLOCK_VALUE-True-True]', 'tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[False-Context.BLOCK_VALUE-False-True]', 'tests/writeback/test_scalar_render.py::test_representability_table[x]-Context.FLOW_VALUE-False-True]', "tests/writeback/test_scalar_render.py::test_render_key[<<-Context.BLOCK_KEY-ScalarStyle.PLAIN-'<<']", 'tests/writeback/test_atomic.py::test_os_failure_leaves_target_and_listing_unchanged[fsync]', 'tests/writeback/test_value.py::test_values_that_are_not_a_single_flow_node_are_refused[- a\\n- b]', 'tests/writeback/test_collection_render.py::test_flow_entries_with_sibling_styles', 'tests/writeback/test_scalar_render.py::test_representability_table["x"-Context.BLOCK_VALUE-False-True]', 'tests/writeback/test_verify.py::test_unparsable_patch_is_refused_naming_path_and_file', 'tests/writeback/test_value.py::test_values_that_are_not_a_single_flow_node_are_refused[>\\n  text\\n]', 'tests/test_paths_resolve.py::test_parse_splits_on_dots[a-segments0]', 'tests/writeback/test_scalar_render.py::test_double_quoted_escape_table[U+0005]', 'tests/writeback/test_scalar_render.py::test_double_quoted_escape_table[U+0096]', 'tests/writeback/test_scalar_render.py::test_representability_table[False-Context.BLOCK_VALUE-False-True]', 'tests/writeback/test_scalar_render.py::test_double_quoted_escape_table[U+0001]', 'tests/writeback/test_block_rewrite.py::test_folded_unchanged_paragraph_keeps_its_unusual_wrapping', 'tests/writeback/test_planner_replace.py::test_scalar_to_mapping_keeps_the_key_line_through_its_comment', 'tests/writeback/test_compare.py::test_one_one_point_zero_true_and_string_one_are_pairwise_different[1_1-1_1]', 'tests/writeback/test_scalar_render.py::test_choose_style_keeps_preferred_or_falls_back[y-None-ScalarStyle.PLAIN]', 'tests/writeback/test_scalar_render.py::test_representability_table[a #b-Context.BLOCK_KEY-False-True]', "tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[it's-Context.BLOCK_VALUE-True-True]", 'tests/writeback/test_planner_add.py::test_new_collection_in_a_file_without_final_break', 'tests/writeback/test_block_scalar.py::test_wrapped_paragraph_reloads_from_a_folded_block[5-a \\tb c]', 'tests/writeback/test_block_rewrite.py::test_literal_without_old_content_lines', 'tests/writeback/test_scalar_render.py::test_double_quoted_escape_table[U+0084]', 'tests/writeback/test_target.py::test_nested_text_include_in_replaced_mapping_gets_crlf_content', 'tests/writeback/test_planner_replace.py::test_literal_block_replaced_by_one_line_string_it_cannot_hold', 'tests/writeback/test_compare.py::test_equal_scalars_of_the_same_type_are_equal', 'tests/writeback/test_layout_values.py::test_comment_after_plain_scalar_with_inner_hash', 'tests/test_paths_resolve.py::test_flatten_leaves_of_empty_configuration_is_empty', 'tests/writeback/test_scalar_render.py::test_representability_table[~-Context.BLOCK_VALUE-False-True]', 'tests/writeback/test_scalar_render.py::test_double_quoted_writes_other_characters_literally[emoji \\U0001f600-"emoji \\U0001f600"]', 'tests/writeback/test_value.py::test_scalars_are_typed_by_the_core_schema_and_keep_their_spelling["0.2"-expected11]', 'tests/writeback/test_setter.py::test_no_op_writes_nothing_and_records_nothing[a: {x: 1, y: 2}\\n-files1-a-{y: 2, x: 1}]', 'tests/test_loader.py::test_refused_file_raises_a_load_error_naming_the_file_and_key_path[anchor-on-root]', 'tests/test_paths_resolve.py::test_parse_rejects_empty_path_or_segment_naming_path[..]', 'tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[x -Context.BLOCK_VALUE-False-True]', 'tests/writeback/test_verify.py::test_two_patches_of_the_two_file_plan_verify_together', 'tests/writeback/test_planner_replace.py::test_list_item_scalar_to_mapping_is_compact', "tests/writeback/test_value.py::test_bad_keys_are_refused_naming_the_key[{a: {b: 1, 'b': 2}}-'b']", 'tests/writeback/test_scalar_render.py::test_representability_table[[x]-Context.FLOW_VALUE-False-True]', 'tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[? x-Context.BLOCK_VALUE-False-True]', 'tests/writeback/test_scalar_render.py::test_representability_table[.inf-Context.BLOCK_VALUE-False-True]', 'tests/test_loader.py::test_line_ending_is_detected[a: 1\\rb: 2\\r-LineEnding.MIXED]', 'tests/test_loader_includes.py::test_other_values_are_not_includes[true]', 'tests/test_render.py::test_history_line_values_parse_back_equal[0]', 'tests/writeback/test_block_scalar.py::test_wrapped_paragraph_reloads_from_a_folded_block[5-x]', 'tests/writeback/test_value.py::test_values_that_are_not_a_single_flow_node_are_refused[{a: 1}: x]', 'tests/writeback/test_layout.py::test_dash_offset_ignores_lists_that_are_list_items', 'tests/writeback/test_block_scalar.py::test_literal_fits_and_reloads[a\\tb\\n\\tc\\n]', 'tests/test_loader.py::test_refused_file_raises_a_load_error_naming_the_file_and_key_path[tag-verbatim]', 'tests/test_history_aggregate.py::test_seq_is_gapless_across_many_imports_in_order', 'tests/test_loader.py::test_plain_and_quoted_scalar_span_is_the_exact_written_text[keys3-caf\\xe9-ScalarStyle.PLAIN-caf\\xe9-lf]', 'tests/writeback/test_scalar_render.py::test_double_quoted_escape_table[U+007F]', 'tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[ x-Context.BLOCK_KEY-False-True]', 'tests/test_store.py::test_failure_at_the_sqlite_boundary_during_import_leaves_no_partial_import', 'tests/writeback/test_scalar_render.py::test_double_quoted_escape_table[U+0015]', 'tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[@x-Context.BLOCK_VALUE-False-True]', 'tests/test_loader.py::test_plain_and_quoted_scalar_span_is_the_exact_written_text[keys4-"\\U0001f600 \\xfcn\\xef"-ScalarStyle.DOUBLE_QUOTED-\\U0001f600 \\xfcn\\xef-lf]', 'tests/writeback/test_planner_in_place.py::test_non_string_over_text_include_is_refused', 'tests/test_loader_includes.py::test_overrides_apply_to_included_files', 'tests/writeback/test_scalar_render.py::test_choose_style_keeps_preferred_or_falls_back[bell\\x07-ScalarStyle.PLAIN-ScalarStyle.DOUBLE_QUOTED]', 'tests/writeback/test_block_scalar.py::test_wrapped_paragraph_reloads_from_a_folded_block[8-alpha \\tbeta gamma delta \\t epsilon zeta]', 'tests/writeback/test_scalar_render.py::test_representability_table[@x-Context.BLOCK_VALUE-False-True]', 'tests/test_record_changes.py::test_an_empty_batch_records_nothing', 'tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[hello world-Context.BLOCK_VALUE-True-True]', 'tests/test_store.py::test_corrupt_store_file_yields_a_load_error_naming_it', 'tests/writeback/test_scalar_render.py::test_render_scalar[value1-ScalarStyle.DOUBLE_QUOTED-"\\xe9\\\\"q"]', 'tests/test_scalars.py::test_results_are_plain_builtins[2001-12-14]', 'tests/writeback/test_collection_render.py::test_lone_surrogates_are_refused_naming_path[value0]', 'tests/writeback/test_edits.py::test_columns_are_counted_in_code_points_in_the_value', 'tests/test_loader_includes.py::test_quoted_include_strings_are_includes["file:inc.yml"]', 'tests/writeback/test_planner_add.py::test_new_entry_in_a_file_without_final_break', 'tests/writeback/test_compare.py::test_lists_scalars_and_kinds_compare_structurally', 'tests/writeback/test_layout.py::test_step_ignores_nesting_that_lies_in_an_included_file', 'tests/test_loader.py::test_plain_and_quoted_scalar_span_is_the_exact_written_text[keys5-0o17-ScalarStyle.PLAIN-15-lf]', 'tests/writeback/test_scalar_render.py::test_representability_table[x]-Context.BLOCK_VALUE-True-True]', 'tests/test_loader.py::test_refused_file_raises_a_load_error_naming_the_file_and_key_path[non-printable]', 'tests/writeback/test_layout_values.py::test_insertion_below_comment_after_blank_line', 'tests/test_loader.py::test_plain_and_quoted_scalar_span_is_the_exact_written_text[keys3-caf\\xe9-ScalarStyle.PLAIN-caf\\xe9-crlf]', 'tests/test_record_changes.py::test_later_batches_continue_the_sequence_and_survive_reopening', 'tests/test_theatre.py::test_list_history_filters_by_textual_prefix_keeping_seq[agents-seqs0]', 'tests/writeback/test_atomic.py::test_unencodable_text_refuses_and_leaves_no_file', 'tests/writeback/test_block_scalar.py::test_render_literal_header_and_content[one\\n\\ntwo\\n-|-  one\\n\\n  two\\n]', 'tests/writeback/test_block_rewrite.py::test_folded_more_indented_line_removed', "tests/test_scalars.py::test_plain_scalar_is_typed_by_the_core_schema['-1.5'--1.5]", 'tests/writeback/test_value.py::test_flow_mapping_is_parsed_in_value_order', 'tests/writeback/test_block_scalar.py::test_literal_fits_and_reloads[one\\n\\n]', 'tests/writeback/test_setter.py::test_refusal_leaves_files_and_history_untouched[c: file:c.yaml\\n-files0-c-{k: 2}]', 'tests/writeback/test_block_scalar.py::test_render_literal_header_and_content[one\\n\\n\\n-|+-  one\\n\\n\\n]', 'tests/writeback/test_planner_replace.py::test_scalar_to_nested_mapping_uses_the_file_step', 'tests/writeback/test_value.py::test_values_that_are_not_a_single_flow_node_are_refused[&a x]', 'tests/writeback/test_layout.py::test_columns_restart_on_each_line', 'tests/test_loader.py::test_line_ending_is_detected[a: 1\\r\\nb: 2\\r\\n-LineEnding.CRLF]', "tests/test_scalars.py::test_plain_scalar_is_typed_by_the_core_schema['no'-'no']", 'tests/test_paths_resolve.py::test_parse_rejects_empty_path_or_segment_naming_path[a.b.]', 'tests/test_loader.py::test_refused_file_raises_a_load_error_naming_the_file_and_key_path[root-null-document]', 'tests/writeback/test_value.py::test_values_that_are_not_a_single_flow_node_are_refused[   ]', 'tests/test_theatre.py::test_list_history_filters_by_textual_prefix_keeping_seq[tools-seqs4]', 'tests/writeback/test_scalar_render.py::test_render_scalar[value7-None-file:inc.yaml]', "tests/test_scalars.py::test_plain_scalar_is_typed_by_the_core_schema['-.Inf'--inf]", 'tests/writeback/test_scalar_render.py::test_every_representable_style_reads_back[{x}-Context.BLOCK_VALUE-False-True]', 'tests/writeback/test_leaf_diff.py::test_old_values_come_from_the_before_document', 'tests/writeback/test_block_scalar.py::test_wrapped_paragraph_reloads_from_a_folded_block[17-x]', 'tests/writeback/test_scalar_render.py::test_double_quoted_escape_table[U+0003]', 'tests/test_loader.py::test_quoted_merge_key_text_is_an_ordinary_key', 'tests/test_paths_resolve.py::test_child_builds_paths_from_keys_and_indices']. If your config sets debug=true, the original pytest error should be above.
+__run_rc=1
+
+$ .venv/bin/mutmut results --all true  (fresh container)
+on_render.x__flow_pair__mutmut_18: not checked
+    troupe.cli.render.x_format_show_output__mutmut_1: not checked
+    troupe.cli.render.x_format_show_output__mutmut_2: not checked
+    troupe.cli.render.x_format_show_output__mutmut_3: not checked
+    troupe.cli.render.x_format_show_output__mutmut_4: not checked
+    troupe.cli.render.x_format_show_output__mutmut_5: not checked
+    troupe.cli.render.x_format_show_output__mutmut_6: not checked
+    troupe.cli.render.x_format_show_output__mutmut_7: not checked
+    troupe.cli.render.x_format_show_output__mutmut_8: not checked
+    troupe.cli.render.x_format_show_output__mutmut_9: not checked
+    troupe.cli.render.x_format_show_output__mutmut_10: not checked
+    troupe.cli.render.x_format_show_output__mutmut_11: not checked
+    troupe.cli.render.x_format_show_output__mutmut_12: not checked
+    troupe.cli.render.x_format_show_output__mutmut_13: not checked
+    troupe.cli.render.x_format_show_output__mutmut_14: not checked
+    troupe.cli.render.x_format_show_output__mutmut_15: not checked
+    troupe.cli.render.x_format_show_output__mutmut_16: not checked
+    troupe.cli.render.x_format_show_output__mutmut_17: not checked
+    troupe.cli.render.x_format_show_output__mutmut_18: not checked
+    troupe.cli.render.x_format_show_output__mutmut_19: not checked
+    troupe.cli.render.x_format_show_output__mutmut_20: not checked
+    troupe.cli.render.x_format_show_output__mutmut_21: not checked
+    troupe.cli.render.x_format_show_output__mutmut_22: not checked
+    troupe.cli.render.x_format_show_output__mutmut_23: not checked
+    troupe.cli.render.x_format_show_output__mutmut_24: not checked
+    troupe.cli.render.x_format_show_output__mutmut_25: not checked
+    troupe.cli.render.x_format_show_output__mutmut_26: not checked
+    troupe.cli.render.x_format_show_output__mutmut_27: not checked
+    troupe.cli.render.x_format_show_output__mutmut_28: not checked
+    troupe.cli.render.x_format_show_output__mutmut_29: not checked
+    troupe.cli.render.x_format_history_line__mutmut_1: not checked
+    troupe.cli.render.x_format_history_line__mutmut_2: not checked
+    troupe.cli.render.x_format_history_line__mutmut_3: not checked
+    troupe.cli.render.x_format_history_line__mutmut_4: not checked
+    troupe.cli.render.x_format_history_line__mutmut_5: not checked
+    troupe.cli.render.x_format_history_line__mutmut_6: not checked
+    troupe.cli.render.x_format_history_line__mutmut_7: not checked
+    troupe.cli.render.x_format_history_line__mutmut_8: not checked
+    troupe.cli.render.x_format_history_line__mutmut_9: not checked
+    troupe.cli.render.x_format_history_line__mutmut_10: not checked
+    troupe.cli.render.x_format_history_line__mutmut_11: not checked
+    troupe.cli.render.x_format_history_line__mutmut_12: not checked
+    troupe.cli.render.x_format_history_line__mutmut_13: not checked
+    troupe.cli.render.x_format_history_line__mutmut_14: not checked
+    troupe.cli.render.x_format_history_line__mutmut_15: not checked
+    troupe.cli.render.x_format_history_line__mutmut_16: not checked
+    troupe.cli.render.x_format_history_line__mutmut_17: not checked
+    troupe.cli.render.x_format_history_line__mutmut_18: not checked
+    troupe.cli.render.x_format_history_line__mutmut_19: not checked
+    troupe.cli.render.x_format_history_line__mutmut_20: not checked
+    troupe.cli.render.x_format_history_line__mutmut_21: not checked
+    troupe.cli.render.x_format_history_line__mutmut_22: not checked
+    troupe.cli.render.x_format_history_line__mutmut_23: not checked
+    troupe.cli.render.x__json_safe__mutmut_1: not checked
+    troupe.cli.render.x__json_safe__mutmut_2: not checked
+    troupe.cli.render.x__json_safe__mutmut_3: not checked
+    troupe.cli.render.x__json_safe__mutmut_4: not checked
+    troupe.cli.render.x__json_safe__mutmut_5: not checked
+    troupe.cli.render.x__json_safe__mutmut_6: not checked
+    troupe.cli.render.x__json_safe__mutmut_7: not checked
+    troupe.cli.render.x__json_safe__mutmut_8: not checked
+    troupe.cli.render.x__json_safe__mutmut_9: not checked
+    troupe.cli.render.x__json_safe__mutmut_10: not checked
+    troupe.cli.render.x__json_safe__mutmut_11: not checked
+    troupe.cli.render.x__json_safe__mutmut_12: not checked
+    troupe.cli.shell.xǁTroupeArgumentParserǁerror__mutmut_1: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_1: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_2: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_3: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_4: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_5: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_6: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_7: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_8: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_9: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_10: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_11: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_12: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_13: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_14: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_15: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_16: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_17: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_18: not checked
+    troupe.cli.shell.x_theatre_option_parent__mutmut_19: not checked
+    troupe.cli.set_command.xǁ_SetArgumentParserǁ_parse_optional__mutmut_1: not checked
+    troupe.cli.set_command.xǁ_SetArgumentParserǁ_parse_optional__mutmut_2: not checked
+    troupe.cli.set_command.xǁ_SetArgumentParserǁ_parse_optional__mutmut_3: not checked
+    troupe.cli.set_command.xǁ_SetArgumentParserǁ_parse_optional__mutmut_4: not checked
+    troupe.cli.set_command.xǁ_SetArgumentParserǁ_parse_optional__mutmut_5: not checked
+    troupe.cli.set_command.xǁ_SetArgumentParserǁ_parse_optional__mutmut_6: not checked
+    troupe.cli.set_command.xǁ_SetArgumentParserǁ_parse_optional__mutmut_7: not checked
+    troupe.cli.set_command.xǁ_SetArgumentParserǁ_parse_optional__mutmut_8: not checked
+    troupe.cli.set_command.xǁ_SetArgumentParserǁ_parse_optional__mutmut_9: not checked
+    troupe.cli.set_command.xǁ_SetArgumentParserǁ_parse_optional__mutmut_10: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_1: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_2: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_3: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_4: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_5: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_6: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_7: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_8: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_9: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_10: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_11: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_12: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_13: not checked
+    troupe.cli.set_command.x_handle_set__mutmut_14: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_1: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_2: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_3: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_4: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_5: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_6: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_7: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_8: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_9: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_10: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_11: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_12: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_13: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_14: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_15: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_16: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_17: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_18: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_19: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_20: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_21: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_22: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_23: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_24: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_25: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_26: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_27: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_28: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_29: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_30: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_31: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_32: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_33: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_34: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_35: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_36: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_37: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_38: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_39: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_40: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_41: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_42: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_43: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_44: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_45: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_46: not checked
+    troupe.cli.set_command.x_add_set_subparser__mutmut_47: not checked
+    troupe.cli.main.x_handle_show__mutmut_1: not checked
+    troupe.cli.main.x_handle_show__mutmut_2: not checked
+    troupe.cli.main.x_handle_show__mutmut_3: not checked
+    troupe.cli.main.x_handle_show__mutmut_4: not checked
+    troupe.cli.main.x_handle_show__mutmut_5: not checked
+    troupe.cli.main.x_handle_show__mutmut_6: not checked
+    troupe.cli.main.x_handle_show__mutmut_7: not checked
+    troupe.cli.main.x_handle_show__mutmut_8: not checked
+    troupe.cli.main.x_handle_show__mutmut_9: not checked
+    troupe.cli.main.x_handle_history__mutmut_1: not checked
+    troupe.cli.main.x_handle_history__mutmut_2: not checked
+    troupe.cli.main.x_handle_history__mutmut_3: not checked
+    troupe.cli.main.x_handle_history__mutmut_4: not checked
+    troupe.cli.main.x_handle_history__mutmut_5: not checked
+    troupe.cli.main.x_handle_history__mutmut_6: not checked
+    troupe.cli.main.x_handle_history__mutmut_7: not checked
+    troupe.cli.main.x_handle_history__mutmut_8: not checked
+    troupe.cli.main.x_handle_history__mutmut_9: not checked
+    troupe.cli.main.x_handle_history__mutmut_10: not checked
+    troupe.cli.main.x_handle_history__mutmut_11: not checked
+    troupe.cli.main.x_handle_history__mutmut_12: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_1: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_2: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_3: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_4: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_5: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_6: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_7: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_8: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_9: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_10: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_11: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_12: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_13: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_14: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_15: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_16: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_17: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_18: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_19: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_20: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_21: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_22: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_23: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_24: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_25: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_26: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_27: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_28: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_29: not checked
+    troupe.cli.main.x_add_show_subparser__mutmut_30: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_1: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_2: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_3: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_4: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_5: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_6: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_7: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_8: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_9: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_10: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_11: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_12: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_13: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_14: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_15: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_16: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_17: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_18: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_19: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_20: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_21: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_22: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_23: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_24: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_25: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_26: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_27: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_28: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_29: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_30: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_31: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_32: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_33: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_34: not checked
+    troupe.cli.main.x_add_history_subparser__mutmut_35: not checked
+    troupe.cli.main.x_build_parser__mutmut_1: not checked
+    troupe.cli.main.x_build_parser__mutmut_2: not checked
+    troupe.cli.main.x_build_parser__mutmut_3: not checked
+    troupe.cli.main.x_build_parser__mutmut_4: not checked
+    troupe.cli.main.x_build_parser__mutmut_5: not checked
+    troupe.cli.main.x_build_parser__mutmut_6: not checked
+    troupe.cli.main.x_build_parser__mutmut_7: not checked
+    troupe.cli.main.x_build_parser__mutmut_8: not checked
+    troupe.cli.main.x_build_parser__mutmut_9: not checked
+    troupe.cli.main.x_build_parser__mutmut_10: not checked
+    troupe.cli.main.x_build_parser__mutmut_11: not checked
+    troupe.cli.main.x_build_parser__mutmut_12: not checked
+    troupe.cli.main.x_build_parser__mutmut_13: not checked
+    troupe.cli.main.x_build_parser__mutmut_14: not checked
+    troupe.cli.main.x_build_parser__mutmut_15: not checked
+    troupe.cli.main.x_build_parser__mutmut_16: not checked
+    troupe.cli.main.x_build_parser__mutmut_17: not checked
+    troupe.cli.main.x_build_parser__mutmut_18: not checked
+    troupe.cli.main.x_build_parser__mutmut_19: not checked
+    troupe.cli.main.x_build_parser__mutmut_20: not checked
+    troupe.cli.main.x_build_parser__mutmut_21: not checked
+    troupe.cli.main.x_build_parser__mutmut_22: not checked
+    troupe.cli.main.x_build_parser__mutmut_23: not checked
+    troupe.cli.main.x_build_parser__mutmut_24: not checked
+    troupe.cli.main.x_build_parser__mutmut_25: not checked
+    troupe.cli.main.x_build_parser__mutmut_26: not checked
+    troupe.cli.main.x_build_parser__mutmut_27: not checked
+    troupe.cli.main.x_build_parser__mutmut_28: not checked
+    troupe.cli.main.x_build_parser__mutmut_29: not checked
+    troupe.cli.main.x_build_parser__mutmut_30: not checked
+    troupe.cli.main.x_build_parser__mutmut_31: not checked
+    troupe.cli.main.x_build_parser__mutmut_32: not checked
+    troupe.cli.main.x_build_parser__mutmut_33: not checked
+    troupe.cli.main.x_build_parser__mutmut_34: not checked
+    troupe.cli.main.x_build_parser__mutmut_35: not checked
+    troupe.cli.main.x_build_parser__mutmut_36: not checked
+    troupe.cli.main.x_build_parser__mutmut_37: not checked
+    troupe.cli.main.x_build_parser__mutmut_38: not checked
+    troupe.cli.main.x_build_parser__mutmut_39: not checked
+    troupe.cli.main.x_build_parser__mutmut_40: not checked
+    troupe.cli.main.x_build_parser__mutmut_41: not checked
+    troupe.cli.main.x_build_parser__mutmut_42: not checked
+    troupe.cli.main.x_build_parser__mutmut_43: not checked
+    troupe.cli.main.x_run__mutmut_1: not checked
+    troupe.cli.main.x_run__mutmut_2: not checked
+    troupe.cli.main.x_run__mutmut_3: not checked
+    troupe.cli.main.x_run__mutmut_4: not checked
+    troupe.cli.main.x_run__mutmut_5: not checked
+    troupe.cli.main.x_run__mutmut_6: not checked
+    troupe.cli.main.x_run__mutmut_7: not checked
+    troupe.cli.main.x_run__mutmut_8: not checked
+    troupe.cli.main.x_run__mutmut_9: not checked
+    troupe.cli.main.x_run__mutmut_10: not checked
+    troupe.cli.main.x_run__mutmut_11: not checked
+    troupe.cli.main.x_main__mutmut_1: not checked
+    troupe.cli.main.x_main__mutmut_2: not checked
+    troupe.cli.main.x_main__mutmut_3: not checked
+    troupe.cli.main.x_main__mutmut_4: not checked
+    troupe.cli.main.x_main__mutmut_5: not checked
+    troupe.cli.main.x_main__mutmut_6: not checked
+    troupe.cli.main.x_main__mutmut_7: not checked
+    troupe.cli.main.x_main__mutmut_8: not checked
+__results_rc=0
+/work/bakeoff-specs-ccsdd/.venv/lib/python3.12/site-packages/mutmut/configuration.py:143: UserWarning: The config paths_to_mutate is deprecated. Please rename it to source_paths
+  warnings.warn("The config paths_to_mutate is deprecated. Please rename it to source_paths")

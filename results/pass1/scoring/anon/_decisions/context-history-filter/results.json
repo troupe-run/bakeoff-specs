@@ -1,0 +1,544 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "history",
+          "agents.coder"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "agents.cod"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "agent"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "nosuch.key"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "agents.coder."
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "agent: solo\nagents:\n  coder:\n    model: opus\n  coderx:\n    model: sonnet\n  reviewer:\n    model: haiku\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:07:24.232972Z\", \"reason\": null, \"change\": \"a2d87d62-3fe5-401d-afb7-344f8d9e906e\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.cod"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agent"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent\", \"old\": null, \"new\": \"solo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:07:24.232972Z\", \"reason\": null, \"change\": \"a2d87d62-3fe5-401d-afb7-344f8d9e906e\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "nosuch.key"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder."
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: invalid path 'agents.coder.': empty segment\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "No matches print nothing and exit 0",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:07:33.040883Z\", \"reason\": null, \"change\": \"b85260bf-69c1-4a83-b5a1-f26560a43d64\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.cod"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agent"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent\", \"old\": null, \"new\": \"solo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:07:33.040883Z\", \"reason\": null, \"change\": \"b85260bf-69c1-4a83-b5a1-f26560a43d64\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "nosuch.key"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder."
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: invalid path: 'agents.coder.'\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Path prefix (segment awareness not stated)",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:07:35.956788Z\", \"reason\": null, \"change\": \"ff2a0de5-f1e9-43f2-b45c-90d35ba5f0d1\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.cod"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agent"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent\", \"old\": null, \"new\": \"solo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:07:35.956788Z\", \"reason\": null, \"change\": \"ff2a0de5-f1e9-43f2-b45c-90d35ba5f0d1\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "nosuch.key"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder."
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: error: invalid path 'agents.coder.': path segments must not be empty\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Plain string prefix; an unknown path prints nothing and exits 0",
+      "route_no": 3
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:07:30.295118Z\", \"reason\": null, \"change\": \"99fc70f3-5e57-47dc-9996-bf4802083b5d\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.cod"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agent"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent\", \"old\": null, \"new\": \"solo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:07:30.295118Z\", \"reason\": null, \"change\": \"99fc70f3-5e57-47dc-9996-bf4802083b5d\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "nosuch.key"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder."
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: invalid path: 'agents.coder.'\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "The path itself or a dotted-segment prefix",
+      "route_no": 4
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:07:20.990620Z\", \"reason\": null, \"change\": \"592d0b1e-70af-4800-897e-9047b4c82874\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.cod"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agent"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent\", \"old\": null, \"new\": \"solo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:07:20.990620Z\", \"reason\": null, \"change\": \"592d0b1e-70af-4800-897e-9047b4c82874\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "nosuch.key"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder."
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "agents.coder.: malformed PATH 'agents.coder.': segments must not be empty (no leading, trailing or doubled '.')\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:07:27.396408Z\", \"reason\": null, \"change\": \"0686d3f8-1618-4c03-8041-07bac7b51a71\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.cod"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agent"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agent\", \"old\": null, \"new\": \"solo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:07:27.396408Z\", \"reason\": null, \"change\": \"0686d3f8-1618-4c03-8041-07bac7b51a71\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "nosuch.key"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder."
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: invalid path 'agents.coder.': empty segment\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 5
+    }
+  ]
+}

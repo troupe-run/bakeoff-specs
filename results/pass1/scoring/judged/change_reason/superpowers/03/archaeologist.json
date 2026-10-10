@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "/judge/diff.patch:40-51 (docs/decisions.md decisions 16-20 explain the new `show` YAML dump, literal blocks, `--sources` comments and `..` paths)",
+    "/judge/diff.patch:31-32 (decision 2 is quietly reworded from `show` to `get`/`show`, with no note that `show` was renamed or why)",
+    "/judge/diff.patch:99-112 (src/troupe/cli.py: `show` on a map or list used to exit 5 and now prints YAML; nothing records the old behaviour or the reason)",
+    "/judge/diff.patch:232-235 and 247-260 (tests/conftest.py and tests/test_config.py: `show` tests are rewritten to use `get`, and the `show l`/`show m` exit-5 assertions are replaced without explanation)",
+    "/judge/repo has no .git directory, so no commit messages could be checked"
+  ],
+  "notes": "docs/decisions.md explains the new additions, but the changes to existing behaviour are unexplained: the old scalar-only `show` became `get`, and `show` on a collection went from exit 5 to printing YAML. Blame on those lines would not say why they changed or what they replaced. I could not check commit messages because the repo has no git history.",
+  "raw": "{\"score\": 2, \"evidence\": [\"/judge/diff.patch:40-51 (docs/decisions.md decisions 16-20 explain the new `show` YAML dump, literal blocks, `--sources` comments and `..` paths)\", \"/judge/diff.patch:31-32 (decision 2 is quietly reworded from `show` to `get`/`show`, with no note that `show` was renamed or why)\", \"/judge/diff.patch:99-112 (src/troupe/cli.py: `show` on a map or list used to exit 5 and now prints YAML; nothing records the old behaviour or the reason)\", \"/judge/diff.patch:232-235 and 247-260 (tests/conftest.py and tests/test_config.py: `show` tests are rewritten to use `get`, and the `show l`/`show m` exit-5 assertions are replaced without explanation)\", \"/judge/repo has no .git directory, so no commit messages could be checked\"], \"notes\": \"docs/decisions.md explains the new additions, but the changes to existing behaviour are unexplained: the old scalar-only `show` became `get`, and `show` on a collection went from exit 5 to printing YAML. Blame on those lines would not say why they changed or what they replaced. I could not check commit messages because the repo has no git history.\"}",
+  "score": 2,
+  "status": "ok"
+}

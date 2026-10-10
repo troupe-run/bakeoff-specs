@@ -1,0 +1,36 @@
+{
+  "sha_before": "8f6131a481604ac6451675cebde2c01e886a4c45",
+  "sha_after": "9143f74c4b0a2ed817f35d276d6aea783af6f5fe",
+  "head": "9143f74c4b0a2ed817f35d276d6aea783af6f5fe",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "9143f74c4b0a2ed817f35d276d6aea783af6f5fe",
+      "author": "Developer",
+      "subject": "Archive config-sync-with-files and sync its specs into openspec/specs"
+    },
+    {
+      "sha": "260b57dc3c176cbfd6e4b2079f6699683fbb90ff",
+      "author": "Developer",
+      "subject": "Mark config-sync-with-files tasks complete after full test, type and lint run"
+    },
+    {
+      "sha": "4384a4cf6c0f31bdf1e3864ce0c0ddc8255853be",
+      "author": "Developer",
+      "subject": "Add troupe config watch: reconcile hand edits as they happen"
+    },
+    {
+      "sha": "401e8f901202ee0c072a0127463564d6192ed888",
+      "author": "Developer",
+      "subject": "Reconcile hand edits before show and set, under a per-theatre lock"
+    },
+    {
+      "sha": "20902acea854d7866bb6782413f4de4a71d3d5ff",
+      "author": "Developer",
+      "subject": "Plan config sync with files: reconcile, watch, no re-pickup of write-backs (OpenSpec change config-sync-with-files)"
+    }
+  ],
+  "diffstat": "README.md                                          |  43 ++-\n .../.openspec.yaml                                 |   2 +\n .../2026-10-03-config-sync-with-files/design.md    | 173 +++++++++++\n .../2026-10-03-config-sync-with-files/proposal.md  |  46 +++\n .../specs/config-cli/spec.md                       |  37 +++\n .../specs/config-history/spec.md                   |  61 ++++\n .../specs/config-sync/spec.md                      | 146 ++++++++++\n .../2026-10-03-config-sync-with-files/tasks.md     |  34 +++\n openspec/specs/config-cli/spec.md                  |  11 +-\n openspec/specs/config-history/spec.md              |  25 +-\n openspec/specs/config-sync/spec.md                 | 146 ++++++++++\n src/troupe/cli.py                                  |  10 +-\n src/troupe/commands.py                             | 190 ++++++++++--\n src/troupe/edit/apply.py                           |  11 +-\n src/troupe/leaves.py                               |  15 +-\n src/troupe/sync.py                                 |  17 ++\n tests/test_history.py                              |   7 +-\n tests/test_loading.py                              |   7 +\n tests/test_lock.py                                 |  30 ++\n tests/test_reconcile.py                            | 204 +++++++++++++\n tests/test_smoke.py                                |  39 +++\n tests/test_watch.py                                | 317 +++++++++++++++++++++\n 22 files changed, 1514 insertions(+), 57 deletions(-)"
+}

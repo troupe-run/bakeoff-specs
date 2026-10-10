@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "How changed files are written to disk",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "A file is never half-written; a temp file in .troupe/ would not be atomic across filesystems",
+      "route": "Temp file in the same directory, fsync, copy permissions, os.replace; only changed files are touched",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "All texts are computed and verified first, so only an OS error during the write remains",
+      "route": "Write in place with newline='' only when the text changed, no temp files",
+      "route_no": 2
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

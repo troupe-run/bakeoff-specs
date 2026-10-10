@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "Keep the store open for watch's lifetime",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "repository.get rebuilds from storage each time",
+      "route": "One store/app for the whole run",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "No -wal/-shm files; no stale caches",
+      "route": "Open per sync inside the lock",
+      "route_no": 2
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

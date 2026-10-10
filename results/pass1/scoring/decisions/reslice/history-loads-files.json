@@ -1,0 +1,156 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "FAILS",
+        "why": "Once the schema was changed, both history commands exited 4 with a schema-mismatch error."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "FAILS",
+        "why": "Once the schema was changed, both history commands exited 4 with a schema-validation error."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "FAILS",
+        "why": "Once the schema was changed, both history commands exited 4 with a schema-mismatch error."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "WORKS",
+        "why": "Once the schema was changed, history exited 0 and showed every entry including the new set (history model too); only get failed."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "WORKS",
+        "why": "Once the schema was changed, history exited 0 and showed every entry including the new set (history model too); only get failed."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "FAILS",
+        "why": "Once the schema was changed, both history commands exited 4 with a schema error."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "schema_text",
+          "'{\"type\": \"object\", \"required\": [\"absent\"]}'"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.schema.json": "{\"type\": \"object\"}\n",
+      ".troupe/troupe.yml": "model: opus\nschema_text: file:troupe.schema.json\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/troupe.schema.json"
+    ],
+    "why": "The theatre is imported, then a `set` on a text include rewrites the schema file so the files no longer load. Under route 1, `history` still prints the recorded events. Under route 2, `history` reloads the files and exits 4. The final `get` shows that the files really are broken now."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "config history keeps working",
+            "id": "WORKS"
+          },
+          {
+            "description": "config history fails",
+            "id": "FAILS"
+          }
+        ],
+        "id": "Q1",
+        "text": "history after the config breaks its schema"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "No; once state exists it reads recorded events without loading",
+      [
+        "Arm D"
+      ]
+    ],
+    [
+      "Yes; broken files make history exit 4; at step 7 schema and remote fetches apply to it too",
+      [
+        "Arm A",
+        "Arm C"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T34",
+  "status": "ok"
+}

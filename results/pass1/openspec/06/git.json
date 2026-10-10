@@ -1,0 +1,51 @@
+{
+  "sha_before": "9c1dfbd4658bdc0bd2b425292510e935d27b1643",
+  "sha_after": "f64a6ba98c24d04a8a2a0c25c5d67131b15ef93b",
+  "head": "f64a6ba98c24d04a8a2a0c25c5d67131b15ef93b",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "f64a6ba98c24d04a8a2a0c25c5d67131b15ef93b",
+      "author": "Developer",
+      "subject": "Archive config-anchors-and-aliases and sync its specs into openspec/specs"
+    },
+    {
+      "sha": "fc4c69e814c03ec498d256a7ef7fc6650ea9b899",
+      "author": "Developer",
+      "subject": "Wrap two docstrings over the line limit"
+    },
+    {
+      "sha": "d7a0c3d82bb2e79b383af50e025accce2abbfdda",
+      "author": "Developer",
+      "subject": "Add set --expand-alias to give one user of an anchor its own copy"
+    },
+    {
+      "sha": "dd9c84816ea1bce044aa49521dc1076541ef6271",
+      "author": "Developer",
+      "subject": "Never write merge keys, and add the --expand-alias flag"
+    },
+    {
+      "sha": "b2ee31aa1a409e2e3dd93ddd75b2a964b473c3cb",
+      "author": "Developer",
+      "subject": "Refuse to set a value reached through an alias"
+    },
+    {
+      "sha": "2ac6eadcd9f03561c61a0f1947d8051b2913bb91",
+      "author": "Developer",
+      "subject": "Keep the anchor when setting a value defined at an anchor"
+    },
+    {
+      "sha": "f8b7ee66f9d82b621c86f921e17ece680db8b74b",
+      "author": "Developer",
+      "subject": "Load anchors, aliases and merge keys instead of refusing them"
+    },
+    {
+      "sha": "07a8527e72dc1e7a440986e52efcfdd1e2116a66",
+      "author": "Developer",
+      "subject": "Plan anchor and alias support for issue #2"
+    }
+  ],
+  "diffstat": "README.md                                          |  91 +++++++++-\n .../.openspec.yaml                                 |   2 +\n .../design.md                                      | 202 +++++++++++++++++++++\n .../proposal.md                                    |  57 ++++++\n .../specs/config-cli/spec.md                       |  40 ++++\n .../specs/config-loading/spec.md                   |  64 +++++++\n .../specs/config-set/spec.md                       | 166 +++++++++++++++++\n .../2026-10-06-config-anchors-and-aliases/tasks.md |  42 +++++\n openspec/specs/config-cli/spec.md                  |   8 +-\n openspec/specs/config-loading/spec.md              |  61 +++++++\n openspec/specs/config-set/spec.md                  | 163 +++++++++++++++++\n src/troupe/cli.py                                  |  13 +-\n src/troupe/commands.py                             |   3 +-\n src/troupe/edit/apply.py                           | 149 +++++++++++++--\n src/troupe/edit/blocks.py                          |  63 ++++++-\n src/troupe/edit/ops.py                             |  88 +++++++--\n src/troupe/edit/plan.py                            | 135 ++++++++++++--\n src/troupe/edit/scalars.py                         |   7 +-\n src/troupe/edit/text.py                            |  20 +-\n src/troupe/errors.py                               |  45 +++++\n src/troupe/loader.py                               |   8 +\n src/troupe/overrides.py                            |   3 +-\n src/troupe/tree.py                                 | 187 +++++++++++++++++--\n src/troupe/values.py                               |  12 ++\n tests/test_aliases_loading.py                      | 124 +++++++++++++\n tests/test_cli.py                                  |  18 ++\n tests/test_loading.py                              |   5 -\n tests/test_paths_values.py                         |   4 +-\n tests/test_set_anchors.py                          |  75 ++++++++\n tests/test_set_expand_alias.py                     | 172 ++++++++++++++++++\n tests/test_set_merge_keys.py                       | 105 +++++++++++\n tests/test_set_through_alias.py                    | 116 ++++++++++++\n tests/test_smoke.py                                |  20 ++\n 33 files changed, 2190 insertions(+), 78 deletions(-)"
+}

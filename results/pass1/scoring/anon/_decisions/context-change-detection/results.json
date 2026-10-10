@@ -1,0 +1,1014 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [],
+        "env": {},
+        "symlink": {
+          "path": ".troupe/agents/current.yaml",
+          "target": "coder-v1.yaml"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "coder.model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "env": {},
+        "symlink": {
+          "path": ".troupe/agents/current.yaml",
+          "target": "coder-v2.yaml"
+        }
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: sonnet\nretries: 6\n",
+          "path": ".troupe/agents/coder-v2.yaml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "coder"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "coder.model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "--theatre",
+          ".",
+          "config",
+          "history",
+          "coder"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder-v1.yaml": "model: opus\nretries: 3\n",
+      ".troupe/agents/coder-v2.yaml": "model: sonnet\nretries: 5\n",
+      ".troupe/troupe.yml": "# coder agent comes from a switchable link\ncoder: file:agents/current.yaml  # repointed by deploy\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/coder-v1.yaml",
+      ".troupe/agents/coder-v2.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/agents/current.yaml",
+                "target": "coder-v1.yaml"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 1,
+              "stderr": ".troupe/agents/current.yaml already exists\n",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/agents/current.yaml",
+                "target": "coder-v2.yaml"
+              }
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder-v2.yaml": "model: sonnet\nretries: 6\n"
+              },
+              "hand_edit": ".troupe/agents/coder-v2.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:04.733849Z\", \"reason\": null, \"change\": \"81494256-fd7e-4316-becf-66e6cf452c5e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:04.733849Z\", \"reason\": null, \"change\": \"81494256-fd7e-4316-becf-66e6cf452c5e\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "history",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder-v1.yaml  23 bytes\n.troupe/agents/coder-v2.yaml  25 bytes\n.troupe/agents/current.yaml -> coder-v1.yaml\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  98 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/agents/current.yaml",
+                "target": "coder-v1.yaml"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 1,
+              "stderr": ".troupe/agents/current.yaml already exists\n",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/agents/current.yaml",
+                "target": "coder-v2.yaml"
+              }
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder-v2.yaml": "model: sonnet\nretries: 6\n"
+              },
+              "hand_edit": ".troupe/agents/coder-v2.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:14.594667Z\", \"reason\": null, \"change\": \"64a70562-a8b0-4ba8-be14-23b1e74dd333\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:14.594667Z\", \"reason\": null, \"change\": \"64a70562-a8b0-4ba8-be14-23b1e74dd333\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "history",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:14.594667Z\", \"reason\": null, \"change\": \"64a70562-a8b0-4ba8-be14-23b1e74dd333\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:14.594667Z\", \"reason\": null, \"change\": \"64a70562-a8b0-4ba8-be14-23b1e74dd333\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder-v1.yaml  23 bytes\n.troupe/agents/coder-v2.yaml  25 bytes\n.troupe/agents/current.yaml -> coder-v1.yaml\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  98 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/agents/current.yaml",
+                "target": "coder-v1.yaml"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 1,
+              "stderr": ".troupe/agents/current.yaml already exists\n",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/agents/current.yaml",
+                "target": "coder-v2.yaml"
+              }
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder-v2.yaml": "model: sonnet\nretries: 6\n"
+              },
+              "hand_edit": ".troupe/agents/coder-v2.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:24.674260Z\", \"reason\": null, \"change\": \"cffc571a-add0-4a3c-b39a-948acee259d7\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:24.674260Z\", \"reason\": null, \"change\": \"cffc571a-add0-4a3c-b39a-948acee259d7\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "history",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument {config}: invalid choice: '.' (choose from config) (see 'troupe --help')\n",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder-v1.yaml  23 bytes\n.troupe/agents/coder-v2.yaml  25 bytes\n.troupe/agents/current.yaml -> coder-v1.yaml\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  98 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/agents/current.yaml",
+                "target": "coder-v1.yaml"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 1,
+              "stderr": ".troupe/agents/current.yaml already exists\n",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/agents/current.yaml",
+                "target": "coder-v2.yaml"
+              }
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder-v2.yaml": "model: sonnet\nretries: 6\n"
+              },
+              "hand_edit": ".troupe/agents/coder-v2.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:34.829231Z\", \"reason\": null, \"change\": \"c8746ac8-9b68-47a4-a3da-c6721a4ff78a\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:34.829231Z\", \"reason\": null, \"change\": \"c8746ac8-9b68-47a4-a3da-c6721a4ff78a\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "history",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: argument group: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder-v1.yaml  23 bytes\n.troupe/agents/coder-v2.yaml  25 bytes\n.troupe/agents/current.yaml -> coder-v1.yaml\n.troupe/troupe-state.sqlite  12288 bytes\n.troupe/troupe.yml  98 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/agents/current.yaml",
+                "target": "coder-v1.yaml"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 1,
+              "stderr": ".troupe/agents/current.yaml already exists\n",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/agents/current.yaml",
+                "target": "coder-v2.yaml"
+              }
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder-v2.yaml": "model: sonnet\nretries: 6\n"
+              },
+              "hand_edit": ".troupe/agents/coder-v2.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:43.980343Z\", \"reason\": null, \"change\": \"2dfb36ab-519e-46c4-83f9-7e4db7c3ad32\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:43.980343Z\", \"reason\": null, \"change\": \"2dfb36ab-519e-46c4-83f9-7e4db7c3ad32\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "history",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: argument command: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder-v1.yaml  23 bytes\n.troupe/agents/coder-v2.yaml  25 bytes\n.troupe/agents/current.yaml -> coder-v1.yaml\n.troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  98 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/agents/current.yaml",
+                "target": "coder-v1.yaml"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 1,
+              "stderr": ".troupe/agents/current.yaml already exists\n",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/agents/current.yaml",
+                "target": "coder-v2.yaml"
+              }
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder-v2.yaml": "model: sonnet\nretries: 6\n"
+              },
+              "hand_edit": ".troupe/agents/coder-v2.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:53.392736Z\", \"reason\": null, \"change\": \"2c5bfc0e-5279-42bb-9af9-5bb477084633\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:14:53.392736Z\", \"reason\": null, \"change\": \"2c5bfc0e-5279-42bb-9af9-5bb477084633\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "history",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder-v1.yaml  23 bytes\n.troupe/agents/coder-v2.yaml  25 bytes\n.troupe/agents/current.yaml -> coder-v1.yaml\n.troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  98 bytes\n"
+            }
+          ]
+        }
+      ],
+      "route": "Poll file bytes with the stdlib every 0.1-0.25 s; no watcher library, no mtime",
+      "route_no": 1
+    }
+  ]
+}

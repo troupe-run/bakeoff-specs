@@ -1,0 +1,5 @@
+```json
+{"score": 3, "evidence": ["/judge/repo/spec/changes/archive/2026-10-03-config-sync-with-files/design.md:65-69", "/judge/repo/spec/changes/archive/2026-10-03-config-sync-with-files/design.md:89-92", "/judge/repo/spec/changes/archive/2026-10-03-config-sync-with-files/design.md:46-47", "/judge/repo/spec/changes/archive/2026-10-03-config-sync-with-files/design.md:161-173", "/judge/transcript.md:82"]}
+```
+
+Every significant decision is written down in the repo's design doc, and the reasons are specific to this project. The lock (D2) and change-detection (D3) choices weigh alternatives someone might really pick: a lock file, a SQLite transaction, ignoring recently written paths, watchdog/inotify and mtime polling. Each is rejected for a reason tied to the contract. The other choices are weaker. D1's only alternative, diffing the raw file texts, is close to a straw man. D4–D8 and the decisions on points the contract leaves open (items 3, 5 and 7) give a reason but list no options. The arm also edited the design doc so it matches the session signature actually built (transcript:82).

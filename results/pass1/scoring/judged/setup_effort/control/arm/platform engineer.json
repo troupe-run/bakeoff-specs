@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/setup/checklist.json:33-36 (control.no-method: found none; ok)",
+    "/judge/setup/checklist.json:57-60 (setup.origin-push ok, origin/main == main 9e91f508)",
+    "/judge/setup/setup-turns.json:1 (no setup agent turns needed: [])",
+    "/judge/setup/installed-commands.json:1 and /judge/setup/manifest.json:1 (nothing installed, nothing generated)",
+    "/judge/setup/versions.json:2-18 (pinned base image bakeoff-base:cc2.1.281 with fixed digest; plugins []; owner_setup_seconds 15.87)",
+    "/judge/setup/egress.log:6-11 (only api.github.com traffic, no extra network allowances)",
+    "/judge/setup/owner-checklist.json:2-5 (OV1 ok)"
+  ],
+  "notes": "All 10 checklist items and the owner check pass. Setup took about 16 seconds of owner time, with no agent turns, no installed commands or plugins, and no generated files, all on a digest-pinned image. At twenty repos, nothing like overwritten files, schema migrations or interactive prompts could bite, so it is fully scriptable and repeatable with no workaround or harness change for this arm.",
+  "raw": "```json\n{\"score\": 4, \"evidence\": [\"/judge/setup/checklist.json:33-36 (control.no-method: found none; ok)\", \"/judge/setup/checklist.json:57-60 (setup.origin-push ok, origin/main == main 9e91f508)\", \"/judge/setup/setup-turns.json:1 (no setup agent turns needed: [])\", \"/judge/setup/installed-commands.json:1 and /judge/setup/manifest.json:1 (nothing installed, nothing generated)\", \"/judge/setup/versions.json:2-18 (pinned base image bakeoff-base:cc2.1.281 with fixed digest; plugins []; owner_setup_seconds 15.87)\", \"/judge/setup/egress.log:6-11 (only api.github.com traffic, no extra network allowances)\", \"/judge/setup/owner-checklist.json:2-5 (OV1 ok)\"], \"notes\": \"All 10 checklist items and the owner check pass. Setup took about 16 seconds of owner time, with no agent turns, no installed commands or plugins, and no generated files, all on a digest-pinned image. At twenty repos, nothing like overwritten files, schema migrations or interactive prompts could bite, so it is fully scriptable and repeatable with no workaround or harness change for this arm.\"}\n```",
+  "score": 4,
+  "status": "ok"
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["/judge/gates.md:3-5", "/judge/gates.md:19-44", "/judge/gates.md:62-94", "/judge/transcript.md:27"], "notes": "Every costly point had a gate before any code was written: the merge-key rule, refusing writes through an alias, the new --expand-alias flag, and the C3 include rule that stops anchors and aliases being used on includes. The intent gate after the spec and the alignment gate before the plan were both well placed. The intent gate is hard to approve, though: it lists C1-C12 plus the merge-key option (A), which the arm had already committed as its own choice (transcript line 27), so the reviewer had a lot to check. That is not concise enough for a 4."}
+```

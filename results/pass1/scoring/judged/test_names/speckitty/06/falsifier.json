@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "tests/integration/test_aliases_read.py:87 test_show_sources_attributes_aliased_scalar_to_anchor_file: the anchor and the alias are both in troupe.yml, so the assertion at :95 would still pass if the source were the alias's file and not the anchor's (overclaims)",
+    "tests/integration/test_aliases_acceptance.py:254 test_expand_alias_with_in_include_expands_then_follows_in_include: the body shows that with both flags nothing is expanded (:279-284), which the name gets backwards (misleading/vague)",
+    "tests/integration/test_aliases_acceptance.py:164 test_watch_records_hand_edit_at_anchor_once_per_leaf uses the default recorded_within window, not the QUIET window used at :155, so 'once' (no late duplicate) is only weakly checked",
+    "tests/integration/test_aliases_acceptance.py:342 test_crlf_file_expansion_keeps_crlf compares bytes, matching its claim",
+    "tests/integration/test_aliases_read.py:166 test_set_through_alias_is_refused_and_changes_nothing asserts exit code, file snapshot, history and value, matching its claim"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 2, \"evidence\": [\"tests/integration/test_aliases_read.py:87 test_show_sources_attributes_aliased_scalar_to_anchor_file: the anchor and the alias are both in troupe.yml, so the assertion at :95 would still pass if the source were the alias's file and not the anchor's (overclaims)\", \"tests/integration/test_aliases_acceptance.py:254 test_expand_alias_with_in_include_expands_then_follows_in_include: the body shows that with both flags nothing is expanded (:279-284), which the name gets backwards (misleading/vague)\", \"tests/integration/test_aliases_acceptance.py:164 test_watch_records_hand_edit_at_anchor_once_per_leaf uses the default recorded_within window, not the QUIET window used at :155, so 'once' (no late duplicate) is only weakly checked\", \"tests/integration/test_aliases_acceptance.py:342 test_crlf_file_expansion_keeps_crlf compares bytes, matching its claim\", \"tests/integration/test_aliases_read.py:166 test_set_through_alias_is_refused_and_changes_nothing asserts exit code, file snapshot, history and value, matching its claim\"]}\n```\n\nNotes: I checked about 30 tests in diff order (test_aliases_acceptance.py, then test_aliases_read.py). Most names state a specific condition and result, and the bodies assert it, often byte for byte. One name overclaims (show --sources attribution to the anchor's file is never told apart from the alias's file), one misdescribes its behaviour (the expand-alias/in-include test), and one only weakly checks its \"once\" claim, so the step lands at 2 rather than 3.",
+  "score": 2,
+  "status": "ok"
+}

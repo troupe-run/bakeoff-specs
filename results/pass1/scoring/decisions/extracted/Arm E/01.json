@@ -1,0 +1,262 @@
+[
+  {
+    "decision": "Scaffold the project with `uv init --package` on Python 3.12 and add eventsourcing and ruamel.yaml as dependencies",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:3"
+  },
+  {
+    "decision": "Use ruamel.yaml only as a parser that gives source offsets (safe, pure compose), and never re-serialise files",
+    "options": [],
+    "reason": "To build a position-aware view so nodes remember which file and bytes they come from",
+    "recorded_at": "diff.patch:1141 (src/troupe/yamldoc.py docstring); questions.md:8"
+  },
+  {
+    "decision": "Resolve plain scalars with a hand-written YAML 1.2 core schema resolver instead of ruamel's own resolver",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:8; diff.patch:1169-1199"
+  },
+  {
+    "decision": "Simplify construct so that plain scalars always go through resolve_plain and quoted or block scalars stay strings, ignoring tags",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:9"
+  },
+  {
+    "decision": "`set` writes changes as byte-level splices (replacing, inserting or deleting whole lines) in whichever file holds the value",
+    "options": [
+      "re-serialise the file"
+    ],
+    "reason": "Keeps the rest of each file unchanged",
+    "recorded_at": "questions.md:9; README.md (diff.patch:35)"
+  },
+  {
+    "decision": "Before writing, re-load the result and check that the target holds the requested value and that no other leaf changed; otherwise exit 3 and leave every file untouched",
+    "options": [],
+    "reason": "Faithful write-back",
+    "recorded_at": "questions.md:9; diff.patch:209-233"
+  },
+  {
+    "decision": "Record history in an eventsourcing aggregate with a fixed uuid5 ID, stored in SQLite at .troupe/events.sqlite",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:10; diff.patch:1064-1108"
+  },
+  {
+    "decision": "The first command against a theatre imports one event per leaf. Each set records one set event per changed or new leaf and one remove event per leaf that disappears. A no-op set records nothing",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:10"
+  },
+  {
+    "decision": "`show` and `set` read the files on disk rather than history. Hand edits are not reconciled into history",
+    "options": [
+      "read from history"
+    ],
+    "reason": "So hand edits show up straight away",
+    "recorded_at": "questions.md:22"
+  },
+  {
+    "decision": "Setting a mapping or list onto an existing one of the same kind changes only the entries that differ, instead of rewriting the whole block",
+    "options": [
+      "rewrite the whole block"
+    ],
+    "reason": "Keeps comments inside the block and keeps the diff small",
+    "recorded_at": "questions.md:23"
+  },
+  {
+    "decision": "When a scalar with a trailing comment is replaced by a block collection, remove the value and keep the comment in its column on the key line",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:24"
+  },
+  {
+    "decision": "Setting a value equal to the current one is a no-op that exits 0, even when the path is a YAML include",
+    "options": [
+      "refuse with exit 3 for includes"
+    ],
+    "reason": "",
+    "recorded_at": "questions.md:25"
+  },
+  {
+    "decision": "With a missing parent, a `0` index segment creates a new list. Any other index exits 5",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:26; diff.patch:491-495"
+  },
+  {
+    "decision": "Setting through a YAML include to a different value, or replacing an include node, is refused with exit 3",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:469-470)"
+  },
+  {
+    "decision": "Text includes (non-.yml/.yaml files) can only be set to strings and are written back keeping CRLF line endings when the original used them",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:457-466, 1494-1507)"
+  },
+  {
+    "decision": "Include type is decided by file extension: .yml/.yaml are YAML includes and anything else is a text include",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:1494)"
+  },
+  {
+    "decision": "Include cycles and missing or non-UTF-8 include targets exit 4. Cycles are detected through a realpath stack",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:8; diff.patch:1491-1501"
+  },
+  {
+    "decision": "If both troupe.yml and troupe.yaml exist, error with exit 4. If neither exists, also exit 4",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:147-154)"
+  },
+  {
+    "decision": "Parse the CLI value by composing it as a single flow-sequence item. An empty or whitespace-only value becomes null",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:135-144)"
+  },
+  {
+    "decision": "Argparse errors exit with code 2. Errors map to exit codes 2 (usage), 3 (write refused), 4 (load) and 5 (path)",
+    "options": [],
+    "reason": "per contract",
+    "recorded_at": "diff.patch:106 (cli.py comment); errors.py"
+  },
+  {
+    "decision": "Accept `--theatre` both at the config level and the subcommand level, defaulting to `.`",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:112-124); tested at transcript.md:33"
+  },
+  {
+    "decision": "`show` on a mapping or list exits 5 instead of printing the collection",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:197-198)"
+  },
+  {
+    "decision": "`show` prints scalars with a trailing newline, adding one only if the string lacks it; null, true and false are printed in lowercase",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:157-166)"
+  },
+  {
+    "decision": "`history` prints one JSON object per line (seq, op, path, old, new), filtered by path prefix",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:202-207, 1079-1082)"
+  },
+  {
+    "decision": "Keep an end-of-line comment's column when a value changes. If the line grows past the comment column, use exactly one space",
+    "options": [],
+    "reason": "Per the contract; the test expectation was corrected to match",
+    "recorded_at": "transcript.md:36"
+  },
+  {
+    "decision": "Keep the existing quoting style when it can hold the new value; otherwise fall back in the order plain, single, double",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:936-953); questions.md:14"
+  },
+  {
+    "decision": "New keys and items copy the quoting style of the previous sibling entry",
+    "options": [],
+    "reason": "The contract rules require it",
+    "recorded_at": "transcript.md:32"
+  },
+  {
+    "decision": "Insert new entries below trailing comments that are indented at the entry column or deeper",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:566-576); questions.md:16"
+  },
+  {
+    "decision": "Infer indentation step and sequence offset from the document's existing layout, defaulting to 2",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:373-392)"
+  },
+  {
+    "decision": "Render new multi-line strings as literal `|` blocks with chomping chosen from trailing newlines; use a double-quoted string when a literal block cannot represent the value",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:1021-1024)"
+  },
+  {
+    "decision": "Fix literal_ok so that newline is not treated as a disallowed control character",
+    "options": [],
+    "reason": "Bug: multi-line strings were falling back to double quotes",
+    "recorded_at": "transcript.md:26"
+  },
+  {
+    "decision": "Relax the faithfulness check for CRLF text includes by normalising line endings before comparing",
+    "options": [],
+    "reason": "Bug: the check tripped on CRLF text includes",
+    "recorded_at": "transcript.md:26-27"
+  },
+  {
+    "decision": "Edit literal blocks with a line diff (difflib) so unchanged lines keep their original bytes",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:685-693)"
+  },
+  {
+    "decision": "For folded blocks, keep unchanged paragraphs and re-wrap changed ones at the old paragraph width (80 when there is none); refuse more-indented lines with exit 3",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:726-784)"
+  },
+  {
+    "decision": "When a value written to a `|` block cannot be held by a literal block, replace it with an inline double-quoted string",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:680-683)"
+  },
+  {
+    "decision": "Reject block sequences whose dash layout does not match the parsed items (exit 4, 'unsupported sequence layout')",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:1472-1474)"
+  },
+  {
+    "decision": "Reject complex (non-scalar) mapping keys with a load error",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:1214-1217)"
+  },
+  {
+    "decision": "values_equal is type-strict and treats NaN as equal to NaN",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:1227-1236)"
+  },
+  {
+    "decision": "Treat an empty config file as an empty mapping",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (diff.patch:1423-1426)"
+  },
+  {
+    "decision": "Split the code into yamldoc.py, render.py, editor.py, store.py, cli.py and errors.py",
+    "options": [],
+    "reason": "",
+    "recorded_at": "README.md (diff.patch:38-39); questions.md:28"
+  },
+  {
+    "decision": "Tests run the CLI as a subprocess through a cli_main module against a fixture theatre (17 tests)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:34-35; diff.patch:1578-1582"
+  },
+  {
+    "decision": "Commit directly on main as one commit",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:38 (commit 2663047)"
+  }
+]

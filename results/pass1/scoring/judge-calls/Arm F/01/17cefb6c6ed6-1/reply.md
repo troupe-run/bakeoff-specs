@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["/judge/gates.md:1", "/judge/transcript.md:9", "/judge/transcript.md:26", "/judge/transcript.md:131", "/judge/transcript.md:141", "/judge/transcript.md:152"], "notes": "The spec and plan handoffs (transcript lines 9 and 26) work as gates at sensible points: they come before any code and name the choices to confirm (D-1, D-2, D-5, D-6, B-3–B-5, R-3), although gates.md records no formal gate. The weak spot is a requirement change with no prior approval: `--theatre` before the subcommand was added in code and only raised for review afterwards (line 131). It was then removed by the agent's own decision with no gate (lines 141 and 152), and choices B-13–B-15 were likewise reported only after implementation."}
+```

@@ -1,0 +1,10 @@
+I scored Arm X a 2 on traceability for step 6.
+
+```json
+{"score": 2, "evidence": ["/judge/repo/tests/e2e/test_set_alias.py:1-2", "/judge/repo/tests/e2e/test_set_alias.py:104", "/judge/repo/spec/bugs/yaml-alias-set/assessment.md:29-37", "/judge/repo/spec/bugs/yaml-alias-set/fix.md:17-28", "/judge/repo/spec/bugs/yaml-alias-set/fix.md:45-57", "/judge/repo/spec/006-set-in-include/tasks.md:46"]}
+```
+
+- **What step 6 added:** a bug fix, `yaml-alias-set`, with 13 new tests in `tests/e2e/test_set_alias.py`.
+- **How the tests link to the requirement:** only the module docstring (lines 1-2) links them, by naming the slug. The tests then reach the four Aliases contract bullets (`assessment.md:29-37`) only through descriptive names. For example, `test_merge_keys_are_never_written` matches "Merge keys (`<<`) are never written."
+- **How the tests link to the code:** `fix.md` lists every test and the files that changed, at file level only. No test maps to a specific function.
+- **Why not higher:** none of the alias requirements has an ID. The step 5 tests show the stronger pattern: they cite requirement IDs (`FR-461`, `D-51`) per test (`spec/006-set-in-include/tasks.md:46`).

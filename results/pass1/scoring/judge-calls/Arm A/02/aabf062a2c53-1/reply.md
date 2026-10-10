@@ -1,0 +1,5 @@
+```json
+{"score": 3, "evidence": ["tests/test_e2e_reconcile.py:60", "tests/test_e2e_reconcile.py:105", "tests/test_cli_watch.py:76", "tests/watch_support.py:159", "tests/test_reconcile.py:164", "tests/test_reconcile.py:110", "tests/test_recorded.py:81"]}
+```
+
+{"score": 3, "evidence": ["tests/test_e2e_reconcile.py:60", "tests/test_e2e_reconcile.py:105", "tests/test_cli_watch.py:76", "tests/watch_support.py:159", "tests/test_reconcile.py:164", "tests/test_reconcile.py:110", "tests/test_recorded.py:81"], "notes": "No overclaims: every name I checked is backed by its body, including timing claims ('within 2 seconds' is enforced by wait_for_history's within=2.0 default) and exact-output claims. A few names say less than the body checks: test_nan_and_inf_unchanged_give_nothing also asserts a -0.0→0.0 set, so the result is not empty; test_changed_created_and_removed_leaves_in_order and test_import_set_remove_set_again_follows_re_creation are vague."}

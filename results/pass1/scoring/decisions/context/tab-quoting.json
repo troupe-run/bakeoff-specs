@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# troupe settings\nname: bob  # agent name\nprompt: hello\nlimits:\n  retry: 3\n",
+        "input": "`config set name '\"a\\tb\"'`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; the file now reads (a real TAB between a and b, comment kept):\nname: 'a\tb' # agent name",
+          "2": "exit 0, no output; the file now reads (a real TAB between a and b, comment kept):\nname: 'a\tb' # agent name"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set prompt '\"\\tindented\"'`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; the file now reads (starts with a real TAB):\nprompt: '\tindented'",
+          "2": "exit 0, no output; the file now reads (starts with a real TAB):\nprompt: '\tindented'"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set extra.sep '\"x\\t\"'` (a key that is not in the file yet)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; a new block is added at the end (ends with a real TAB):\nextra:\n  sep: 'x\t'",
+          "2": "exit 0, no output; a new block is added at the end (ends with a real TAB):\nextra:\n  sep: 'x\t'"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get name` (after the commands above)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints a, a real TAB, then b",
+          "2": "exit 0; prints a, a real TAB, then b"
+        }
+      }
+    ],
+    "in_practice": "Both routes gave the same results on every command. Every value with a TAB was written in single quotes with the raw TAB inside, and it read back correctly. Neither route wrote the double-quoted `\"a\\tb\"` form. On both routes, the two spaces before the `# agent name` comment became one.",
+    "stakes": "When you store a value containing a TAB, it decides how that value is quoted in .troupe/troupe.yml, which is the file you later read and edit by hand. Single quotes keep a literal TAB character in the file, which you can't see. Double quotes would show it as a visible `\\t`.",
+    "tradeoff": "Route 1 deliberately chose single quotes and changed the tests that expected double quotes. Route 2 never considered the question but produced the same file. Either way, the TAB in the file can't be seen."
+  },
+  "plan_why": "Writes strings containing a TAB (inside, at the start, at the end) over plain scalars and as a new key, so the file shows whether the TAB ends up in single quotes ('a<TAB>b'), double quotes (\"a\\tb\") or plain; a final get checks the value reads back correctly",
+  "routes": [
+    [
+      "Single quotes (tests changed from the double-quoted expectation)",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

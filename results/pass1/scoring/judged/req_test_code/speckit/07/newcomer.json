@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "spec/007-remote-includes-schema/spec.md:275-361 (FR-600 to FR-646 requirements and D-60 to D-70 decisions, each with an ID)",
+    "spec/007-remote-includes-schema/tasks.md:104-118 (each acceptance scenario is mapped to a test file and to its FR or D IDs; the code tasks name src files, e.g. T013 at :171 names src/troupe/config/remote.py)",
+    "tests/e2e/test_remote_readonly.py:2 (module docstring cites spec US2, FR-610 to FR-613, D-60, D-70)",
+    "tests/e2e/test_set_literal.py:2 (cites FR-640 to FR-646, D-67 to D-69)",
+    "src/troupe/config/remote.py:2 and src/troupe/config/edit/apply.py:53 (code comments cite FR-610 and FR-611)",
+    "src/troupe/config/edit/literals.py:1 and src/troupe/config/fetch.py:1 (code docstrings cite FR-640 to FR-643 and FR-601, FR-602, D-63)",
+    "tests/e2e/test_remote_readonly.py:99 vs tasks.md:166 (the planned test name test_nested_remote_new_key_refused differs from the actual name test_nested_remote_new_key_names_the_outermost_include)"
+  ],
+  "notes": "A newcomer can follow the step 7 spec IDs to tasks.md, then to the test files whose docstrings cite FR and D ranges, then to the src modules whose comments cite the same IDs, without grepping. It falls short of 4 because test docstrings link only at the file level, giving FR ranges rather than one ID per test, and several test names in tasks.md have drifted from the real function names, so matching an individual scenario to its exact test still means guessing by topic.",
+  "raw": "{\"score\": 3, \"evidence\": [\"spec/007-remote-includes-schema/spec.md:275-361 (FR-600 to FR-646 requirements and D-60 to D-70 decisions, each with an ID)\", \"spec/007-remote-includes-schema/tasks.md:104-118 (each acceptance scenario is mapped to a test file and to its FR or D IDs; the code tasks name src files, e.g. T013 at :171 names src/troupe/config/remote.py)\", \"tests/e2e/test_remote_readonly.py:2 (module docstring cites spec US2, FR-610 to FR-613, D-60, D-70)\", \"tests/e2e/test_set_literal.py:2 (cites FR-640 to FR-646, D-67 to D-69)\", \"src/troupe/config/remote.py:2 and src/troupe/config/edit/apply.py:53 (code comments cite FR-610 and FR-611)\", \"src/troupe/config/edit/literals.py:1 and src/troupe/config/fetch.py:1 (code docstrings cite FR-640 to FR-643 and FR-601, FR-602, D-63)\", \"tests/e2e/test_remote_readonly.py:99 vs tasks.md:166 (the planned test name test_nested_remote_new_key_refused differs from the actual name test_nested_remote_new_key_names_the_outermost_include)\"], \"notes\": \"A newcomer can follow the step 7 spec IDs to tasks.md, then to the test files whose docstrings cite FR and D ranges, then to the src modules whose comments cite the same IDs, without grepping. It falls short of 4 because test docstrings link only at the file level, giving FR ranges rather than one ID per test, and several test names in tasks.md have drifted from the real function names, so matching an individual scenario to its exact test still means guessing by topic.\"}",
+  "score": 3,
+  "status": "ok"
+}

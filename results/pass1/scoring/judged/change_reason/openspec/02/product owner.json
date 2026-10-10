@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/diff.patch:276-327 (proposal.md lists new and modified capabilities, marks the hand-edit behaviour change BREAKING, and names the step-1 test that is replaced)",
+    "/judge/diff.patch:433-437 (config-history delta under REMOVED: 'Import on first command' gives a Reason and a Migration to its replacement)",
+    "/judge/diff.patch:110-113 (design.md D1 says step-1 decision D10 is replaced and why)",
+    "/judge/diff.patch:1258-1274 (test_hand_edits_are_not_reconciled is renamed and rewritten; the change traces to tasks.md 2.4 at diff.patch:610)",
+    "/judge/diff.patch:658-662 (config-cli scenario changes from 'every file outside .troupe/ ... byte-identical' to 'no configuration file created or modified'; the delta spec repeats the new wording but does not say why the guarantee was loosened)",
+    "/judge/repo/ has no .git directory, so commit messages cannot be checked"
+  ],
+  "notes": "As product owner, I can see where the request landed: an archived change record (proposal, design, delta specs and tasks) ties the additions, the replaced requirement and the rewritten tests to step 2, each with a reason. Two things stop it from reaching 4: the config-cli 'user files untouched' scenario was weakened without a stated reason, and there is no commit history to check against.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/diff.patch:276-327 (proposal.md lists new and modified capabilities, marks the hand-edit behaviour change BREAKING, and names the step-1 test that is replaced)\", \"/judge/diff.patch:433-437 (config-history delta under REMOVED: 'Import on first command' gives a Reason and a Migration to its replacement)\", \"/judge/diff.patch:110-113 (design.md D1 says step-1 decision D10 is replaced and why)\", \"/judge/diff.patch:1258-1274 (test_hand_edits_are_not_reconciled is renamed and rewritten; the change traces to tasks.md 2.4 at diff.patch:610)\", \"/judge/diff.patch:658-662 (config-cli scenario changes from 'every file outside .troupe/ ... byte-identical' to 'no configuration file created or modified'; the delta spec repeats the new wording but does not say why the guarantee was loosened)\", \"/judge/repo/ has no .git directory, so commit messages cannot be checked\"], \"notes\": \"As product owner, I can see where the request landed: an archived change record (proposal, design, delta specs and tasks) ties the additions, the replaced requirement and the rewritten tests to step 2, each with a reason. Two things stop it from reaching 4: the config-cli 'user files untouched' scenario was weakened without a stated reason, and there is no commit history to check against.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

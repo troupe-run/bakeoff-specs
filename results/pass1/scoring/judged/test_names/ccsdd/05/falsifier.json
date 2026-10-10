@@ -1,0 +1,18 @@
+{
+  "evidence": [
+    "/judge/repo/tests/test_e2e_overrides_read.py:145",
+    "/judge/repo/tests/test_e2e_overrides_read.py:279",
+    "/judge/repo/tests/test_e2e_overrides_read.py:390",
+    "/judge/repo/tests/test_e2e_overrides_read.py:416",
+    "/judge/repo/tests/test_e2e_overrides_refusals.py:45",
+    "/judge/repo/tests/test_e2e_overrides_refusals.py:112",
+    "/judge/repo/tests/test_loader_overrides.py:236",
+    "/judge/repo/tests/test_loader_overrides.py:345",
+    "/judge/repo/tests/test_loader_overrides.py:378",
+    "/judge/repo/tests/test_loader_overrides.py:401"
+  ],
+  "notes": "I checked 30 tests in diff order (test_e2e_overrides_read, test_e2e_overrides_refusals, then the first 14 of test_loader_overrides), and no name claims more than its body asserts. Specific examples are the byte-exact `show` output at test_e2e_overrides_read.py:145 and the exact event lists at :279. Three loader names state only the case being tested, not the expected result (`test_mapping_form_include_at_the_document_root`, `..._as_a_list_item_block_and_flow`, `test_flow_mapping_form_with_overrides`), which puts this between levels 2 and 3. I scored 3 because none of them overclaims and each docstring states the expected result.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/repo/tests/test_e2e_overrides_read.py:145\", \"/judge/repo/tests/test_e2e_overrides_read.py:279\", \"/judge/repo/tests/test_e2e_overrides_read.py:390\", \"/judge/repo/tests/test_e2e_overrides_read.py:416\", \"/judge/repo/tests/test_e2e_overrides_refusals.py:45\", \"/judge/repo/tests/test_e2e_overrides_refusals.py:112\", \"/judge/repo/tests/test_loader_overrides.py:236\", \"/judge/repo/tests/test_loader_overrides.py:345\", \"/judge/repo/tests/test_loader_overrides.py:378\", \"/judge/repo/tests/test_loader_overrides.py:401\"], \"notes\": \"I checked 30 tests in diff order (test_e2e_overrides_read, test_e2e_overrides_refusals, then the first 14 of test_loader_overrides), and no name claims more than its body asserts. Specific examples are the byte-exact `show` output at test_e2e_overrides_read.py:145 and the exact event lists at :279. Three loader names state only the case being tested, not the expected result (`test_mapping_form_include_at_the_document_root`, `..._as_a_list_item_block_and_flow`, `test_flow_mapping_form_with_overrides`), which puts this between levels 2 and 3. I scored 3 because none of them overclaims and each docstring states the expected result.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

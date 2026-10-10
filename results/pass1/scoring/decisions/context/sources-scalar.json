@@ -1,0 +1,65 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\nmodel: opus  # main model\nretries: 3\nprompt: file:prompts/system.txt\nagents:\n  coder: file:agents/coder.yaml",
+        "input": "`config show model --sources`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints:\nopus # from .troupe/troupe.yml\n(the file's own `# main model` comment is not shown; no files changed)"
+        }
+      },
+      {
+        "before": ".troupe/agents/coder.yaml:\ntemperature: 0.2\nname: \"Coder\"",
+        "input": "`config show agents.coder.temperature --sources`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints:\n0.2 # from .troupe/agents/coder.yaml\n(gives the included file, not troupe.yml)"
+        }
+      },
+      {
+        "before": ".troupe/prompts/system.txt:\nYou are helpful.\nBe brief.",
+        "input": "`config show prompt --sources`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints a literal block:\n| # from .troupe/prompts/system.txt\n  You are helpful.\n  Be brief."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show prompt` (no --sources)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints the plain text:\nYou are helpful.\nBe brief."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show agents.coder --sources`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints:\ntemperature: 0.2 # from .troupe/agents/coder.yaml\nname: Coder # from .troupe/agents/coder.yaml\n(the quotes around \"Coder\" are dropped)"
+        }
+      }
+    ],
+    "in_practice": "All six implementations on route 1 gave exactly the same results, and no command changed any file. With --sources, a single value prints on one line with a `# from <file>` comment. A value that comes from an included text file becomes a `|` block with the comment on its first line. Without --sources, you get just the raw value.",
+    "stakes": "When you ask where a single value comes from, you need output that names the file it was read from and is still valid YAML, including values pulled in from a separate text file.",
+    "tradeoff": "Route 1: the output for one value is valid YAML and names its source file, but text from an included file changes shape (indented block instead of plain text) when you add --sources, and the original file's comments and quotes are not kept."
+  },
+  "plan_why": "Shows what `show PATH --sources` prints when PATH is a scalar: a plain value, a value from a YAML include, and a multi-line text include (which this route prints as a literal block with the comment), with plain `show` alongside for contrast.",
+  "routes": [
+    [
+      "One-scalar YAML with the comment; a text include becomes a literal block",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

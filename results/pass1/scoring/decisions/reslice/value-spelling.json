@@ -1,0 +1,136 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "2",
+    "Arm D": "1",
+    "Arm E": "2",
+    "Arm F": "1"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "K",
+        "why": "File stores 0x1A, TRUE, ~, 1E3 and the nested True/Null/0o17/+007/-.INF/2.50 exactly as typed"
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "C",
+        "why": "File stores 26, true, null, 1000.0 and the nested values as true/null/15/7/-.inf/2.5"
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "0x1A"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "debug",
+          "TRUE"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "timeout",
+          "~"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "ratio",
+          "1E3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "extra",
+          "{flag: True, none: Null, oct: 0o17, pad: +007, inf: -.INF, num: 2.50}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# agent settings\nretry: 3\ndebug: false\ntimeout: 30\nratio: 0.5\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Writes non-string scalars in unusual but valid YAML 1.2 spellings (0x1A, TRUE, ~, 1E3, +007, 0o17, -.INF, 2.50). It does this both by replacing existing values and through a new block mapping. The file then shows whether each implementation rewrites them in canonical form (26, true, null, 1000.0, 7, 15, -.inf, 2.5) or keeps the spelling that was typed."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "keeps the typed spelling (0x1A, TRUE, ~, 1E3)",
+            "id": "K"
+          },
+          {
+            "description": "canonical spelling (26, true, null, 1000.0)",
+            "id": "C"
+          }
+        ],
+        "id": "Q1",
+        "text": "how non-string scalars are spelled when written"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Canonical plain form (true/false, null, decimal int, repr(float), .inf/.nan)",
+      [
+        "Arm B",
+        "Arm C"
+      ]
+    ],
+    [
+      "Keep VALUE's own spelling (floats fall back to repr; .inf/.nan for non-finite)",
+      [
+        "Arm A",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "sheet_id": "T81",
+  "status": "ok"
+}

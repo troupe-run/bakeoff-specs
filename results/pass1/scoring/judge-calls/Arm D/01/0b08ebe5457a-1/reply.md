@@ -1,0 +1,5 @@
+```json
+{"score": 2, "evidence": ["/judge/repo/tests/test_config.py:263", "/judge/repo/tests/test_config.py:129", "/judge/repo/tests/test_config.py:292", "/judge/repo/docs/decisions.md:15", "/judge/repo/tests/test_config.py:4"]}
+```
+
+{"score": 2, "evidence": ["/judge/repo/tests/test_config.py:263", "/judge/repo/tests/test_config.py:129", "/judge/repo/tests/test_config.py:292", "/judge/repo/docs/decisions.md:15", "/judge/repo/tests/test_config.py:4"], "notes": "Three sampled tests (test_include_refused, test_folded_rewrap, test_noop_set) can be matched to requirements only by their descriptive names, for example test_include_refused to decision 5 in docs/decisions.md, but there are no requirement IDs, references or docstrings. Every test goes through the CLI helper, so finding the code (writer.py, yamlcore.py and so on) means searching the repo."}

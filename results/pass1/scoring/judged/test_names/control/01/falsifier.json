@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "tests/test_config.py:71 test_show is parametrized over six paths but the name only repeats the command",
+    "tests/test_config.py:77 test_show_errors does not say the expected exit code (5) or the stderr content checked",
+    "tests/test_config.py:82 test_set_keeps_comment_column is specific and its body checks the exact comment column",
+    "tests/test_config.py:96 test_set_include_targets also checks exit code 3 and that the config is unchanged, which the name does not mention",
+    "tests/test_config.py:107 test_block_scalars, :114 test_new_keys_and_collections and :122 test_history name a topic, not an expected result",
+    "tests/test_config.py:135 test_missing_config does not state the expected exit code 4"
+  ],
+  "notes": "None of the nine names overclaims: each body asserts something about the topic it names. Only test_set_keeps_comment_column states a condition and expected result, though. The rest are topic labels or repeat the command, often saying less than the body checks, so a failure name would not tell you what broke.",
+  "raw": "{\"score\": 2, \"evidence\": [\"tests/test_config.py:71 test_show is parametrized over six paths but the name only repeats the command\", \"tests/test_config.py:77 test_show_errors does not say the expected exit code (5) or the stderr content checked\", \"tests/test_config.py:82 test_set_keeps_comment_column is specific and its body checks the exact comment column\", \"tests/test_config.py:96 test_set_include_targets also checks exit code 3 and that the config is unchanged, which the name does not mention\", \"tests/test_config.py:107 test_block_scalars, :114 test_new_keys_and_collections and :122 test_history name a topic, not an expected result\", \"tests/test_config.py:135 test_missing_config does not state the expected exit code 4\"], \"notes\": \"None of the nine names overclaims: each body asserts something about the topic it names. Only test_set_keeps_comment_column states a condition and expected result, though. The rest are topic labels or repeat the command, often saying less than the body checks, so a failure name would not tell you what broke.\"}",
+  "score": 2,
+  "status": "ok"
+}

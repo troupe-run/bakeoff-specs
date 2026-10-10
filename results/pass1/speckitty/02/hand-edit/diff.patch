@@ -1,0 +1,115 @@
+commit bfcf6c7d29a9930be7d62eec63c19d53d848cea2
+Author:     Sam Teammate <sam.teammate@troupe.run>
+AuthorDate: Fri Oct 2 13:59:04 2026 +0000
+Commit:     Sam Teammate <sam.teammate@troupe.run>
+CommitDate: Fri Oct 2 13:59:04 2026 +0000
+
+    Let TROUPE_THEATRE set the default theatre
+
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index 472be95..c52bf64 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -7,6 +7,7 @@ stderr and the exit code its ``TroupeError`` subclass declares. It holds no comm
+ 
+ import argparse
+ import importlib
++import os
+ import sys
+ from collections.abc import Sequence
+ from pathlib import Path
+@@ -16,6 +17,7 @@ from troupe.errors import TroupeError, UsageError
+ from troupe.theatre import Theatre, locate
+ 
+ COMMAND_MODULES: Final = {"show": "show", "set": "set_value", "history": "history"}
++THEATRE_ENV_VAR: Final = "TROUPE_THEATRE"
+ 
+ 
+ class Command(Protocol):
+@@ -33,12 +35,12 @@ class _Parser(argparse.ArgumentParser):
+ 
+ def _add_theatre_option(parser: argparse.ArgumentParser) -> None:
+     # SUPPRESS keeps a later (sub)parser from overwriting a value given earlier; the
+-    # fallback to the current directory is applied once, in ``main``.
++    # fallback to $TROUPE_THEATRE, then the current directory, is applied once, in ``main``.
+     parser.add_argument(
+         "--theatre",
+         metavar="DIR",
+         default=argparse.SUPPRESS,
+-        help="theatre directory (default: current directory)",
++        help="theatre directory (default: $TROUPE_THEATRE, else current directory)",
+     )
+ 
+ 
+@@ -68,7 +70,8 @@ def main(argv: Sequence[str] | None = None) -> int:
+     """Run the CLI and return the process exit code."""
+     try:
+         args = build_parser().parse_args(argv)
+-        theatre_dir = Path.cwd() if args.theatre is None else Path(args.theatre)
++        theatre_arg = args.theatre if args.theatre is not None else os.environ.get(THEATRE_ENV_VAR)
++        theatre_dir = Path(theatre_arg) if theatre_arg else Path.cwd()
+         theatre = locate(theatre_dir)  # exit 4 before any command module is imported
+         module = importlib.import_module(f"troupe.commands.{COMMAND_MODULES[args.command]}")
+         output = cast(Command, module).run(theatre, args)
+diff --git a/tests/conftest.py b/tests/conftest.py
+index ed695dc..c0b61af 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -4,6 +4,7 @@ Plain helpers (``run_cli``, ``snapshot``, ``all_files``) are importable with
+ ``from conftest import ...``; ``make_theatre`` is a fixture because it needs ``tmp_path``.
+ """
+ 
++import os
+ import subprocess
+ import sys
+ from collections.abc import Callable
+@@ -26,13 +27,18 @@ class CliResult:
+     err: str
+ 
+ 
+-def run_cli(*args: str, cwd: Path | None = None) -> CliResult:
+-    """Run ``python -m troupe *args`` and capture output without newline translation."""
++def run_cli(*args: str, cwd: Path | None = None, env: dict[str, str] | None = None) -> CliResult:
++    """Run ``python -m troupe *args`` and capture output without newline translation.
++
++    ``TROUPE_THEATRE`` is removed from the inherited environment; ``env`` entries are added on top.
++    """
++    child_env = {k: v for k, v in os.environ.items() if k != "TROUPE_THEATRE"} | (env or {})
+     completed = subprocess.run(
+         [sys.executable, "-m", "troupe", *args],
+         capture_output=True,
+         text=False,
+         cwd=cwd,
++        env=child_env,
+         check=False,
+     )
+     return CliResult(
+diff --git a/tests/integration/test_cli_basics.py b/tests/integration/test_cli_basics.py
+index bd7e7d6..c04d9ed 100644
+--- a/tests/integration/test_cli_basics.py
++++ b/tests/integration/test_cli_basics.py
+@@ -98,6 +98,24 @@ def test_theatre_defaults_to_current_directory(tmp_path: Path) -> None:
+     assert str(tmp_path.resolve() / ".troupe" / "troupe.yml") in result.err
+ 
+ 
++def test_theatre_env_var_is_default_and_option_wins(tmp_path: Path) -> None:
++    from_env = tmp_path / "from-env"
++    from_option = tmp_path / "from-option"
++    from_env.mkdir()
++    from_option.mkdir()
++    env = {"TROUPE_THEATRE": str(from_env)}
++
++    by_env = run_cli("config", "show", "a.b", cwd=tmp_path, env=env)
++    by_option = run_cli(
++        "config", "show", "a.b", "--theatre", str(from_option), cwd=tmp_path, env=env
++    )
++    by_empty = run_cli("config", "show", "a.b", cwd=tmp_path, env={"TROUPE_THEATRE": ""})
++
++    assert str(from_env.resolve() / ".troupe" / "troupe.yml") in by_env.err
++    assert str(from_option.resolve() / ".troupe" / "troupe.yml") in by_option.err
++    assert str(tmp_path.resolve() / ".troupe" / "troupe.yml") in by_empty.err
++
++
+ @pytest.mark.parametrize(
+     "argv_before_theatre, argv_after_theatre",
+     [

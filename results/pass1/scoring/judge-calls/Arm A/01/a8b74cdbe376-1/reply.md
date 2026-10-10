@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["/judge/questions.md:50-57", "/judge/questions.md:13-18", "/judge/transcript.md:57", "/judge/transcript.md:134"], "notes": "The main decision question (Q2) came after the arm read the specs and research.md. It says the contract is silent on each point and gives a recommended cautious default for each, most with a reason (e.g. 'so it never prints a stale value'). It does not set out the alternatives or their consequences, and some items give no reason (`a..b` exits 2; duplicate keys, tags and non-UTF-8 files exit 4), so the product owner had to fall back to generic answers on five of the nine points. Q1 does reach level 4: it rejects alternatives with their consequences and cites a dependency check."}
+```

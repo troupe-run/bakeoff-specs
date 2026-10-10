@@ -1,0 +1,16 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "Should only `set` reject a malformed TROUPE_ACTOR with exit 2, or should every command (`get`, `show`, `history`, `watch`) reject it too?",
+      "reply": "Every command should reject it. The Lineage section says \"A CLI command's actor comes from the `TROUPE_ACTOR` environment variable, `human:<id>` or `agent:<id>` (anything else \u2192 exit 2)\". That rule covers any CLI command, not just `set`. So `get`, `show`, `history` and `watch` must also exit 2 on a malformed TROUPE_ACTOR, with empty stdout and a stderr message, as General \u2192 Exit codes requires. Please make the change.",
+      "escalate": false,
+      "cited": "Lineage (from step 4); General \u2192 Exit codes"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

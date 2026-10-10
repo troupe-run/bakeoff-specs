@@ -1,0 +1,217 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "A",
+        "why": "After the failed loads, .troupe holds only the original troupe.yml, and nocfg/.troupe gained nothing either."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "A",
+        "why": "After the failed loads, .troupe holds only troupe.yml. The only new database is under ok/, where the config loaded successfully."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "A",
+        "why": "After the failed loads, .troupe holds only troupe.yml and no other directory gained files."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "A",
+        "why": "After the failed loads, .troupe holds only troupe.yml and no other directory gained files."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "C",
+        "why": "After the failed loads, .troupe gained an empty events.lock and a 12288-byte events.sqlite."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "B",
+        "why": "After the failed loads, .troupe gained only an empty events.sqlite3.lock, and nocfg/.troupe gained one too."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "retry"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      },
+      {
+        "args": [
+          "--theatre",
+          "nocfg",
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre=nocfg",
+          "retry",
+          "5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "sub",
+          "retry"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "sub",
+          "retry",
+          "5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "robot"
+        }
+      },
+      {
+        "args": [
+          "--theatre",
+          "sub",
+          "config",
+          "get"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "--theatre",
+          "ok",
+          "config",
+          "get",
+          "retry"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "retry: 3\nagents:\n  coder: [unclosed, list\n  reviewer: {model: opus\n",
+      "nocfg/.troupe/README": "no troupe.yml here\n",
+      "ok/.troupe/troupe.yml": "retry: 3\nmodel: opus\n",
+      "sub/.troupe/troupe.yml": "retry: 3\nmodel: opus\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml",
+      "sub/.troupe/troupe.yml",
+      "ok/.troupe/troupe.yml"
+    ],
+    "why": "Shows whether troupe creates a state store (e.g. a history database under .troupe/) when the config can't be loaded (broken YAML at the root, no troupe.yml in nocfg/) or when the arguments are bad (sub/, valid config); ok/ is a control where a successful command does create state"
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "nothing new left in .troupe",
+            "id": "A"
+          },
+          {
+            "description": "only an empty lock file left",
+            "id": "B"
+          },
+          {
+            "description": "a lock file plus a new event database left",
+            "id": "C"
+          }
+        ],
+        "id": "Q1",
+        "text": "state left behind after a failed config load"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Open or create the store only after the configuration loads and arguments are valid",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm E"
+      ]
+    ]
+  ],
+  "sheet_id": "T51",
+  "status": "ok"
+}

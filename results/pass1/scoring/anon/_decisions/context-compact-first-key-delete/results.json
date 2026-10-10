@@ -1,0 +1,472 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.0",
+          "{model: opus, temp: 0.2}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.1",
+          "{model: haiku}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "agents"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# agents roster\nagents:\n  - name: coder   # first key\n    model: opus   # model\n    temp: 0.2\n  - name: reviewer\n    model: sonnet  # keep me\nretry: 3\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.0",
+                "{model: opus, temp: 0.2}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "/theatre/.troupe/troupe.yml: agents.0: this change cannot be written: an entry to remove shares its first line with content that remains\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.1",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "/theatre/.troupe/troupe.yml: agents.1: this change cannot be written: an entry to remove shares its first line with content that remains\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- name: coder\n  model: opus\n  temp: 0.2\n- name: reviewer\n  model: sonnet\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.0.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:52:57.843314Z\", \"reason\": null, \"change\": \"3465d261-5d42-4c6a-9d65-afdaf995195c\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.0.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:52:57.843314Z\", \"reason\": null, \"change\": \"3465d261-5d42-4c6a-9d65-afdaf995195c\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.0.temp\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:52:57.843314Z\", \"reason\": null, \"change\": \"3465d261-5d42-4c6a-9d65-afdaf995195c\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.1.name\", \"old\": null, \"new\": \"reviewer\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:52:57.843314Z\", \"reason\": null, \"change\": \"3465d261-5d42-4c6a-9d65-afdaf995195c\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"agents.1.model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:52:57.843314Z\", \"reason\": null, \"change\": \"3465d261-5d42-4c6a-9d65-afdaf995195c\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Exit 3",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.0",
+                "{model: opus, temp: 0.2}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agents roster\nagents:\n  - model: opus   # model\n    temp: 0.2\n  - name: reviewer\n    model: sonnet  # keep me\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.1",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agents roster\nagents:\n  - model: opus   # model\n    temp: 0.2\n  - model: haiku   # keep me\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- model: opus\n  temp: 0.2\n- model: haiku\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.0.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:00.589950Z\", \"reason\": null, \"change\": \"983f11af-119b-4410-a3fd-021bdb3c7f74\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.0.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:00.589950Z\", \"reason\": null, \"change\": \"983f11af-119b-4410-a3fd-021bdb3c7f74\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.0.temp\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:00.589950Z\", \"reason\": null, \"change\": \"983f11af-119b-4410-a3fd-021bdb3c7f74\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.1.name\", \"old\": null, \"new\": \"reviewer\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:00.589950Z\", \"reason\": null, \"change\": \"983f11af-119b-4410-a3fd-021bdb3c7f74\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"agents.1.model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:00.589950Z\", \"reason\": null, \"change\": \"983f11af-119b-4410-a3fd-021bdb3c7f74\"}\n{\"seq\": 7, \"op\": \"remove\", \"path\": \"agents.0.name\", \"old\": \"coder\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:00.591713Z\", \"reason\": null, \"change\": \"cb1c9e11-35aa-4030-8b56-c78c3e260b11\"}\n{\"seq\": 8, \"op\": \"remove\", \"path\": \"agents.1.name\", \"old\": \"reviewer\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:01.157661Z\", \"reason\": null, \"change\": \"d0857669-e587-4efe-a81e-176dc21fc155\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"agents.1.model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:01.157661Z\", \"reason\": null, \"change\": \"d0857669-e587-4efe-a81e-176dc21fc155\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Pull the next entry up into the dash line",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.0",
+                "{model: opus, temp: 0.2}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agents roster\nagents:\n  - model: opus\n    temp: 0.2\n  - name: reviewer\n    model: sonnet  # keep me\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.1",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agents roster\nagents:\n  - model: opus\n    temp: 0.2\n  - model: haiku\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- model: opus\n  temp: 0.2\n- model: haiku\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.0.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:03.248425Z\", \"reason\": null, \"change\": \"cbcdcc21-c18c-4d84-b64c-ab2ff3c35a01\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.0.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:03.248425Z\", \"reason\": null, \"change\": \"cbcdcc21-c18c-4d84-b64c-ab2ff3c35a01\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.0.temp\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:03.248425Z\", \"reason\": null, \"change\": \"cbcdcc21-c18c-4d84-b64c-ab2ff3c35a01\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.1.name\", \"old\": null, \"new\": \"reviewer\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:03.248425Z\", \"reason\": null, \"change\": \"cbcdcc21-c18c-4d84-b64c-ab2ff3c35a01\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"agents.1.model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:03.248425Z\", \"reason\": null, \"change\": \"cbcdcc21-c18c-4d84-b64c-ab2ff3c35a01\"}\n{\"seq\": 7, \"op\": \"remove\", \"path\": \"agents.0.name\", \"old\": \"coder\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:03.253448Z\", \"reason\": null, \"change\": \"e55d7f34-870d-4b75-a203-130b3eef1a71\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"agents.1.model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:03.816897Z\", \"reason\": null, \"change\": \"d1f4cdec-d1f3-4154-b529-553707656907\"}\n{\"seq\": 9, \"op\": \"remove\", \"path\": \"agents.1.name\", \"old\": \"reviewer\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:03.816897Z\", \"reason\": null, \"change\": \"d1f4cdec-d1f3-4154-b529-553707656907\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.0",
+                "{model: opus, temp: 0.2}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agents roster\nagents:\n  - model: opus   # model\n    temp: 0.2\n  - name: reviewer\n    model: sonnet  # keep me\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.1",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agents roster\nagents:\n  - model: opus   # model\n    temp: 0.2\n  - model: haiku   # keep me\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- model: opus\n  temp: 0.2\n- model: haiku\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.0.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:05.928823Z\", \"reason\": null, \"change\": \"79bbbff0-8fe3-4377-be92-d84e58bc14af\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.0.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:05.928823Z\", \"reason\": null, \"change\": \"79bbbff0-8fe3-4377-be92-d84e58bc14af\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.0.temp\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:05.928823Z\", \"reason\": null, \"change\": \"79bbbff0-8fe3-4377-be92-d84e58bc14af\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.1.name\", \"old\": null, \"new\": \"reviewer\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:05.928823Z\", \"reason\": null, \"change\": \"79bbbff0-8fe3-4377-be92-d84e58bc14af\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"agents.1.model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:05.928823Z\", \"reason\": null, \"change\": \"79bbbff0-8fe3-4377-be92-d84e58bc14af\"}\n{\"seq\": 7, \"op\": \"remove\", \"path\": \"agents.0.name\", \"old\": \"coder\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:05.929079Z\", \"reason\": null, \"change\": \"0bd28b88-efe2-4cbd-8b4a-c100e66a4a1a\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"agents.1.model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:06.403193Z\", \"reason\": null, \"change\": \"ab9519e9-9da3-48fa-b339-868e79be8545\"}\n{\"seq\": 9, \"op\": \"remove\", \"path\": \"agents.1.name\", \"old\": \"reviewer\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:06.403193Z\", \"reason\": null, \"change\": \"ab9519e9-9da3-48fa-b339-868e79be8545\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.0",
+                "{model: opus, temp: 0.2}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agents roster\nagents:\n  - model: opus   # model\n    temp: 0.2\n  - name: reviewer\n    model: sonnet  # keep me\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.1",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agents roster\nagents:\n  - model: opus   # model\n    temp: 0.2\n  - model: haiku   # keep me\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- model: opus\n  temp: 0.2\n- model: haiku\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.0.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:08.250952Z\", \"reason\": null, \"change\": \"3502bed5-43b8-421d-aadf-6d31eefcd39a\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.0.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:08.250952Z\", \"reason\": null, \"change\": \"3502bed5-43b8-421d-aadf-6d31eefcd39a\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.0.temp\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:08.250952Z\", \"reason\": null, \"change\": \"3502bed5-43b8-421d-aadf-6d31eefcd39a\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.1.name\", \"old\": null, \"new\": \"reviewer\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:08.250952Z\", \"reason\": null, \"change\": \"3502bed5-43b8-421d-aadf-6d31eefcd39a\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"agents.1.model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:08.250952Z\", \"reason\": null, \"change\": \"3502bed5-43b8-421d-aadf-6d31eefcd39a\"}\n{\"seq\": 7, \"op\": \"remove\", \"path\": \"agents.0.name\", \"old\": \"coder\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:08.253776Z\", \"reason\": null, \"change\": \"2a98e19a-e421-4a85-ace7-fee9e9068530\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"agents.1.model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:08.766712Z\", \"reason\": null, \"change\": \"edac9921-d75a-4863-9836-5d66e17f667d\"}\n{\"seq\": 9, \"op\": \"remove\", \"path\": \"agents.1.name\", \"old\": \"reviewer\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:08.766712Z\", \"reason\": null, \"change\": \"edac9921-d75a-4863-9836-5d66e17f667d\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.0",
+                "{model: opus, temp: 0.2}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agents roster\nagents:\n  - model: opus\n    temp: 0.2\n  - name: reviewer\n    model: sonnet  # keep me\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.1",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# agents roster\nagents:\n  - model: opus\n    temp: 0.2\n  - model: haiku\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- model: opus\n  temp: 0.2\n- model: haiku\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.0.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:10.892517Z\", \"reason\": null, \"change\": \"9228228a-e2fb-43eb-a899-bc3c38b31384\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.0.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:10.892517Z\", \"reason\": null, \"change\": \"9228228a-e2fb-43eb-a899-bc3c38b31384\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.0.temp\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:10.892517Z\", \"reason\": null, \"change\": \"9228228a-e2fb-43eb-a899-bc3c38b31384\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.1.name\", \"old\": null, \"new\": \"reviewer\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:10.892517Z\", \"reason\": null, \"change\": \"9228228a-e2fb-43eb-a899-bc3c38b31384\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"agents.1.model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:53:10.892517Z\", \"reason\": null, \"change\": \"9228228a-e2fb-43eb-a899-bc3c38b31384\"}\n{\"seq\": 7, \"op\": \"remove\", \"path\": \"agents.0.name\", \"old\": \"coder\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:10.897559Z\", \"reason\": null, \"change\": \"d26d12ca-b536-4887-84b2-74ae9b127f53\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"agents.1.model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:11.478802Z\", \"reason\": null, \"change\": \"725f5df0-9917-4977-84f6-02923e4975ad\"}\n{\"seq\": 9, \"op\": \"remove\", \"path\": \"agents.1.name\", \"old\": \"reviewer\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:53:11.478802Z\", \"reason\": null, \"change\": \"725f5df0-9917-4977-84f6-02923e4975ad\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

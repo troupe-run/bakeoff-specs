@@ -1,0 +1,295 @@
+[
+  {
+    "decision": "A hand edit that makes the configuration unloadable while `watch` runs does not stop `watch`. It writes one stderr line naming the file, records nothing, and reconciles once the files load again (D-1).",
+    "options": [
+      "Keep watching: report on stderr, record nothing, reconcile once loadable again",
+      "Stop: exit 4 naming the file, like other commands",
+      "Something else"
+    ],
+    "reason": "The contract says `watch` runs until SIGINT/SIGTERM and then exits 0. Recording nothing while the files can't load cannot corrupt the history, and the next successful reconcile picks up every edit, so nothing is lost (TROUPE-002). Answered by fallback: 'make the safest assumption'.",
+    "recorded_at": "spec/troupe-config-sync-files-01M3ZT6R/spec.md:20; decisions/DM-01M3ZT7G1XJ2P4KVP6JA8HHEEP.md; questions.md Scored run Q1"
+  },
+  {
+    "decision": "`watch` writes nothing to stdout except the single `watching <dir>` line (D-2).",
+    "options": [
+      "Only `watching <dir>` on stdout",
+      "Also print each event as JSON Lines"
+    ],
+    "reason": "Out of contract; kept minimal. The contract's only stdout promise is that one line.",
+    "recorded_at": "spec/troupe-config-sync-files-01M3ZT6R/spec.md:21"
+  },
+  {
+    "decision": "On a theatre that has never been imported, `watch` imports first, before printing the line (D-3).",
+    "options": [],
+    "reason": "'The first command run against a theatre imports it' (step-1 contract).",
+    "recorded_at": "spec/troupe-config-sync-files-01M3ZT6R/spec.md:22"
+  },
+  {
+    "decision": "If the configuration cannot load when `watch` starts, it exits 4 with empty stdout and never prints `watching` (D-4).",
+    "options": [],
+    "reason": "The general exit codes, and 'the line is a promise'.",
+    "recorded_at": "spec/troupe-config-sync-files-01M3ZT6R/spec.md:23"
+  },
+  {
+    "decision": "`history` imports a never-imported theatre but never reconciles (D-5).",
+    "options": [],
+    "reason": "Stated in the contract's history and Sync with files sections.",
+    "recorded_at": "spec/troupe-config-sync-files-01M3ZT6R/spec.md:24"
+  },
+  {
+    "decision": "Within one reconcile, `set` events come first in document order, then `remove` events in recorded order, reusing the ordering of `leaves.diff` (D-6).",
+    "options": [],
+    "reason": "The contract states no order; reusing the existing order keeps the decision in one place (TROUPE-007).",
+    "recorded_at": "spec/troupe-config-sync-files-01M3ZT6R/spec.md:25"
+  },
+  {
+    "decision": "When a command reconciles first and then fails with exit 3 or 5, the reconcile's events are kept. They are saved in their own save() before the command body runs (D-7).",
+    "options": [],
+    "reason": "The reconcile events describe the files as they really are. This matches step 1, where an import is kept when the command that triggered it fails.",
+    "recorded_at": "spec/troupe-config-sync-files-01M3ZT6R/spec.md:26; research.md:69"
+  },
+  {
+    "decision": "`watching <dir>` echoes the theatre directory as given (the `--theatre` value verbatim, else `$TROUPE_THEATRE`, else os.getcwd()), never a resolved path. FR-009 was updated to say so (D-8).",
+    "options": [
+      "Echo as given",
+      "Print the resolved path"
+    ],
+    "reason": "With `--theatre` the contract writes the same `<dir>` in both places. Resolving would change it (macOS /var → /private/var).",
+    "recorded_at": "spec/troupe-config-sync-files-01M3ZT6R/spec.md:27; transcript.md:28"
+  },
+  {
+    "decision": "Step-1 FR-008/FR-022 and decision DM 01M3XGPT4E0D67ZJY8PT7Z9NAT ('hand edits never produce events') are superseded: reconcile records hand edits as set/remove events.",
+    "options": [],
+    "reason": "Required by the step-2 contract. The files stay the source of truth and reconcile never writes a file.",
+    "recorded_at": "spec/troupe-config-sync-files-01M3ZT6R/spec.md:14"
+  },
+  {
+    "decision": "The concurrency scope is one `watch` plus one other command at a time. Several `watch` processes, or two concurrent `set` commands, remain out of contract (C-003).",
+    "options": [],
+    "reason": "Carries over step-1 C-004.",
+    "recorded_at": "spec/troupe-config-sync-files-01M3ZT6R/spec.md:187"
+  },
+  {
+    "decision": "Write-back suppression and exactly-once recording use a theatre lock plus comparison against the recorded configuration.",
+    "options": [
+      "(A) Theatre lock + compare",
+      "(B) Fingerprint ignore list",
+      "Rely on eventsourcing's optimistic version check alone",
+      "Something else"
+    ],
+    "reason": "Suppression follows from the invariant with no bookkeeping. The owner rejected (B) because it would lose or suppress hand edits. The version-check approach would need a retry loop, which means more code and more failure modes.",
+    "recorded_at": "research.md:7-13; decisions/DM-01M3ZTEW6H2NYB4NYVW9RB3PJ3.md; questions.md Scored run Q3"
+  },
+  {
+    "decision": "The lock is fcntl.flock on an O_RDONLY descriptor of the `.troupe` directory itself: blocking, no timeout, no lock file created.",
+    "options": [
+      "flock on the .troupe directory fd",
+      "A .troupe/lock file",
+      "SQLite BEGIN EXCLUSIVE",
+      "fcntl.lockf (POSIX record locks)"
+    ],
+    "reason": "It creates no file, so existing file-set tests still hold. It works on Linux and macOS, and the kernel releases it if the process dies. A lock file would break two assertions; SQLite can't cover the file write in `set`; lockf is per process and is released when any descriptor of the file is closed.",
+    "recorded_at": "research.md:15-21; src/troupe/lock.py docstring"
+  },
+  {
+    "decision": "`watch` observes files by polling with the stdlib every 0.25 s and comparing bytes, including both root candidates. No new dependency.",
+    "options": [
+      "stdlib byte polling",
+      "watchdog (inotify/FSEvents)",
+      "mtime-only polling",
+      "Reconcile on every tick without checking for changes"
+    ],
+    "reason": "Bytes catch same-size edits and atomic rename saves. watchdog adds a supply-chain dependency and platform-specific backends. mtime misses same-tick edits. Reconciling every tick would repeat errors and take the lock four times a second for nothing.",
+    "recorded_at": "research.md:23-34"
+  },
+  {
+    "decision": "The baseline is built from the exact texts the reconcile's load read, inside the same session, before `watching <dir>` is printed.",
+    "options": [],
+    "reason": "An edit landing after the load but before the line is still detected (NFR-002).",
+    "recorded_at": "research.md:25-28; src/troupe/commands/watch.py:8-10"
+  },
+  {
+    "decision": "The recorded configuration is a `leaves` dict on the ConfigHistory aggregate, maintained in the event-method bodies and rebuilt on replay. No migration and no change to persisted events.",
+    "options": [
+      "Map on the aggregate",
+      "Recompute from records() in reconcile.py",
+      "A separate snapshot table"
+    ],
+    "reason": "eventsourcing replays the event bodies, so existing histories work without migration. Recomputing elsewhere would duplicate event semantics (TROUPE-007); a snapshot table adds persisted state with a consistency risk.",
+    "recorded_at": "research.md:36-42"
+  },
+  {
+    "decision": "Replay tolerates step-1 histories with a LeafRemoved for a path that was never recorded: `leaves.pop(path, None)` instead of `del`.",
+    "options": [
+      "pop(path, None)",
+      "del leaves[path]"
+    ],
+    "reason": "A step-1 `set` diffed against the files, not the history, so such removes exist; replaying them must not fail.",
+    "recorded_at": "data-model.md (commit 5102e12); transcript.md:44,74"
+  },
+  {
+    "decision": "While the configuration can't load, `watch` retries the load on every tick and reports each distinct error message once.",
+    "options": [
+      "Retry every tick and report once per distinct message",
+      "Watch only the paths the failed load tried"
+    ],
+    "reason": "The owner left the stderr frequency to the implementer. Retrying catches a missing include target being created, and one line per distinct problem is informative without flooding.",
+    "recorded_at": "research.md:44-52"
+  },
+  {
+    "decision": "SIGINT/SIGTERM handlers only set a threading.Event. The loop checks it between ticks, so an in-progress reconcile completes; then `watch` exits 0. The previous handlers are restored afterwards.",
+    "options": [],
+    "reason": "Avoids KeyboardInterrupt tracebacks and non-zero exits; exits in well under 2 s.",
+    "recorded_at": "research.md:54-57; src/troupe/commands/watch.py:57-65"
+  },
+  {
+    "decision": "`open_session(theatre, *, reconcile)` is the single place for reconcile timing: lock → re-locate → load → open store → import or reconcile → yield, with the command's work inside the lock. `reconcile` is a required keyword.",
+    "options": [
+      "open_session(theatre_dir, reconcile)",
+      "open_session(theatre: Theatre, *, reconcile) with re-locate under the lock"
+    ],
+    "reason": "One place decides reconcile timing. Re-locating under the lock handles a root file renamed in between.",
+    "recorded_at": "research.md:59-71; data-model.md (commit 5102e12)"
+  },
+  {
+    "decision": "The CLI stays the only writer of stdout and stderr. `watch` receives announce/report callbacks.",
+    "options": [],
+    "reason": "Keeps step 1's 'stdout written in one place' discipline, and lets the line be flushed exactly when `watch` is ready.",
+    "recorded_at": "research.md:78-81"
+  },
+  {
+    "decision": "The two superseded step-1 tests are renamed and rewritten, not deleted.",
+    "options": [],
+    "reason": "TROUPE-008/009: spec, code and tests change together, and a superseded behaviour's test must not silently disappear.",
+    "recorded_at": "research.md:83-88"
+  },
+  {
+    "decision": "Split the work into 4 sequential work packages (WP01 lock+leaves, WP02 reconcile, WP03 watch, WP04 acceptance tests), all using the python-pedro profile.",
+    "options": [],
+    "reason": "The dependency chain is linear.",
+    "recorded_at": "tasks.md; questions.md Scored run Q5"
+  },
+  {
+    "decision": "Leave an uncommitted status.json out of the commit during tasks.",
+    "options": [],
+    "reason": "A project memory says committing it trips method's lane guards.",
+    "recorded_at": "transcript.md:57"
+  },
+  {
+    "decision": "Repoint the ~/troupe-orch helper scripts at this mission by default, keeping env-var overrides.",
+    "options": [],
+    "reason": "They were hard-wired to the step-1 mission.",
+    "recorded_at": "transcript.md:66-67"
+  },
+  {
+    "decision": "Change 'test #13' to 'test 13' in the analysis report to unblock approval.",
+    "options": [],
+    "reason": "method read '#13' as a GitHub issue reference.",
+    "recorded_at": "transcript.md:90-93"
+  },
+  {
+    "decision": "Pass WP02's reviewer note (`history` exit 4 claimed in a comment but never asserted) to WP04 as an out-of-map one-assertion edit to test_reconcile_first.py.",
+    "options": [],
+    "reason": "Reviewer follow-up; the assertion was missing.",
+    "recorded_at": "transcript.md:145,223"
+  },
+  {
+    "decision": "While the files are broken, `history` exits 4, because it loads in order to import; the tests read `history` only after the fix.",
+    "options": [],
+    "reason": "Step-1 FR-002/FR-006: any subcommand exits 4 when the configuration can't load.",
+    "recorded_at": "transcript.md:122,134,164"
+  },
+  {
+    "decision": "Reject WP04 in cycle 1 and add a no-watch black-box race test: 30 rounds, each with 3 `show` processes started together via Popen, asserting exactly one event per round.",
+    "options": [
+      "30 rounds (~17 s, ~0.1% miss)",
+      "20 rounds (~11 s, ~1.5% miss)"
+    ],
+    "reason": "No test failed when the session lock was removed; `watch` always reconciled before the subprocesses started.",
+    "recorded_at": "tasks/WP04-includes-and-write-back-acceptance/review-feedback-1.md"
+  },
+  {
+    "decision": "Hand edits in race tests are saved atomically (temp file + rename), and race tests assert multisets or every allowed ordering.",
+    "options": [],
+    "reason": "A reader never sees a half-written file; race outcomes depend on who takes the lock first.",
+    "recorded_at": "tests/integration/test_watch_set.py docstring (transcript.md:220)"
+  },
+  {
+    "decision": "Wait windows: a 2.5 s QUIET window means 'nothing happened', and `recorded_within` uses the 2 s contract deadline.",
+    "options": [],
+    "reason": "Longer than the 2 s contract, so 'nothing happened' means nothing will.",
+    "recorded_at": "tests/integration/test_watch.py (transcript.md:160)"
+  },
+  {
+    "decision": "Rewrite quickstart.md to be portable: mktemp, perl -pi, kill -INT $!.",
+    "options": [],
+    "reason": "Reviewer note: sed -i is GNU-only, a fixed /tmp/t goes stale, and %1 job control fails in scripts.",
+    "recorded_at": "transcript.md:276-282; review-feedback-1.md:31"
+  },
+  {
+    "decision": "After `method merge` failed, bring src/, tests/ and the acceptance matrix over in one manual commit (8e63090) and do not retry the merge.",
+    "options": [
+      "Manual copy",
+      "Retry method merge"
+    ],
+    "reason": "The code was identical to the reviewed lane-d code and the gates passed; a retry can only fail the same way.",
+    "recorded_at": "research.md:90-95"
+  },
+  {
+    "decision": "After the retried merge reverted WP04's status, force WP04 back to done.",
+    "options": [],
+    "reason": "Its code is already on main.",
+    "recorded_at": "research.md:96; questions.md Scored run Q9"
+  },
+  {
+    "decision": "Commit status.json on main (fixing an empty snapshot with the materialized one).",
+    "options": [],
+    "reason": "Step 1 tracked status.json on main, so this keeps the two steps consistent.",
+    "recorded_at": "transcript.md:319-330"
+  },
+  {
+    "decision": "Run acceptance with --lenient on the feat branch, then fast-forward main.",
+    "options": [
+      "feat branch + --lenient",
+      "Create a real docs/ directory"
+    ],
+    "reason": "The project has no docs/ and the charter doesn't ask for one. Acceptance must run on the feat or mission branch.",
+    "recorded_at": "questions.md Scored run Q7/Q8"
+  },
+  {
+    "decision": "Keep the lane worktrees and branches after delivery.",
+    "options": [],
+    "reason": "In case the merge needed recovering.",
+    "recorded_at": "questions.md Scored run Q6"
+  },
+  {
+    "decision": "Leave the all-or-nothing behaviour of a signal-interrupted reconcile untested from outside, and record that in the acceptance matrix.",
+    "options": [],
+    "reason": "It relies on the history's single atomic save.",
+    "recorded_at": "questions.md Scored run Q6; acceptance-matrix.json"
+  },
+  {
+    "decision": "If stop is already set after the startup reconcile, `watch` returns without announcing the line.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Files that are absent or unreadable (any OSError) map to None in the baseline; a located root that is a symlink maps to its resolved loaded bytes.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "The `stop` parameter of `watch()` is optional and injectable; with an injected event, no signal handlers are installed.",
+    "options": [],
+    "reason": "Injected events need no main thread.",
+    "recorded_at": "src/troupe/commands/watch.py:48-49"
+  },
+  {
+    "decision": "watched_files is keyed by resolved path, and its bytes are the loaded text re-encoded as UTF-8.",
+    "options": [],
+    "reason": "SourceFile compares by identity, and the loader decodes strict UTF-8 without newline translation.",
+    "recorded_at": "src/troupe/reconcile.py docstring (transcript.md:115)"
+  }
+]

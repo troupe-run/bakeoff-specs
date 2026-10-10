@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\nname: demo  # project\nmatrix:\n  - - a\n    - b\n  - - c\ntools:\n  -\n    grep\n  - sed",
+        "input": "`config get name`, then `config get matrix.0.1`",
+        "observed": true,
+        "results": {
+          "1": "prints `demo`, then `b` (exit 0 both times)",
+          "2": "prints `demo`, then `b` (exit 0 both times)"
+        }
+      },
+      {
+        "before": "tools:\n  -\n    grep\n  - sed",
+        "input": "`config set tools.0 rg` (the item sits under a lone `-`)",
+        "observed": true,
+        "results": {
+          "1": "exit 0. In the file, `grep` becomes `rg` and the lone `-` layout stays as it was",
+          "2": "exit 0. In the file, `grep` becomes `rg` and the lone `-` layout stays as it was"
+        }
+      },
+      {
+        "before": "matrix:\n  - - a\n    - b\n  - - c",
+        "input": "`config set matrix.1.1 d` (adds to the nested `- - c` list)",
+        "observed": true,
+        "results": {
+          "1": "exit 0. The file gets a new line `    - d` under `- - c`, and the comment on `name` is kept",
+          "2": "exit 0. The file gets a new line `    - d` under `- - c`, and the comment on `name` is kept"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show`",
+        "observed": true,
+        "results": {
+          "1": "exit 0. Prints the config with the comment removed and the lists in normal form: `tools:` / `  - rg` / `  - sed`",
+          "2": "exit 0. Prints the config with the comment removed and the lists in normal form: `tools:` / `  - rg` / `  - sed`"
+        }
+      }
+    ],
+    "in_practice": "Route 1 is meant to refuse with exit 4 any list whose dashes don't line up with the parsed items. This file has nested and lone-dash lists, and route 1 did not refuse it. All five arms on route 2 and the one arm on route 1 produced exactly the same output and the same file changes. Nothing was tested that actually triggers the refusal, so this run doesn't show what happens when it does.",
+    "stakes": "The question is whether a config file with an unusual list layout gets loaded and edited, or refused with exit 4. Examples of such layouts are nested `- - a` items, or a lone `-` with its item on the next line. In this test the two routes behaved the same: neither one refused the file, and both edited it correctly.",
+    "tradeoff": "Route 1: an exit-4 refusal that never fired here, and could block files a user has hand-formatted. Route 2: no guard at all against a layout it misreads."
+  },
+  "plan_why": "The config file is valid YAML but uses unusual dash layouts: a nested list written as '- - a' and a dash alone on its line with the item below it. Route 1 refuses to load it (exit 4) even for a plain get of an unrelated key. Route 2 loads it and then has to read, change and append to those lists in place.",
+  "routes": [
+    [
+      "Block sequences whose dash layout does not match the parsed items exit 4",
+      [
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

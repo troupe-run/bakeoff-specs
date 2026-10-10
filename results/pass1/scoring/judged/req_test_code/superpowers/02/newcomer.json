@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "repo/README.md:16-17",
+    "repo/docs/decisions.md:11-15",
+    "repo/tests/test_sync.py:9",
+    "repo/tests/test_sync.py:16",
+    "repo/tests/test_sync.py:76",
+    "repo/tests/test_sync.py:122",
+    "repo/tests/test_sync.py:155"
+  ],
+  "notes": "The step-2 behaviour (reconcile before every command, `watch`, the flock lock, polling) is described in prose in README.md:16-17 and decisions.md:11-15, and you can match it to tests by topic: the sections 'reconcile on every command' and 'watch' in test_sync.py and test names like test_watch_survives_broken_edit. There are no requirement IDs or explicit references from spec to test or test to code, so getting to the implementation (store.py and cli.py) means searching.",
+  "raw": "{\"score\": 2, \"evidence\": [\"repo/README.md:16-17\", \"repo/docs/decisions.md:11-15\", \"repo/tests/test_sync.py:9\", \"repo/tests/test_sync.py:16\", \"repo/tests/test_sync.py:76\", \"repo/tests/test_sync.py:122\", \"repo/tests/test_sync.py:155\"], \"notes\": \"The step-2 behaviour (reconcile before every command, `watch`, the flock lock, polling) is described in prose in README.md:16-17 and decisions.md:11-15, and you can match it to tests by topic: the sections 'reconcile on every command' and 'watch' in test_sync.py and test names like test_watch_survives_broken_edit. There are no requirement IDs or explicit references from spec to test or test to code, so getting to the implementation (store.py and cli.py) means searching.\"}",
+  "score": 2,
+  "status": "ok"
+}

@@ -1,0 +1,242 @@
+diff --git a/README.md b/README.md
+index 7dbfead..ba15fdf 100644
+--- a/README.md
++++ b/README.md
+@@ -3,14 +3,16 @@
+ AI orchestration tool. Step 1: the configuration subsystem.
+ 
+ ```
+-uv run troupe config show PATH [--theatre DIR]
++uv run troupe config get PATH [--theatre DIR]
++uv run troupe config show [PATH] [--sources] [--theatre DIR]
+ uv run troupe config set PATH VALUE [--theatre DIR]
+ uv run troupe config history [PATH] [--theatre DIR]
+ uv run troupe config watch [--theatre DIR]
+ ```
+ 
+ Configuration lives in `<theatre>/.troupe/troupe.yml` (or `.yaml`); `file:` strings include other files.
+-`set` writes changes back byte-surgically into whichever file holds the value. Every change is recorded
++`get` prints a single value; `show` prints a value or a whole section as YAML (includes resolved), and
++with `--sources` tags each scalar with `# from <file>` (relative to the theatre). `set` writes changes back byte-surgically into whichever file holds the value. Every change is recorded
+ as events (via `eventsourcing`, SQLite at `.troupe/events.sqlite`).
+ 
+ Files and the recorded configuration are kept in sync: every command except `history` first *reconciles*
+@@ -18,7 +20,7 @@ Files and the recorded configuration are kept in sync: every command except `his
+ its includes and reconciles on change. Commands serialise on `.troupe/events.lock`, so a `set`'s own
+ write-back is already recorded by the time `watch` sees it and yields no further events.
+ 
+-Layout: `yamldoc.py` (position-aware parse + include view), `render.py` (scalar/collection rendering),
++Layout: `yamldoc.py` (position-aware parse + include view), `render.py` (scalar/collection rendering, `show` output),
+ `editor.py` (write-back), `store.py` (event-sourced projection),
+ `sync.py` (lock, reconcile, watch), `cli.py`.
+ 
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index 17f5ceb..e637233 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -12,6 +12,7 @@ from ruamel.yaml.nodes import SequenceNode
+ 
+ from .editor import Editor
+ from .errors import LoadError, PathError, TroupeError, UsageError, WriteRefused
++from .render import Shower
+ from .yamldoc import VNode, compose, construct, leaves, values_equal
+ 
+ 
+@@ -28,8 +29,11 @@ def build_parser() -> argparse.ArgumentParser:
+     sub = p.add_subparsers(dest="command", required=True, parser_class=_Parser)
+     config = sub.add_parser("config", parents=[theatre], help="inspect and change configuration")
+     csub = config.add_subparsers(dest="action", required=True, parser_class=_Parser)
+-    show = csub.add_parser("show", parents=[theatre], help="print a setting")
+-    show.add_argument("path")
++    get = csub.add_parser("get", parents=[theatre], help="print a setting's value")
++    get.add_argument("path")
++    show = csub.add_parser("show", parents=[theatre], help="print a setting or section as YAML")
++    show.add_argument("path", nargs="?")
++    show.add_argument("--sources", action="store_true", help="say which file each value comes from")
+     st = csub.add_parser("set", parents=[theatre], help="change a setting")
+     st.add_argument("path")
+     st.add_argument("value")
+@@ -90,6 +94,11 @@ def lookup(root: VNode, segs: list[str]) -> VNode:
+     return node
+ 
+ 
++def source_of(v: VNode, theatre: str) -> str:
++    path = v.include_path if v.include else v.doc.path
++    return os.path.relpath(path, theatre).replace(os.sep, "/")
++
++
+ def out(text: str) -> None:
+     sys.stdout.buffer.write(text.encode("utf-8"))
+ 
+@@ -120,13 +129,24 @@ def run(args: argparse.Namespace) -> int:
+ 
+ def act(args: argparse.Namespace, path_segs: list[str] | None, value: Any, editor: Editor, root: VNode | None, app: Any, config: Any) -> int:
+ 
+-    if args.action == "show":
++    if args.action == "get":
+         node = lookup(root, path_segs)
+         if node.kind != "scalar":
+-            raise PathError(f"{args.path}: is a {'mapping' if node.kind == 'map' else 'list'}, not a scalar")
++            kind = "mapping" if node.kind == "map" else "list"
++            raise PathError(f"{args.path}: is a {kind}, not a scalar (use `troupe config show {args.path}`)")
+         out(format_scalar(node.value))
+         return 0
+ 
++    if args.action == "show":
++        node = lookup(root, path_segs) if path_segs is not None else root
++        if node.kind == "scalar" and not args.sources:
++            out(format_scalar(node.value))
++            return 0
++        theatre = os.path.dirname(os.path.dirname(editor.config_path))
++        source = (lambda v: source_of(v, theatre)) if args.sources else None
++        out(Shower(source).document(node))
++        return 0
++
+     if args.action == "history":
+         for change in config.changes:
+             p = change["path"]
+diff --git a/src/troupe/render.py b/src/troupe/render.py
+index 71db24d..5251364 100644
+--- a/src/troupe/render.py
++++ b/src/troupe/render.py
+@@ -4,7 +4,7 @@ from __future__ import annotations
+ 
+ import math
+ import unicodedata
+-from typing import Any
++from typing import Any, Callable
+ 
+ from ruamel.yaml.error import YAMLError
+ from ruamel.yaml.nodes import MappingNode, ScalarNode, SequenceNode
+@@ -221,3 +221,75 @@ class Renderer:
+             for v in value:
+                 lines += self.item(v, indent)
+         return lines
++
++
++# --------------------------------------------------------------------------
++# Showing a configuration view as YAML
++
++
++def _text_literal(value: str, indent: int) -> tuple[str, list[str]] | None:
++    """A literal block for text without stray control characters; line breaks are normalised."""
++    value = value.replace("\r\n", "\n")
++    if any((is_control(c) and c not in "\t\n") or c in "\u2028\u2029\ufeff" for c in value):
++        return None
++    body = value.rstrip("\n")
++    t = len(value) - len(body)
++    if not body:
++        return ("|-" if t == 0 else "|+"), [""] * t
++    lines = body.split("\n")
++    first = next((i for i, ln in enumerate(lines) if ln.strip(" ")), len(lines) - 1)
++    explicit = any(ln.startswith(" ") for ln in lines[: first + 1])
++    return "|" + ("2" if explicit else "") + chomp_for(value), literal_lines(value, indent + 2)
++
++
++class Shower:
++    """Renders a view node as block-style YAML, optionally tagging scalars with their source file."""
++
++    def __init__(self, source: Callable[[Any], str] | None = None):
++        self.source = source
++
++    def tag(self, v: Any) -> str:
++        return f" # from {self.source(v)}" if self.source else ""
++
++    def scalar_head(self, v: Any, indent: int) -> tuple[str, list[str]]:
++        value = v.value
++        if isinstance(value, str) and (v.include == "text" or ("\n" in value and "\r" not in value)):
++            lit = _text_literal(value, indent)
++            if lit is not None:
++                return lit
++        if is_multiline(value):
++            return double(value), []
++        return scalar(value, None, False), []
++
++    def after_indicator(self, v: Any, indent: int, compact: bool) -> tuple[str, list[str]]:
++        if v.kind != "scalar":
++            if not v.children:
++                return ("{}" if v.kind == "map" else "[]"), []
++            if compact:
++                lines = self.block(v, indent + 2)
++                return lines[0][indent + 2 :], lines[1:]
++            return "", self.block(v, indent + 2)
++        head, rest = self.scalar_head(v, indent)
++        return head + self.tag(v), rest
++
++    def block(self, v: Any, indent: int) -> list[str]:
++        lines: list[str] = []
++        if v.kind == "map":
++            for k, c in v.children.items():
++                head, rest = self.after_indicator(c, indent, False)
++                lines.append(" " * indent + scalar(k, None, False) + ":" + (" " + head if head else ""))
++                lines += rest
++        else:
++            for c in v.children:
++                head, rest = self.after_indicator(c, indent, True)
++                lines.append(" " * indent + "-" + (" " + head if head else ""))
++                lines += rest
++        return lines
++
++    def document(self, v: Any) -> str:
++        if v.kind == "scalar" or not v.children:
++            head, rest = self.after_indicator(v, 0, False)
++            lines = [head] + rest
++        else:
++            lines = self.block(v, 0)
++        return "".join(ln + "\n" for ln in lines)
+diff --git a/tests/test_config.py b/tests/test_config.py
+index fa015bc..1bfd3a3 100644
+--- a/tests/test_config.py
++++ b/tests/test_config.py
+@@ -69,15 +69,46 @@ def set_ok(theatre, path, value):
+         ("flow.y.1", b"2\n"),
+     ],
+ )
+-def test_show(theatre, path, out):
+-    r = troupe(theatre, "show", path)
+-    assert (r.returncode, r.stdout) == (0, out)
++def test_get(theatre, path, out):
++    for action in ("get", "show"):
++        r = troupe(theatre, action, path)
++        assert (r.returncode, r.stdout) == (0, out)
+ 
+ 
+ @pytest.mark.parametrize("path,code", [("agents", 5), ("tags", 5), ("nope", 5), ("name.x", 5)])
+-def test_show_errors(theatre, path, code):
+-    r = troupe(theatre, "show", path)
++def test_get_errors(theatre, path, code):
++    r = troupe(theatre, "get", path)
+     assert r.returncode == code and r.stdout == b"" and path.encode() in r.stderr
++    assert (b"config show" in r.stderr) == (path in ("agents", "tags"))
++    if path.startswith("n"):
++        assert troupe(theatre, "show", path).returncode == code
++
++
++def test_show_sections(theatre):
++    from ruamel.yaml import YAML
++    r = troupe(theatre, "show", "agents")
++    assert r.returncode == 0
++    assert r.stdout.decode() == (
++        "coder:\n  model: sonnet\n  tools:\n    - read\n    - write\n"
++        "reviewer:\n  model: opus\n  prompt: |\n    Review.\n    Be nice.\n"
++    )
++    whole = YAML(typ="safe").load(troupe(theatre, "show").stdout)
++    assert whole["flow"] == {"x": 1, "y": [1, 2]} and whole["quoted"] == "single"
++    assert whole["agents"]["coder"]["tools"] == ["read", "write"]
++
++
++def test_show_sources(theatre):
++    r = troupe(theatre, "show", "--sources")
++    assert r.returncode == 0
++    lines = r.stdout.decode().splitlines()
++    assert "name: demo # from .troupe/troupe.yml" in lines
++    assert "    model: sonnet # from .troupe/agents/coder.yaml" in lines
++    assert "      - write # from .troupe/agents/coder.yaml" in lines
++    assert "    prompt: | # from .troupe/agents/prompt.md" in lines
++    assert "agents:" in lines and "      Be nice." in lines
++    assert troupe(theatre, "show", "tags", "--sources").stdout == (
++        b"- a # from .troupe/troupe.yml\n- b # from .troupe/troupe.yml\n"
++    )
+ 
+ 
+ def test_set_keeps_comment_column(theatre):

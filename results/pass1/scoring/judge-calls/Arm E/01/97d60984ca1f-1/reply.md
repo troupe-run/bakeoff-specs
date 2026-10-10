@@ -1,0 +1,1 @@
+{"score": null, "status": "not_applicable", "evidence": ["/judge/questions.md:3-30", "/judge/transcript.md:39"], "notes": "The arm's only message at this step was a step_done completion report (transcript line 39). It explains decisions already made and asks no question that needs an answer, so research before questions cannot be scored."}

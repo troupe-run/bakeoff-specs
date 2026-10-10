@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "model: opus\ntemperature: 0.2  # same-size edits below\nagents:\n  coder: file:agents/coder.yaml\nlimits: file:limits.yaml",
+        "input": "`config watch` running; edit `.troupe/troupe.yml` by hand to change `temperature: 0.2` to `temperature: 0.3` (same file size), then run `config history`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: the edit is caught. History entry 6 is `\"op\": \"set\", \"path\": \"temperature\", \"old\": 0.2, \"new\": 0.3, \"via\": \"file\"`. Watch prints nothing about the change."
+        }
+      },
+      {
+        "before": "max_tokens: 1000",
+        "input": "`config watch` running; edit `.troupe/limits.yaml` by hand to change `max_tokens: 1000` to `max_tokens: 2000` (a file pulled in through `limits: file:limits.yaml`)",
+        "observed": true,
+        "results": {
+          "1": "All six arms: the edit is caught. History entry 7 is `\"path\": \"limits.max_tokens\", \"old\": 1000, \"new\": 2000, \"via\": \"file\"`."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config watch` running; save `.troupe/troupe.yml` again with exactly the content it already has",
+        "observed": true,
+        "results": {
+          "1": "All six arms: no history entry is added. The history has only the 5 import entries plus the two real changes."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config watch`, then Ctrl-C (SIGINT)",
+        "observed": true,
+        "results": {
+          "1": "Four arms: exit 0 on Ctrl-C. Two arms: exit 137, meaning they did not stop on Ctrl-C and had to be killed. In every arm the only output is the start line. Four arms print `watching /theatre` (absolute path) and two print `watching .`; this split does not match the Ctrl-C split."
+        }
+      }
+    ],
+    "in_practice": "The test also tried to repoint the symlink `.troupe/agents/coder.yaml` from `coder-v1.yaml` to `coder-v2.yaml`. The harness's own symlink step failed with exit 1 (\".troupe/agents/coder.yaml already exists\"), so the link never changed. As a result, no arm recorded a change to `agents.coder.retries`, and the results say nothing about whether watch notices a symlink being repointed.",
+    "stakes": "With `config watch` running, a hand edit to the config files should show up in the history as a change, even when the edit keeps the file the same size. The watcher should also stop cleanly when you press Ctrl-C.",
+    "tradeoff": "Route 1 needs no extra library and catches same-size edits, at the cost of rereading every watched file every 0.1–0.25 s."
+  },
+  "plan_why": "While watch runs, four kinds of change are made: a same-size in-place edit of troupe.yml, a replace-by-new-file (a symlinked include re-pointed to a newly written file), a touch that rewrites identical bytes, and an edit to a plain included file. After stopping watch, history shows which of these became 'file' events and that the touch produced none.",
+  "routes": [
+    [
+      "Poll file bytes with the stdlib every 0.1-0.25 s; no watcher library, no mtime",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

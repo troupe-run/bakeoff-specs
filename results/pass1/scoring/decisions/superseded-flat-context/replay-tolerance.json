@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "a:\n  b: 1\n  c: 2  # keep\ne: {}\nl: []\nname: demo",
+        "input": "`config set a 5`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; file becomes `a: 5` and the `# keep` comment is lost",
+          "2": "four arms: exit 0, `a: 5`, comment lost; one arm: exit 0, `a: 5  # keep` (comment kept)"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set e 7` then `config set a \"{x: 1}\"` then `config get a.x`",
+        "observed": true,
+        "results": {
+          "1": "file has `e: 7` and `a:` / `  x: 1`; `get a.x` prints `1`",
+          "2": "all five arms: same file and `get a.x` prints `1`; the comment-keeping arm writes `a:    # keep` / `  x: 1`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history` after the commands above",
+        "observed": true,
+        "results": {
+          "1": "imports a.b, a.c, name; then `set a 5`, `remove a.b`, `remove a.c` (parent set logged before the child removes); `set e 7`; then `set a.x 1` followed by `remove a` (old 5)",
+          "2": "four arms: same order as route 1; one arm: `remove a.b`, `remove a.c` before `set a 5`, and `remove a` before `set a.x 1`"
+        }
+      }
+    ],
+    "in_practice": "Every arm on both routes gave the same exit codes, files and `get` output, apart from one route-2 arm that kept the comment. Route 1 and four of the five route-2 arms log a parent's new value before removing its old children, so replaying those logs in order produces removes for paths that are already gone. Route 1 is built to ignore those removes, but no replay was actually run here, so how each route handles those removes was not observed. The route-2 arm that logs removes first never produces such events.",
+    "stakes": "When a whole section is replaced by a single value (or the reverse), the history log decides what a later replay rebuilds. Here that means the events written for `a` and its children `a.b` and `a.c`. If removes of paths that no longer exist are not handled, replaying old history could fail or rebuild the wrong config.",
+    "tradeoff": "Route 1 has to ignore removes of missing paths, which could also hide a remove that really is wrong. Route 2 never considered this case, so whether replay fails or silently skips them was not tested, and its arms produced two different log orders."
+  },
+  "plan_why": "Replaces a mapping and an empty mapping with scalars and back, which can record remove events for paths that were never leaves. Later commands then rebuild the configuration from those events: route 1 skips the unknown paths, while an implementation without that guard may crash (non-zero exit or traceback) or report wrong values or history.",
+  "routes": [
+    [
+      "pop(path, None)",
+      [
+        "Arm C"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

@@ -1,0 +1,5 @@
+```json
+{"score": null, "status": "not_applicable", "evidence": ["/judge/questions.md:3-24 (Q1 is a next_command handoff: 'No open questions… I picked the option that can't lose data… D-1 to D-9')", "/judge/questions.md:90-120 (Q4 and Q11 are step_done reports, not questions)", "/judge/transcript.md:6 (checklist note: open points 'resolved conservatively… none needed a product-owner question')", "/judge/transcript.md:141 (T053 settled from Constitution V, with no question to the PO)"]}
+```
+
+Every entry in questions.md is a status handoff (next_command or step_done) ending in a suggested next command. Arm X never asked the product owner a clarifying or decision question. It settled the open points itself, using the constitution and its library probes (transcript lines 6, 13-17 and 141), so there is no question whose prior research can be judged.

@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["/judge/repo/tests/test_config.py:286", "/judge/repo/tests/test_config.py:310-320", "/judge/repo/tests/test_config.py:230", "/judge/repo/README.md:23-28", "/judge/repo/README.md:30-32"], "notes": "The only requirement text is the README. I sampled test_lineage, test_bad_actor and test_watch. Each one matches a README paragraph only by topic: actor/via/change lineage, TROUPE_ACTOR exiting with code 2, and watch reconciling files. No IDs, references or comments link any test to a requirement. To get from a test to its code you need the README's layout list or a search, because every test calls the CLI as a subprocess rather than importing lineage.py or sync.py directly."}
+```

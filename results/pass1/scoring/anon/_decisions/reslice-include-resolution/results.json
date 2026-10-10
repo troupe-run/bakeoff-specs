@@ -1,0 +1,529 @@
+{
+  "outcomes": [
+    {
+      "outcome": "1",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "a:\n  inner: |\n    text from .troupe/sub/b.txt\nup: |\n  k: v\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "a.inner"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "text from .troupe/sub/b.txt\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "up"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "k: v\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "loop",
+            "file:loop.yaml"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "/theatre/.troupe/troupe.yml: loop: written value cannot be read back: /theatre/.troupe/sub/../loop.yaml: include cycle: /theatre/.troupe/loop.yaml -> /theatre/.troupe/sub/../loop.yaml\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "a.inner"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "text from .troupe/sub/b.txt\n"
+        }
+      ]
+    },
+    {
+      "outcome": "2",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "a:\n  inner: |\n    text from .troupe/sub/b.txt\nup: |\n  k: v\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "a.inner"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "text from .troupe/sub/b.txt\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "up"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "k: v\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "loop",
+            "file:loop.yaml"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: loop: the result would not load (.troupe/sub/../loop.yaml: include cycle (/theatre/.troupe/troupe.yml -> /theatre/.troupe/loop.yaml -> /theatre/.troupe/loop.yaml)); not writing\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "a.inner"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "text from .troupe/sub/b.txt\n"
+        }
+      ]
+    },
+    {
+      "outcome": "3",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "a:\n  inner: |\n    text from .troupe/sub/b.txt\nup: |\n  k: v\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "a.inner"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "text from .troupe/sub/b.txt\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "up"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "k: v\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "loop",
+            "file:loop.yaml"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: loop: include cycle at loop.again: /theatre/.troupe/loop.yaml -> /theatre/.troupe/loop.yaml; no file changed\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "a.inner"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "text from .troupe/sub/b.txt\n"
+        }
+      ]
+    },
+    {
+      "outcome": "4",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "a:\n  inner: |\n    text from .troupe/sub/b.txt\nup: |\n  k: v\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "a.inner"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "text from .troupe/sub/b.txt\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "up"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "k: v\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "loop",
+            "file:loop.yaml"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: write refused: loop: cannot write this change faithfully (/theatre/.troupe/loop.yaml: include cycle through /theatre/.troupe/loop.yaml)\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "a.inner"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "text from .troupe/sub/b.txt\n"
+        }
+      ]
+    },
+    {
+      "outcome": "5",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "a:\n  inner: |\n    text from .troupe/sub/b.txt\nup: |\n  k: v\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "a.inner"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "text from .troupe/sub/b.txt\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "up"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "k: v\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "loop",
+            "file:loop.yaml"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 4,
+          "stderr": "troupe: .troupe/loop.yaml: include cycle (from .troupe/loop.yaml)\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "a.inner"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "text from .troupe/sub/b.txt\n"
+        }
+      ]
+    },
+    {
+      "outcome": "6",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "a:\n  inner: |\n    text from .troupe/sub/b.txt\nup: |\n  k: v\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "a.inner"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "text from .troupe/sub/b.txt\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "up"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "k: v\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "loop",
+            "file:loop.yaml"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: error: loop: the change to /theatre/.troupe/troupe.yml would not load back (/theatre/.troupe/loop.yaml: include cycle through /theatre/.troupe/loop.yaml); no file was changed\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "a.inner"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "text from .troupe/sub/b.txt\n"
+        }
+      ]
+    }
+  ],
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "a.inner"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "up"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--include",
+          "loop",
+          "file:loop.yaml"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "a.inner"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/b.txt": "text from .troupe/b.txt (wrong directory)\n",
+      ".troupe/loop.yaml": "again: file:sub/../loop.yaml\n",
+      ".troupe/sub/a.yaml": "inner: file:b.txt\n",
+      ".troupe/sub/b.txt": "text from .troupe/sub/b.txt\n",
+      ".troupe/sub/upper.YML": "k: v\n",
+      ".troupe/troupe.yml": "a: file:sub/a.yaml\nup: file:sub/upper.YML  # upper-case suffix\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/loop.yaml",
+      ".troupe/sub/a.yaml"
+    ]
+  }
+}

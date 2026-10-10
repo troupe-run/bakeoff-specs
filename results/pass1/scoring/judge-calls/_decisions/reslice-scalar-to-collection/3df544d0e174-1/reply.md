@@ -1,0 +1,1 @@
+{"outcomes": {"1": {"Q1": {"group": "A", "why": "tags.0 and tags.1 become a bare '-' line that keeps '# first' / '# second', with the map or list indented on the lines below"}}, "2": {"Q1": {"group": "B", "why": "tags.0 becomes '- k: v  # first' and tags.1 becomes '- - p  # second', so the first key or item sits on the dash line with the comment after it"}}}}

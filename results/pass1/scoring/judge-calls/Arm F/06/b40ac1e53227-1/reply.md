@@ -1,0 +1,5 @@
+I'm scoring Arm X a 3 out of 4 on test names, with one vague name.
+
+```json
+{"score": 3, "evidence": ["repo/tests/e2e/test_set_alias.py:16 test_setting_through_an_alias_is_refused — assert_refused checks exit 3, the --expand-alias mention and that every file kept its bytes (tests/conftest.py:278-293)", "repo/tests/e2e/test_set_alias.py:27 test_setting_at_the_anchor_changes_every_alias — checks the exact bytes, then both aliases with get", "repo/tests/e2e/test_set_alias.py:66 test_expand_alias_in_a_list_item — vague: names only the condition, not the expected result (a copy is made for that item only and the other *b alias stays)", "repo/tests/e2e/test_set_alias.py:116 test_refusal_without_the_flag_then_success_with_it — says less than the body checks (exit 3 with the flag mentioned in stderr, then the value read back)"], "notes": "All 13 tests added in this step have names that their bodies assert, and assert_set/assert_refused check exact file bytes, so none overclaims. One or two names (the list-item and refusal-then-success tests) are vague about the expected result, which rules out a 4."}
+```

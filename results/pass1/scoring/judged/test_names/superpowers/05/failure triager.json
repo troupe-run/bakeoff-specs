@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "repo/tests/test_overrides.py:111",
+    "repo/tests/test_overrides.py:152",
+    "repo/tests/test_overrides.py:33",
+    "repo/tests/test_overrides.py:121",
+    "repo/tests/test_overrides.py:131",
+    "repo/tests/test_overrides.py:4"
+  ],
+  "notes": "There is no git history, so I treated test_overrides.py (the include-overrides and --in-include tests matching decisions 24-29) as this step's tests. No name overclaims, and many state a specific condition and result: test_new_key_becomes_override_in_including_file (:4) and test_include_in_flow_collection_is_converted (:93) are checked byte for byte. But at least three names are too vague to triage from the name alone: test_whole_file_include_document (:111) and test_in_include_through_mapping_form (:152) give no expected result, and test_overrides_only_for_yaml_includes (:121) does not say it expects exit 4 or that it also rejects a non-file $ref. Two more say less than their bodies check: test_new_nested_key_under_included_section (:33) and test_replacing_a_merged_section... (:131), which also asserts that replacing the whole include exits 3. That is more than the one or two vague names level 3 allows.",
+  "raw": "{\"score\": 2, \"evidence\": [\"repo/tests/test_overrides.py:111\", \"repo/tests/test_overrides.py:152\", \"repo/tests/test_overrides.py:33\", \"repo/tests/test_overrides.py:121\", \"repo/tests/test_overrides.py:131\", \"repo/tests/test_overrides.py:4\"], \"notes\": \"There is no git history, so I treated test_overrides.py (the include-overrides and --in-include tests matching decisions 24-29) as this step's tests. No name overclaims, and many state a specific condition and result: test_new_key_becomes_override_in_including_file (:4) and test_include_in_flow_collection_is_converted (:93) are checked byte for byte. But at least three names are too vague to triage from the name alone: test_whole_file_include_document (:111) and test_in_include_through_mapping_form (:152) give no expected result, and test_overrides_only_for_yaml_includes (:121) does not say it expects exit 4 or that it also rejects a non-file $ref. Two more say less than their bodies check: test_new_nested_key_under_included_section (:33) and test_replacing_a_merged_section... (:131), which also asserts that replacing the whole include exits 3. That is more than the one or two vague names level 3 allows.\"}",
+  "score": 2,
+  "status": "ok"
+}

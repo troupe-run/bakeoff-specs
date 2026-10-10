@@ -1,0 +1,34 @@
+{
+  "context": {
+    "examples": [],
+    "in_practice": "Route 1: the store is opened once when watch starts and stays open until you stop it. Each sync reuses that open store. The reasoning given is that data is reloaded from storage on every lookup anyway, so holding the store open shouldn't serve old data. While watch is running, the store stays open the whole time, so it may hold temporary companion files (journal-style files next to the database) for the whole session. Any other command run against the same store at the same time has to coexist with that open connection.\n\nRoute 2: on each sync, watch takes the lock, opens the store, does the work, and closes it before releasing the lock. Between syncs nothing is held open. The reasoning given is that no -wal/-shm side files are left lying around and nothing cached from an earlier sync can carry over. Other commands can use the store freely between syncs, and each sync starts from whatever is on disk right then.\n\nRoute 3: this question was not considered. There is no deliberate choice to describe, so how long the store stays open is whatever the code happens to do.",
+    "stakes": "A long-running watch mode syncs again and again. The question is whether it keeps one connection to its local data store open for the whole session or opens a fresh one for each sync. That choice affects whether each sync sees up-to-date data, whether stray side files are left next to the store, and how the watch behaves when another command touches the same store at the same time.",
+    "tradeoff": "Route 1 costs an open store, possibly with side files, for the whole watch session, and relies on lookups always re-reading storage; route 2 costs reopening the store on every sync; route 3 costs not knowing which behavior you get."
+  },
+  "plan_why": "The routes differ only in how long `watch` keeps its event store open: one store for the whole run versus reopening it for each sync inside the lock. Any visible difference, such as stale state while another command writes or -wal/-shm files that exist only while the store is open, appears only while `watch` is running alongside other commands. The sandbox forbids `watch` and runs commands one at a time, so every allowed command opens and closes its own store and behaves the same under all three routes.",
+  "routes": [
+    [
+      "One store/app for the whole run",
+      [
+        "Arm B",
+        "Arm E"
+      ]
+    ],
+    [
+      "Open per sync inside the lock",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm C",
+        "Arm D",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

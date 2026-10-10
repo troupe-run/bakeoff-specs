@@ -1,0 +1,12 @@
+{
+  "kind": "unanimous",
+  "question": "How set writes a new multi-line string",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "YAML forbids block scalars in flow; the result must read back. One arm also double-quotes when a literal would swallow deeper-indented comments; another fixed a bug that sent all multi-line strings to double quotes",
+      "route": "Literal block in block context; double-quoted in flow context or when a literal block cannot hold it exactly",
+      "route_no": 1
+    }
+  ]
+}

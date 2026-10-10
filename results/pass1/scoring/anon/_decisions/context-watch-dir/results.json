@@ -1,0 +1,1039 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: sonnet  # main theatre\nretries: 2\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "--theatre",
+          ".",
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "config",
+          "watch",
+          "--theatre=sub"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [],
+        "env": {},
+        "symlink": {
+          "path": "linked",
+          "target": "sub"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "watch",
+          "--theatre",
+          "linked"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "model: opus  # main theatre\nretries: 2\n",
+      "sub/.troupe/troupe.yml": "model: haiku  # sub theatre\nretries: 5\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml",
+      "sub/.troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet  # main theatre\nretries: 2\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "signal": "SIGINT",
+              "stderr": "troupe: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre=sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching sub\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching sub\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "linked",
+                "target": "sub"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "linked"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching linked\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching linked\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:10:06.763482Z\", \"reason\": null, \"change\": \"1bf05f3d-15b2-438c-84f0-146e729d243e\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:10:06.978426Z\", \"reason\": null, \"change\": \"86456daf-c237-4615-8361-11b1003d5e76\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet  # main theatre\nretries: 2\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre=sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching sub\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching sub\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "linked",
+                "target": "sub"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "linked"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching linked\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching linked\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:10:14.440310Z\", \"reason\": null, \"change\": \"06bc01b1-61aa-4fe4-bb12-31ff32e9205d\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:10:14.860648Z\", \"reason\": null, \"change\": \"a29ba1c6-9bc2-49e7-bf17-486716d3629e\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet  # main theatre\nretries: 2\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument {config}: invalid choice: '.' (choose from config) (see 'troupe --help')\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "signal": "SIGINT",
+              "stderr": "troupe: argument {config}: invalid choice: '.' (choose from config) (see 'troupe --help')\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre=sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching sub\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching sub\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "linked",
+                "target": "sub"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "linked"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching linked\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 137,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching linked\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:10:22.020847Z\", \"reason\": null, \"change\": \"1fd4ccce-22a5-497e-a4ce-3cd701979ea7\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:10:22.286334Z\", \"reason\": null, \"change\": \"4b4f4bde-b287-4ad6-b0c0-a3afe7dce46e\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet  # main theatre\nretries: 2\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "signal": "SIGINT",
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre=sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching sub\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching sub\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "linked",
+                "target": "sub"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "linked"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching linked\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 130,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching linked\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:10:44.526604Z\", \"reason\": null, \"change\": \"375d5904-11f1-444c-a926-069854aba5f4\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:10:44.742598Z\", \"reason\": null, \"change\": \"8ee0a289-9cbd-4227-b43e-ebafe8ecafb1\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "--theatre or TROUPE_THEATRE as given; the absolute cwd when neither is set",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet  # main theatre\nretries: 2\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: argument group: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "signal": "SIGINT",
+              "stderr": "troupe: usage error: argument group: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre=sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching sub\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "Exception ignored in: <function Application.__del__ at 0xffff7e82be20>\nTraceback (most recent call last):\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 894, in __del__\n    self.close()\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 876, in close\n    self.closing.set()\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/threading.py\", line 616, in set\n    def set(self):\n\nKeyboardInterrupt: \n",
+              "stdout": "watching sub\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "linked",
+                "target": "sub"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "linked"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching linked\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching linked\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:10:30.565967Z\", \"reason\": null, \"change\": \"f9ed0131-7557-4ad7-b95b-b4a944d634be\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:10:30.673495Z\", \"reason\": null, \"change\": \"d7a047f1-5c5c-49df-8bbd-d3c4f7476ced\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "As given, falling back to '.'",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet  # main theatre\nretries: 2\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: argument command: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "signal": "SIGINT",
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: argument command: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre=sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching sub\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching sub\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "linked",
+                "target": "sub"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "linked"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching linked\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching linked\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:10:37.389460Z\", \"reason\": null, \"change\": \"b1af524f-8dc3-4789-bca3-085d04172239\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:10:37.545497Z\", \"reason\": null, \"change\": \"46f0da3d-0a1b-454b-a6f8-0f258940e19d\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

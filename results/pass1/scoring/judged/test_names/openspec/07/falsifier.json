@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/repo/tests/test_remote_loading.py:33 — test_https_and_http_strings_in_any_quoting_are_includes only uses the local http:// server URL, so nothing checks that https:// strings are includes",
+    "/judge/repo/tests/test_literal_tag.py:11 — test_literal_strings_load_as_strings_in_every_style covers plain, double-quoted and `|` block only; single-quoted and folded styles are never asserted",
+    "/judge/repo/tests/test_schema.py:36 — test_without_a_schema_nothing_is_validated only checks that `get a` prints 1 on a config that would pass any schema, so it would still pass if validation ran",
+    "/judge/repo/tests/test_literal_tag.py:54 — test_writing_over_a_literal_scalar is vague: the name does not say which cases keep the tag and which drop it",
+    "/judge/repo/tests/test_remote_loading.py:20 — test_remote_yaml_include gives no expected result",
+    "/judge/repo/tests/test_remote_loading.py:72 — the not-found, unreachable and invalid-YAML failure tests state their claims precisely, and the assert_unloadable helper checks those claims"
+  ],
+  "notes": "Most names in test_cli, test_http_fixture, test_literal_tag, test_reconcile and test_remote_loading describe what their bodies assert. However, three names overclaim (https never tested, 'every style' only partly covered, 'nothing is validated' never shown), and a few are vague, such as test_writing_over_a_literal_scalar and test_remote_yaml_include.",
+  "raw": "{\"score\": 2, \"evidence\": [\"/judge/repo/tests/test_remote_loading.py:33 — test_https_and_http_strings_in_any_quoting_are_includes only uses the local http:// server URL, so nothing checks that https:// strings are includes\", \"/judge/repo/tests/test_literal_tag.py:11 — test_literal_strings_load_as_strings_in_every_style covers plain, double-quoted and `|` block only; single-quoted and folded styles are never asserted\", \"/judge/repo/tests/test_schema.py:36 — test_without_a_schema_nothing_is_validated only checks that `get a` prints 1 on a config that would pass any schema, so it would still pass if validation ran\", \"/judge/repo/tests/test_literal_tag.py:54 — test_writing_over_a_literal_scalar is vague: the name does not say which cases keep the tag and which drop it\", \"/judge/repo/tests/test_remote_loading.py:20 — test_remote_yaml_include gives no expected result\", \"/judge/repo/tests/test_remote_loading.py:72 — the not-found, unreachable and invalid-YAML failure tests state their claims precisely, and the assert_unloadable helper checks those claims\"], \"notes\": \"Most names in test_cli, test_http_fixture, test_literal_tag, test_reconcile and test_remote_loading describe what their bodies assert. However, three names overclaim (https never tested, 'every style' only partly covered, 'nothing is validated' never shown), and a few are vague, such as test_writing_over_a_literal_scalar and test_remote_yaml_include.\"}",
+  "score": 2,
+  "status": "ok"
+}

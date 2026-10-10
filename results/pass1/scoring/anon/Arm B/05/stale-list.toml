@@ -1,0 +1,50 @@
+# scoring/stale/step-05.toml — step 5: two concurrent CRs on the same rule. CR-A: a new key under an included
+# section goes into the including file as an override (mapping-form include with `$ref`). CR-B: `set
+# --in-include` keeps the step-1 behaviour on request. Drafted 2026-10-05 from scenario/steps/05-overrides.md,
+# contract.md "Overrides (from step 5 — replaces rule 2 under `set`)" and "In-include", po-brief.md, and
+# design §4 step 5 ("Override events must carry lineage") only.
+[[stale]]
+id = "new-key-target-rule"
+kind = "requirement"
+what = "The requirement for where `set` writes a new key: 'into the file containing the deepest existing ancestor mapping' (step-1 rule 2), with no override / `--in-include` distinction"
+why = "Contract 'set PATH VALUE' rule 2: '*(Changed at step 5.)*'; 'Overrides (from step 5 — replaces rule 2 under `set`)'. Both CRs touch this one requirement: CR-A changes the default, CR-B keeps the old rule behind `--in-include`"
+
+[[stale]]
+id = "include-is-a-string"
+kind = "requirement"
+what = "The Includes requirement defining an include only as a `file:` string value (no mapping form with `$ref` and override keys)"
+why = "Contract 'Overrides': 'An include may be written in **mapping form**: a mapping with a `$ref` key … Its other keys are **overrides**'"
+
+[[stale]]
+id = "new-key-in-included-file-tests"
+kind = "test"
+what = "Tests asserting that `set` of a new key under an included subtree modifies the included file (and leaves the including file byte-identical)"
+why = "Step 5 CR-A: 'Adding a new setting under an included section must no longer modify the shared file'. Still valid only when run with `--in-include`"
+
+[[stale]]
+id = "writeback-target-planner"
+kind = "code"
+what = "The write-back target resolution for `set`: new keys whose deepest existing ancestor comes from an include go to the including file; scalar-form include converted to mapping form (keeping its end-of-line comment); list appends / keys inside list items stay in the file holding the list; an existing overridden value changes the override"
+why = "Contract 'Overrides', bullets 2-5 (e.g. '`coder: file:agents/coder.yaml  # c` → `coder:  # c` / `  $ref: …` / `  temperature: 0.3`')"
+
+[[stale]]
+id = "loader-mapping-form"
+kind = "code"
+what = "The include loader/resolver (shared by every command, `watch` and reconcile): must read mapping-form includes and deep-merge overrides; mapping-form include of a non-YAML file with siblings → exit 4"
+why = "Contract 'Overrides': 'the value is the included content deep-merged with the overrides … a mapping-form include of any other file with sibling keys → exit 4'"
+
+[[stale]]
+id = "override-events-lineage"
+kind = "code"
+what = "Events recorded for override writes (including the leaves moved by a scalar-form → mapping-form conversion, if any) must carry step 4's lineage fields"
+why = "Design §4 step 5: 'Override events must carry lineage'; contract 'Lineage': 'Every `history` event also has …'"
+
+[[stale]]
+id = "set-docs-new-keys"
+kind = "doc"
+what = "README / CLI help / docs describing where `set` writes a new key, or describing includes only as `file:` strings"
+why = "Step 5 changes where new keys go, adds mapping-form includes and `--in-include`"
+
+[legitimate]
+paths = ["src/**", "troupe/**", "tests/**", "conftest.py", "README*", "docs/**", "CHANGELOG*", "CLAUDE.md", "AGENTS.md", "pyproject.toml", "uv.lock",
+         ".gitignore", ".python-version", "Makefile", "justfile", ".github/**", "pytest.ini"]

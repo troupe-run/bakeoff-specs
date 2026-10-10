@@ -1,0 +1,295 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "app.desc",
+          "\"line one\\nline two\""
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "app.flow.b",
+          "\"x\\ny\\n\""
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "app.lead",
+          "\"  indented first\\nnext\\n\""
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "app.tail",
+          "\"a\\nb\\n\\n\\n\""
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "app"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1}\n  # trailing comment about app\nother: x\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "app.desc",
+                "\"line one\\nline two\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1}\n  # trailing comment about app\n  desc: |-\n    line one\n    line two\nother: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "app.flow.b",
+                "\"x\\ny\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1, b: \"x\\ny\\n\"}\n  # trailing comment about app\n  desc: |-\n    line one\n    line two\nother: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "app.lead",
+                "\"  indented first\\nnext\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1, b: \"x\\ny\\n\"}\n  # trailing comment about app\n  desc: |-\n    line one\n    line two\n  lead: \"  indented first\\nnext\\n\"\nother: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "app.tail",
+                "\"a\\nb\\n\\n\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1, b: \"x\\ny\\n\"}\n  # trailing comment about app\n  desc: |-\n    line one\n    line two\n  lead: \"  indented first\\nnext\\n\"\n  tail: |+\n    a\n    b\n\n\nother: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "app"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nflow:\n  a: 1\n  b: |\n    x\n    y\ndesc: |-\n  line one\n  line two\nlead: |2\n    indented first\n  next\ntail: |+\n  a\n  b\n\n\n"
+            }
+          ]
+        },
+        {
+          "arms": 3,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "app.desc",
+                "\"line one\\nline two\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1}\n  # trailing comment about app\n  desc: |-\n    line one\n    line two\nother: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "app.flow.b",
+                "\"x\\ny\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1, b: \"x\\ny\\n\"}\n  # trailing comment about app\n  desc: |-\n    line one\n    line two\nother: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "app.lead",
+                "\"  indented first\\nnext\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1, b: \"x\\ny\\n\"}\n  # trailing comment about app\n  desc: |-\n    line one\n    line two\n  lead: |2\n      indented first\n    next\nother: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "app.tail",
+                "\"a\\nb\\n\\n\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1, b: \"x\\ny\\n\"}\n  # trailing comment about app\n  desc: |-\n    line one\n    line two\n  lead: |2\n      indented first\n    next\n  tail: |+\n    a\n    b\n\n\nother: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "app"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nflow:\n  a: 1\n  b: |\n    x\n    y\ndesc: |-\n  line one\n  line two\nlead: |2\n    indented first\n  next\ntail: |+\n  a\n  b\n\n\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "app.desc",
+                "\"line one\\nline two\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1}\n  # trailing comment about app\n  desc: |-\n    line one\n    line two\nother: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "app.flow.b",
+                "\"x\\ny\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1, b: \"x\\ny\\n\"}\n  # trailing comment about app\n  desc: |-\n    line one\n    line two\nother: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "app.lead",
+                "\"  indented first\\nnext\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1, b: \"x\\ny\\n\"}\n  # trailing comment about app\n  desc: |-\n    line one\n    line two\n  lead: \"  indented first\\nnext\\n\"\nother: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "app.tail",
+                "\"a\\nb\\n\\n\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "app:\n  name: demo  # the name\n  flow: {a: 1, b: \"x\\ny\\n\"}\n  # trailing comment about app\n  desc: |-\n    line one\n    line two\n  lead: \"  indented first\\nnext\\n\"\n  tail: |+\n    a\n    b\n\n\nother: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "app"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nflow:\n  a: 1\n  b: |\n    x\n    y\ndesc: |-\n  line one\n  line two\nlead: \"  indented first\\nnext\\n\"\ntail: |+\n  a\n  b\n\n\n"
+            }
+          ]
+        }
+      ],
+      "route": "Literal block in block context; double-quoted in flow context or when a literal block cannot hold it exactly",
+      "route_no": 1
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["/judge/gates.md:1", "/judge/repo/spec/002-config-file-sync/spec.md:245-269", "/judge/repo/spec/002-config-file-sync/research.md:14-24", "/judge/repo/spec/002-config-file-sync/research.md:58", "/judge/repo/spec/002-config-file-sync/research.md:79", "/judge/repo/spec/002-config-file-sync/checklists/requirements.md:38", "/judge/transcript.md:86", "/judge/transcript.md:95"]}
+```

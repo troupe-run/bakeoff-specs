@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["/judge/transcript.md:2-17 (contract, specs, code and the prior archive were read before the plan was written)", "/judge/questions.md:13 (breaking change explained with what it does and the --include workaround)", "/judge/questions.md:22-32 (ten open choices already decided, with no alternatives listed; items 5, 7, 8 and 10 give no reason)", "/judge/questions.md:40-59 and 61-77 (Q2 and Q3 report status and ask for no decision)"], "notes": "Q1 shows clear prior research and states the choices made, most with a reason, so the product owner can approve or override. But it rarely sets out the alternatives or their consequences, and several choices have no reason. The other two handoffs report status and ask for no decision."}
+```

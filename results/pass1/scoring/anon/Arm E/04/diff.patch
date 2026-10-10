@@ -1,0 +1,303 @@
+diff --git a/README.md b/README.md
+index ba15fdf..15cf477 100644
+--- a/README.md
++++ b/README.md
+@@ -5,7 +5,7 @@ AI orchestration tool. Step 1: the configuration subsystem.
+ ```
+ uv run troupe config get PATH [--theatre DIR]
+ uv run troupe config show [PATH] [--sources] [--theatre DIR]
+-uv run troupe config set PATH VALUE [--theatre DIR]
++uv run troupe config set PATH VALUE [--reason TEXT] [--theatre DIR]
+ uv run troupe config history [PATH] [--theatre DIR]
+ uv run troupe config watch [--theatre DIR]
+ ```
+@@ -20,8 +20,15 @@ Files and the recorded configuration are kept in sync: every command except `his
+ its includes and reconciles on change. Commands serialise on `.troupe/events.lock`, so a `set`'s own
+ write-back is already recorded by the time `watch` sees it and yields no further events.
+ 
++Every recorded event carries its lineage: `actor` (`{"kind": "human"|"agent"|"unknown", "id": …}`), `via`
++(`import`, `cli` or `file`), `at` (UTC, RFC 3339), `reason` (from `set --reason`) and `change` (shared by all events
++of one command, file reconcile or import). A CLI command's actor comes from `TROUPE_ACTOR` (`human:<id>` or
++`agent:<id>`; anything else makes every command exit 2), defaulting to the login name as a human. Imports and file edits have an
++unknown actor. Events recorded before lineage existed report an unknown actor, their stored timestamp, and — for
++`set`/`remove` — `via: null`, since whether they came from the CLI or a file was never recorded.
++
+ Layout: `yamldoc.py` (position-aware parse + include view), `render.py` (scalar/collection rendering, `show` output),
+-`editor.py` (write-back), `store.py` (event-sourced projection),
++`editor.py` (write-back), `store.py` (event-sourced projection), `lineage.py` (actor, timestamp, change id),
+ `sync.py` (lock, reconcile, watch), `cli.py`.
+ 
+ Tests: `uv run pytest`.
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index e637233..ee6224a 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -13,6 +13,7 @@ from ruamel.yaml.nodes import SequenceNode
+ from .editor import Editor
+ from .errors import LoadError, PathError, TroupeError, UsageError, WriteRefused
+ from .render import Shower
++from .lineage import lineage, parse_actor
+ from .yamldoc import VNode, compose, construct, leaves, values_equal
+ 
+ 
+@@ -37,6 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
+     st = csub.add_parser("set", parents=[theatre], help="change a setting")
+     st.add_argument("path")
+     st.add_argument("value")
++    st.add_argument("--reason", help="why the change is made (recorded in history)")
+     hist = csub.add_parser("history", parents=[theatre], help="list changes")
+     hist.add_argument("path", nargs="?")
+     csub.add_parser("watch", parents=[theatre], help="follow edits to the configuration files")
+@@ -107,6 +109,7 @@ def run(args: argparse.Namespace) -> int:
+     from .store import Troupe
+     from .sync import locked, reconcile, watch
+ 
++    actor = parse_actor(os.environ.get("TROUPE_ACTOR"))  # every command rejects a malformed one
+     theatre = getattr(args, "theatre", None)
+     if theatre is None:
+         theatre = os.environ.get("TROUPE_THEATRE") or "."
+@@ -124,10 +127,10 @@ def run(args: argparse.Namespace) -> int:
+             config = app.configuration() or app.ensure_imported(leaves(editor.load()))
+         else:
+             root, config = reconcile(app, editor)
+-        return act(args, path_segs, value, editor, root, app, config)
++        return act(args, path_segs, value, actor, editor, root, app, config)
+ 
+ 
+-def act(args: argparse.Namespace, path_segs: list[str] | None, value: Any, editor: Editor, root: VNode | None, app: Any, config: Any) -> int:
++def act(args: argparse.Namespace, path_segs: list[str] | None, value: Any, actor: dict[str, Any] | None, editor: Editor, root: VNode | None, app: Any, config: Any) -> int:
+ 
+     if args.action == "get":
+         node = lookup(root, path_segs)
+@@ -178,7 +181,7 @@ def act(args: argparse.Namespace, path_segs: list[str] | None, value: Any, edito
+     for fpath, text in editor.changed().items():
+         with open(fpath, "w", encoding="utf-8", newline="") as f:
+             f.write(text)
+-    app.record(config, old, new)
++    app.record(config, old, new, lineage("cli", actor, args.reason))
+     return 0
+ 
+ 
+diff --git a/src/troupe/lineage.py b/src/troupe/lineage.py
+new file mode 100644
+index 0000000..c472d1a
+--- /dev/null
++++ b/src/troupe/lineage.py
+@@ -0,0 +1,45 @@
++"""Lineage of a change: who made it, how, when, why, and which command it belongs to."""
++
++from __future__ import annotations
++
++import getpass
++from datetime import datetime, timezone
++from typing import Any
++from uuid import uuid4
++
++from .errors import UsageError
++
++UNKNOWN = {"kind": "unknown", "id": None}
++
++
++def login_name() -> str | None:
++    try:
++        return getpass.getuser() or None
++    except Exception:
++        return None
++
++
++def utc_timestamp(when: datetime | None = None) -> str:
++    when = (when or datetime.now(timezone.utc)).astimezone(timezone.utc)
++    return when.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
++
++
++def lineage(via: str, actor: dict[str, Any] | None = None, reason: str | None = None) -> dict[str, Any]:
++    """Who/how/when/why for one command; every event it produces shares the `change` id."""
++    return {
++        "actor": dict(actor or UNKNOWN),
++        "via": via,
++        "at": utc_timestamp(),
++        "reason": reason,
++        "change": str(uuid4()),
++    }
++
++
++def parse_actor(env: str | None) -> dict[str, Any]:
++    """TROUPE_ACTOR is `human:<id>` or `agent:<id>`; unset means the logged-in human."""
++    if env is None:
++        return {"kind": "human", "id": login_name()}
++    kind, sep, ident = env.partition(":")
++    if not sep or kind not in ("human", "agent") or not ident:
++        raise UsageError(f"invalid TROUPE_ACTOR: {env!r} (expected human:<id> or agent:<id>)")
++    return {"kind": kind, "id": ident}
+diff --git a/src/troupe/store.py b/src/troupe/store.py
+index c90bf88..5ea7a87 100644
+--- a/src/troupe/store.py
++++ b/src/troupe/store.py
+@@ -9,11 +9,11 @@ from uuid import NAMESPACE_URL, UUID, uuid5
+ from eventsourcing.application import AggregateNotFoundError, Application
+ from eventsourcing.domain import Aggregate, event
+ 
++from .lineage import UNKNOWN, lineage, utc_timestamp
+ from .yamldoc import values_equal
+ 
+ CONFIG_ID = uuid5(NAMESPACE_URL, "troupe:configuration")
+ 
+-
+ class Configuration(Aggregate):
+     """Projection of the theatre configuration: its leaves and their history."""
+ 
+@@ -26,9 +26,16 @@ class Configuration(Aggregate):
+         self.leaves: dict[str, Any] = {}
+         self.changes: list[dict[str, Any]] = []
+ 
+-    def _apply(self, op: str, path: str, old: Any, new: Any) -> None:
++    def _apply(self, op: str, path: str, old: Any, new: Any, meta: dict[str, Any] | None) -> None:
++        seq = len(self.changes) + 1
++        # events recorded before lineage existed carry none: say so rather than guess
++        # (`at` is filled in from the stored event's timestamp by Troupe.configuration)
++        meta = meta or {"actor": UNKNOWN, "via": "import" if op == "import" else None, "at": None,
++                        "reason": None, "change": "unrecorded-import" if op == "import" else f"unrecorded-{seq}"}
+         self.changes.append(
+-            {"seq": len(self.changes) + 1, "op": op, "path": path, "old": old, "new": new}
++            {"seq": seq, "op": op, "path": path, "old": old, "new": new,
++             "actor": dict(meta["actor"]), "via": meta["via"], "at": meta["at"],
++             "reason": meta["reason"], "change": meta["change"]}
+         )
+         if op == "remove":
+             self.leaves.pop(path, None)
+@@ -36,16 +43,16 @@ class Configuration(Aggregate):
+             self.leaves[path] = new
+ 
+     @event("Imported")
+-    def imported(self, path: str, new: Any) -> None:
+-        self._apply("import", path, None, new)
++    def imported(self, path: str, new: Any, meta: dict[str, Any] | None = None) -> None:
++        self._apply("import", path, None, new, meta)
+ 
+     @event("ValueSet")
+-    def value_set(self, path: str, old: Any, new: Any) -> None:
+-        self._apply("set", path, old, new)
++    def value_set(self, path: str, old: Any, new: Any, meta: dict[str, Any] | None = None) -> None:
++        self._apply("set", path, old, new, meta)
+ 
+     @event("ValueRemoved")
+-    def value_removed(self, path: str, old: Any) -> None:
+-        self._apply("remove", path, old, None)
++    def value_removed(self, path: str, old: Any, meta: dict[str, Any] | None = None) -> None:
++        self._apply("remove", path, old, None, meta)
+ 
+ 
+ class Troupe(Application[UUID]):
+@@ -59,33 +66,40 @@ class Troupe(Application[UUID]):
+ 
+     def configuration(self) -> Configuration | None:
+         try:
+-            return self.repository.get(CONFIG_ID)
++            config = self.repository.get(CONFIG_ID)
+         except AggregateNotFoundError:
+             return None
++        if any(c["at"] is None for c in config.changes):
++            stored = list(self.repository.event_store.get(CONFIG_ID))[1:]  # one per change, after Created
++            for change, ev in zip(config.changes, stored):
++                if change["at"] is None:
++                    change["at"] = utc_timestamp(ev.timestamp)
++        return config
+ 
+     def ensure_imported(self, leaves: dict[str, Any]) -> Configuration:
+         config = self.configuration()
+         if config is None:
+             config = Configuration()
++            meta = lineage("import")
+             for path, value in leaves.items():
+-                config.imported(path, value)
++                config.imported(path, value, meta)
+             self.save(config)
+         return config
+ 
+     def reconcile(self, leaves: dict[str, Any]) -> Configuration:
+         """Bring the projection in line with the files, recording what differs."""
+         config = self.ensure_imported(leaves)
+-        self.record(config, dict(config.leaves), leaves)
++        self.record(config, dict(config.leaves), leaves, lineage("file"))
+         return config
+ 
+-    def record(self, config: Configuration, old: dict[str, Any], new: dict[str, Any]) -> None:
++    def record(self, config: Configuration, old: dict[str, Any], new: dict[str, Any], meta: dict[str, Any]) -> None:
+         for path, value in new.items():
+             if path not in old:
+-                config.value_set(path, None, value)
++                config.value_set(path, None, value, meta)
+             elif not values_equal(old[path], value):
+-                config.value_set(path, old[path], value)
++                config.value_set(path, old[path], value, meta)
+         for path, value in old.items():
+             if path not in new:
+-                config.value_removed(path, value)
++                config.value_removed(path, value, meta)
+         if config.pending_events:
+             self.save(config)
+diff --git a/tests/test_config.py b/tests/test_config.py
+index 1bfd3a3..3a10b00 100644
+--- a/tests/test_config.py
++++ b/tests/test_config.py
+@@ -262,3 +262,60 @@ def test_watch_sigint(theatre, watcher):
+     import signal
+     watcher.send_signal(signal.SIGINT)
+     assert watcher.wait(timeout=5) == 0
++
++
++def history(theatre, *path, env=None):
++    r = subprocess.run(
++        [sys.executable, "-m", "troupe.cli_main", "config", "history", *path, "--theatre", str(theatre)],
++        capture_output=True, env={**os.environ, **(env or {})},
++    )
++    assert r.returncode == 0, r.stderr
++    return [json.loads(line) for line in r.stdout.decode().splitlines()]
++
++
++def set_as(theatre, actor, *args):
++    env = {k: v for k, v in os.environ.items() if k != "TROUPE_ACTOR"}
++    if actor is not None:
++        env["TROUPE_ACTOR"] = actor
++    return subprocess.run(
++        [sys.executable, "-m", "troupe.cli_main", "config", "set", *args, "--theatre", str(theatre)],
++        capture_output=True, env=env,
++    )
++
++
++def test_lineage(theatre):
++    import getpass
++    import re
++    assert set_as(theatre, "agent:coder-7", "tags", "[x]", "--reason", "tidy tags").returncode == 0
++    (theatre / ".troupe/troupe.yml").write_text(cfg(theatre).replace("demo", "play"))
++    assert set_as(theatre, None, "name", "x").returncode == 0
++    ev = history(theatre)
++    imports = [e for e in ev if e["via"] == "import"]
++    assert imports and {e["op"] for e in imports} == {"import"}
++    assert len({e["change"] for e in imports}) == 1
++    assert all(e["actor"] == {"kind": "unknown", "id": None} and e["reason"] is None for e in imports)
++    agent = [e for e in ev if e["path"].startswith("tags.")][len([e for e in imports if e["path"].startswith("tags.")]):]
++    assert [(e["op"], e["path"]) for e in agent] == [("set", "tags.0"), ("remove", "tags.1")]
++    assert all(e["actor"] == {"kind": "agent", "id": "coder-7"} and e["via"] == "cli" and e["reason"] == "tidy tags" for e in agent)
++    assert agent[0]["change"] == agent[1]["change"] != imports[0]["change"]
++    filed, human = ev[-2], ev[-1]
++    assert (filed["path"], filed["via"], filed["actor"], filed["reason"]) == ("name", "file", {"kind": "unknown", "id": None}, None)
++    assert (human["path"], human["via"], human["actor"], human["reason"]) == ("name", "cli", {"kind": "human", "id": getpass.getuser()}, None)
++    assert len({imports[0]["change"], agent[0]["change"], filed["change"], human["change"]}) == 4
++    for e in ev:
++        assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z", e["at"])
++    assert [e["at"] for e in ev] == sorted(e["at"] for e in ev)
++
++
++@pytest.mark.parametrize("actor", ["", "human", "human:", "robot:x", "agent"])
++@pytest.mark.parametrize("args", [["set", "name", "x"], ["get", "name"], ["show"], ["history"], ["watch"]])
++def test_bad_actor(theatre, actor, args):
++    before = cfg(theatre)
++    r = subprocess.run(
++        [sys.executable, "-m", "troupe.cli_main", "config", *args, "--theatre", str(theatre)],
++        capture_output=True, env={**os.environ, "TROUPE_ACTOR": actor}, timeout=10,
++    )
++    assert (r.returncode, r.stdout) == (2, b"") and b"TROUPE_ACTOR" in r.stderr
++    assert cfg(theatre) == before
++    assert not (theatre / ".troupe/events.sqlite").exists()  # nothing recorded, not even the import
++

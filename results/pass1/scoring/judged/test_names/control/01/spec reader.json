@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/repo/tests/test_config.py:71 test_show and :122 test_history only repeat the command under test; neither says what result is expected",
+    "/judge/repo/tests/test_config.py:89 test_set_quoting also checks that a list item is inserted after a trailing comment, which the name does not mention",
+    "/judge/repo/tests/test_config.py:96 test_set_include_targets also checks exit code 3 and that a rejected set leaves the file unchanged; the name only names the area",
+    "/judge/repo/tests/test_config.py:114 test_new_keys_and_collections also checks that an out-of-range index exits with 5; the name gives no expected outcome",
+    "/judge/repo/tests/test_config.py:135 test_missing_config does not state the expected exit code 4",
+    "/judge/repo/tests/test_config.py:82 test_set_keeps_comment_column is the only name that states a specific behaviour"
+  ],
+  "notes": "Only 1 of the 9 test names states a specific behaviour and its result (test_set_keeps_comment_column). The rest are topic labels or repeat the command under test (show/history), so the names do not read as a spec of the config rules they pin. I found no name that clearly overclaims what its body asserts.",
+  "raw": "{\"score\": 1, \"evidence\": [\"/judge/repo/tests/test_config.py:71 test_show and :122 test_history only repeat the command under test; neither says what result is expected\", \"/judge/repo/tests/test_config.py:89 test_set_quoting also checks that a list item is inserted after a trailing comment, which the name does not mention\", \"/judge/repo/tests/test_config.py:96 test_set_include_targets also checks exit code 3 and that a rejected set leaves the file unchanged; the name only names the area\", \"/judge/repo/tests/test_config.py:114 test_new_keys_and_collections also checks that an out-of-range index exits with 5; the name gives no expected outcome\", \"/judge/repo/tests/test_config.py:135 test_missing_config does not state the expected exit code 4\", \"/judge/repo/tests/test_config.py:82 test_set_keeps_comment_column is the only name that states a specific behaviour\"], \"notes\": \"Only 1 of the 9 test names states a specific behaviour and its result (test_set_keeps_comment_column). The rest are topic labels or repeat the command under test (show/history), so the names do not read as a spec of the config rules they pin. I found no name that clearly overclaims what its body asserts.\"}",
+  "score": 1,
+  "status": "ok"
+}

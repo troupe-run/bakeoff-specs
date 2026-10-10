@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "Setting a mapping or list onto an existing collection: merge entry-wise or replace the block",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Never rewrite what the user did not ask to change",
+      "route": "Merge entry-wise (keep, change, append, delete); unchanged entries keep their bytes and comments",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Those comments described the old entries",
+      "route": "Replace the collection's whole span in the old style; comments inside it go with it",
+      "route_no": 2
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

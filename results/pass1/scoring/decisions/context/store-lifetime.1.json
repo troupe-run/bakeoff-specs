@@ -1,0 +1,39 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "",
+        "input": "run any command that records history, then list the folder holding the history file",
+        "observed": false,
+        "results": {
+          "1": "only the history database file is there; the temporary -wal/-shm side files are gone",
+          "2": "the -wal/-shm side files may still be there, depending on when the program happened to release the store"
+        }
+      }
+    ],
+    "in_practice": "Route 1 gives each command its own store and shuts it down deliberately when the command finishes, so the files on disk end up in the same state every time. That end state is easy to check in tests, and a user who backs up or copies the history file gets everything in one file. Route 2 is the case where nobody decided this: the store shuts down whenever the program lets go of it. In practice that usually still works. But when cleanup happens and whether the side files linger can vary, so it is harder to test, and a copy taken at the wrong moment could miss recent entries.",
+    "stakes": "Whether the history database is reliably tidied up after each command. If it isn't, temporary side files can be left next to it, and any data still in them may not have reached the main file when someone copies, syncs or inspects it.",
+    "tradeoff": "Route 1 costs a little extra wiring: every command has to open its own store and remember to close it. Route 2 costs nothing to write, but the files left on disk are less predictable and harder to test."
+  },
+  "plan_why": "The only difference between the routes is whether SQLite -wal/-shm sidecar files are left under .troupe/ after a command. troupe's output, exit codes and history are the same either way. Each implementation picks its own store file name, no troupe command lists the .troupe/ directory, and `show` can only print files named in advance, so the commands cannot reliably show which implementations leave these files behind.",
+  "routes": [
+    [
+      "One store instance per command, closed explicitly at the end so no -wal/-shm files remain",
+      [
+        "Arm A",
+        "Arm C"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

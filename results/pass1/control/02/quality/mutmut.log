@@ -1,0 +1,312 @@
+$ .venv/bin/python -m pytest -q -p no:cacheprovider -x  (baseline)
+.....................                                                    [100%]
+21 passed in 18.59s
+
+# listing, run and results containers: UV_PROJECT_ENVIRONMENT=/work/bakeoff-specs-control/.venv  (so `uv run` from inside mutants/ uses the prepared venv; the baseline above ran without it)
+$ .venv/bin/mutmut run --max-children 4 troupe.cli.x_act__mutmut_113 troupe.cli.x_act__mutmut_135 ... <198 more>  (sampled 200; under timeout 3600s)
+/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/mutmut/configuration.py:143: UserWarning: The config paths_to_mutate is deprecated. Please rename it to source_paths
+  warnings.warn("The config paths_to_mutate is deprecated. Please rename it to source_paths")
+⠋ Generating mutants⠙ Generating mutants⠹ Generating mutants⠸ Generating mutants⠼ Generating mutants⠴ Generating mutants⠦ Generating mutants⠧ Generating mutants⠇ Generating mutants⠏ Generating mutants⠋ Generating mutants⠙ Generating mutants⠹ Generating mutants⠸ Generating mutants⠼ Generating mutants⠴ Generating mutants⠦ Generating mutants⠧ Generating mutants⠇ Generating mutants⠏ Generating mutants⠋ Generating mutants⠙ Generating mutants⠹ Generating mutants⠸ Generating mutants⠼ Generating mutants⠴ Generating mutants⠦ Generating mutants⠧ Generating mutants⠇ Generating mutants⠏ Generating mutants⠋ Generating mutants⠙ Generating mutants⠹ Generating mutants⠸ Generating mutants⠼ Generating mutants⠸ Generating mutants⠸ Generating mutants⠸ Generating mutants⠼ Generating mutants⠼ Generating mutants⠼ Generating mutants⠴ Generating mutants⠦ Generating mutants⠴ Generating mutants⠦ Generating mutants⠴ Generating mutants⠴ Generating mutants⠦ Generating mutants⠧ Generating mutants⠇ Generating mutants⠦ Generating mutants
+    done in 39ms (0 files mutated, 0 ignored, 9 unmodified)
+⠸ Running stats     ⠼ Running stats⠴ Running stats⠦ Running stats⠧ Running stats⠇ Running stats⠏ Running stats⠋ Running stats⠙ Running stats⠹ Running stats⠸ Running stats⠼ Running stats⠴ Running stats⠦ Running stats⠧ Running stats⠇ Running stats⠏ Running stats⠋ Running stats⠙ Running stats⠹ Running stats⠸ Running stats⠼ Running stats⠴ Running stats⠦ Running stats⠧ Running stats⠇ Running stats
+.....................                                                    [100%]
+21 passed in 18.44s
+Stopping early, because we could not find any test case for any mutant. It seems that the selected tests do not cover any code that we mutated.
+You can set debug=true to see the executed test names in the output above.
+You can use mutmut browse to check which parts of the source code we mutated.
+If some of the mutated code should be covered by the executed tests, consider opening an issue (with a MRE if possible).
+
+__run_rc=1
+
+$ .venv/bin/mutmut results --all true  (fresh container)
+ce_block_scalar__mutmut_58: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_59: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_60: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_61: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_62: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_63: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_64: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_65: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_66: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_67: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_68: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_69: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_70: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_71: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_72: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_73: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_74: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_75: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_76: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_77: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_78: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_79: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_80: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_81: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_82: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_83: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_84: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_85: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_86: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_87: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_88: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_89: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_90: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_91: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_92: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_93: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_94: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_95: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_96: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_97: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_98: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_99: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_100: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_101: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_102: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_103: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_104: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_105: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_106: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_107: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_108: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_109: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_110: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_111: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_112: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_113: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_114: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_115: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_116: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_117: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_118: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_119: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_120: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_121: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_122: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_123: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_124: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_125: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_126: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_127: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_128: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_129: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_130: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_131: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_132: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_133: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_134: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_135: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_136: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_137: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_138: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_139: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_140: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_141: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_142: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_143: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_144: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_145: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_146: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_147: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_148: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_149: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_150: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_151: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_152: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_153: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_154: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_155: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_156: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_157: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_158: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_159: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_160: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_161: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_162: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_163: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_164: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_165: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_166: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_167: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_168: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_169: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_170: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_171: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_172: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_173: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_174: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_175: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_176: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_177: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_178: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_179: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_180: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_181: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_182: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_183: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_184: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_185: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_186: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_187: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_188: not checked
+    troupe.editor.xǁEditorǁreplace_block_scalar__mutmut_189: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_1: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_2: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_3: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_4: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_5: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_6: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_7: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_8: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_9: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_10: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_11: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_12: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_13: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_14: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_15: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_16: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_17: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_18: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_19: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_20: not checked
+    troupe.editor.xǁEditorǁreplace_with_inline__mutmut_21: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_1: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_2: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_3: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_4: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_5: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_6: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_7: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_8: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_9: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_10: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_11: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_12: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_13: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_14: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_15: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_16: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_17: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_18: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_19: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_20: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_21: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_22: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_23: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_24: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_25: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_26: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_27: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_28: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_29: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_30: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_31: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_32: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_33: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_34: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_35: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_36: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_37: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_38: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_39: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_40: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_41: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_42: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_43: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_44: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_45: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_46: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_47: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_48: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_49: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_50: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_51: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_52: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_53: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_54: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_55: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_56: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_57: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_58: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_59: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_60: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_61: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_62: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_63: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_64: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_65: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_66: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_67: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_68: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_69: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_70: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_71: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_72: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_73: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_74: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_75: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_76: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_77: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_78: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_79: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_80: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_81: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_82: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_83: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_84: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_85: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_86: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_87: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_88: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_89: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_90: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_91: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_92: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_93: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_94: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_95: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_96: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_97: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_98: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_99: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_100: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_101: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_102: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_103: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_104: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_105: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_106: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_107: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_108: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_109: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_110: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_111: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_112: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_113: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_114: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_115: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_116: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_117: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_118: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_119: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_120: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_121: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_122: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_123: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_124: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_125: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_126: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_127: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_128: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_129: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_130: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_131: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_132: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_133: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_134: not checked
+    troupe.editor.xǁEditorǁfolded_lines__mutmut_135: not checked
+__results_rc=0
+/work/bakeoff-specs-control/.venv/lib/python3.12/site-packages/mutmut/configuration.py:143: UserWarning: The config paths_to_mutate is deprecated. Please rename it to source_paths
+  warnings.warn("The config paths_to_mutate is deprecated. Please rename it to source_paths")

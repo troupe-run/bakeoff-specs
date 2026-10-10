@@ -1,0 +1,12 @@
+{
+  "evidence": [
+    "/judge/transcript.md:39",
+    "/judge/repo/README.md:1-18",
+    "/judge/transcript.md:38",
+    "/judge/gates.md:1"
+  ],
+  "notes": "The run made five calls where the contract left room, and listed them with reasons only in its final transcript message (transcript.md:39). Those calls were: show/set read the files on disk and hand edits are not reconciled into history; a mapping or list set onto one of the same kind is merged entry by entry; a scalar replaced by a block keeps its comment column; setting the current value is a no-op that exits 0, even on an include; and a missing parent followed by `.0` creates a new list. The README, code comments, generic commit message and empty gates file record none of these decisions or the options weighed, so a successor would have to infer all five from cli.py/editor.py/store.py, along with unexplained choices like the eventsourcing/SQLite store and ruamel being used only as a parser.",
+  "raw": "```json\n{\"score\": 1, \"evidence\": [\"/judge/transcript.md:39\", \"/judge/repo/README.md:1-18\", \"/judge/transcript.md:38\", \"/judge/gates.md:1\"], \"notes\": \"The run made five calls where the contract left room, and listed them with reasons only in its final transcript message (transcript.md:39). Those calls were: show/set read the files on disk and hand edits are not reconciled into history; a mapping or list set onto one of the same kind is merged entry by entry; a scalar replaced by a block keeps its comment column; setting the current value is a no-op that exits 0, even on an include; and a missing parent followed by `.0` creates a new list. The README, code comments, generic commit message and empty gates file record none of these decisions or the options weighed, so a successor would have to infer all five from cli.py/editor.py/store.py, along with unexplained choices like the eventsourcing/SQLite store and ruamel being used only as a parser.\"}\n```",
+  "score": 1,
+  "status": "ok"
+}

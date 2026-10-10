@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "troupe.yml: `model: opus  # from yml` / `retry: 3`; troupe.yaml: `model: sonnet  # from yaml` / `retry: 5`",
+        "input": "`config get model` (both files present)",
+        "observed": true,
+        "results": {
+          "1": "Exit 4, no output. Both arms say both files exist. One arm: `troupe: .troupe: both troupe.yml and troupe.yaml exist`. The other names `./.troupe/troupe.yml` as the location.",
+          "2": "Exit 4, no output. All four arms say both files exist, in different wording. Two arms tell you what to do: `...both exist; keep only one` and `...exist; remove one`. One arm says `ambiguous configuration: both ...`. One arm has no `troupe:` prefix and its message reads oddly: `/theatre/.troupe/troupe.yml: both troupe.yml and /theatre/.troupe/troupe.yaml exist`."
+        }
+      },
+      {
+        "before": "troupe.yml: `retry: 3`; troupe.yaml: `retry: 5`",
+        "input": "`config set retry 7` (both files present)",
+        "observed": true,
+        "results": {
+          "1": "Exit 4, same error as above. Neither file is changed.",
+          "2": "Exit 4, same error as above (each arm with its own wording). Neither file is changed."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show`, `config history`, `config show --sources` (both files present)",
+        "observed": true,
+        "results": {
+          "1": "Each command: exit 4, nothing on stdout, the same error as `config get`.",
+          "2": "Each command: exit 4, nothing on stdout, the same error as `config get`."
+        }
+      }
+    ],
+    "in_practice": "Both routes behave the same: with both files present, every config command stops with exit 4 and touches no file. The only difference is the error text. Route 1 says the files conflict. Two of route 2's four arms also say to keep or remove one file, and one of its arms has a muddled message. The question also covers the case where neither file exists, but that case wasn't tested, so there are no results for it.",
+    "stakes": "If a project has both .troupe/troupe.yml and .troupe/troupe.yaml with conflicting values (here model opus/retry 3 vs model sonnet/retry 5), the tool could quietly pick one file and read or write the wrong settings. In the tests, every arm on both routes refused instead, so the only visible difference is the wording of the error.",
+    "tradeoff": "Route 1 commits to exit 4 as the planned behaviour. Route 2 gets the same exit 4 without planning for it, so its error wording varies from arm to arm, and the neither-file case is unknown for both routes."
+  },
+  "plan_why": "Both .troupe/troupe.yml and .troupe/troupe.yaml exist, with different values. The commands show whether get, show, set and history refuse with exit 4 or pick one file (and which one), and whether set writes to either file. The no-config-file case cannot be run because all commands share one theatre whose files are created up front.",
+  "routes": [
+    [
+      "Exit 4 in both cases",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

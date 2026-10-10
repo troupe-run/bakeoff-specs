@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["/judge/docs/decisions.md:40-51 (diff) adds decisions 16-20, which explain the new `show` YAML output and `--sources` behaviour", "/judge/docs/decisions.md:32 (diff): decision 2 is just reworded from `show` to `get`/`show`, with no reason given for the rename", "/judge/src/troupe/cli.py:99-112 (diff): `show` used to refuse collections (exit 5); `get` now does that, and no record says this behaviour moved or why", "/judge/tests/test_config.py:247-276 and /judge/tests/test_sync.py:570-647 (diff): many existing `show` assertions are switched to `get` with no explanation", "/judge/repo has no .git directory, so there are no commit messages to trace"]}
+```

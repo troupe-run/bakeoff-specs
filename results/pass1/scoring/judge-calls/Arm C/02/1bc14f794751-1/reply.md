@@ -1,0 +1,12 @@
+```json
+{"score": 4, "evidence": ["/judge/repo/spec/troupe-config-sync-files-01M3ZT6R/spec.md:14 (says which step-1 decision DM 01M3XGPT4E0D67ZJY8PT7Z9NAT and FR-008/FR-022 are superseded, and why)", "/judge/repo/spec/troupe-config-sync-files-01M3ZT6R/research.md:83-88 (R-10 names each rewritten step-1 test, the new behaviour it expects, and the reason)", "/judge/diff.patch:4056-4075 (renamed test_set_after_hand_edit..., with inline comments marking the reconcile event and the set's own event)", "/judge/diff.patch:3718-3735 (test_history renamed to 'does_not_reconcile', per R-10)", "/judge/diff.patch:3033 (cli.py switches from Path.cwd() to os.getcwd() 'as given, never resolved (D-8)')", "/judge/diff.patch:3302-3305 (leaf_removed changes from pass to pop(path, None); the comment explains the step-1 history case; data-model.md:80)", "/judge/diff.patch:3487-3527 (open_session changed to take the lock and a reconcile flag; docstring cites FR-004/FR-005/D-7, matching the WP02 entries in status.json:62-63)"]}
+```
+
+The repo has no `.git` directory, so I could not read commit messages. I judged from the diff and the spec records it adds.
+
+I checked three blamed lines, one in each kind of change:
+- **The rewritten `test_set_history` assertion:** research R-10 explains it.
+- **The `open_session` lock/reconcile change:** FR-004, FR-005 and D-7 explain it.
+- **The `leaf_removed` change from `pass` to `pop`:** the code comment and `data-model.md:80` explain it.
+
+Each one says what the line was before, what replaced it and why. The spec also states plainly which step-1 requirements step 2 replaces. Only small hunks, such as the `conftest.py` helper changes, rely on the general work-package records rather than a specific reason.

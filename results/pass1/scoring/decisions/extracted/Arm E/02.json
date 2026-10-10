@@ -1,0 +1,142 @@
+[
+  {
+    "decision": "Before every command except `history`, compare the files with the recorded events and record a set/remove event for each value that differs",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:7"
+  },
+  {
+    "decision": "`history` never catches up on edits and only reports what is already recorded",
+    "options": [],
+    "reason": "",
+    "recorded_at": "src/troupe/cli.py (diff.patch:61) comment 'reports what has been recorded; never reconciles'; questions.md:7"
+  },
+  {
+    "decision": "If `history` runs before anything has been recorded, it still records the starting values as import events, as it did before, without catching up on edits",
+    "options": [],
+    "reason": "keeps the existing behaviour",
+    "recorded_at": "questions.md:17; transcript.md:17"
+  },
+  {
+    "decision": "Edits that only change formatting or comments compare equal and record nothing; the comparison is done on leaf values, not raw bytes",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:7"
+  },
+  {
+    "decision": "Make `watch` poll file contents about every 0.1s instead of using a filesystem notification API",
+    "options": [],
+    "reason": "",
+    "recorded_at": "src/troupe/sync.py POLL=0.1 (diff.patch:145); questions.md:9"
+  },
+  {
+    "decision": "Detect changes by comparing the raw bytes of each file rather than mtimes",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "After a change is detected, wait up to 20 checks 0.05s apart for the file to stop changing before syncing",
+    "options": [],
+    "reason": "wait for a file being written to stop changing",
+    "recorded_at": "src/troupe/sync.py SETTLE (diff.patch:146)"
+  },
+  {
+    "decision": "Watch the config file and every included file, tracking them through a new `Editor.seen` record of the raw bytes of each file read (None if it can't be read)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "src/troupe/editor.py (diff.patch:81); transcript.md:9"
+  },
+  {
+    "decision": "Pick up and watch includes added by hand; a missing include is watched so that creating it triggers a catch-up",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:10"
+  },
+  {
+    "decision": "Watch both troupe.yml and troupe.yaml candidate names",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "`watch` catches up first, then prints `watching <dir>` to signal readiness",
+    "options": [],
+    "reason": "so any edit after that line is noticed",
+    "recorded_at": "questions.md:9"
+  },
+  {
+    "decision": "Broken YAML or read errors during a watch are printed to stderr and the watch continues; errors at startup are raised (OS errors wrapped as LoadError)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:11; transcript.md:16"
+  },
+  {
+    "decision": "SIGINT and SIGTERM make watch exit 0 through a stop flag",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:12"
+  },
+  {
+    "decision": "`watch` exits with code 4 if no config file exists at start, rather than waiting for one to appear",
+    "options": [
+      "wait for a config file to appear"
+    ],
+    "reason": "fail early when there is nothing to watch",
+    "recorded_at": "src/troupe/sync.py (diff.patch:193); questions.md:18"
+  },
+  {
+    "decision": "Serialise all commands with an exclusive fcntl.flock on a new lock file `.troupe/events.lock`; `set` holds it while it catches up, writes and records, so `watch` sees no difference",
+    "options": [],
+    "reason": "a set's write-back is already recorded by the time watch sees it and yields no further events",
+    "recorded_at": "questions.md:13; README.md diff; commit 1f533bf message"
+  },
+  {
+    "decision": "Only save the configuration aggregate when it has pending events (`pending_events` instead of `collect_events`)",
+    "options": [
+      "config.collect_events()",
+      "config.pending_events"
+    ],
+    "reason": "",
+    "recorded_at": "transcript.md:8-11"
+  },
+  {
+    "decision": "Add a `Troupe.reconcile` store method built on ensure_imported and record",
+    "options": [],
+    "reason": "",
+    "recorded_at": "src/troupe/store.py (diff.patch:105); transcript.md:9"
+  },
+  {
+    "decision": "Put the lock, reconcile and watch loop in a new module `sync.py`, and split `run` into `run` and `act`",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:12; README.md diff"
+  },
+  {
+    "decision": "Reuse a single Troupe app instance across watch syncs instead of making a new one each time",
+    "options": [
+      "cache in an apps dict keyed by state_dir",
+      "single nonlocal app"
+    ],
+    "reason": "",
+    "recorded_at": "transcript.md:13-15"
+  },
+  {
+    "decision": "Test with 3 new tests (reconcile-on-command, watch, watch SIGINT) using a subprocess watcher fixture and wait_for polling with a 2s timeout",
+    "options": [],
+    "reason": "",
+    "recorded_at": "tests/test_config.py (diff.patch:244-327)"
+  },
+  {
+    "decision": "Run a manual stress test of 15 sets against a running watch to check for duplicate events",
+    "options": [],
+    "reason": "check the race between set and watch",
+    "recorded_at": "transcript.md:20-22"
+  },
+  {
+    "decision": "Update the README and commit directly on main",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:25; commit 1f533bf"
+  }
+]

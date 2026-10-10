@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/repo/spec/spec/config-foundation/requirements.md:193-210 (Req 6 and 6.7 have step-3 notes moving the scalar-only/exit-5 behaviour to `get`, with the `config show` hint)",
+    "/judge/repo/spec/spec/config-file-sync/requirements.md:76-26 (diff.patch lines 9-26: the reconcile criteria now read \"`get` or `show`\")",
+    "/judge/repo/tests/test_cli_usage.py:163 (the missing-PATH usage case now uses `get`; test_cli_usage.py:256 checks that `get` on a mapping exits 5)",
+    "/judge/repo/tests/test_cli_show.py:72-89 (`show` on a mapping, a list or with no PATH exits 0 and prints YAML)",
+    "/judge/repo/src/troupe/config/theatre.py:127 (the mapping/list error says `print it with troupe config show {path}`)",
+    "/judge/repo/src/troupe/cli/main.py:14-17,73-77 (the step-1 `show` parser is replaced by `show [PATH] [--sources]`)",
+    "/judge/repo/spec/steering/roadmap.md:111-138 (Step 3 section records the rename and its follow-on spec updates)"
+  ],
+  "notes": "All six stale items are handled: the old requirements carry step-3 notes, tests that relied on the old `show` behaviour now use `get`, and the handler, parser and `config show` hint are done; the repo has no README. The only leftover is the roadmap overview and scope (roadmap.md:6,31), which still list `show PATH`, but they are explicitly labelled Step 1 and the Step 3 section supersedes them, so nothing contradicts the new behaviour.",
+  "raw": "{\"score\": 4, \"evidence\": [\"/judge/repo/spec/spec/config-foundation/requirements.md:193-210 (Req 6 and 6.7 have step-3 notes moving the scalar-only/exit-5 behaviour to `get`, with the `config show` hint)\", \"/judge/repo/spec/spec/config-file-sync/requirements.md:76-26 (diff.patch lines 9-26: the reconcile criteria now read \\\"`get` or `show`\\\")\", \"/judge/repo/tests/test_cli_usage.py:163 (the missing-PATH usage case now uses `get`; test_cli_usage.py:256 checks that `get` on a mapping exits 5)\", \"/judge/repo/tests/test_cli_show.py:72-89 (`show` on a mapping, a list or with no PATH exits 0 and prints YAML)\", \"/judge/repo/src/troupe/config/theatre.py:127 (the mapping/list error says `print it with troupe config show {path}`)\", \"/judge/repo/src/troupe/cli/main.py:14-17,73-77 (the step-1 `show` parser is replaced by `show [PATH] [--sources]`)\", \"/judge/repo/spec/steering/roadmap.md:111-138 (Step 3 section records the rename and its follow-on spec updates)\"], \"notes\": \"All six stale items are handled: the old requirements carry step-3 notes, tests that relied on the old `show` behaviour now use `get`, and the handler, parser and `config show` hint are done; the repo has no README. The only leftover is the roadmap overview and scope (roadmap.md:6,31), which still list `show PATH`, but they are explicitly labelled Step 1 and the Step 3 section supersedes them, so nothing contradicts the new behaviour.\"}",
+  "score": 4,
+  "status": "ok"
+}

@@ -1,0 +1,50 @@
+# scoring/stale/step-07.toml — step 7: model change. `https://`/`http://` strings are includes (read-only,
+# fetched at load); a JSON Schema at .troupe/troupe.schema.json validates the configuration and marks
+# `format: uri` strings as literals; `!literal` tags a literal; `set` of an include-looking string writes
+# `!literal` unless `--include`. Drafted 2026-10-05 from scenario/steps/07-model-change.md and contract.md
+# "Includes" and "Remote includes and schema (from step 7)" only.
+[[stale]]
+id = "include-definition"
+kind = "requirement"
+what = "The Includes requirement: 'a string value that starts with `file:` is an include' as the whole rule (no remote includes; every `file:` string is an include)"
+why = "Contract step 7: 'A string starting `https://` or `http://` is also an include'; a string whose schema has `\"format\": \"uri\"`, or tagged `!literal`, 'is a literal, not an include'"
+
+[[stale]]
+id = "set-include-string-creates-include"
+kind = "requirement"
+what = "Any requirement or acceptance criterion that `set PATH file:…` (or a URL value) writes the string plain, so it becomes an include"
+why = "Contract step 7: '`set PATH VALUE` where `VALUE` is a string that would be read as an include and the schema does not mark `PATH` as `format: uri` writes it tagged `!literal`, unless `--include` is given'"
+
+[[stale]]
+id = "include-string-set-tests"
+kind = "test"
+what = "Tests asserting `set` of a `file:`-prefixed string writes it untagged / turns it into an include; tests treating an `https://` or `http://` string value as a plain string"
+why = "Contract step 7: such values are now written `!literal` (without `--include`), and `https://`/`http://` strings are includes"
+
+[[stale]]
+id = "loader-remote-and-literal"
+kind = "code"
+what = "The include loader/resolver: fetch `https://`/`http://` includes (YAML by `.yml`/`.yaml` URL path, else text; failed fetch → exit 4); treat `format: uri` strings (via `properties`/`items`/`additionalProperties`) and `!literal`-tagged strings as literals; validate against the schema (→ exit 4)"
+why = "Contract 'Remote includes and schema', bullets 1, 3 and 4"
+
+[[stale]]
+id = "set-planner-remote-and-schema"
+kind = "code"
+what = "`set`'s write-back planner: changing a value from a remote include → exit 3 with the include string as written; a new key under a remote include → local override (step 5 path); a `set` that would fail schema validation → exit 3; a string value that reads as an include is written `!literal` rather than plain (unless the schema marks PATH `format: uri` or `--include` is given)"
+why = "Contract 'Remote includes and schema', bullets 2 and 4: 'Changing a value that comes from a remote include → exit 3 …'; 'A `set` that would make it invalid → exit 3'"
+
+[[stale]]
+id = "reconcile-literal-awareness"
+kind = "code"
+what = "The reconcile / `watch` path (and its include-following from step 2): must apply the same include-vs-literal rules, so a `!literal` or `format: uri` string is a leaf and not followed as an include"
+why = "Contract 'Sync with files': 'An include added by a hand edit is followed'; step 7 both narrows (`format: uri` and `!literal` strings are literals) and widens (`https://`/`http://` strings become includes) what counts as an include"
+
+[[stale]]
+id = "include-docs"
+kind = "doc"
+what = "README / docs describing includes as `file:` only, or `set`'s options without `--include`; no mention of the schema file"
+why = "Step 7 adds remote includes, the schema at `.troupe/troupe.schema.json`, `!literal` and `--include`"
+
+[legitimate]
+paths = ["src/**", "troupe/**", "tests/**", "conftest.py", "README*", "docs/**", "CHANGELOG*", "CLAUDE.md", "AGENTS.md", "pyproject.toml", "uv.lock",
+         ".gitignore", ".python-version", "Makefile", "justfile", ".github/**", "pytest.ini"]

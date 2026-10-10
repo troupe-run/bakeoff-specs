@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["/judge/setup/installed-commands.json:2-14", "/judge/setup/checklist.json:39-72", "/judge/06/transcript.md:2-5", "/judge/06/transcript.md:68", "/judge/06/transcript.md:85"], "notes": "The method is native to Claude Code: 13 skills load from the arm's .claude/skills, and the checklist shows no missing skills or foreign plugins. Its GitHub Issues link only goes one way. Issue #2 was read with ad-hoc `gh issue view` shell calls (06:2-5). The workflow never commented on, linked or closed it ('Nothing was pushed', 06:68). Work was tracked only in local spec/tasks.md files, so updating the tracker is a separate chore."}
+```

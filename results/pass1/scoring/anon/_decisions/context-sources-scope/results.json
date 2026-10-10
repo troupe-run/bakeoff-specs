@@ -1,0 +1,563 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show",
+          "agents",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "agents.coder.model",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "agents.coder.model",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.model",
+          "sonnet",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "agents.coder.model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "model: opus\ntemperature: 0.2\n",
+      ".troupe/troupe.yml": "name: demo\nagents:\n  coder: file:agents/coder.yaml\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/coder.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "agents",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder.model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "agents",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: troupe: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder.model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: troupe: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: troupe: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "agents",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: unrecognized arguments: --sources (see 'troupe --help')\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder.model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: unrecognized arguments: --sources (see 'troupe --help')\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: unrecognized arguments: --sources (see 'troupe --help')\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "agents",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder.model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "agents",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder.model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            }
+          ]
+        }
+      ],
+      "route": "show only; get --sources exits 2",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "agents",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder.model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: unrecognized arguments: --sources\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

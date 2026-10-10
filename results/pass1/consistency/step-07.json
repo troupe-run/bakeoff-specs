@@ -1,0 +1,122 @@
+{
+  "pass": "pass1",
+  "step": 7,
+  "rounds": [
+    {
+      "at": "2026-10-07T08:39:42+00:00",
+      "groups": [
+        {
+          "question": "When a remote include's content changes on the server, should the change be recorded in history like a hand edit at the next reconcile, with watch polling only local files (A), should watch also poll the URLs on a slower interval (B), should remote leaves be kept out of history (C), or something else?",
+          "answers": [
+            {
+              "arm": "speckitty",
+              "answer": "The contract says a remote include \"is fetched when the configuration loads\" (Remote includes and schema). Reconcile compares \"the files with the configuration and emit[s] a set/remove event for each leaf that differs\"; every command except `history` reconciles first; `watch` reconciles \"within 2 seconds of any change to the config file or an included file\" (Sync with files); file-originated events have actor {\"kind\": \"unknown\", \"id\": null} (Lineage). The contract does not say whether content that changes on the server counts as a change for reconcile or for `watch`. Treat that as out of contract: your choice - state which you chose and why.",
+              "step": 7
+            }
+          ],
+          "id": "Q1",
+          "conflict": false,
+          "overlaps": [],
+          "earlier": []
+        },
+        {
+          "question": "Is a 10-second fetch timeout acceptable?",
+          "answers": [
+            {
+              "arm": "speckitty",
+              "answer": "The contract says \"A failed fetch \u2192 exit 4\" (Remote includes and schema). It doesn't define a timeout or what counts as failing. Out of contract: your choice \u2014 state which you chose and why.",
+              "step": 7
+            }
+          ],
+          "id": "Q2",
+          "conflict": false,
+          "overlaps": [],
+          "earlier": []
+        },
+        {
+          "question": "Should a relative `file:` include inside a remotely fetched file resolve against the URL's directory and be fetched, never reading the local disk?",
+          "answers": [
+            {
+              "arm": "speckitty",
+              "answer": "The contract defines remote includes as strings starting `https://` or `http://`, \"fetched when the configuration loads\" (Remote includes and schema). It doesn't say how a relative include inside fetched content resolves. Out of contract: your choice \u2014 state which you chose and why.",
+              "step": 7
+            }
+          ],
+          "id": "Q3",
+          "conflict": false,
+          "overlaps": [],
+          "earlier": []
+        },
+        {
+          "question": "Should `!literal` on a value that is not a string exit 4?",
+          "answers": [
+            {
+              "arm": "speckitty",
+              "answer": "The contract says \"A string tagged `!literal` is a literal\" (Remote includes and schema). It doesn't define `!literal` on a non-string. Out of contract: your choice \u2014 state which you chose and why.",
+              "step": 7
+            }
+          ],
+          "id": "Q4",
+          "conflict": false,
+          "overlaps": [],
+          "earlier": []
+        },
+        {
+          "question": "Should every YAML tag other than `!literal` still exit 4, as in step 6?",
+          "answers": [
+            {
+              "arm": "speckitty",
+              "answer": "The contract mentions only `!literal` (\"A string tagged `!literal` is a literal\", Remote includes and schema). It does not define other tags. Out of contract: your choice - state which you chose and why.",
+              "step": 7
+            }
+          ],
+          "id": "Q5",
+          "conflict": false,
+          "overlaps": [],
+          "earlier": []
+        }
+      ],
+      "owner": {
+        "Q1": {
+          "ok": true,
+          "note": "",
+          "seconds": 398.39513449999504
+        },
+        "Q2": {
+          "ok": true,
+          "note": "",
+          "seconds": 9.181666040996788
+        },
+        "Q3": {
+          "ok": true,
+          "note": "",
+          "seconds": 9.188678874983452
+        },
+        "Q4": {
+          "ok": true,
+          "note": "",
+          "seconds": 9.19875433400739
+        },
+        "Q5": {
+          "ok": true,
+          "note": "",
+          "seconds": 9.180242790986085
+        }
+      }
+    }
+  ],
+  "confirmed": [
+    "- **Q:** When a remote include's content changes on the server, should the change be recorded in history like a hand edit at the next reconcile, with watch polling only local files (A), should watch also poll the URLs on a slower interval (B), should remote leaves be kept out of history (C), or something else? **A:** The contract says a remote include \"is fetched when the configuration loads\" (Remote includes and schema). Reconcile compares \"the files with the configuration and emit[s] a set/remove event for each leaf that differs\"; every command except `history` reconciles first; `watch` reconciles \"within 2 seconds of any change to the config file or an included file\" (Sync with files); file-originated events have actor {\"kind\": \"unknown\", \"id\": null} (Lineage). The contract does not say whether content that changes on the server counts as a change for reconcile or for `watch`. Treat that as out of contract: your choice - state which you chose and why. _(2026-10-07; pass1; first raised by speckitty at step 7; answered by the real owner)_",
+    "- **Q:** Is a 10-second fetch timeout acceptable? **A:** The contract says \"A failed fetch \u2192 exit 4\" (Remote includes and schema). It doesn't define a timeout or what counts as failing. Out of contract: your choice \u2014 state which you chose and why. _(2026-10-07; pass1; first raised by speckitty at step 7; answered by the real owner)_",
+    "- **Q:** Should a relative `file:` include inside a remotely fetched file resolve against the URL's directory and be fetched, never reading the local disk? **A:** The contract defines remote includes as strings starting `https://` or `http://`, \"fetched when the configuration loads\" (Remote includes and schema). It doesn't say how a relative include inside fetched content resolves. Out of contract: your choice \u2014 state which you chose and why. _(2026-10-07; pass1; first raised by speckitty at step 7; answered by the real owner)_",
+    "- **Q:** Should `!literal` on a value that is not a string exit 4? **A:** The contract says \"A string tagged `!literal` is a literal\" (Remote includes and schema). It doesn't define `!literal` on a non-string. Out of contract: your choice \u2014 state which you chose and why. _(2026-10-07; pass1; first raised by speckitty at step 7; answered by the real owner)_",
+    "- **Q:** Should every YAML tag other than `!literal` still exit 4, as in step 6? **A:** The contract mentions only `!literal` (\"A string tagged `!literal` is a literal\", Remote includes and schema). It does not define other tags. Out of contract: your choice - state which you chose and why. _(2026-10-07; pass1; first raised by speckitty at step 7; answered by the real owner)_"
+  ],
+  "status": "confirmed",
+  "fallbacks": [],
+  "brief_sha_before": "e7a6816f00624c7fc17162153df93b57e8b3fedc1569a522bd5524ac64d442be",
+  "brief_sha_after": "e7a6816f00624c7fc17162153df93b57e8b3fedc1569a522bd5524ac64d442be",
+  "edited": false,
+  "committed": false,
+  "committed_now": false
+}

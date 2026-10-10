@@ -1,0 +1,4 @@
+```json
+{"score": 2, "evidence": ["repo/spec/spec/config-set/spec.md:131", "repo/tests/test_set_scalars.py:43", "repo/tests/test_set_blocks.py:114", "repo/tests/test_set_targets.py:92", "repo/tests/test_history.py:17", "repo/spec/changes/archive/2026-10-02-config-load-show-set/tasks.md:35", "repo/tests/test_layout.py:5"]}
+{"notes": "I sampled five requirements: Scalar quoting, Folded block scalars, Refusing to replace an include, Import on first command and show of a collection. All five can be traced to an asserting test, but only by matching names and reused scenario data, because no test contains a requirement ID or scenario reference. tasks.md names requirements and source modules but not test files, and one module link is stale: it points to edit/layout.py, while that code is actually in edit/text.py."}
+```

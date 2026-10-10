@@ -1,0 +1,544 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.model",
+          "sonnet",
+          "--reason",
+          "try sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "agent:planner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "limits",
+          "{timeout: 30, tags: [a, b]}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "agents.coder"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: opus  # main model\n    temperature: 0.2\nretry: 3\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet",
+                "--reason",
+                "try sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:planner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "{timeout: 30, tags: [a, b]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\nlimits:\n  timeout: 30\n  tags:\n    - a\n    - b\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:39.242815Z\", \"reason\": null, \"change\": \"1ab1560d-afd1-4305-b41a-6d29cf5fc54f\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:39.242815Z\", \"reason\": null, \"change\": \"1ab1560d-afd1-4305-b41a-6d29cf5fc54f\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:39.242815Z\", \"reason\": null, \"change\": \"1ab1560d-afd1-4305-b41a-6d29cf5fc54f\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:39.246103Z\", \"reason\": \"try sonnet\", \"change\": \"4b9faa66-6b7a-4d7f-b078-281bcf7fc4a5\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"limits.timeout\", \"old\": null, \"new\": 30, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:39.831817Z\", \"reason\": null, \"change\": \"c839630c-02e5-4bd3-819d-0084674884e3\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"limits.tags.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:39.831817Z\", \"reason\": null, \"change\": \"c839630c-02e5-4bd3-819d-0084674884e3\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"limits.tags.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:39.831817Z\", \"reason\": null, \"change\": \"c839630c-02e5-4bd3-819d-0084674884e3\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:39.242815Z\", \"reason\": null, \"change\": \"1ab1560d-afd1-4305-b41a-6d29cf5fc54f\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:39.242815Z\", \"reason\": null, \"change\": \"1ab1560d-afd1-4305-b41a-6d29cf5fc54f\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:39.246103Z\", \"reason\": \"try sonnet\", \"change\": \"4b9faa66-6b7a-4d7f-b078-281bcf7fc4a5\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet",
+                "--reason",
+                "try sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:planner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "{timeout: 30, tags: [a, b]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\nlimits:\n  timeout: 30\n  tags:\n    - a\n    - b\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:42.492707Z\", \"reason\": null, \"change\": \"16b35c3b-b6ef-4e22-a247-5713af812c3b\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:42.492707Z\", \"reason\": null, \"change\": \"16b35c3b-b6ef-4e22-a247-5713af812c3b\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:42.492707Z\", \"reason\": null, \"change\": \"16b35c3b-b6ef-4e22-a247-5713af812c3b\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:42.495028Z\", \"reason\": \"try sonnet\", \"change\": \"06542076-86ec-4b7f-a070-d16e8756d6dc\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"limits.timeout\", \"old\": null, \"new\": 30, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:43.033241Z\", \"reason\": null, \"change\": \"04f17393-8b2e-41e7-acb1-c4ee94a5731d\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"limits.tags.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:43.033241Z\", \"reason\": null, \"change\": \"04f17393-8b2e-41e7-acb1-c4ee94a5731d\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"limits.tags.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:43.033241Z\", \"reason\": null, \"change\": \"04f17393-8b2e-41e7-acb1-c4ee94a5731d\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:42.492707Z\", \"reason\": null, \"change\": \"16b35c3b-b6ef-4e22-a247-5713af812c3b\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:42.492707Z\", \"reason\": null, \"change\": \"16b35c3b-b6ef-4e22-a247-5713af812c3b\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:42.495028Z\", \"reason\": \"try sonnet\", \"change\": \"06542076-86ec-4b7f-a070-d16e8756d6dc\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet",
+                "--reason",
+                "try sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:planner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "{timeout: 30, tags: [a, b]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\nlimits:\n  timeout: 30\n  tags:\n    - a\n    - b\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:45.529868Z\", \"reason\": null, \"change\": \"5c1c0ef5-b6bd-4e95-b451-14110f853046\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:45.529868Z\", \"reason\": null, \"change\": \"5c1c0ef5-b6bd-4e95-b451-14110f853046\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:45.529868Z\", \"reason\": null, \"change\": \"5c1c0ef5-b6bd-4e95-b451-14110f853046\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:45.533440Z\", \"reason\": \"try sonnet\", \"change\": \"ea47845d-f218-452e-bbdd-8eef4134f04a\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"limits.timeout\", \"old\": null, \"new\": 30, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:46.087941Z\", \"reason\": null, \"change\": \"ca757523-ef3b-4424-b91e-0d2c16f3603b\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"limits.tags.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:46.087941Z\", \"reason\": null, \"change\": \"ca757523-ef3b-4424-b91e-0d2c16f3603b\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"limits.tags.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:46.087941Z\", \"reason\": null, \"change\": \"ca757523-ef3b-4424-b91e-0d2c16f3603b\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:45.529868Z\", \"reason\": null, \"change\": \"5c1c0ef5-b6bd-4e95-b451-14110f853046\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:45.529868Z\", \"reason\": null, \"change\": \"5c1c0ef5-b6bd-4e95-b451-14110f853046\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:45.533440Z\", \"reason\": \"try sonnet\", \"change\": \"ea47845d-f218-452e-bbdd-8eef4134f04a\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet",
+                "--reason",
+                "try sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:planner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "{timeout: 30, tags: [a, b]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\nlimits:\n  timeout: 30\n  tags:\n    - a\n    - b\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:48.693579Z\", \"reason\": null, \"change\": \"556c3ef4-602b-4ab1-bb02-b9f05f798ffa\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:48.693579Z\", \"reason\": null, \"change\": \"556c3ef4-602b-4ab1-bb02-b9f05f798ffa\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:48.693579Z\", \"reason\": null, \"change\": \"556c3ef4-602b-4ab1-bb02-b9f05f798ffa\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:48.693805Z\", \"reason\": \"try sonnet\", \"change\": \"1cc61a79-91d4-4c3c-867e-89048f1f8bf3\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"limits.timeout\", \"old\": null, \"new\": 30, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:49.176080Z\", \"reason\": null, \"change\": \"51ae0b20-2458-4abe-8c26-1238802afe52\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"limits.tags.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:49.176080Z\", \"reason\": null, \"change\": \"51ae0b20-2458-4abe-8c26-1238802afe52\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"limits.tags.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:49.176080Z\", \"reason\": null, \"change\": \"51ae0b20-2458-4abe-8c26-1238802afe52\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:48.693579Z\", \"reason\": null, \"change\": \"556c3ef4-602b-4ab1-bb02-b9f05f798ffa\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:48.693579Z\", \"reason\": null, \"change\": \"556c3ef4-602b-4ab1-bb02-b9f05f798ffa\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:48.693805Z\", \"reason\": \"try sonnet\", \"change\": \"1cc61a79-91d4-4c3c-867e-89048f1f8bf3\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet",
+                "--reason",
+                "try sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:planner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "{timeout: 30, tags: [a, b]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\nlimits:\n  timeout: 30\n  tags:\n    - a\n    - b\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:51.460788Z\", \"reason\": null, \"change\": \"9d731020-8223-46ec-8b45-4127bb4ea1ff\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:51.460788Z\", \"reason\": null, \"change\": \"9d731020-8223-46ec-8b45-4127bb4ea1ff\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:51.460788Z\", \"reason\": null, \"change\": \"9d731020-8223-46ec-8b45-4127bb4ea1ff\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:51.462315Z\", \"reason\": \"try sonnet\", \"change\": \"2d1490ad-f9b9-4b0d-8b07-5ed7fb7e52ad\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"limits.timeout\", \"old\": null, \"new\": 30, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:51.976330Z\", \"reason\": null, \"change\": \"08f4009e-328e-4ee4-bc73-f25d0c2ca17b\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"limits.tags.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:51.976330Z\", \"reason\": null, \"change\": \"08f4009e-328e-4ee4-bc73-f25d0c2ca17b\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"limits.tags.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:51.976330Z\", \"reason\": null, \"change\": \"08f4009e-328e-4ee4-bc73-f25d0c2ca17b\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:51.460788Z\", \"reason\": null, \"change\": \"9d731020-8223-46ec-8b45-4127bb4ea1ff\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:51.460788Z\", \"reason\": null, \"change\": \"9d731020-8223-46ec-8b45-4127bb4ea1ff\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:51.462315Z\", \"reason\": \"try sonnet\", \"change\": \"2d1490ad-f9b9-4b0d-8b07-5ed7fb7e52ad\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet",
+                "--reason",
+                "try sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:planner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "{timeout: 30, tags: [a, b]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\nlimits:\n  timeout: 30\n  tags:\n    - a\n    - b\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:54.586041Z\", \"reason\": null, \"change\": \"7522d1c4-a05e-4744-8b61-effd9f30ae4d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:54.586041Z\", \"reason\": null, \"change\": \"7522d1c4-a05e-4744-8b61-effd9f30ae4d\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:54.586041Z\", \"reason\": null, \"change\": \"7522d1c4-a05e-4744-8b61-effd9f30ae4d\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:54.590699Z\", \"reason\": \"try sonnet\", \"change\": \"367fc712-1c2c-40aa-b82a-97b335006475\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"limits.timeout\", \"old\": null, \"new\": 30, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:55.132243Z\", \"reason\": null, \"change\": \"2621f9e0-98eb-411b-a580-e763ac677534\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"limits.tags.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:55.132243Z\", \"reason\": null, \"change\": \"2621f9e0-98eb-411b-a580-e763ac677534\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"limits.tags.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:55.132243Z\", \"reason\": null, \"change\": \"2621f9e0-98eb-411b-a580-e763ac677534\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:54.586041Z\", \"reason\": null, \"change\": \"7522d1c4-a05e-4744-8b61-effd9f30ae4d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:58:54.586041Z\", \"reason\": null, \"change\": \"7522d1c4-a05e-4744-8b61-effd9f30ae4d\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:58:54.590699Z\", \"reason\": \"try sonnet\", \"change\": \"367fc712-1c2c-40aa-b82a-97b335006475\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "eventsourcing with SQLite under .troupe/, one aggregate per theatre with a fixed id, each command's events saved in one save",
+      "route_no": 1
+    }
+  ]
+}

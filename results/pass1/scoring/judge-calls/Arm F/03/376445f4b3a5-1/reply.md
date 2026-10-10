@@ -1,0 +1,7 @@
+I scored Arm X a 3. Every open decision at this step is written down in the repo with a reason, but several don't list the options that were weighed, and one has no reason at all.
+
+```json
+{"score": 3, "evidence": ["/judge/repo/spec/003-config-get-show/spec.md:278-315", "/judge/repo/spec/003-config-get-show/spec.md:298-304", "/judge/repo/spec/003-config-get-show/spec.md:312-315", "/judge/repo/spec/003-config-get-show/research.md:3-4", "/judge/repo/spec/003-config-get-show/research.md:19", "/judge/repo/spec/003-config-get-show/plan.md:53", "/judge/transcript.md:21", "/judge/gates.md:1"]}
+```
+
+**Notes:** No question at this step was answered by a fallback or a 'your choice' reply (`gates.md` is empty). Every open point the contract leaves is recorded in the repo as D-20 to D-26 in `spec.md`, each with a reason, and the technical choices are recorded as G-1 to G-7 in `research.md`, each with its alternatives. That includes the D-22 change made during planning. It falls short of 4 because the spec entries don't list the options considered: D-20, D-21, D-23, D-24 and D-25 give only the choice and a reason. D-26 (`--sources` only on `show`, a usage error on `get`) is stated with no reason at all.

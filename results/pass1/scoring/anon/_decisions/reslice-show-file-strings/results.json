@@ -1,0 +1,223 @@
+{
+  "outcomes": [
+    {
+      "outcome": "1",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show",
+            "agents"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "coder:\n  model: opus\n  prompt: file:prompts/coder.md\n  system: |\n    You are a coder.\n"
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "agents",
+            "--sources"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "coder:\n  model: opus # from .troupe/troupe.yml\n  prompt: file:prompts/coder.md # from .troupe/troupe.yml\n  system: | # from .troupe/sys.md\n    You are a coder.\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.coder.notes",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    prompt: !literal file:prompts/coder.md\n    system: file:sys.md\n    notes: !literal file:notes.txt\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "agents:\n  coder:\n    model: opus\n    prompt: file:prompts/coder.md\n    system: |\n      You are a coder.\n    notes: file:notes.txt\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "agents.coder.notes"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "file:notes.txt\n"
+        }
+      ]
+    },
+    {
+      "outcome": "2",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show",
+            "agents"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "coder:\n  model: opus\n  prompt: !literal file:prompts/coder.md\n  system: |\n    You are a coder.\n"
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "agents",
+            "--sources"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "coder:\n  model: opus # from .troupe/troupe.yml\n  prompt: !literal file:prompts/coder.md # from .troupe/troupe.yml\n  system: | # from .troupe/sys.md\n    You are a coder.\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.coder.notes",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    prompt: !literal file:prompts/coder.md\n    system: file:sys.md\n    notes: !literal file:notes.txt\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "agents:\n  coder:\n    model: opus\n    prompt: !literal file:prompts/coder.md\n    system: |\n      You are a coder.\n    notes: !literal file:notes.txt\n"
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "agents.coder.notes"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "file:notes.txt\n"
+        }
+      ]
+    }
+  ],
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show",
+          "agents"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.notes",
+          "file:notes.txt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "agents.coder.notes"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/sys.md": "You are a coder.\n",
+      ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    prompt: !literal file:prompts/coder.md\n    system: file:sys.md\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  }
+}

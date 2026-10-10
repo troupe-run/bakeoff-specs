@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "spec/spec/config-lineage/design.md:173-197 (Requirements Traceability table maps every requirement 1.1–7.4 to a component and function, e.g. 3.2 → Reconcile FILE_CONTEXT)",
+    "spec/spec/config-lineage/design.md:123-135 (component → src/troupe file list, e.g. cli/set_command.py for --reason, cli/render.py format_history_line)",
+    "spec/spec/config-lineage/tasks.md:19,35,59-72 (each task lists its _Requirements_; e2e tasks name their test modules through _Boundary: test_e2e_lineage/actor/reason_)",
+    "tests/test_e2e_lineage.py:121-461 (every test docstring cites Req IDs, e.g. :218 'Req 3.2, 3.3, 4.1, 4.2, 5.1')",
+    "tests/test_e2e_reason.py:101-266 (Req 6.1–6.6 each cited)",
+    "tests/test_store_legacy.py:3,152-250 (names config-lineage 7.2 and 7.3 explicitly)",
+    "spec/spec/config-foundation/requirements.md:222,239,253 and spec/spec/config-set-writeback/requirements.md:133,293 (step-4 notes on the changed earlier requirements point back to config-lineage requirement IDs)"
+  ],
+  "notes": "A newcomer can follow the step-4 links without grepping: requirement ID → design traceability row and file list → code, and requirement → task → named test module whose docstrings cite the same IDs. The step-1 to step-3 requirements that step 4 changed carry notes pointing to config-lineage. One small gap: test_e2e_lineage, test_e2e_actor and test_e2e_reason cite bare IDs like 'Req 1.1' without naming the spec. The tasks.md boundary lines resolve which spec they mean.",
+  "raw": "```json\n{\"score\": 4, \"evidence\": [\"spec/spec/config-lineage/design.md:173-197 (Requirements Traceability table maps every requirement 1.1–7.4 to a component and function, e.g. 3.2 → Reconcile FILE_CONTEXT)\", \"spec/spec/config-lineage/design.md:123-135 (component → src/troupe file list, e.g. cli/set_command.py for --reason, cli/render.py format_history_line)\", \"spec/spec/config-lineage/tasks.md:19,35,59-72 (each task lists its _Requirements_; e2e tasks name their test modules through _Boundary: test_e2e_lineage/actor/reason_)\", \"tests/test_e2e_lineage.py:121-461 (every test docstring cites Req IDs, e.g. :218 'Req 3.2, 3.3, 4.1, 4.2, 5.1')\", \"tests/test_e2e_reason.py:101-266 (Req 6.1–6.6 each cited)\", \"tests/test_store_legacy.py:3,152-250 (names config-lineage 7.2 and 7.3 explicitly)\", \"spec/spec/config-foundation/requirements.md:222,239,253 and spec/spec/config-set-writeback/requirements.md:133,293 (step-4 notes on the changed earlier requirements point back to config-lineage requirement IDs)\"], \"notes\": \"A newcomer can follow the step-4 links without grepping: requirement ID → design traceability row and file list → code, and requirement → task → named test module whose docstrings cite the same IDs. The step-1 to step-3 requirements that step 4 changed carry notes pointing to config-lineage. One small gap: test_e2e_lineage, test_e2e_actor and test_e2e_reason cite bare IDs like 'Req 1.1' without naming the spec. The tasks.md boundary lines resolve which spec they mean.\"}\n```",
+  "score": 4,
+  "status": "ok"
+}

@@ -1,0 +1,56 @@
+{
+  "sha_before": "f64a6ba98c24d04a8a2a0c25c5d67131b15ef93b",
+  "sha_after": "b813885945d22eaef6f188cb8232e7de1a3595fa",
+  "head": "b813885945d22eaef6f188cb8232e7de1a3595fa",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "b813885945d22eaef6f188cb8232e7de1a3595fa",
+      "author": "Developer",
+      "subject": "Archive config-remote-includes-and-schema and sync its specs into openspec/specs"
+    },
+    {
+      "sha": "266c9fe850d38912c9010ee09336fdf0d265ea58",
+      "author": "Developer",
+      "subject": "Mark config-remote-includes-and-schema tasks complete after full test, type and lint run"
+    },
+    {
+      "sha": "e061d9a9b5b6cb3cae08972dc48de39fb4cbe2b7",
+      "author": "Developer",
+      "subject": "Write include-looking set VALUEs as !literal unless --include is given"
+    },
+    {
+      "sha": "5128172120f4c938f1c409be93210b37b5bb0e59",
+      "author": "Developer",
+      "subject": "Read .troupe/troupe.schema.json: URI settings are literals, and the config must validate"
+    },
+    {
+      "sha": "9b34dc0b5e404f96d0273acce2b052100230f808",
+      "author": "Developer",
+      "subject": "Refuse writes to remote content and name the local include line instead"
+    },
+    {
+      "sha": "5a018c1c80e70f913d1e2f50226c067761999961",
+      "author": "Developer",
+      "subject": "Load https:// and http:// includes, fetched once per command"
+    },
+    {
+      "sha": "261692dce57231c0497b97692e807d9c0a2b2b06",
+      "author": "Developer",
+      "subject": "Load !literal scalars as strings and keep the tag when set changes them"
+    },
+    {
+      "sha": "273bd0825f6358769c3909d5dfef6700f5aa8780",
+      "author": "Developer",
+      "subject": "Decide what is an include in one module, ready for URL includes"
+    },
+    {
+      "sha": "e55580c8e2bc653bd20fabc91b6273da8a94eb86",
+      "author": "Developer",
+      "subject": "Plan remote includes and a schema for contract step 7 (OpenSpec change config-remote-includes-and-schema)"
+    }
+  ],
+  "diffstat": "README.md                                          | 154 +++++++++++++-\n .../.openspec.yaml                                 |   2 +\n .../design.md                                      | 226 ++++++++++++++++++++\n .../proposal.md                                    |  76 +++++++\n .../specs/config-cli/spec.md                       |  62 ++++++\n .../specs/config-loading/spec.md                   | 123 +++++++++++\n .../specs/config-schema/spec.md                    | 101 +++++++++\n .../specs/config-set/spec.md                       | 152 ++++++++++++++\n .../specs/config-show/spec.md                      |  49 +++++\n .../specs/config-sync/spec.md                      |  60 ++++++\n .../tasks.md                                       |  52 +++++\n openspec/specs/config-cli/spec.md                  |  15 +-\n openspec/specs/config-loading/spec.md              | 102 ++++++++-\n openspec/specs/config-schema/spec.md               | 100 +++++++++\n openspec/specs/config-set/spec.md                  | 145 ++++++++++++-\n openspec/specs/config-show/spec.md                 |   7 +\n openspec/specs/config-sync/spec.md                 |  19 +-\n pyproject.toml                                     |   2 +\n src/troupe/cli.py                                  |   6 +\n src/troupe/commands.py                             |  13 +-\n src/troupe/edit/apply.py                           |  86 ++++++--\n src/troupe/edit/blocks.py                          |  13 +-\n src/troupe/edit/ops.py                             |  34 ++-\n src/troupe/edit/plan.py                            |   9 +-\n src/troupe/edit/scalars.py                         |   9 +-\n src/troupe/errors.py                               |  13 ++\n src/troupe/includes.py                             |  53 +++++\n src/troupe/loader.py                               | 154 ++++++++++----\n src/troupe/overrides.py                            |  14 +-\n src/troupe/remote.py                               |  90 ++++++++\n src/troupe/render.py                               |   8 +-\n src/troupe/schema.py                               |  19 +-\n src/troupe/schema_file.py                          | 124 +++++++++++\n src/troupe/source.py                               |  22 +-\n src/troupe/tree.py                                 |  52 +++--\n tests/conftest.py                                  |  79 ++++++-\n tests/test_cli.py                                  |  18 ++\n tests/test_core_schema.py                          |  85 ++++++++\n tests/test_http_fixture.py                         |  21 ++\n tests/test_literal_tag.py                          |  72 +++++++\n tests/test_reconcile.py                            |  21 +-\n tests/test_remote_loading.py                       | 135 ++++++++++++\n tests/test_render.py                               |   4 +-\n tests/test_schema.py                               | 232 ++++++++++++++-------\n tests/test_set_literal_values.py                   | 151 ++++++++++++++\n tests/test_set_remote.py                           | 131 ++++++++++++\n tests/test_set_targets.py                          |  17 +-\n tests/test_show_sources.py                         |  14 +-\n tests/test_watch.py                                |  22 ++\n uv.lock                                            | 174 ++++++++++++++++\n 50 files changed, 3126 insertions(+), 216 deletions(-)"
+}

@@ -1,0 +1,340 @@
+[
+  {
+    "decision": "Show events recorded before step 4 with what is known and mark the rest unknown: real stored `at`, actor unknown/null, reason null, via \"import\" for old imports and null for old set/remove, a stable change id unique to each event, and stored rows never rewritten",
+    "options": [
+      "(A) report what is known and mark the rest unknown",
+      "(B) refuse, with an error naming the database file",
+      "(C) something else"
+    ],
+    "reason": "Refusing would hide a user's existing audit trail. This follows the brief's rule to state unknowns rather than guess. A CLI set and a file reconcile cannot be told apart in old data.",
+    "recorded_at": "spec/troupe-config-lineage-01M436R0/spec.md:30 (DM 01M436RBNQT22F9AM54QER2FT9); questions.md Q1 (PO: out of contract, the arm's choice)"
+  },
+  {
+    "decision": "Record the pre-lineage choice in the spec and a decision record, not as a contract amendment",
+    "options": [],
+    "reason": "PO: the contract does not change, so the choice goes in the arm's own spec",
+    "recorded_at": "questions.md Q1 reply; spec.md:28; spec.md C-001"
+  },
+  {
+    "decision": "Check TROUPE_ACTOR after argument parsing and before the theatre is located or loaded. A bad value exits 2 even if the config can't be loaded, and nothing is recorded (no import, no reconcile)",
+    "options": [
+      "check before loading anything",
+      "check later"
+    ],
+    "reason": "A command that is going to fail must not leave events behind. This is the choice least likely to put unattributable entries into history.",
+    "recorded_at": "spec.md:31 (DM 01M436TPQDWVSZQYFD6D5343DC); questions.md Q1 (escalated, safest assumption)"
+  },
+  {
+    "decision": "When TROUPE_ACTOR is unset and no login name can be found, the actor is {kind: human, id: null} and the command still runs",
+    "options": [
+      "human with null id",
+      "refuse"
+    ],
+    "reason": "The contract says unset means human. The id is genuinely unknown, so it is stated as null rather than invented, and refusing would block the user without protecting data.",
+    "recorded_at": "spec.md:32 (DM 01M436TX68S2MGE4DN9AM02KTJ); questions.md Q1 (escalated)"
+  },
+  {
+    "decision": "The reconcile a set runs first is a separate change (via file, actor unknown) from the set's own change (via cli)",
+    "options": [],
+    "reason": "PO confirmed: Lineage names a file reconcile as its own producer of a change",
+    "recorded_at": "questions.md Q1 default 1 + reply; spec.md:22"
+  },
+  {
+    "decision": "Any import a command triggers is its own change, separate from the command's events",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec.md FR-010; gates.md Gate 2"
+  },
+  {
+    "decision": "An empty TROUPE_ACTOR, an empty id (human:), or any other form exits 2 with a message naming the variable, for every troupe config command",
+    "options": [],
+    "reason": "PO: these are the only valid forms. A set-but-empty variable is not unset.",
+    "recorded_at": "questions.md Q1 default 2 + reply; spec.md:26"
+  },
+  {
+    "decision": "--reason exists only on set, is stored as given, and is dropped when the set records nothing",
+    "options": [],
+    "reason": "PO confirmed: the contract defines --reason only on set",
+    "recorded_at": "questions.md Q1 default 4; spec.md:24"
+  },
+  {
+    "decision": "Each watch reconcile is its own change",
+    "options": [],
+    "reason": "PO confirmed",
+    "recorded_at": "questions.md Q1 default 5; spec.md:23"
+  },
+  {
+    "decision": "History line key order is seq, op, path, old, new, actor, via, at, reason, change",
+    "options": [],
+    "reason": "PO: the contract does not fix the order, so this order is acceptable",
+    "recorded_at": "questions.md Q1 default 6; research.md:71-74 (D-8)"
+  },
+  {
+    "decision": "--reason \"\" is stored as \"\", not null",
+    "options": [
+      "\"\"",
+      "null"
+    ],
+    "reason": "It is the text given",
+    "recorded_at": "spec.md:116; gates.md Gate 2"
+  },
+  {
+    "decision": "All events in one change share the same `at`",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec.md FR-007; gates.md Gate 2"
+  },
+  {
+    "decision": "A TROUPE_ACTOR id is everything after the first ':' (so human:alice:x is accepted). The kind must be lowercase human/agent, and other casing exits 2.",
+    "options": [],
+    "reason": "The contract wording taken literally",
+    "recorded_at": "spec.md:121-122; research.md:42-50 (D-5)"
+  },
+  {
+    "decision": "The invalid-actor message is \"TROUPE_ACTOR: invalid value '<value>': expected 'human:<id>' or 'agent:<id>'\", a UsageError",
+    "options": [],
+    "reason": "It names the variable (TROUPE-003)",
+    "recorded_at": "research.md:48 (D-5); src/troupe/lineage.py resolve_actor"
+  },
+  {
+    "decision": "Store lineage as fields on each leaf event (actor_kind, actor_id, via, at, reason, change), with class_version = 2",
+    "options": [
+      "fields on each leaf event",
+      "a separate ChangeRecorded event",
+      "a separate table or file"
+    ],
+    "reason": "One event equals one line. A whole change is saved in one atomic save. A separate event would shift seq; a second store would need its own atomicity.",
+    "recorded_at": "research.md:5-11 (D-1); gates.md Gate 4"
+  },
+  {
+    "decision": "Give old events their lineage when read, through eventsourcing's upcast_v1_v2 hook, with change = pre-lineage-<seq>",
+    "options": [
+      "upcast hook",
+      "a one-off migration that rewrites rows",
+      "getattr defaults at read sites"
+    ],
+    "reason": "This is the library's own migration mechanism, and rows are never rewritten. The knowledge stays in one place instead of being scattered.",
+    "recorded_at": "research.md:13-24 (D-2)"
+  },
+  {
+    "decision": "Change ids are str(uuid.uuid4()), minted once per producer",
+    "options": [
+      "uuid4",
+      "a sequence number stored in the history",
+      "ULIDs"
+    ],
+    "reason": "Unique across processes with no coordination, and cannot equal pre-lineage-…. ULIDs would need a dependency.",
+    "recorded_at": "research.md:26-32 (D-3)"
+  },
+  {
+    "decision": "`at` is read once per producer with microsecond precision, in the format YYYY-MM-DDTHH:MM:SS.ffffffZ, via a single format_at that uses astimezone(UTC)",
+    "options": [
+      "microseconds",
+      "whole seconds",
+      "the library's per-event timestamp"
+    ],
+    "reason": "Fixed width and sorts lexically. Whole seconds would lose detail; the library timestamp differs within one change. astimezone handles a non-UTC TZINFO_TOPIC.",
+    "recorded_at": "research.md:34-40 (D-4)"
+  },
+  {
+    "decision": "The login name comes from getpass.getuser(). OSError, KeyError or an empty result gives a null id.",
+    "options": [
+      "getpass.getuser()",
+      "os.getlogin()",
+      "pwd.getpwuid(os.getuid()) alone"
+    ],
+    "reason": "It is the standard notion of login name and works without a terminal. os.getlogin fails under CI, cron and agents; pwd alone ignores LOGNAME/USER.",
+    "recorded_at": "research.md:52-58 (D-6)"
+  },
+  {
+    "decision": "The actor is passed as a parameter to Command.run(theatre, args, actor). Store methods take a Lineage. Session, reconcile and set each build their own lineage.",
+    "options": [
+      "pass as a parameter",
+      "store the actor on argparse.Namespace"
+    ],
+    "reason": "Namespace is untyped under mypy --strict. One lineage per producer holds by construction.",
+    "recorded_at": "research.md:60-69 (D-7)"
+  },
+  {
+    "decision": "All lineage decisions go in one new module, src/troupe/lineage.py",
+    "options": [],
+    "reason": "TROUPE-007: one decision, one place",
+    "recorded_at": "plan.md:10, plan.md:59"
+  },
+  {
+    "decision": "Test against a real pre-lineage database recorded by the step-3 code at a589041, with a regeneration script and an oracle computed independently",
+    "options": [
+      "a real fixture from the old code",
+      "version-1 rows synthesised with SQL"
+    ],
+    "reason": "Tests the real old on-disk format, not our own idea of it",
+    "recorded_at": "research.md:76-80 (D-9); tests/fixtures/pre_lineage/README.md"
+  },
+  {
+    "decision": "Event class names and topics must not change; the Created event and the aggregate stay at version 1",
+    "options": [],
+    "reason": "The store finds stored events by topic, so renaming would make old histories unreadable",
+    "recorded_at": "plan.md:126; src/troupe/history.py ConfigHistory docstring"
+  },
+  {
+    "decision": "No new dependencies; use the standard library's uuid, getpass and datetime",
+    "options": [],
+    "reason": "No supply-chain review needed",
+    "recorded_at": "plan.md:40"
+  },
+  {
+    "decision": "Split the work into five WPs, with recording (WP03) separate from output (WP04)",
+    "options": [],
+    "reason": "WP03 leaves the history output unchanged so existing tests stay green; WP04 then changes the output and the tests",
+    "recorded_at": "questions.md Q6"
+  },
+  {
+    "decision": "Allow WP03 to edit only the signature of commands/history.py, a file WP04 owns",
+    "options": [],
+    "reason": "WP03 and WP04 run in sequence, so there is no collision risk",
+    "recorded_at": "questions.md Q6; analysis-report.md I2"
+  },
+  {
+    "decision": "Add an `unset` option to run_cli/_child_env/WatchProcess, and always strip TROUPE_ACTOR and TROUPE_THEATRE from child environments",
+    "options": [
+      "add unset support",
+      "override the login variables to \"\""
+    ],
+    "reason": "Analysis finding U1: tests need to remove login variables from the child process. A developer's shell value must not affect tests.",
+    "recorded_at": "analysis-report.md (U1); questions.md Q7; tests/conftest.py"
+  },
+  {
+    "decision": "Keep the monkeypatched getpass.getuser stand-in for the unknowable-login unit test",
+    "options": [],
+    "reason": "Not a TROUPE-005 violation; real-CLI tests cover the normal path",
+    "recorded_at": "analysis-report.md C1"
+  },
+  {
+    "decision": "Treat the watch.py docstring note in the plan as optional, since no WP owns watch.py",
+    "options": [
+      "add one sentence as an out-of-map edit",
+      "leave it"
+    ],
+    "reason": "Behaviour is unaffected",
+    "recorded_at": "analysis-report.md I1"
+  },
+  {
+    "decision": "Fix the WP01 review finding by adding a key-order assertion instead of renaming the test",
+    "options": [
+      "assert the order directly",
+      "rename to test_lineage_fields_are_flat"
+    ],
+    "reason": "",
+    "recorded_at": "WP01 review-cycle-1.md; transcript.md:142,146"
+  },
+  {
+    "decision": "Keep the WP02 fixture YAML as specified (5 leaves, 8 events) although the WP text said 9",
+    "options": [],
+    "reason": "The error was in the WP prompt, and nothing downstream depends on the count",
+    "recorded_at": "transcript.md:165-166"
+  },
+  {
+    "decision": "The orchestrator renamed test_set_event_line_is_exact_json to test_set_event_line_starts_with_exact_json_of_the_original_keys",
+    "options": [],
+    "reason": "The name claimed more than the test checked (TROUPE-005)",
+    "recorded_at": "transcript.md:338-341; questions.md Q10"
+  },
+  {
+    "decision": "Add an NFR-001 all-or-nothing save test in WP05 that triggers a failure at encode time inside save()",
+    "options": [],
+    "reason": "To close a reported coverage gap. A failure partway through a DB write still relies on the store's single transaction.",
+    "recorded_at": "transcript.md:384-393; questions.md Q10"
+  },
+  {
+    "decision": "lineage_from_fields raises ValueError on an unknown stored actor_kind or via (treated as a corrupt store)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/lineage.py lineage_from_fields)"
+  },
+  {
+    "decision": "format_at raises ValueError on a naive datetime",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/lineage.py format_at)"
+  },
+  {
+    "decision": "watch validates TROUPE_ACTOR but does not use the actor; read-only commands accept the actor and leave it unused",
+    "options": [],
+    "reason": "They record no events of their own",
+    "recorded_at": "src/troupe/cli.py module docstring; src/troupe/commands/get.py, show.py"
+  },
+  {
+    "decision": "The `unknown` kind is reserved and cannot be named in TROUPE_ACTOR",
+    "options": [],
+    "reason": "unknown is only for imports, file reconciles and pre-lineage events",
+    "recorded_at": "src/troupe/lineage.py _ENV_ACTOR_KINDS comment"
+  },
+  {
+    "decision": "Run acceptance with --lenient instead of creating an empty docs/ folder",
+    "options": [
+      "--lenient",
+      "create an empty docs/"
+    ],
+    "reason": "An empty docs/ would add structure nobody asked for",
+    "recorded_at": "research.md:82-84 (D-10)"
+  },
+  {
+    "decision": "After the method merge squash failed, copy the reviewed src/tests and status files onto the feature branch in one commit, combine the status logs by event_id, and do not retry the merge",
+    "options": [],
+    "reason": "Same failure as in step 2; a retry can only fail the same way. The diff against the reviewed lane is empty.",
+    "recorded_at": "research.md:85-89 (D-10)"
+  },
+  {
+    "decision": "Deliver by a local merge into main from the feature branch, with no push and no PR",
+    "options": [],
+    "reason": "As in previous missions; method won't commit planning files to the protected main",
+    "recorded_at": "gates.md Gate 2; questions.md Discovery Q1"
+  },
+  {
+    "decision": "For the post-merge accept failure: fast-forward the feature branch to main, re-run accept --lenient there, then fast-forward main",
+    "options": [
+      "re-run on the feature branch with --lenient",
+      "create docs/ and re-run",
+      "rely on the earlier acceptance",
+      "--force/override",
+      "rewrite main's history"
+    ],
+    "reason": "Safest: no code or user files change and the contract is unaffected. Forcing would hide the branch rule; rewriting would lose the merge record.",
+    "recorded_at": "research.md:91-99 (D-11); questions.md Q11-Q12"
+  },
+  {
+    "decision": "After the merge retry failed, set WP05 back to done with a forced override reason and do not retry again",
+    "options": [],
+    "reason": "A retry can only fail the same way; this matches how step 2 was handled",
+    "recorded_at": "research.md:101-108 (D-12); questions.md Q13"
+  },
+  {
+    "decision": "File one low-priority tracker issue for the test-hardening suggestions, and no tracker issue for the mission itself",
+    "options": [],
+    "reason": "method already tracked the mission",
+    "recorded_at": "questions.md Q10"
+  },
+  {
+    "decision": "Leave the lane branches and worktrees in place without cleaning them up",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md Q10"
+  },
+  {
+    "decision": "Discovery run: chose option A with all old import events sharing one change id and each old set/remove getting its own",
+    "options": [
+      "(A) known fields, unknown marked, shared import change",
+      "(B) via null for all old events",
+      "(C) refuse",
+      "(D) other"
+    ],
+    "reason": "Keeps the audit trail; the import was one unit by construction",
+    "recorded_at": "questions.md Discovery run Q1-Q2"
+  },
+  {
+    "decision": "Discovery run: `at` in whole seconds and change ids opaque",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md Discovery run Q2"
+  }
+]

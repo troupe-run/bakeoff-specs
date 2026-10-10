@@ -1,0 +1,158 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "FIX",
+        "why": "Gives the index and the list length, then says 'use index 2 to append'."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "FACTS",
+        "why": "Says 'index 5 is out of range (length 2)': index and length, but no fix."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "FIX",
+        "why": "Gives the index and the length, then says 'only index 2 appends'."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "BARE",
+        "why": "Only says 'index 5 out of range', with no list length and no fix."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "BARE",
+        "why": "Only says 'index 5 out of range', with no list length and no fix."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "FACTS",
+        "why": "The path tools.5 shows the index and 'list has 2 items' gives the length; no fix."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "agents"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tools.5",
+          "build"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder",
+          "{model: haiku}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "name",
+          "[a, {b"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "robot:x"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "model: sonnet\ntemperature: 0.2\n",
+      ".troupe/troupe.yml": "name: demo  # project\ntools:\n  - lint\n  - test\nagents:\n  coder: file:agents/coder.yaml\n  reviewer:\n    model: opus\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/coder.yaml"
+    ],
+    "why": "Five failures, one per error kind: wrong node kind (exit 5), list index past the end (exit 5), replacing a value that wholly comes from an include (exit 3), a malformed VALUE that may slip past the typed errors as an uncaught exception, and an invalid TROUPE_ACTOR on a command that would otherwise print YAML. These show whether each failure gets the contract's exit code with empty stdout, or gives partial output, a traceback or a different code."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "tells you the fix (e.g. use index N to append)",
+            "id": "FIX"
+          },
+          {
+            "description": "gives the facts (index and length) without the fix",
+            "id": "FACTS"
+          },
+          {
+            "description": "bare message",
+            "id": "BARE"
+          }
+        ],
+        "id": "Q1",
+        "text": "wording of the out-of-range list index error (exit codes identical)"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Typed errors each carry an exit code and only the CLI converts them; stdout is buffered and empty on any failure",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C"
+      ]
+    ]
+  ],
+  "sheet_id": "T25",
+  "status": "ok"
+}

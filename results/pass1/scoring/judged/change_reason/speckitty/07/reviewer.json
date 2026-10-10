@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:51 (S-13 states that step 1 wrote an include, that `set` now writes `!literal`, and that the old behaviour needs `--include`)",
+    "/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:220 (C-003 keeps earlier behaviour, with S-13 as the only stated exception)",
+    "/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:246 (SC-004 and SC-005 say which existing tests are updated and why)",
+    "/judge/diff.patch:10028-10078 (tests renamed in test_set_existing.py carry comments citing S-12/S-13 and naming the step-1 behaviour each replaces)",
+    "/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/tasks/WP01-locations-fetch-harness.md:104 (gives the reason for retyping SourceFile.path to Location, which explains the `isinstance(..., Path)` edits in test_loading.py, test_paths.py and the placement tests)",
+    "/judge/diff.patch:5054-5058 (the new pyproject.toml uv setting is explained inline and points to research A-5)"
+  ],
+  "notes": "Every substantive hunk I checked, including changes to existing tests, the Location retyping and the dependency changes, ties back to a numbered scenario, research item or work package. Each changed or removed test says what replaced it and why. There is no git history here, so the reasons come only from the spec records and inline comments.",
+  "raw": "{\"score\": 4, \"evidence\": [\"/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:51 (S-13 states that step 1 wrote an include, that `set` now writes `!literal`, and that the old behaviour needs `--include`)\", \"/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:220 (C-003 keeps earlier behaviour, with S-13 as the only stated exception)\", \"/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:246 (SC-004 and SC-005 say which existing tests are updated and why)\", \"/judge/diff.patch:10028-10078 (tests renamed in test_set_existing.py carry comments citing S-12/S-13 and naming the step-1 behaviour each replaces)\", \"/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/tasks/WP01-locations-fetch-harness.md:104 (gives the reason for retyping SourceFile.path to Location, which explains the `isinstance(..., Path)` edits in test_loading.py, test_paths.py and the placement tests)\", \"/judge/diff.patch:5054-5058 (the new pyproject.toml uv setting is explained inline and points to research A-5)\"], \"notes\": \"Every substantive hunk I checked, including changes to existing tests, the Location retyping and the dependency changes, ties back to a numbered scenario, research item or work package. Each changed or removed test says what replaced it and why. There is no git history here, so the reasons come only from the spec records and inline comments.\"}",
+  "score": 4,
+  "status": "ok"
+}

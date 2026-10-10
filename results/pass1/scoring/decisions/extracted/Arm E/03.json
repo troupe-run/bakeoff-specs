@@ -1,0 +1,144 @@
+[
+  {
+    "decision": "Make `get PATH` behave exactly as the old `show` did (print a single scalar value) and exit with code 5 on a mapping or list",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:7"
+  },
+  {
+    "decision": "Add a hint `(use \\`troupe config show PATH\\`)` to the error `get` gives when the path is not a scalar",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:7"
+  },
+  {
+    "decision": "Make `show` with a scalar path (and no --sources) print the raw value exactly as `get` does, not YAML",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:8"
+  },
+  {
+    "decision": "Make `show` with no PATH print the whole configuration",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:8"
+  },
+  {
+    "decision": "Render sections as block-style YAML with includes resolved",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:8"
+  },
+  {
+    "decision": "Put the `# from <file>` comment at the end of every line that holds a value",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:9"
+  },
+  {
+    "decision": "Write source paths relative to the theatre directory using forward slashes, so they start with `.troupe/`",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:9; src/troupe/cli.py source_of (diff.patch:63-65)"
+  },
+  {
+    "decision": "Credit a text include's value to the included file, not to the file that includes it",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:9"
+  },
+  {
+    "decision": "Put the source comment for a multi-line value on the `|` indicator line",
+    "options": [
+      "comment on a content line"
+    ],
+    "reason": "A comment on a content line would become part of the text",
+    "recorded_at": "questions.md:13"
+  },
+  {
+    "decision": "Turn CRLF in text includes into plain line breaks inside the literal block in `show`, while `get` keeps the raw bytes",
+    "options": [],
+    "reason": "a literal block can't hold them",
+    "recorded_at": "questions.md:14"
+  },
+  {
+    "decision": "Make `show PATH --sources` on a scalar print one line of YAML plus its comment instead of the raw `get` output",
+    "options": [
+      "raw get output"
+    ],
+    "reason": "",
+    "recorded_at": "questions.md:15"
+  },
+  {
+    "decision": "Print empty sections as `{}` or `[]` with no source comment",
+    "options": [],
+    "reason": "they hold no value",
+    "recorded_at": "questions.md:16"
+  },
+  {
+    "decision": "Put the YAML output in a new `Shower` class in render.py rather than in cli.py",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:18"
+  },
+  {
+    "decision": "Replace the old show tests with tests for get, its errors, section output and --sources; make test_get run each case through both get and show",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:18; tests/test_config.py (diff.patch:198-201)"
+  },
+  {
+    "decision": "Fall back to a double-quoted scalar when a text value contains stray control characters, U+2028, U+2029 or a BOM, instead of using a literal block",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Only use a literal block for a multi-line non-include string when it contains no \\r; otherwise use a double-quoted string",
+    "options": [
+      "earlier version: use the literal only for text includes and check literal_ok for other strings"
+    ],
+    "reason": "",
+    "recorded_at": "transcript.md:9"
+  },
+  {
+    "decision": "Add an explicit indentation indicator `|2` when any line up to and including the first non-blank line starts with a space",
+    "options": [
+      "earlier version: check whether the first non-blank line starts with a space or tab"
+    ],
+    "reason": "",
+    "recorded_at": "transcript.md:8"
+  },
+  {
+    "decision": "Render nested list items in compact form (the first key on the `-` line)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Work out the theatre directory as the grandparent of editor.config_path",
+    "options": [
+      "editor_path(editor) helper"
+    ],
+    "reason": "",
+    "recorded_at": "transcript.md:10"
+  },
+  {
+    "decision": "Check by round-tripping in tests that the whole `show` output loads back as YAML with the same values",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:8; diff.patch:223-225"
+  },
+  {
+    "decision": "Commit directly to main as b3cec0d",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:14"
+  },
+  {
+    "decision": "Update the README with the get/show usage and the render.py layout note",
+    "options": [],
+    "reason": "",
+    "recorded_at": "diff.patch:1-31"
+  }
+]

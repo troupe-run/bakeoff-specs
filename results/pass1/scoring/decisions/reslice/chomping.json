@@ -1,0 +1,149 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "1",
+    "Arm D": "3",
+    "Arm E": "4",
+    "Arm F": "1"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "BLOCK",
+        "why": "The file gets `e: |+` followed by an empty line, which means \"\\n\"; config show prints the same block, so it round-trips."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "QUOTED",
+        "why": "The file gets `e: \"\\n\"` and config show also prints `e: \"\\n\"`, so the two agree."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "REFUSE",
+        "why": "The set exits with code 3 and the message 'write refused: e: cannot write this change faithfully', and the file stays unchanged."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "QUOTED_MISMATCH",
+        "why": "The file gets `e: \"\\n\"` but config show prints `e: |+` with a block, so its output does not match the file."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "a",
+          "\"x\\ny\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "b",
+          "\"p\\nq\\n\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "c",
+          "\"z\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "e",
+          "\"\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# block scalars\na: |\n  one\n  two\nb: |-\n  one\nc: |+\n  one\n\ne: |\n  last\nf: plain  # end\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Changes block scalars so the chomping must change (| to |-, |- to |+), keeps |+ while its trailing blank line is replaced as part of the value, then sets a block value to a lone newline (|+ or refused); the final show checks every value reads back."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "written as a |+ block that round-trips",
+            "id": "BLOCK"
+          },
+          {
+            "description": "written as quoted \"\\n\" and show agrees with the file",
+            "id": "QUOTED"
+          },
+          {
+            "description": "written quoted, but config show disagrees with the file",
+            "id": "QUOTED_MISMATCH"
+          },
+          {
+            "description": "refuses the value",
+            "id": "REFUSE"
+          }
+        ],
+        "id": "Q1",
+        "text": "single-newline value config set e \"\\n\""
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Keep the old indicator if it can represent the value, otherwise choose strip/clip/keep from trailing newlines; keep-chomped trailing blank lines count as part of the value",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "Render a lone newline value as |+ instead of refusing it",
+      [
+        "Arm A"
+      ]
+    ]
+  ],
+  "sheet_id": "T11",
+  "status": "ok"
+}

@@ -1,0 +1,251 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "tools",
+          "[]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.opts",
+          "{}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "extra",
+          "{a: [], b: {}, c: 1}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tools.0",
+          "search"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# troupe config\nmodel: opus\nagents:\n  coder:\n    opts: none  # coder options\n    temperature: 0.2\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nmodel: opus\nagents:\n  coder:\n    opts: none  # coder options\n    temperature: 0.2\ntools: []\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.opts",
+                "{}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nmodel: opus\nagents:\n  coder:\n    opts: {}    # coder options\n    temperature: 0.2\ntools: []\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "extra",
+                "{a: [], b: {}, c: 1}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nmodel: opus\nagents:\n  coder:\n    opts: {}    # coder options\n    temperature: 0.2\ntools: []\nextra:\n  a: []\n  b: {}\n  c: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools.0",
+                "search"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nmodel: opus\nagents:\n  coder:\n    opts: {}    # coder options\n    temperature: 0.2\ntools: [search]\nextra:\n  a: []\n  b: {}\n  c: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus\nagents:\n  coder:\n    opts: {}\n    temperature: 0.2\ntools:\n  - search\nextra:\n  a: []\n  b: {}\n  c: 1\n"
+            }
+          ]
+        }
+      ],
+      "route": "Write {} or [] in flow form",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 4,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nmodel: opus\nagents:\n  coder:\n    opts: none  # coder options\n    temperature: 0.2\ntools: []\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.opts",
+                "{}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nmodel: opus\nagents:\n  coder:\n    opts: {}    # coder options\n    temperature: 0.2\ntools: []\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "extra",
+                "{a: [], b: {}, c: 1}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nmodel: opus\nagents:\n  coder:\n    opts: {}    # coder options\n    temperature: 0.2\ntools: []\nextra:\n  a: []\n  b: {}\n  c: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools.0",
+                "search"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\nmodel: opus\nagents:\n  coder:\n    opts: {}    # coder options\n    temperature: 0.2\ntools: [search]\nextra:\n  a: []\n  b: {}\n  c: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus\nagents:\n  coder:\n    opts: {}\n    temperature: 0.2\ntools:\n  - search\nextra:\n  a: []\n  b: {}\n  c: 1\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

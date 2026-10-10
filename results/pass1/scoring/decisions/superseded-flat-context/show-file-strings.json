@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "`.troupe/troupe.yml`:\n```\nagents:\n  coder:\n    model: opus\n    prompt: !literal file:prompts/coder.md\n```",
+        "input": "`config show agents.coder`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, prints `prompt: file:prompts/coder.md` (no `!literal` tag)",
+          "2": "three arms: same as route 1, `prompt: file:prompts/coder.md`; two arms: prints `prompt: !literal file:prompts/coder.md`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get agents.coder.prompt`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, prints `file:prompts/coder.md`",
+          "2": "all arms: exit 0, prints `file:prompts/coder.md`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set agents.coder.notes file:notes/coder.txt` then `config show`",
+        "observed": true,
+        "results": {
+          "1": "file gains `notes: !literal file:notes/coder.txt`; `show` prints `notes: file:notes/coder.txt`",
+          "2": "all arms write `notes: !literal file:notes/coder.txt`; three arms: `show` prints `notes: file:notes/coder.txt`; two arms: `show` prints `notes: !literal file:notes/coder.txt`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show agents --sources`",
+        "observed": true,
+        "results": {
+          "1": "`prompt: file:prompts/coder.md # from .troupe/troupe.yml` (no tag)",
+          "2": "three arms: same as route 1; two arms: `prompt: !literal file:prompts/coder.md # from .troupe/troupe.yml`"
+        }
+      }
+    ],
+    "in_practice": "On every route, `get` prints the bare string and `set` stores a `file:` value with the `!literal` tag. The only difference is in `show`. Route 1 and most arms of route 2 drop the tag, so a literal string looks exactly like a file reference there. Two arms of route 2 keep the tag in `show`, so its output matches what is in the file.",
+    "stakes": "A value stored as a literal string that starts with `file:` might look the same as a file reference when you read it back in `config show`. That changes whether you can copy what `show` prints back into the YAML and get the same meaning.",
+    "tradeoff": "Route 1: `show` output is clean, but you can't tell a literal string from a file reference. Route 2: the arms don't agree, and two of them keep `!literal` so `show` is faithful to the file but noisier."
+  },
+  "plan_why": "Shows how `show` prints a literal string value that starts with `file:` (a `!literal` value from the file and one written by `set`) inside a whole section. Plain output like `prompt: file:prompts/coder.md` would be read back as an include, whereas quoted or `!literal` output would not; `get` on the scalar is included for comparison.",
+  "routes": [
+    [
+      "Print plain",
+      [
+        "Arm B"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

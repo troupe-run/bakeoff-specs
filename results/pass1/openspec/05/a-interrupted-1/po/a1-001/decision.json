@@ -1,0 +1,76 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "With nested includes (troupe.yml includes coder.yaml, which includes params.yaml), should a new key under agents.coder.params be written as an override in coder.yaml (A, the file holding the reference to params.yaml) or carried up to the outermost reference in troupe.yml (B)?",
+      "reply": "A. Overrides says the new key is written as an override \"in the file that contains the include reference (the *including* file)\". For an ancestor that comes from params.yaml, that file is coder.yaml, because it holds `params: file:params.yaml`. The override goes into coder.yaml, and params.yaml is left unchanged.",
+      "escalate": false,
+      "cited": "contract: Overrides (bullet 2); step 5 CR-A (\"added in the including file\")"
+    },
+    {
+      "question": "Should a `$ref` whose value is not an include string (e.g. `$ref: 5` or `flie:x.yaml`) exit 4 naming the file, rather than be treated as an ordinary key?",
+      "reply": null,
+      "escalate": true,
+      "cited": ""
+    },
+    {
+      "question": "When the included content is not a mapping (a scalar or an empty file), should mapping overrides simply replace it?",
+      "reply": null,
+      "escalate": true,
+      "cited": ""
+    },
+    {
+      "question": "In the merged value, should the included content's keys come first, followed by keys that exist only in the overrides?",
+      "reply": null,
+      "escalate": true,
+      "cited": ""
+    },
+    {
+      "question": "When a collection `set` drops a key, should that key be removed wherever it lives, from the override and/or the included file?",
+      "reply": "Yes. An existing value that is overridden is changed in the override. One that is not overridden is changed in the file it comes from. Existing settings still change where they live. If a key were removed from only one place, the value from the other place would still show in the merged result, so it must be removed from every place it lives.",
+      "escalate": false,
+      "cited": "contract: Overrides (last bullet); step 5 CR-A (\"Existing settings still change where they live\")"
+    },
+    {
+      "question": "Is replacing a whole scalar-form include with a different value still refused with exit 3?",
+      "reply": "Yes. Overrides replaces only rule 2 under `set`. Rule 4 is still in force: replacing the value at a path whose whole value comes from an include gives exit 3.",
+      "escalate": false,
+      "cited": "contract: set PATH VALUE, rule 4; Overrides (header: replaces rule 2 only)"
+    },
+    {
+      "question": "Is replacing a whole mapping-form include (one that may carry overrides) with a different value also refused with exit 3?",
+      "reply": null,
+      "escalate": true,
+      "cited": ""
+    },
+    {
+      "question": "Should a mapping `VALUE` containing `$ref` be written as given, so that it becomes a mapping-form include?",
+      "reply": "Yes. `VALUE` is written as given. A mapping with a `$ref` key whose value is an include string is a mapping-form include wherever it appears in the files. A `file:` string written by `set` likewise becomes an include.",
+      "escalate": false,
+      "cited": "contract: Overrides (bullet 1); Includes; General (Values on the command line)"
+    },
+    {
+      "question": "When the scalar-form include sits in a flow mapping, should conversion produce a flow mapping such as `{coder: {$ref: file:x.yaml, temperature: 0.3}}`?",
+      "reply": "Yes. A new collection value whose parent is a flow collection is written in flow style.",
+      "escalate": false,
+      "cited": "contract: set PATH VALUE, How it is written (new collection value in a flow parent)"
+    },
+    {
+      "question": "Should a scalar-form include that is a list item be converted to compact `- $ref: file:x.yaml` with the overrides below it?",
+      "reply": null,
+      "escalate": true,
+      "cited": ""
+    },
+    {
+      "question": "Should converting a scalar-form include whose include string is not on its key's line be refused with exit 3?",
+      "reply": null,
+      "escalate": true,
+      "cited": ""
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

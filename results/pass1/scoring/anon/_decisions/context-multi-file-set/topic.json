@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "How a set that changes several files is applied",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Only OS errors during the write itself remain",
+      "route": "Compute and verify every file first, then write each; nothing is written if any check fails",
+      "route_no": 1
+    },
+    {
+      "outcome": "Reworked at step 1, then kept",
+      "reasoning_given": "Refusing contradicted the contract rule that only required bytes change; rollback keeps the set all-or-nothing",
+      "route": "Refuse multi-file sets, reworked within step 1 to: verify all, write each atomically, roll back on failure, and name any file that could not be restored",
+      "route_no": 2
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

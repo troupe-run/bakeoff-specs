@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "/judge/repo has no .git directory, so there are no commit messages to blame",
+    "DECISIONS.md:12-28 (diff.patch:12-28) gives reasons for the --in-include refusal and nearest-override placement and points to CR-A/CR-B, but no CR record exists in the repo",
+    "README.md:49-54 (diff.patch:48-54) describes the new override and mapping-form rules but never says new keys used to go into the included file",
+    "src/troupe/editor.py:146-151 (diff.patch:145-151) changes the existing behaviour: create() now calls insert_key instead of insert, and nothing says what it replaced or why",
+    "src/troupe/editor.py:329,354 (diff.patch:229,242) swaps the old parent.entries() for siblings(); this changes remove and insert and has no explanation"
+  ],
+  "notes": "The new features (mapping-form $ref, --in-include, the exit-3 refusal) can be traced to the request through DECISIONS.md and README. But with no commit history, a dangling CR-A/CR-B reference, and nothing on the old placement of new keys or the remove/insert refactor, the changes to existing behaviour can't be traced.",
+  "raw": "```json\n{\"score\": 2, \"evidence\": [\"/judge/repo has no .git directory, so there are no commit messages to blame\", \"DECISIONS.md:12-28 (diff.patch:12-28) gives reasons for the --in-include refusal and nearest-override placement and points to CR-A/CR-B, but no CR record exists in the repo\", \"README.md:49-54 (diff.patch:48-54) describes the new override and mapping-form rules but never says new keys used to go into the included file\", \"src/troupe/editor.py:146-151 (diff.patch:145-151) changes the existing behaviour: create() now calls insert_key instead of insert, and nothing says what it replaced or why\", \"src/troupe/editor.py:329,354 (diff.patch:229,242) swaps the old parent.entries() for siblings(); this changes remove and insert and has no explanation\"], \"notes\": \"The new features (mapping-form $ref, --in-include, the exit-3 refusal) can be traced to the request through DECISIONS.md and README. But with no commit history, a dangling CR-A/CR-B reference, and nothing on the old placement of new keys or the remove/insert refactor, the changes to existing behaviour can't be traced.\"}\n```",
+  "score": 2,
+  "status": "ok"
+}

@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "a: |+\n  one\n\nb: |-\n  two",
+        "input": "`config set a \"x\\n\"` (a was a keep block holding `one` plus a blank line)",
+        "observed": true,
+        "results": {
+          "1": "All arms: exit 0. The file keeps `a: |+` with `  x`, the old blank line is gone, and `b:` follows right after. `# end` on `f` is kept.",
+          "2": "Exit 0. Same file as route 1: `a: |+` / `  x`, and the blank line is dropped."
+        }
+      },
+      {
+        "before": "b: |-\n  two\nc: |",
+        "input": "`config set b \"two\\n\\n\"` (b was `|-`)",
+        "observed": true,
+        "results": {
+          "1": "All arms: exit 0. `b: |-` becomes `b: |+` / `  two`, followed by one blank line before `c:`.",
+          "2": "Exit 0. Same result: `b: |+` with `  two` and a trailing blank line."
+        }
+      },
+      {
+        "before": "c: |\n  three",
+        "input": "`config set c \"three\"` (c was `|`, no newline typed)",
+        "observed": true,
+        "results": {
+          "1": "All arms: exit 0. `c: |` becomes `c: |-` / `  three`, and `config show` prints `c: three`.",
+          "2": "Exit 0. Same result: `c: |-`, and `config show` prints `c: three`."
+        }
+      },
+      {
+        "before": "e: |\n  e\nf: 1  # end",
+        "input": "`config set e \"\\n\"` (a value that is only a newline; e was `|` holding `e`)",
+        "observed": true,
+        "results": {
+          "1": "The arms differed. Two arms: exit 0, the file gets `e: |+` and then a blank line, and `config show` prints the same. One arm: exit 0, the file gets `e: \"\\n\"` and `config show` prints `e: \"\\n\"`. One arm: exit 0, the file gets `e: \"\\n\"` but `config show` prints `e: |+` with a blank line. One arm: exit 3 with `troupe: write refused: e: cannot write this change faithfully`, and the file is unchanged (`e: |` / `  e`).",
+          "2": "Exit 0. The file gets `e: |+` and then a blank line before `f: 1  # end`, and `config show` prints `e: |+` with a blank line."
+        }
+      }
+    ],
+    "in_practice": "In these runs, both routes handled ordinary edits the same way. When the trailing newlines change, the indicator is switched (`|-` to `|+`, `|` to `|-`), so the value reads back as typed. The routes only differ on a value that is just a newline. Route 2 always writes it as a `|+` block. Route 1's arms split four ways: two write a `|+` block, two write a quoted `\"\\n\"` (one of these still prints it as `|+` in `config show`), and one refuses the write.",
+    "stakes": "When `config set` changes a value that is already written as a `|` / `|-` / `|+` block, the file must still read back as exactly what was typed. The risk is that trailing newlines get lost or added, or that a value which is just a newline gets refused or written in an unexpected form.",
+    "tradeoff": "Route 1 applies one general rule for picking the indicator, but on a lone newline its arms disagreed (block, quoted, or refused). Route 2 always writes a lone newline as a `|+` block followed by a blank line, which is easy to misread."
+  },
+  "plan_why": "Shows which block-scalar indicator each implementation writes when a block value changes: |+ kept or swapped for a value with one trailing newline, the old blank line of a |+ value dropped, |- changed to keep or clip as the trailing newlines require, a lone \"\\n\" written as |+ or refused, and whether the file reads back correctly afterwards",
+  "routes": [
+    [
+      "Keep the old indicator if it can represent the value, otherwise choose strip/clip/keep from trailing newlines; keep-chomped trailing blank lines count as part of the value",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "Render a lone newline value as |+ instead of refusing it",
+      [
+        "Arm A"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

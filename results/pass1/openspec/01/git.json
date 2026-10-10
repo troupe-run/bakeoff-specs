@@ -1,0 +1,56 @@
+{
+  "sha_before": "861aad563a5e0079d7a8dd0a45a6b7bf57b073ab",
+  "sha_after": "592e46310500710757d36cb9fb0cef15eecd40ab",
+  "head": "592e46310500710757d36cb9fb0cef15eecd40ab",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "592e46310500710757d36cb9fb0cef15eecd40ab",
+      "author": "Developer",
+      "subject": "Archive config-load-show-set and sync its specs into openspec/specs"
+    },
+    {
+      "sha": "f0f0cf51f90c765468d591adf6b799b5b8f32d0c",
+      "author": "Developer",
+      "subject": "Add end-to-end uv run smoke tests and README"
+    },
+    {
+      "sha": "142529bde7abde1261bab0a6173103d7b3671855",
+      "author": "Developer",
+      "subject": "Test literal and folded block scalars; fill empty values after the colon"
+    },
+    {
+      "sha": "4a327343d90a0c3871bbcd00a436a1c79984aada",
+      "author": "Developer",
+      "subject": "Fix mypy in verification test: patch the ops module directly"
+    },
+    {
+      "sha": "a4245fed590603ef3370786c96756dce5e6de17d",
+      "author": "Developer",
+      "subject": "Make ruff clean: allow long lines in byte-exact test tables"
+    },
+    {
+      "sha": "ab66b620758a2e6f519eea221f878893df309d83",
+      "author": "Developer",
+      "subject": "Test set write-back for scalars, includes and structure; fix key quoting"
+    },
+    {
+      "sha": "2c7409e773d5b0032fc7829a329c65903f98ccd9",
+      "author": "Developer",
+      "subject": "Test loading, includes, event history and show"
+    },
+    {
+      "sha": "2d55a8709fc33721006e3e32efe9c3c6abd7584e",
+      "author": "Developer",
+      "subject": "Add troupe package: config loading, event store, CLI and write-back engine"
+    },
+    {
+      "sha": "27b502e6ac467b68e21d427877115786e401a3d6",
+      "author": "Developer",
+      "subject": "Plan config load/show/set/history (OpenSpec change config-load-show-set)"
+    }
+  ],
+  "diffstat": ".gitignore                                         |   6 +\n .python-version                                    |   1 +\n README.md                                          |  97 +++++\n .../2026-10-02-config-load-show-set/.openspec.yaml |   2 +\n .../2026-10-02-config-load-show-set/design.md      | 179 ++++++++++\n .../2026-10-02-config-load-show-set/proposal.md    |  48 +++\n .../specs/config-cli/spec.md                       |  95 +++++\n .../specs/config-history/spec.md                   |  82 +++++\n .../specs/config-loading/spec.md                   |  74 ++++\n .../specs/config-set/spec.md                       | 281 +++++++++++++++\n .../specs/config-show/spec.md                      |  41 +++\n .../2026-10-02-config-load-show-set/tasks.md       |  54 +++\n openspec/specs/config-cli/spec.md                  |  95 +++++\n openspec/specs/config-history/spec.md              |  82 +++++\n openspec/specs/config-loading/spec.md              |  74 ++++\n openspec/specs/config-set/spec.md                  | 281 +++++++++++++++\n openspec/specs/config-show/spec.md                 |  41 +++\n pyproject.toml                                     |  44 +++\n src/troupe/__init__.py                             |   1 +\n src/troupe/blockscalar.py                          | 132 +++++++\n src/troupe/cli.py                                  |  64 ++++\n src/troupe/commands.py                             |  87 +++++\n src/troupe/edit/__init__.py                        |   0\n src/troupe/edit/apply.py                           | 155 ++++++++\n src/troupe/edit/blocks.py                          | 146 ++++++++\n src/troupe/edit/folded.py                          |  99 ++++++\n src/troupe/edit/ops.py                             | 278 +++++++++++++++\n src/troupe/edit/plan.py                            | 155 ++++++++\n src/troupe/edit/scalars.py                         | 106 ++++++\n src/troupe/edit/text.py                            | 159 +++++++++\n src/troupe/errors.py                               |  31 ++\n src/troupe/leaves.py                               |  20 ++\n src/troupe/loader.py                               | 126 +++++++\n src/troupe/paths.py                                |  20 ++\n src/troupe/py.typed                                |   0\n src/troupe/schema.py                               | 107 ++++++\n src/troupe/source.py                               |  55 +++\n src/troupe/store.py                                | 108 ++++++\n src/troupe/tree.py                                 | 286 +++++++++++++++\n src/troupe/values.py                               |  32 ++\n tests/conftest.py                                  |  99 ++++++\n tests/test_cli.py                                  |  66 ++++\n tests/test_history.py                              | 126 +++++++\n tests/test_layout.py                               |  35 ++\n tests/test_leaves.py                               |  11 +\n tests/test_loading.py                              | 140 ++++++++\n tests/test_paths_values.py                         |  47 +++\n tests/test_schema.py                               |  85 +++++\n tests/test_set_blocks.py                           | 128 +++++++\n tests/test_set_scalars.py                          |  71 ++++\n tests/test_set_structure.py                        | 231 ++++++++++++\n tests/test_set_targets.py                          | 177 ++++++++++\n tests/test_show.py                                 |  73 ++++\n tests/test_smoke.py                                | 111 ++++++\n tests/test_source.py                               |  35 ++\n tests/test_store.py                                |  42 +++\n uv.lock                                            | 389 +++++++++++++++++++++\n 57 files changed, 5610 insertions(+)"
+}

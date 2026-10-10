@@ -1,0 +1,1203 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [],
+        "env": {},
+        "symlink": {
+          "path": ".troupe/notes.txt",
+          "target": "shared/notes.txt"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "5",
+          "--reason",
+          "succeeds"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "retry"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder",
+          "{model: sonnet}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "agent:bot"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "agents"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "notes",
+          "\"new text\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "agent:bot"
+        }
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "notes"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "retry: 7  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "retry"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "retry"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "model: opus\n",
+      ".troupe/shared/notes.txt": "old text\n",
+      ".troupe/troupe.yml": "retry: 3  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/shared/notes.txt",
+      ".troupe/notes.txt",
+      ".troupe/agents/coder.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/notes.txt": "old text\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/notes.txt",
+                "target": "shared/notes.txt"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:55.022352Z\", \"reason\": null, \"change\": \"d477756c-fcef-48b8-9b31-a9fa2de69b29\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"notes\", \"old\": null, \"new\": \"old text\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:55.022352Z\", \"reason\": null, \"change\": \"d477756c-fcef-48b8-9b31-a9fa2de69b29\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:55.022352Z\", \"reason\": null, \"change\": \"d477756c-fcef-48b8-9b31-a9fa2de69b29\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5",
+                "--reason",
+                "succeeds"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:55.022352Z\", \"reason\": null, \"change\": \"d477756c-fcef-48b8-9b31-a9fa2de69b29\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:56:55.571773Z\", \"reason\": \"succeeds\", \"change\": \"ff9271cf-ca23-47bf-bd48-fc5ebd56e170\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: sonnet}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: agents.coder: its whole value comes from .troupe/agents/coder.yaml; not replacing it\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:55.022352Z\", \"reason\": null, \"change\": \"d477756c-fcef-48b8-9b31-a9fa2de69b29\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"new text\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/notes.txt": "new text\n",
+                ".troupe/shared/notes.txt": "new text\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder.yaml  12 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/notes.txt -> shared/notes.txt\n.troupe/shared/\n.troupe/shared/notes.txt  9 bytes\n.troupe/troupe.yml  83 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "notes"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"notes\", \"old\": null, \"new\": \"old text\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:55.022352Z\", \"reason\": null, \"change\": \"d477756c-fcef-48b8-9b31-a9fa2de69b29\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"notes\", \"old\": \"old text\\n\", \"new\": \"new text\\n\", \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:56:57.745772Z\", \"reason\": null, \"change\": \"9f697af1-2638-4ebf-9b96-9e9f0996ba71\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "7\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:55.022352Z\", \"reason\": null, \"change\": \"d477756c-fcef-48b8-9b31-a9fa2de69b29\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:56:55.571773Z\", \"reason\": \"succeeds\", \"change\": \"ff9271cf-ca23-47bf-bd48-fc5ebd56e170\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:56:58.861596Z\", \"reason\": null, \"change\": \"6a826452-a448-4f9f-8faf-c881e592979a\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/notes.txt": "old text\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/notes.txt",
+                "target": "shared/notes.txt"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:00.346175Z\", \"reason\": null, \"change\": \"4cb00864-8e53-4d33-86f3-0cb5402712b0\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"notes\", \"old\": null, \"new\": \"old text\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:00.346175Z\", \"reason\": null, \"change\": \"4cb00864-8e53-4d33-86f3-0cb5402712b0\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:00.346175Z\", \"reason\": null, \"change\": \"4cb00864-8e53-4d33-86f3-0cb5402712b0\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5",
+                "--reason",
+                "succeeds"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:00.346175Z\", \"reason\": null, \"change\": \"4cb00864-8e53-4d33-86f3-0cb5402712b0\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:57:00.913590Z\", \"reason\": \"succeeds\", \"change\": \"c9470794-b579-4ee3-a108-03d9962040d8\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: sonnet}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: agents.coder: value comes from include /theatre/.troupe/agents/coder.yaml; refusing to replace it (change a path inside it instead); no file changed\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:00.346175Z\", \"reason\": null, \"change\": \"4cb00864-8e53-4d33-86f3-0cb5402712b0\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"new text\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/notes.txt": "new text\n",
+                ".troupe/shared/notes.txt": "new text\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder.yaml  12 bytes\n.troupe/history.sqlite  12288 bytes\n.troupe/notes.txt -> shared/notes.txt\n.troupe/shared/\n.troupe/shared/notes.txt  9 bytes\n.troupe/troupe.yml  83 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "notes"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"notes\", \"old\": null, \"new\": \"old text\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:00.346175Z\", \"reason\": null, \"change\": \"4cb00864-8e53-4d33-86f3-0cb5402712b0\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"notes\", \"old\": \"old text\\n\", \"new\": \"new text\\n\", \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:57:03.321935Z\", \"reason\": null, \"change\": \"f92dbd19-c158-4b03-a075-e960e3744810\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "7\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:00.346175Z\", \"reason\": null, \"change\": \"4cb00864-8e53-4d33-86f3-0cb5402712b0\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:57:00.913590Z\", \"reason\": \"succeeds\", \"change\": \"c9470794-b579-4ee3-a108-03d9962040d8\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:57:04.598517Z\", \"reason\": null, \"change\": \"0b03a8a9-8cb4-42a6-aad9-7b75cf239408\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Write files, then record; a failed write records nothing; a crash between them can lose an event",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/notes.txt": "old text\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/notes.txt",
+                "target": "shared/notes.txt"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:49.241004Z\", \"reason\": null, \"change\": \"2224cd12-7fcd-46b8-a383-d8b5a4eddd92\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"notes\", \"old\": null, \"new\": \"old text\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:49.241004Z\", \"reason\": null, \"change\": \"2224cd12-7fcd-46b8-a383-d8b5a4eddd92\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:49.241004Z\", \"reason\": null, \"change\": \"2224cd12-7fcd-46b8-a383-d8b5a4eddd92\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5",
+                "--reason",
+                "succeeds"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:49.241004Z\", \"reason\": null, \"change\": \"2224cd12-7fcd-46b8-a383-d8b5a4eddd92\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:56:49.838434Z\", \"reason\": \"succeeds\", \"change\": \"b92bf4ef-50d8-4269-9019-f97f2e31092b\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: sonnet}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "/theatre/.troupe/agents/coder.yaml: agents.coder: the whole value comes from the include file:agents/coder.yaml; change the included file instead\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:49.241004Z\", \"reason\": null, \"change\": \"2224cd12-7fcd-46b8-a383-d8b5a4eddd92\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"new text\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/notes.txt": "new text\n",
+                ".troupe/shared/notes.txt": "new text\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder.yaml  12 bytes\n.troupe/history.sqlite  12288 bytes\n.troupe/notes.txt -> shared/notes.txt\n.troupe/shared/\n.troupe/shared/notes.txt  9 bytes\n.troupe/troupe.yml  83 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "notes"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"notes\", \"old\": null, \"new\": \"old text\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:49.241004Z\", \"reason\": null, \"change\": \"2224cd12-7fcd-46b8-a383-d8b5a4eddd92\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"notes\", \"old\": \"old text\\n\", \"new\": \"new text\\n\", \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:56:52.236548Z\", \"reason\": null, \"change\": \"c6e7abfb-9d85-4f10-8e2e-a09abb68a4cc\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "7\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:56:49.241004Z\", \"reason\": null, \"change\": \"2224cd12-7fcd-46b8-a383-d8b5a4eddd92\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:56:49.838434Z\", \"reason\": \"succeeds\", \"change\": \"b92bf4ef-50d8-4269-9019-f97f2e31092b\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:56:53.454177Z\", \"reason\": null, \"change\": \"1a4aa338-a15d-4b2b-be79-a31e22bb2c4c\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Write files, then record; if recording fails, restore the files and exit 4 naming the store",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/notes.txt": "old text\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/notes.txt",
+                "target": "shared/notes.txt"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:15.932930Z\", \"reason\": null, \"change\": \"d5b94e3f-9d03-4861-aa0e-98a50cc01b67\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"notes\", \"old\": null, \"new\": \"old text\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:15.932930Z\", \"reason\": null, \"change\": \"d5b94e3f-9d03-4861-aa0e-98a50cc01b67\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:15.932930Z\", \"reason\": null, \"change\": \"d5b94e3f-9d03-4861-aa0e-98a50cc01b67\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5",
+                "--reason",
+                "succeeds"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:15.932930Z\", \"reason\": null, \"change\": \"d5b94e3f-9d03-4861-aa0e-98a50cc01b67\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:57:16.463287Z\", \"reason\": \"succeeds\", \"change\": \"94234cd7-1a88-44cd-a5db-97f3aa29e3e5\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: sonnet}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: error: agents.coder: its whole value comes from include 'file:agents/coder.yaml' in /theatre/.troupe/troupe.yml; change the included file instead\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:15.932930Z\", \"reason\": null, \"change\": \"d5b94e3f-9d03-4861-aa0e-98a50cc01b67\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"new text\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/notes.txt": "new text\n",
+                ".troupe/shared/notes.txt": "new text\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder.yaml  12 bytes\n.troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/notes.txt -> shared/notes.txt\n.troupe/shared/\n.troupe/shared/notes.txt  9 bytes\n.troupe/troupe.yml  83 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "notes"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"notes\", \"old\": null, \"new\": \"old text\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:15.932930Z\", \"reason\": null, \"change\": \"d5b94e3f-9d03-4861-aa0e-98a50cc01b67\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"notes\", \"old\": \"old text\\n\", \"new\": \"new text\\n\", \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:57:18.589227Z\", \"reason\": null, \"change\": \"2f03fc5e-9587-4dfe-98e5-22a39270888d\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "7\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:15.932930Z\", \"reason\": null, \"change\": \"d5b94e3f-9d03-4861-aa0e-98a50cc01b67\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:57:16.463287Z\", \"reason\": \"succeeds\", \"change\": \"94234cd7-1a88-44cd-a5db-97f3aa29e3e5\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:57:19.657774Z\", \"reason\": null, \"change\": \"e2fa2ecc-a98c-4a8e-8dc9-0adf1702612b\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Write then record, but refuse up front (exit 3) when the target, its directory or the store is not writable; other store failures exit 4",
+      "route_no": 3
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/notes.txt": "old text\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/notes.txt",
+                "target": "shared/notes.txt"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:05.985776Z\", \"reason\": null, \"change\": \"59426161-ca2d-42d5-a53a-2244f3054493\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"notes\", \"old\": null, \"new\": \"old text\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:05.985776Z\", \"reason\": null, \"change\": \"59426161-ca2d-42d5-a53a-2244f3054493\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:05.985776Z\", \"reason\": null, \"change\": \"59426161-ca2d-42d5-a53a-2244f3054493\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5",
+                "--reason",
+                "succeeds"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:05.985776Z\", \"reason\": null, \"change\": \"59426161-ca2d-42d5-a53a-2244f3054493\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:57:06.454367Z\", \"reason\": \"succeeds\", \"change\": \"406e793d-c36c-495f-8bd7-c0ed4bb09ea4\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: sonnet}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: write refused: agents.coder: value comes from include /theatre/.troupe/agents/coder.yaml; refusing to replace it\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:05.985776Z\", \"reason\": null, \"change\": \"59426161-ca2d-42d5-a53a-2244f3054493\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"new text\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/notes.txt": "new text\n",
+                ".troupe/shared/notes.txt": "new text\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder.yaml  12 bytes\n.troupe/notes.txt -> shared/notes.txt\n.troupe/shared/\n.troupe/shared/notes.txt  9 bytes\n.troupe/troupe-state.sqlite  12288 bytes\n.troupe/troupe.yml  83 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "notes"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"notes\", \"old\": null, \"new\": \"old text\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:05.985776Z\", \"reason\": null, \"change\": \"59426161-ca2d-42d5-a53a-2244f3054493\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"notes\", \"old\": \"old text\\n\", \"new\": \"new text\\n\", \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:57:08.325637Z\", \"reason\": null, \"change\": \"133911d1-0212-4c7d-a48a-75034a3311e6\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "7\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:05.985776Z\", \"reason\": null, \"change\": \"59426161-ca2d-42d5-a53a-2244f3054493\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:57:06.454367Z\", \"reason\": \"succeeds\", \"change\": \"406e793d-c36c-495f-8bd7-c0ed4bb09ea4\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:57:09.284058Z\", \"reason\": null, \"change\": \"1869496e-1581-4d88-9451-56ffbb7e76ab\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/notes.txt": "old text\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": ".troupe/notes.txt",
+                "target": "shared/notes.txt"
+              }
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:10.668368Z\", \"reason\": null, \"change\": \"28489229-b77a-40fb-8c7b-5b1a4d722e1c\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"notes\", \"old\": null, \"new\": \"old text\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:10.668368Z\", \"reason\": null, \"change\": \"28489229-b77a-40fb-8c7b-5b1a4d722e1c\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:10.668368Z\", \"reason\": null, \"change\": \"28489229-b77a-40fb-8c7b-5b1a4d722e1c\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5",
+                "--reason",
+                "succeeds"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:10.668368Z\", \"reason\": null, \"change\": \"28489229-b77a-40fb-8c7b-5b1a4d722e1c\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:57:11.177304Z\", \"reason\": \"succeeds\", \"change\": \"5f3d7961-aafd-410d-8f61-3e0600cd5c28\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: sonnet}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: agents.coder: value comes from include .troupe/agents/coder.yaml\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:10.668368Z\", \"reason\": null, \"change\": \"28489229-b77a-40fb-8c7b-5b1a4d722e1c\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"new text\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/notes.txt": "new text\n",
+                ".troupe/shared/notes.txt": "new text\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder.yaml  12 bytes\n.troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/notes.txt -> shared/notes.txt\n.troupe/shared/\n.troupe/shared/notes.txt  9 bytes\n.troupe/troupe.yml  83 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "notes"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"notes\", \"old\": null, \"new\": \"old text\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:10.668368Z\", \"reason\": null, \"change\": \"28489229-b77a-40fb-8c7b-5b1a4d722e1c\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"notes\", \"old\": \"old text\\n\", \"new\": \"new text\\n\", \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:57:13.244047Z\", \"reason\": null, \"change\": \"c9f1b0ef-476f-4eb7-b867-deb52ed4d0db\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "7\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:57:10.668368Z\", \"reason\": null, \"change\": \"28489229-b77a-40fb-8c7b-5b1a4d722e1c\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:57:11.177304Z\", \"reason\": \"succeeds\", \"change\": \"5f3d7961-aafd-410d-8f61-3e0600cd5c28\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:57:14.464965Z\", \"reason\": null, \"change\": \"81491604-ae91-45d5-a40c-7522f581cf03\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 4
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "model: opus          # main model",
+        "input": "`config set model haiku`",
+        "observed": true,
+        "results": {
+          "1": "all arms: `model: haiku         # main model`; the comment stays in its column",
+          "2": "`model: haiku         # main model`; the comment stays in its column"
+        }
+      },
+      {
+        "before": "retry: 3   # retries",
+        "input": "`config set retry 12345678` (the new value runs past the comment's column)",
+        "observed": true,
+        "results": {
+          "1": "all arms: `retry: 12345678 # retries`; one space before #",
+          "2": "`retry: 12345678 # retries`; one space before #"
+        }
+      },
+      {
+        "before": "name: \"héllo wörld\"   # display name",
+        "input": "`config set name hé` (the value gets shorter and has accented letters)",
+        "observed": true,
+        "results": {
+          "1": "all arms: `name: \"hé\"            # display name`; the comment keeps its column (counted in characters, not bytes)",
+          "2": "`name: \"hé\"            # display name`; the comment keeps its column"
+        }
+      },
+      {
+        "before": "tags: [a, b]        # tags",
+        "input": "`config set tags.2 c` (an inline list grows)",
+        "observed": true,
+        "results": {
+          "1": "four arms: `tags: [a, b, c]     # tags`; the comment keeps its column. One arm: `tags: [a, b, c]        # tags`; the comment moves 3 columns right, out of line with the others",
+          "2": "`tags: [a, b, c]     # tags`; the comment keeps its column"
+        }
+      },
+      {
+        "before": "limits: {max: 5}    # limits",
+        "input": "`config set limits.max 500000000` (an inline map grows past the comment's column)",
+        "observed": true,
+        "results": {
+          "1": "four arms: `limits: {max: 500000000} # limits`; one space before #. One arm: `limits: {max: 500000000}    # limits`; the old 4-space gap is kept, so the comment is pushed further right",
+          "2": "`limits: {max: 500000000} # limits`; one space before #"
+        }
+      }
+    ],
+    "in_practice": "Every command exited 0 with no output, and the other lines (such as `untouched: x   # stays`) were never changed. Route 1 and route 2 behaved the same, except for one arm on route 1. When an inline list or map grew, that arm kept the old gap before the comment instead of keeping the comment's column, so the comment drifted right. Plain scalar values behaved the same everywhere.",
+    "stakes": "Whether hand-aligned end-of-line comments in the config file stay lined up after `config set`, or drift right so the file looks messier after every edit. This is mostly about looks; the stored values were the same in every run.",
+    "tradeoff": "Route 1 states the column-keeping rule outright, but one of its five arms still let comments drift when an inline list or map grew. Route 2 never considered the rule, but its one arm gave the same results as the four consistent arms of route 1."
+  },
+  "plan_why": "Shows where an end-of-line comment ends up after a value gets shorter, gets longer within the gap, gets longer past the comment's column, contains non-ASCII characters (columns are counted in code points), or sits after a flow list or flow mapping that changes length",
+  "routes": [
+    [
+      "Keep its column if possible, else one space before #; also when a flow collection grows",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm C"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

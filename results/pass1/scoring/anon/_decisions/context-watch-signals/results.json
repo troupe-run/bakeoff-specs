@@ -1,0 +1,937 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "retry: 5\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGTERM",
+        "watch": "stop"
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      },
+      {
+        "args": [
+          "config",
+          "watch",
+          "--theatre",
+          "."
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGTERM",
+        "watch": "stop"
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      },
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "retry: 6\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "retry: 4\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 5\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  9 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "."
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  9 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 6\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 4, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:25:09.095863Z\", \"reason\": null, \"change\": \"6eef1946-29e6-47ba-a431-aef077f3af4c\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:25:09.301609Z\", \"reason\": null, \"change\": \"dc409100-9e16-4bf1-aa05-08a59a906961\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 5\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 143,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  9 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "."
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 137,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.sqlite  12288 bytes\n.troupe/events.sqlite-shm  32768 bytes\n.troupe/events.sqlite-wal  0 bytes\n.troupe/troupe.yml  9 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 6\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 4, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:25:15.990461Z\", \"reason\": null, \"change\": \"f7c1dece-66cd-406c-a9cb-5a8163ed72b9\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:25:16.406574Z\", \"reason\": null, \"change\": \"b01271a6-e109-4be2-b79b-c1051cdd8e61\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 5\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 143,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  9 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "."
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 143,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  9 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 6\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 137,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 4, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:25:24.277640Z\", \"reason\": null, \"change\": \"cbfbf102-d05a-4041-b465-f0c7442b97cd\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:25:24.537584Z\", \"reason\": null, \"change\": \"579d3361-3b89-4f51-926a-6344570e7ca6\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 5\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 143,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/troupe-state.sqlite  12288 bytes\n.troupe/troupe.yml  9 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "."
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 137,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/troupe-state.sqlite  12288 bytes\n.troupe/troupe-state.sqlite-shm  32768 bytes\n.troupe/troupe-state.sqlite-wal  0 bytes\n.troupe/troupe.yml  9 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 6\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 4, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:25:32.316717Z\", \"reason\": null, \"change\": \"790297bf-9364-4b5f-a2ca-f988a2935c83\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:25:32.418250Z\", \"reason\": null, \"change\": \"394cd5aa-d386-452f-baef-39990b45be92\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 5\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  9 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "."
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  9 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 6\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 4, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:25:40.605096Z\", \"reason\": null, \"change\": \"d05e5686-9f95-415e-9a77-1bb81aea6bda\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:25:40.766602Z\", \"reason\": null, \"change\": \"7c5a6798-dbce-4421-a28a-85d755f25d6c\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 5\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 143,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  9 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "."
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 143,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  9 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 6\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 130,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 4, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:25:47.243254Z\", \"reason\": null, \"change\": \"1388f35a-7f11-46b6-bc8c-78ff7945786d\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:25:47.454019Z\", \"reason\": null, \"change\": \"3e1491f0-6ceb-43fa-b182-ed195ff96c38\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Handlers only set a flag/Event; an in-progress reconcile finishes; exit 0; previous handlers restored",
+      "route_no": 1
+    }
+  ]
+}

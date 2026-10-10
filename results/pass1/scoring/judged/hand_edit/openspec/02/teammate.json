@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "repo/spec/spec/config-cli/spec.md:12 — the requirement still says `--theatre` SHALL default to the current working directory, with no mention of TROUPE_THEATRE or that it is overridden by an explicit option",
+    "repo/spec/spec/config-sync/spec.md:72 — the new watch requirement mentions TROUPE_THEATRE only in passing, to describe which directory the startup line prints",
+    "repo/src/troupe/cli.py:48 — the arm's refactor (diff.patch:912-913) keeps the env default and its precedence, so the teammate's change still works",
+    "repo/tests/test_cli.py:18 — the env and precedence test is already there and not touched in diff.patch (no tests/test_cli.py hunk)",
+    "transcript.md — the arm never names the teammate's commit as drift, and no gate message mentions it"
+  ],
+  "notes": "",
+  "raw": "{\"score\": 2, \"evidence\": [\"repo/spec/spec/config-cli/spec.md:12 — the requirement still says `--theatre` SHALL default to the current working directory, with no mention of TROUPE_THEATRE or that it is overridden by an explicit option\", \"repo/spec/spec/config-sync/spec.md:72 — the new watch requirement mentions TROUPE_THEATRE only in passing, to describe which directory the startup line prints\", \"repo/src/troupe/cli.py:48 — the arm's refactor (diff.patch:912-913) keeps the env default and its precedence, so the teammate's change still works\", \"repo/tests/test_cli.py:18 — the env and precedence test is already there and not touched in diff.patch (no tests/test_cli.py hunk)\", \"transcript.md — the arm never names the teammate's commit as drift, and no gate message mentions it\"]}",
+  "score": 2,
+  "status": "ok"
+}

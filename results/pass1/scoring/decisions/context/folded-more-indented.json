@@ -1,0 +1,65 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# folded scalars\nnote: >\n  First paragraph line one\n  continues here.\n\n    indented code line\n\n  Last paragraph is here\n  and ends.\nsummary: >\n  Short folded text\n  on two lines.\nother: x  # end",
+        "input": "`config set note \"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph changed now and ends.\\n\"` (only the last paragraph changes; the indented line stays the same)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads:\nnote: >\n  First paragraph line one\n  continues here.\n\n    indented code line\n\n  Last paragraph changed\n  now and ends.\nsummary: >\nThe rest of the file, including the comment and `other: x  # end`, is unchanged. `config history note` shows the change recorded as a set by human:owner.",
+          "2": "exit 3, file unchanged, nothing added to history. All three arms refused. One arm says \"cannot rewrite this value safely (unsupported tag or block layout)\". The other two say \"value would put a more-indented line into a folded scalar\" (one of them also names the file path).",
+          "3": "exit 3, file unchanged, nothing added to history. Both arms refused. One arm says \"its folded value contains a more-indented line, and writing it back would put a more-indented line into a folded value\". The other says \"the new value would put a more-indented line into the folded value at line 2 of …/troupe.yml\"."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set note \"First paragraph line one continues here.\\n\\n  indented code CHANGED\\n\\nLast paragraph changed now and ends.\\n\"` (the indented line's own text changes)",
+        "observed": true,
+        "results": {
+          "1": "exit 3, file unchanged: \"note: the line '  indented code CHANGED' would be more-indented in a folded block\"",
+          "2": "exit 3, file unchanged. Every arm gives the same message it gave for the first edit.",
+          "3": "exit 3, file unchanged. Both arms give the same message they gave for the first edit."
+        }
+      },
+      {
+        "before": "summary: >\n  Short folded text\n  on two lines.",
+        "input": "`config set summary \"Short folded text on two lines.\\n  new indented line\\n\"` (adds an indented line to a folded value that had none)",
+        "observed": true,
+        "results": {
+          "1": "exit 3, file unchanged: \"summary: the line '  new indented line' would be more-indented in a folded block\"",
+          "2": "exit 3, file unchanged. All three arms refused. Two say the new value would need or put a more-indented line into a folded scalar. One arm repeats its \"write refused … more-indented line\" message.",
+          "3": "exit 3, file unchanged. Both arms refused. One quotes the line '  new indented line'. The other points to line 10 of the file."
+        }
+      }
+    ],
+    "in_practice": "Routes 2 and 3 behaved the same in every observed case. Once a folded value contains an indented line, neither lets `config set` change anything in that value, not even ordinary prose elsewhere in it. Route 1 lets that prose be edited and keeps the indented line exactly as it was. It still refuses (exit 3) any set that changes the indented line's text or adds a new indented line. `config get` was the same on all routes.",
+    "stakes": "Someone whose config has a folded (`>`) text containing an indented line, such as a code snippet, wants to change the ordinary prose around it. The question is whether `config set` lets them, or refuses, so the only way to change it is editing the file by hand.",
+    "tradeoff": "Route 1 allows prose edits around an existing indented line but needs more complicated rewriting. Routes 2 and 3 are simpler and stricter, but any value that already has an indented line can then only be changed by hand-editing the file."
+  },
+  "plan_why": "Edits a folded (>) value that already contains a more-indented line. Command 2 changes only an ordinary paragraph: routes 1 and 2 should write it, while route 3 should refuse with exit 3. Command 3 rewrites the indented line itself, which separates route 1 (it keeps such runs as opaque units) from route 2 (it refuses anything that introduces a more-indented line). Command 4 adds a new indented line to a clean folded value, which every route should refuse with exit 3.",
+  "routes": [
+    [
+      "Edit allowed; existing indented runs are kept as opaque units; only adding a new more-indented line exits 3",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "Refuse (exit 3) a change that would introduce a more-indented line",
+      [
+        "Arm B",
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "Refuse any change to a folded value that already has more-indented lines",
+      [
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["README.md:10", "README.md:16-24", "docs/decisions.md:34-42 (diff.patch:36-65)", "tests/test_remote.py:110-123", "docs/decisions.md:75", "src/troupe/config.py (diff.patch:483-484)"], "notes": "The README now documents remote includes, the schema, `!literal` and `--include`, and no existing test asserts the old behaviour. One doc still contradicts the code: decisions.md:75 says a `$ref` that is not a `file:` string is an error (exit 4), but the code now accepts URLs as `$ref` (\"must be an include (file: or a URL)\")."}
+```

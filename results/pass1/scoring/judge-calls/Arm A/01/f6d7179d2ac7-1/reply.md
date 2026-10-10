@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["/judge/questions.md:13-18", "/judge/questions.md:50-57", "/judge/transcript.md:269"], "notes": "Q1 is well prepared: it says what was checked (ruamel 0.19.1 and eventsourcing 9.5.5 install together, YAML 1.2 typing), sets out the rejected alternatives with their downsides, and gives a recommendation with a reason. Q2 carries the real open questions but lists its seven 'cautious' choices with only a pointer to research.md; most come without alternatives or a reason (only `show`'s 'never stale' has one), so a mentor would push back with 'why this, and what else did you consider?'."}
+```

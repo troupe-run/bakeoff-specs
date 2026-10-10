@@ -1,0 +1,698 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "7"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "retry: 7\ntimeout: 5\nlimit: 5\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "retry: 7\ntimeout: 7\nlimit: 3\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "timeout"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "retry: 3\ntimeout: 3\nlimit: 3\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5\ntimeout: 3\nlimit: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "7"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 3\nlimit: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:12.620226Z\", \"reason\": null, \"change\": \"cc37e51d-9872-47c3-83fa-6d3ad61d6199\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:12.620226Z\", \"reason\": null, \"change\": \"cc37e51d-9872-47c3-83fa-6d3ad61d6199\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:12.620226Z\", \"reason\": null, \"change\": \"cc37e51d-9872-47c3-83fa-6d3ad61d6199\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:12.621962Z\", \"reason\": null, \"change\": \"ab7f9cdd-a696-4b54-a2fe-a46669279df9\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:13.203560Z\", \"reason\": null, \"change\": \"cfd4a6cf-c744-4613-b298-9bac7888295e\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 5\nlimit: 5\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 7\nlimit: 3\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "timeout"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "7\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:12.620226Z\", \"reason\": null, \"change\": \"cc37e51d-9872-47c3-83fa-6d3ad61d6199\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:12.620226Z\", \"reason\": null, \"change\": \"cc37e51d-9872-47c3-83fa-6d3ad61d6199\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:12.620226Z\", \"reason\": null, \"change\": \"cc37e51d-9872-47c3-83fa-6d3ad61d6199\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:12.621962Z\", \"reason\": null, \"change\": \"ab7f9cdd-a696-4b54-a2fe-a46669279df9\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:13.203560Z\", \"reason\": null, \"change\": \"cfd4a6cf-c744-4613-b298-9bac7888295e\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"timeout\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:04:14.383613Z\", \"reason\": null, \"change\": \"25d0824a-5050-4622-aaa2-1523238e5985\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5\ntimeout: 3\nlimit: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "7"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 3\nlimit: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:27.726530Z\", \"reason\": null, \"change\": \"f22a5e4d-7a45-4036-9b28-0415d45968df\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:27.726530Z\", \"reason\": null, \"change\": \"f22a5e4d-7a45-4036-9b28-0415d45968df\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:27.726530Z\", \"reason\": null, \"change\": \"f22a5e4d-7a45-4036-9b28-0415d45968df\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:27.731568Z\", \"reason\": null, \"change\": \"adfaaa2d-376b-4ee9-8d6a-091534dad445\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:28.267154Z\", \"reason\": null, \"change\": \"f972a694-daee-4b61-a772-036929258ae3\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 5\nlimit: 5\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 7\nlimit: 3\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "timeout"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "7\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:27.726530Z\", \"reason\": null, \"change\": \"f22a5e4d-7a45-4036-9b28-0415d45968df\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:27.726530Z\", \"reason\": null, \"change\": \"f22a5e4d-7a45-4036-9b28-0415d45968df\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:27.726530Z\", \"reason\": null, \"change\": \"f22a5e4d-7a45-4036-9b28-0415d45968df\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:27.731568Z\", \"reason\": null, \"change\": \"adfaaa2d-376b-4ee9-8d6a-091534dad445\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:28.267154Z\", \"reason\": null, \"change\": \"f972a694-daee-4b61-a772-036929258ae3\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"timeout\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:04:29.579567Z\", \"reason\": null, \"change\": \"ab82eaca-198b-48bc-badf-b009c7a1c308\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "May be recorded as their net difference",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5\ntimeout: 3\nlimit: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "7"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 3\nlimit: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:15.894839Z\", \"reason\": null, \"change\": \"9c2784e3-7995-4b43-ab68-113b67e9bde8\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:15.894839Z\", \"reason\": null, \"change\": \"9c2784e3-7995-4b43-ab68-113b67e9bde8\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:15.894839Z\", \"reason\": null, \"change\": \"9c2784e3-7995-4b43-ab68-113b67e9bde8\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:15.896968Z\", \"reason\": null, \"change\": \"f8c72dea-4eaf-439e-9466-460f6367af73\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:16.428419Z\", \"reason\": null, \"change\": \"64f5e0ff-e0d9-4874-a0ea-10d8486210fa\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 5\nlimit: 5\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 7\nlimit: 3\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "timeout"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "7\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:15.894839Z\", \"reason\": null, \"change\": \"9c2784e3-7995-4b43-ab68-113b67e9bde8\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:15.894839Z\", \"reason\": null, \"change\": \"9c2784e3-7995-4b43-ab68-113b67e9bde8\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:15.894839Z\", \"reason\": null, \"change\": \"9c2784e3-7995-4b43-ab68-113b67e9bde8\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:15.896968Z\", \"reason\": null, \"change\": \"f8c72dea-4eaf-439e-9466-460f6367af73\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:16.428419Z\", \"reason\": null, \"change\": \"64f5e0ff-e0d9-4874-a0ea-10d8486210fa\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"timeout\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:04:17.511716Z\", \"reason\": null, \"change\": \"0463a872-5ace-4d86-baa9-3fdd14be5b91\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5\ntimeout: 3\nlimit: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "7"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 3\nlimit: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:18.966105Z\", \"reason\": null, \"change\": \"77f1547d-5eeb-4ecc-8d03-746bbbf83a72\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:18.966105Z\", \"reason\": null, \"change\": \"77f1547d-5eeb-4ecc-8d03-746bbbf83a72\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:18.966105Z\", \"reason\": null, \"change\": \"77f1547d-5eeb-4ecc-8d03-746bbbf83a72\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:18.968887Z\", \"reason\": null, \"change\": \"696a664e-3232-4708-b9a6-e26ff3548d5f\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:19.521929Z\", \"reason\": null, \"change\": \"7d6c2e10-b4fa-4a2c-b26b-4796cd9f4328\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 5\nlimit: 5\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 7\nlimit: 3\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "timeout"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "7\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:18.966105Z\", \"reason\": null, \"change\": \"77f1547d-5eeb-4ecc-8d03-746bbbf83a72\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:18.966105Z\", \"reason\": null, \"change\": \"77f1547d-5eeb-4ecc-8d03-746bbbf83a72\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:18.966105Z\", \"reason\": null, \"change\": \"77f1547d-5eeb-4ecc-8d03-746bbbf83a72\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:18.968887Z\", \"reason\": null, \"change\": \"696a664e-3232-4708-b9a6-e26ff3548d5f\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:19.521929Z\", \"reason\": null, \"change\": \"7d6c2e10-b4fa-4a2c-b26b-4796cd9f4328\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"timeout\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:04:20.570398Z\", \"reason\": null, \"change\": \"2bb84feb-8ca0-4d83-9965-6aa054b38306\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5\ntimeout: 3\nlimit: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "7"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 3\nlimit: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:21.929960Z\", \"reason\": null, \"change\": \"4af1486a-b441-4457-8a98-65f9db4f1721\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:21.929960Z\", \"reason\": null, \"change\": \"4af1486a-b441-4457-8a98-65f9db4f1721\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:21.929960Z\", \"reason\": null, \"change\": \"4af1486a-b441-4457-8a98-65f9db4f1721\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:21.930207Z\", \"reason\": null, \"change\": \"b82e1f10-4d65-4818-a98d-2eacc2aceeb6\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:22.400074Z\", \"reason\": null, \"change\": \"54646cc3-ef29-4783-b143-36e69d9951ff\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 5\nlimit: 5\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 7\nlimit: 3\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "timeout"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "7\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:21.929960Z\", \"reason\": null, \"change\": \"4af1486a-b441-4457-8a98-65f9db4f1721\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:21.929960Z\", \"reason\": null, \"change\": \"4af1486a-b441-4457-8a98-65f9db4f1721\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:21.929960Z\", \"reason\": null, \"change\": \"4af1486a-b441-4457-8a98-65f9db4f1721\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:21.930207Z\", \"reason\": null, \"change\": \"b82e1f10-4d65-4818-a98d-2eacc2aceeb6\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:22.400074Z\", \"reason\": null, \"change\": \"54646cc3-ef29-4783-b143-36e69d9951ff\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"timeout\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:04:23.336331Z\", \"reason\": null, \"change\": \"991a15f6-75c3-4219-b034-c32314274e44\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5\ntimeout: 3\nlimit: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "7"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 3\nlimit: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:24.680160Z\", \"reason\": null, \"change\": \"73c51a81-5cd5-4b79-877f-2f2b6363ad89\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:24.680160Z\", \"reason\": null, \"change\": \"73c51a81-5cd5-4b79-877f-2f2b6363ad89\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:24.680160Z\", \"reason\": null, \"change\": \"73c51a81-5cd5-4b79-877f-2f2b6363ad89\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:24.680876Z\", \"reason\": null, \"change\": \"ad3f3833-46f4-40d6-b11e-623f169a99d9\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:25.196632Z\", \"reason\": null, \"change\": \"570e5906-330d-4751-80c4-b5d0bf626a01\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 5\nlimit: 5\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "retry: 7\ntimeout: 7\nlimit: 3\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "timeout"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "7\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:24.680160Z\", \"reason\": null, \"change\": \"73c51a81-5cd5-4b79-877f-2f2b6363ad89\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"timeout\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:24.680160Z\", \"reason\": null, \"change\": \"73c51a81-5cd5-4b79-877f-2f2b6363ad89\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:04:24.680160Z\", \"reason\": null, \"change\": \"73c51a81-5cd5-4b79-877f-2f2b6363ad89\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:24.680876Z\", \"reason\": null, \"change\": \"ad3f3833-46f4-40d6-b11e-623f169a99d9\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 7, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:04:25.196632Z\", \"reason\": null, \"change\": \"570e5906-330d-4751-80c4-b5d0bf626a01\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"timeout\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:04:26.236369Z\", \"reason\": null, \"change\": \"f2d25164-a1da-4fda-9125-9257c08b4713\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

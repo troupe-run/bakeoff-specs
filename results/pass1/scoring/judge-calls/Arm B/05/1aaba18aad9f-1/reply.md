@@ -1,0 +1,9 @@
+```json
+{"score": 2, "evidence": ["/judge/repo/tests/test_set_in_include.py:103", "/judge/repo/tests/test_set_in_include.py:48-55", "/judge/repo/tests/test_set_in_include.py:92-99", "/judge/repo/tests/test_set_overrides.py:104-109", "/judge/repo/tests/test_set_overrides.py:118", "/judge/repo/tests/test_overrides_loading.py:46", "/judge/repo/tests/test_overrides_loading.py:80"]} 
+```
+
+Two names claim the wrong thing for some of their cases. `test_in_include_writes_new_keys_into_the_included_file` covers the override-only-ancestor and existing-overridden-value cases, but both expect the write in troupe.yml, not the included file. `test_new_key_under_an_include_is_written_as_an_override` covers key-inside-a-list-item, which expects an edit in agents/coder.yaml, not an override. Most other names match byte-exact assertions, but `test_text_include_in_mapping_form` and `test_mapping_form_inside_an_included_file` are vague because they don't say what result is expected.
+
+```json
+{"score": 2, "evidence": ["/judge/repo/tests/test_set_in_include.py:103", "/judge/repo/tests/test_set_in_include.py:48-55", "/judge/repo/tests/test_set_in_include.py:92-99", "/judge/repo/tests/test_set_overrides.py:104-109", "/judge/repo/tests/test_set_overrides.py:118", "/judge/repo/tests/test_overrides_loading.py:46", "/judge/repo/tests/test_overrides_loading.py:80"], "notes": "Two umbrella parametrized names claim behaviour that some of their cases contradict: 'writes new keys into the included file' while two cases expect writes to troupe.yml, and 'is written as an override' while the list-item case expects an edit in the included file. Most other names state the condition and result and match byte-exact assertions, but a few (text_include_in_mapping_form, mapping_form_inside_an_included_file) are vague."}
+```

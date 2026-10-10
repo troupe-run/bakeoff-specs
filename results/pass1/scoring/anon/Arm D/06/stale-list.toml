@@ -1,0 +1,32 @@
+# scoring/stale/step-06.toml — step 6: bug report. Setting a value through a YAML alias silently changed the
+# anchor and every other alias. Fix: set at an anchor changes everyone; set through `*alias` → exit 3 naming
+# `--expand-alias`; `--expand-alias` makes a block copy; merge keys never written. Drafted 2026-10-05 from
+# scenario/steps/06-bug-alias.md, contract.md "General" (out-of-contract list) and "Aliases (from step 6)", and
+# design §11 (step-1 write-back rules: anchors out of step 1's contract, "so step 6's bug is real") only.
+[[stale]]
+id = "aliases-out-of-contract"
+kind = "requirement"
+what = "Any requirement, assumption or recorded decision listing YAML anchors/aliases/merge keys as out of scope, or recording the arm's own chosen alias behaviour (e.g. 'set through an alias writes the anchor')"
+why = "Contract 'General': 'YAML anchors/aliases/merge keys (until step 6)' are out of contract; 'Aliases (from step 6)' now defines them"
+
+[[stale]]
+id = "alias-writes-anchor-tests"
+kind = "test"
+what = "Any test pinning the reported behaviour: `set` on a path reached through `*alias` succeeds and changes the anchor (and so the other aliases)"
+why = "Step 6 report: 'Changing `coder.settings.model` should not silently change anyone else — refuse'; contract: 'Setting a path reached **through an alias** → exit 3'"
+
+[[stale]]
+id = "set-path-resolution-aliases"
+kind = "code"
+what = "`set`'s path resolution / write-back planner: must tell a path defined at an anchor (`&name`, write there) from one reached through an alias (`*name`, exit 3, stderr mentions `--expand-alias`), and never write merge keys (`<<`)"
+why = "Contract 'Aliases', bullets 1, 2 and 4"
+
+[[stale]]
+id = "alias-docs"
+kind = "doc"
+what = "README / CLI help / docs on `set`: missing alias behaviour and `--expand-alias`, or stating anchors/aliases are unsupported"
+why = "Step 6 adds the Aliases rules and the `--expand-alias` option"
+
+[legitimate]
+paths = ["src/**", "troupe/**", "tests/**", "conftest.py", "README*", "docs/**", "CHANGELOG*", "CLAUDE.md", "AGENTS.md", "pyproject.toml", "uv.lock",
+         ".gitignore", ".python-version", "Makefile", "justfile", ".github/**", "pytest.ini"]

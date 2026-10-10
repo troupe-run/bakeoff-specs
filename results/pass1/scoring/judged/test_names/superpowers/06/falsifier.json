@@ -1,0 +1,12 @@
+{
+  "evidence": [
+    "/judge/repo/tests/test_aliases.py:48 test_expand_alias: the name gives no condition and no expected result, but the body checks the exact bytes of the expanded copy, that the other alias and the anchor are unchanged, and the history entries",
+    "/judge/repo/tests/test_aliases.py:61 test_expand_alias_new_key, :76 test_expand_alias_scalar, :82 test_expand_alias_whole_value, :91 test_expand_alias_list_item: these name only the condition, never the result, though each body checks exact bytes",
+    "/judge/repo/tests/test_aliases.py:12 test_set_anchored_scalar_keeps_anchor says less than its body, which also checks that the `!!str` tag is kept",
+    "/judge/repo/tests/test_aliases.py:27, :42, :107, :180: these names state a specific claim and the body asserts it (exit 3 or 4, error text, file unchanged)"
+  ],
+  "notes": "",
+  "raw": "{\"score\": 2, \"evidence\": [\"/judge/repo/tests/test_aliases.py:48 test_expand_alias: the name gives no condition and no expected result, but the body checks the exact bytes of the expanded copy, that the other alias and the anchor are unchanged, and the history entries\", \"/judge/repo/tests/test_aliases.py:61 test_expand_alias_new_key, :76 test_expand_alias_scalar, :82 test_expand_alias_whole_value, :91 test_expand_alias_list_item: these name only the condition, never the result, though each body checks exact bytes\", \"/judge/repo/tests/test_aliases.py:12 test_set_anchored_scalar_keeps_anchor says less than its body, which also checks that the `!!str` tag is kept\", \"/judge/repo/tests/test_aliases.py:27, :42, :107, :180: these names state a specific claim and the body asserts it (exit 3 or 4, error text, file unchanged)\"]}\n\nThe repo has no git history, so I treated all 21 tests in `tests/test_aliases.py` as the step's added tests. No name overclaims, and about half state both the condition and the result. Five `test_expand_alias*` names give only the condition, not the expected result, and `test_expand_alias` is too vague to show what failed. That is more than the \"one or two\" vague names that score 3 allows.",
+  "score": 2,
+  "status": "ok"
+}

@@ -1,0 +1,16 @@
+{
+  "evidence": [
+    "/judge/repo/tests/integration/test_reconcile_first.py:72",
+    "/judge/repo/tests/integration/test_reconcile_first.py:180",
+    "/judge/repo/tests/integration/test_reconcile_first.py:266",
+    "/judge/repo/tests/integration/test_watch.py:69",
+    "/judge/repo/tests/integration/test_watch.py:161",
+    "/judge/repo/tests/integration/test_watch.py:268",
+    "/judge/repo/tests/unit/test_reconcile.py:172",
+    "/judge/repo/tests/unit/test_lock.py:95"
+  ],
+  "notes": "I found no overclaims. Each name I checked matches what its body asserts: test_watch.py:69 checks the exact 'watching' line plus empty rest and stderr, test_reconcile.py:172 checks both bytes and mtime to show files are never written, and test_reconcile_first.py:180 checks the reconcile event is kept and no set is recorded. A few names are vaguer than their bodies: test_history_built_by_step_one_commands_reconciles_on_show doesn't say which events it expects, and 'blocks this one' in test_lock.py:95 is really checked with a non-blocking probe.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/repo/tests/integration/test_reconcile_first.py:72\", \"/judge/repo/tests/integration/test_reconcile_first.py:180\", \"/judge/repo/tests/integration/test_reconcile_first.py:266\", \"/judge/repo/tests/integration/test_watch.py:69\", \"/judge/repo/tests/integration/test_watch.py:161\", \"/judge/repo/tests/integration/test_watch.py:268\", \"/judge/repo/tests/unit/test_reconcile.py:172\", \"/judge/repo/tests/unit/test_lock.py:95\"], \"notes\": \"I found no overclaims. Each name I checked matches what its body asserts: test_watch.py:69 checks the exact 'watching' line plus empty rest and stderr, test_reconcile.py:172 checks both bytes and mtime to show files are never written, and test_reconcile_first.py:180 checks the reconcile event is kept and no set is recorded. A few names are vaguer than their bodies: test_history_built_by_step_one_commands_reconciles_on_show doesn't say which events it expects, and 'blocks this one' in test_lock.py:95 is really checked with a non-blocking probe.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

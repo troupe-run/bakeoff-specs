@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# team config\nmodel: opus\nretry: 1\n",
+        "input": "`config watch` running; the file is saved empty, then 0.3 s later rewritten as before with `retry: 2`; then `config history`",
+        "observed": true,
+        "results": {
+          "1": "Both arms recorded the empty save anyway. History shows `remove model` (opus -> null) and `remove retry` (1 -> null), then `set model` null -> opus a moment later. Both runs got the same result.",
+          "2": "All four arms recorded the empty save. History shows `remove model` and `remove retry`, then `set model` null -> opus and `set retry` null -> 2."
+        }
+      },
+      {
+        "before": "",
+        "input": "Continuing: 0.3 s after `retry: 2` is written, it is changed to `retry: 3`. Then 3 s later it becomes `retry: 9`, then `config history`",
+        "observed": true,
+        "results": {
+          "1": "One arm never recorded the short-lived 2. History goes `set retry` null -> 3, then 3 -> 9, for 7 entries. One arm recorded every step: null -> 2, 2 -> 3, 3 -> 9, for 8 entries.",
+          "2": "All four arms recorded every step: `set retry` null -> 2, 2 -> 3, 3 -> 9, for 8 entries."
+        }
+      },
+      {
+        "before": "",
+        "input": "Ctrl-C (SIGINT) to stop `config watch`",
+        "observed": true,
+        "results": {
+          "1": "Both arms: exit 0, printed nothing beyond the watching line. One printed `watching /theatre`, the other `watching .`.",
+          "2": "Two arms: exit 0 and quiet. One arm: exit 137. One arm: exit 0, but stderr shows a Python `KeyboardInterrupt` traceback (\"Exception ignored in: <function Application.__del__ ...>\")."
+        }
+      }
+    ],
+    "in_practice": "In this run, neither route stopped the empty mid-save file from being recorded as two deletions. Every arm on both routes did that, even though avoiding it was route 1's stated reason. The only visible difference from waiting for the file to settle was on one route 1 arm: a value that existed for only 0.3 s (`retry: 2`) never reached history. The final value (`retry: 9`) was recorded correctly by every arm.",
+    "stakes": "When an editor saves by emptying the file and then rewriting it, a running `config watch` may record the empty moment as real changes. If it does, history shows every key deleted and then added back, and each quick intermediate save gets its own entry.",
+    "tradeoff": "Route 1 waits for repeated identical reads, so changes land slightly later and very brief intermediate values may be skipped. Route 2 records every save it sees, including half-written states."
+  },
+  "plan_why": "While watch runs, the config is hand-edited four times: first to an empty file (as an editor does mid-save), then retry: 2, then retry: 3, about 0.3 s apart, and finally retry: 9 after a 3 s pause. Watch is stopped and history shows which file events were recorded. A watch that waits for the file to settle records retry 3 and then 9 only. One that does not may also record remove events for the emptied file, a retry 2 entry, or may exit with an error on the empty file.",
+  "routes": [
+    [
+      "Reconcile only after the bytes read the same on consecutive checks",
+      [
+        "Arm B",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm C",
+        "Arm D",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "/judge/repo/README.md:23-28",
+    "/judge/transcript.md:21 (commit c3397d4 message)",
+    "/judge/transcript.md:27 (commit b88f379 message)",
+    "/judge/transcript.md:9",
+    "/judge/transcript.md:22"
+  ],
+  "notes": "README.md:23-28 states what was decided about lineage, but gives a reason for only one choice: legacy events get `via: null` because it was never recorded whether they came from the CLI or a file edit. For the rest of this step's open choices, I could only infer the decision from the code. The undocumented ones are defaulting the actor to the login name, giving imports and file edits an unknown actor, the `unrecorded-N`/`unrecorded-import` change ids, recording the timestamp at record time, and splitting out lineage.py. The reason every command rejects a malformed TROUPE_ACTOR is only in commit b88f379, and no alternatives considered are written down anywhere in the repo.",
+  "raw": "```json\n{\"score\": 2, \"evidence\": [\"/judge/repo/README.md:23-28\", \"/judge/transcript.md:21 (commit c3397d4 message)\", \"/judge/transcript.md:27 (commit b88f379 message)\", \"/judge/transcript.md:9\", \"/judge/transcript.md:22\"], \"notes\": \"README.md:23-28 states what was decided about lineage, but gives a reason for only one choice: legacy events get `via: null` because it was never recorded whether they came from the CLI or a file edit. For the rest of this step's open choices, I could only infer the decision from the code. The undocumented ones are defaulting the actor to the login name, giving imports and file edits an unknown actor, the `unrecorded-N`/`unrecorded-import` change ids, recording the timestamp at record time, and splitting out lineage.py. The reason every command rejects a malformed TROUPE_ACTOR is only in commit b88f379, and no alternatives considered are written down anywhere in the repo.\"}\n```",
+  "score": 2,
+  "status": "ok"
+}

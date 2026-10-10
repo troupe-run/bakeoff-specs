@@ -1,0 +1,316 @@
+{
+  "outcomes": [
+    {
+      "outcome": "1",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "tools",
+            "[grep, edit, run]"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# troupe config\nname: demo\ntools: [grep, edit, run] # default tools\nlimits: {cpu: 1, mem: 2}\nagent: {model: opus, opts: {temp: 1}, tags: [a]}\nretry: 3\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "limits",
+            "{cpu: 4, gpu: 1}"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# troupe config\nname: demo\ntools: [grep, edit, run] # default tools\nlimits: {cpu: 4, gpu: 1}\nagent: {model: opus, opts: {temp: 1}, tags: [a]}\nretry: 3\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "agent.opts",
+            "[x, y]"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# troupe config\nname: demo\ntools: [grep, edit, run] # default tools\nlimits: {cpu: 4, gpu: 1}\nagent: {model: opus, opts: [x, y], tags: [a]}\nretry: 3\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "agent.opts.1"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "y\n"
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "name: demo\ntools:\n  - grep\n  - edit\n  - run\nlimits:\n  cpu: 4\n  gpu: 1\nagent:\n  model: opus\n  opts:\n    - x\n    - y\n  tags:\n    - a\nretry: 3\n"
+        }
+      ]
+    },
+    {
+      "outcome": "2",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "tools",
+            "[grep, edit, run]"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# troupe config\nname: demo\ntools:                # default tools\n  - grep\n  - edit\n  - run\nlimits: {cpu: 1, mem: 2}\nagent: {model: opus, opts: {temp: 1}, tags: [a]}\nretry: 3\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "limits",
+            "{cpu: 4, gpu: 1}"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# troupe config\nname: demo\ntools:                # default tools\n  - grep\n  - edit\n  - run\nlimits:\n  cpu: 4\n  gpu: 1\nagent: {model: opus, opts: {temp: 1}, tags: [a]}\nretry: 3\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "agent.opts",
+            "[x, y]"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# troupe config\nname: demo\ntools:                # default tools\n  - grep\n  - edit\n  - run\nlimits:\n  cpu: 4\n  gpu: 1\nagent: {model: opus, opts: [x, y], tags: [a]}\nretry: 3\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "agent.opts.1"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "y\n"
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "name: demo\ntools:\n  - grep\n  - edit\n  - run\nlimits:\n  cpu: 4\n  gpu: 1\nagent:\n  model: opus\n  opts:\n    - x\n    - 'y'\n  tags:\n    - a\nretry: 3\n"
+        }
+      ]
+    },
+    {
+      "outcome": "3",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "tools",
+            "[grep, edit, run]"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# troupe config\nname: demo\ntools: [grep, edit, run]  # default tools\nlimits: {cpu: 1, mem: 2}\nagent: {model: opus, opts: {temp: 1}, tags: [a]}\nretry: 3\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "limits",
+            "{cpu: 4, gpu: 1}"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# troupe config\nname: demo\ntools: [grep, edit, run]  # default tools\nlimits: {cpu: 4, gpu: 1}\nagent: {model: opus, opts: {temp: 1}, tags: [a]}\nretry: 3\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "agent.opts",
+            "[x, y]"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# troupe config\nname: demo\ntools: [grep, edit, run]  # default tools\nlimits: {cpu: 4, gpu: 1}\nagent: {model: opus, opts: [x, y], tags: [a]}\nretry: 3\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            "agent.opts.1"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "y\n"
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "name: demo\ntools:\n  - grep\n  - edit\n  - run\nlimits:\n  cpu: 4\n  gpu: 1\nagent:\n  model: opus\n  opts:\n    - x\n    - y\n  tags:\n    - a\nretry: 3\n"
+        }
+      ]
+    }
+  ],
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "tools",
+          "[grep, edit, run]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "limits",
+          "{cpu: 4, gpu: 1}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agent.opts",
+          "[x, y]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "agent.opts.1"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# troupe config\nname: demo\ntools: [read, write]  # default tools\nlimits: {cpu: 1, mem: 2}\nagent: {model: opus, opts: {temp: 1}, tags: [a]}\nretry: 3\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  }
+}

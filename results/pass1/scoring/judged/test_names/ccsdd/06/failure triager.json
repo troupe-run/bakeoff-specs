@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "tests/test_compose.py:61",
+    "tests/test_compose.py:249",
+    "tests/test_compose.py:164",
+    "tests/test_e2e_aliases.py:113",
+    "tests/test_e2e_aliases.py:214",
+    "tests/test_e2e_aliases.py:266",
+    "tests/test_e2e_aliases.py:480"
+  ],
+  "notes": "I checked the first 30 tests in path order: 16 in test_compose.py and 14 in test_e2e_aliases.py. There is no git history, so I picked the step 6 tests using the file list in spec/spec/config-aliases/tasks.md. None of the names overclaims, and most give both the condition and the expected result, for example 'alias_as_mapping_value_is_recorded_under_its_key_node' and 'show_prints_the_merged_view_without_merge_keys', which is checked byte for byte. A few names say less than their bodies check. 'cli_reports_an_undefined_alias_in_an_included_file' leaves out the exit 4 it asserts. 'refused_alias_exits_4_with_no_history_state' and 'get_and_show_read_the_expanded_configuration' are broad, so from the name alone a triager can't tell which case failed.",
+  "raw": "{\"score\": 3, \"evidence\": [\"tests/test_compose.py:61\", \"tests/test_compose.py:249\", \"tests/test_compose.py:164\", \"tests/test_e2e_aliases.py:113\", \"tests/test_e2e_aliases.py:214\", \"tests/test_e2e_aliases.py:266\", \"tests/test_e2e_aliases.py:480\"], \"notes\": \"I checked the first 30 tests in path order: 16 in test_compose.py and 14 in test_e2e_aliases.py. There is no git history, so I picked the step 6 tests using the file list in spec/spec/config-aliases/tasks.md. None of the names overclaims, and most give both the condition and the expected result, for example 'alias_as_mapping_value_is_recorded_under_its_key_node' and 'show_prints_the_merged_view_without_merge_keys', which is checked byte for byte. A few names say less than their bodies check. 'cli_reports_an_undefined_alias_in_an_included_file' leaves out the exit 4 it asserts. 'refused_alias_exits_4_with_no_history_state' and 'get_and_show_read_the_expanded_configuration' are broad, so from the name alone a triager can't tell which case failed.\"}",
+  "score": 3,
+  "status": "ok"
+}

@@ -1,0 +1,51 @@
+{
+  "sha_before": "96995292833c121b03640e32d9fa01aeaa2ae91a",
+  "sha_after": "334488620d7ee61781d780dac229987d5ea7db34",
+  "head": "334488620d7ee61781d780dac229987d5ea7db34",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "334488620d7ee61781d780dac229987d5ea7db34",
+      "author": "Developer",
+      "subject": "Document lineage in the README and earlier specs"
+    },
+    {
+      "sha": "5eabdfef02d66e734091bac4a89541522a7bdf78",
+      "author": "Developer",
+      "subject": "Test that lineage survives restarts unchanged"
+    },
+    {
+      "sha": "c13700c2a541be10a9790ec82c9c87bd9278accb",
+      "author": "Developer",
+      "subject": "Let set record a reason, and pin when each change happened"
+    },
+    {
+      "sha": "d4c0a20d648dfa448c19111881c78c795f18e899",
+      "author": "Developer",
+      "subject": "Test that change ids group exactly one unit's events"
+    },
+    {
+      "sha": "2d3ef229a72f73dd0befd594bde36743643f2145",
+      "author": "Developer",
+      "subject": "Record who changed each setting and how, stored with every event"
+    },
+    {
+      "sha": "cb7367b3392b2bda89542f91070638c1df63158a",
+      "author": "Developer",
+      "subject": "Add step 4 tasks: lineage, test-first by user story"
+    },
+    {
+      "sha": "9a1001e9786fb91cdc5c231c169dd84a5339f050",
+      "author": "Developer",
+      "subject": "Add step 4 plan: lineage stored in each LeafChanged event"
+    },
+    {
+      "sha": "dcc95db36528b4e05ecde39818205e50bf35b3d2",
+      "author": "Developer",
+      "subject": "Add step 4 spec: lineage for every history event"
+    }
+  ],
+  "diffstat": "README.md                                          |  16 +-\n specs/001-config-load-show-set/contracts/cli.md    |   2 +\n specs/002-config-file-sync/spec.md                 |   3 +-\n .../004-config-lineage/checklists/requirements.md  |  41 +++\n specs/004-config-lineage/contracts/cli.md          |  46 +++\n specs/004-config-lineage/data-model.md             |  67 +++++\n specs/004-config-lineage/plan.md                   | 147 ++++++++++\n specs/004-config-lineage/quickstart.md             |  49 ++++\n specs/004-config-lineage/research.md               |  98 +++++++\n specs/004-config-lineage/spec.md                   | 322 +++++++++++++++++++++\n specs/004-config-lineage/tasks.md                  | 259 +++++++++++++++++\n src/troupe/cli.py                                  |   9 +-\n src/troupe/config/commands.py                      |  17 +-\n src/troupe/config/lineage.py                       |  86 ++++++\n src/troupe/config/store.py                         |  49 +++-\n src/troupe/config/sync.py                          |   4 +-\n tests/conftest.py                                  |  33 ++-\n tests/e2e/test_history.py                          |  27 +-\n tests/e2e/test_lineage_actor.py                    |  86 ++++++\n tests/e2e/test_lineage_change.py                   |  88 ++++++\n tests/e2e/test_lineage_errors.py                   |  54 ++++\n tests/e2e/test_lineage_persist.py                  |  52 ++++\n tests/e2e/test_lineage_watch.py                    |  39 +++\n tests/e2e/test_lineage_when_why.py                 | 110 +++++++\n tests/e2e/test_reconcile.py                        |   4 +-\n tests/e2e/test_usage.py                            |   9 +\n tests/unit/test_lineage.py                         |  98 +++++++\n tests/unit/test_lock.py                            |   7 +-\n tests/unit/test_reconcile.py                       |  23 +-\n 29 files changed, 1818 insertions(+), 27 deletions(-)"
+}

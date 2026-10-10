@@ -1,0 +1,570 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder",
+          "{model: opus, temperature: 0.5, max_tokens: 4096}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tools",
+          "[git, shell, web]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "limits",
+          "{tokens: 1000, calls: 50}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "agents.coder"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus  # the best one\n    # tuned low for code\n    temperature: 0.2\n    retries: 3   # flaky network\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git   # version control\n  # shell is sandboxed\n  - shell\nname: demo\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus, temperature: 0.5, max_tokens: 4096}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus  # the best one\n    # tuned low for code\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git   # version control\n  # shell is sandboxed\n  - shell\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[git, shell, web]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus  # the best one\n    # tuned low for code\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git   # version control\n  # shell is sandboxed\n  - shell\n  - web\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "{tokens: 1000, calls: 50}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:33.562548Z\", \"reason\": null, \"change\": \"ff9563ec-b91c-4152-b32c-f9a414598c01\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:33.562548Z\", \"reason\": null, \"change\": \"ff9563ec-b91c-4152-b32c-f9a414598c01\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:33.562548Z\", \"reason\": null, \"change\": \"ff9563ec-b91c-4152-b32c-f9a414598c01\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:33.565963Z\", \"reason\": null, \"change\": \"3683018f-b366-44aa-8160-d7f0012f109e\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"agents.coder.max_tokens\", \"old\": null, \"new\": 4096, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:33.565963Z\", \"reason\": null, \"change\": \"3683018f-b366-44aa-8160-d7f0012f109e\"}\n{\"seq\": 11, \"op\": \"remove\", \"path\": \"agents.coder.retries\", \"old\": 3, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:33.565963Z\", \"reason\": null, \"change\": \"3683018f-b366-44aa-8160-d7f0012f109e\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    model: opus\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  tokens: 1000\n  calls: 50\ntools:\n  - git\n  - shell\n  - web\nname: demo\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus, temperature: 0.5, max_tokens: 4096}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus  # the best one\n    # tuned low for code\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git   # version control\n  # shell is sandboxed\n  - shell\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[git, shell, web]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus  # the best one\n    # tuned low for code\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git   # version control\n  # shell is sandboxed\n  - shell\n  - web\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "{tokens: 1000, calls: 50}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:37.416486Z\", \"reason\": null, \"change\": \"753521a3-1d7d-482f-9622-8f67ce1319a2\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:37.416486Z\", \"reason\": null, \"change\": \"753521a3-1d7d-482f-9622-8f67ce1319a2\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:37.416486Z\", \"reason\": null, \"change\": \"753521a3-1d7d-482f-9622-8f67ce1319a2\"}\n{\"seq\": 9, \"op\": \"remove\", \"path\": \"agents.coder.retries\", \"old\": 3, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:37.422931Z\", \"reason\": null, \"change\": \"b423d7b4-7921-4de6-8ab9-21976f7aa149\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:37.422931Z\", \"reason\": null, \"change\": \"b423d7b4-7921-4de6-8ab9-21976f7aa149\"}\n{\"seq\": 11, \"op\": \"set\", \"path\": \"agents.coder.max_tokens\", \"old\": null, \"new\": 4096, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:37.422931Z\", \"reason\": null, \"change\": \"b423d7b4-7921-4de6-8ab9-21976f7aa149\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    model: opus\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  tokens: 1000\n  calls: 50\ntools:\n  - git\n  - shell\n  - web\nname: demo\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus, temperature: 0.5, max_tokens: 4096}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus  # the best one\n    # tuned low for code\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git   # version control\n  # shell is sandboxed\n  - shell\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[git, shell, web]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus  # the best one\n    # tuned low for code\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git   # version control\n  # shell is sandboxed\n  - shell\n  - web\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "{tokens: 1000, calls: 50}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:43.860717Z\", \"reason\": null, \"change\": \"d1bc0e21-dcf9-42f2-b115-063a229d8d7d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:43.860717Z\", \"reason\": null, \"change\": \"d1bc0e21-dcf9-42f2-b115-063a229d8d7d\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:43.860717Z\", \"reason\": null, \"change\": \"d1bc0e21-dcf9-42f2-b115-063a229d8d7d\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:43.861007Z\", \"reason\": null, \"change\": \"855a5f5c-8834-4e99-a0a3-6f930c36a076\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"agents.coder.max_tokens\", \"old\": null, \"new\": 4096, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:43.861007Z\", \"reason\": null, \"change\": \"855a5f5c-8834-4e99-a0a3-6f930c36a076\"}\n{\"seq\": 11, \"op\": \"remove\", \"path\": \"agents.coder.retries\", \"old\": 3, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:43.861007Z\", \"reason\": null, \"change\": \"855a5f5c-8834-4e99-a0a3-6f930c36a076\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    model: opus\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  tokens: 1000\n  calls: 50\ntools:\n  - git\n  - shell\n  - web\nname: demo\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus, temperature: 0.5, max_tokens: 4096}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus  # the best one\n    # tuned low for code\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git   # version control\n  # shell is sandboxed\n  - shell\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[git, shell, web]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus  # the best one\n    # tuned low for code\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git   # version control\n  # shell is sandboxed\n  - shell\n  - web\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "{tokens: 1000, calls: 50}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:46.626318Z\", \"reason\": null, \"change\": \"dd7c782e-8709-4928-ba07-5c9abd5d17f1\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:46.626318Z\", \"reason\": null, \"change\": \"dd7c782e-8709-4928-ba07-5c9abd5d17f1\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:46.626318Z\", \"reason\": null, \"change\": \"dd7c782e-8709-4928-ba07-5c9abd5d17f1\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:46.630715Z\", \"reason\": null, \"change\": \"6bb3e346-741b-4652-ab57-3002eabe1a7e\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"agents.coder.max_tokens\", \"old\": null, \"new\": 4096, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:46.630715Z\", \"reason\": null, \"change\": \"6bb3e346-741b-4652-ab57-3002eabe1a7e\"}\n{\"seq\": 11, \"op\": \"remove\", \"path\": \"agents.coder.retries\", \"old\": 3, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:46.630715Z\", \"reason\": null, \"change\": \"6bb3e346-741b-4652-ab57-3002eabe1a7e\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    model: opus\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  tokens: 1000\n  calls: 50\ntools:\n  - git\n  - shell\n  - web\nname: demo\n"
+            }
+          ]
+        }
+      ],
+      "route": "Merge entry-wise (keep, change, append, delete); unchanged entries keep their bytes and comments",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus, temperature: 0.5, max_tokens: 4096}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git   # version control\n  # shell is sandboxed\n  - shell\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[git, shell, web]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git\n  - shell\n  - web\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "{tokens: 1000, calls: 50}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:49.788430Z\", \"reason\": null, \"change\": \"b790e9ef-d9ca-4ace-8201-c54a03b1e486\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:49.788430Z\", \"reason\": null, \"change\": \"b790e9ef-d9ca-4ace-8201-c54a03b1e486\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:49.788430Z\", \"reason\": null, \"change\": \"b790e9ef-d9ca-4ace-8201-c54a03b1e486\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:49.793955Z\", \"reason\": null, \"change\": \"f17dcfec-12b8-45fa-887a-0ab9ecb41187\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"agents.coder.max_tokens\", \"old\": null, \"new\": 4096, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:49.793955Z\", \"reason\": null, \"change\": \"f17dcfec-12b8-45fa-887a-0ab9ecb41187\"}\n{\"seq\": 11, \"op\": \"remove\", \"path\": \"agents.coder.retries\", \"old\": 3, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:49.793955Z\", \"reason\": null, \"change\": \"f17dcfec-12b8-45fa-887a-0ab9ecb41187\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    model: opus\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  tokens: 1000\n  calls: 50\ntools:\n  - git\n  - shell\n  - web\nname: demo\n"
+            }
+          ]
+        }
+      ],
+      "route": "Replace the collection's whole span in the old style; comments inside it go with it",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus, temperature: 0.5, max_tokens: 4096}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git   # version control\n  # shell is sandboxed\n  - shell\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "[git, shell, web]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nagents:\n  coder:\n    model: opus\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  # per-run cap\n  tokens: 1000  # soft limit\n  calls: 50\ntools:\n  - git\n  - shell\n  - web\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "{tokens: 1000, calls: 50}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:40.795325Z\", \"reason\": null, \"change\": \"2d31cb44-0f3e-4ae6-99b8-7fa9d88263b6\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:40.795325Z\", \"reason\": null, \"change\": \"2d31cb44-0f3e-4ae6-99b8-7fa9d88263b6\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:50:40.795325Z\", \"reason\": null, \"change\": \"2d31cb44-0f3e-4ae6-99b8-7fa9d88263b6\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:40.800640Z\", \"reason\": null, \"change\": \"cbb9d7b9-a027-4a0e-bbd8-9019fb746bac\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"agents.coder.max_tokens\", \"old\": null, \"new\": 4096, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:40.800640Z\", \"reason\": null, \"change\": \"cbb9d7b9-a027-4a0e-bbd8-9019fb746bac\"}\n{\"seq\": 11, \"op\": \"remove\", \"path\": \"agents.coder.retries\", \"old\": 3, \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:50:40.800640Z\", \"reason\": null, \"change\": \"cbb9d7b9-a027-4a0e-bbd8-9019fb746bac\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    model: opus\n    temperature: 0.5\n    max_tokens: 4096\nlimits:\n  tokens: 1000\n  calls: 50\ntools:\n  - git\n  - shell\n  - web\nname: demo\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

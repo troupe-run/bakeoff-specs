@@ -1,0 +1,46 @@
+{
+  "sha_before": "9143f74c4b0a2ed817f35d276d6aea783af6f5fe",
+  "sha_after": "4ef5d766255fbb2a78d3e15a069e009b2e2da93a",
+  "head": "4ef5d766255fbb2a78d3e15a069e009b2e2da93a",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "4ef5d766255fbb2a78d3e15a069e009b2e2da93a",
+      "author": "Developer",
+      "subject": "Archive config-get-and-show and sync its specs into openspec/specs"
+    },
+    {
+      "sha": "96eec83bdb8f3c2ae3da056fe8e1cd7432e0e9bb",
+      "author": "Developer",
+      "subject": "Mark config-get-and-show commit task complete"
+    },
+    {
+      "sha": "b9cb4e5b071fc86ec30db5da89e6fab48d23e793",
+      "author": "Developer",
+      "subject": "Mark config-get-and-show tasks complete after full test, type and lint run"
+    },
+    {
+      "sha": "0c7e4f016d68970edc1aa9c25167189a9810a85e",
+      "author": "Developer",
+      "subject": "Document get, show --sources and the step-3 decisions in the README"
+    },
+    {
+      "sha": "91b475bd108fbbf1ca52bbb44a9711a1d0a46b15",
+      "author": "Developer",
+      "subject": "Split reading into get (one value) and show (anything, as YAML)"
+    },
+    {
+      "sha": "c537813698a2dd2cf97779c7a279e980258801b3",
+      "author": "Developer",
+      "subject": "Add a YAML renderer for show, with per-scalar source files"
+    },
+    {
+      "sha": "663cef9561d07f396bf6f4aed3e6c18a2bd1cbb8",
+      "author": "Developer",
+      "subject": "Plan get for values, show for anything (OpenSpec change config-get-and-show)"
+    }
+  ],
+  "diffstat": "README.md                                          |  44 ++++++-\n .../2026-10-03-config-get-and-show/.openspec.yaml  |   2 +\n .../2026-10-03-config-get-and-show/design.md       | 146 +++++++++++++++++++++\n .../2026-10-03-config-get-and-show/proposal.md     |  48 +++++++\n .../specs/config-cli/spec.md                       |  41 ++++++\n .../specs/config-get/spec.md                       |  50 +++++++\n .../specs/config-show/spec.md                      | 134 +++++++++++++++++++\n .../specs/config-sync/spec.md                      |  30 +++++\n .../2026-10-03-config-get-and-show/tasks.md        |  27 ++++\n openspec/specs/config-cli/spec.md                  |  16 ++-\n openspec/specs/config-get/spec.md                  |  50 +++++++\n openspec/specs/config-show/spec.md                 | 115 ++++++++++++++--\n openspec/specs/config-sync/spec.md                 |  16 ++-\n src/troupe/cli.py                                  |  14 +-\n src/troupe/commands.py                             |  25 +++-\n src/troupe/render.py                               |  91 +++++++++++++\n tests/conftest.py                                  |  13 ++\n tests/test_cli.py                                  |  31 ++++-\n tests/test_get.py                                  |  76 +++++++++++\n tests/test_reconcile.py                            |  21 +++\n tests/test_render.py                               | 111 ++++++++++++++++\n tests/test_show.py                                 | 138 ++++++++++++-------\n tests/test_show_sources.py                         |  96 ++++++++++++++\n tests/test_smoke.py                                |  19 ++-\n 24 files changed, 1261 insertions(+), 93 deletions(-)"
+}

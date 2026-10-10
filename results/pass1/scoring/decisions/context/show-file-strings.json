@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "agents:\n  coder:\n    model: opus\n    prompt: !literal file:prompts/coder.md\n    system: file:sys.md\n",
+        "input": "`config show agents`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints the text without its mark:\ncoder:\n  model: opus\n  prompt: file:prompts/coder.md\n  system: |\n    You are a coder.",
+          "2": "three arms: same as route 1 (`prompt: file:prompts/coder.md`); two arms: exit 0, keeps the mark:\ncoder:\n  model: opus\n  prompt: !literal file:prompts/coder.md\n  system: |\n    You are a coder."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show agents --sources`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; `prompt: file:prompts/coder.md # from .troupe/troupe.yml` (no mark). The real include shows as `system: | # from .troupe/sys.md` followed by its content",
+          "2": "three arms: same as route 1; two arms: `prompt: !literal file:prompts/coder.md # from .troupe/troupe.yml`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set agents.coder.notes file:notes.txt`, then `config show`",
+        "observed": true,
+        "results": {
+          "1": "set: exit 0, and the file gains `    notes: !literal file:notes.txt`. Then show prints `    notes: file:notes.txt` (no mark)",
+          "2": "set: exit 0, same file change in all five arms. Then show: three arms print `    notes: file:notes.txt`; two arms print `    notes: !literal file:notes.txt`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get agents.coder.notes`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints `file:notes.txt`",
+          "2": "exit 0; prints `file:notes.txt` (all arms)"
+        }
+      }
+    ],
+    "in_practice": "Every arm stores the mark correctly in the file, and `config get` returns the bare text in every arm. Only `config show` differs. Route 1, and three of the five arms on route 2, print `prompt: file:prompts/coder.md`, which looks exactly like a file reference such as `system: file:sys.md` would if it weren't expanded. The other two arms on route 2 print the `!literal` mark, so the output can be pasted back as-is.",
+    "stakes": "Some config values are plain text that happens to start with `file:`. The file marks these `!literal` so they are not read as a pointer to another file. The question is whether `config show` keeps that mark. Without it, the output looks the same as a real file reference, so anyone who copies it back into the config would turn plain text into a file include.",
+    "tradeoff": "Route 1 gives clean, readable output but drops the mark that separates plain text from a file reference. Route 2 is inconsistent: most arms do the same as route 1, and a minority keep the mark."
+  },
+  "plan_why": "Shows what `show` prints, as a whole section and with `--sources`, for literal strings that start with `file:` (tagged `!literal` in the file or written by `set`), next to a real text include. Plain output would be read as an include if loaded again; tagged or quoted output would not.",
+  "routes": [
+    [
+      "Print plain",
+      [
+        "Arm B"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

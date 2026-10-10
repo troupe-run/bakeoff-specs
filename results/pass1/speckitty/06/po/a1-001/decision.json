@@ -1,0 +1,22 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "How should troupe read a mapping that contains a merge key (`<<: *d`), e.g. should keys written in the mapping itself win over merged ones?",
+      "reply": "The contract does not define reading through merge keys. It is out of contract, so it is your choice. State which option you chose and why.",
+      "escalate": false,
+      "cited": "Brief, Standing answers ('Anything the contract marks out of contract\u2026') and Escalated answers (reading through merge keys); contract, Aliases (from step 6)"
+    },
+    {
+      "question": "What should `set coder.model sonnet` (and `set --expand-alias` on that path) do when `model` arrives in `coder` through `<<: *d`?",
+      "reply": "The contract has only two rules here. Merge keys (`<<`) are never written. A path reached through an alias exits 3, with stderr mentioning `--expand-alias`. `--expand-alias` replaces an alias with a block-style copy of the anchored node, and doing that to a `<<` line would mean writing a merge key, which the contract forbids. Beyond those rules, how merge keys are handled is out of contract, so it is your choice. State which option you chose and why.",
+      "escalate": false,
+      "cited": "Contract, Aliases (from step 6); brief, Escalated answers (merge keys / reading through merge keys)"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

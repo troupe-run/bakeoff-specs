@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/diff.patch:1641-1646 (config-set-writeback decision D marked 'Superseded by step 7' with the new rule, pointing to config-remote-schema req 8, 9)",
+    "/judge/diff.patch:1683-1686 (research.md decision D 'Revisited (step 7)' records the old rule, what replaced it and why)",
+    "/judge/diff.patch:119-121 and 67-68 (config-foundation decision I/3.7 narrowed for !literal, with a pointer to the new requirement)",
+    "/judge/diff.patch:1484 and 1552 (tasks 2.1/3.5 list the existing tests changed in tests/test_loader.py, test_set_targets.py and others, and why)",
+    "/judge/diff.patch:10160-10170 (test_set_targets docstring cites config-remote-schema 9.3 for the added --include)",
+    "/judge/diff.patch:8-10, 30-31, 1698-1699, 1708-1713 (step-6 notes and roadmap ticks for config-aliases are added in this step's diff, but no step-7 record mentions them)",
+    "/judge/diff.patch:6452-6453 (isinstance(file, Path) assertion change, only tied implicitly to task 1.2)"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/diff.patch:1641-1646 (config-set-writeback decision D marked 'Superseded by step 7' with the new rule, pointing to config-remote-schema req 8, 9)\", \"/judge/diff.patch:1683-1686 (research.md decision D 'Revisited (step 7)' records the old rule, what replaced it and why)\", \"/judge/diff.patch:119-121 and 67-68 (config-foundation decision I/3.7 narrowed for !literal, with a pointer to the new requirement)\", \"/judge/diff.patch:1484 and 1552 (tasks 2.1/3.5 list the existing tests changed in tests/test_loader.py, test_set_targets.py and others, and why)\", \"/judge/diff.patch:10160-10170 (test_set_targets docstring cites config-remote-schema 9.3 for the added --include)\", \"/judge/diff.patch:8-10, 30-31, 1698-1699, 1708-1713 (step-6 notes and roadmap ticks for config-aliases are added in this step's diff, but no step-7 record mentions them)\", \"/judge/diff.patch:6452-6453 (isinstance(file, Path) assertion change, only tied implicitly to task 1.2)\"]}\n```\n\nThe diff has no commit messages, so traceability depends on the spec records. Those records are thorough:\n\n- **Changed requirements:** each one in an earlier spec gets a dated note saying what it said before, what supersedes it and why. Examples are decision D, decision I and requirements 2.7 and 3.7.\n- **Changed tests:** tasks.md lists the existing tests to change. The changed tests cite the new requirement IDs in their docstrings.\n\n**Why not a 4:** a few hunks have no step-7 explanation. Step-6 notes and the config-aliases roadmap ticks are added in this diff, but no step-7 record covers them. A small test-assertion change is only implicitly tied to task 1.2.",
+  "score": 3,
+  "status": "ok"
+}

@@ -1,0 +1,76 @@
+{
+  "sha_before": "3968735aa81fdeb793cb6b33823c5e57d71b7a36",
+  "sha_after": "e3de0dd647060ada083d2e4d8094c628acbfca1e",
+  "head": "e3de0dd647060ada083d2e4d8094c628acbfca1e",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "e3de0dd647060ada083d2e4d8094c628acbfca1e",
+      "author": "Developer",
+      "subject": "Insert new entries below a keep-chomped block's blank lines"
+    },
+    {
+      "sha": "2edf0e96bccdf88b240d43f7a5c02604b0c7b119",
+      "author": "Developer",
+      "subject": "Append convergence task: insert after keep-chomped blocks"
+    },
+    {
+      "sha": "46421cc4e6e20551cd30e8b01048828ec911ee6f",
+      "author": "Developer",
+      "subject": "Allow setting a value to a file: include string"
+    },
+    {
+      "sha": "e2cfcd33e9f6d5d955ae03aa2998b3cc52071344",
+      "author": "Developer",
+      "subject": "Append convergence task: setting a value to a file: include"
+    },
+    {
+      "sha": "330dc2fa8542b44d6d87b7e291711b179aa48007",
+      "author": "Developer",
+      "subject": "Refuse unwritable targets and fail cleanly on store errors"
+    },
+    {
+      "sha": "ca25f943581b70058f69ca0885f53e91d63b510a",
+      "author": "Developer",
+      "subject": "Append convergence tasks for step 1"
+    },
+    {
+      "sha": "2a41167e1cb2c31b6260d873db13e5748b14a9f1",
+      "author": "Developer",
+      "subject": "Polish: README, error-message coverage, --theatre before subcommand"
+    },
+    {
+      "sha": "6a3cd34dc1a620b70dd8bc94fa52dd26853779d4",
+      "author": "Developer",
+      "subject": "Test config history end to end"
+    },
+    {
+      "sha": "0c455a2c2d769b9044e7852278db1e97b1ebbaac",
+      "author": "Developer",
+      "subject": "Add byte-surgical config set"
+    },
+    {
+      "sha": "568a1037682b249130306e7a1fa104532645ca3c",
+      "author": "Developer",
+      "subject": "Add troupe config foundation and show command"
+    },
+    {
+      "sha": "08854fb039494e8c87c7d2e8a2c78696bf628f86",
+      "author": "Developer",
+      "subject": "Add step 1 task list"
+    },
+    {
+      "sha": "7d5054e7317b995892a36e91e8bf33656dc51014",
+      "author": "Developer",
+      "subject": "Add step 1 implementation plan and design artifacts"
+    },
+    {
+      "sha": "70df9f2e4a17dee5d42fea13026f7f81ba866516",
+      "author": "Developer",
+      "subject": "Add step 1 spec for troupe config load/show/set/history"
+    }
+  ],
+  "diffstat": ".gitignore                                         |   9 +\n .python-version                                    |   1 +\n README.md                                          |  39 ++\n pyproject.toml                                     |  37 ++\n .../checklists/requirements.md                     |  42 ++\n specs/001-config-load-show-set/contracts/cli.md    |  50 ++\n specs/001-config-load-show-set/data-model.md       |  78 +++\n specs/001-config-load-show-set/plan.md             | 133 +++++\n specs/001-config-load-show-set/quickstart.md       |  54 ++\n specs/001-config-load-show-set/research.md         | 238 ++++++++\n specs/001-config-load-show-set/spec.md             | 321 +++++++++++\n specs/001-config-load-show-set/tasks.md            | 223 ++++++++\n src/troupe/__init__.py                             |   1 +\n src/troupe/__main__.py                             |   3 +\n src/troupe/cli.py                                  |  58 ++\n src/troupe/config/__init__.py                      |   0\n src/troupe/config/commands.py                      | 107 ++++\n src/troupe/config/edit/__init__.py                 |   0\n src/troupe/config/edit/apply.py                    | 119 ++++\n src/troupe/config/edit/folded.py                   | 134 +++++\n src/troupe/config/edit/layout.py                   | 183 +++++++\n src/troupe/config/edit/planner.py                  | 604 +++++++++++++++++++++\n src/troupe/config/edit/render.py                   | 253 +++++++++\n src/troupe/config/files.py                         | 108 ++++\n src/troupe/config/leaves.py                        |  79 +++\n src/troupe/config/loader.py                        | 126 +++++\n src/troupe/config/paths.py                         |  43 ++\n src/troupe/config/scalars.py                       | 162 ++++++\n src/troupe/config/store.py                         | 121 +++++\n src/troupe/config/tree.py                          |  94 ++++\n src/troupe/errors.py                               |  39 ++\n src/troupe/py.typed                                |   0\n tests/__init__.py                                  |   0\n tests/conftest.py                                  | 112 ++++\n tests/e2e/__init__.py                              |   0\n tests/e2e/test_error_messages.py                   |  49 ++\n tests/e2e/test_history.py                          | 131 +++++\n tests/e2e/test_load_errors.py                      |  82 +++\n tests/e2e/test_set_append.py                       |  74 +++\n tests/e2e/test_set_block.py                        | 102 ++++\n tests/e2e/test_set_comments.py                     |  48 ++\n tests/e2e/test_set_errors.py                       |  44 ++\n tests/e2e/test_set_flow.py                         |  80 +++\n tests/e2e/test_set_folded.py                       |  64 +++\n tests/e2e/test_set_includes.py                     | 110 ++++\n tests/e2e/test_set_new_key.py                      | 164 ++++++\n tests/e2e/test_set_scalar.py                       | 163 ++++++\n tests/e2e/test_set_structure.py                    |  67 +++\n tests/e2e/test_show.py                             | 102 ++++\n tests/e2e/test_show_errors.py                      |  32 ++\n tests/e2e/test_show_import.py                      |  20 +\n tests/e2e/test_state.py                            | 121 +++++\n tests/e2e/test_usage.py                            |  56 ++\n tests/unit/__init__.py                             |   0\n tests/unit/test_folded.py                          |  58 ++\n tests/unit/test_layout.py                          |  63 +++\n tests/unit/test_paths.py                           |  25 +\n tests/unit/test_render.py                          | 142 +++++\n tests/unit/test_scalars.py                         |  91 ++++\n tests/unit/test_value_parse.py                     |  40 ++\n tests/unit/test_verify.py                          |  52 ++\n uv.lock                                            | 389 +++++++++++++\n 62 files changed, 5940 insertions(+)"
+}

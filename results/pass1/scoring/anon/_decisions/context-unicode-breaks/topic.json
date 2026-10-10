@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "Writing U+2028/U+2029/U+0085/U+FEFF",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Pre-existing write-back behaviour; changing it would change set's bytes",
+      "route": "Leave strings with U+FEFF in plain or single quotes",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept; one arm left a read-back difference with ruamel for the owner",
+      "reasoning_given": "ruamel's scanner treats them as line breaks; the contract asks for them literal",
+      "route": "Only inside double quotes (written literally there)",
+      "route_no": 2
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

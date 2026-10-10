@@ -1,0 +1,410 @@
+{
+  "outcomes": [
+    {
+      "outcome": "1",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "a",
+            "\"x\\ny\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |-\n  one\nc: |+\n  one\n\ne: |\n  last\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "b",
+            "\"p\\nq\\n\\n\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |+\n  one\n\ne: |\n  last\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "c",
+            "\"z\\n\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |+\n  z\ne: |\n  last\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "e",
+            "\"\\n\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |+\n  z\ne: |+\n\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "a: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |\n  z\ne: |+\n\nf: plain\n"
+        }
+      ]
+    },
+    {
+      "outcome": "2",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "a",
+            "\"x\\ny\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |-\n  one\nc: |+\n  one\n\ne: |\n  last\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "b",
+            "\"p\\nq\\n\\n\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |+\n  one\n\ne: |\n  last\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "c",
+            "\"z\\n\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |+\n  z\ne: |\n  last\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "e",
+            "\"\\n\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |+\n  z\ne: \"\\n\"\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "a: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |\n  z\ne: \"\\n\"\nf: plain\n"
+        }
+      ]
+    },
+    {
+      "outcome": "3",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "a",
+            "\"x\\ny\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |-\n  one\nc: |+\n  one\n\ne: |\n  last\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "b",
+            "\"p\\nq\\n\\n\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |+\n  one\n\ne: |\n  last\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "c",
+            "\"z\\n\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |+\n  z\ne: |\n  last\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "e",
+            "\"\\n\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: write refused: e: cannot write this change faithfully\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "a: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |\n  z\ne: |\n  last\nf: plain\n"
+        }
+      ]
+    },
+    {
+      "outcome": "4",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "a",
+            "\"x\\ny\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |-\n  one\nc: |+\n  one\n\ne: |\n  last\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "b",
+            "\"p\\nq\\n\\n\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |+\n  one\n\ne: |\n  last\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "c",
+            "\"z\\n\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |+\n  z\ne: |\n  last\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "e",
+            "\"\\n\""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# block scalars\na: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |+\n  z\ne: \"\\n\"\nf: plain  # end\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "a: |-\n  x\n  y\nb: |+\n  p\n  q\n\nc: |\n  z\ne: |+\n\nf: plain\n"
+        }
+      ]
+    }
+  ],
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "a",
+          "\"x\\ny\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "b",
+          "\"p\\nq\\n\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "c",
+          "\"z\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "e",
+          "\"\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# block scalars\na: |\n  one\n  two\nb: |-\n  one\nc: |+\n  one\n\ne: |\n  last\nf: plain  # end\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  }
+}

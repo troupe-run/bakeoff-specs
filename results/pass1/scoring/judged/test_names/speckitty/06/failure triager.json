@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/repo/tests/unit/test_yamlcore.py:216",
+    "/judge/repo/tests/unit/test_yamlcore.py:228",
+    "/judge/repo/tests/unit/test_yamlcore.py:463",
+    "/judge/repo/tests/unit/test_yamlcore.py:321",
+    "/judge/repo/tests/unit/test_values.py:114",
+    "/judge/repo/tests/unit/test_loader_aliases.py:127",
+    "/judge/repo/tests/unit/test_loader_aliases.py:116"
+  ],
+  "notes": "I checked the first 30 tests in diff order: test_yamlcore.py, then test_values.py, then the start of test_loader_aliases.py. None of their names overclaim, and most state a condition and its result that the body asserts exactly (e.g. test_written_key_wins_over_merged_key, test_recursive_alias_is_refused_naming_line). A few names are vague when read alone from a CI report: 'reports an undefined alias as before', 'refused with rumels message' and 'spans_without_anchors_are_unchanged' (which actually compares against ruamel's spans) don't say what the expected behaviour is.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/repo/tests/unit/test_yamlcore.py:216\", \"/judge/repo/tests/unit/test_yamlcore.py:228\", \"/judge/repo/tests/unit/test_yamlcore.py:463\", \"/judge/repo/tests/unit/test_yamlcore.py:321\", \"/judge/repo/tests/unit/test_values.py:114\", \"/judge/repo/tests/unit/test_loader_aliases.py:127\", \"/judge/repo/tests/unit/test_loader_aliases.py:116\"], \"notes\": \"I checked the first 30 tests in diff order: test_yamlcore.py, then test_values.py, then the start of test_loader_aliases.py. None of their names overclaim, and most state a condition and its result that the body asserts exactly (e.g. test_written_key_wins_over_merged_key, test_recursive_alias_is_refused_naming_line). A few names are vague when read alone from a CI report: 'reports an undefined alias as before', 'refused with rumels message' and 'spans_without_anchors_are_unchanged' (which actually compares against ruamel's spans) don't say what the expected behaviour is.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

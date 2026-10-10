@@ -1,0 +1,45 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "",
+        "input": "the program is killed halfway through saving a changed file",
+        "observed": false,
+        "results": {
+          "1": "the file holds either the complete old text or the complete new text, never a mix; a leftover temporary file may stay in the same folder",
+          "2": "the file can be left cut off partway, with only part of the new text and the rest missing",
+          "3": "no decision was made here, so what happens depends on however the file happens to be written"
+        }
+      }
+    ],
+    "in_practice": "Both routes leave a file alone if its text did not change, so its timestamp and contents stay as they were. Route 1 writes the new text to a temporary file next to the original, forces it onto the disk, gives it the original's permissions, and then swaps it into place in one step. A save is therefore all or nothing. Because the original file is replaced rather than edited, anything tied to that exact file, such as hard links or some editor and file-watcher setups, may see it as a new file. Route 2 overwrites the original file directly and keeps line endings exactly as computed. It relies on every new text being worked out and checked before anything is written, so only a disk or system error during the write can cause damage, but if that happens the file is left corrupted. Route 3 never considered the question.",
+    "stakes": "If the program is interrupted while saving a changed file (crash, Ctrl-C, power loss, full disk), the user may end up with a file that is cut off partway through and has lost content, or with a file that is either fully old or fully new.",
+    "tradeoff": "Route 1 costs extra code, a brief temporary file and replacing the file instead of editing it, and in return a save can never leave a half-written file; route 2 is simpler and edits the file itself, but a failure during the write can leave a file damaged; route 3 makes no deliberate choice."
+  },
+  "plan_why": "Both routes write the same bytes to the same files. They differ only in crash safety (a temp file and os.replace versus an in-place write that could be left half-written) and in how symlinked or hard-linked config files and file permissions are handled. Showing that would need a crash or OS error in the middle of a write, symlinks, hard links or non-default file modes. The sandbox can only create plain files with listed contents and show their contents, so in a normal run every implementation's output looks the same.",
+  "routes": [
+    [
+      "Temp file in the same directory, fsync, copy permissions, os.replace; only changed files are touched",
+      [
+        "Arm A",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "Write in place with newline='' only when the text changed, no temp files",
+      [
+        "Arm B"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

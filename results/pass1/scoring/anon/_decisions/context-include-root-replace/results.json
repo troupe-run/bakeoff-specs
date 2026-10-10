@@ -1,0 +1,577 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "prompt",
+          "\"Be terse.\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder",
+          "{model: opus}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.reviewer",
+          "{model: haiku, temperature: 0.3}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "prompt",
+          "\"Be verbose.\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "model: opus\n",
+      ".troupe/agents/reviewer.yaml": "model: haiku\n",
+      ".troupe/prompt.txt": "Be terse.\n",
+      ".troupe/troupe.yml": "prompt: file:prompt.txt  # system prompt\nagents:\n  coder: file:agents/coder.yaml\n  reviewer:\n    $ref: file:agents/reviewer.yaml\n    temperature: 0.3\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/prompt.txt",
+      ".troupe/agents/coder.yaml",
+      ".troupe/agents/reviewer.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"Be terse.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer",
+                "{model: haiku, temperature: 0.3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"Be verbose.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/prompt.txt": "Be verbose.\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"prompt\", \"old\": null, \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:51.317783Z\", \"reason\": null, \"change\": \"08e32ca5-ad05-4d3e-a778-ea54b133b58d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:51.317783Z\", \"reason\": null, \"change\": \"08e32ca5-ad05-4d3e-a778-ea54b133b58d\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer.model\", \"old\": null, \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:51.317783Z\", \"reason\": null, \"change\": \"08e32ca5-ad05-4d3e-a778-ea54b133b58d\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.reviewer.temperature\", \"old\": null, \"new\": 0.3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:51.317783Z\", \"reason\": null, \"change\": \"08e32ca5-ad05-4d3e-a778-ea54b133b58d\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"prompt\", \"old\": \"Be terse.\\n\", \"new\": \"Be verbose.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:12:52.929835Z\", \"reason\": null, \"change\": \"423e56be-b03a-436a-895d-0c78e586ff34\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"Be terse.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: write refused: agents.coder: value comes from include /theatre/.troupe/agents/coder.yaml; refusing to replace it\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer",
+                "{model: haiku, temperature: 0.3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: write refused: agents.reviewer: value comes from include /theatre/.troupe/agents/reviewer.yaml; refusing to replace it\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"Be verbose.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/prompt.txt": "Be verbose.\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"prompt\", \"old\": null, \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:57.642820Z\", \"reason\": null, \"change\": \"596eb3c2-73c4-42f7-9fa2-a5a86349843e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:57.642820Z\", \"reason\": null, \"change\": \"596eb3c2-73c4-42f7-9fa2-a5a86349843e\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer.model\", \"old\": null, \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:57.642820Z\", \"reason\": null, \"change\": \"596eb3c2-73c4-42f7-9fa2-a5a86349843e\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.reviewer.temperature\", \"old\": null, \"new\": 0.3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:57.642820Z\", \"reason\": null, \"change\": \"596eb3c2-73c4-42f7-9fa2-a5a86349843e\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"prompt\", \"old\": \"Be terse.\\n\", \"new\": \"Be verbose.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:12:59.020304Z\", \"reason\": null, \"change\": \"a33cd87e-65d9-49ad-a561-bd27b5f87103\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Exit 3 always, even when the new value is identical (including changes through an ancestor)",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"Be terse.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "/theatre/.troupe/agents/coder.yaml: agents.coder: the whole value comes from the include file:agents/coder.yaml; change the included file instead\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer",
+                "{model: haiku, temperature: 0.3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "/theatre/.troupe/agents/reviewer.yaml: agents.reviewer: the whole value comes from the include file:agents/reviewer.yaml; change the included file instead\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"Be verbose.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/prompt.txt": "Be verbose.\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"prompt\", \"old\": null, \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:47.355282Z\", \"reason\": null, \"change\": \"965c14ec-222b-48ab-8b85-c9fb0c16da4b\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:47.355282Z\", \"reason\": null, \"change\": \"965c14ec-222b-48ab-8b85-c9fb0c16da4b\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer.model\", \"old\": null, \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:47.355282Z\", \"reason\": null, \"change\": \"965c14ec-222b-48ab-8b85-c9fb0c16da4b\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.reviewer.temperature\", \"old\": null, \"new\": 0.3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:47.355282Z\", \"reason\": null, \"change\": \"965c14ec-222b-48ab-8b85-c9fb0c16da4b\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"prompt\", \"old\": \"Be terse.\\n\", \"new\": \"Be verbose.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:12:49.516517Z\", \"reason\": null, \"change\": \"654a0263-5a4b-4381-915a-240ca877434b\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"Be terse.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer",
+                "{model: haiku, temperature: 0.3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"Be verbose.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/prompt.txt": "Be verbose.\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"prompt\", \"old\": null, \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:13:00.491276Z\", \"reason\": null, \"change\": \"9e365914-6965-41d9-b127-8cb19b444b27\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:13:00.491276Z\", \"reason\": null, \"change\": \"9e365914-6965-41d9-b127-8cb19b444b27\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer.model\", \"old\": null, \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:13:00.491276Z\", \"reason\": null, \"change\": \"9e365914-6965-41d9-b127-8cb19b444b27\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.reviewer.temperature\", \"old\": null, \"new\": 0.3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:13:00.491276Z\", \"reason\": null, \"change\": \"9e365914-6965-41d9-b127-8cb19b444b27\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"prompt\", \"old\": \"Be terse.\\n\", \"new\": \"Be verbose.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:13:02.196145Z\", \"reason\": null, \"change\": \"5e108f8b-f92c-458e-a908-28432e3f1426\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Exit 3 only when the value would change; an identical value is a no-op",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"Be terse.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: error: agents.coder: its whole value comes from include 'file:agents/coder.yaml' in /theatre/.troupe/troupe.yml; change the included file instead\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer",
+                "{model: haiku, temperature: 0.3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: error: agents.reviewer: its whole value comes from include 'file:agents/reviewer.yaml' in /theatre/.troupe/troupe.yml; change the included file instead\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"Be verbose.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/prompt.txt": "Be verbose.\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"prompt\", \"old\": null, \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:13:03.623908Z\", \"reason\": null, \"change\": \"878462d3-ab2d-4a37-8c93-93a11258b691\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:13:03.623908Z\", \"reason\": null, \"change\": \"878462d3-ab2d-4a37-8c93-93a11258b691\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer.model\", \"old\": null, \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:13:03.623908Z\", \"reason\": null, \"change\": \"878462d3-ab2d-4a37-8c93-93a11258b691\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.reviewer.temperature\", \"old\": null, \"new\": 0.3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:13:03.623908Z\", \"reason\": null, \"change\": \"878462d3-ab2d-4a37-8c93-93a11258b691\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"prompt\", \"old\": \"Be terse.\\n\", \"new\": \"Be verbose.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:13:05.216596Z\", \"reason\": null, \"change\": \"6a97111e-fb48-496f-aedf-781477649381\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Rule 4 applies only to the root of a YAML include; a text include is edited in place",
+      "route_no": 3
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"Be terse.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: agents.coder: value comes from include /theatre/.troupe/agents/coder.yaml; refusing to replace it (change a path inside it instead); no file changed\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer",
+                "{model: haiku, temperature: 0.3}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: agents.reviewer: value comes from include /theatre/.troupe/agents/reviewer.yaml with overrides; refusing to replace it (change a path inside it instead); no file changed\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"Be verbose.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/prompt.txt": "Be verbose.\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"prompt\", \"old\": null, \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:54.586818Z\", \"reason\": null, \"change\": \"86e3a533-a158-4dc0-a672-807f407e5a4a\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:54.586818Z\", \"reason\": null, \"change\": \"86e3a533-a158-4dc0-a672-807f407e5a4a\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer.model\", \"old\": null, \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:54.586818Z\", \"reason\": null, \"change\": \"86e3a533-a158-4dc0-a672-807f407e5a4a\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.reviewer.temperature\", \"old\": null, \"new\": 0.3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:12:54.586818Z\", \"reason\": null, \"change\": \"86e3a533-a158-4dc0-a672-807f407e5a4a\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"prompt\", \"old\": \"Be terse.\\n\", \"new\": \"Be verbose.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:12:56.257289Z\", \"reason\": null, \"change\": \"229c18c7-ce49-4567-99ff-63c047620e07\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 4
+    }
+  ]
+}

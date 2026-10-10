@@ -1,0 +1,522 @@
+{
+  "outcomes": [
+    {
+      "outcome": "1",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "a..b",
+            "1"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "a..b: malformed PATH 'a..b': segments must not be empty (no leading, trailing or doubled '.')\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            ""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "malformed PATH '': PATH is empty\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "models.",
+            "sonnet"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "models.: malformed PATH 'models.': segments must not be empty (no leading, trailing or doubled '.')\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "models..default"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "models..default: malformed PATH 'models..default': segments must not be empty (no leading, trailing or doubled '.')\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"models.default\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:45:50.431125Z\", \"reason\": null, \"change\": \"4bc038f0-20a9-4342-a3f8-30cb0701ed09\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:45:50.431125Z\", \"reason\": null, \"change\": \"4bc038f0-20a9-4342-a3f8-30cb0701ed09\"}\n"
+        }
+      ]
+    },
+    {
+      "outcome": "2",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "a..b",
+            "1"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: invalid path 'a..b': empty segment\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            ""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: invalid path '': empty segment\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "models.",
+            "sonnet"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: invalid path 'models.': empty segment\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "models..default"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: invalid path 'models..default': empty segment\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"models.default\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:45:53.413840Z\", \"reason\": null, \"change\": \"7d0869ee-6472-4277-9792-7fb78570c2ac\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:45:53.413840Z\", \"reason\": null, \"change\": \"7d0869ee-6472-4277-9792-7fb78570c2ac\"}\n"
+        }
+      ]
+    },
+    {
+      "outcome": "3",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "a..b",
+            "1"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: invalid path 'a..b': empty segment\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            ""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: invalid path '': empty segment\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "models.",
+            "sonnet"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: invalid path 'models.': empty segment\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "models..default"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: invalid path 'models..default': empty segment\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"models.default\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:45:56.601786Z\", \"reason\": null, \"change\": \"ff336d91-7697-4282-89a0-9764a4089deb\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:45:56.601786Z\", \"reason\": null, \"change\": \"ff336d91-7697-4282-89a0-9764a4089deb\"}\n"
+        }
+      ]
+    },
+    {
+      "outcome": "4",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "a..b",
+            "1"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: usage error: invalid path: 'a..b'\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            ""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: usage error: invalid path: ''\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "models.",
+            "sonnet"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: usage error: invalid path: 'models.'\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "models..default"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: usage error: invalid path: 'models..default'\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"models.default\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:45:59.221753Z\", \"reason\": null, \"change\": \"dce56ac3-9a87-4d86-b831-1c0357bb704d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:45:59.221753Z\", \"reason\": null, \"change\": \"dce56ac3-9a87-4d86-b831-1c0357bb704d\"}\n"
+        }
+      ]
+    },
+    {
+      "outcome": "5",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "a..b",
+            "1"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: invalid path: 'a..b'\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            ""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: invalid path: ''\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "models.",
+            "sonnet"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: invalid path: 'models.'\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "models..default"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: invalid path: 'models..default'\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"models.default\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:02.280119Z\", \"reason\": null, \"change\": \"76d4695e-816b-424c-a6c5-80be71ba5d94\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:02.280119Z\", \"reason\": null, \"change\": \"76d4695e-816b-424c-a6c5-80be71ba5d94\"}\n"
+        }
+      ]
+    },
+    {
+      "outcome": "6",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "a..b",
+            "1"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: error: invalid path 'a..b': path segments must not be empty\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "get",
+            ""
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: error: invalid path '': path segments must not be empty\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "models.",
+            "sonnet"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: error: invalid path 'models.': path segments must not be empty\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "models..default"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 2,
+          "stderr": "troupe: error: invalid path 'models..default': path segments must not be empty\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"models.default\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:05.231680Z\", \"reason\": null, \"change\": \"5825399b-661d-4f74-b67a-d86f26fe79d3\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:05.231680Z\", \"reason\": null, \"change\": \"5825399b-661d-4f74-b67a-d86f26fe79d3\"}\n"
+        }
+      ]
+    }
+  ],
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "a..b",
+          "1"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          ""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "models.",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "models..default"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "models:\n  default: opus  # main model\nretry: 3\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  }
+}

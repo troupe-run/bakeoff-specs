@@ -1,0 +1,68 @@
+commit b8ffb517c3a4eec67717445ecc2d41c55692792d
+Author:     Sam Teammate <sam.teammate@troupe.run>
+AuthorDate: Fri Oct 2 13:22:30 2026 +0000
+Commit:     Sam Teammate <sam.teammate@troupe.run>
+CommitDate: Fri Oct 2 13:22:30 2026 +0000
+
+    Let TROUPE_THEATRE set the default theatre
+
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index d773642..8367eeb 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -4,6 +4,7 @@ from __future__ import annotations
+ 
+ import argparse
+ import json
++import os
+ import sys
+ from pathlib import Path
+ from typing import Any
+@@ -30,7 +31,9 @@ def _parser() -> argparse.ArgumentParser:
+     cmds = config.add_subparsers(dest="cmd", required=True)
+     for name, extra in (("show", ["path"]), ("set", ["path", "value"]), ("history", ["path?"])):
+         p = cmds.add_parser(name)
+-        p.add_argument("--theatre", default=".", help="theatre directory (default: current directory)")
++        p.add_argument(
++            "--theatre", default=None, help="theatre directory (default: $TROUPE_THEATRE, else current directory)"
++        )
+         for arg in extra:
+             if arg.endswith("?"):
+                 p.add_argument(arg[:-1], nargs="?")
+@@ -76,7 +79,7 @@ def run(argv: list[str]) -> int:
+         except ValueError_ as exc:
+             raise UsageError(f"invalid VALUE {args.value!r}: {exc}") from exc
+ 
+-    theatre = Path(args.theatre)
++    theatre = Path(args.theatre if args.theatre is not None else os.environ.get("TROUPE_THEATRE") or ".")
+     cfg = load(theatre)
+     store = ConfigStore(cfg.config_path.parent)
+     store.ensure_imported(flatten(cfg.root))
+diff --git a/tests/test_config.py b/tests/test_config.py
+index 4cb4027..ea1b83f 100644
+--- a/tests/test_config.py
++++ b/tests/test_config.py
+@@ -341,3 +341,23 @@ def test_cli_entrypoint(tmp_path):
+         text=True,
+     )
+     assert r.returncode == 0 and r.stdout == "1\n"
++
++
++def test_theatre_from_env(theatre, tmp_path, monkeypatch, capsys):
++    from troupe.cli import main
++
++    theatre.write("troupe.yml", "a: 1\n")
++    other = tmp_path / "other"
++    (other / ".troupe").mkdir(parents=True)
++    (other / ".troupe" / "troupe.yml").write_text("a: 2\n")
++    monkeypatch.chdir(other)
++    monkeypatch.setenv("TROUPE_THEATRE", str(theatre.root))
++    capsys.readouterr()
++    assert main(["config", "show", "a"]) == 0
++    assert capsys.readouterr().out == "1\n"
++    assert theatre.show("a") == "1\n"
++    assert main(["config", "show", "a", "--theatre", str(other)]) == 0
++    assert capsys.readouterr().out == "2\n"
++    monkeypatch.setenv("TROUPE_THEATRE", "")
++    assert main(["config", "show", "a"]) == 0
++    assert capsys.readouterr().out == "2\n"

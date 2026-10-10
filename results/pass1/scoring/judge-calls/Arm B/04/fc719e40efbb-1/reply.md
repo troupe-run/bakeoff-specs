@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["repo/spec/changes/archive/2026-10-04-config-lineage/tasks.md:19", "repo/spec/changes/archive/2026-10-04-config-lineage/tasks.md:14", "repo/spec/spec/config-lineage/spec.md:57", "repo/tests/test_lineage.py:105", "repo/tests/test_lineage_legacy.py:29", "repo/tests/test_history.py:133", "repo/spec/changes/archive/2026-10-03-config-get-and-show/tasks.md:6", "repo/tests/test_get.py:63", "repo/tests/test_watch.py:240"]}
+```

@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/repo/README.md:23-28",
+    "/judge/repo/tests/test_config.py:286",
+    "/judge/repo/tests/test_config.py:310-320",
+    "/judge/repo/tests/test_config.py:100",
+    "/judge/repo/tests/test_config.py:114",
+    "/judge/repo/src/troupe/store.py:31"
+  ],
+  "notes": "I sampled five requirements. Four trace to a test only by matching the name or topic, with no IDs or explicit references: actor/via/change lineage → test_lineage, a bad TROUPE_ACTOR exiting 2 → test_bad_actor, show --sources → test_show_sources, and keeping the comment column on set → test_set_keeps_comment_column. One newer requirement cannot be traced: the README says events recorded before lineage existed report an unknown actor and via null, which the code implements (store.py:31), but no test asserts it.",
+  "raw": "{\"score\": 2, \"evidence\": [\"/judge/repo/README.md:23-28\", \"/judge/repo/tests/test_config.py:286\", \"/judge/repo/tests/test_config.py:310-320\", \"/judge/repo/tests/test_config.py:100\", \"/judge/repo/tests/test_config.py:114\", \"/judge/repo/src/troupe/store.py:31\"], \"notes\": \"I sampled five requirements. Four trace to a test only by matching the name or topic, with no IDs or explicit references: actor/via/change lineage → test_lineage, a bad TROUPE_ACTOR exiting 2 → test_bad_actor, show --sources → test_show_sources, and keeping the comment column on set → test_set_keeps_comment_column. One newer requirement cannot be traced: the README says events recorded before lineage existed report an unknown actor and via null, which the code implements (store.py:31), but no test asserts it.\"}",
+  "score": 2,
+  "status": "ok"
+}

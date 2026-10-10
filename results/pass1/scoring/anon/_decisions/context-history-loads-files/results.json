@@ -1,0 +1,539 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "schema_text",
+          "'{\"type\": \"object\", \"required\": [\"absent\"]}'"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.schema.json": "{\"type\": \"object\"}\n",
+      ".troupe/troupe.yml": "model: opus\nschema_text: file:troupe.schema.json\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/troupe.schema.json"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:55.022762Z\", \"reason\": null, \"change\": \"aaa2e024-5dbf-433a-ab4b-caaad11a181e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"schema_text\", \"old\": null, \"new\": \"{\\\"type\\\": \\\"object\\\"}\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:55.022762Z\", \"reason\": null, \"change\": \"aaa2e024-5dbf-433a-ab4b-caaad11a181e\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "schema_text",
+                "'{\"type\": \"object\", \"required\": [\"absent\"]}'"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.schema.json": "{\"type\": \"object\", \"required\": [\"absent\"]}"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:55.022762Z\", \"reason\": null, \"change\": \"aaa2e024-5dbf-433a-ab4b-caaad11a181e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"schema_text\", \"old\": null, \"new\": \"{\\\"type\\\": \\\"object\\\"}\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:55.022762Z\", \"reason\": null, \"change\": \"aaa2e024-5dbf-433a-ab4b-caaad11a181e\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"schema_text\", \"old\": \"{\\\"type\\\": \\\"object\\\"}\\n\", \"new\": \"{\\\"type\\\": \\\"object\\\", \\\"required\\\": [\\\"absent\\\"]}\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:09:55.484425Z\", \"reason\": null, \"change\": \"9579dde9-a53b-42e8-84fc-8201e40cce78\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:55.022762Z\", \"reason\": null, \"change\": \"aaa2e024-5dbf-433a-ab4b-caaad11a181e\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: configuration does not match /theatre/.troupe/troupe.schema.json: at (root): 'absent' is a required property\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "No; once state exists it reads recorded events without loading",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:45.320753Z\", \"reason\": null, \"change\": \"ff8b34ad-1cfa-4679-b433-f850ddb19a8d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"schema_text\", \"old\": null, \"new\": \"{\\\"type\\\": \\\"object\\\"}\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:45.320753Z\", \"reason\": null, \"change\": \"ff8b34ad-1cfa-4679-b433-f850ddb19a8d\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "schema_text",
+                "'{\"type\": \"object\", \"required\": [\"absent\"]}'"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.schema.json": "{\"type\": \"object\", \"required\": [\"absent\"]}"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.schema.json: the configuration does not match the schema: 'absent' is a required property\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.schema.json: the configuration does not match the schema: 'absent' is a required property\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.schema.json: the configuration does not match the schema: 'absent' is a required property\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:52.065686Z\", \"reason\": null, \"change\": \"4ab3b3af-d9ab-41cc-b5e6-3dcc1ee3b74c\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"schema_text\", \"old\": null, \"new\": \"{\\\"type\\\": \\\"object\\\"}\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:52.065686Z\", \"reason\": null, \"change\": \"4ab3b3af-d9ab-41cc-b5e6-3dcc1ee3b74c\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "schema_text",
+                "'{\"type\": \"object\", \"required\": [\"absent\"]}'"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.schema.json": "{\"type\": \"object\", \"required\": [\"absent\"]}"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: configuration does not match schema /theatre/.troupe/troupe.schema.json at (root): 'absent' is a required property\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: configuration does not match schema /theatre/.troupe/troupe.schema.json at (root): 'absent' is a required property\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: configuration does not match schema /theatre/.troupe/troupe.schema.json at (root): 'absent' is a required property\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Yes; broken files make history exit 4; at step 7 schema and remote fetches apply to it too",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:48.621209Z\", \"reason\": null, \"change\": \"fc0b3375-2514-41b2-affd-cc25c91cd9dd\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"schema_text\", \"old\": null, \"new\": \"{\\\"type\\\": \\\"object\\\"}\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:48.621209Z\", \"reason\": null, \"change\": \"fc0b3375-2514-41b2-affd-cc25c91cd9dd\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "schema_text",
+                "'{\"type\": \"object\", \"required\": [\"absent\"]}'"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.schema.json": "{\"type\": \"object\", \"required\": [\"absent\"]}"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.schema.json: the configuration is not valid at the root: 'absent' is a required property\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.schema.json: the configuration is not valid at the root: 'absent' is a required property\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.schema.json: the configuration is not valid at the root: 'absent' is a required property\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:57.754686Z\", \"reason\": null, \"change\": \"ad5acbd9-5c1b-4df6-8c8c-e9ff208306d8\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"schema_text\", \"old\": null, \"new\": \"{\\\"type\\\": \\\"object\\\"}\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:57.754686Z\", \"reason\": null, \"change\": \"ad5acbd9-5c1b-4df6-8c8c-e9ff208306d8\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "schema_text",
+                "'{\"type\": \"object\", \"required\": [\"absent\"]}'"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.schema.json": "{\"type\": \"object\", \"required\": [\"absent\"]}"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:57.754686Z\", \"reason\": null, \"change\": \"ad5acbd9-5c1b-4df6-8c8c-e9ff208306d8\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"schema_text\", \"old\": null, \"new\": \"{\\\"type\\\": \\\"object\\\"}\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:57.754686Z\", \"reason\": null, \"change\": \"ad5acbd9-5c1b-4df6-8c8c-e9ff208306d8\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"schema_text\", \"old\": \"{\\\"type\\\": \\\"object\\\"}\\n\", \"new\": \"{\\\"type\\\": \\\"object\\\", \\\"required\\\": [\\\"absent\\\"]}\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:09:58.265653Z\", \"reason\": null, \"change\": \"78a38296-2327-439b-9ed7-fb5fa325250c\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:09:57.754686Z\", \"reason\": null, \"change\": \"ad5acbd9-5c1b-4df6-8c8c-e9ff208306d8\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: configuration: 'absent' is a required property (schema ./.troupe/troupe.schema.json)\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:10:00.742540Z\", \"reason\": null, \"change\": \"6a5f4697-933c-44cd-9867-fef2e81ed45c\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"schema_text\", \"old\": null, \"new\": \"{\\\"type\\\": \\\"object\\\"}\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:10:00.742540Z\", \"reason\": null, \"change\": \"6a5f4697-933c-44cd-9867-fef2e81ed45c\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "schema_text",
+                "'{\"type\": \"object\", \"required\": [\"absent\"]}'"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.schema.json": "{\"type\": \"object\", \"required\": [\"absent\"]}"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: error: /theatre/.troupe/troupe.schema.json: the top level: 'absent' is a required property\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: error: /theatre/.troupe/troupe.schema.json: the top level: 'absent' is a required property\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: error: /theatre/.troupe/troupe.schema.json: the top level: 'absent' is a required property\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

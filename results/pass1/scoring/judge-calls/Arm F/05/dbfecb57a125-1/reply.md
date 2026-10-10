@@ -1,0 +1,5 @@
+```json
+{"score": 3, "evidence": ["/judge/repo/tests/e2e/test_overrides_existing.py:1-2", "/judge/repo/tests/e2e/test_overrides_existing.py:32", "/judge/repo/tests/e2e/test_overrides_new_key.py:1-2", "/judge/repo/tests/unit/test_merge.py:1", "/judge/repo/spec/005-include-overrides/tasks.md:93-127", "/judge/repo/spec/005-include-overrides/tasks.md:154", "/judge/repo/src/troupe/config/edit/planner.py:356", "/judge/repo/src/troupe/config/edit/override.py:2", "/judge/repo/src/troupe/config/loader.py:172"]}
+```
+
+Each step-5 test module names its requirement ID ranges in its docstring (for example FR-430 to FR-432 and D-44), and tasks.md maps most individual tests to an FR or D ID. The code carries the same IDs, so `planner.py:356` cites FR-432 and D-44, which lets a maintainer get from a failing test to the requirement and the code. Most tests have no per-test ID, though, so you have to go through tasks.md, and several test names no longer match it. Examples are `test_overriding_text_include_writes_its_target` and `test_new_key_with_ancestor_in_the_main_file_is_written_there`, so a few links break.

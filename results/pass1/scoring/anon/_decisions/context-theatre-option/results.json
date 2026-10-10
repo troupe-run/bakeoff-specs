@@ -1,0 +1,928 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "--theatre",
+          ".",
+          "config",
+          "get",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "--theatre",
+          ".",
+          "get",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "--theatre",
+          ".",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "name",
+          "--theatre",
+          "."
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "--theatre=sub",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "name",
+          "--theatre=sub"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "--theatre=sub",
+          "get",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "--theatre=sub",
+          "config",
+          "get",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "name: root-theatre\nretry: 3\n",
+      "sub/.troupe/troupe.yml": "name: sub-theatre\nretry: 7\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml",
+      "sub/.troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: argument command: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "--theatre",
+                ".",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "--theatre",
+                ".",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name",
+                "--theatre",
+                "."
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "--theatre=sub",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name",
+                "--theatre=sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "--theatre=sub",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "--theatre=sub",
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: unrecognized arguments: --theatre=sub\n",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  28 bytes\nsub/\nsub/.troupe/\nsub/.troupe/events.lock  0 bytes\nsub/.troupe/events.sqlite  12288 bytes\nsub/.troupe/troupe.yml  27 bytes\n"
+            }
+          ]
+        }
+      ],
+      "route": "Both at the config level and the subcommand level, defaulting to `.`",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "--theatre",
+                ".",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe config: argument SUBCOMMAND: invalid choice: '.' (choose from get, show, history, set, watch)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "--theatre",
+                ".",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name",
+                "--theatre",
+                "."
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "--theatre=sub",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name",
+                "--theatre=sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "--theatre=sub",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: unrecognized arguments: --theatre=sub\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "--theatre=sub",
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: unrecognized arguments: --theatre=sub\n",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  28 bytes\nsub/\nsub/.troupe/\nsub/.troupe/history.sqlite  12288 bytes\nsub/.troupe/troupe.yml  27 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: argument group: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "--theatre",
+                ".",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: argument cmd: invalid choice: '.' (choose from get, show, set, history, watch)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "--theatre",
+                ".",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name",
+                "--theatre",
+                "."
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "--theatre=sub",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name",
+                "--theatre=sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "--theatre=sub",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: unrecognized arguments: --theatre=sub\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "--theatre=sub",
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: unrecognized arguments: --theatre=sub\n",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe-state.sqlite  12288 bytes\n.troupe/troupe.yml  28 bytes\nsub/\nsub/.troupe/\nsub/.troupe/troupe-state.sqlite  12288 bytes\nsub/.troupe/troupe.yml  27 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "--theatre",
+                ".",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe config [-h] SUBCOMMAND ...\ntroupe config: error: argument SUBCOMMAND: invalid choice: '.' (choose from get, show, set, history, watch)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "--theatre",
+                ".",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name",
+                "--theatre",
+                "."
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "--theatre=sub",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name",
+                "--theatre=sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "--theatre=sub",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: unrecognized arguments: --theatre=sub\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "--theatre=sub",
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: unrecognized arguments: --theatre=sub\n",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  28 bytes\nsub/\nsub/.troupe/\nsub/.troupe/events.sqlite3  12288 bytes\nsub/.troupe/events.sqlite3.lock  0 bytes\nsub/.troupe/troupe.yml  27 bytes\n"
+            }
+          ]
+        }
+      ],
+      "route": "Only after the subcommand, defaulting to the current directory. One arm added it before the subcommand, then removed it",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "--theatre",
+                ".",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "--theatre",
+                ".",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name",
+                "--theatre",
+                "."
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "--theatre=sub",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name",
+                "--theatre=sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "--theatre=sub",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "--theatre=sub",
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  28 bytes\nsub/\nsub/.troupe/\nsub/.troupe/events.sqlite  12288 bytes\nsub/.troupe/troupe.yml  27 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument {config}: invalid choice: '.' (choose from config) (see 'troupe --help')\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "--theatre",
+                ".",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "--theatre",
+                ".",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name",
+                "--theatre",
+                "."
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "root-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "--theatre=sub",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name",
+                "--theatre=sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "config",
+                "--theatre=sub",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub-theatre\n"
+            },
+            {
+              "args": [
+                "--theatre=sub",
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: unrecognized arguments: --theatre=sub (see 'troupe --help')\n",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  28 bytes\nsub/\nsub/.troupe/\nsub/.troupe/history.sqlite  12288 bytes\nsub/.troupe/troupe.yml  27 bytes\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

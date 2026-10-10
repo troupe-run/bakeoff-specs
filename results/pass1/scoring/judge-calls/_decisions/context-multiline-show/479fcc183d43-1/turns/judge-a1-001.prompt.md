@@ -1,0 +1,8 @@
+You are writing the context the owner reads before rating the routes in /judge/topic.json, in a blind comparison of implementations. The owner wants results, not code: what you type, what happens. Example of the style: "`config set note -h` -> shows help, sets nothing; `config set note -hello` -> stores \"-hello\"".
+
+/judge/results.json holds what actually happened: for each route, the outcomes of the implementations on it (identical ones merged, with a count), per command: exit code, stdout, stderr, and the files listed after it; a shown file appears only after a command that changed it (null: deleted), and its starting content is in plan.files. Report those results faithfully; mark an example "observed": true only when every route's result in it comes from results.json, and say plainly when arms on one route behaved differently ("two arms: ...; one arm: ...").
+
+Never name an implementation, arm, method or tool, and never use letters for arms; refer to routes by number. Keep each result short. When a file's content is the point, give the outcome on the first line (e.g. "exit 0; the file now reads:") and then the file's relevant lines EXACTLY as they are - real line breaks in the JSON string, indentation and comments kept - never joined with " / " or flattened onto one line. Do not rate the routes.
+
+Reply with exactly one JSON object and nothing else:
+{"stakes": "<one or two sentences: what is at stake for a user>", "examples": [{"input": "<what is typed, e.g. `config set retry -1e3`>", "before": "<the starting file, if it matters, else empty>", "results": {"1": "<route 1 result>", "2": "..."}, "observed": true}], "in_practice": "<plain words, when examples alone do not show it; else empty>", "tradeoff": "<one line: what each route costs>"}

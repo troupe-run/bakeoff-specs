@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "name: demo\nretry: 3  # attempts\n? [a, b]\n: pair\nmatrix:\n  ? {os: linux}\n  : fast\n",
+        "input": "`config get name`",
+        "observed": true,
+        "results": {
+          "1": "exit 4, prints nothing to stdout. The error wording differs between the three arms. One arm: `/theatre/.troupe/troupe.yml: mapping key is not a scalar (complex keys are not supported)`. One arm: `troupe: /theatre/.troupe/troupe.yml: complex mapping keys are not supported`. One arm: `troupe: complex mapping keys are not supported`, which doesn't name the file.",
+          "2": "exit 4, prints nothing to stdout. The error wording differs between the three arms. One arm: `troupe: .troupe/troupe.yml (line 3, column 3): only scalar mapping keys are supported`. One arm: `troupe: cannot load /theatre/.troupe/troupe.yml: mapping key at line 3 under (root) is not a scalar`. One arm: `troupe: error: /theatre/.troupe/troupe.yml: only scalar mapping keys are supported`, which gives no line number."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show`",
+        "observed": true,
+        "results": {
+          "1": "exit 4. Shows nothing and prints the same error as for `config get name` (on every arm).",
+          "2": "exit 4. Shows nothing and prints the same error as for `config get name` (on every arm)."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set retry 5`",
+        "observed": true,
+        "results": {
+          "1": "exit 4, same error. The file is unchanged and `retry` stays 3.",
+          "2": "exit 4, same error. The file is unchanged and `retry` stays 3."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set matrix.extra on`",
+        "observed": true,
+        "results": {
+          "1": "exit 4, same error, and the file is unchanged.",
+          "2": "exit 4, same error, and the file is unchanged."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history`",
+        "observed": true,
+        "results": {
+          "1": "exit 4, same error, and no history is shown.",
+          "2": "exit 4, same error, and no history is shown."
+        }
+      }
+    ],
+    "in_practice": "The two routes act the same: every config command, whether it reads, writes or shows history, refuses with exit 4 and never touches the file. The only difference is the error text. Two of the three arms on route 2 give the line number of the bad key (line 3). None of the three arms on route 1 gives a line number, and one of them doesn't name the file either.",
+    "stakes": "If the config file has a key that is a list or a map (YAML's `? [a, b]` form), the user can't use any config command at all, even to read the plain `name` key. On both routes every command refuses with exit 4 and the file is left untouched. The routes differ only in how the error message points to the problem.",
+    "tradeoff": "Route 1 locks the user out of all config commands with an error that names the file in two of its three arms but never gives a line. Route 2 has the same lockout, and two of its three arms also point to the line that caused it."
+  },
+  "plan_why": "Loads a config with a list used as a mapping key (`? [a, b]`), then shows what get, show, set and history do with it: refuse to load (exit 4), crash, or quietly turn the key into a string.",
+  "routes": [
+    [
+      "Exit 4",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

@@ -1,0 +1,767 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "--reason",
+          "no login name",
+          "retry",
+          "3"
+        ],
+        "env": {
+          "LNAME": null,
+          "LOGNAME": null,
+          "TROUPE_ACTOR": null,
+          "USER": null,
+          "USERNAME": null
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--reason",
+          "user alice",
+          "retry",
+          "4"
+        ],
+        "env": {
+          "LNAME": null,
+          "LOGNAME": null,
+          "TROUPE_ACTOR": null,
+          "USER": "alice",
+          "USERNAME": null
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--reason",
+          "empty USER",
+          "retry",
+          "5"
+        ],
+        "env": {
+          "LNAME": null,
+          "LOGNAME": null,
+          "TROUPE_ACTOR": null,
+          "USER": "",
+          "USERNAME": null
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "retry"
+        ],
+        "env": {
+          "LNAME": null,
+          "LOGNAME": null,
+          "TROUPE_ACTOR": null,
+          "USER": "alice",
+          "USERNAME": null
+        }
+      },
+      {
+        "args": [
+          "--theatre",
+          ".",
+          "config",
+          "history"
+        ],
+        "env": {
+          "LNAME": null,
+          "LOGNAME": null,
+          "TROUPE_ACTOR": null,
+          "USER": null,
+          "USERNAME": null
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "retry: 1  # attempts\nname: demo\n"
+    },
+    "passwd": false,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "no login name",
+                "retry",
+                "3"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": null,
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 3  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "user alice",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "alice",
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 4  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "empty USER",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "",
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "alice",
+                "USERNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:32:24.053638Z\", \"reason\": null, \"change\": \"c5d2be3c-e18b-47a4-aa7f-279bcb4f2313\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 1, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:24.055360Z\", \"reason\": \"no login name\", \"change\": \"611438df-25d4-457c-841e-d77b29d72ecd\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"alice\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:24.641416Z\", \"reason\": \"user alice\", \"change\": \"17db2966-1023-4ef8-ad31-2b4cc970cb6e\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:25.228828Z\", \"reason\": \"empty USER\", \"change\": \"0d87dd5e-a347-4e8a-8c5b-f430e182b12e\"}\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "history"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": null,
+                "USERNAME": null
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "no login name",
+                "retry",
+                "3"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": null,
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 3  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "user alice",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "alice",
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 4  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "empty USER",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "",
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "alice",
+                "USERNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:32:27.289023Z\", \"reason\": null, \"change\": \"06898787-403c-4244-b182-3c16f36ab39d\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 1, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:27.291037Z\", \"reason\": \"no login name\", \"change\": \"8bc24ef3-c8a4-445e-9b75-6959bf37c8a1\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"alice\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:27.824806Z\", \"reason\": \"user alice\", \"change\": \"adf96443-b68d-4afe-8b2b-3b7259e794d3\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:28.362118Z\", \"reason\": \"empty USER\", \"change\": \"4f2cd5b5-01e4-4e6a-829a-3726ab63c667\"}\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "history"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": null,
+                "USERNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:32:27.289023Z\", \"reason\": null, \"change\": \"06898787-403c-4244-b182-3c16f36ab39d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"demo\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:32:27.289023Z\", \"reason\": null, \"change\": \"06898787-403c-4244-b182-3c16f36ab39d\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 1, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:27.291037Z\", \"reason\": \"no login name\", \"change\": \"8bc24ef3-c8a4-445e-9b75-6959bf37c8a1\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"alice\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:27.824806Z\", \"reason\": \"user alice\", \"change\": \"adf96443-b68d-4afe-8b2b-3b7259e794d3\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:28.362118Z\", \"reason\": \"empty USER\", \"change\": \"4f2cd5b5-01e4-4e6a-829a-3726ab63c667\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "no login name",
+                "retry",
+                "3"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": null,
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 3  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "user alice",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "alice",
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 4  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "empty USER",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "",
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "alice",
+                "USERNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:32:30.366411Z\", \"reason\": null, \"change\": \"42872b1e-9dad-4911-91e8-19a26b912c06\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 1, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:30.369045Z\", \"reason\": \"no login name\", \"change\": \"f8dde1fb-37c6-4fd2-80b4-a17b5322b1c9\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"alice\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:30.927856Z\", \"reason\": \"user alice\", \"change\": \"e8efe450-f6d3-4b50-80c0-09bad00ab95c\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:31.484180Z\", \"reason\": \"empty USER\", \"change\": \"a1083749-0faa-49c4-8d86-a9d37519d1c1\"}\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "history"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": null,
+                "USERNAME": null
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument {config}: invalid choice: '.' (choose from config) (see 'troupe --help')\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "no login name",
+                "retry",
+                "3"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": null,
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 3  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "user alice",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "alice",
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 4  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "empty USER",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "",
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "alice",
+                "USERNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:32:33.039995Z\", \"reason\": null, \"change\": \"8ac3e00d-803f-4186-ad7c-09e7cc204aec\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 1, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:33.040220Z\", \"reason\": \"no login name\", \"change\": \"732132e4-0571-4f22-a21b-384d8716439c\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"alice\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:33.506239Z\", \"reason\": \"user alice\", \"change\": \"7ec7712e-287d-4974-a95f-fa397eac1737\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:33.969277Z\", \"reason\": \"empty USER\", \"change\": \"fa026218-b9ea-4045-9a03-1d95d6b19716\"}\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "history"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": null,
+                "USERNAME": null
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: argument group: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "no login name",
+                "retry",
+                "3"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": null,
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 3  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "user alice",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "alice",
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 4  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "empty USER",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "",
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "alice",
+                "USERNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:32:35.777956Z\", \"reason\": null, \"change\": \"a812519a-6e8c-4500-96ac-a15e2c16f60d\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 1, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:35.778564Z\", \"reason\": \"no login name\", \"change\": \"4701b36c-75a9-49fe-bce1-3bc55184075c\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"alice\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:36.288115Z\", \"reason\": \"user alice\", \"change\": \"f04b890b-8d18-4e6f-b78a-2a345688f1c8\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:36.801430Z\", \"reason\": \"empty USER\", \"change\": \"51a8cdd2-0c4b-45d0-83c1-7d6adab52d58\"}\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "history"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": null,
+                "USERNAME": null
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: argument command: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "no login name",
+                "retry",
+                "3"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": null,
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 3  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "user alice",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "alice",
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 4  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--reason",
+                "empty USER",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "",
+                "USERNAME": null
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: 5  # attempts\nname: demo\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "retry"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": "alice",
+                "USERNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:32:38.692839Z\", \"reason\": null, \"change\": \"f0cfdc6c-ce9a-43ef-b36d-ed4f66c53f94\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 1, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:38.697466Z\", \"reason\": \"no login name\", \"change\": \"34126a5f-3f17-4ab9-a419-8e73c352f0fc\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"alice\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:39.228128Z\", \"reason\": \"user alice\", \"change\": \"1ccd2f25-a968-4d6d-b711-e9eb166e5128\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": null}, \"via\": \"cli\", \"at\": \"2026-10-10T05:32:39.763888Z\", \"reason\": \"empty USER\", \"change\": \"f0329f05-829f-4a33-8de1-ca9732c48650\"}\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "history"
+              ],
+              "env": {
+                "LNAME": null,
+                "LOGNAME": null,
+                "TROUPE_ACTOR": null,
+                "USER": null,
+                "USERNAME": null
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "{kind: human, id: null}",
+      "route_no": 1
+    }
+  ]
+}

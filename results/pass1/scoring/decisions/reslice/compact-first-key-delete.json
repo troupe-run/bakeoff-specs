@@ -1,0 +1,151 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "REFUSE",
+        "why": "Both sets exit 3 with 'this change cannot be written', and the file and the shown values are unchanged."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "WRITE_KEEP",
+        "why": "Writes the replaced entries and keeps the '# model' and '# keep me' comments on the lines that remain."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "WRITE_STRIP",
+        "why": "Writes the replaced entries but drops the '# model' and '# keep me' comments from lines that remain."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "WRITE_KEEP",
+        "why": "Writes the replaced entries and keeps the '# model' and '# keep me' comments on the lines that remain."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "WRITE_KEEP",
+        "why": "Writes the replaced entries and keeps the '# model' and '# keep me' comments on the lines that remain."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "WRITE_STRIP",
+        "why": "Writes the replaced entries but drops the '# model' and '# keep me' comments from lines that remain."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.0",
+          "{model: opus, temp: 0.2}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.1",
+          "{model: haiku}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "agents"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# agents roster\nagents:\n  - name: coder   # first key\n    model: opus   # model\n    temp: 0.2\n  - name: reviewer\n    model: sonnet  # keep me\nretry: 3\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Replaces a compact list item `- name: …` with a mapping that drops its first key. This shows whether an implementation refuses with exit 3 (route 1), moves the next key up onto the dash line (route 2) or does something else (route 3). The first case keeps the other keys unchanged; the second also changes one and has comments on the line."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "refuses the edit",
+            "id": "REFUSE"
+          },
+          {
+            "description": "writes it and keeps the remaining comments",
+            "id": "WRITE_KEEP"
+          },
+          {
+            "description": "writes it but strips the comments",
+            "id": "WRITE_STRIP"
+          }
+        ],
+        "id": "Q1",
+        "text": "replacing a list entry whose first key is on the dash line"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Exit 3",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "Pull the next entry up into the dash line",
+      [
+        "Arm B"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T15",
+  "status": "ok"
+}

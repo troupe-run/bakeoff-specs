@@ -1,0 +1,3 @@
+```json
+{"score": 1, "evidence": ["/judge/gates.md:1", "/judge/transcript.md:17-19", "/judge/transcript.md:21", "/judge/transcript.md:22", "/judge/transcript.md:26-28"], "notes": "I found two costly turns: the agent broke the data contract for legacy events (`via: null` and non-UUID change ids, transcript 17-21), and it chose to have only `set` check `TROUPE_ACTOR`, which changes CLI behaviour. No gate came before either one (gates.md: none recorded). Both were committed first and only then raised as a 'Decision for you' (transcript 22), so the user's choice led to rework (002, transcript 26-28) when one question before coding would have settled it cheaply."}
+```

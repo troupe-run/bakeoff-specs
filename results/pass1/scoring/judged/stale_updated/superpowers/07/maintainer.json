@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "README.md:8-24 (diff.patch:10-24) documents `--include`, remote includes, `.troupe/troupe.schema.json`, `format: uri` and `!literal`",
+    "docs/decisions.md:34-42 (diff.patch:36-65) records the new remote, schema and literal decisions",
+    "src/troupe/config.py:503 `include_like(value) and not uri and node.tag != LITERAL`: the loader, and the watch path that reuses it, apply the literal rules",
+    "src/troupe/cli.py:_mark_includes (diff.patch:196-215): set writes include-like strings tagged `!literal` unless `--include` is given",
+    "tests/test_remote.py:114,129,142: new tests for set with file: strings; no older test sets an include-like string or treats https:// as plain",
+    "src/troupe/config.py:242,245: the Item docstring still says the text-include node and ref are the `file:` string, though a URL include now works the same way"
+  ],
+  "notes": "The README, decisions and tests were all updated, and no remaining test or spec states the old include rule. One leftover comment, the Item docstring at config.py:242/245, still says includes are `file:` strings only, which could mislead a maintainer about remote includes.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"README.md:8-24 (diff.patch:10-24) documents `--include`, remote includes, `.troupe/troupe.schema.json`, `format: uri` and `!literal`\", \"docs/decisions.md:34-42 (diff.patch:36-65) records the new remote, schema and literal decisions\", \"src/troupe/config.py:503 `include_like(value) and not uri and node.tag != LITERAL`: the loader, and the watch path that reuses it, apply the literal rules\", \"src/troupe/cli.py:_mark_includes (diff.patch:196-215): set writes include-like strings tagged `!literal` unless `--include` is given\", \"tests/test_remote.py:114,129,142: new tests for set with file: strings; no older test sets an include-like string or treats https:// as plain\", \"src/troupe/config.py:242,245: the Item docstring still says the text-include node and ref are the `file:` string, though a URL include now works the same way\"], \"notes\": \"The README, decisions and tests were all updated, and no remaining test or spec states the old include rule. One leftover comment, the Item docstring at config.py:242/245, still says includes are `file:` strings only, which could mislead a maintainer about remote includes.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

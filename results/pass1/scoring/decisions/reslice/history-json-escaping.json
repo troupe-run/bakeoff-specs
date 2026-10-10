@@ -1,0 +1,200 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "ASCII",
+        "why": "Every history line shows non-ASCII as \\uXXXX escapes, e.g. \"caf\\u00e9\" and \"zo\\u00eb\"."
+      },
+      "Q2": {
+        "group": "RAW_UNQUOTED",
+        "why": "The config file has `rôle: line sep ünïcode` with the separator character written as-is and no quotes."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "READABLE",
+        "why": "History prints café, こんにちは, 🎭 and 代理 as the characters themselves."
+      },
+      "Q2": {
+        "group": "RAW_UNQUOTED",
+        "why": "The config file has `rôle: line sep ünïcode` with the separator character written as-is and no quotes."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "READABLE",
+        "why": "History prints the non-ASCII characters as themselves, not as escapes."
+      },
+      "Q2": {
+        "group": "ESCAPED",
+        "why": "The config file has `rôle: \"line\\Lsep ünïcode\"`, so the separator is escaped as \\L inside double quotes."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "READABLE",
+        "why": "History prints the non-ASCII characters as themselves, not as escapes."
+      },
+      "Q2": {
+        "group": "ESCAPED",
+        "why": "The config file has `rôle: \"line\\Lsep ünïcode\"`, so the separator is escaped as \\L inside double quotes."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "READABLE",
+        "why": "History prints the non-ASCII characters as themselves, not as escapes."
+      },
+      "Q2": {
+        "group": "RAW_QUOTED",
+        "why": "The config file has `rôle: \"line sep ünïcode\"`, with the separator written as-is inside double quotes."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "READABLE",
+        "why": "History prints the non-ASCII characters as themselves, not as escapes."
+      },
+      "Q2": {
+        "group": "RAW_QUOTED",
+        "why": "The config file has `rôle: \"line sep ünïcode\"`, with the separator written as-is inside double quotes."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "greeting",
+          "\"Grüß dich 👋 — ok\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:zoë"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "rôle",
+          "\"line sep ünïcode\"",
+          "--reason",
+          "pourquoi pas — 理由"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "agent:代理"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "greeting"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "rôle"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "name: café\ngreeting: \"こんにちは\"\nmood: 🎭\nrôle: naïve\nnote: \"tab\\there\"\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Prints history JSON Lines for non-ASCII values, keys, reasons and actor ids (accents, CJK, an emoji outside the BMP, U+2028). This shows whether each implementation writes these characters literally or as \\uXXXX escapes, and whether keys keep a fixed order."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "history output ASCII-escapes all non-ASCII characters",
+            "id": "ASCII"
+          },
+          {
+            "description": "history output keeps characters readable",
+            "id": "READABLE"
+          }
+        ],
+        "id": "Q1",
+        "text": "escaping in history output"
+      },
+      {
+        "groups": [
+          {
+            "description": "written escaped as \\L inside double quotes",
+            "id": "ESCAPED"
+          },
+          {
+            "description": "written raw inside quotes",
+            "id": "RAW_QUOTED"
+          },
+          {
+            "description": "written raw, unquoted",
+            "id": "RAW_UNQUOTED"
+          }
+        ],
+        "id": "Q2",
+        "text": "U+2028 written to the config file"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "ASCII escaping",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "ensure_ascii=False with keys in a fixed order",
+      [
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "sheet_id": "T33",
+  "status": "ok"
+}

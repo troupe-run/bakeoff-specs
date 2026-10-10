@@ -1,0 +1,586 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "-1e3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "limit",
+          "-.inf"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "name",
+          "-beta",
+          "--reason",
+          "-x"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--",
+          "retry",
+          "-5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "retry: 3  # attempts\nlimit: 10\nname: alpha\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "-1e3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: -1e3 # attempts\nlimit: 10\nname: alpha\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limit",
+                "-.inf"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: -1e3 # attempts\nlimit: -.inf\nname: alpha\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "-beta",
+                "--reason",
+                "-x"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: -1e3 # attempts\nlimit: -.inf\nname: -beta\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--",
+                "retry",
+                "-5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: -5   # attempts\nlimit: -.inf\nname: -beta\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:48.090031Z\", \"reason\": null, \"change\": \"696b8eab-25e8-4c24-b6ae-55e48dc9b941\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:48.090031Z\", \"reason\": null, \"change\": \"696b8eab-25e8-4c24-b6ae-55e48dc9b941\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"alpha\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:48.090031Z\", \"reason\": null, \"change\": \"696b8eab-25e8-4c24-b6ae-55e48dc9b941\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": -1000.0, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:40:48.091925Z\", \"reason\": null, \"change\": \"9cbc4fd0-dda6-453e-837e-e1f519bba89a\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"limit\", \"old\": 10, \"new\": \"-.inf\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:40:48.675268Z\", \"reason\": null, \"change\": \"3398f7fb-8af8-4fe9-8b5b-6a1f8288d230\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"name\", \"old\": \"alpha\", \"new\": \"-beta\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:40:49.272049Z\", \"reason\": \"-x\", \"change\": \"79496faf-d403-409e-8d4b-b4e8d8cabb77\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": -1000.0, \"new\": -5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:40:49.867443Z\", \"reason\": null, \"change\": \"cd6ab4e0-3de5-4dec-94ce-524ae08e0f02\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Override argparse's private _parse_optional (via a parser subclass) so single-dash VALUEs are positional",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "-1e3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: troupe config set: the following arguments are required: value\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limit",
+                "-.inf"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: troupe config set: the following arguments are required: value\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "-beta",
+                "--reason",
+                "-x"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: troupe config set: argument --reason: expected one argument\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--",
+                "retry",
+                "-5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: -5 # attempts\nlimit: 10\nname: alpha\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:53.411512Z\", \"reason\": null, \"change\": \"e26fec2b-218f-4710-a466-4b62c6da8ffd\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:53.411512Z\", \"reason\": null, \"change\": \"e26fec2b-218f-4710-a466-4b62c6da8ffd\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"alpha\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:53.411512Z\", \"reason\": null, \"change\": \"e26fec2b-218f-4710-a466-4b62c6da8ffd\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": -5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:40:53.428945Z\", \"reason\": null, \"change\": \"34a98838-b86e-4a50-9cf3-409ff5eb6f2e\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "-1e3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: the following arguments are required: VALUE (see 'troupe config set --help')\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limit",
+                "-.inf"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: the following arguments are required: VALUE (see 'troupe config set --help')\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "-beta",
+                "--reason",
+                "-x"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument --reason: expected one argument (see 'troupe config set --help')\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--",
+                "retry",
+                "-5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: -5 # attempts\nlimit: 10\nname: alpha\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:55.554894Z\", \"reason\": null, \"change\": \"33f0de2c-838b-4799-b60a-1ff3eb1bccb6\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:55.554894Z\", \"reason\": null, \"change\": \"33f0de2c-838b-4799-b60a-1ff3eb1bccb6\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"alpha\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:55.554894Z\", \"reason\": null, \"change\": \"33f0de2c-838b-4799-b60a-1ff3eb1bccb6\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": -5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:40:55.583768Z\", \"reason\": null, \"change\": \"43e0ed3d-a016-4353-a1fa-34b8e39d888c\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "-1e3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: the following arguments are required: value\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limit",
+                "-.inf"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: the following arguments are required: value\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "-beta",
+                "--reason",
+                "-x"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: argument --reason: expected one argument\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--",
+                "retry",
+                "-5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: -5 # attempts\nlimit: 10\nname: alpha\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:58.494592Z\", \"reason\": null, \"change\": \"56fd19ee-b94f-4319-a92f-3e4a7b89810e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:58.494592Z\", \"reason\": null, \"change\": \"56fd19ee-b94f-4319-a92f-3e4a7b89810e\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"alpha\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:58.494592Z\", \"reason\": null, \"change\": \"56fd19ee-b94f-4319-a92f-3e4a7b89810e\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": -5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:40:58.494812Z\", \"reason\": null, \"change\": \"b2e39dc4-403a-4aba-b532-41d9d7bd3730\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "-1e3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe config set [-h] [--theatre THEATRE] [--reason REASON]\n                         [--in-include] [--expand-alias] [--include]\n                         path value\ntroupe config set: error: the following arguments are required: value\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limit",
+                "-.inf"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe config set [-h] [--theatre THEATRE] [--reason REASON]\n                         [--in-include] [--expand-alias] [--include]\n                         path value\ntroupe config set: error: the following arguments are required: value\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "-beta",
+                "--reason",
+                "-x"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe config set [-h] [--theatre THEATRE] [--reason REASON]\n                         [--in-include] [--expand-alias] [--include]\n                         path value\ntroupe config set: error: argument --reason: expected one argument\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--",
+                "retry",
+                "-5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: -5 # attempts\nlimit: 10\nname: alpha\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:41:01.424214Z\", \"reason\": null, \"change\": \"70d8847f-cdf3-407c-8491-7a6d857470ad\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:41:01.424214Z\", \"reason\": null, \"change\": \"70d8847f-cdf3-407c-8491-7a6d857470ad\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"alpha\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:41:01.424214Z\", \"reason\": null, \"change\": \"70d8847f-cdf3-407c-8491-7a6d857470ad\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": -5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:41:01.424925Z\", \"reason\": null, \"change\": \"1b000f98-c59e-4239-934c-96cd8d04661b\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "-1e3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe config set [-h] [--theatre THEATRE] [--reason TEXT]\n                         [--in-include] [--expand-alias] [--include]\n                         PATH VALUE\ntroupe config set: error: the following arguments are required: VALUE\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limit",
+                "-.inf"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe config set [-h] [--theatre THEATRE] [--reason TEXT]\n                         [--in-include] [--expand-alias] [--include]\n                         PATH VALUE\ntroupe config set: error: the following arguments are required: VALUE\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "-beta",
+                "--reason",
+                "-x"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe config set [-h] [--theatre THEATRE] [--reason TEXT]\n                         [--in-include] [--expand-alias] [--include]\n                         PATH VALUE\ntroupe config set: error: argument --reason: expected one argument\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--",
+                "retry",
+                "-5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "retry: -5 # attempts\nlimit: 10\nname: alpha\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:41:04.442305Z\", \"reason\": null, \"change\": \"4969fcc5-0e5f-4534-bb80-0eea3b65d9c0\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"limit\", \"old\": null, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:41:04.442305Z\", \"reason\": null, \"change\": \"4969fcc5-0e5f-4534-bb80-0eea3b65d9c0\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"alpha\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:41:04.442305Z\", \"reason\": null, \"change\": \"4969fcc5-0e5f-4534-bb80-0eea3b65d9c0\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": -5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:41:04.447090Z\", \"reason\": null, \"change\": \"804fdc9c-98f1-4f21-9f9b-37a687e74ec8\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

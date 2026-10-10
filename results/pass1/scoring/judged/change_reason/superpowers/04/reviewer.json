@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "docs/decisions.md:52-64 (decisions 21-23 explain the TROUPE_ACTOR check on every command, why reconcile is a separate `file` change, and how pre-lineage events are upcast)",
+    "README.md:18-20 (documents the actor/via/at/reason/change lineage fields and `set --reason`)",
+    "src/troupe/store.py:195-196 in repo (diff.patch:195-196): a comment explains the v1→v2 event version bump that replaces the old @event string handlers",
+    "tests/test_config.py (diff.patch:319): a comment says why test_history strips the lineage fields: 'lineage is covered by test_lineage.py'",
+    "No commit history is available in /judge/repo (not a git checkout), so no commit message ties the diff to the step request"
+  ],
+  "notes": "The new records and inline comments explain the additions and the substantive changes to existing behaviour: the event schema upcast, reconcile now recorded as `via: file`, and test_history no longer comparing lineage fields. However, nothing (commit, spec or change record) points back to the step-4 request itself, and the conftest `set` signature change and the store `record()` signature change have no stated reason.",
+  "raw": "{\"score\": 3, \"evidence\": [\"docs/decisions.md:52-64 (decisions 21-23 explain the TROUPE_ACTOR check on every command, why reconcile is a separate `file` change, and how pre-lineage events are upcast)\", \"README.md:18-20 (documents the actor/via/at/reason/change lineage fields and `set --reason`)\", \"src/troupe/store.py:195-196 in repo (diff.patch:195-196): a comment explains the v1→v2 event version bump that replaces the old @event string handlers\", \"tests/test_config.py (diff.patch:319): a comment says why test_history strips the lineage fields: 'lineage is covered by test_lineage.py'\", \"No commit history is available in /judge/repo (not a git checkout), so no commit message ties the diff to the step request\"], \"notes\": \"The new records and inline comments explain the additions and the substantive changes to existing behaviour: the event schema upcast, reconcile now recorded as `via: file`, and test_history no longer comparing lineage fields. However, nothing (commit, spec or change record) points back to the step-4 request itself, and the conftest `set` signature change and the store `record()` signature change have no stated reason.\"}",
+  "score": 3,
+  "status": "ok"
+}

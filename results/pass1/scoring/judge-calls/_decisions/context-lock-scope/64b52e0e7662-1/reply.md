@@ -1,0 +1,1 @@
+{"runnable": false, "why": "This question is about which commands take an internal lock and how long they hold it. That only shows up when processes overlap, but the sandbox runs commands one at a time and forbids `watch` (concurrent writers are also out of contract). Sequential commands behave the same whatever the lock covers, so no example can make this route visible."}

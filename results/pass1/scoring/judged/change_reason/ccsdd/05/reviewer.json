@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/diff.patch:1-33 (config-foundation Req 4 gains step-5 notes pointing to config-include-overrides 1-2)",
+    "/judge/diff.patch:1652-1709 (config-set-writeback: rule 2, 3.1, 3.2, 11.5 and 14.2 each get a note naming the config-include-overrides requirement that replaces it)",
+    "/judge/diff.patch:1754-1781 (roadmap: Existing Spec Updates and CR-B list each amended spec and say why)",
+    "/judge/diff.patch:8499-8504 (test_file_included_twice renamed; docstring says 14.2 is superseded by config-include-overrides 11.1-11.3)",
+    "/judge/diff.patch:9777-9780 and 8541-8547 (tests that pinned the old rule 2 say which requirement supersedes them)",
+    "/judge/diff.patch:5541-5556 (test_e2e_watch_concurrency switches its refusal scenario from x.k to x={k: 2}, and no record or docstring says why)"
+  ],
+  "notes": "The spec notes, roadmap entries and docstrings tie almost every addition, modification and removal to config-include-overrides or CR-B, and superseded tests say what replaced them. One test hunk is not explained: test_e2e_watch_concurrency changes its scenario, and the step-5 records never mention it. Also, no commit history was available, so every reason comes from the records, not from commit messages.",
+  "raw": "{\"score\": 3, \"evidence\": [\"/judge/diff.patch:1-33 (config-foundation Req 4 gains step-5 notes pointing to config-include-overrides 1-2)\", \"/judge/diff.patch:1652-1709 (config-set-writeback: rule 2, 3.1, 3.2, 11.5 and 14.2 each get a note naming the config-include-overrides requirement that replaces it)\", \"/judge/diff.patch:1754-1781 (roadmap: Existing Spec Updates and CR-B list each amended spec and say why)\", \"/judge/diff.patch:8499-8504 (test_file_included_twice renamed; docstring says 14.2 is superseded by config-include-overrides 11.1-11.3)\", \"/judge/diff.patch:9777-9780 and 8541-8547 (tests that pinned the old rule 2 say which requirement supersedes them)\", \"/judge/diff.patch:5541-5556 (test_e2e_watch_concurrency switches its refusal scenario from x.k to x={k: 2}, and no record or docstring says why)\"], \"notes\": \"The spec notes, roadmap entries and docstrings tie almost every addition, modification and removal to config-include-overrides or CR-B, and superseded tests say what replaced them. One test hunk is not explained: test_e2e_watch_concurrency changes its scenario, and the step-5 records never mention it. Also, no commit history was available, so every reason comes from the records, not from commit messages.\"}",
+  "score": 3,
+  "status": "ok"
+}

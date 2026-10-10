@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "a: plain  # p\nb: 'single'  # s\nc: \"double\"  # d",
+        "input": "`config set a \"x\\uFEFFy\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; line a now reads (the raw invisible U+FEFF is between x and y; the value is unquoted):\na: x﻿y    # p",
+          "2": "All three arms: exit 0; line a now reads (raw U+FEFF, now in double quotes):\na: \"x﻿y\"  # p",
+          "3": "one arm: exit 0; line a now reads (raw U+FEFF in double quotes):\na: \"x﻿y\"  # p\none arm: exit 0; line a now reads (a visible escape):\na: \"x\\uFEFFy\" # p"
+        }
+      },
+      {
+        "before": "b: 'single'  # s",
+        "input": "`config set b \"p\\u2028q\"` (U+2028 is the line separator)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; line b now reads (raw invisible U+2028 between p and q, in single quotes):\nb: 'p q'     # s",
+          "2": "two arms: exit 0; line b now reads (raw U+2028 in double quotes):\nb: \"p q\"     # s\none arm: exit 0; line b now reads (a visible escape):\nb: \"p\\Lq\"    # s",
+          "3": "one arm: exit 0; line b now reads (raw U+2028 in single quotes):\nb: 'p q'     # s\none arm: exit 0; line b now reads:\nb: \"p\\Lq\"    # s"
+        }
+      },
+      {
+        "before": "c: \"double\"  # d",
+        "input": "`config set c \"r\\u0085s\\u2029t\"` (next-line, then paragraph separator)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; line c now reads (U+0085 written as \\N, raw invisible U+2029 between s and t):\nc: \"r\\Ns t\"  # d",
+          "2": "two arms: exit 0; line c now reads (\\N escape plus raw U+2029):\nc: \"r\\Ns t\"  # d\none arm: exit 0; line c now reads (both escaped):\nc: \"r\\Ns\\Pt\" # d",
+          "3": "one arm: exit 0; line c now reads (\\N escape plus raw U+2029):\nc: \"r\\Ns t\"  # d\none arm: exit 0; line c now reads (both escaped):\nc: \"r\\Ns\\Pt\" # d"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get b`, then `config show` (after the three sets)",
+        "observed": true,
+        "results": {
+          "1": "get: exit 0, prints `p`, the raw U+2028, `q`. show: exit 0, prints:\na: x﻿y\nb: p q\nc: \"r\\Ns t\"",
+          "2": "All arms: get: exit 0, prints `p`, the raw U+2028, `q`.\ntwo arms: show prints:\na: \"x﻿y\"\nb: \"p q\"\nc: \"r\\Ns t\"\none arm: show prints:\na: \"x﻿y\"\nb: \"p\\Lq\"\nc: \"r\\Ns\\Pt\"",
+          "3": "Both arms: get: exit 0, prints `p`, the raw U+2028, `q`.\none arm: show prints everything raw and unquoted except a (c holds a raw U+0085 and a raw U+2029):\na: \"x﻿y\"\nb: p q\nc: rs t\none arm: show prints every value escaped:\na: \"x\\uFEFFy\"\nb: \"p\\Lq\"\nc: \"r\\Ns\\Pt\""
+        }
+      }
+    ],
+    "in_practice": "Route 1 and two of route 2's three arms leave invisible characters in the file. You can't see them in an editor, and a YAML reader that treats U+2028/U+2029 as line breaks may read the value back differently. In route 1, `x﻿y` is even stored unquoted. One route 2 arm and one route 3 arm write visible escapes (`\\L`, `\\P`, `\\N`); route 3's other arm writes visible escapes only for U+0085 and leaves the rest raw. On every route, `config get` returned the same value that was set.",
+    "stakes": "This is about what lands in troupe.yml when a stored value contains an invisible character (zero-width no-break space U+FEFF, line separator U+2028, paragraph separator U+2029 or next-line U+0085). Some routes put the raw invisible character in the file and others write a visible escape. Raw characters can't be seen in an editor, and some YAML readers treat them as line breaks, so they may read back differently.",
+    "tradeoff": "Route 1 keeps the existing write-back exactly, but leaves raw invisible characters in plain and single-quoted values. Route 2 always double-quotes; its arms disagree on writing the characters raw or escaped, and the raw form can read back differently in ruamel. Route 3 was never considered, and its arms ranged from mostly raw to fully escaped."
+  },
+  "plan_why": "Sets strings containing U+FEFF, U+2028, U+0085 and U+2029 into plain, single-quoted and double-quoted scalars. The file shows whether each character is kept in plain or single quotes, moved into double quotes, or escaped. get and show then reveal whether the written file reads back as the same value.",
+  "routes": [
+    [
+      "Leave strings with U+FEFF in plain or single quotes",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "Only inside double quotes (written literally there)",
+      [
+        "Arm C",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm D"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 0, "evidence": ["/judge/questions.md:3-22", "/judge/questions.md:24-36", "/judge/others-questions.md:396-428", "/judge/transcript.md (no matches for question or WAITING_FOR markers)"], "notes": "Arm X never asked for input on an open point. Turn 1 reported a finished step, and it settled the `show PATH --sources` scalar case (/judge/questions.md:17) on its own, without asking. Turn 2 offered merge, PR and keep options that it said did not apply, so no answer could have changed what was built; that turn was superfluous. Other arms asked about that scalar `--sources` gap, and Arm C escalated it to the owner (/judge/others-questions.md:583-614)."}
+```

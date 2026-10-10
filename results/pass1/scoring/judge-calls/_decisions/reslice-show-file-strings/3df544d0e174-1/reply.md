@@ -1,0 +1,1 @@
+{"outcomes": {"1": {"Q1": {"group": "DROP", "why": "config show prints 'prompt: file:prompts/coder.md' and 'notes: file:notes.txt' without the !literal tag, even though the file has it"}}, "2": {"Q1": {"group": "KEEP", "why": "config show prints 'prompt: !literal file:prompts/coder.md' and 'notes: !literal file:notes.txt', keeping the tag"}}}}

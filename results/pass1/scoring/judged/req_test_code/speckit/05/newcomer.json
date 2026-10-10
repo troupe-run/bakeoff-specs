@@ -1,0 +1,16 @@
+{
+  "evidence": [
+    "spec/005-include-overrides/spec.md:41-44 (replaces step 1 FR-022 with FR-420–427; refines FR-020)",
+    "spec/005-include-overrides/tasks.md:111-127 (T011/T012 name test files and test functions, each tagged with FR/D IDs)",
+    "tests/e2e/test_overrides_new_key.py:1-2 (module docstring cites US1, FR-420 to FR-427, D-40/41/45/47/48)",
+    "tests/e2e/test_overrides_existing.py:2 (FR-430 to FR-432, D-44)",
+    "src/troupe/config/edit/override.py:2 and :93,:98 (code cites FR-420–427, D-47, D-48)",
+    "src/troupe/config/loader.py:17,123,172 (FR-400–403, FR-401, D-46)",
+    "spec/001-config-load-show-set/spec.md:193,199 (superseded FR-020/FR-022 marked as refined/replaced by step 5)",
+    "tests/e2e/test_set_new_key.py:105 (old test renamed per T012)"
+  ],
+  "notes": "A newcomer can go from the spec's FR/D IDs to tasks.md, which names each test file, test function and source module, and on to code and tests that cite the same IDs; superseded step-1 text is marked. Not a 4 because tests link to requirements only by FR ranges in module docstrings, not one test per requirement, and several test names in tasks.md differ from the real ones (e.g. test_file_indentation_4 vs test_file_indentation_of_4, test_new_key_in_main_file_unchanged_behaviour vs test_new_key_with_ancestor_in_the_main_file_is_written_there), so some links need a search.",
+  "raw": "I scored Arm X a 3 out of 4 for traceability at step 5.\n\n```json\n{\"score\": 3, \"evidence\": [\"spec/005-include-overrides/spec.md:41-44 (replaces step 1 FR-022 with FR-420–427; refines FR-020)\", \"spec/005-include-overrides/tasks.md:111-127 (T011/T012 name test files and test functions, each tagged with FR/D IDs)\", \"tests/e2e/test_overrides_new_key.py:1-2 (module docstring cites US1, FR-420 to FR-427, D-40/41/45/47/48)\", \"tests/e2e/test_overrides_existing.py:2 (FR-430 to FR-432, D-44)\", \"src/troupe/config/edit/override.py:2 and :93,:98 (code cites FR-420–427, D-47, D-48)\", \"src/troupe/config/loader.py:17,123,172 (FR-400–403, FR-401, D-46)\", \"spec/001-config-load-show-set/spec.md:193,199 (superseded FR-020/FR-022 marked as refined/replaced by step 5)\", \"tests/e2e/test_set_new_key.py:105 (old test renamed per T012)\"], \"notes\": \"A newcomer can go from the spec's FR/D IDs to tasks.md, which names each test file, test function and source module, and on to code and tests that cite the same IDs; superseded step-1 text is marked. Not a 4 because tests link to requirements only by FR ranges in module docstrings, not one test per requirement, and several test names in tasks.md differ from the real ones (e.g. test_file_indentation_4 vs test_file_indentation_of_4, test_new_key_in_main_file_unchanged_behaviour vs test_new_key_with_ancestor_in_the_main_file_is_written_there), so some links need a search.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

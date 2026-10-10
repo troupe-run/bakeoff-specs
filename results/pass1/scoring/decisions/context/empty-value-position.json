@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "model:\ntimeout:   # seconds\nname: x\ntags:\n  -\n  - b\nlast:",
+        "input": "`config set model opus`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; the first line now reads:\nmodel: opus\nThe rest of the file is unchanged.",
+          "2": "exit 0, no output; the first line now reads:\nmodel: opus\nThe rest of the file is unchanged."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set timeout 30` (the empty value has a trailing comment)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the line now reads:\ntimeout: 30 # seconds",
+          "2": "exit 0; the line now reads:\ntimeout: 30 # seconds"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set tags.0 a` (a bare `-` list item)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the list now reads:\ntags:\n  - a\n  - b",
+          "2": "exit 0; the list now reads:\ntags:\n  - a\n  - b"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set last done` (empty key on the last line, no trailing newline), then `config show`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the last line now reads:\nlast: done\n`config show` prints:\nmodel: opus\ntimeout: 30\nname: x\ntags:\n  - a\n  - b\nlast: done",
+          "2": "exit 0; the last line now reads:\nlast: done\n`config show` prints:\nmodel: opus\ntimeout: 30\nname: x\ntags:\n  - a\n  - b\nlast: done"
+        }
+      }
+    ],
+    "in_practice": "Both routes gave exactly the same result on every command: 2 arms on route 1 and 4 arms on route 2, with no differences within either route. Every empty value was filled in on its own line, the `# seconds` comment was kept, and no command refused or failed. Route 1's stated reason was that otherwise such sets would be refused, but this test did not trigger that failure on route 2.",
+    "stakes": "A config file can have keys with nothing after the colon, like `model:`, a comment-only `timeout:   # seconds`, a bare list item `-`, or a last line `last:` with no newline. If a value is put in the wrong place, `config set` could refuse the key, damage the file or lose the comment.",
+    "tradeoff": "Route 1 adds its own handling for where an empty value goes; route 2 adds nothing extra and did just as well on this test."
+  },
+  "plan_why": "Fills empty values (`key:`) in four positions: a plain key, a key with an end-of-line comment, an empty list item, and a key on the last line with no trailing newline. The output shows where each value is written: right after the ':', on the next line, or refused (exit 3).",
+  "routes": [
+    [
+      "Right after the ':' indicator rather than at the parser's mark",
+      [
+        "Arm B",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm C",
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

@@ -1,0 +1,16 @@
+{
+  "evidence": [
+    "repo/tests/test_e2e_reconcile.py:108",
+    "repo/tests/test_reconcile.py:320",
+    "repo/tests/test_e2e_watch_concurrency.py:194",
+    "repo/tests/test_e2e_show.py:271",
+    "repo/tests/test_set_quoting.py:58",
+    "repo/spec/spec/config-file-sync/design.md:256",
+    "repo/spec/spec/config-file-sync/tasks.md:70",
+    "repo/spec/spec/config-foundation/requirements.md:195"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 4, \"evidence\": [\"repo/tests/test_e2e_reconcile.py:108\", \"repo/tests/test_reconcile.py:320\", \"repo/tests/test_e2e_watch_concurrency.py:194\", \"repo/tests/test_e2e_show.py:271\", \"repo/tests/test_set_quoting.py:58\", \"repo/spec/spec/config-file-sync/design.md:256\", \"repo/spec/spec/config-file-sync/tasks.md:70\", \"repo/spec/spec/config-foundation/requirements.md:195\"]}\n```\n\nAll five sampled requirements were linked and correct. Three were new at this step: config-file-sync 1.7, 2.6 and 6.1. Two came from earlier steps: foundation 6.9 (partly replaced at this step, with the change marked in the text) and writeback 6.1. Each test's docstring names its requirement IDs and asserts the behaviour, and design.md's traceability table and tasks.md's `_Requirements_` entries lead from each requirement to the code. The tests for the replaced foundation 6.9/7.3 text were updated and labelled as replaced, so no link points at old wording. The only weakness is that test IDs usually leave out the spec name, so \"Req 7.3\" relies on the file's header comment to say which spec it means.",
+  "score": 4,
+  "status": "ok"
+}

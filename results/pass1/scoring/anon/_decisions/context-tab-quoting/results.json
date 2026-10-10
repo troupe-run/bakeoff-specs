@@ -1,0 +1,209 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "name",
+          "\"a\\tb\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "prompt",
+          "\"\\tindented\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "extra.sep",
+          "\"x\\t\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "name"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# troupe settings\nname: bob  # agent name\nprompt: hello\nlimits:\n  retry: 3\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 4,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "\"a\\tb\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nname: 'a\tb' # agent name\nprompt: hello\nlimits:\n  retry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"\\tindented\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nname: 'a\tb' # agent name\nprompt: '\tindented'\nlimits:\n  retry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "extra.sep",
+                "\"x\\t\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nname: 'a\tb' # agent name\nprompt: '\tindented'\nlimits:\n  retry: 3\nextra:\n  sep: 'x\t'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a\tb\n"
+            }
+          ]
+        }
+      ],
+      "route": "Single quotes (tests changed from the double-quoted expectation)",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "\"a\\tb\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nname: 'a\tb' # agent name\nprompt: hello\nlimits:\n  retry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "\"\\tindented\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nname: 'a\tb' # agent name\nprompt: '\tindented'\nlimits:\n  retry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "extra.sep",
+                "\"x\\t\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe settings\nname: 'a\tb' # agent name\nprompt: '\tindented'\nlimits:\n  retry: 3\nextra:\n  sep: 'x\t'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "name"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a\tb\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

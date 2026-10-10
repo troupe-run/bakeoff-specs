@@ -1,0 +1,17 @@
+I scored Arm X a 3 on test names: no checked name overclaims, but a few are vague.
+
+Step 7 is config-remote-schema, the "Remote includes and a schema" step (`spec/steering/roadmap.md:263`). The repo has no git history, so I couldn't recover the true diff order. I checked the step's new test files in alphabetical order instead: `tests/test_e2e_remote.py` and `tests/test_fetch.py`, which give 30 tests, and also read `tests/test_includes.py`.
+
+**Strong names.** Most read as a spec: they state the condition and the expected result, and the body asserts exactly that. Examples:
+- `test_fetch_returns_the_exact_body_bytes_of_a_200` (`tests/test_fetch.py:30`)
+- `test_fetch_sends_the_query_and_never_the_fragment` (`tests/test_fetch.py:128`)
+- `test_fetch_failure_exits_4_naming_file_key_path_and_url_with_no_history_state` (`tests/test_e2e_remote.py:562`)
+
+**Weaker names.**
+- `test_schema_file_created_while_watching_is_seen` (`tests/test_e2e_remote.py:276`) says "is seen", but the body checks a reload, a schema report and a re-fetch.
+- `test_history_fails_on_an_unreachable_url_and_keeps_the_history_state` (`tests/test_e2e_remote.py:685`) says "unreachable", but the body uses an HTTP 404. It also checks recovery afterwards, which the name doesn't mention.
+- `test_step_7_constants_hold_the_documented_names` (`tests/test_includes.py:35`) doesn't say which values it pins.
+
+```json
+{"score": 3, "evidence": ["tests/test_e2e_remote.py:276", "tests/test_e2e_remote.py:685", "tests/test_includes.py:35", "tests/test_fetch.py:30", "tests/test_fetch.py:128", "tests/test_e2e_remote.py:562"], "notes": "No checked name overclaims, and most state the condition and expected result its body asserts (e.g. test_fetch_sends_the_query_and_never_the_fragment). A few say less than the body checks: 'created_while_watching_is_seen', 'unreachable_url' (the body uses a 404 and also checks recovery) and 'step_7_constants_hold_the_documented_names'."}
+```

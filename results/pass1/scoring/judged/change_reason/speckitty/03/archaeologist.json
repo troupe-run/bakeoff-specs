@@ -1,0 +1,16 @@
+{
+  "evidence": [
+    "/judge/repo/spec/troupe-config-get-show-01M411XB/spec.md:148 (C-001: the 'get and show' contract section replaces 'show PATH (step 1 and 2)')",
+    "/judge/repo/spec/troupe-config-get-show-01M411XB/spec.md:161 (tests that expect show to refuse a mapping or list move to get)",
+    "/judge/repo/spec/troupe-config-get-show-01M411XB/research.md:80 (step-1 show scalar tests move to test_get.py, renamed test_get_*)",
+    "/judge/repo/spec/troupe-config-get-show-01M411XB/plan.md:8 (get PATH is the old show PATH under a new name; only the refusal message and help line differ)",
+    "/judge/repo/spec/troupe-config-get-show-01M411XB/tasks.md:60 (move show.py logic into get.py, extract scalar_of into values.py)",
+    "/judge/repo/spec/troupe-config-get-show-01M411XB/tasks/WP02-get-command.md:165 (switch value-reading helpers from show to get)",
+    "/judge/repo/spec/troupe-config-get-show-01M411XB/research.md:39 (FR-008 amended for D-10, with the reason)",
+    "/judge/diff.patch:2501-2508 (removed show refusal of a mapping or list, explained by C-001 and FR-005)"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 4, \"evidence\": [\"/judge/repo/spec/troupe-config-get-show-01M411XB/spec.md:148 (C-001: the 'get and show' contract section replaces 'show PATH (step 1 and 2)')\", \"/judge/repo/spec/troupe-config-get-show-01M411XB/spec.md:161 (tests that expect show to refuse a mapping or list move to get)\", \"/judge/repo/spec/troupe-config-get-show-01M411XB/research.md:80 (step-1 show scalar tests move to test_get.py, renamed test_get_*)\", \"/judge/repo/spec/troupe-config-get-show-01M411XB/plan.md:8 (get PATH is the old show PATH under a new name; only the refusal message and help line differ)\", \"/judge/repo/spec/troupe-config-get-show-01M411XB/tasks.md:60 (move show.py logic into get.py, extract scalar_of into values.py)\", \"/judge/repo/spec/troupe-config-get-show-01M411XB/tasks/WP02-get-command.md:165 (switch value-reading helpers from show to get)\", \"/judge/repo/spec/troupe-config-get-show-01M411XB/research.md:39 (FR-008 amended for D-10, with the reason)\", \"/judge/diff.patch:2501-2508 (removed show refusal of a mapping or list, explained by C-001 and FR-005)\"]}\n```\n\nMy three blame picks:\n1. **Removed refusal in `src/troupe/commands/show.py`** (diff.patch:2501-2508, behaviour change). Spec C-001, FR-005 and plan.md:8 say why it changed and that the refusal moved to `get`.\n2. **Show-to-get swaps in `tests/integration/test_reconcile_first.py`** (diff.patch:3256-3259). research.md:80 and WP02-get-command.md:165 explain them.\n3. **New `values.scalar_of`** (diff.patch:2556-2567). tasks.md:60 and plan.md:106 explain it.\n\nThe spec records also cover the amended requirement (FR-008, research.md:39) and the old contract that was left unchanged on purpose (analysis-report.md:70).\n\n**Notes:** Every changed hunk, including the switch from `show` to `get` and the removed mapping/list refusal, ties back to the step-3 request through the spec, plan, research and work-package records, which say what replaced the old behaviour and why. One caveat: there is no git history in `/judge/repo`, so I couldn't check the commit messages themselves. The records do cite commits, for example 91813c5 and 93c58bd.",
+  "score": 4,
+  "status": "ok"
+}

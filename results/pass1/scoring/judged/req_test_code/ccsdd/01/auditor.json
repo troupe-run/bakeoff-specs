@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "repo/tests/test_set_quoting.py:58 (docstring 'Req 6.1, 6.6' on the test for a changed scalar keeping its quoting; the code is in src/troupe/config/writeback/scalar_render.py, mapped in tasks.md:80)",
+    "repo/tests/test_set_comments.py:67 (Req 12.3, columns counted in code points; also repo/tests/writeback/test_layout.py:67, which exercises writeback/layout.py; linked through tasks.md:55/70)",
+    "repo/tests/writeback/test_compare.py:62 (Req 15.3, typed leaf comparison; tests writeback/compare.py; tasks.md:46)",
+    "repo/tests/test_e2e_history.py:117 (config-foundation 7.1/7.2, import of one event per leaf on the first command)",
+    "repo/tests/test_locate.py:1 (config-foundation Requirements 2.1–2.4, locating the configuration file; tests config/locate.py)",
+    "repo/spec/spec/config-set-writeback/tasks.md:28-147 (every task carries a _Requirements: x.y_ list)",
+    "repo/tests/set_support.py:8 (states the convention that each test's docstring starts with the requirement IDs it proves)"
+  ],
+  "notes": "I sampled five requirements: three new set-writeback ones (6.1, 12.3, 15.3) and two earlier config-foundation ones (2.2, 7.1). All five are linked and correct: each has an explicit ID in a test that asserts it, and the code is reachable through tasks.md entries and the per-module test files. One minor weakness: foundation tests link IDs at file or section level, not per test, and the two specs reuse the same numbering, so the containing file is what tells you which spec an ID belongs to.",
+  "raw": "{\"score\": 4, \"evidence\": [\"repo/tests/test_set_quoting.py:58 (docstring 'Req 6.1, 6.6' on the test for a changed scalar keeping its quoting; the code is in src/troupe/config/writeback/scalar_render.py, mapped in tasks.md:80)\", \"repo/tests/test_set_comments.py:67 (Req 12.3, columns counted in code points; also repo/tests/writeback/test_layout.py:67, which exercises writeback/layout.py; linked through tasks.md:55/70)\", \"repo/tests/writeback/test_compare.py:62 (Req 15.3, typed leaf comparison; tests writeback/compare.py; tasks.md:46)\", \"repo/tests/test_e2e_history.py:117 (config-foundation 7.1/7.2, import of one event per leaf on the first command)\", \"repo/tests/test_locate.py:1 (config-foundation Requirements 2.1–2.4, locating the configuration file; tests config/locate.py)\", \"repo/spec/spec/config-set-writeback/tasks.md:28-147 (every task carries a _Requirements: x.y_ list)\", \"repo/tests/set_support.py:8 (states the convention that each test's docstring starts with the requirement IDs it proves)\"], \"notes\": \"I sampled five requirements: three new set-writeback ones (6.1, 12.3, 15.3) and two earlier config-foundation ones (2.2, 7.1). All five are linked and correct: each has an explicit ID in a test that asserts it, and the code is reachable through tasks.md entries and the per-module test files. One minor weakness: foundation tests link IDs at file or section level, not per test, and the two specs reuse the same numbering, so the containing file is what tells you which spec an ID belongs to.\"}",
+  "score": 4,
+  "status": "ok"
+}

@@ -1,0 +1,95 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\na: 1\nm:␍\n  x: 1␍\nn:␍\n  x: 1\ninc: file:inc.yaml␍",
+        "input": "`config set m.y 2`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads:\nm:␍\n  x: 1␍\n  y: 2␍",
+          "2": "exit 0; the file now reads:\nm:␍\n  x: 1␍\n  y: 2␍",
+          "3": "exit 0 (all three arms); the file now reads:\nm:␍\n  x: 1␍\n  y: 2",
+          "4": "exit 0; the file now reads:\nm:␍\n  x: 1␍\n  y: 2"
+        }
+      },
+      {
+        "before": "",
+        "input": "then `config set n.y 2` (the line above the new one ends in LF)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the new line gets CRLF anyway:\nn:␍\n  x: 1\n  y: 2␍",
+          "2": "exit 0; the new line copies the LF above it:\nn:␍\n  x: 1\n  y: 2",
+          "3": "exit 0 (all three arms); the file now reads:\nn:␍\n  x: 1\n  y: 2",
+          "4": "exit 0; the file now reads:\nn:␍\n  x: 1\n  y: 2"
+        }
+      },
+      {
+        "before": ".troupe/inc.yaml:\nk: 1␍\nj: 2",
+        "input": "`config set --in-include inc.z 3`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads:\nk: 1␍\nj: 2\nz: 3␍",
+          "2": "exit 0; the file now reads:\nk: 1␍\nj: 2\nz: 3",
+          "3": "exit 0 (all three arms); the file now reads:\nk: 1␍\nj: 2\nz: 3␍",
+          "4": "exit 0; the file now reads:\nk: 1␍\nj: 2\nz: 3␍"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set a '\"l1\\nl2\\n\"'` (turns `a: 1`, which ends in LF, into a multi-line block)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads (endings mixed inside the block):\na: |␍\n  l1␍\n  l2\nm:␍",
+          "2": "exit 0; the file now reads:\na: |\n  l1\n  l2\nm:␍",
+          "3": "exit 0 (all three arms); the file now reads:\na: |\n  l1\n  l2\nm:␍",
+          "4": "exit 0; the file now reads:\na: |\n  l1\n  l2\nm:␍"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show --sources`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; lists a, m.x, m.y, n.x, n.y, inc.k, inc.j and inc.z, each tagged `# from <file>`",
+          "2": "exit 0; same listing as route 1",
+          "3": "two arms: same listing as route 1; one arm: same values, but prints the keys quoted as `'y': 2` and `'n':`",
+          "4": "exit 0; same listing as route 1"
+        }
+      }
+    ],
+    "in_practice": "All routes behave the same on files with only one kind of line ending. They differ only on mixed files, and none of them fixes the lines that are already there, so a mixed file stays mixed. Route 1 writes CRLF as soon as the file has any CRLF. Route 2 copies the ending of the line just above the new one, so the result depends on where the edit lands. Routes 3 and 4 use the file's first line ending, so troupe.yml (its first line ends in LF) got LF and inc.yaml (its first line ends in CRLF) got CRLF. Routes 3 and 4 produced the same files.",
+    "stakes": "Someone with a config file that mixes Windows (CRLF) and Unix (LF) line endings sees their file get new lines with one ending or the other after `config set`. That can show up as noisy diffs, or as a mixed-ending file their editor or tools complain about. Notation below: a line ending in ␍ ends in CRLF; an unmarked line ends in LF.",
+    "tradeoff": "Route 1 leans toward CRLF and can mix endings inside a single new block. Route 2 blends into each spot but follows no file-wide rule. Routes 3 and 4 are predictable but can add lines whose ending doesn't match their neighbors."
+  },
+  "plan_why": "Uses files with mixed line endings to show which ending each implementation gives new lines. troupe.yml's first line ends in LF but later lines use CRLF, and inc.yaml's first line ends in CRLF but its last line ends in LF. Each command adds lines after a line with a known ending. Route 1 gives CRLF every time, route 2 copies the ending of the line before, and route 3 follows the file's first line (LF in troupe.yml, CRLF in inc.yaml).",
+  "routes": [
+    [
+      "CRLF if any CRLF appears in the file, else LF",
+      [
+        "Arm D"
+      ]
+    ],
+    [
+      "Copy the preceding line's ending",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "Taken from the file's first line break; LF for empty or LF-only files",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

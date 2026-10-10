@@ -1,0 +1,677 @@
+## Arm A
+
+## Scored run
+
+### Question 1 (question, answered by po)
+
+Arm asked: I've finished discovery and the full spec for step 4, but I haven't written the implementation: the implementation skill (`/method-command`) can only be started by you, and I'm not allowed to run its workflow by other means. So lineage is planned on `main` but not built — no code or tests have changed.
+
+To finish it, run:
+
+```
+/method-command config-lineage
+```
+
+**What's committed on `main`** (all in `spec/spec/config-lineage/` unless noted):
+- **Discovery:** `brief.md`, plus a "Step 4 — Lineage" section in `spec/steering/roadmap.md`. Lineage gets a new spec, and three existing specs get step-4 notes: config-foundation, config-set-writeback and config-file-sync.
+- **Requirements:** 7 requirements with 35 acceptance criteria.
+- **Design:** `design.md` and `research.md`.
+- **Tasks:** `tasks.md`, with 10 sub-tasks in three groups. An independent review passed it after one round of fixes.
+
+**How the design works:**
+- **One change, one id:** every batch the history records (one import, one file reconcile, or one `set`) is stamped with one change id and one UTC time. A `set` after a hand edit therefore records two changes: the file reconcile, then the CLI change.
+- **Actor:** `TROUPE_ACTOR` is read once per command in the CLI layer. An invalid value gives exit 2 before any file or history is touched.
+- **Older histories:** histories recorded before step 4 stay readable, with their lineage shown as unknown rather than guessed. I checked this against the event library with a small experiment.
+
+**Choices I made where the contract is silent** (all recorded in `research.md`; tell me if you want any changed):
+1. Every subcommand rejects an invalid `TROUPE_ACTOR`, not only `set`.
+2. A set-but-empty `TROUPE_ACTOR` is invalid, not treated as unset. So is `human:` with no id.
+3. If the login name can't be found, the actor is `{"kind": "human", "id": null}`.
+4. `at` always has six fractional digits, e.g. `2026-10-04T09:30:00.123456Z`.
+5. If `--reason` is given twice, the last one counts.
+
+**Open question for the product owner:** old `set`/`remove` events don't say whether they came from the CLI or a file edit, and the contract only allows `import`, `cli` or `file`. I chose `"cli"`, with the actor shown as unknown. The alternatives are `"file"`, or adding an "unknown" value, which would extend the contract.
+
+Nothing is pushed and no pull request was opened.
+
+Reply: The contract says every `history` event has the Lineage fields. It says nothing about events recorded before step 4, or about upgrading stored history. Treat how those older events are shown as out of contract: your choice. State which you chose and why. Your current choice of "cli" with actor unknown is acceptable on that basis.
+
+### Question 2 (next_command, answered by po)
+
+Arm asked: I've recorded that how pre-step-4 history is shown is our choice, not an open question for you. It's committed on `main` as `8d54867`.
+
+**What I chose for events recorded before step 4:**
+- **Same shape as new events:** they still get all five lineage fields, so every `history` line matches the contract and tools reading it need no special case.
+- **`via`:** `"import"` for the first import, `"cli"` for `set`/`remove`. The stored data can't tell a CLI change from a file edit. `"cli"` stays within the three allowed values and matches where most of these events came from: every step-1 event, and every event a `set` recorded.
+- **Unknown, not guessed:** the actor is `{"kind": "unknown", "id": null}` and `reason` is `null`, so nobody is credited with a change we can't attribute.
+- **`at`:** the time each event was originally stored, which the event store already holds.
+- **`change`:** the original import events share one id, since they were saved together. Every other old event gets its own id, because we can't prove which ones belonged together.
+
+**Where it's written down:** the reasoning is Decision 5 in `spec/spec/config-lineage/research.md`. I also updated `requirements.md`, `design.md` (the trigger for revisiting it is now "a later contract step covers older history") and `brief.md` to match. No code changed.
+
+Lineage is still not implemented. To build it, run:
+
+```
+/method-command config-lineage
+```
+
+Reply: /method-command config-lineage
+
+### Question 3 (step_done, answered by po)
+
+Arm asked: Step 4 (lineage) is implemented and committed on `main`, and the final validation gate returned **GO**. On a fresh run the full suite passed (2795 tests), `mypy --strict` and ruff are clean, and the working tree is clean. Nothing was pushed and no pull request was opened.
+
+**What a user now sees:**
+- **Every `history` line has the five new fields** after the existing ones: `actor`, `via`, `at`, `reason`, `change`.
+- **First import:** marked `via: "import"` with the actor unknown.
+- **Hand edits:** picked up before `get`, `show` or `set`, or while `watch` runs. They are marked `via: "file"` with the actor unknown, even when `TROUPE_ACTOR` is set.
+- **`set`:** its own events are marked `via: "cli"`, with the actor from `TROUPE_ACTOR` or, if that's unset, your login name. A hand edit followed by a `set` shows up as two separate changes.
+- **One change id per command:** everything one command, import or hand-edit sync records shares one `change` and one `at`; ids are never reused, including after a restart.
+- **Invalid `TROUPE_ACTOR`:** every subcommand exits 2 before touching any file or history.
+- **`set --reason TEXT`:** the reason appears only on that `set`'s own events.
+- **History recorded before step 4** still reads, using the choice you confirmed.
+
+A manual run on a temporary theatre (import, then a hand edit, then a `set` with an agent actor and a reason) printed exactly that sequence, with three different change ids.
+
+**Process:** each of the 10 tasks had an independent review. One was rejected once: a spec note wrongly promised that `at` values never repeat across changes (only `change` is unique), and it passed after a rewording. I also applied small reviewer suggestions along the way:
+- a corrupted old history row now gives exit 4 instead of a traceback;
+- the shared test helper now fails on any unexpected extra field on a history line;
+- one end-to-end assertion is stricter;
+- the research note now matches how `--reason -x` actually parses.
+
+**One limitation left as is:** if a step-4 history row were corrupted so that a lineage field is missing, `history` shows a traceback instead of exit 4. The fields from step 1 have always had this weakness, and only a hand-damaged history file can trigger it. Making it exit 4 is a small change if you want it.
+
+The ten commits run from `2e5fad2` to `2ad9e80`. The step-4 notes in the earlier specs and the roadmap checkboxes are in that last commit.
+
+Reply: 
+
+## Discovery run
+
+### Question 1 (question, answered by po)
+
+Arm asked: I've planned step 4 and committed it on `main` as `eb52c82`. This was only the planning step: none of the lineage behaviour is built yet, and nothing was pushed.
+
+**What I found:** the request needs one new spec, `config-lineage`, plus small updates to three existing specs. Today a history event records only what changed (the step, path, old and new values); nothing says who changed it, how, when, why, or which command it came from. Every change already comes from one of three places (the first import, the check that picks up hand edits, and `set`), and each one saves its events together in one database write. That makes it a natural place to attach lineage.
+
+**Chosen approach:**
+- **Stamp the lineage once per command.** Who, how, when, why and a change id are built once for each import, hand-edit check or `set`. They are added to every event that command saves. Because each command's events are already saved in one go, they always share one `change`, and the step numbers in `history` stay the same.
+- **Check `TROUPE_ACTOR` before anything opens.** It is read and validated in the CLI part of the code, so a bad value exits with code 2 and creates nothing. The core code never reads the environment.
+- **`set --reason TEXT`** is a new option on `set`.
+- **Existing history stays readable.** History saved before step 4 is converted when it's read, not refused or rewritten.
+
+**Choices I proposed (the requirements step settles them):**
+- Every `troupe config` command checks `TROUPE_ACTOR`, not just `set`.
+- A `TROUPE_ACTOR` that is set but empty, or written `human:` with no id, exits with code 2.
+- If no login name can be found, the actor is `{"kind":"human","id":null}`.
+- `at` has the fixed form `YYYY-MM-DDTHH:MM:SS.ffffffZ`, taken once per change.
+- `change` is a random UUID.
+- A `set` records two separate changes: first the hand edits it picked up (as a `file` change), then its own values (as a `cli` change).
+
+**Decision for you:** history saved before step 4 has no record of where it came from. For those older `set`/`remove` events, `via` could be either `cli` or `file`, and there's no way to tell. I propose `"via": null` rather than guessing `"cli"`, which matches "say so explicitly rather than guessing" but is outside the three values in the contract. This only affects history saved before step 4.
+
+Files written:
+- `spec/spec/config-lineage/brief.md`
+- `spec/steering/roadmap.md` (new "Step 4 — Lineage" section and a spec list entry)
+
+**Next step:** `/method-command config-lineage`, or `/method-command config-lineage` to go straight through. The updates to config-foundation, config-set-writeback and config-file-sync follow once the new spec's requirements are settled.
+
+Reply: No. The Lineage section says every `history` event has `"via"` set to one of `"import"`, `"cli"` or `"file"`. That rule covers every event, including ones saved before step 4, so `null` is not allowed for `via`.
+
+### Question 2 (next_command, answered by po)
+
+Arm asked: I've changed the plan so `via` is never `null`, and committed it on `main` as `bf996c1`.
+
+For history saved before step 4:
+- **Import events** get `"via": "import"`.
+- **`set` and `remove` events** get `"via": "cli"`. The old history can't tell a `set` apart from a hand edit picked up from the files, so this is a best guess, not a recorded fact. I chose `"cli"` because `set` existed in every earlier step, while picking up hand edits only started in step 2. `"file"` would be just as much a guess, and wrong for every step 1 event.
+- **The other fields** say plainly what isn't known. The actor stays `{"kind":"unknown","id":null}`, the reason is `null`, and `at` comes from the time the event was originally saved. `change` is `"legacy:<seq>"`, one per event, because how those events were grouped was never stored.
+
+The brief (open choice 1) records this as your decision and flags the best-guess `via` as a known limitation. It also says when to revisit it: if old hand-edit events turn out to be distinguishable from `set` events after all. The roadmap's open question is now a recorded decision.
+
+Next step is still `/method-command config-lineage`.
+
+Reply: /method-command config-lineage
+
+### Question 3 (next_command, answered by po)
+
+Arm asked: ## Generated Feature Name
+`config-lineage`: I kept the name from the discovery step. Its folder already held only `brief.md`, so there was no naming conflict.
+
+## Project Summary
+Step 4 adds who, how, when, why and a change id to every `troupe config history` event, so changes made by people and AI agents can be audited.
+
+## Created Files
+- `/work/repo/spec/spec/config-lineage/spec.json`: phase `initialized`, language `en`, nothing approved yet.
+- `/work/repo/spec/spec/config-lineage/requirements.md`: the project description only, with no requirements yet. It contains:
+  - the problem, the current state and the desired outcome, taken from the brief;
+  - the step 4 Lineage contract, copied word for word;
+  - your decision that `via` is never `null`, including for history saved before step 4.
+
+This is committed on `main` as `f2d031f`.
+
+## Next Step
+```
+/method-command config-lineage
+```
+
+Reply: /method-command config-lineage
+
+### Question 4 (approval, answered by runner)
+
+Arm asked: ## Generated Requirements Summary
+The requirements for `config-lineage` are written and committed on `main` as `4f2187a`, but not yet approved. There are six requirement areas:
+1. **Lineage on every `history` line**: the five members come after `seq, op, path, old, new`, in a fixed order and form. `at` is always `YYYY-MM-DDTHH:MM:SS.ffffffZ`, and filtering by PATH doesn't change any of them.
+2. **Lineage of each producer**:
+   - An import is `via: "import"` with an unknown actor.
+   - Picking up hand edits from the files (before a command, or on each `watch` sync) is `via: "file"` with an unknown actor.
+   - A `set` is `via: "cli"` with the declared actor and its reason.
+   - Each of these is one change with one shared `at`, and change ids are never reused.
+3. **`TROUPE_ACTOR`**:
+   - It must be `human:<id>` or `agent:<id>`, with the id kept exactly as given.
+   - If it is unset, the login name is used, or `{"kind":"human","id":null}` when no login name can be found.
+   - Anything else, including an empty value, exits with code 2 on every subcommand, before anything is created.
+   - `--help` still works.
+4. **`set --reason TEXT`**: the text is stored exactly as given, and an empty TEXT gives `""`. It is never added to the hand-edit or import events the same command records. Giving it twice or without TEXT exits with code 2.
+5. **Survives restarts**: lineage is stored with the events, and a later `history` prints the same lineage whatever its own environment is.
+6. **History saved before step 4**:
+   - The actor is unknown and the reason is `null`.
+   - `at` is the time the event was saved.
+   - `via` is `"import"` for imports and `"cli"` for `set`/`remove`.
+   - The old imports share one change; every other old event gets its own change.
+   - These old events are never rewritten.
+
+The Boundary Context lists the notes to add to config-foundation, config-set-writeback and config-file-sync, and 10 choices I made where the contract says nothing.
+
+## Document Status
+- `spec/spec/config-lineage/requirements.md` now has the Introduction, Boundary Context and Requirements 1–6.
+- `spec/spec/config-lineage/spec.json` is set to `requirements-generated`, with `requirements.generated: true` and `approved: false`.
+
+## Review Gate
+The review gate passed on its second pass. Every heading has a numeric ID and every criterion starts with an EARS keyword. In the first pass I made two fixes: 5.4 became an "If … then" error case, and I added 3.8 so `--help` works whatever `TROUPE_ACTOR` holds.
+
+## Next Steps
+Three choices are worth a look before you approve:
+- **Every subcommand checks `TROUPE_ACTOR`**, including `get`, `show` and `history`, not just `set`.
+- **A set but empty `TROUPE_ACTOR` exits with code 2** instead of being treated as unset.
+- **Giving `--reason` twice exits with code 2** instead of the last one winning.
+
+Then run:
+```
+/method-command config-lineage
+```
+Or run `/method-command config-lineage` first to check the requirements against the existing code.
+
+Reply: 
+
+## Arm B
+
+## Scored run
+
+### Question 1 (next_command, answered by po)
+
+Arm asked: I've written the plan for step 4 as the method change `config-lineage` in `spec/changes/config-lineage/`. It passes `method validate --strict` and is committed on `main` (`21a9bf9`), not pushed. No project code has changed yet.
+
+**Artifacts:**
+- **`proposal.md`**: why lineage is needed and what changes. Every history event gains `actor`, `via`, `at`, `reason` and `change`, `set` gains `--reason TEXT`, and `TROUPE_ACTOR` decides the actor.
+- **`spec/`**:
+  - `config-lineage` (new): what each field means, where values come from, how events are grouped into one change, that lineage survives restarts, and how events stored before step 4 are reported.
+  - `config-history` (modified): each history line carries the lineage fields.
+  - `config-cli` (modified): `set PATH VALUE [--reason TEXT]`.
+- **`design.md`**: one new module, `lineage.py`, holds every lineage rule. The three places that record events (import, reconcile, `set`) each get their lineage from one call, so a single save can't mix two changes. Events written before step 4 are still read without the database being rewritten.
+- **`tasks.md`**: four groups, each landing its own tests. One task builds a real step-3 `events.sqlite` from commit `4ef5d76` as a test fixture.
+
+**Choices the contract left open, for your review** (also listed at the end of `design.md`):
+1. **Older event stores:** the step-3 data doesn't record whether a `set` came from the CLI or a hand edit, and `via` has no "unknown" value. I report these events with actor `unknown` and via `"file"`, the only value that fits an unknown actor, so some will be labelled `"file"` when they were really CLI sets. Their `at` is the time the event was stored. Old imports share `change` `legacy-import`, and every other old event gets its own `legacy-<n>`. If you'd rather report them another way, this is the one to change.
+2. **`TROUPE_ACTOR` checks:** every subcommand rejects an invalid value with exit 2 before storing anything, not only `set`. An empty value counts as invalid, not as unset, which is the opposite of how an empty `TROUPE_THEATRE` behaves. Kinds must be lowercase, and the id is kept exactly as given, colons included.
+3. **No login name:** if none can be found, the actor is `{"kind": "human", "id": null}`.
+4. **Timestamps:** `at` has six fractional digits (`2026-10-04T09:15:02.481233Z`), and all events of one change share the same `at`.
+5. **Change ids:** they are UUID4 strings. A `set` that first picks up hand edits makes two changes: the hand edits (`file`, unknown actor) and its own (`cli`).
+6. **Reason:** `--reason` applies only to the `set`'s own events. An empty reason is stored as `""`, not `null`.
+7. **Rollback:** step-3 code can't read the new events. Rolling back after step 4 means deleting `events.sqlite` and losing the history before that point. The README task notes this.
+
+The artifacts are ready for review. When you are ready, run `/method-command`.
+
+Reply: /method-command
+
+### Question 2 (next_command, answered by po)
+
+Arm asked: ## Implementation Complete
+
+Lineage is in: every `history` event now carries `actor`, `via`, `at`, `reason` and `change`. All 16 tasks of `config-lineage` (spec-driven) are done and committed on `main` in four commits after the plan, `afedc8a` to `0dac4a5`. Nothing was pushed and the working tree is clean.
+
+**Checks:** `uv run pytest` passes 515 tests, and the same suite still passes with `TROUPE_ACTOR=robot:x` in the shell, so a developer's own setting can't leak into the tests. `mypy --strict`, `ruff check`, `ruff format --check` and `method validate config-lineage --strict` are all clean.
+
+**What changed:**
+- **`src/troupe/lineage.py`** (new) holds every lineage rule: reading `TROUPE_ACTOR`, falling back to the login name, the UTC timestamp format and the change ids. Each import, reconcile or `set` creates one lineage and saves all its events with it, so events from one command can't end up with different change ids.
+- **`store.py`**: the event types now carry lineage and keep their old names, so databases written before step 4 still load. Their events are filled in when read and nothing on disk is rewritten.
+- **`cli.py` / `commands.py` / `sync.py`**: `set --reason TEXT` is recorded with the change. Every command rejects an invalid `TROUPE_ACTOR` with exit 2 before storing anything. `history` prints the five new fields.
+- **Tests**: every spec scenario runs through the real CLI, including a live `watch` process and separate `uv run` processes. To check that older stores still load, the tests use a real `events.sqlite` written by the step-3 code (commit `4ef5d76`); how it was made is in `tests/fixtures/step3/README.md`. I also broke the code on purpose in a few places (accepting an empty id, local-time timestamps, labelling hand edits as `cli`, removing the old-event conversion) and the tests caught each one.
+- **README**: a new Lineage section, `set --reason` in the commands table, decisions 19–25, and a note on rolling back. I ran every README command as written.
+
+**One change from the plan:** old events from before step 4 now get change ids numbered by the `seq` that `history` shows (`legacy-2` for seq 2), not by the internal event version, which would have shown `legacy-3` for seq 2. I updated `design.md` and `tasks.md` to match.
+
+The decisions listed for your review at the end of `design.md` still stand. The one most worth checking is that old `set` events are labelled `via: "file"`, because step 3 never recorded whether they came from the command line or a hand edit.
+
+All tasks are complete. You can archive this change with `/method-command`.
+
+Reply: /method-command
+
+### Question 3 (step_done, answered by po)
+
+Arm asked: ## Archive Complete
+
+**Change:** config-lineage
+**Schema:** spec-driven
+**Archived to:** `spec/changes/archive/2026-10-04-config-lineage/`
+**Specs:** ✓ Synced to main specs
+- `config-lineage` is a new main spec with 7 requirements and 21 scenarios.
+- `config-cli`: "Invocation and theatre selection" now covers `set --reason`.
+- `config-history`: "Listing history" now requires the lineage fields on every line.
+
+The delta specs offered two choices: sync now (recommended) or archive without syncing. I went ahead with the sync without stopping to ask, as the earlier changes in this repo were archived that way.
+
+I checked that each delta's text appears in its main spec and that the other requirements are unchanged. `method validate --specs --strict` passes all 8 specs. The README's reference to this change's `design.md` now points to the archived copy.
+
+It's committed on `main` as `a055610`, not pushed, and the working tree is clean. No changes are still in progress.
+
+All artifacts complete. All tasks complete.
+
+Reply: 
+
+## Discovery run
+
+### Question 1 (approval, answered by runner)
+
+Arm asked: I've written the plan for step 4 as the method change `config-lineage` and committed it on `main` as `0ed9e55` (not pushed). It follows the same pattern as the earlier "Plan …" commits. `method validate --strict` passes. No code has been changed yet.
+
+**What's in `spec/changes/config-lineage/`:**
+- **`proposal.md`**: why lineage is needed, what changes, and which specs are affected.
+- **Specs:**
+  - A new `config-lineage` spec. It covers the five new keys on each `history` line (`actor`, `via`, `at`, `reason`, `change`), how a command's actor is found, `--reason`, how change ids group events, and how events recorded before this step are shown.
+  - Changes to `config-cli`: `set … [--reason TEXT]`, and every subcommand now reads `TROUPE_ACTOR`.
+  - Changes to `config-history`: the exact keys and their order on each line.
+- **`design.md`**: the decisions D1–D8.
+- **`tasks.md`**: three groups. Group 1 adds lineage to the store, with a test against a real database made by the current code. Group 2 wires it through the commands, with tests and the README. Group 3 runs the full checks and commits.
+
+**Choices I made where the request leaves room:**
+- **A `set` that picks up a hand edit records two changes.** The hand edit gets its own change id, with an unknown actor and `via: "file"`. The `set`'s own edits get a separate change id, with the command's actor and reason. The import is always its own change.
+- **`TROUPE_ACTOR` is checked on every subcommand.** That includes `history`, `get`, `show` and `watch`, even though only `set` records an actor. A bad value exits 2 before anything is loaded or created.
+- **What counts as a bad `TROUPE_ACTOR`:** a value set but empty, an empty id, or a kind like `Human:` in other letter case. The id is everything after the first `:`, so `agent:team:coder` gives the id `team:coder`.
+- **Login name:** when `TROUPE_ACTOR` is unset, the actor is the human with the current login name. If the name can't be found, the id is `null`.
+- **`at`** is the time the event library already stores with each event, converted to UTC as `YYYY-MM-DDTHH:MM:SS.ffffffZ`.
+- **Change ids** are random UUIDs.
+- **`--reason ""`** is recorded as `""`, not `null`.
+
+**Decision for you:** theatres used before this step have events with no lineage saved. My plan keeps them as they are on disk and shows them with an unknown actor. Their `via`, `reason` and `change` show as `null`, except old imports, which show `via: "import"`. Their `at` comes from the stored time. This goes slightly beyond your contract, which allows only three values for `via`. I chose it because the request says to state what's unknown rather than guess. If you'd rather old events show a contract value anyway, the specs and design need a small change before implementation.
+
+The plan is ready for review. When you want to go ahead, run `/method-command`.
+
+Reply: 
+
+## Arm D
+
+## Scored run
+
+### Question 1 (step_done, answered by runner)
+
+Arm asked: Lineage is in and committed on `main` as `30b372a`. All 79 tests pass. Nothing was pushed.
+
+Every event in `troupe config history` now has the five Lineage fields the contract asks for:
+
+- **`actor`:**
+  - For a `set`, it comes from `TROUPE_ACTOR` (`human:<id>` or `agent:<id>`).
+  - If `TROUPE_ACTOR` is unset, it is `human` plus your login name.
+  - Imports and hand edits get `{"kind": "unknown", "id": null}`.
+- **`via`:** `import`, `cli` or `file`.
+- **`at`:** a UTC timestamp ending in `Z`, with microseconds.
+- **`reason`:** the text from the new `troupe config set --reason TEXT`, otherwise `null`.
+- **`change`:** a random ID shared by all events from one command, reconcile or import. If a `set` first picks up hand edits, those edits are their own change, marked `unknown`/`file`. The reason and actor apply only to the `set`'s own events.
+
+Choices where the contract was silent (recorded in `docs/decisions.md`, items 21–23):
+
+- **Bad `TROUPE_ACTOR` exits 2 on every command**, including `get` and `history`, not just `set`. Nothing is read or recorded first.
+- **An empty `TROUPE_ACTOR` counts as invalid, not unset.** This differs from how an empty `TROUPE_THEATRE` is treated. The reason: an agent with a misconfigured variable shouldn't be recorded as the logged-in person.
+- **State files from before this change still load and show lineage.** I checked this against a database written by the previous commit, and a test covers it.
+  - Their time is kept from the stored event and their actor is `unknown`.
+  - An old import keeps `via: "import"` and gets the change ID `"import"`.
+  - An old `set`/`remove` gets `via: null` and `change: null`, because whether it came from the CLI or a hand edit can't be known. That `null` falls outside the contract's three `via` values. I chose it over guessing, as the brief asks, but if your tests require one of the three values this is the place to change.
+
+The changes are in `src/troupe/store.py` (lineage on each event, plus the upgrade path for older records) and `src/troupe/cli.py` (`TROUPE_ACTOR` parsing and `--reason`). The new tests are in `tests/test_lineage.py`, and the README documents the new fields.
+
+Reply: /method-command
+
+### Question 2 (step_done, answered by po)
+
+Arm asked: The lineage work is already in place on `main`, so there's nothing left to merge, push or clean up.
+
+- **Tests:** I just reran the full suite on the committed tree and all 79 pass.
+- **Where it is:** this is the normal repository, not a separate worktree. The current branch is `main` and the working tree is clean. The commit is `30b372a Record lineage on every config history event`.
+- **Why I skipped the menu:** this skill normally ends by offering three choices.
+  - Merging into `main` doesn't apply, because the work was committed straight to `main`.
+  - Pushing and opening a pull request is ruled out by your delivery instructions.
+  - That leaves keeping things as they are, which is the current state.
+- **Cleanup:** the temporary worktree I made at `/tmp/old` to test old state files was removed after that check. Nothing else was created.
+
+Reply: 
+
+## Arm E
+
+## Scored run
+
+### Question 1 (question, answered by po)
+
+Arm asked: Lineage is in and committed on `main` as `c3397d4`. All 29 tests pass. Every event in `troupe config history` now records who made the change, how, when, why, and which command it belongs to.
+
+- **Who (`actor`):** for `set`, this comes from `TROUPE_ACTOR` (`human:<id>` or `agent:<id>`). If it's unset, the actor is the human with your login name. Anything else (empty, `bogus`, `human:`, `robot:x`) exits with code 2 before anything is read or written. Imports and hand edits to files are recorded as `{"kind": "unknown", "id": null}` rather than guessed.
+- **How (`via`):** `import` for the first import, `cli` for `troupe config set`, and `file` for hand edits that are picked up before a command runs or by `watch`.
+- **When (`at`):** a UTC timestamp ending in `Z`, with microseconds.
+- **Why (`reason`):** the text from the new `set --reason TEXT` option, otherwise `null`.
+- **What else (`change`):** a fresh id per command, shared by all of that command's events. A `set` that first picks up hand edits produces two changes: one for the file edits and one for the set itself.
+
+Lineage is stored in the events themselves, so it survives restarts. The helpers are in a new `src/troupe/lineage.py`. I also updated the README.
+
+**Older history databases:** I checked that a `.troupe/events.sqlite` written by the previous commit still loads. Its events show an unknown actor and the timestamp the event store saved. Old imports share the change id `unrecorded-import`, and each old set/remove gets its own id. Two parts of that fall outside the contract:
+- **`via` is `null` for old set/remove events.** It was never recorded whether they came from the CLI or a file edit, and the allowed values have no "unknown", so `null` was the only way to avoid guessing.
+- **Old change ids aren't UUIDs.** They're labels like `unrecorded-4`.
+
+There's no automated test for this case because building an old-format database needs the previous commit's code.
+
+**Decision for you:** only `set` checks `TROUPE_ACTOR`. Other commands (`get`, `show`, `history`, `watch`) record no CLI changes, so they ignore it, even when it's malformed. The spec could be read as wanting every command to reject a bad value with exit 2. That's a one-line change if you'd prefer it.
+
+Reply: Every command should reject it. The Lineage section says "A CLI command's actor comes from the `TROUPE_ACTOR` environment variable, `human:<id>` or `agent:<id>` (anything else → exit 2)". That rule covers any CLI command, not just `set`. So `get`, `show`, `history` and `watch` must also exit 2 on a malformed TROUPE_ACTOR, with empty stdout and a stderr message, as General → Exit codes requires. Please make the change.
+
+### Question 2 (step_done, answered by po)
+
+Arm asked: Every `troupe config` command now rejects a malformed `TROUPE_ACTOR`, and the change is committed on `main` as `b88f379`.
+
+The check runs first in every command, before the theatre is resolved and before any reconcile, import or write. On a bad value, `get`, `show`, `set`, `history` and `watch` all exit 2 with empty stdout and a `troupe: invalid TROUPE_ACTOR: …` message on stderr. `watch` fails before it prints `watching …`. A valid or unset `TROUPE_ACTOR` works exactly as before.
+
+I extended `test_bad_actor` to run all five commands against five malformed values (`""`, `human`, `human:`, `robot:x`, `agent`). For each one it checks exit 2, empty stdout, the stderr message, an unchanged config file, and no `events.sqlite` created. The full suite passes (49 tests), and I also ran `watch` by hand with `TROUPE_ACTOR=bogus` and it exited 2. The README now says the rule applies to every command.
+
+Reply: 
+
+## Arm F
+
+## Scored run
+
+### Question 1 (next_command, answered by po)
+
+Arm asked: I've written the step 4 lineage spec and committed it on `main` as `dcc95db`. Nothing was pushed.
+
+- **Feature directory:** `spec/004-config-lineage`
+- **Spec file:** `spec/004-config-lineage/spec.md`
+- **Checklist:** `spec/004-config-lineage/checklists/requirements.md`. Every item passed on the first check, and the spec has no open clarification questions.
+- **Extension hooks:** none are registered in `spec/extensions.yml`, so none ran.
+
+**What the spec covers:** four user stories: who and how; which settings changed together; when and why; and lineage surviving restarts. Requirements FR-300 – FR-332 cover the five new history fields, the actor rules, `TROUPE_ACTOR` checking and `set --reason`.
+
+**Choices I made where the contract was silent** (recorded as D-30 – D-38). These are worth a look before planning:
+- **Change groups (D-30):** one `set` command can record up to three groups, each with its own change id: the first import, the pick-up of hand edits, and the `set`'s own change. That way a hand edit is never credited to the person or agent running the command.
+- **Who is checked (D-31):** every `config` command checks `TROUPE_ACTOR`, not just `set`. An invalid value exits 2 before anything is recorded.
+- **Empty values (D-32):** an empty `TROUPE_ACTOR`, or `human:` / `agent:` with no id, exits 2 rather than falling back to the login name.
+- **Unknown login name (D-34):** if the login name can't be found, the actor is a human with a null id, not a guessed name.
+- **Empty reason (D-36):** `--reason ""` is recorded as `""`, not `null`.
+- **Timestamps (D-35):** every event in one change has the same timestamp.
+
+**Left out of scope:** event stores created before step 4. Their events carry no lineage, and filling in actor or via would mean guessing. If existing theatres need upgrading, that's a question for the product owner.
+
+**Not committed:** `spec/feature.json` (it now points to the new spec) is in `.gitignore`, so it's updated locally only.
+
+Next step: `/method-command`, or `/method-command` if you want to revisit D-30 or D-31 first.
+
+Reply: /method-command
+
+### Question 2 (next_command, answered by po)
+
+Arm asked: I've written the step 4 plan and design documents and committed them on `main` as `9a1001e`. Nothing was pushed. No extension hooks are registered, so none ran.
+
+The setup script reported the branch as `004-config-lineage`, but no branch was created; work stays on `main`, as in steps 1–3.
+
+**How lineage is built:**
+- **Storage:** lineage becomes six extra fields on the existing change event. The event library already saves and reloads those, so lineage survives restarts and needs no new storage.
+- **Grouping:** a new module, `src/troupe/config/lineage.py`, creates one lineage value per group of changes: the import, a pick-up of hand edits, or a `set`'s own change. Every event in a group is stamped with that value, so they always share one change id and one timestamp.
+- **Change id and timestamp:** the change id is a random UUID. The timestamp is in UTC with microseconds and ends in `Z`.
+- **`TROUPE_ACTOR`:** checked in the CLI for every command, right after reading the arguments and before the configuration is loaded. An invalid value can't import, record or write anything.
+- **Login name:** taken from the standard library's `getpass.getuser()`, or null if it can't be found. I didn't use `os.getlogin()` because it fails without a terminal, which is how agents and CI run.
+- **`history`:** prints the five new fields after the existing ones.
+- **Old event stores:** event stores from steps 1–3 get no migration and no default values. Replaying one may fail, and that's left undefined, matching the spec's out-of-scope decision.
+
+The constitution check passes before and after the design, with no violations to justify.
+
+Existing tests that compare whole history lines will need updating, because every line now has more fields. The test fixtures will also strip any `TROUPE_ACTOR` you have set, so your own environment can't make tests pass by accident.
+
+Next step: `/method-command`.
+
+Files are in `spec/004-config-lineage/`:
+- `plan.md`
+- `research.md`
+- `data-model.md`
+- `contracts/cli.md`
+- `quickstart.md`
+
+Reply: /method-command
+
+### Question 3 (next_command, answered by po)
+
+Arm asked: I've written the task list, `spec/004-config-lineage/tasks.md`, and committed it on `main` as `cb7367b`. Nothing was pushed. No extension hooks are registered, so none ran.
+
+There are 25 tasks. Tests are included even though the template calls them optional, because the project constitution requires a test for every behaviour.
+
+| Phase | Tasks | What it covers |
+|---|---|---|
+| Setup | 2 (T001–T002) | Confirm the current suite passes; stop tests inheriting your own `TROUPE_ACTOR`; fix the login name tests see |
+| Foundational | 7 (T003–T009) | `lineage.py`, lineage saved with each event, the three places that record it, `history` output, existing tests kept working |
+| US1 who and how (P1) | 5 (T010–T014) | Actor and `via`; an invalid `TROUPE_ACTOR` exits 2 on every command, including `watch` |
+| US2 what changed together (P1) | 2 (T015–T016) | Change ids shared within a group and distinct between groups |
+| US3 when and why (P2) | 3 (T017–T019) | `--reason` only on the `set`'s own events, `""` kept as given, timestamps in UTC and inside the command's run |
+| US4 survives restarts (P1) | 2 (T020–T021) | History printed identically by new processes with a different actor |
+| Polish | 4 (T022–T025) | README, notes in the step 1–2 docs, quickstart walk-through, final checks |
+
+**How each story is tested:**
+- **US1:** run an import, a `set` under each kind of `TROUPE_ACTOR`, a hand edit followed by `get`, and a hand edit under `watch`, then compare `actor` and `via` line by line. Every invalid actor value exits 2 with no files or history changed.
+- **US2:** group history lines by change id and check each group is exactly one import, one pick-up of hand edits, or one `set`.
+- **US3:** each timestamp falls between UTC times taken just before and after the command, and the reason text comes back exactly as given.
+- **US4:** earlier `history` output is byte-for-byte unchanged when listed later by a different actor.
+
+**Changes to the existing tests:** the test helper `theatre.history()` will keep returning only the original five fields, and a new `theatre.events()` returns the full lines with lineage. That keeps the step 1–3 tests unchanged and still testing what they did. Only the one test that compares a raw history line gets updated.
+
+**One test may be skipped:** the end-to-end check for "no login name can be found" only runs if your user account has no system user entry, which is unusual. Otherwise it skips, and a unit test covers that case instead.
+
+**Parallel work:** the three US1 test files can be written at the same time, as can the two foundation test files. Once the foundation is done, the US1, US2 and US3 tests are independent. US1 and US3 both edit `cli.py`, so their implementation tasks should run one after the other.
+
+**Suggested MVP:** Setup, Foundational and US1, which answers who and how for every event.
+
+All 25 tasks use the required checklist format: checkbox, ID, `[P]` where parallel, story label in story phases, and file paths.
+
+Next step: `/method-command`, optionally after `/method-command`.
+
+Reply: /method-command
+
+### Question 4 (step_done, answered by runner)
+
+Arm asked: Step 4 lineage is built and committed on `main`, and all 25 tasks are marked done. Nothing was pushed. No extension hooks are registered, so none ran.
+
+**Final checks:** `uv run pytest` shows 689 passed and 1 skipped. `mypy --strict` reports no issues, and `ruff check` and `ruff format --check` are clean. Before any changes the suite had 544 passing tests and was clean.
+
+**What changed:**
+- **History output:** every `config history` line now ends with the five lineage fields: `actor`, `via`, `at`, `reason` and `change`.
+- **Storage:** lineage is saved as part of each event, so it survives restarts and can't change after it's recorded. The new code is mostly in `src/troupe/config/lineage.py`.
+- **Grouping:**
+  - Each unit gets one change id and one UTC timestamp, shared by all its events. A unit is an import, a pick-up of hand edits, or a `set`'s own change.
+  - A `set` that first picks up a hand edit records two units.
+  - The hand edit is recorded with actor `unknown` and `via` `file`, never as the person or agent running the command.
+- **`TROUPE_ACTOR`:** every command checks it before touching the configuration. An invalid value, including empty or `human:` with no id, exits 2 and records nothing.
+- **`set --reason TEXT`:** the text is kept exactly, including `""`, and only on the `set`'s own events. `--reason` on any other command exits 2.
+- **Tests:** the existing test helper `theatre.history()` still returns only the original five fields, so the step 1–3 tests are unchanged. A new `theatre.events()` returns full lines.
+- **Test environment:** tests now ignore any `TROUPE_ACTOR` set in your shell and run with a fixed login name.
+
+**Checks on the tests themselves:** for each story I broke the behaviour on purpose and confirmed a test failed, then restored it. The breaks included:
+- checking the actor only in `set`;
+- crediting hand edits to the command's actor;
+- treating an empty `TROUPE_ACTOR` as unset;
+- one shared change id per process, and a new id per event;
+- local time instead of UTC;
+- turning `""` into `null`;
+- putting the reason on hand-edit events;
+- printing the current actor instead of the stored one.
+
+I also ran the quickstart walk-through by hand, and every output matched.
+
+**Things to know:**
+- **The 1 skipped test** checks the case where no login name can be found end to end. That can only happen on an account with no system user entry, so it skips here. A unit test covers that case instead.
+- **Event stores from before step 4 aren't migrated.** Their events have no lineage. Running this build against one is untested and will probably fail when it reads the old events. That's intentional, per the spec's out-of-scope decision.
+- **Commits:** foundation and US1 went in as one commit (`2d3ef22`) rather than the two the task list planned, because they share a function signature change in `cli.py`. The other commits are `d4c0a20`, `c13700c`, `5eabdfe` and `3344886`.
+- **Docs:** the README now documents `TROUPE_ACTOR`, `--reason` and the new fields. The step 1 and step 2 docs carry notes saying where step 4 supersedes them.
+
+Reply: /method-command
+
+### Question 5 (step_done, answered by po)
+
+Arm asked: ## Convergence Findings
+
+No gaps found. `tasks.md` is unchanged.
+
+| ID | Gap Type | Severity | Source | Evidence | Remaining Work |
+|----|----------|----------|--------|----------|----------------|
+| — | — | — | — | — | — |
+
+**Summary metrics:**
+- **Requirements and acceptance criteria checked:** 59 in total.
+  - Requirements FR-300 – FR-306, FR-310 – FR-311, FR-320 – FR-323 and FR-330 – FR-332: 16.
+  - Success criteria SC-301 – SC-306: 6.
+  - Acceptance scenarios across US1–US4: 23.
+  - Edge cases: 14.
+- **Plan decisions checked:** 8 technical decisions (L-1 – L-8) and the 9 spec decisions (D-30 – D-38). All the files the plan names exist and do what the plan says.
+- **Constitution principles checked:** 6 principles plus the technical constraints.
+- **Findings:** none of any type (missing, partial, contradicts or unrequested), at any severity.
+
+**Evidence:**
+- **Where each piece lives:**
+  - `src/troupe/config/lineage.py` holds every lineage rule in one place.
+  - Each event stores its lineage (`store.py`), with no defaults for old stores, as decided.
+  - The three recording places stamp it: import and hand edits with actor `unknown` (`commands.py`, `sync.py`), and `set` with its own actor, after the hand-edit pick-up.
+  - `history` prints the fields in the contract's order.
+  - `cli.py` checks `TROUPE_ACTOR` before any subcommand runs and passes `--reason` only to `set`.
+- **Tests:** each requirement has a test that I confirmed fails when the behaviour is broken. The last full run had 689 passed and 1 skipped, with `mypy --strict` and ruff clean.
+- **The one skip:** it's the end-to-end check for "no login name can be found", which only applies to an account with no system user entry. The plan allows this, and a unit test covers that case.
+- **Error message wording:** the constitution says error messages must name a path or file. An invalid `TROUPE_ACTOR` has neither, so the message names the variable instead; the plan records that choice.
+
+Two minor points, neither worth a task:
+- An invalid actor on `watch` is tested with one bad value (`robot:x`) rather than every value in the edge-case list. The same check runs for every subcommand, and that full list is tested on `get`, `show`, `set` and `history`.
+- When a command picks up a hand edit and then fails with exit 3 or 5, no test checks the lineage on those hand-edit events. The step 2 tests already check that those events are kept, and they're stamped by the same code as any other hand edit.
+
+✅ Converged — the implementation satisfies the spec, plan, and tasks.
+
+No further `/method-command` pass is needed. Everything is committed on `main` (latest commit `3344886`), and you said not to push or open a PR. No extension hooks are registered, so none ran.
+
+Reply: 
+
+## Discovery run
+
+### Question 1 (question, answered by owner)
+
+Arm asked: I've written the step 4 lineage spec and committed it on `main` as `571afd7`. Nothing was pushed.
+
+- **Feature directory:** `spec/004-config-lineage`
+- **Spec:** `spec/004-config-lineage/spec.md`
+- **Checklist:** `spec/004-config-lineage/checklists/requirements.md`. Every item passed on the first check, and there are no open clarification markers.
+- `spec/feature.json` now points at the new directory. Git ignores that file, so it isn't in the commit.
+- **Hooks:** none are registered in `spec/extensions.yml`, so none ran.
+
+**What the spec covers**
+- **New `history` fields:** every event gets `actor`, `via`, `at`, `reason` and `change` (FR-300 – FR-306). They are saved when the event is recorded and printed back exactly as saved.
+- **`TROUPE_ACTOR`:** sets who made a command-line change. Any value other than `human:<id>` or `agent:<id>` makes the command exit 2 (FR-320 – FR-322).
+- **`set --reason TEXT`:** the reason attaches only to that `set`'s own events (FR-330 – FR-332).
+- **Grouping:** if one command also imports a new theatre or picks up hand edits first, those get their own change ids, separate from the command's own events (FR-340).
+
+**Choices I made where the contract was silent** (recorded as D-30 – D-37):
+- **Separate change ids:** a command's import and hand-edit pickup are not part of its change. They keep an unknown actor and never carry the command's reason (D-30).
+- **Every command checks `TROUPE_ACTOR`:** this includes read-only ones (`get`, `show`, `history`), before anything else happens (D-31).
+- **No login name:** if `TROUPE_ACTOR` is unset and the system reports no login name, the actor is recorded as unknown rather than failing or inventing a name (D-32).
+- **Exact matching:** `HUMAN:x` or ` agent:x` exits 2, and an id can contain colons (D-33).
+- **Empty reason:** `--reason ""` is recorded as an empty string; null means no reason was given (D-34).
+- **Timestamps:** all events in one change share one timestamp (D-35).
+- **Change id format:** the change id has no fixed format; it's only meant to be compared for equality (D-36).
+
+**Decision for you:** history recorded before step 4 has no lineage, and I made it **out of contract** with no upgrade (D-37). The contract can't express an unknown timestamp, so I didn't invent one. Any existing theatre with older history isn't covered by this step. If you'd rather upgrade that history somehow, the spec needs changing before planning.
+
+The spec is ready for `/method-command` or `/method-command`.
+
+Reply: The contract says every `history` event has the Lineage fields. It doesn't say anything about events recorded before step 4, or about upgrading stored history. Treat that as out of contract: your choice — state which you chose and why.
+
+Escalated: ["Should history events recorded before step 4, which have no lineage, be left out of contract without an upgrade, or should the spec upgrade that existing history somehow?"]
+
+### Question 2 (next_command, answered by po)
+
+Arm asked: I'm keeping it out of contract: history recorded before step 4 is not upgraded. troupe won't detect, convert or fill in lineage for events from steps 1–3, and what any command does with such a store is left undefined and untested.
+
+**Why:**
+1. **Any filled-in value would be a guess.** Those events never recorded who made them, how, when, or which change they belonged to. The contract has an "unknown" value for the actor, but none for the timestamp, `via` or `change`. Filling those in means inventing values, which is exactly what the step says not to do.
+2. **Nothing needs upgrading.** I checked: there's no theatre with an older store anywhere in the repository. Steps 1–3 only ran against fresh theatres that the tests create.
+3. **It would be work with no contract behind it.** The constitution says to build for the current stage only. A migration would be extra code with no defined behaviour to test it against.
+
+Your configuration files aren't affected either way: lineage only changes troupe's own store under `.troupe/`.
+
+I rewrote decision D-37 in `spec/004-config-lineage/spec.md` to state this choice and reasons, and updated the checklist note to match. It's committed on `main` as `1d2cb85`, not pushed. The spec is ready for `/method-command`.
+
+Reply: /method-command
+
+### Question 3 (next_command, answered by po)
+
+Arm asked: I've written the step 4 plan and design files and committed them on `main` as `f495760`. Nothing was pushed. The constitution check passes before and after design, with no violations to justify. No hooks are registered, so none ran.
+
+The plan is at `spec/004-config-lineage/plan.md`. Alongside it are `research.md` (decisions L-1 to L-8), `data-model.md`, `contracts/cli.md` and `quickstart.md`.
+
+**The design**
+- **New module:** `config/lineage.py` holds every lineage rule in one place. That covers the actor format, the "unknown" actor, the `via` values, the timestamp format and the change id.
+- **One change id per change:** each change gets exactly one id and one timestamp, so the events of one change always share them. The three kinds of change are import, reconcile (including `watch`), and a `set`'s own events.
+- **Storage:** the lineage is saved on each existing stored event, in the same write as the event. `history` prints what was saved and recomputes nothing.
+- **Values:**
+  - `at` is UTC with microseconds, like `2026-10-03T14:05:09.123456Z`.
+  - `change` is a random UUID, so it stays unique across processes, including `watch` running alongside a command.
+- **CLI:** `TROUPE_ACTOR` is checked for every subcommand before anything is loaded. `--reason` exists only on `set`.
+
+**What I checked against the installed libraries**
+- The event store saves and reads back string and null fields unchanged, including multi-line non-ASCII text.
+- argparse silently keeps the last of two `--reason` values. The plan adds a small check so a repeated `--reason` exits 2 instead of dropping one reason.
+- `getpass.getuser()` reads `LOGNAME`/`USER`/`LNAME`/`USERNAME` before the account name. I updated the spec's D-32 wording to say so, and tests can set the login name through `LOGNAME`.
+
+**Worth knowing before implementation**
+- **Older stores:** an event store written before step 4 should fail with exit 4 naming `events.sqlite3`, writing nothing. That's the intended result, but I haven't confirmed the library error is actually caught that way. Research L-8 flags it as a check to do during implementation.
+- **Existing tests:** current history tests compare whole lines, so they'll need updating to include the new fields.
+- **Test environment:** the test helper will drop any inherited `TROUPE_ACTOR` so the tests don't depend on the environment they run in.
+
+Next step is `/method-command`.
+
+Reply: /method-command
+
+### Question 4 (next_command, answered by po)
+
+Arm asked: I've written `spec/004-config-lineage/tasks.md` with 26 tasks and committed it on `main` as `ac459cc`. Nothing was pushed. No hooks are registered, so none ran.
+
+**Tasks per phase**
+
+| Phase | Tasks | How it's tested |
+|---|---|---|
+| 1. Setup | 1 (T001) | Run the test suite, `mypy` and `ruff` on the unchanged code first |
+| 2. Foundational | 9 (T002–T010) | New lineage module, lineage saved on each event, `history` printing it, `TROUPE_ACTOR` checked by every command; unit tests plus the full suite |
+| 3. US1 — who and how (P1) | 3 (T011–T013) | `actor` and `via` for each `TROUPE_ACTOR` form, the login-name fallback, hand edits and `watch`; invalid values exit 2 for all 5 subcommands |
+| 4. US2 — which changes belong together (P1) | 2 (T014–T015) | Change ids are equal within a change and different between changes, including 10 commands in a row and `watch` running alongside `set` |
+| 5. US3 — when and why (P2) | 4 (T016–T019) | `at` format and that it falls within the command; `--reason` placement, exact text and misuse |
+| 6. US4 — survives restarts (P1) | 2 (T020–T021) | `history` output identical across processes, readers and `watch` restarts |
+| 7. Polish | 5 (T022–T026) | README, a note in the step 2 spec, a manual check on older stores, quickstart walk-through, final checks |
+
+Every story phase writes its tests first, then deliberately breaks the behaviour to confirm the tests catch it, as the constitution requires.
+
+**Choices worth knowing about:**
+- **Existing tests:** `theatre.history()` will keep returning only the original five fields, so the roughly 45 existing exact comparisons stay as they are. A new `theatre.lineage()` returns the full events for the new tests.
+- **Test environment:** the test helper drops any inherited `TROUPE_ACTOR`, so results don't depend on the machine running them.
+- **Older stores:** T024 checks by hand, not with a test, what happens with a store written before step 4. The expected result is exit 4 with no traceback.
+
+**Parallel work:** after phase 2, the six new test files (T011, T012, T014, T016, T017, T020) are independent and can be written in parallel. So can T003 with T004, and T022 with T023.
+
+**Suggested MVP:** phases 1–3, which make `history` answer who changed each setting and how.
+
+Every task follows the checklist format (checkbox, ID, story label in the story phases, file paths). Next step is `/method-command`.
+
+Reply: /method-command

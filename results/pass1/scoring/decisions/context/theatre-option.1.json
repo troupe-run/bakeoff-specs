@@ -1,0 +1,65 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "",
+        "input": "`<cmd> --theatre ./stage <subcommand>`",
+        "observed": false,
+        "results": {
+          "1": "accepted; uses ./stage",
+          "2": "rejected as an unknown option before the subcommand",
+          "3": "no route of this kind was considered"
+        }
+      },
+      {
+        "before": "",
+        "input": "`<cmd> <subcommand> --theatre ./stage`",
+        "observed": false,
+        "results": {
+          "1": "accepted; uses ./stage",
+          "2": "accepted; uses ./stage",
+          "3": "no route of this kind was considered"
+        }
+      },
+      {
+        "before": "",
+        "input": "`<cmd> <subcommand>` (no `--theatre`)",
+        "observed": false,
+        "results": {
+          "1": "uses the current directory (`.`)",
+          "2": "uses the current directory",
+          "3": "no route of this kind was considered"
+        }
+      }
+    ],
+    "in_practice": "With route 1, users can put the option on either side of the subcommand. Maintainers then have two places where it is defined, and they need to decide what happens if it is given in both places. With route 2, the option goes in one place only, which matches the written contract. Anyone who puts it before the subcommand gets an error and has to move it. One version of route 2 briefly accepted the option before the subcommand too, then dropped that again to stay within the contract.",
+    "stakes": "Whether people can put `--theatre` before the subcommand as well as after it decides if scripts and habits that place the option early keep working or fail. Both routes use the current directory when the option is left out.",
+    "tradeoff": "Route 1 is more forgiving for users but goes beyond the contract and has two definitions to keep in sync. Route 2 is strict and simple to maintain, but it rejects the option before the subcommand. Route 3 was never explored."
+  },
+  "plan_why": "The routes differ only in where the --theatre flag may be placed (before or after the subcommand). Both default to the current directory, so they behave the same when the flag is left out. Showing the placement difference would mean passing --theatre, which the sandbox forbids. Without the flag, every implementation gives identical results.",
+  "routes": [
+    [
+      "Both at the config level and the subcommand level, defaulting to `.`",
+      [
+        "Arm E"
+      ]
+    ],
+    [
+      "Only after the subcommand, defaulting to the current directory. One arm added it before the subcommand, then removed it",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

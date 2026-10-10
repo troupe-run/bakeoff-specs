@@ -1,0 +1,18 @@
+{
+  "kind": "divergent",
+  "question": "Wait or fail when the lock is held",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "A hung process blocking others is acceptable for small configs",
+      "route": "Block without timeout; a nested acquire in one process raises",
+      "route_no": 1
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

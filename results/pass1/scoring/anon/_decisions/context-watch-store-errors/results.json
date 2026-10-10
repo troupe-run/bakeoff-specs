@@ -1,0 +1,858 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "this is not a database, just junk text\n",
+          "path": ".troupe/events.db"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "this is not a database, just junk text\n",
+          "path": ".troupe/history.db"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "this is not a database, just junk text\n",
+          "path": ".troupe/eventstore.db"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "this is not a database, just junk text\n",
+          "path": ".troupe/events.sqlite"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "this is not a database, just junk text\n",
+          "path": ".troupe/store.db"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "this is not a database, just junk text\n",
+          "path": ".troupe/troupe.db"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "# team settings\nretry: 7\nmodel: sonnet  # default model\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# team settings\nretry: 3\nmodel: opus  # default model\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  54 bytes\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/events.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/history.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/eventstore.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/events.sqlite",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/store.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/troupe.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team settings\nretry: 7\nmodel: sonnet  # default model\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:27:52.224875Z\", \"reason\": null, \"change\": \"81120035-c2a8-4b68-9d90-81f4e0336863\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:27:52.224875Z\", \"reason\": null, \"change\": \"81120035-c2a8-4b68-9d90-81f4e0336863\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:27:52.431915Z\", \"reason\": null, \"change\": \"ef113a83-58ef-4124-ba59-2791647b2286\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:27:52.431915Z\", \"reason\": null, \"change\": \"ef113a83-58ef-4124-ba59-2791647b2286\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  54 bytes\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/events.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/history.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/eventstore.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/events.sqlite",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/store.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/troupe.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team settings\nretry: 7\nmodel: sonnet  # default model\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:28:20.859322Z\", \"reason\": null, \"change\": \"3af7d6fb-0ad4-4243-a168-26192e7863e7\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:28:20.859322Z\", \"reason\": null, \"change\": \"3af7d6fb-0ad4-4243-a168-26192e7863e7\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:28:21.068020Z\", \"reason\": null, \"change\": \"c56ab9f3-39f0-46a6-b724-2ce4818eff3d\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:28:21.068020Z\", \"reason\": null, \"change\": \"c56ab9f3-39f0-46a6-b724-2ce4818eff3d\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Report and retry like load errors",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.sqlite  4096 bytes\n.troupe/events.sqlite-shm  32768 bytes\n.troupe/events.sqlite-wal  20632 bytes\n.troupe/troupe.yml  54 bytes\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/events.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/history.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/eventstore.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/events.sqlite",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/store.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/troupe.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team settings\nretry: 7\nmodel: sonnet  # default model\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 137,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:27:57.183858Z\", \"reason\": null, \"change\": \"2cb030f5-6daf-491a-a9a6-90b4cf89b116\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:27:57.183858Z\", \"reason\": null, \"change\": \"2cb030f5-6daf-491a-a9a6-90b4cf89b116\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:27:57.602674Z\", \"reason\": null, \"change\": \"b4567745-1a06-4098-b345-3979b003a709\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:27:57.602674Z\", \"reason\": null, \"change\": \"b4567745-1a06-4098-b345-3979b003a709\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Unexpected non-load exceptions end watch through the normal error path",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  54 bytes\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/events.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/history.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/eventstore.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/events.sqlite",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/store.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/troupe.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team settings\nretry: 7\nmodel: sonnet  # default model\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 130,
+              "signal": "SIGINT",
+              "stderr": "Traceback (most recent call last):\n  File \"/work/project/.venv/bin/troupe\", line 10, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 140, in main\n    watch(theatre, given, announce=_announce, report=_report)\n  File \"/work/project/src/troupe/commands/watch.py\", line 74, in watch\n    signal.signal(sig, handler)\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/signal.py\", line 58, in signal\n    handler = _signal.signal(_enum_to_int(signalnum), _enum_to_int(handler))\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nKeyboardInterrupt\n",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:28:03.986289Z\", \"reason\": null, \"change\": \"bff7f9ba-5596-4e06-8548-265879d1d051\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:28:03.986289Z\", \"reason\": null, \"change\": \"bff7f9ba-5596-4e06-8548-265879d1d051\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:28:04.247737Z\", \"reason\": null, \"change\": \"bb53e94c-c5d8-405c-b36a-e2bb51070d61\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:28:04.247737Z\", \"reason\": null, \"change\": \"bb53e94c-c5d8-405c-b36a-e2bb51070d61\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/troupe-state.sqlite  4096 bytes\n.troupe/troupe-state.sqlite-shm  32768 bytes\n.troupe/troupe-state.sqlite-wal  20632 bytes\n.troupe/troupe.yml  54 bytes\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/events.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/history.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/eventstore.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/events.sqlite",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/store.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/troupe.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team settings\nretry: 7\nmodel: sonnet  # default model\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 137,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:28:08.895312Z\", \"reason\": null, \"change\": \"f32774b9-ec77-4f1e-86a3-19e542715b96\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:28:08.895312Z\", \"reason\": null, \"change\": \"f32774b9-ec77-4f1e-86a3-19e542715b96\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:28:08.997077Z\", \"reason\": null, \"change\": \"6689e331-2b91-4558-8c5d-0ac6ca2349d5\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:28:08.997077Z\", \"reason\": null, \"change\": \"6689e331-2b91-4558-8c5d-0ac6ca2349d5\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.lock  0 bytes\n.troupe/events.sqlite  4096 bytes\n.troupe/events.sqlite-shm  32768 bytes\n.troupe/events.sqlite-wal  20632 bytes\n.troupe/troupe.yml  54 bytes\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/events.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/history.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/eventstore.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/events.sqlite",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/store.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "hand_edit": ".troupe/troupe.db",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team settings\nretry: 7\nmodel: sonnet  # default model\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:28:15.591991Z\", \"reason\": null, \"change\": \"c8505d22-04d9-4474-b586-2dbe0b264fc1\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:28:15.591991Z\", \"reason\": null, \"change\": \"c8505d22-04d9-4474-b586-2dbe0b264fc1\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:28:15.849514Z\", \"reason\": null, \"change\": \"066fc7e2-bebe-4fd8-98b4-617b8d4949be\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:28:15.849514Z\", \"reason\": null, \"change\": \"066fc7e2-bebe-4fd8-98b4-617b8d4949be\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

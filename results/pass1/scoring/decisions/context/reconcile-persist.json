@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# troupe config\nretry: 3  # attempts\ntimeout: 30\nmodels:\n  - opus\n  - sonnet\n",
+        "input": "Edit `.troupe/troupe.yml` by hand to change `retry: 3` to `retry: 7`, then run `config set models.5 haiku` (the list has only 2 items)",
+        "observed": true,
+        "results": {
+          "1": "All four arms: exit 5, file left as hand-edited, nothing on stdout. The error wording differs by arm:\n`/theatre/.troupe/troupe.yml: models.5: not found: list index 5 is beyond the end of a list of 2 (use index 2 to append)`\n`troupe: models.5: index 5 is out of range (length 2)`\n`troupe: models.5: index 5 is out of range for models (length 2; only index 2 appends)`\n`troupe: error: models.5: index out of range (list has 2 items)`",
+          "2": "Both arms: exit 5, file left as hand-edited, nothing on stdout. The error wording differs by arm:\n`troupe: path not found: models.5 (index 5 out of range)`\n`troupe: models.5: index 5 out of range`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history` right after that failed set",
+        "observed": true,
+        "results": {
+          "1": "All four arms: exit 0. The 4 original import entries, then a new one for the hand edit:\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", ...}\nThere is no entry for the failed `models.5` set.",
+          "2": "Both arms: exit 0. Same result: the 4 imports, then\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 7, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", ...}\nThere is no entry for the failed set."
+        }
+      },
+      {
+        "before": "",
+        "input": "`TROUPE_ACTOR=agent:coder config set timeout 60`, then `config history`",
+        "observed": true,
+        "results": {
+          "1": "All four arms: exit 0; the file now reads:\nretry: 7  # attempts\ntimeout: 60\nIn the history, the hand edit stays as seq 5 (actor unknown, via file), followed by seq 6 `timeout` 30 -> 60, actor agent `coder`, via cli. The hand edit is not credited to the agent.",
+          "2": "Both arms: exit 0; the file now reads:\nretry: 7  # attempts\ntimeout: 60\nIn the history, the hand edit stays as seq 5 (actor unknown, via file), followed by seq 6 `timeout` 30 -> 60, actor agent `coder`, via cli. The hand edit is not credited to the agent."
+        }
+      }
+    ],
+    "in_practice": "In this run the two routes behave the same in every way except the error wording. In all six arms the hand edit is in the history, recorded as a file change by an unknown actor, and the failed command leaves no entry of its own. The run can't tell whether the failing `set` saved the hand-edit entry or whether the following `config history` call recorded it when it read the file, so it neither confirms nor rules out the 'saved before the command body' claim for route 1.",
+    "stakes": "If you edit the config file by hand and your next command fails, the question is whether the history still records your edit. If it doesn't, the edit shows up later as a change with no history entry, or gets credited to the wrong command.",
+    "tradeoff": "Route 1 deliberately saves hand edits in their own write before the command runs, which is an extra save per command. Route 2 never addressed the case, yet produced the same visible history in this run."
+  },
+  "plan_why": "After the theatre is imported, troupe.yml is edited by hand (retry 3→7) and then a `config set` fails with exit 5. The two history calls show whether the reconcile event for the hand edit (via file, actor unknown) is kept even though the command failed (route 1), or is lost or recorded again by the next successful command (route 2).",
+  "routes": [
+    [
+      "Yes; saved in their own save before the command body",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

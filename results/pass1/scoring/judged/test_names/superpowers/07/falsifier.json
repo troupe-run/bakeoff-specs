@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/repo/tests/test_remote.py:216",
+    "/judge/repo/tests/test_remote.py:230-237",
+    "/judge/repo/tests/test_remote.py:44",
+    "/judge/repo/tests/test_remote.py:54",
+    "/judge/repo/tests/test_remote.py:176",
+    "/judge/repo/tests/test_remote.py:203",
+    "/judge/repo/tests/test_remote.py:110"
+  ],
+  "notes": "test_watch_ignores_remote_includes overclaims: it never changes the remote file and never checks that watch ignored anything. It only checks that a local edit was reconciled and that watch exits 0. test_remote_yaml_and_text_includes, test_schema_validation and test_mapping_form_remote_include are too vague to say what failed, and line 54's either/or assertion is weak. test_set_include_like_string_is_written_literal says less than its body checks (the --include and missing-include cases). The rest are specific and checked.",
+  "raw": "{\"score\": 2, \"evidence\": [\"/judge/repo/tests/test_remote.py:216\", \"/judge/repo/tests/test_remote.py:230-237\", \"/judge/repo/tests/test_remote.py:44\", \"/judge/repo/tests/test_remote.py:54\", \"/judge/repo/tests/test_remote.py:176\", \"/judge/repo/tests/test_remote.py:203\", \"/judge/repo/tests/test_remote.py:110\"], \"notes\": \"test_watch_ignores_remote_includes overclaims: it never changes the remote file and never checks that watch ignored anything. It only checks that a local edit was reconciled and that watch exits 0. test_remote_yaml_and_text_includes, test_schema_validation and test_mapping_form_remote_include are too vague to say what failed, and line 54's either/or assertion is weak. test_set_include_like_string_is_written_literal says less than its body checks (the --include and missing-include cases). The rest are specific and checked.\"}",
+  "score": 2,
+  "status": "ok"
+}

@@ -1,0 +1,345 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "limits.tags.2",
+          "c"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.prompt",
+          "\"new one\\nnew two\\nnew three\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.max_tokens",
+          "4096"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.notes",
+          "\"hello\\nworld\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "temperature: 0.2\r\nprompt: |\r\n  line one\r\n  line two\r\n",
+      ".troupe/notes.txt": "first note\r\nsecond note\r\n",
+      ".troupe/troupe.yml": "# team config\r\nmodel: opus  # main model\r\nlimits: {retries: 3, tags: [a, b]}\r\nagents:\r\n  coder: file:agents/coder.yaml  # shared\r\n  notes: file:notes.txt\r\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/coder.yaml",
+      ".troupe/notes.txt"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 3,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "limits.tags.2",
+                "c"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\r\nmodel: opus  # main model\r\nlimits: {retries: 3, tags: [a, b, c]}\r\nagents:\r\n  coder: file:agents/coder.yaml  # shared\r\n  notes: file:notes.txt\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.prompt",
+                "\"new one\\nnew two\\nnew three\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/agents/coder.yaml": "temperature: 0.2\r\nprompt: |\r\n  new one\r\n  new two\r\n  new three\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.max_tokens",
+                "4096"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\r\nmodel: opus  # main model\r\nlimits: {retries: 3, tags: [a, b, c]}\r\nagents:\r\n  coder:  # shared\r\n    $ref: file:agents/coder.yaml\r\n    max_tokens: 4096\r\n  notes: file:notes.txt\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.notes",
+                "\"hello\\nworld\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/notes.txt": "hello\r\nworld\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus # from .troupe/troupe.yml\nlimits:\n  retries: 3 # from .troupe/troupe.yml\n  tags:\n    - a # from .troupe/troupe.yml\n    - b # from .troupe/troupe.yml\n    - c # from .troupe/troupe.yml\nagents:\n  coder:\n    temperature: 0.2 # from .troupe/agents/coder.yaml\n    prompt: | # from .troupe/agents/coder.yaml\n      new one\n      new two\n      new three\n    max_tokens: 4096 # from .troupe/troupe.yml\n  notes: \"hello\\r\\nworld\\r\\n\" # from .troupe/notes.txt\n"
+            }
+          ]
+        }
+      ],
+      "route": "Random set sequences or seeded property tests over LF/CRLF, flow, block and includes, with no new dependency",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "limits.tags.2",
+                "c"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\r\nmodel: opus  # main model\r\nlimits: {retries: 3, tags: [a, b, c]}\r\nagents:\r\n  coder: file:agents/coder.yaml  # shared\r\n  notes: file:notes.txt\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.prompt",
+                "\"new one\\nnew two\\nnew three\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/agents/coder.yaml": "temperature: 0.2\r\nprompt: |\r\n  new one\r\n  new two\r\n  new three\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.max_tokens",
+                "4096"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\r\nmodel: opus  # main model\r\nlimits: {retries: 3, tags: [a, b, c]}\r\nagents:\r\n  coder:  # shared\r\n    $ref: file:agents/coder.yaml\r\n    max_tokens: 4096\r\n  notes: file:notes.txt\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.notes",
+                "\"hello\\nworld\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/notes.txt": "hello\r\nworld\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus # from .troupe/troupe.yml\nlimits:\n  retries: 3 # from .troupe/troupe.yml\n  tags:\n    - a # from .troupe/troupe.yml\n    - b # from .troupe/troupe.yml\n    - c # from .troupe/troupe.yml\nagents:\n  coder:\n    temperature: 0.2 # from .troupe/agents/coder.yaml\n    prompt: | # from .troupe/agents/coder.yaml\n      new one\n      new two\n      new three\n    max_tokens: 4096 # from .troupe/troupe.yml\n  notes: | # from .troupe/notes.txt\n    hello\r\n    world\r\n"
+            }
+          ]
+        },
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "limits.tags.2",
+                "c"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\r\nmodel: opus  # main model\r\nlimits: {retries: 3, tags: [a, b, c]}\r\nagents:\r\n  coder: file:agents/coder.yaml  # shared\r\n  notes: file:notes.txt\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.prompt",
+                "\"new one\\nnew two\\nnew three\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/agents/coder.yaml": "temperature: 0.2\r\nprompt: |\r\n  new one\r\n  new two\r\n  new three\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.max_tokens",
+                "4096"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\r\nmodel: opus  # main model\r\nlimits: {retries: 3, tags: [a, b, c]}\r\nagents:\r\n  coder:  # shared\r\n    $ref: file:agents/coder.yaml\r\n    max_tokens: 4096\r\n  notes: file:notes.txt\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.notes",
+                "\"hello\\nworld\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/notes.txt": "hello\r\nworld\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus # from .troupe/troupe.yml\nlimits:\n  retries: 3 # from .troupe/troupe.yml\n  tags:\n    - a # from .troupe/troupe.yml\n    - b # from .troupe/troupe.yml\n    - c # from .troupe/troupe.yml\nagents:\n  coder:\n    temperature: 0.2 # from .troupe/agents/coder.yaml\n    prompt: | # from .troupe/agents/coder.yaml\n      new one\n      new two\n      new three\n    max_tokens: 4096 # from .troupe/troupe.yml\n  notes: | # from .troupe/notes.txt\n    hello\n    world\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "name: demo  # project\ntools:\n  - lint\n  - test\nagents:\n  coder: file:agents/coder.yaml\n  reviewer:\n    model: opus\n",
+        "input": "`config get agents`",
+        "observed": true,
+        "results": {
+          "1": "all four arms: exit 5, stdout empty, stderr says agents is a mapping and points to `troupe config show agents`",
+          "2": "both arms: exit 5, stdout empty, stderr says agents is a mapping and points to `troupe config show agents`"
+        }
+      },
+      {
+        "before": "tools:\n  - lint\n  - test",
+        "input": "`config set tools.5 build`",
+        "observed": true,
+        "results": {
+          "1": "all four arms: exit 5, stdout empty, file unchanged. Two arms give the list length; one also says to use index 2 to append (e.g. \"list index 5 is beyond the end of a list of 2 (use index 2 to append)\"). The other two only say index 5 is out of range.",
+          "2": "both arms: exit 5, stdout empty, file unchanged, stderr gives the list length (2). One arm adds \"only index 2 appends\"."
+        }
+      },
+      {
+        "before": "agents:\n  coder: file:agents/coder.yaml",
+        "input": "`config set agents.coder '{model: haiku}'`",
+        "observed": true,
+        "results": {
+          "1": "all four arms: exit 3, stdout empty, neither file changed. The stderr says the value comes from the included file. One arm puts coder.yaml's path at the start of the message instead of troupe.yml's.",
+          "2": "both arms: exit 3, stdout empty, neither file changed. The stderr says the value comes from coder.yaml and the command refuses to replace it."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set name '[a, {b'`",
+        "observed": true,
+        "results": {
+          "1": "all four arms: exit 2, stdout empty, file unchanged. Three arms print one line, from bare (\"troupe: invalid value: '[a, {b'\") to detailed (with line and column). One arm prints the parser's raw output over 9 lines, with ^ markers.",
+          "2": "both arms: exit 2, stdout empty, file unchanged. One line each, saying the value is invalid YAML (\"expected ',' or '}', but got '<stream end>'\"), with line and column or line only."
+        }
+      },
+      {
+        "before": "",
+        "input": "`TROUPE_ACTOR=robot:x config show`",
+        "observed": true,
+        "results": {
+          "1": "all four arms: exit 2, stdout empty, stderr says TROUPE_ACTOR must be human:<id> or agent:<id>",
+          "2": "both arms: exit 2, stdout empty, stderr says TROUPE_ACTOR must be human:<id> or agent:<id>"
+        }
+      }
+    ],
+    "in_practice": "From the outside, the routes behaved the same in these runs: same exit codes (5 for not found / wrong type, 3 for refusing to write through an include, 2 for bad input or environment), nothing on stdout and no file changed. The differences are in the stderr wording: whether it starts with \"troupe:\", how much it hints at a fix, and in one arm on route 1, a multi-line parser dump. The tests did not cover an unexpected internal error, which is where route 1 does not catch exceptions.",
+    "stakes": "Scripts and users rely on the exit code to know what went wrong, and on stdout being empty when a command fails. Both routes gave identical exit codes, and on every failure stdout was empty and no file changed. Only the error wording on stderr differed.",
+    "tradeoff": "Route 1 keeps the exit-code mapping in one place but leaves unexpected crashes uncaught. Route 2 was not described as a design, and its visible results match route 1."
+  },
+  "plan_why": "Five failures, one per error kind: wrong node kind (exit 5), list index past the end (exit 5), replacing a value that wholly comes from an include (exit 3), a malformed VALUE that may slip past the typed errors as an uncaught exception, and an invalid TROUPE_ACTOR on a command that would otherwise print YAML. These show whether each failure gets the contract's exit code with empty stdout, or gives partial output, a traceback or a different code.",
+  "routes": [
+    [
+      "Typed errors each carry an exit code and only the CLI converts them; stdout is buffered and empty on any failure",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

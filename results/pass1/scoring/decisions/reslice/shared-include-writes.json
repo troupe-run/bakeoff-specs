@@ -1,0 +1,147 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "1",
+    "Arm E": "4",
+    "Arm F": "1"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "W",
+        "why": "Wrote model: sonnet and max_tokens: 100 into the shared base.yaml with no warning. config show then gives reviewer the same values."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "R2",
+        "why": "Refused with rc 3 and the vague message 'the edited files would not read back as intended', both with and without --in-include."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "R2",
+        "why": "Refused with rc 3 and the vague message 'cannot write this change byte-surgically', both with and without --in-include."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "R1",
+        "why": "Refused with rc 3 and named the conflict ('would disturb reviewer.model' / 'reviewer.max_tokens'), even with --in-include."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "coder.model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "coder.temperature",
+          "0.3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--in-include",
+          "coder.max_tokens",
+          "100"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/base.yaml": "model: opus\ntemperature: 0.2\n",
+      ".troupe/troupe.yml": "coder: file:agents/base.yaml  # coder\nreviewer:\n  $ref: file:agents/base.yaml\n  temperature: 0.5\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/base.yaml"
+    ],
+    "why": "A file is included twice: once by coder (plain include) and once by reviewer (include with an override). The commands change an existing value through one includer, change a value the other includer overrides, and add a new key with --in-include. The final show and the printed files reveal whether each write is refused with exit 3 or lands in the shared file and changes both agents."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "writes the shared file (the other agent changes too), no warning",
+            "id": "W"
+          },
+          {
+            "description": "refuses naming the conflict (e.g. 'would disturb reviewer.model'), even with --in-include",
+            "id": "R1"
+          },
+          {
+            "description": "refuses with a vague message ('byte-surgically' / 'would not read back as intended')",
+            "id": "R2"
+          }
+        ],
+        "id": "Q1",
+        "text": "writing into a file that two agents include"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Allowed; only override writes are matched by reference so writes into a twice-included file keep working",
+      [
+        "Arm F"
+      ]
+    ],
+    [
+      "Refused at step 1, reworked at step 5 to follow the placement rules (conflicting values exit 3)",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "Refused with exit 3",
+      [
+        "Arm C",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm D"
+      ]
+    ]
+  ],
+  "sheet_id": "T66",
+  "status": "ok"
+}

@@ -1,0 +1,263 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.planner",
+          "{model: sonnet, tools: [read, grep], limits: {retries: 3}}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.limits.timeout",
+          "30"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--in-include",
+          "agents.tester.opts",
+          "{mode: strict, steps: [lint, test]}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--expand-alias",
+          "reviewer.settings.model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.tester.extra",
+          "{level: 2, tags: [a, b]}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/tester.yaml": "model: haiku\nlimits:\n   retries: 2\ntools:\n- read\n- grep\n",
+      ".troupe/troupe.yml": "# main config, 4-space indent, indented sequences\nagents:\n    coder:\n        model: opus\n        tools:\n            - read\n            - write\n    tester: file:agents/tester.yaml\ndefaults: &d\n    model: opus\n    flags:\n        - fast\nreviewer:\n    settings: *d\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/tester.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 4,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.planner",
+                "{model: sonnet, tools: [read, grep], limits: {retries: 3}}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# main config, 4-space indent, indented sequences\nagents:\n    coder:\n        model: opus\n        tools:\n            - read\n            - write\n    tester: file:agents/tester.yaml\n    planner:\n        model: sonnet\n        tools:\n            - read\n            - grep\n        limits:\n            retries: 3\ndefaults: &d\n    model: opus\n    flags:\n        - fast\nreviewer:\n    settings: *d\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.limits.timeout",
+                "30"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# main config, 4-space indent, indented sequences\nagents:\n    coder:\n        model: opus\n        tools:\n            - read\n            - write\n        limits:\n            timeout: 30\n    tester: file:agents/tester.yaml\n    planner:\n        model: sonnet\n        tools:\n            - read\n            - grep\n        limits:\n            retries: 3\ndefaults: &d\n    model: opus\n    flags:\n        - fast\nreviewer:\n    settings: *d\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--in-include",
+                "agents.tester.opts",
+                "{mode: strict, steps: [lint, test]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/agents/tester.yaml": "model: haiku\nlimits:\n   retries: 2\ntools:\n- read\n- grep\nopts:\n   mode: strict\n   steps:\n   - lint\n   - test\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--expand-alias",
+                "reviewer.settings.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# main config, 4-space indent, indented sequences\nagents:\n    coder:\n        model: opus\n        tools:\n            - read\n            - write\n        limits:\n            timeout: 30\n    tester: file:agents/tester.yaml\n    planner:\n        model: sonnet\n        tools:\n            - read\n            - grep\n        limits:\n            retries: 3\ndefaults: &d\n    model: opus\n    flags:\n        - fast\nreviewer:\n    settings:  # expanded from *d by troupe\n        model: sonnet\n        flags:\n            - fast\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.tester.extra",
+                "{level: 2, tags: [a, b]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# main config, 4-space indent, indented sequences\nagents:\n    coder:\n        model: opus\n        tools:\n            - read\n            - write\n        limits:\n            timeout: 30\n    tester:\n        $ref: file:agents/tester.yaml\n        extra:\n            level: 2\n            tags:\n                - a\n                - b\n    planner:\n        model: sonnet\n        tools:\n            - read\n            - grep\n        limits:\n            retries: 3\ndefaults: &d\n    model: opus\n    flags:\n        - fast\nreviewer:\n    settings:  # expanded from *d by troupe\n        model: sonnet\n        flags:\n            - fast\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.planner",
+                "{model: sonnet, tools: [read, grep], limits: {retries: 3}}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# main config, 4-space indent, indented sequences\nagents:\n    coder:\n        model: opus\n        tools:\n            - read\n            - write\n    tester: file:agents/tester.yaml\n    planner:\n        model: sonnet\n        tools:\n            - read\n            - grep\n        limits:\n            retries: 3\ndefaults: &d\n    model: opus\n    flags:\n        - fast\nreviewer:\n    settings: *d\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.limits.timeout",
+                "30"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# main config, 4-space indent, indented sequences\nagents:\n    coder:\n        model: opus\n        tools:\n            - read\n            - write\n        limits:\n            timeout: 30\n    tester: file:agents/tester.yaml\n    planner:\n        model: sonnet\n        tools:\n            - read\n            - grep\n        limits:\n            retries: 3\ndefaults: &d\n    model: opus\n    flags:\n        - fast\nreviewer:\n    settings: *d\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--in-include",
+                "agents.tester.opts",
+                "{mode: strict, steps: [lint, test]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/agents/tester.yaml": "model: haiku\nlimits:\n   retries: 2\ntools:\n- read\n- grep\nopts:\n   mode: strict\n   steps:\n      - lint\n      - test\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--expand-alias",
+                "reviewer.settings.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# main config, 4-space indent, indented sequences\nagents:\n    coder:\n        model: opus\n        tools:\n            - read\n            - write\n        limits:\n            timeout: 30\n    tester: file:agents/tester.yaml\n    planner:\n        model: sonnet\n        tools:\n            - read\n            - grep\n        limits:\n            retries: 3\ndefaults: &d\n    model: opus\n    flags:\n        - fast\nreviewer:\n    settings:  # expanded from *d by troupe\n        model: sonnet\n        flags:\n            - fast\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.tester.extra",
+                "{level: 2, tags: [a, b]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# main config, 4-space indent, indented sequences\nagents:\n    coder:\n        model: opus\n        tools:\n            - read\n            - write\n        limits:\n            timeout: 30\n    tester:\n        $ref: file:agents/tester.yaml\n        extra:\n            level: 2\n            tags:\n                - a\n                - b\n    planner:\n        model: sonnet\n        tools:\n            - read\n            - grep\n        limits:\n            retries: 3\ndefaults: &d\n    model: opus\n    flags:\n        - fast\nreviewer:\n    settings:  # expanded from *d by troupe\n        model: sonnet\n        flags:\n            - fast\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Detect from the file's existing nesting, defaulting to 2",
+      "route_no": 1
+    }
+  ]
+}

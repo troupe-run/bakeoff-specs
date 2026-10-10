@@ -1,0 +1,65 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "agent:\n  zeta: 1\n  model: opus\n  alpha: 2\ntools:\n  - grep\n  - sed\n  - awk",
+        "input": "`config set agent \"{temp: 0.5, model: sonnet, beta: 3}\"`, then `config history`",
+        "observed": true,
+        "results": {
+          "1": "Arms differ. Two arms: exit 0; the file now reads:\nagent:\n  model: sonnet\n  temp: 0.5\n  beta: 3\nThe history adds set agent.model (opus→sonnet), set agent.temp, set agent.beta, remove agent.zeta, remove agent.alpha.\nOne arm: exit 0; the file now reads:\nagent:\n  temp: 0.5\n  model: sonnet\n  beta: 3\nThe history adds set agent.temp, set agent.model, set agent.beta, remove agent.zeta, remove agent.alpha.",
+          "2": "Arms differ. One arm: exit 0; the file now reads:\nagent:\n  temp: 0.5\n  model: sonnet\n  beta: 3\nThe history adds set temp, set model, set beta, remove zeta, remove alpha.\nOne arm: exit 0; the file now reads:\nagent:\n  model: sonnet\n  temp: 0.5\n  beta: 3\nThe history adds set model, set temp, set beta, remove zeta, remove alpha.",
+          "3": "exit 0; the file now reads:\nagent:\n  model: sonnet\n  temp: 0.5\n  beta: 3\nThe history adds remove agent.zeta, remove agent.alpha, then set agent.model, set agent.temp, set agent.beta (removals first)."
+        }
+      },
+      {
+        "before": "tools:\n  - grep\n  - sed\n  - awk",
+        "input": "`config set tools \"[sed]\"`, then `config history`",
+        "observed": true,
+        "results": {
+          "1": "All arms: exit 0; the file now reads:\ntools:\n  - sed\nThe history adds set tools.0 (grep→sed), remove tools.1 (sed), remove tools.2 (awk).",
+          "2": "All arms: exit 0; same file. The history adds set tools.0 (grep→sed), remove tools.1 (sed), remove tools.2 (awk).",
+          "3": "exit 0; same file. The history adds remove tools.1 (sed), remove tools.2 (awk), then set tools.0 (grep→sed)."
+        }
+      },
+      {
+        "before": "",
+        "input": "repeat `config set agent \"{temp: 0.5, model: sonnet, beta: 3}\"`, then `config history`",
+        "observed": true,
+        "results": {
+          "1": "All arms: exit 0; the file is unchanged and no new events are added (the history still ends at seq 14).",
+          "2": "All arms: exit 0; the file is unchanged and no new events are added (still ends at seq 14).",
+          "3": "exit 0; the file is unchanged and no new events are added (still ends at seq 14)."
+        }
+      }
+    ],
+    "in_practice": "All routes record the same events: one per changed, added or removed leaf, and nothing for a set that changes nothing. Only the order differs. Routes 1 and 2 list new values first, then removals. Route 3 lists removals first. On routes 1 and 2 the order of the new values follows the file, and the arms wrote the keys in different orders (one keeps the old `model` position, one uses the typed order), so the history order differs between arms. List elements are tracked by position on every route: shrinking `[grep, sed, awk]` to `[sed]` is logged as \"sed removed from tools.1\", even though sed stays in the list.",
+    "stakes": "Every `config set` writes events to `config history`, and that log is how a user audits who changed what. The routes record the same events but list them in different orders: route 3 puts removals before new values, and on routes 1 and 2 the order changes from arm to arm.",
+    "tradeoff": "Route 1 promises new values first, then removals, but its arms still differ on key order. Route 2 promises no order, and its arms differed. Route 3 lists removals first, so a reader sees what was dropped before what was set."
+  },
+  "plan_why": "Two sets that each change, add and remove several leaves. Running history afterwards shows which set/remove events each set records and in what order: sets in new document order then removes (route 1), removes before sets (route 3), or some other order such as sorted or dict order (route 2).",
+  "routes": [
+    [
+      "Leaf diff of before/after; set events in new document order, then remove events in old document order",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm F"
+      ]
+    ],
+    [
+      "Leaf diff with one event per changed/new/removed leaf; order not pinned",
+      [
+        "Arm C",
+        "Arm E"
+      ]
+    ],
+    [
+      "Leaf diff; remove events in old document order before set events",
+      [
+        "Arm B"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

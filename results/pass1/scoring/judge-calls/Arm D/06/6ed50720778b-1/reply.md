@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["repo/README.md:23-27", "repo/docs/decisions.md:30-33", "repo/tests/test_aliases.py:4", "repo/tests/test_aliases.py:48", "repo/tests/test_aliases.py:180", "repo/src/troupe/writer.py:485", "repo/src/troupe/cli.py:218"], "notes": "For this step's alias and merge-key behaviour (README:23-27, decisions 30-33), test names in test_aliases.py clearly match the requirements by topic, e.g. test_expand_alias and test_recursive_alias_is_a_config_error. There are no explicit links: no requirement or decision IDs appear in tests or code, so a newcomer finds the implementation (writer.py:485, cli.py:218) only by searching."}
+```

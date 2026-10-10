@@ -1,0 +1,131 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "1",
+    "Arm C": "1",
+    "Arm D": "2",
+    "Arm E": "1",
+    "Arm F": "1"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "KEEP",
+        "why": "The comment stays at the same column when the scalar value shrinks and when the roomy flow list grows to [a, b, c]. It only shifts where there was no padding to absorb the longer value."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "DRIFT",
+        "why": "When the roomy flow list grows to [a, b, c], the old padding is kept unchanged, so the comment moves 3 columns right. Scalar values keep their column."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "name",
+          "ab"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "123456789"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tags.2",
+          "c"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "ports.2",
+          "3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "model: opus        # main model\nname: abcdefgh  # shrinks\nretry: 3   # tries\ntags: [a, b]      # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Edits values that carry end-of-line comments: a value that gets shorter, one that gets longer but stays short of the comment, one that runs into the comment, and flow lists that grow with or without room. The file shows whether each comment keeps its column or ends up one space after the value."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "the comment column is kept in every case",
+            "id": "KEEP"
+          },
+          {
+            "description": "the comment column drifts when a flow list grows",
+            "id": "DRIFT"
+          }
+        ],
+        "id": "Q1",
+        "text": "comment column when a value's length changes"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Keep its column if possible, else one space before #; also when a flow collection grows",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm C"
+      ]
+    ]
+  ],
+  "sheet_id": "T13",
+  "status": "ok"
+}

@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "repo/tests/integration/test_loading_ref.py:55",
+    "repo/tests/integration/test_loading_ref.py:168",
+    "repo/tests/integration/test_overrides_acceptance.py:170",
+    "repo/tests/integration/test_overrides_acceptance.py:198",
+    "repo/tests/integration/test_overrides_acceptance.py:281",
+    "repo/tests/integration/test_overrides_acceptance.py:372"
+  ],
+  "notes": "I checked the first 30 tests in diff order: 9 in test_loading_ref.py and 21 in test_overrides_acceptance.py. None of the names overclaims, and most state a condition and its result, which the bodies check at the level claimed: 'moved_verbatim' and 'keeps_crlf' are compared byte for byte, and 'records_set_for_changed_leaf_only' checks the exact events. Two names are weaker: 'test_quoted_ref_key_is_recognised' does not say what 'recognised' means, and 'test_multiline_include_string_conversion_is_refused' leaves out that the body also checks `--in-include` still succeeds.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"repo/tests/integration/test_loading_ref.py:55\", \"repo/tests/integration/test_loading_ref.py:168\", \"repo/tests/integration/test_overrides_acceptance.py:170\", \"repo/tests/integration/test_overrides_acceptance.py:198\", \"repo/tests/integration/test_overrides_acceptance.py:281\", \"repo/tests/integration/test_overrides_acceptance.py:372\"], \"notes\": \"I checked the first 30 tests in diff order: 9 in test_loading_ref.py and 21 in test_overrides_acceptance.py. None of the names overclaims, and most state a condition and its result, which the bodies check at the level claimed: 'moved_verbatim' and 'keeps_crlf' are compared byte for byte, and 'records_set_for_changed_leaf_only' checks the exact events. Two names are weaker: 'test_quoted_ref_key_is_recognised' does not say what 'recognised' means, and 'test_multiline_include_string_conversion_is_refused' leaves out that the body also checks `--in-include` still succeeds.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

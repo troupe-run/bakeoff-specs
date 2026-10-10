@@ -1,0 +1,81 @@
+{
+  "sha_before": "a0556104a2ad7e385c2f8e74ee16ccb759452e9b",
+  "sha_after": "9c1dfbd4658bdc0bd2b425292510e935d27b1643",
+  "head": "9c1dfbd4658bdc0bd2b425292510e935d27b1643",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "9c1dfbd4658bdc0bd2b425292510e935d27b1643",
+      "author": "Developer",
+      "subject": "Archive config-set-in-include and sync its specs into openspec/specs"
+    },
+    {
+      "sha": "351ab04d733a41e2b7859d157ebe33429435b2a2",
+      "author": "Developer",
+      "subject": "Mark config-set-in-include tasks complete after full test, type and lint run"
+    },
+    {
+      "sha": "5779127c90f1fa4d4efa36a2d0b899ae3dfd1f66",
+      "author": "Developer",
+      "subject": "Document set --in-include and the choices behind it"
+    },
+    {
+      "sha": "24fa3caaadb7f4ad24f75a152b4bee9b015be672",
+      "author": "Developer",
+      "subject": "Add set --in-include to write new keys into the shared included file"
+    },
+    {
+      "sha": "ab49293438dbd0280e77b752169502892a33a70f",
+      "author": "Developer",
+      "subject": "Archive config-include-overrides and sync its specs into openspec/specs"
+    },
+    {
+      "sha": "9b445497cbecc39028ef7c3ed0b90eb417e0346b",
+      "author": "Developer",
+      "subject": "Mark config-include-overrides tasks complete after full test, type and lint run"
+    },
+    {
+      "sha": "2c8805b4fe88488fc757c949dfbcbe9265cb7709",
+      "author": "Developer",
+      "subject": "Document mapping-form includes, overrides and where set writes"
+    },
+    {
+      "sha": "c2a9408f5436368cc6d57e78ae63efcc57ce758a",
+      "author": "Developer",
+      "subject": "Test that reconcile, watch and history follow mapping-form includes"
+    },
+    {
+      "sha": "4580f99202f6a96c51a093df8d592d5d9ed5dff1",
+      "author": "Developer",
+      "subject": "Change overridden values in the override; delete keys from every layer"
+    },
+    {
+      "sha": "282ca80a1f312a54ccb8c0c16764d45391c1254e",
+      "author": "Developer",
+      "subject": "Write new keys under an include as overrides in the including file"
+    },
+    {
+      "sha": "8b6e0abebfcad6a3c7443c238f3be745704475ed",
+      "author": "Developer",
+      "subject": "Load mapping-form includes: $ref plus overrides, deep-merged with the included content"
+    },
+    {
+      "sha": "31fa98b59f1632c7ea7db4619bc54f92bc47645c",
+      "author": "Developer",
+      "subject": "Plan set --in-include: an explicit way to put a new key in the shared file (OpenSpec change config-set-in-include)"
+    },
+    {
+      "sha": "c6efc5f6190c355b07b3f7c87e4c1b40c3afb56b",
+      "author": "Developer",
+      "subject": "Record product-owner answers and the reasons for out-of-contract override choices"
+    },
+    {
+      "sha": "deee957c648e06bdd04e4db4397cae85d4ea884a",
+      "author": "Developer",
+      "subject": "Plan include overrides: new keys under shared includes go to the including file (OpenSpec change config-include-overrides)"
+    }
+  ],
+  "diffstat": "README.md                                          | 111 ++++++++-\n .../.openspec.yaml                                 |   2 +\n .../2026-10-05-config-include-overrides/design.md  | 180 ++++++++++++++\n .../proposal.md                                    |  56 +++++\n .../specs/config-loading/spec.md                   |  65 +++++\n .../specs/config-set/spec.md                       | 224 +++++++++++++++++\n .../specs/config-show/spec.md                      |  42 ++++\n .../specs/config-sync/spec.md                      |  34 +++\n .../2026-10-05-config-include-overrides/tasks.md   |  33 +++\n .../.openspec.yaml                                 |   2 +\n .../2026-10-05-config-set-in-include/design.md     |  72 ++++++\n .../2026-10-05-config-set-in-include/proposal.md   |  36 +++\n .../specs/config-cli/spec.md                       |  36 +++\n .../specs/config-set/spec.md                       |  57 +++++\n .../2026-10-05-config-set-in-include/tasks.md      |  20 ++\n openspec/specs/config-cli/spec.md                  |   8 +-\n openspec/specs/config-loading/spec.md              |  62 +++++\n openspec/specs/config-set/spec.md                  | 208 ++++++++++++++--\n openspec/specs/config-show/spec.md                 |   7 +-\n openspec/specs/config-sync/spec.md                 |  17 +-\n src/troupe/cli.py                                  |   9 +-\n src/troupe/commands.py                             |  12 +-\n src/troupe/edit/apply.py                           | 133 ++++++++--\n src/troupe/edit/ops.py                             |  34 +++\n src/troupe/edit/plan.py                            |  56 ++++-\n src/troupe/edit/text.py                            |   7 +-\n src/troupe/loader.py                               |  40 ++-\n src/troupe/overrides.py                            |  58 +++++\n src/troupe/tree.py                                 |  14 ++\n tests/test_cli.py                                  |  19 ++\n tests/test_overrides_loading.py                    | 104 ++++++++\n tests/test_reconcile.py                            |  44 ++++\n tests/test_set_in_include.py                       | 146 +++++++++++\n tests/test_set_overrides.py                        | 268 +++++++++++++++++++++\n tests/test_set_targets.py                          |   8 +-\n tests/test_show_sources.py                         |  10 +\n tests/test_smoke.py                                |  42 ++++\n tests/test_watch.py                                |   9 +\n 38 files changed, 2204 insertions(+), 81 deletions(-)"
+}

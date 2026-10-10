@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# team config\nagents:\n  coder:\n    model: opus  # main model\n",
+        "input": "`config set agents.<1,090-char key> long-key-value` (the key is \"abcdefghij\" repeated 109 times)",
+        "observed": true,
+        "results": {
+          "1": "Both arms: exit 3, file unchanged. One arm says \"…: written value cannot be read back: … invalid YAML: … could not find expected ':' (line 5, column 1095)\". The other arm says \"…: cannot parse …/troupe.yml: could not find expected ':' at line 5; no file changed\".",
+          "2": "Three arms: exit 3, file unchanged, each with a one-line refusal: \"the result would not load (… invalid YAML (line 5, column 1093) …); not writing\", \"write refused: …: cannot write this change faithfully (… invalid YAML: while scanning a simple key)\", and \"the change … would not load back (…multi-line parser trace…); no file was changed\". One arm: exit 4, file unchanged, but stderr is only the raw multi-line YAML parser trace (\"invalid YAML: while scanning a simple key … could not find expected ':' … column 1093\"). It never says that nothing was written."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get agents.<same 1,090-char key>`",
+        "observed": true,
+        "results": {
+          "1": "Both arms: exit 5, not found. One arm adds \"(at segment '…')\", and the other adds \"(no agents.…)\".",
+          "2": "All four arms: exit 5, \"not found\" / \"path not found\"."
+        }
+      },
+      {
+        "before": "# team config\nagents:\n  coder:\n    model: opus  # main model\n",
+        "input": "`config set agents.coder.model sonnet`, then `config show agents` and `config history`",
+        "observed": true,
+        "results": {
+          "1": "Both arms: exit 0; the file now reads:\n# team config\nagents:\n  coder:\n    model: sonnet # main model\n`show` prints `coder:\\n  model: sonnet`. History has two entries: the import of opus and the set to sonnet. The failed long-key set left no entry.",
+          "2": "All four arms: exit 0; the file now reads:\n# team config\nagents:\n  coder:\n    model: sonnet # main model\n`show` and history are the same as route 1, again with no entry for the failed set."
+        }
+      }
+    ],
+    "in_practice": "Neither route ever damaged the file or added a history entry, and normal edits kept working afterwards. Route 2 is slightly less uniform. One of its runs exits with 4 instead of 3 and shows only a raw parser dump. Every other run on both routes gives a short refusal.",
+    "stakes": "YAML cannot hold a plain key longer than 1024 characters. If a user sets one, the tool must refuse cleanly rather than write a config file that no longer loads. In every run on both routes, the file was left untouched. The only differences were the exit code and how readable the error was.",
+    "tradeoff": "Route 1 adds no code and refuses the write with exit 3 in both runs. Route 2 also adds nothing, but in one run its error was a raw parser dump with a different exit code."
+  },
+  "plan_why": "Adds a new key longer than 1024 characters with `set`, then reads it back. This shows whether each implementation writes YAML its own loader can read again (`get`, `show` and `history` succeed) or leaves a file that later fails to load (exit 4).",
+  "routes": [
+    [
+      "Leave unhandled",
+      [
+        "Arm A",
+        "Arm C"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

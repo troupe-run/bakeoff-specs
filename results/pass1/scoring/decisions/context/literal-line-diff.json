@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "prompt: |  # system prompt, keep short\n    You are a coder.\n    \n    Be terse.\n(the blank line inside the block holds four spaces)",
+        "input": "`config set prompt \"You are a reviewer.\\n\\nBe terse.\\n\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads:\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n    \n    Be terse.\nOnly the changed line differs. The blank line keeps its four spaces, and the comment and the rest of the file are untouched.",
+          "2": "All five arms: exit 0; the file now reads:\nprompt: |  # system prompt, keep short\n    You are a reviewer.\n\n    Be terse.\nThe comment is kept, but the blank line loses its four spaces and is now truly empty. The stored value is the same."
+        }
+      },
+      {
+        "before": "notes: |-\n  alpha\n  beta\n# end of notes",
+        "input": "`config set notes \"alpha\\ngamma\\nbeta\"`, then `config set notes \"alpha\\ngamma\\nbeta\\n\"`",
+        "observed": true,
+        "results": {
+          "1": "Both commands exit 0. After the first, the file reads:\nnotes: |-\n  alpha\n  gamma\n  beta\n# end of notes\nAfter the second, the header becomes `notes: |` because the value now ends with a newline. The `# end of notes` comment stays.",
+          "2": "All five arms: the same as route 1. Both commands exit 0, gamma is inserted, `|-` becomes `|` after the second command, and the comment stays."
+        }
+      },
+      {
+        "before": "code: |2\n    indented first\n  normal\nafter: 1  # sentinel",
+        "input": "`config set code \"  indented first\\nchanged\\n\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 3, stderr `troupe: code: value cannot be written back faithfully`. The file is not changed.",
+          "2": "Two arms: exit 0; the block is replaced by a quoted string, and the file now reads:\ncode: \"  indented first\\nchanged\\n\"\nafter: 1  # sentinel\nThree arms: exit 0; the block stays in place, and the file now reads:\ncode: |2\n    indented first\n  changed\nafter: 1  # sentinel"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get prompt` (after the edits above)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, prints:\nYou are a reviewer.\n\nBe terse.",
+          "2": "All five arms: exit 0, the same output."
+        }
+      }
+    ],
+    "in_practice": "For ordinary edits, both routes store the same value and keep comments and the lines around the block. Route 1 also leaves unchanged lines byte-for-byte as they were, including stray whitespace. Route 2 normalises blank lines inside the block. The two routes split on a block with an explicit indent marker (`|2`): route 1 refuses the edit and leaves the file alone, and on route 2 the arms disagree (two turn the block into a quoted one-liner, three edit it in place).",
+    "stakes": "Editing a multi-line block value (a prompt, notes, code) rewrites part of the hand-written config file. What differs is whether the file keeps its exact bytes and layout, or whether a block with an explicit indent marker gets edited, refused, or turned into a one-line quoted string.",
+    "tradeoff": "Route 1 keeps the file exact but refuses some edits it can't write back safely. On route 2 every edit goes through, but whitespace gets reformatted and, depending on the arm, a `|2` block may become a quoted string."
+  },
+  "plan_why": "Edits literal blocks whose bytes a full re-render would not reproduce: a header comment, a 4-space indent in a 2-space file, a whitespace-only blank line, an explicit |2 indicator. Also inserts a middle line and changes chomping. A line diff leaves the unchanged lines' bytes alone; an unplanned rewrite may not.",
+  "routes": [
+    [
+      "Line diff with difflib so unchanged lines keep their bytes",
+      [
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 0, "evidence": ["/judge/questions.md:3-36", "/judge/questions.md:38-59", "/judge/questions.md:61-79", "/judge/transcript.md (grep for WAITING_FOR/AskUser/direct questions: 0 matches)", "/judge/others-questions.md:158-171"], "notes": "Arm X asked no real questions. Its three stops were a plan handoff, an implementation report and an archive report, answered with '/method-command', '/method-command' and an empty reply, so none of the answers could change what was built. It settled the ten open choices itself (e.g. `file:` inside fetched content resolves against the URL) and did not ask about them, whereas Arm C asked the owner about this same gap and got an 'out of contract: your choice' answer."}
+```

@@ -1,0 +1,505 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder",
+          "{model: opus}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "steps",
+          "[lint]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.reviewer",
+          "{model: haiku}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tools",
+          "{a: 1}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus  # m\n    # about temperature\n    temperature: 0.2\n    # about tokens\n    max_tokens: 100\n    # trailing comment of coder\n  reviewer: {model: haiku, temperature: 0.1}  # rv\nsteps:\n  - lint\n  # before test\n  - test\n  - deploy\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus  # m\n    # about temperature\n    # about tokens\n    # trailing comment of coder\n  reviewer: {model: haiku, temperature: 0.1}  # rv\nsteps:\n  - lint\n  # before test\n  - test\n  - deploy\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "steps",
+                "[lint]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus  # m\n    # about temperature\n    # about tokens\n    # trailing comment of coder\n  reviewer: {model: haiku, temperature: 0.1}  # rv\nsteps:\n  - lint\n  # before test\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus  # m\n    # about temperature\n    # about tokens\n    # trailing comment of coder\n  reviewer: {model: haiku}                    # rv\nsteps:\n  - lint\n  # before test\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "{a: 1}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "/theatre/.troupe/troupe.yml: tools: the value's layout cannot be written (no ',' before the entry at index 257)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    model: opus\n  reviewer:\n    model: haiku\nsteps:\n  - lint\ntools:\n  a: 1\n  b: 2\nend: 1\n"
+            }
+          ]
+        }
+      ],
+      "route": "Whole block lines (interior comments go, trailing ones stay); a flow deletion only on one line, otherwise exit 3",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus  # m\n    # about temperature\n    # about tokens\n    # trailing comment of coder\n  reviewer: {model: haiku, temperature: 0.1}  # rv\nsteps:\n  - lint\n  # before test\n  - test\n  - deploy\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "steps",
+                "[lint]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus  # m\n    # about temperature\n    # about tokens\n    # trailing comment of coder\n  reviewer: {model: haiku, temperature: 0.1}  # rv\nsteps:\n  - lint\n  # before test\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus  # m\n    # about temperature\n    # about tokens\n    # trailing comment of coder\n  reviewer: {model: haiku}                    # rv\nsteps:\n  - lint\n  # before test\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "{a: 1}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus  # m\n    # about temperature\n    # about tokens\n    # trailing comment of coder\n  reviewer: {model: haiku}                    # rv\nsteps:\n  - lint\n  # before test\n  # after list\ntools: {\n  a: 1\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    model: opus\n  reviewer:\n    model: haiku\nsteps:\n  - lint\ntools:\n  a: 1\nend: 1\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus\n    # trailing comment of coder\n  reviewer: {model: haiku, temperature: 0.1}  # rv\nsteps:\n  - lint\n  # before test\n  - test\n  - deploy\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "steps",
+                "[lint]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus\n    # trailing comment of coder\n  reviewer: {model: haiku, temperature: 0.1}  # rv\nsteps:\n  - lint\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus\n    # trailing comment of coder\n  reviewer:                                   # rv\n    model: haiku\nsteps:\n  - lint\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "{a: 1}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: cannot replace tools in /theatre/.troupe/troupe.yml: removing its old value would drop a comment\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    model: opus\n  reviewer:\n    model: haiku\nsteps:\n  - lint\ntools:\n  a: 1\n  b: 2\nend: 1\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus  # m\n    # about temperature\n    # trailing comment of coder\n  reviewer: {model: haiku, temperature: 0.1}  # rv\nsteps:\n  - lint\n  # before test\n  - test\n  - deploy\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "steps",
+                "[lint]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus  # m\n    # about temperature\n    # trailing comment of coder\n  reviewer: {model: haiku, temperature: 0.1}  # rv\nsteps:\n  - lint\n  # before test\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus  # m\n    # about temperature\n    # trailing comment of coder\n  reviewer: {model: haiku}  # rv\nsteps:\n  - lint\n  # before test\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "{a: 1}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus  # m\n    # about temperature\n    # trailing comment of coder\n  reviewer: {model: haiku}  # rv\nsteps:\n  - lint\n  # before test\n  # after list\ntools: {\n  a: 1\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    model: opus\n  reviewer:\n    model: haiku\nsteps:\n  - lint\ntools:\n  a: 1\nend: 1\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder",
+                "{model: opus}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus\n    # trailing comment of coder\n  reviewer: {model: haiku, temperature: 0.1}  # rv\nsteps:\n  - lint\n  # before test\n  - test\n  - deploy\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "steps",
+                "[lint]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus\n    # trailing comment of coder\n  reviewer: {model: haiku, temperature: 0.1}  # rv\nsteps:\n  - lint\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus\n    # trailing comment of coder\n  reviewer: {model: haiku}                    # rv\nsteps:\n  - lint\n  # after list\ntools: {\n  a: 1,  # comment a\n  b: 2\n}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools",
+                "{a: 1}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# top comment\nagents:\n  coder:\n    model: opus\n    # trailing comment of coder\n  reviewer: {model: haiku}                    # rv\nsteps:\n  - lint\n  # after list\ntools: {a: 1}\nend: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder:\n    model: opus\n  reviewer:\n    model: haiku\nsteps:\n  - lint\ntools:\n  a: 1\nend: 1\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

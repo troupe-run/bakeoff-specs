@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["/judge/transcript.md:3-10", "/judge/transcript.md:50-51", "/judge/questions.md:16-23", "/judge/questions.md:46", "/judge/questions.md:64"], "notes": "Before asking anything, the arm read the code, the specs, the archived changes and the eventsourcing upcaster source (transcript lines 3-10 and 50). The decision points in Q1 then state what was found: step-3 data has no cli-vs-file record, and `via` has no 'unknown' value. Each comes with a recommended choice and a reason. Most points only give the chosen option and its trade-off, not a full set of alternatives with consequences. Q2 and Q3 are handoffs that point back to the same reviewed decisions. So I would mostly answer on the spot, but it falls short of a single-choice menu."}
+```

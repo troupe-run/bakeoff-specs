@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# troupe config\nmodel: opus  # default model\nretry: 3\n",
+        "input": "`config set retry 5 --reason \"bump retries\"` (as human:owner)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; the file now reads:\n# troupe config\nmodel: opus  # default model\nretry: 5",
+          "2": "all five arms: exit 0, no output; the file now reads:\n# troupe config\nmodel: opus  # default model\nretry: 5"
+        }
+      },
+      {
+        "before": "# troupe config\nmodel: opus  # default model\nretry: 5\n",
+        "input": "hand edit of .troupe/troupe.yml (model changed to sonnet), then `config show` (as agent:bot)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints:\nmodel: sonnet\nretry: 5",
+          "2": "all five arms: exit 0; prints:\nmodel: sonnet\nretry: 5"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history` (as human:owner) after the set and the hand edit",
+        "observed": true,
+        "results": {
+          "1": "exit 0; four entries. Entries 1–2 are the original values, with \"via\": \"import\" and actor unknown. Entry 3 is retry 3→5 with \"via\": \"cli\", actor human/owner, reason \"bump retries\". Entry 4 is the hand edit, model opus→sonnet, with \"via\": \"file\", actor unknown, no reason. There is no separate \"source\" field.",
+          "2": "all five arms: the same as route 1. Four entries: import, import, retry 3→5 with \"via\": \"cli\" and actor human/owner, then model opus→sonnet with \"via\": \"file\" and actor unknown. There is no separate \"source\" field."
+        }
+      }
+    ],
+    "in_practice": "The two routes behave the same. On both, the history marks hand edits apart from command sets with an existing \"via\" field: \"file\" for hand edits, \"cli\" for sets, \"import\" for the starting values. A hand edit is recorded on the next command, with the actor unknown and no reason. Apart from timestamps and IDs, all six runs produced identical output.",
+    "stakes": "When a config value changes, the user needs to know whether someone set it through the command or edited the file by hand. Without that, the history can't say who changed what or how.",
+    "tradeoff": "Route 1 deliberately adds no source field and relies on \"via\"; route 2 never considered one and ends up with the same \"via\" marking. Neither adds anything beyond \"via\"."
+  },
+  "plan_why": "The examples make one `config set` (with an actor and a reason) and one hand edit of troupe.yml, run a reconciling `show`, then print `history`. That shows whether the hand-edit event is set apart from the CLI set, by a source/via field or by the actor, or whether the two look the same.",
+  "routes": [
+    [
+      "No source field",
+      [
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

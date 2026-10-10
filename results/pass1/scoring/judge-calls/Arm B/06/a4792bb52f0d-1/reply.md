@@ -1,0 +1,3 @@
+```json
+{"score": null, "status": "not_applicable", "evidence": ["/judge/questions.md:3-34", "/judge/questions.md:36-63", "/judge/questions.md:65-83", "/judge/transcript.md:36"], "notes": "Arm X asked no clarifying questions in the scored run. All three handoffs are workflow checkpoints: a plan handoff, a completion report and an archive status. The plan handoff ended with 'tell me if any should change', but the only reply was the next command, so nothing was answered or escalated and no answer could have changed what was built."}
+```

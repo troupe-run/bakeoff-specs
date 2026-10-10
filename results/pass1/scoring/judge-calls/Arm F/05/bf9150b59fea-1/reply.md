@@ -1,0 +1,3 @@
+```json
+{"score": 0, "evidence": ["/judge/questions.md:17", "/judge/questions.md:28", "/judge/questions.md:84", "/judge/questions.md:104", "/judge/questions.md:143", "/judge/questions.md:200", "/judge/others-questions.md:221"], "notes": "Every scored-run stop was a workflow handoff, and each reply was just '/method-command'. None of them changed the spec, the behaviour or a test (the spec says 'Clarification questions: none', questions.md:14). The one choice the arm offered for review, D-40 on nested includes (questions.md:17), was already settled by the contract's definition of 'the including file', as the product owner told another arm (others-questions.md:221). So it was within reach, and the answer left the build unchanged."}
+```

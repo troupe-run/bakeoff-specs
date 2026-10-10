@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\nmodel: opus  # default model\nretry: 3\nagents:\n  coder:\n    temperature: 0.2\n",
+        "input": "`config set model` (no value), as `TROUPE_ACTOR=human:owner`",
+        "observed": true,
+        "results": {
+          "1": "All five arms: exit 2, troupe.yml unchanged, a 'required: VALUE/value' error. Wording varies by arm: one arm prints `troupe config set: the following arguments are required: VALUE`, another prints `troupe: usage error: the following arguments are required: value`, and one prints the full usage block followed by `troupe config set: error: the following arguments are required: VALUE`.",
+          "2": "exit 2, troupe.yml unchanged; prints the full usage block followed by `troupe config set: error: the following arguments are required: value`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`TROUPE_ACTOR=robot:x config set model sonnet`",
+        "observed": true,
+        "results": {
+          "1": "All five arms: exit 2, nothing stored, troupe.yml unchanged. Each prints a one-line rejection, worded differently per arm, e.g. `TROUPE_ACTOR: invalid value 'robot:x': expected human:<id> or agent:<id>`",
+          "2": "exit 2, nothing stored, troupe.yml unchanged; prints `troupe: invalid TROUPE_ACTOR: 'robot:x' (expected human:<id> or agent:<id>)`"
+        }
+      },
+      {
+        "before": "",
+        "input": "then `config history` (after the two failed commands above)",
+        "observed": true,
+        "results": {
+          "1": "All five arms: exit 0. Shows exactly three entries, seq 1–3, importing model=opus, retry=3 and agents.coder.temperature=0.2 (actor unknown, via import). Nothing from the two failed commands appears.",
+          "2": "Same: exit 0, three import entries seq 1–3, nothing from the failed commands"
+        }
+      },
+      {
+        "before": "",
+        "input": "then `config set model sonnet` as `human:owner`, then `config history model`",
+        "observed": true,
+        "results": {
+          "1": "All five arms: exit 0; the file now reads:\nmodel: sonnet # default model\nretry: 3\nagents:\n  coder:\n    temperature: 0.2\nThen history for `model` shows seq 1 (import opus) and seq 4 (set opus→sonnet, actor human:owner, via cli).",
+          "2": "Identical: exit 0, same file contents, same history entries (seq 1 import, seq 4 set by human:owner)"
+        }
+      }
+    ],
+    "in_practice": "These runs don't tell the routes apart. Failed commands left no history entries on either route, and the store was first filled when the first successful command ran. The runs did not look inside the `.troupe` directory, so they don't show whether a failed command on route 2 created an empty store file there.",
+    "stakes": "The question is whether a command that fails before doing anything (missing argument, bad `TROUPE_ACTOR`) still leaves state behind, such as a history store or recorded entries. If it did, a later `config history` could show records from commands that were rejected. In these runs both routes behaved the same: failed commands left nothing visible, and they differed only in error wording.",
+    "tradeoff": "Route 1 deliberately opens the store only after config and arguments are valid; one arm reworked its sync design to do this. Route 2 never addressed the question but showed the same visible results here."
+  },
+  "plan_why": "The store file's name differs by implementation and can't be listed, so this checks it indirectly. Two commands fail argument validation (exit 2) before anything has run. If either one leaves a store, import or file change behind, the later history and set results differ: missing or duplicated import events, wrong seq numbers, or troupe.yml changed despite the refusal. A config that fails to load can't be shown, because nothing in the sandbox can repair it afterwards.",
+  "routes": [
+    [
+      "Open or create the store only after the configuration loads and arguments are valid",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

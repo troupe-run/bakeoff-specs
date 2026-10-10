@@ -1,0 +1,32 @@
+# Step 1 summary — speckit (pass1)
+
+**Outcome:** done after 1 attempt(s); interventions: none
+**Hidden tests:** 97/101 passed; new at this step 97/101 (discriminating: 97); arm flakes: 0
+**Model pin:** ok (275 transcript assistant messages)
+**Cost (estimate):** arm $82.14 · PO $0.86 · harness $0.00
+**Time:** 3595.9 s wall, 0.0 s waiting on the owner
+**Quality:** mypy 0 errors · ruff 6 (arm 0) · mutation score 0.7191011235955056 (seeded-sha256)
+**Research attempts:** {'denied_web_tools': 0, 'refused_hosts': []}
+
+## Escalations
+- none
+
+## Significant PO answers
+- none
+
+## Owner gates
+- none
+
+## Possible missed approvals (PO said `continue`, the arm used approval wording)
+- none
+
+## N.a (discovery)
+- stopped: discovery-stop (code at turn 4)
+- code check: ok
+- escalations: none
+
+## Arm violations (A5: the attempt failed; never a harness fault)
+- none
+
+## Egress refusals
+- none

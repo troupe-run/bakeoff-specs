@@ -1,0 +1,313 @@
+[
+  {
+    "decision": "Split the step-1 change into five capabilities: config-cli, config-loading, config-show, config-set and config-history",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:7 (proposal.md); questions.md:8"
+  },
+  {
+    "decision": "Use ruamel.yaml only for compose() (nodes and marks) and do scalar resolution with the project's own YAML 1.2 core-schema regexes",
+    "options": [
+      "ruamel round-trip mode",
+      "PyYAML",
+      "hand-written parser"
+    ],
+    "reason": "A spike showed ruamel's 1.2 resolver reads 2001-01-01 as a timestamp and 1_000 as an int. Round-trip mode reformats on dump. PyYAML is YAML 1.1. A hand-written parser is a large risk for no gain.",
+    "recorded_at": "repo/spec/changes/archive/2026-10-02-config-load-show-set/design.md:48-53; transcript.md:5-6"
+  },
+  {
+    "decision": "Honour explicit core tags (!!str, !!int, …); other tags, anchors and aliases fail to load with exit 4 until step 6",
+    "options": [],
+    "reason": "Out of contract, so the conservative choice",
+    "recorded_at": "design.md:49-51, design.md:166; questions.md:27"
+  },
+  {
+    "decision": "Write back with text splices on the original string, applied right to left, then verify by reloading the whole configuration from the edited in-memory texts; any mismatch exits 3 before anything is written",
+    "options": [],
+    "reason": "A safety net that allows 'emit, then re-read' to test representability; the worst case is exit 3 rather than a corrupted file",
+    "recorded_at": "design.md:55-62, design.md:142-143"
+  },
+  {
+    "decision": "Write files in place with newline='' and only when their text changed, with no temp files; compute and verify all files before writing any",
+    "options": [],
+    "reason": "The only failure left is an OS error during the write itself",
+    "recorded_at": "design.md:64-67"
+  },
+  {
+    "decision": "Apply mapping/list VALUEs as a diff against the existing node (recurse, add, delete missing keys, append, delete surplus trailing items) rather than replacing it wholesale",
+    "options": [
+      "replace the whole collection text"
+    ],
+    "reason": "Wholesale replacement would discard comments and formatting inside the collection, against the principle 'never rewrite what the user did not ask to change'",
+    "recorded_at": "design.md:69-75, design.md:161; questions.md:23"
+  },
+  {
+    "decision": "Refuse with exit 3 any change or deletion of a YAML include root, including through an ancestor path",
+    "options": [],
+    "reason": "Follows contract rule 4; conservative",
+    "recorded_at": "design.md:72-73; transcript.md:14"
+  },
+  {
+    "decision": "Quoting policy: try the preferred style, then plain → single → double. Non-strings are written plain in a canonical form (true/false, null, decimal int, repr(float), .inf/.nan)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:77-84"
+  },
+  {
+    "decision": "Multi-line strings become a literal block in block context and double-quoted in flow context",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:82-83"
+  },
+  {
+    "decision": "Detect the indent unit and sequence offset from the file's first nested block collections, defaulting to 2 / the indent unit",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:87-89; repo/src/troupe/edit/text.py:10"
+  },
+  {
+    "decision": "Place new entries after trailing comments that are indented at least as far as the entries, keeping trailing blank lines below the new entry",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:90-92"
+  },
+  {
+    "decision": "Keep an end-of-line comment's column if possible, else leave one space",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:93-94"
+  },
+  {
+    "decision": "The newline style of inserted lines comes from the file's first line break; LF-only or empty files use LF",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:95"
+  },
+  {
+    "decision": "Block-scalar chomping: keep the old indicator if it can represent the value, otherwise strip/clip/keep by trailing-newline count",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:100-101"
+  },
+  {
+    "decision": "Re-wrap folded scalars by aligning paragraphs with difflib.SequenceMatcher, pairing replaced paragraphs by position; unpaired new paragraphs wrap at the old value's longest line (default 80)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:101-104; repo/src/troupe/edit/folded.py:14"
+  },
+  {
+    "decision": "Refuse (exit 3) a folded-scalar change that would introduce a more-indented line",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:104-105"
+  },
+  {
+    "decision": "Event store: eventsourcing Application configured through its constructor env with SQLite at .troupe/events.sqlite",
+    "options": [
+      "hand-rolled JSONL log"
+    ],
+    "reason": "Keeps the process environment untouched; the constraint requires eventsourcing",
+    "recorded_at": "design.md:107-119"
+  },
+  {
+    "decision": "Use a single aggregate TheatreConfig with a fixed uuid5 id. Its Created event marks 'imported' and is hidden from history, so seq = version − 1",
+    "options": [],
+    "reason": "So it can be found without an index",
+    "recorded_at": "design.md:111-114; repo/src/troupe/store.py:24"
+  },
+  {
+    "decision": "Save all events of one command in a single save() call",
+    "options": [],
+    "reason": "Atomic in SQLite",
+    "recorded_at": "design.md:115"
+  },
+  {
+    "decision": "Open the store only after the configuration loads and the arguments are valid",
+    "options": [],
+    "reason": "A failing load creates no state",
+    "recorded_at": "design.md:116-117; questions.md:15"
+  },
+  {
+    "decision": "show and the old values in set events come from the files as they are now, not from the projection; hand edits are not reconciled into events",
+    "options": [
+      "read from the event projection"
+    ],
+    "reason": "The files are what people edit and review, so this choice cannot misreport their contents",
+    "recorded_at": "design.md:121-124; questions.md:25"
+  },
+  {
+    "decision": "Save events after the files are written",
+    "options": [
+      "save events before writing files"
+    ],
+    "reason": "The reverse order could record a change that never reached the disk; losing an event on a crash in between is acceptable for step 1",
+    "recorded_at": "design.md:128-130, design.md:146-147"
+  },
+  {
+    "decision": "A set records remove events (old document order) before set events (new document order)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "repo/spec/spec/config-history/spec.md:44-47"
+  },
+  {
+    "decision": "Testing: mostly in-process calls to troupe.cli.main with byte-exact whole-file asserts, plus a uv run subprocess smoke suite",
+    "options": [],
+    "reason": "To prove the entry point; every scenario maps to a named test",
+    "recorded_at": "design.md:132-136"
+  },
+  {
+    "decision": "A null or scalar parent is not a mapping, so set below it exits 5",
+    "options": [
+      "turn the scalar into a mapping"
+    ],
+    "reason": "",
+    "recorded_at": "design.md:156; questions.md:19"
+  },
+  {
+    "decision": "A digit segment that would need a missing intermediate created exits 5",
+    "options": [],
+    "reason": "Digit-only keys are out of contract",
+    "recorded_at": "design.md:157"
+  },
+  {
+    "decision": "An empty or comment-only config file is an empty mapping",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:158"
+  },
+  {
+    "decision": "A string VALUE starting with file: becomes an include; if the configuration then fails to load, the write is refused with exit 3",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:159-160"
+  },
+  {
+    "decision": "Import on any command whose configuration loads, before it runs; the import persists even if the command exits 3 or 5",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:162-163"
+  },
+  {
+    "decision": "history PATH with no matches prints nothing and exits 0; non-finite floats appear in JSON as YAML-style strings",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:164-165"
+  },
+  {
+    "decision": "Quote new keys that would read back as non-strings (e.g. true), using the same plain-safety rule as values; drop the as_key variant",
+    "options": [],
+    "reason": "Unquoted, the key would read back as a boolean or number instead of a string",
+    "recorded_at": "design.md:167-168; transcript.md:87; questions.md:45"
+  },
+  {
+    "decision": "Support deleting the first entry of a compact '- key: v' item by pulling the next entry up into its place, instead of refusing",
+    "options": [
+      "refuse with exit 3"
+    ],
+    "reason": "Removing up to the next entry's key keeps the column, so it can be supported",
+    "recorded_at": "design.md:169-171; transcript.md:88-89"
+  },
+  {
+    "decision": "Fill an empty value (key:) right after the ':' instead of at the parser's mark",
+    "options": [],
+    "reason": "ruamel reports the empty value's mark away from the key line, which made such sets always refuse with exit 3",
+    "recorded_at": "design.md:170-171; transcript.md:100,105"
+  },
+  {
+    "decision": "A TAB in a string value goes into single quotes rather than a double-quoted escape; the test expectation was changed to match",
+    "options": [
+      "double-quoted \"a\\tb\""
+    ],
+    "reason": "The contract's fallback order puts single before double quotes",
+    "recorded_at": "transcript.md:83; questions.md:50"
+  },
+  {
+    "decision": "Turn off line-length lint (E501) in tests/ and add conftest as a known first-party module for isort",
+    "options": [],
+    "reason": "Byte-exact before/after tables read best one scenario per line",
+    "recorded_at": "repo/pyproject.toml:36-41; transcript.md:92; questions.md:51"
+  },
+  {
+    "decision": "Ruff config: line length 110, rule set E,F,W,I,B,UP,SIM,RUF; mypy strict over src and tests",
+    "options": [],
+    "reason": "",
+    "recorded_at": "repo/pyproject.toml:30; transcript.md:34"
+  },
+  {
+    "decision": "Pin dependencies eventsourcing>=9.5,<10 and ruamel.yaml>=0.19,<0.20, with the uv_build backend and a src layout",
+    "options": [],
+    "reason": "",
+    "recorded_at": "repo/pyproject.toml:7-8; transcript.md:33-34"
+  },
+  {
+    "decision": "Make tree verification insensitive to key order (compare entry count and membership instead of ordered key lists)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:59-60"
+  },
+  {
+    "decision": "Compare text-include values in CRLF targets against a CRLF-converted expectation (to_crlf)",
+    "options": [],
+    "reason": "Verification of a text include in a CRLF file failed because the expected value was not CRLF-converted",
+    "recorded_at": "transcript.md:61-62"
+  },
+  {
+    "decision": "Remove a weak test (test_environment_is_not_required) from test_cli.py",
+    "options": [],
+    "reason": "It would pass whatever the code did",
+    "recorded_at": "transcript.md:76-77"
+  },
+  {
+    "decision": "Change the verification test to monkeypatch ops.replace directly instead of apply.prim.replace",
+    "options": [],
+    "reason": "To fix a mypy error",
+    "recorded_at": "transcript.md:94"
+  },
+  {
+    "decision": "Run the smoke tests on raw bytes rather than text=True",
+    "options": [],
+    "reason": "text=True translates \\r\\n to \\n, which is the test harness, not troupe",
+    "recorded_at": "transcript.md:108-109"
+  },
+  {
+    "decision": "Fuzz 1,500 random set sequences on LF and CRLF configs with includes, including a bare-LF check",
+    "options": [],
+    "reason": "To check that each set reads back as intended and that CRLF files never gain a bare LF",
+    "recorded_at": "transcript.md:98-104; questions.md:42"
+  },
+  {
+    "decision": "Keep the lint/type fix-up commits rather than rewrite history; do not push",
+    "options": [
+      "rewrite history"
+    ],
+    "reason": "",
+    "recorded_at": "questions.md:53"
+  },
+  {
+    "decision": "Treat the 8 plan decisions as standing and report two implementation choices (TAB quoting, test line length) to the owner for confirmation",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:49-51"
+  },
+  {
+    "decision": "Sync the five delta specs into main specs under spec/spec/ before archiving",
+    "options": [
+      "Sync now",
+      "Archive without syncing"
+    ],
+    "reason": "Safest: it only adds spec files, so nothing can be lost, and it keeps the main specs as the baseline for the implemented behaviour (fallback answer: make the safest assumption)",
+    "recorded_at": "questions.md:59-80; design.md:173-179; transcript.md:126"
+  },
+  {
+    "decision": "Archive into a date-stamped folder spec/changes/archive/2026-10-02-config-load-show-set, moving .method.yaml with it",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:129; questions.md:88"
+  },
+  {
+    "decision": "List the open-point decisions in the README, including verification-before-write as decision 10",
+    "options": [],
+    "reason": "",
+    "recorded_at": "repo/README.md:67-84"
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "tests/test_lineage.py:44",
+    "tests/test_lineage.py:53",
+    "tests/test_lineage.py:105",
+    "tests/test_lineage.py:248",
+    "tests/test_cli.py:64",
+    "tests/test_history.py:133",
+    "tests/test_lineage_legacy.py:63"
+  ],
+  "notes": "Almost every name gives the condition and the expected result, and the body asserts that claim. Examples: invalid TROUPE_ACTOR exits 2 with nothing changed or recorded, and a reconcile is its own change. There are two minor weak spots. `test_imported_event_..._a_utc_timestamp` (test_lineage.py:44) checks only the Z-suffixed format, not that the time is actually UTC. `test_set_takes_an_optional_reason...` (test_cli.py:64) never runs `set` without `--reason` and never checks that the reason is stored, so its name says less than a full spec would.",
+  "raw": "{\"score\": 3, \"evidence\": [\"tests/test_lineage.py:44\", \"tests/test_lineage.py:53\", \"tests/test_lineage.py:105\", \"tests/test_lineage.py:248\", \"tests/test_cli.py:64\", \"tests/test_history.py:133\", \"tests/test_lineage_legacy.py:63\"], \"notes\": \"Almost every name gives the condition and the expected result, and the body asserts that claim. Examples: invalid TROUPE_ACTOR exits 2 with nothing changed or recorded, and a reconcile is its own change. There are two minor weak spots. `test_imported_event_..._a_utc_timestamp` (test_lineage.py:44) checks only the Z-suffixed format, not that the time is actually UTC. `test_set_takes_an_optional_reason...` (test_cli.py:64) never runs `set` without `--reason` and never checks that the reason is stored, so its name says less than a full spec would.\"}",
+  "score": 3,
+  "status": "ok"
+}

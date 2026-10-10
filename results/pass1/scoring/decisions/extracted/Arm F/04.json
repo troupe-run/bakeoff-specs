@@ -1,0 +1,275 @@
+[
+  {
+    "decision": "Treat one `set` invocation as up to three separate change units (the import, the pick-up of hand edits, and the set's own change), each with its own change id. 'Every event one command produces' is read as the events of the command's own change.",
+    "options": [
+      "group the import/reconcile with the set's change",
+      "separate units per import/reconcile/set"
+    ],
+    "reason": "Grouping them would credit a hand edit to the CLI user; the import and reconcile were not made by the command's actor",
+    "recorded_at": "spec/004-config-lineage/spec.md D-30 (diff.patch:808); questions.md Q1 (scored run)"
+  },
+  {
+    "decision": "Every `config` subcommand (get, show, set, history, watch) checks `TROUPE_ACTOR`, not just `set`",
+    "options": [
+      "check only in set",
+      "check in every command"
+    ],
+    "reason": "The contract does not limit it to set; an agent learns of a misconfigured identity on its first command, not its first write (the conservative choice)",
+    "recorded_at": "spec/004-config-lineage/spec.md D-31 (diff.patch:814); research.md L-5"
+  },
+  {
+    "decision": "An empty `TROUPE_ACTOR` or an empty id (`human:` / `agent:`) exits 2 instead of falling back to the login name",
+    "options": [
+      "fall back to the login name",
+      "record an empty id",
+      "exit 2"
+    ],
+    "reason": "Such values are neither unset nor a valid `<kind>:<id>`",
+    "recorded_at": "spec/004-config-lineage/spec.md D-32 (diff.patch:818)"
+  },
+  {
+    "decision": "The actor id is everything after the first `:`, kept exactly with no trimming or case folding; the prefixes are case-sensitive",
+    "options": [],
+    "reason": "So an audit shows exactly what the caller declared",
+    "recorded_at": "spec/004-config-lineage/spec.md D-33, FR-320 (diff.patch:821)"
+  },
+  {
+    "decision": "If the login name cannot be found, the actor is `{kind: human, id: null}`",
+    "options": [
+      "numeric uid",
+      "\"unknown\"",
+      "null"
+    ],
+    "reason": "Say so explicitly rather than guessing",
+    "recorded_at": "spec/004-config-lineage/spec.md D-34 (diff.patch:823)"
+  },
+  {
+    "decision": "All events of one change share one `at`. Fractional seconds are allowed, and `at` is not promised to increase with seq",
+    "options": [],
+    "reason": "The events are recorded together; the contract fixes the format but not the precision",
+    "recorded_at": "spec/004-config-lineage/spec.md D-35 (diff.patch:825)"
+  },
+  {
+    "decision": "`--reason \"\"` is recorded as an empty string, not null",
+    "options": [
+      "\"\"",
+      "null"
+    ],
+    "reason": "An empty text was given, and the contract says 'the text given'",
+    "recorded_at": "spec/004-config-lineage/spec.md D-36 (diff.patch:829)"
+  },
+  {
+    "decision": "Change values are opaque; users may rely on them only for equality",
+    "options": [],
+    "reason": "The contract asks only that they identify a unit uniquely",
+    "recorded_at": "spec/004-config-lineage/spec.md D-37 (diff.patch:831)"
+  },
+  {
+    "decision": "The lineage fields follow step 1's fields in the contract's order (actor, via, at, reason, change), with actor as a nested object",
+    "options": [],
+    "reason": "Existing consumers reading by key are unaffected and lines stay readable",
+    "recorded_at": "spec/004-config-lineage/spec.md D-38; research.md L-7"
+  },
+  {
+    "decision": "Event stores recorded before step 4 are out of contract: no migration, no default values, behaviour undefined and untested",
+    "options": [
+      "upgrade or migrate old history",
+      "defaults of unknown/null",
+      "no migration"
+    ],
+    "reason": "Inferring via for old events is impossible, and defaults would print a via that might be false; Principle V says invent nothing, Principle IV says build for the current stage",
+    "recorded_at": "spec/004-config-lineage/spec.md Out of contract; research.md L-8; questions.md Q1/Q2 (scored run)"
+  },
+  {
+    "decision": "Verifying that `TROUPE_ACTOR` is truthful, and giving hand edits an actor or reason, are out of contract",
+    "options": [],
+    "reason": "TROUPE_ACTOR is a declaration, not authentication; an editor gives troupe no author",
+    "recorded_at": "spec/004-config-lineage/spec.md Out of contract (diff.patch:838)"
+  },
+  {
+    "decision": "Supersede step 2's assumption that history needs no source field, and add notes to the step 1 and step 2 docs",
+    "options": [],
+    "reason": "`via` now tells hand edits from set (Principle VI traceability)",
+    "recorded_at": "spec/002-config-file-sync/spec.md:314; spec/001-config-load-show-set/contracts/cli.md:5"
+  },
+  {
+    "decision": "`--reason` is accepted only by `set`; on any other subcommand, or without TEXT, it exits 2",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/004-config-lineage/spec.md FR-330–FR-332; contracts/cli.md"
+  },
+  {
+    "decision": "Store lineage as six extra arguments of the existing `LeafChanged` event",
+    "options": [
+      "side table keyed by seq",
+      "a second event type per unit (ChangeStarted)",
+      "extra event arguments"
+    ],
+    "reason": "One stream, one event type; lineage is as durable and atomic as the event itself. A side table means two writes that could disagree, and a second event type complicates replay",
+    "recorded_at": "research.md L-1"
+  },
+  {
+    "decision": "Create one Lineage value per unit in a new module `config/lineage.py`; `import_leaves` and `record` take one lineage and stamp every event of the call with it",
+    "options": [
+      "pass lineage per event"
+    ],
+    "reason": "Shared change and at come by construction; per-event lineage could produce a unit with mixed lineage by mistake",
+    "recorded_at": "research.md L-2; plan.md"
+  },
+  {
+    "decision": "The change id is `str(uuid.uuid4())`",
+    "options": [
+      "counter stored in the aggregate",
+      "seq of the unit's first event",
+      "timestamp-based id",
+      "UUID4"
+    ],
+    "reason": "Unique across processes without coordination, and opaque. A counter needs a read-modify-write, seq is unknown before saving, and timestamps can collide",
+    "recorded_at": "research.md L-3"
+  },
+  {
+    "decision": "`at` is taken once per unit in Lineage.begin as UTC with microseconds, formatted with strftime and ending in Z",
+    "options": [
+      "eventsourcing's per-event timestamp",
+      "isoformat()"
+    ],
+    "reason": "isoformat gives +00:00; the library timestamp differs between events of one save; microseconds keep successive units distinguishable",
+    "recorded_at": "research.md L-4"
+  },
+  {
+    "decision": "Parse `TROUPE_ACTOR` once in `cli.run`, right after parse_args and before dispatch",
+    "options": [
+      "check only in set"
+    ],
+    "reason": "Argument parsing does not touch the theatre, so nothing is loaded or written when the actor is invalid",
+    "recorded_at": "research.md L-5; src/troupe/cli.py:71"
+  },
+  {
+    "decision": "Get the login name from `getpass.getuser()`, returning None on OSError, KeyError or an empty result",
+    "options": [
+      "os.getlogin()",
+      "pwd.getpwuid(os.getuid())"
+    ],
+    "reason": "os.getlogin needs a controlling terminal and fails for agents and CI; pwd alone ignores LOGNAME",
+    "recorded_at": "research.md L-6; questions.md Q2 (scored run)"
+  },
+  {
+    "decision": "The `TROUPE_ACTOR` error names the variable and the value's repr rather than a path or file",
+    "options": [],
+    "reason": "FR-008's 'path or file' is about configuration; the actor has neither",
+    "recorded_at": "plan.md Constitution Check I (diff.patch:293); questions.md Q5"
+  },
+  {
+    "decision": "Add no new dependency; use the standard library (uuid, datetime, getpass)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "plan.md Technical Context"
+  },
+  {
+    "decision": "Begin the set's Lineage after open_theatre returns, so the import or reconcile gets its own change and at",
+    "options": [],
+    "reason": "So the import or reconcile is never credited to the command's actor (D-30)",
+    "recorded_at": "src/troupe/config/commands.py:130; tasks.md T007"
+  },
+  {
+    "decision": "Keep `theatre.history()` returning only the five step 1 fields and add `theatre.events()` for the full lines, instead of rewriting existing exact-line tests",
+    "options": [
+      "update existing whole-line tests to include lineage (as plan.md stated)",
+      "reduce helper output to core fields"
+    ],
+    "reason": "Keeps the step 1–3 tests unchanged and still proving what they proved",
+    "recorded_at": "tasks.md T009; questions.md Q3 (scored run)"
+  },
+  {
+    "decision": "The test harness drops any inherited TROUPE_ACTOR and pins LOGNAME to `troupe-tester`",
+    "options": [],
+    "reason": "So the developer's shell cannot decide a test's outcome, and the login name is known",
+    "recorded_at": "tasks.md T002; tests/conftest.py:1462"
+  },
+  {
+    "decision": "Write tests although the template calls them optional",
+    "options": [],
+    "reason": "Constitution Principle II requires a test for every behaviour",
+    "recorded_at": "tasks.md header; questions.md Q3"
+  },
+  {
+    "decision": "The end-to-end 'no login name' test skips unless the uid has no passwd entry; a unit test covers the fallback",
+    "options": [],
+    "reason": "That path only exists for an account without a system user entry",
+    "recorded_at": "tasks.md T010; tests/e2e/test_lineage_actor.py:1623"
+  },
+  {
+    "decision": "Suggested MVP is Setup + Foundational + US1; US4 is ordered after US3",
+    "options": [],
+    "reason": "Who and how is the core; US4 checks all five fields",
+    "recorded_at": "tasks.md Implementation Strategy / Organization"
+  },
+  {
+    "decision": "Commit foundation and US1 together in one commit (2d3ef22) instead of the two the task list planned",
+    "options": [
+      "two commits as planned",
+      "one combined commit"
+    ],
+    "reason": "They share a function signature change in cli.py",
+    "recorded_at": "questions.md Q4; transcript.md:71"
+  },
+  {
+    "decision": "Verify the tests by deliberately breaking behaviour (actor checked only in set, '' treated as unset, cached change id, per-event lineage, local time, '' mapped to None, reason on reconcile) and then restoring it",
+    "options": [],
+    "reason": "Constitution requires tests that fail when behaviour breaks",
+    "recorded_at": "transcript.md:64,75,78; questions.md Q4"
+  },
+  {
+    "decision": "Implement the per-event helper as a public `apply` method on TheatreConfig rather than the private `_apply` helper the task specified",
+    "options": [
+      "private _apply helper (tasks T006)"
+    ],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/config/store.py:1388)"
+  },
+  {
+    "decision": "actor_from_env loops over CLI_ACTOR_KINDS and returns the matching literal, instead of using `kind in CLI_ACTOR_KINDS`",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/config/lineage.py:1300)"
+  },
+  {
+    "decision": "Replace en-dashes ' – ' with ' to ' in lineage.py and its unit test docstrings",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:70"
+  },
+  {
+    "decision": "Extend the existing bad-command-line usage test to also assert no file change and no store created for every exit-2 case",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (tests/e2e/test_usage.py:2072)"
+  },
+  {
+    "decision": "Test invalid TROUPE_ACTOR on watch with only one value (robot:x), not the full list",
+    "options": [],
+    "reason": "The same check runs for every subcommand, and the full list is tested on get/show/set/history",
+    "recorded_at": "questions.md Q5"
+  },
+  {
+    "decision": "Leave the lineage of hand-edit events recorded before a later exit 3/5 failure without a dedicated test",
+    "options": [],
+    "reason": "Step 2 tests already check those events are kept, and they are stamped by the same code",
+    "recorded_at": "questions.md Q5"
+  },
+  {
+    "decision": "The convergence pass found no gaps and left tasks.md unchanged",
+    "options": [],
+    "reason": "All 59 requirements and criteria were checked and satisfied",
+    "recorded_at": "questions.md Q5"
+  },
+  {
+    "decision": "Discovery run: keep pre-step-4 history out of contract with no upgrade (owner's answer said the choice was the implementer's)",
+    "options": [
+      "leave out of contract",
+      "upgrade existing history"
+    ],
+    "reason": "Any filled value would be a guess; no theatre with an older store exists; a migration would be work with no contract behind it",
+    "recorded_at": "questions.md Discovery run Q1–Q2 (escalated)"
+  }
+]

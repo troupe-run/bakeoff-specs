@@ -1,0 +1,526 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "agents"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "agents.tools"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.tools"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.coder.temperature"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# team config\nagents:\n  coder:\n    model: opus  # main model\n    temperature: 0.2\n  tools: [grep, \"read file\"]\nretry: 3\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents: is a mapping, not a scalar; use `troupe config show agents` to print it\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.tools: is a list, not a scalar; use `troupe config show agents.tools` to print it\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus\n  temperature: 0.2\ntools:\n  - grep\n  - read file\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- grep\n- read file\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.temperature"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents: is a mapping, not a scalar (use `troupe config show agents`)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.tools: is a list, not a scalar (use `troupe config show agents.tools`)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus\n  temperature: 0.2\ntools:\n  - grep\n  - read file\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- grep\n- read file\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.temperature"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2\n"
+            }
+          ]
+        }
+      ],
+      "route": "Exit 5",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "/theatre/.troupe/troupe.yml: agents: is a mapping, not a value; print it with `troupe config show agents`\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "/theatre/.troupe/troupe.yml: agents.tools: is a list, not a value; print it with `troupe config show agents.tools`\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus\n  temperature: 0.2\ntools:\n  - grep\n  - read file\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- grep\n- read file\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.temperature"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents: is a mapping, not a scalar (use `troupe config show agents` to print it)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.tools: is a list, not a scalar (use `troupe config show agents.tools` to print it)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus\n  temperature: 0.2\ntools:\n  - grep\n  - read file\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- grep\n- read file\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.temperature"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents is a mapping, not a scalar; use 'troupe config show agents'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.tools is a list, not a scalar; use 'troupe config show agents.tools'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus\n  temperature: 0.2\ntools:\n  - grep\n  - read file\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- grep\n- read file\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.temperature"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: error: agents: is a mapping, not a scalar; use `troupe config show agents` to print it\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: error: agents.tools: is a list, not a scalar; use `troupe config show agents.tools` to print it\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus\n  temperature: 0.2\ntools:\n  - grep\n  - read file\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- grep\n- read file\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.temperature"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

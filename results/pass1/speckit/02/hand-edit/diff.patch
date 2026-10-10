@@ -1,0 +1,114 @@
+commit 83f5964fc4e51e5cfea6a36511d8b423955010bb
+Author:     Sam Teammate <sam.teammate@troupe.run>
+AuthorDate: Fri Oct 2 13:28:22 2026 +0000
+Commit:     Sam Teammate <sam.teammate@troupe.run>
+CommitDate: Fri Oct 2 13:28:22 2026 +0000
+
+    Let TROUPE_THEATRE set the default theatre
+
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index 71e1430..1642c07 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -1,6 +1,7 @@
+ """Command-line entry point: `troupe config show|set|history`."""
+ 
+ import argparse
++import os
+ import sys
+ from collections.abc import Sequence
+ from pathlib import Path
+@@ -9,6 +10,7 @@ from troupe.config import commands
+ from troupe.errors import TroupeError
+ 
+ PROG = "troupe"
++THEATRE_ENV = "TROUPE_THEATRE"
+ 
+ 
+ def _parser() -> argparse.ArgumentParser:
+@@ -22,8 +24,8 @@ def _parser() -> argparse.ArgumentParser:
+         sub.add_argument(
+             "--theatre",
+             type=Path,
+-            default=Path("."),
+-            help="theatre directory (default: current directory)",
++            default=None,
++            help=f"theatre directory (default: ${THEATRE_ENV}, else current directory)",
+         )
+         return sub
+ 
+@@ -40,7 +42,7 @@ def _parser() -> argparse.ArgumentParser:
+ def run(argv: Sequence[str]) -> str:
+     """Run a command and return its stdout; raises TroupeError on failure."""
+     args = _parser().parse_args(argv)
+-    theatre: Path = args.theatre
++    theatre: Path = args.theatre or Path(os.environ.get(THEATRE_ENV) or ".")
+     if args.subcommand == "show":
+         return commands.show(theatre, args.path)
+     if args.subcommand == "set":
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 607abf5..e7ea53c 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -1,6 +1,7 @@
+ """Shared fixtures: real theatres on disk, driven through the real `troupe` CLI."""
+ 
+ import json
++import os
+ import shutil
+ import subprocess
+ import sys
+@@ -38,11 +39,20 @@ class Theatre:
+             if path.is_file() and not path.name.startswith(STORE_FILENAME)
+         }
+ 
+-    def run(self, *args: str, theatre: bool = True, cwd: Path | None = None) -> "Result":
++    def run(
++        self,
++        *args: str,
++        theatre: bool = True,
++        cwd: Path | None = None,
++        env: dict[str, str] | None = None,
++    ) -> "Result":
+         argv = [*COMMAND, *args]
+         if theatre:
+             argv += ["--theatre", str(self.root)]
+-        done = subprocess.run(argv, capture_output=True, cwd=cwd or self.root, check=False)
++        environ = {k: v for k, v in os.environ.items() if k != "TROUPE_THEATRE"} | (env or {})
++        done = subprocess.run(
++            argv, capture_output=True, cwd=cwd or self.root, env=environ, check=False
++        )
+         return Result(done.returncode, done.stdout.decode("utf-8"), done.stderr.decode("utf-8"))
+ 
+     def config(self, *args: str) -> "Result":
+diff --git a/tests/e2e/test_usage.py b/tests/e2e/test_usage.py
+index 7fcfb60..101e638 100644
+--- a/tests/e2e/test_usage.py
++++ b/tests/e2e/test_usage.py
+@@ -1,5 +1,7 @@
+ """Usage errors → exit 2 with nothing on stdout."""
+ 
++from pathlib import Path
++
+ import pytest
+ 
+ from tests.conftest import Theatre, assert_failed
+@@ -51,6 +53,18 @@ def test_theatre_defaults_to_current_directory(ready: Theatre) -> None:
+     assert (result.code, result.out) == (0, "1\n")
+ 
+ 
++def test_theatre_defaults_to_environment_variable(ready: Theatre, tmp_path: Path) -> None:
++    other = Theatre(tmp_path / "other")
++    other.write("troupe.yml", "a: 2\n")
++    env = {"TROUPE_THEATRE": str(ready.root)}
++    result = ready.run("config", "show", "a", theatre=False, cwd=other.root, env=env)
++    assert (result.code, result.out) == (0, "1\n")
++    result = ready.run("config", "show", "a", "--theatre", str(other.root), theatre=False, env=env)
++    assert (result.code, result.out) == (0, "2\n")
++    result = ready.run("config", "show", "a", theatre=False, env={"TROUPE_THEATRE": ""})
++    assert (result.code, result.out) == (0, "1\n")
++
++
+ def test_negative_number_value(ready: Theatre) -> None:
+     assert ready.config("set", "a", "-3").code == 0
+     assert ready.read("troupe.yml") == "a: -3\n"

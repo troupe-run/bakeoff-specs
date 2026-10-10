@@ -1,0 +1,46 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "For nested includes, should a new key go into the nearest file holding the include reference (e.g. agents/coder.yaml) rather than always into troupe.yml?",
+      "reply": "Yes, use the nearest one. The contract says the override goes in \"the file that contains the include reference (the including file)\". With nested includes, that is the file holding the reference to the include that the key's deepest existing ancestor comes from. In your example that is agents/coder.yaml. Follow the contract's definition. The change request explains why; the contract says what.",
+      "escalate": false,
+      "cited": "Contract: Overrides (from step 5); brief: Escalated answers (2026-10-05)"
+    },
+    {
+      "question": "Should a mapping-form YAML include with overrides fail with exit 4 when its included content is a list, a scalar or an empty file?",
+      "reply": "The contract only says that a mapping-form include of a non-YAML file with sibling keys gives exit 4. It does not define overrides on a YAML include whose content is not a mapping. That case is out of contract, so the choice is yours. Say what you chose and why.",
+      "escalate": false,
+      "cited": "Contract: Overrides (from step 5); brief: Standing answers (out of contract) and Escalated answers (2026-10-05)"
+    },
+    {
+      "question": "Should a `$ref` whose value is not an include string (e.g. `$ref: hello`) stay an ordinary key?",
+      "reply": "The contract does not cover a `$ref` whose value is not an include string. It is out of contract, so the choice is yours. Say what you chose and why.",
+      "escalate": false,
+      "cited": "Brief: Escalated answers (2026-10-05); Standing answers (out of contract)"
+    },
+    {
+      "question": "Should deleting an overridden key remove it from the override and from the included file, and remove an override mapping that is left empty?",
+      "reply": "Where the contract covers this, follow it: an existing value that is not overridden is still changed in the file it comes from, and one that is overridden is changed in the override. The contract does not define deleting a key that both the override and the included file set, and it does not say what happens to an emptied override mapping. Those parts are out of contract, so the choice is yours. Say what you chose and why.",
+      "escalate": false,
+      "cited": "Contract: Overrides (from step 5); brief: Escalated answers (2026-10-05)"
+    },
+    {
+      "question": "Should `set coder file:agents/coder.yaml` be refused with exit 3 when overrides exist, so overrides are never dropped silently?",
+      "reply": "This is covered by the contract. When overrides exist, setting the include string replaces a value whose whole value comes from an include, so it is refused with exit 3 and no file changes. Your choice is consistent with that.",
+      "escalate": false,
+      "cited": "Contract: set PATH VALUE, rule 4 (from step 1)"
+    },
+    {
+      "question": "Should a list item that is an include convert to the compact form `- $ref: file:x.yaml` followed by the override entries?",
+      "reply": "The contract says a new key inside a list item is written in the file that holds the list. Your plan writes it into troupe.yml and leaves step.yaml unchanged, which is consistent with that. The contract does not define the exact layout of a converted list item. That is out of contract, so the choice is yours. Say what you chose and why.",
+      "escalate": false,
+      "cited": "Contract: Overrides (from step 5); brief: Escalated answers (2026-10-05)"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

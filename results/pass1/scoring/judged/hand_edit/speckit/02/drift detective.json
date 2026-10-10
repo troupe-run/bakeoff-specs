@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "/judge/transcript.md:5 (git show 83f5964 --stat; grep -n \"TROUPE_THEATRE\")",
+    "/judge/repo/spec/002-config-file-sync/spec.md:253",
+    "/judge/repo/spec/002-config-file-sync/contracts/cli.md:12",
+    "/judge/repo/tests/e2e/test_usage.py:59",
+    "/judge/repo/README.md:9-12"
+  ],
+  "notes": "At transcript line 5 the arm inspected the teammate's commit 83f5964 and searched for TROUPE_THEATRE. Its spec (D-11), CLI contract and e2e tests now cover the env default and the rule that an explicit --theatre wins, but it never called the commit drift from outside its workflow (the summary at transcript line 11 doesn't mention it), and the README still omits TROUPE_THEATRE.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/transcript.md:5 (git show 83f5964 --stat; grep -n \\\"TROUPE_THEATRE\\\")\", \"/judge/repo/spec/002-config-file-sync/spec.md:253\", \"/judge/repo/spec/002-config-file-sync/contracts/cli.md:12\", \"/judge/repo/tests/e2e/test_usage.py:59\", \"/judge/repo/README.md:9-12\"], \"notes\": \"At transcript line 5 the arm inspected the teammate's commit 83f5964 and searched for TROUPE_THEATRE. Its spec (D-11), CLI contract and e2e tests now cover the env default and the rule that an explicit --theatre wins, but it never called the commit drift from outside its workflow (the summary at transcript line 11 doesn't mention it), and the README still omits TROUPE_THEATRE.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

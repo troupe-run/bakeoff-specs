@@ -1,0 +1,5 @@
+```json
+{"score": 3, "evidence": ["/judge/questions.md:7-13", "/judge/questions.md:35", "/judge/questions.md:15-31", "/judge/questions.md:37", "/judge/questions.md:43", "/judge/transcript.md:12", "/judge/others-questions.md:5-36"]}
+```
+
+{"score": 3, "evidence": ["/judge/questions.md:7-13", "/judge/questions.md:35", "/judge/questions.md:15-31", "/judge/questions.md:37", "/judge/questions.md:43", "/judge/transcript.md:12", "/judge/others-questions.md:5-36"], "notes": "The arm asked one real question: what `show PATH --sources` should print for a single scalar. That case was genuinely open. The contract's \"show a scalar like get\" rule conflicts with its \"--sources prints the same YAML\" rule, and the PO answered 'out of contract: your choice' (questions.md:35). The arm then recorded option A as a decision. The bundled request for corrections to its 7 default choices was mostly superfluous, and parts were already answered elsewhere: reconcile-first is in the step-2 contract and exit 5 for a missing path is in the step-1 contract. The PO replied 'no corrections' (questions.md:37), so this one wasteful item keeps the score below 4."}

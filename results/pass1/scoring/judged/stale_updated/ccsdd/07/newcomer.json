@@ -1,0 +1,12 @@
+{
+  "evidence": [
+    "/judge/repo/spec/spec/config-foundation/requirements.md:203 (Req 4.1 'starts with file:' rule; diff.patch:86 adds a step-7 note covering remote includes, !literal and format: uri)",
+    "diff.patch:1620-1626 and 1671 (config-set-writeback decision D and 2.7 marked superseded; set of an include-like string is now written !literal unless --include is given)",
+    "diff.patch:10521-10529 (tests/writeback/test_planner_includes.py updated to pass include=True for file: values)",
+    "/judge/repo/spec/spec/config-set-writeback/requirements.md:315 (Req 14.1 still says every string written from VALUE that starts with file: must be read back as an include, with no step-7 note)"
+  ],
+  "notes": "Reading as a newcomer, the include definition, decision D, Req 2.7, the tag rule and the watch criterion all carry step-7 notes. The tests now pass --include wherever a file: VALUE should become an include, so the spec, tests and code mostly agree. One write-safety criterion (config-set-writeback Req 14.1) still describes the old rule that every file: string is read back as an include, and the repo has no README to document --include or the schema.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/repo/spec/spec/config-foundation/requirements.md:203 (Req 4.1 'starts with file:' rule; diff.patch:86 adds a step-7 note covering remote includes, !literal and format: uri)\", \"diff.patch:1620-1626 and 1671 (config-set-writeback decision D and 2.7 marked superseded; set of an include-like string is now written !literal unless --include is given)\", \"diff.patch:10521-10529 (tests/writeback/test_planner_includes.py updated to pass include=True for file: values)\", \"/judge/repo/spec/spec/config-set-writeback/requirements.md:315 (Req 14.1 still says every string written from VALUE that starts with file: must be read back as an include, with no step-7 note)\"], \"notes\": \"Reading as a newcomer, the include definition, decision D, Req 2.7, the tag rule and the watch criterion all carry step-7 notes. The tests now pass --include wherever a file: VALUE should become an include, so the spec, tests and code mostly agree. One write-safety criterion (config-set-writeback Req 14.1) still describes the old rule that every file: string is read back as an include, and the repo has no README to document --include or the schema.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

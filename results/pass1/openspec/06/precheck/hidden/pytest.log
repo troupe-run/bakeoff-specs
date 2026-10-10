@@ -1,0 +1,188 @@
+..................................F....F.......................F........ [ 47%]
+F....................................................................... [ 95%]
+..FFFFF                                                                  [100%]
+=================================== FAILURES ===================================
+_____________ test_writeback_is_byte_surgical[multi-line -> plain] _____________
+
+cli = <tests.hidden.driver.Cli object at 0xffff873c2a50>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_writeback_is_byte_surgica9')
+c = Case(name='multi-line -> plain', group='block scalars', before='a: |\n  x\n  y\n\nb: 1\n', ops=[('a', 'single')], after='a: single\n\nb: 1\n', expect='splice', note='')
+
+    @pytest.mark.steps(1)
+    @pytest.mark.parametrize("c", CASES, ids=[c.name for c in CASES])
+    def test_writeback_is_byte_surgical(cli, tmp_theatre, c):
+        build(tmp_theatre, {CFG: c.before})
+        codes = [cli("set", path, arg(value), theatre=tmp_theatre).code for path, value in c.ops]
+        expected_code = {"error": 3, "path": 5}.get(c.expect, 0)
+        assert codes == [0] * (len(codes) - 1) + [expected_code], codes
+>       assert read(tmp_theatre, CFG) == c.after
+E       AssertionError: assert 'a: |-\n  single\n\nb: 1\n' == 'a: single\n\nb: 1\n'
+E         
+E         + a: |-
+E         - a: single
+E         ? ^^
+E         +   single
+E         ? ^
+E           
+E           b: 1
+
+tests/hidden/test_step1_writeback.py:21: AssertionError
+_ test_writeback_is_byte_surgical[file with no trailing newline; change + add] _
+
+cli = <tests.hidden.driver.Cli object at 0xffff873c2a50>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_writeback_is_byte_surgica14')
+c = Case(name='file with no trailing newline; change + add', group='comments', before='a: 1\nb: 2', ops=[('b', 3), ('c', 4)], after='a: 1\nb: 3\nc: 4', expect='splice', note='')
+
+    @pytest.mark.steps(1)
+    @pytest.mark.parametrize("c", CASES, ids=[c.name for c in CASES])
+    def test_writeback_is_byte_surgical(cli, tmp_theatre, c):
+        build(tmp_theatre, {CFG: c.before})
+        codes = [cli("set", path, arg(value), theatre=tmp_theatre).code for path, value in c.ops]
+        expected_code = {"error": 3, "path": 5}.get(c.expect, 0)
+        assert codes == [0] * (len(codes) - 1) + [expected_code], codes
+>       assert read(tmp_theatre, CFG) == c.after
+E       AssertionError: assert 'a: 1\nb: 3\nc: 4\n' == 'a: 1\nb: 3\nc: 4'
+E         
+E           a: 1
+E           b: 3
+E         - c: 4
+E         + c: 4
+E         ?     +
+
+tests/hidden/test_step1_writeback.py:21: AssertionError
+_ test_writeback_is_byte_surgical[scalar -> mapping keeps EOL comment on the key line] _
+
+cli = <tests.hidden.driver.Cli object at 0xffff873c2a50>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_writeback_is_byte_surgica38')
+c = Case(name='scalar -> mapping keeps EOL comment on the key line', group='layout', before="model: 'opus'  # default\nnex...temperature': 0.2})], after='model:  # default\n  name: opus\n  temperature: 0.2\nnext: 1\n', expect='splice', note='')
+
+    @pytest.mark.steps(1)
+    @pytest.mark.parametrize("c", CASES, ids=[c.name for c in CASES])
+    def test_writeback_is_byte_surgical(cli, tmp_theatre, c):
+        build(tmp_theatre, {CFG: c.before})
+        codes = [cli("set", path, arg(value), theatre=tmp_theatre).code for path, value in c.ops]
+        expected_code = {"error": 3, "path": 5}.get(c.expect, 0)
+        assert codes == [0] * (len(codes) - 1) + [expected_code], codes
+>       assert read(tmp_theatre, CFG) == c.after
+E       AssertionError: assert 'model:      ....2\nnext: 1\n' == 'model:  # de....2\nnext: 1\n'
+E         
+E         - model:  # default
+E         + model:         # default
+E         ?         +++++++
+E             name: opus
+E             temperature: 0.2
+E           next: 1
+
+tests/hidden/test_step1_writeback.py:21: AssertionError
+___________ test_writeback_is_byte_surgical[null gains a child key] ____________
+
+cli = <tests.hidden.driver.Cli object at 0xffff873c2a50>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_writeback_is_byte_surgica47')
+c = Case(name='null gains a child key', group='structural', before='a:\nb: 1\n', ops=[('a.c', 5)], after='a:\n  c: 5\nb: 1\n', expect='splice', note='')
+
+    @pytest.mark.steps(1)
+    @pytest.mark.parametrize("c", CASES, ids=[c.name for c in CASES])
+    def test_writeback_is_byte_surgical(cli, tmp_theatre, c):
+        build(tmp_theatre, {CFG: c.before})
+        codes = [cli("set", path, arg(value), theatre=tmp_theatre).code for path, value in c.ops]
+        expected_code = {"error": 3, "path": 5}.get(c.expect, 0)
+>       assert codes == [0] * (len(codes) - 1) + [expected_code], codes
+E       AssertionError: [5]
+E       assert [5] == [0]
+E         
+E         At index 0 diff: 5 != 0
+E         Use -v to get more diff
+
+tests/hidden/test_step1_writeback.py:20: AssertionError
+_________________ test_setting_the_anchor_changes_every_alias __________________
+
+cli = <tests.hidden.driver.Cli object at 0xffff873c2a50>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_setting_the_anchor_change0')
+
+    @pytest.mark.steps(6)
+    def test_setting_the_anchor_changes_every_alias(cli, tmp_theatre):
+        build(tmp_theatre, {CFG: SHARED})
+>       assert cli("set", "defaults.model", "sonnet", theatre=tmp_theatre).code == 0
+E       AssertionError: assert 4 == 0
+E        +  where 4 = Result(code=4, out='', err='troupe: /tmp/pytest-of-actor/pytest-0/test_setting_the_anchor_change0/.troupe/troupe.yml (line 1, column 11): anchors and aliases are not supported\n').code
+E        +    where Result(code=4, out='', err='troupe: /tmp/pytest-of-actor/pytest-0/test_setting_the_anchor_change0/.troupe/troupe.yml (line 1, column 11): anchors and aliases are not supported\n') = <tests.hidden.driver.Cli object at 0xffff873c2a50>('set', 'defaults.model', 'sonnet', theatre=PosixPath('/tmp/pytest-of-actor/pytest-0/test_setting_the_anchor_change0'))
+
+tests/hidden/test_step6_aliases.py:12: AssertionError
+_________ test_setting_through_an_alias_is_refused_and_suggests_expand _________
+
+cli = <tests.hidden.driver.Cli object at 0xffff873c2a50>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_setting_through_an_alias_0')
+
+    @pytest.mark.steps(6)
+    def test_setting_through_an_alias_is_refused_and_suggests_expand(cli, tmp_theatre):
+        build(tmp_theatre, {CFG: SHARED})
+        r = cli("set", "coder.settings.model", "sonnet", theatre=tmp_theatre)
+>       assert r.code == 3 and "--expand-alias" in r.err
+E       AssertionError: assert (4 == 3)
+E        +  where 4 = Result(code=4, out='', err='troupe: /tmp/pytest-of-actor/pytest-0/test_setting_through_an_alias_0/.troupe/troupe.yml (line 1, column 11): anchors and aliases are not supported\n').code
+
+tests/hidden/test_step6_aliases.py:20: AssertionError
+_______ test_expand_alias_makes_a_commented_local_copy_and_overrides_it ________
+
+cli = <tests.hidden.driver.Cli object at 0xffff873c2a50>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_expand_alias_makes_a_comm0')
+
+    @pytest.mark.steps(6)
+    def test_expand_alias_makes_a_commented_local_copy_and_overrides_it(cli, tmp_theatre):
+        build(tmp_theatre, {CFG: SHARED})
+        r = cli("set", "--expand-alias", "coder.settings.model", "sonnet", theatre=tmp_theatre)
+>       assert r.code == 0
+E       AssertionError: assert 2 == 0
+E        +  where 2 = Result(code=2, out='', err='troupe: troupe: unrecognized arguments: --expand-alias\n').code
+
+tests/hidden/test_step6_aliases.py:28: AssertionError
+_________________ test_expanding_records_only_the_changed_leaf _________________
+
+cli = <tests.hidden.driver.Cli object at 0xffff873c2a50>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_expanding_records_only_th0')
+
+    @pytest.mark.steps(6)
+    def test_expanding_records_only_the_changed_leaf(cli, tmp_theatre):
+        build(tmp_theatre, {CFG: SHARED})
+>       events(cli, tmp_theatre)
+
+tests/hidden/test_step6_aliases.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cli = <tests.hidden.driver.Cli object at 0xffff873c2a50>
+theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_expanding_records_only_th0')
+path = None, env = None
+
+    def events(cli, theatre, path=None, env=None) -> list[dict]:
+        args = [path] if path else []
+        r = cli("history", *args, theatre=theatre, env=env)
+>       assert r.code == 0, cap(r.err)             # arm output in a message is always capped (Task 18 advisory)
+               ^^^^^^^^^^^
+E       AssertionError: troupe: /tmp/pytest-of-actor/pytest-0/test_expanding_records_only_th0/.troupe/troupe.yml (line 1, column 11): anchors and aliases are not supported
+
+tests/hidden/history.py:9: AssertionError
+_____________ test_scalar_alias_refused_and_anchor_scalar_settable _____________
+
+cli = <tests.hidden.driver.Cli object at 0xffff873c2a50>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_scalar_alias_refused_and_0')
+
+    @pytest.mark.steps(6)
+    def test_scalar_alias_refused_and_anchor_scalar_settable(cli, tmp_theatre):
+        build(tmp_theatre, {CFG: "a: &x 1  # anchor\nb: *x\n"})
+>       assert cli("set", "b", "2", theatre=tmp_theatre).code == 3
+E       AssertionError: assert 4 == 3
+E        +  where 4 = Result(code=4, out='', err='troupe: /tmp/pytest-of-actor/pytest-0/test_scalar_alias_refused_and_0/.troupe/troupe.yml (line 1, column 4): anchors and aliases are not supported\n').code
+E        +    where Result(code=4, out='', err='troupe: /tmp/pytest-of-actor/pytest-0/test_scalar_alias_refused_and_0/.troupe/troupe.yml (line 1, column 4): anchors and aliases are not supported\n') = <tests.hidden.driver.Cli object at 0xffff873c2a50>('set', 'b', '2', theatre=PosixPath('/tmp/pytest-of-actor/pytest-0/test_scalar_alias_refused_and_0'))
+
+tests/hidden/test_step6_aliases.py:45: AssertionError
+=========================== short test summary info ============================
+FAILED tests/hidden/test_step1_writeback.py::test_writeback_is_byte_surgical[multi-line -> plain]
+FAILED tests/hidden/test_step1_writeback.py::test_writeback_is_byte_surgical[file with no trailing newline; change + add]
+FAILED tests/hidden/test_step1_writeback.py::test_writeback_is_byte_surgical[scalar -> mapping keeps EOL comment on the key line]
+FAILED tests/hidden/test_step1_writeback.py::test_writeback_is_byte_surgical[null gains a child key]
+FAILED tests/hidden/test_step6_aliases.py::test_setting_the_anchor_changes_every_alias
+FAILED tests/hidden/test_step6_aliases.py::test_setting_through_an_alias_is_refused_and_suggests_expand
+FAILED tests/hidden/test_step6_aliases.py::test_expand_alias_makes_a_commented_local_copy_and_overrides_it
+FAILED tests/hidden/test_step6_aliases.py::test_expanding_records_only_the_changed_leaf
+FAILED tests/hidden/test_step6_aliases.py::test_scalar_alias_refused_and_anchor_scalar_settable
+9 failed, 142 passed, 13 deselected in 103.99s (0:01:43)

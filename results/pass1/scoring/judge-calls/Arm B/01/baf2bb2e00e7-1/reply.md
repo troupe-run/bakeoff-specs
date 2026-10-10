@@ -1,0 +1,8 @@
+```json
+{"score": 3, "evidence": ["/judge/repo/spec/changes/archive/2026-10-02-config-load-show-set/design.md:154-171", "/judge/repo/spec/changes/archive/2026-10-02-config-load-show-set/design.md:48-53", "/judge/repo/spec/changes/archive/2026-10-02-config-load-show-set/design.md:69-75", "/judge/repo/spec/changes/archive/2026-10-02-config-load-show-set/design.md:173-179", "/judge/repo/README.md:67-84", "/judge/repo/pyproject.toml:38", "/judge/transcript.md:118", "/judge/gates.md:1"]
+}
+```
+
+```json
+{"score": 3, "evidence": ["/judge/repo/spec/changes/archive/2026-10-02-config-load-show-set/design.md:154-171", "/judge/repo/spec/changes/archive/2026-10-02-config-load-show-set/design.md:48-53", "/judge/repo/spec/changes/archive/2026-10-02-config-load-show-set/design.md:173-179", "/judge/repo/README.md:67-84", "/judge/repo/pyproject.toml:38", "/judge/transcript.md:118", "/judge/gates.md:1"], "notes": "No gates or fallback answers were recorded at this step. design.md records the out-of-contract choices with reasons: items 1-10 of the open-points list, plus anchors/tags, digit-only keys and the archive sync, with alternatives given for D2, D5 and D9. Two gaps: putting a TAB in a value into single quotes is not recorded in the repo, even though the transcript (line 118) says it is in design.md and the README. Turning off line-length lint in tests is visible only in pyproject.toml:38. Many open-point items also lack the options considered."}
+```

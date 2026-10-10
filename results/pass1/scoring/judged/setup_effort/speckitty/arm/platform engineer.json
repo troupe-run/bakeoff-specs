@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/setup/shell/01.log:1-146 (`method init . --ai claude` ran non-interactively and exited 0)",
+    "/judge/setup/shell/02.log:50-55 (`method verify-setup` printed '✓ Verification complete' and exited 0)",
+    "/judge/setup/shell/06.log:1-12 (tracker bind only ran with the method_ENABLE_SAAS_SYNC=1 env gate and printed a 'logged_out_on_connected_teamspace' warning on stderr)",
+    "/judge/setup/shell/07.log:1 (python one-liner against the private method.tracker.config API to load, assert and rewrite the tracker config with egress=EGRESS_PERMITTED; no CLI command does this)",
+    "/judge/setup/checklist.json:75-77 (tracker-egress ok only after that patch)",
+    "/judge/setup/setup-turns.json:1-11 (the single charter agent turn finished ok in one attempt)",
+    "/judge/setup/versions.json:15-16 (method-cli 3.2.7 and the tracker-cli version are pinned in the image)"
+  ],
+  "notes": "Install, init, verify, tracker init and the one charter turn all run non-interactively on pinned versions, and all 22 checklist items pass. However, setting tracker egress needed an undocumented python one-liner that rewrites the saved config through the method's private API, plus an env-flag gate. Across twenty repos that patch is a script you would have to maintain, and it could break silently when the method is upgraded.",
+  "raw": "```json\n{\"score\": 2, \"evidence\": [\"/judge/setup/shell/01.log:1-146 (`method init . --ai claude` ran non-interactively and exited 0)\", \"/judge/setup/shell/02.log:50-55 (`method verify-setup` printed '✓ Verification complete' and exited 0)\", \"/judge/setup/shell/06.log:1-12 (tracker bind only ran with the method_ENABLE_SAAS_SYNC=1 env gate and printed a 'logged_out_on_connected_teamspace' warning on stderr)\", \"/judge/setup/shell/07.log:1 (python one-liner against the private method.tracker.config API to load, assert and rewrite the tracker config with egress=EGRESS_PERMITTED; no CLI command does this)\", \"/judge/setup/checklist.json:75-77 (tracker-egress ok only after that patch)\", \"/judge/setup/setup-turns.json:1-11 (the single charter agent turn finished ok in one attempt)\", \"/judge/setup/versions.json:15-16 (method-cli 3.2.7 and the tracker-cli version are pinned in the image)\"], \"notes\": \"Install, init, verify, tracker init and the one charter turn all run non-interactively on pinned versions, and all 22 checklist items pass. However, setting tracker egress needed an undocumented python one-liner that rewrites the saved config through the method's private API, plus an env-flag gate. Across twenty repos that patch is a script you would have to maintain, and it could break silently when the method is upgraded.\"}\n```",
+  "score": 2,
+  "status": "ok"
+}

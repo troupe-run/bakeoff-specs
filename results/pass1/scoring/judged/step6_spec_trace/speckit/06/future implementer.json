@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "repo/spec/bugs/yaml-alias-set/assessment.md:5",
+    "repo/spec/bugs/yaml-alias-set/assessment.md:29-36",
+    "repo/spec/bugs/yaml-alias-set/fix.md:10-13",
+    "repo/spec/bugs/yaml-alias-set/fix.md:47-56",
+    "repo/spec/001-config-load-show-set/spec.md:288-289"
+  ],
+  "notes": "Under spec/bugs/, the bug docs state every alias rule: a set at the anchor changes every alias, a set through an alias is refused with exit 3 and a pointer to --expand-alias, --expand-alias makes a block-style copy, and merge keys are never written. They cite issue troupe-run/repo#2 and name the regression tests in tests/e2e/test_set_alias.py, including the reported scenario. But the main spec at spec.md:288-289 still lists anchors, aliases and merge keys as 'Out of contract (until step 6)', so an implementer who reads only the main spec would never see these rules.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"repo/spec/bugs/yaml-alias-set/assessment.md:5\", \"repo/spec/bugs/yaml-alias-set/assessment.md:29-36\", \"repo/spec/bugs/yaml-alias-set/fix.md:10-13\", \"repo/spec/bugs/yaml-alias-set/fix.md:47-56\", \"repo/spec/001-config-load-show-set/spec.md:288-289\"], \"notes\": \"Under spec/bugs/, the bug docs state every alias rule: a set at the anchor changes every alias, a set through an alias is refused with exit 3 and a pointer to --expand-alias, --expand-alias makes a block-style copy, and merge keys are never written. They cite issue troupe-run/repo#2 and name the regression tests in tests/e2e/test_set_alias.py, including the reported scenario. But the main spec at spec.md:288-289 still lists anchors, aliases and merge keys as 'Out of contract (until step 6)', so an implementer who reads only the main spec would never see these rules.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

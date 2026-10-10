@@ -1,0 +1,12 @@
+{
+  "kind": "unanimous",
+  "question": "How watch notices file changes",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "No dependency; catches save-by-rename and same-size edits; mtime resolution misses fast writes",
+      "route": "Poll file bytes with the stdlib every 0.1-0.25 s; no watcher library, no mtime",
+      "route_no": 1
+    }
+  ]
+}

@@ -1,0 +1,154 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "RAISE",
+        "why": "Every command exits with rc 4 and a 'model: duplicate key in mapping' error; the file is never changed."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "RAISE",
+        "why": "Every command exits with rc 4 and reports \"duplicate key 'model'\" at line 4; the file is never changed."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "RAISE",
+        "why": "Every command exits with rc 4 and reports 'duplicate key model at line 4'; the file is never changed."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "LAST",
+        "why": "With no warning, get returns 'sonnet' (the second value), set rewrites the second line, and show and history agree."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "LAST",
+        "why": "With no warning, get returns 'sonnet' (the second value), set rewrites the second line, and show and history agree."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "FIRST_DISAGREE",
+        "why": "With no warning, get returns 'opus' (the first value) and set edits the first line, but show lists both model keys and history imported 'sonnet' and never records the model set."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "model",
+          "haiku"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# duplicate key below\nmodel: opus  # first\nretry: 3\nmodel: sonnet  # second\nagents:\n  coder:\n    temperature: 0.2\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Loads a config with a top-level key written twice, then reads it, writes to it, writes an unrelated key and lists history. Route 1 should exit 4 on every command except possibly history, and leave the file unchanged. Route 2 shows which copy wins (first or last) and which line `set` rewrites."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "reports the duplicate key as an error",
+            "id": "RAISE"
+          },
+          {
+            "description": "silently takes the last value",
+            "id": "LAST"
+          },
+          {
+            "description": "silently takes the first value, with get/show/history disagreeing",
+            "id": "FIRST_DISAGREE"
+          }
+        ],
+        "id": "Q1",
+        "text": "duplicate key in the file"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Exit 4 (load error)",
+      [
+        "Arm A",
+        "Arm C"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T20",
+  "status": "ok"
+}

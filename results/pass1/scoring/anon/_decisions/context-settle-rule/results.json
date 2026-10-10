@@ -1,0 +1,879 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 0.3
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "# team config\nmodel: opus\nretry: 2\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 0.3
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "# team config\nmodel: opus\nretry: 3\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "# team config\nmodel: opus\nretry: 9\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 1\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": ""
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 2\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 3\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 9\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:36:53.284582Z\", \"reason\": null, \"change\": \"f99f615f-51ec-4924-8520-f1685dcf62bb\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:36:53.284582Z\", \"reason\": null, \"change\": \"f99f615f-51ec-4924-8520-f1685dcf62bb\"}\n{\"seq\": 3, \"op\": \"remove\", \"path\": \"model\", \"old\": \"opus\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:36:53.693733Z\", \"reason\": null, \"change\": \"fcd3a991-bfa6-4b9c-98c5-3ce18634a047\"}\n{\"seq\": 4, \"op\": \"remove\", \"path\": \"retry\", \"old\": 1, \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:36:53.693733Z\", \"reason\": null, \"change\": \"fcd3a991-bfa6-4b9c-98c5-3ce18634a047\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:36:54.321427Z\", \"reason\": null, \"change\": \"cf365e40-f3dc-45f1-a594-1e09d1b4c0c6\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:36:54.321427Z\", \"reason\": null, \"change\": \"cf365e40-f3dc-45f1-a594-1e09d1b4c0c6\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 9, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:36:57.401176Z\", \"reason\": null, \"change\": \"ab74d967-04b7-4d26-a144-4d387657b342\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  35 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": ""
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 2\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 3\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 9\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:37:21.068278Z\", \"reason\": null, \"change\": \"b49c92ad-06b7-4510-99b1-80ff3a7fcfaf\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:37:21.068278Z\", \"reason\": null, \"change\": \"b49c92ad-06b7-4510-99b1-80ff3a7fcfaf\"}\n{\"seq\": 3, \"op\": \"remove\", \"path\": \"model\", \"old\": \"opus\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:21.219964Z\", \"reason\": null, \"change\": \"5b069a56-11c3-42e6-820f-e7e5b7e566e9\"}\n{\"seq\": 4, \"op\": \"remove\", \"path\": \"retry\", \"old\": 1, \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:21.219964Z\", \"reason\": null, \"change\": \"5b069a56-11c3-42e6-820f-e7e5b7e566e9\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:21.607306Z\", \"reason\": null, \"change\": \"1a9b6480-45ee-45b2-a719-11e15bdce2fe\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"retry\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:21.607306Z\", \"reason\": null, \"change\": \"1a9b6480-45ee-45b2-a719-11e15bdce2fe\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 2, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:21.976622Z\", \"reason\": null, \"change\": \"9e63a2fc-b059-410f-a2a5-b3de31e1fdbe\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 9, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:24.977720Z\", \"reason\": null, \"change\": \"8cdc6566-4678-4d19-b8dd-2bb69beea555\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  35 bytes\n"
+            }
+          ]
+        }
+      ],
+      "route": "Reconcile only after the bytes read the same on consecutive checks",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": ""
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 2\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 3\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 9\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:36:44.669701Z\", \"reason\": null, \"change\": \"47b160c5-20d6-4514-b171-1e9632bcafb1\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:36:44.669701Z\", \"reason\": null, \"change\": \"47b160c5-20d6-4514-b171-1e9632bcafb1\"}\n{\"seq\": 3, \"op\": \"remove\", \"path\": \"model\", \"old\": \"opus\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:36:44.885110Z\", \"reason\": null, \"change\": \"4ee19bd0-e680-4f18-9fc2-dec4265b8522\"}\n{\"seq\": 4, \"op\": \"remove\", \"path\": \"retry\", \"old\": 1, \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:36:44.885110Z\", \"reason\": null, \"change\": \"4ee19bd0-e680-4f18-9fc2-dec4265b8522\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:36:45.307522Z\", \"reason\": null, \"change\": \"35384637-dd29-4479-a5c0-283ddf499bd5\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"retry\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:36:45.307522Z\", \"reason\": null, \"change\": \"35384637-dd29-4479-a5c0-283ddf499bd5\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 2, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:36:45.515935Z\", \"reason\": null, \"change\": \"643e6fd0-0cff-4756-beb7-eae2c8132f08\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 9, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:36:48.598489Z\", \"reason\": null, \"change\": \"3dbf3728-9645-4b67-9e8c-df99a9e0b873\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  35 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": ""
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 2\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 3\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 9\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 137,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:37:02.330940Z\", \"reason\": null, \"change\": \"e23796f2-6fa5-460a-85d4-aaf90f97e83d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:37:02.330940Z\", \"reason\": null, \"change\": \"e23796f2-6fa5-460a-85d4-aaf90f97e83d\"}\n{\"seq\": 3, \"op\": \"remove\", \"path\": \"model\", \"old\": \"opus\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:02.600293Z\", \"reason\": null, \"change\": \"4e3eae28-658c-4b3e-af35-f7f93e4b64a4\"}\n{\"seq\": 4, \"op\": \"remove\", \"path\": \"retry\", \"old\": 1, \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:02.600293Z\", \"reason\": null, \"change\": \"4e3eae28-658c-4b3e-af35-f7f93e4b64a4\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:02.858134Z\", \"reason\": null, \"change\": \"2a8caa64-34fc-45e4-8992-9f93f9b8bb51\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"retry\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:02.858134Z\", \"reason\": null, \"change\": \"2a8caa64-34fc-45e4-8992-9f93f9b8bb51\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 2, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:03.114805Z\", \"reason\": null, \"change\": \"48ab88d8-db74-4dc2-b6a3-a2f8a5dd886a\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 9, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:06.194062Z\", \"reason\": null, \"change\": \"1b1315be-1308-4431-914c-f0a953ec5f63\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  35 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": ""
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 2\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 3\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 9\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "Exception ignored in: <function Application.__del__ at 0xffff9568be20>\nTraceback (most recent call last):\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 892, in __del__\n    def __del__(self) -> None:\n\nKeyboardInterrupt: \n",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:37:12.605243Z\", \"reason\": null, \"change\": \"4950f48d-35ef-480d-b1ba-9175e22eb952\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:37:12.605243Z\", \"reason\": null, \"change\": \"4950f48d-35ef-480d-b1ba-9175e22eb952\"}\n{\"seq\": 3, \"op\": \"remove\", \"path\": \"model\", \"old\": \"opus\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:12.707379Z\", \"reason\": null, \"change\": \"8a096a1b-0ffe-44b9-88f9-05a6bf349da7\"}\n{\"seq\": 4, \"op\": \"remove\", \"path\": \"retry\", \"old\": 1, \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:12.707379Z\", \"reason\": null, \"change\": \"8a096a1b-0ffe-44b9-88f9-05a6bf349da7\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:13.016652Z\", \"reason\": null, \"change\": \"a7b93c63-f5d8-428c-b080-de72d3c18dd4\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"retry\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:13.016652Z\", \"reason\": null, \"change\": \"a7b93c63-f5d8-428c-b080-de72d3c18dd4\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 2, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:13.328112Z\", \"reason\": null, \"change\": \"356759ca-6c1b-4f8c-99c1-889fb88fe7db\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 9, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:16.340938Z\", \"reason\": null, \"change\": \"4071238f-2cf5-4555-9266-ba839340363d\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/troupe-state.sqlite  12288 bytes\n.troupe/troupe.yml  35 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": ""
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 2\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 0.3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 3\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "# team config\nmodel: opus\nretry: 9\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:37:29.550910Z\", \"reason\": null, \"change\": \"04f63d2a-d185-45e5-9a55-d927962dc37e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:37:29.550910Z\", \"reason\": null, \"change\": \"04f63d2a-d185-45e5-9a55-d927962dc37e\"}\n{\"seq\": 3, \"op\": \"remove\", \"path\": \"model\", \"old\": \"opus\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:29.756248Z\", \"reason\": null, \"change\": \"b2b5607d-6106-4d81-8a0a-1f1961003929\"}\n{\"seq\": 4, \"op\": \"remove\", \"path\": \"retry\", \"old\": 1, \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:29.756248Z\", \"reason\": null, \"change\": \"b2b5607d-6106-4d81-8a0a-1f1961003929\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:29.964087Z\", \"reason\": null, \"change\": \"0c895897-53b2-4c30-8dc0-54971d23dcaa\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"retry\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:29.964087Z\", \"reason\": null, \"change\": \"0c895897-53b2-4c30-8dc0-54971d23dcaa\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 2, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:30.379883Z\", \"reason\": null, \"change\": \"05096cc1-4de3-4b0a-8c69-5c0575a72e75\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 9, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:37:33.497238Z\", \"reason\": null, \"change\": \"f00d5fa2-1ca6-476e-a54f-f9ad04caab3b\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  35 bytes\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

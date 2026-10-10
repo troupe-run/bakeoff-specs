@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "repo/spec/006-set-in-include/spec.md:124-143 (FR-460–FR-466, each separately numbered)",
+    "repo/spec/006-set-in-include/tasks.md:46-48,62-73,83 (tasks link each test to its FR/D/SC ID and name the src files: cli.py, override.py place_new_key, tree.py shared_part)",
+    "repo/tests/e2e/test_set_in_include.py:1-2 (the module docstring cites only the range FR-460 to FR-466, D-50, D-51; individual tests carry no IDs except SC-462 at :78 and D-50 at :87)",
+    "repo/tests/e2e/test_usage.py:96,112,119 (per-test FR-466, FR-460, FR-465)",
+    "repo/src/troupe/config/edit/override.py:86-90 (the code comment cites FR-461, FR-462, D-51)",
+    "repo/src/troupe/config/tree.py:115 (D-51)"
+  ],
+  "notes": "A newcomer can follow the spec's FR IDs through the tasks.md entries to the named tests and source files, and both code and tests cite the IDs back. But most tests in test_set_in_include.py are linked only by the module-wide FR range and by tasks.md's scenario wording. One test name in tasks.md has drifted from the code (`..._with_the_option` vs `..._with_the_flag`), and FR-463's formatting rule has no explicit per-test link.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"repo/spec/006-set-in-include/spec.md:124-143 (FR-460–FR-466, each separately numbered)\", \"repo/spec/006-set-in-include/tasks.md:46-48,62-73,83 (tasks link each test to its FR/D/SC ID and name the src files: cli.py, override.py place_new_key, tree.py shared_part)\", \"repo/tests/e2e/test_set_in_include.py:1-2 (the module docstring cites only the range FR-460 to FR-466, D-50, D-51; individual tests carry no IDs except SC-462 at :78 and D-50 at :87)\", \"repo/tests/e2e/test_usage.py:96,112,119 (per-test FR-466, FR-460, FR-465)\", \"repo/src/troupe/config/edit/override.py:86-90 (the code comment cites FR-461, FR-462, D-51)\", \"repo/src/troupe/config/tree.py:115 (D-51)\"], \"notes\": \"A newcomer can follow the spec's FR IDs through the tasks.md entries to the named tests and source files, and both code and tests cite the IDs back. But most tests in test_set_in_include.py are linked only by the module-wide FR range and by tasks.md's scenario wording. One test name in tasks.md has drifted from the code (`..._with_the_option` vs `..._with_the_flag`), and FR-463's formatting rule has no explicit per-test link.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

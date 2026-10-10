@@ -1,0 +1,587 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "model",
+          "opus",
+          "--reason",
+          "no-op"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "name",
+          "coder"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "agent:bot"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "temperature",
+          "0.20"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "agent:bot"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retries",
+          "4",
+          "--reason",
+          "real change"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# team config\nname: \"coder\"   # quoted on purpose\ntemperature: 0.2  # tuned\nmodel: opus\nretries: 3\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "opus",
+                "--reason",
+                "no-op"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "temperature",
+                "0.20"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retries",
+                "4",
+                "--reason",
+                "real change"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\nname: \"coder\"   # quoted on purpose\ntemperature: 0.2  # tuned\nmodel: opus\nretries: 4\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:34.403836Z\", \"reason\": null, \"change\": \"18023210-759f-4312-80fe-05cfaeca3065\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:34.403836Z\", \"reason\": null, \"change\": \"18023210-759f-4312-80fe-05cfaeca3065\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:34.403836Z\", \"reason\": null, \"change\": \"18023210-759f-4312-80fe-05cfaeca3065\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:34.403836Z\", \"reason\": null, \"change\": \"18023210-759f-4312-80fe-05cfaeca3065\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retries\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:57:36.153981Z\", \"reason\": \"real change\", \"change\": \"ffa235b6-48df-4561-b568-c6cfd70bb9cf\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "opus",
+                "--reason",
+                "no-op"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "temperature",
+                "0.20"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retries",
+                "4",
+                "--reason",
+                "real change"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\nname: \"coder\"   # quoted on purpose\ntemperature: 0.2  # tuned\nmodel: opus\nretries: 4\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:37.655284Z\", \"reason\": null, \"change\": \"2ca9e7a9-83f4-4d40-80b3-ab0e45eea29a\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:37.655284Z\", \"reason\": null, \"change\": \"2ca9e7a9-83f4-4d40-80b3-ab0e45eea29a\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:37.655284Z\", \"reason\": null, \"change\": \"2ca9e7a9-83f4-4d40-80b3-ab0e45eea29a\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:37.655284Z\", \"reason\": null, \"change\": \"2ca9e7a9-83f4-4d40-80b3-ab0e45eea29a\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retries\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:57:39.257034Z\", \"reason\": \"real change\", \"change\": \"08dca247-3715-4c59-91d1-be6838288a9e\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "opus",
+                "--reason",
+                "no-op"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "temperature",
+                "0.20"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retries",
+                "4",
+                "--reason",
+                "real change"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\nname: \"coder\"   # quoted on purpose\ntemperature: 0.2  # tuned\nmodel: opus\nretries: 4\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:43.955494Z\", \"reason\": null, \"change\": \"1c96eac3-494b-4ce2-b6cd-6c87b21955c6\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:43.955494Z\", \"reason\": null, \"change\": \"1c96eac3-494b-4ce2-b6cd-6c87b21955c6\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:43.955494Z\", \"reason\": null, \"change\": \"1c96eac3-494b-4ce2-b6cd-6c87b21955c6\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:43.955494Z\", \"reason\": null, \"change\": \"1c96eac3-494b-4ce2-b6cd-6c87b21955c6\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retries\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:57:45.351032Z\", \"reason\": \"real change\", \"change\": \"62c00577-f3a5-4d5a-8dc5-3cbf9376b9b0\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "opus",
+                "--reason",
+                "no-op"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "temperature",
+                "0.20"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retries",
+                "4",
+                "--reason",
+                "real change"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\nname: \"coder\"   # quoted on purpose\ntemperature: 0.2  # tuned\nmodel: opus\nretries: 4\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:46.717579Z\", \"reason\": null, \"change\": \"52f868ab-5b2d-4f5b-9778-d37aa745c43b\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:46.717579Z\", \"reason\": null, \"change\": \"52f868ab-5b2d-4f5b-9778-d37aa745c43b\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:46.717579Z\", \"reason\": null, \"change\": \"52f868ab-5b2d-4f5b-9778-d37aa745c43b\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:46.717579Z\", \"reason\": null, \"change\": \"52f868ab-5b2d-4f5b-9778-d37aa745c43b\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retries\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:57:48.382445Z\", \"reason\": \"real change\", \"change\": \"16cb9969-531a-4d8e-bcf1-09c3187cb333\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Save and stamp nothing when there are no events",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "opus",
+                "--reason",
+                "no-op"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "temperature",
+                "0.20"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retries",
+                "4",
+                "--reason",
+                "real change"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\nname: \"coder\"   # quoted on purpose\ntemperature: 0.2  # tuned\nmodel: opus\nretries: 4\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:40.939347Z\", \"reason\": null, \"change\": \"a458b91e-625e-481c-a444-9dde8f063181\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:40.939347Z\", \"reason\": null, \"change\": \"a458b91e-625e-481c-a444-9dde8f063181\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:40.939347Z\", \"reason\": null, \"change\": \"a458b91e-625e-481c-a444-9dde8f063181\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:40.939347Z\", \"reason\": null, \"change\": \"a458b91e-625e-481c-a444-9dde8f063181\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retries\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:57:42.601047Z\", \"reason\": \"real change\", \"change\": \"07aef065-9ba3-4086-846f-aa4b44fc2791\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "opus",
+                "--reason",
+                "no-op"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "temperature",
+                "0.20"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retries",
+                "4",
+                "--reason",
+                "real change"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\nname: \"coder\"   # quoted on purpose\ntemperature: 0.2  # tuned\nmodel: opus\nretries: 4\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:49.822733Z\", \"reason\": null, \"change\": \"efa3ded0-4c32-405f-b903-ebc433b73126\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:49.822733Z\", \"reason\": null, \"change\": \"efa3ded0-4c32-405f-b903-ebc433b73126\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:49.822733Z\", \"reason\": null, \"change\": \"efa3ded0-4c32-405f-b903-ebc433b73126\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"retries\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:57:49.822733Z\", \"reason\": null, \"change\": \"efa3ded0-4c32-405f-b903-ebc433b73126\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retries\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:57:51.542840Z\", \"reason\": \"real change\", \"change\": \"55841606-acfe-47bb-a6a9-4207c9d6cfca\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

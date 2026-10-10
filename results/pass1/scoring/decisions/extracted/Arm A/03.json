@@ -1,0 +1,318 @@
+[
+  {
+    "decision": "Add to the existing roadmap a new step 3 section with one new spec (config-get-show), plus notes in config-foundation and config-file-sync, instead of rewriting the roadmap",
+    "options": [],
+    "reason": "The roadmap already existed; follows the step 2 pattern",
+    "recorded_at": "questions.md:7-10; transcript.md:9-13"
+  },
+  {
+    "decision": "Also add config-get-show to the main 'Specs (dependency order)' list in the roadmap",
+    "options": [],
+    "reason": "Consistency with step 2; /method-command reads that list",
+    "recorded_at": "transcript.md:11-12"
+  },
+  {
+    "decision": "Build a small YAML emitter of our own over the source-mapped ConfigNode tree, with each output line recording the scalar it holds",
+    "options": [
+      "Own line-based emitter over ConfigNode",
+      "ruamel.yaml dump of plain data, then insert comments by matching lines",
+      "ruamel CommentedMap with yaml_add_eol_comment and LiteralScalarString",
+      "Print the source text spans"
+    ],
+    "reason": "The tree already records provenance; exact control over which line carries which comment; scalar typing stays aligned with the YAML 1.2 loader. ruamel would decide comment columns, quoting and float forms, and matching lines is fragile. Source spans do not resolve includes and are not block style",
+    "recorded_at": "spec/spec/config-get-show/brief.md:153-182; research.md:96-103; questions.md:12-18"
+  },
+  {
+    "decision": "Choose and record the discovery decision and approach without asking the owner to confirm them first",
+    "options": [],
+    "reason": "The owner asked for the work to be committed in this run",
+    "recorded_at": "questions.md:28; transcript.md:13"
+  },
+  {
+    "decision": "Round-trip rule: show's YAML output must load back to exactly the same configuration (types, strings byte for byte, key order)",
+    "options": [],
+    "reason": "Conservative default",
+    "recorded_at": "spec/spec/config-get-show/brief.md:231-232; requirements.md 4.1"
+  },
+  {
+    "decision": "`show PATH --sources` on a scalar prints the scalar as YAML with the `# from` comment instead of get's raw form",
+    "options": [
+      "Annotate the scalar as a one-line YAML document",
+      "Ignore --sources for scalars"
+    ],
+    "reason": "The contract promises a source for every line that holds a scalar, and YAML form keeps the comment apart from the value",
+    "recorded_at": "spec/spec/config-get-show/brief.md:234-237; requirements.md:103-104 (choice 1)"
+  },
+  {
+    "decision": "Put a literal block's source comment on its `|` header line; content lines carry no comment",
+    "options": [],
+    "reason": "Text on a content line would become part of the value",
+    "recorded_at": "spec/spec/config-get-show/brief.md:238-239; requirements.md:105-106 (choice 2)"
+  },
+  {
+    "decision": "First version: a text include that a literal block cannot hold exactly (CRLF, control characters) falls back to a double-quoted scalar",
+    "options": [
+      "Indentation indicator where that suffices",
+      "Double-quoted fallback",
+      "Literal block regardless"
+    ],
+    "reason": "Keeps the value exact and never alters it",
+    "recorded_at": "spec/spec/config-get-show/brief.md:240-243; commit 88ebdc5; gates.md:16"
+  },
+  {
+    "decision": "After the owner rejected it, revise the rule so every text include, CRLF and unprintable characters included, is a literal block whose content lines are the file's exact text",
+    "options": [
+      "Double-quoted fallback for text includes (rejected by the owner)",
+      "Literal block always"
+    ],
+    "reason": "The PO said the contract requires 'text includes as literal blocks' with no exception",
+    "recorded_at": "gates.md:31,39-44; requirements.md:107-113 (choice 3); commit 54634ed"
+  },
+  {
+    "decision": "Keep the double-quoted fallback for multi-line strings that are not text includes and that a literal block cannot hold",
+    "options": [],
+    "reason": "The contract does not address them, and quoting keeps read-back exact",
+    "recorded_at": "transcript.md:33; requirements.md 4.5"
+  },
+  {
+    "decision": "Add an exception to 4.1: a text include that a literal block cannot reproduce is excused from the read-back promise",
+    "options": [],
+    "reason": "A YAML reader turns CRLF into LF, so such an include cannot read back character for character",
+    "recorded_at": "gates.md:48; requirements.md 4.1"
+  },
+  {
+    "decision": "Limit 4.6 ('non-printable characters only as escapes') to text outside text includes; inside a text include they appear unescaped",
+    "options": [],
+    "reason": "Otherwise 4.6 would contradict the literal-block rule for includes",
+    "recorded_at": "gates.md:49; requirements.md 4.6"
+  },
+  {
+    "decision": "Print empty mappings and lists as `{}` and `[]`, and an empty configuration as `{}`",
+    "options": [],
+    "reason": "Block style has no empty form; these lines hold no scalar, so they get no comment",
+    "recorded_at": "spec/spec/config-get-show/brief.md:245-246; requirements.md:114-115 (choice 4)"
+  },
+  {
+    "decision": "Layout: 2-space indent, list items indented under their key, compact form for collections inside list items, no `---`/`...` markers, output ends with a single newline",
+    "options": [],
+    "reason": "Valid YAML 1.2 (verified) and the usual hand-written style",
+    "recorded_at": "spec/spec/config-get-show/brief.md:247-249; research.md:140-147 (Decision 3)"
+  },
+  {
+    "decision": "Write the comment with one space before `#` and no column alignment",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/spec/config-get-show/brief.md:250; requirements.md:118 (choice 6)"
+  },
+  {
+    "decision": "Source labels are lexical: os.path.relpath of abspath against the theatre directory, `/` separators, symlinks not resolved, and `../` for files outside the theatre directory",
+    "options": [
+      "Lexical path as written",
+      "real_path with symlinks resolved"
+    ],
+    "reason": "Users recognise the paths they wrote; same convention as error messages",
+    "recorded_at": "research.md:169-174 (Decision 5); requirements.md:119-120 (choice 7)"
+  },
+  {
+    "decision": "`--sources` is accepted only by show; `get --sources` is a usage error (exit 2)",
+    "options": [],
+    "reason": "argparse treats it as an unknown option",
+    "recorded_at": "requirements.md:121 (choice 8); research.md:183-184"
+  },
+  {
+    "decision": "get's exit-5 message keeps the step 1 shape and appends `; print it with `troupe config show <PATH>``",
+    "options": [],
+    "reason": "The contract requires stderr to mention `config show`",
+    "recorded_at": "spec/spec/config-get-show/brief.md:256-257; research.md:180-181; src/troupe/config/theatre.py:1981"
+  },
+  {
+    "decision": "Render keys plain only when the core schema reads the plain text back as a string; otherwise start the chain at single-quoted",
+    "options": [],
+    "reason": "Write-back compares keys as text, but a plain `true` key would read back as a boolean and break 4.8",
+    "recorded_at": "research.md:50-52,164-165 (Decision 4)"
+  },
+  {
+    "decision": "Keep the existing feature folder and name `config-get-show`",
+    "options": [],
+    "reason": "Matches the contract section name and the earlier config-* specs",
+    "recorded_at": "questions.md:41"
+  },
+  {
+    "decision": "Build the requirements project description from the brief's Problem/Current State/Desired Outcome plus the contract section quoted word for word",
+    "options": [],
+    "reason": "Follows step 2, so requirements are written against the contract rather than a paraphrase",
+    "recorded_at": "transcript.md:18-19; commit c2ef9e5"
+  },
+  {
+    "decision": "Update the existing config-foundation and config-file-sync specs during implementation, in the same change as the code, not at requirements time",
+    "options": [],
+    "reason": "collaboration.md: notes are added in the same change as the behaviour",
+    "recorded_at": "requirements.md:101; gates.md:21"
+  },
+  {
+    "decision": "Use the light discovery process for the design",
+    "options": [],
+    "reason": "Extends an existing CLI and adds no new dependency",
+    "recorded_at": "gates.md:69; research.md:5-6"
+  },
+  {
+    "decision": "Move the write-neutral quoting, chomping and literal-character rules from writeback into a new core module troupe/config/yaml_style.py, re-exported under the old names; refusals stay in writeback",
+    "options": [
+      "CLI emitter imports writeback.scalar_render directly and makes _render public",
+      "Duplicate the quoting logic in the emitter",
+      "Move the write-neutral part to troupe/config/yaml_style.py"
+    ],
+    "reason": "Core may not import writeback (test_core_boundary); writeback refuses surrogates, but show must never refuse; one decision in one place",
+    "recorded_at": "research.md:107-127 (Decision 1)"
+  },
+  {
+    "decision": "Add a new DOCUMENT quoting context for a scalar alone at the document root",
+    "options": [],
+    "reason": "The probes do not cover root scalars, where `--- a` or `...` would read as document markers",
+    "recorded_at": "research.md:53-54,116-117"
+  },
+  {
+    "decision": "Put the emitter in the CLI layer (cli/yaml_output.py, render_yaml(node, *, label)) producing annotated lines",
+    "options": [],
+    "reason": "Steering says the CLI renders output; 5.5 then holds by construction",
+    "recorded_at": "research.md:129-138 (Decision 2)"
+  },
+  {
+    "decision": "Indent literal content 2 columns past the key or dash that owns the header, with the indentation indicator always `2`",
+    "options": [
+      "Relative to the owning key or dash column",
+      "Relative to the header line's own leading spaces (the literal reading of 4.4)"
+    ],
+    "reason": "An experiment showed the literal reading puts `- k: |` content outside the mapping and breaks 4.1",
+    "recorded_at": "research.md:64-85; design.md clarification (transcript.md:56); gates.md:74"
+  },
+  {
+    "decision": "Accept as a documented risk that strict parsers may read a root `|2` literal block with a different indentation",
+    "options": [],
+    "reason": "Only `show PATH --sources` on a scalar prints a root literal block; read-back tests use the project's reader",
+    "recorded_at": "research.md:84-85,199-201"
+  },
+  {
+    "decision": "Accept that implicit keys longer than 1024 characters are not valid YAML",
+    "options": [],
+    "reason": "Out of contract, same as write-back; configurations are small",
+    "recorded_at": "research.md:205-206"
+  },
+  {
+    "decision": "A text include without a line feed is still a literal block (`|-` plus one content line)",
+    "options": [],
+    "reason": "Every text include is a literal block",
+    "recorded_at": "research.md:162-163"
+  },
+  {
+    "decision": "Floats print as repr(float) when finite and as .inf/-.inf/.nan otherwise; bool is checked before int",
+    "options": [],
+    "reason": "repr always matches the core float pattern",
+    "recorded_at": "research.md:149-151 (Decision 4)"
+  },
+  {
+    "decision": "Read-back tests write the output to a temporary theatre and load it with the project's load_config, not ruamel",
+    "options": [
+      "Project loader",
+      "ruamel resolver"
+    ],
+    "reason": "ruamel's resolver departs from the 1.2 core schema (`1_0`, dates)",
+    "recorded_at": "research.md:87-94"
+  },
+  {
+    "decision": "Put get and show in a new module cli/get_show_command.py; rename theatre.show_value to get_value; add node_at(theatre, path|None)",
+    "options": [],
+    "reason": "Follows the one-module-per-spec registrar pattern",
+    "recorded_at": "research.md:176-184 (Decision 6)"
+  },
+  {
+    "decision": "No new error type, no configurable indentation, comment column or output format, and no separate source-map structure",
+    "options": [],
+    "reason": "Simplification",
+    "recorded_at": "research.md:192-194"
+  },
+  {
+    "decision": "Plan the yaml_style move as its own first task, proven by set's unchanged byte-exact tests",
+    "options": [],
+    "reason": "Riskiest step; a separate commit shows it is a pure move",
+    "recorded_at": "gates.md:72; research.md:197-198; tasks.md 1.1"
+  },
+  {
+    "decision": "Repair the task plan after the reviewer's NEEDS_FIXES: split old 3.1 into 'add get' and 'replace show', limit 2.3 to collection roots, give 4.3 its own module, and more",
+    "options": [],
+    "reason": "Existing tests would have broken (show with no PATH no longer exits 2; show on a list no longer exits 5)",
+    "recorded_at": "transcript.md:78-85; gates.md:113"
+  },
+  {
+    "decision": "Have task 3.1 update the exact-registrar-list tests as well",
+    "options": [],
+    "reason": "Adding get to the registrar list would break the two tests that check it exactly",
+    "recorded_at": "transcript.md:82-83"
+  },
+  {
+    "decision": "Register get first so the registrar order is already the final `get, show, history, set, watch`",
+    "options": [],
+    "reason": "The reviewer's note; 3.2 then only swaps where show comes from",
+    "recorded_at": "transcript.md:89-90; src/troupe/cli/main.py:1632-1635"
+  },
+  {
+    "decision": "Under 4.3's minimal chain, single-quote a string containing a TAB rather than double-quote it",
+    "options": [],
+    "reason": "Double quotes are only for characters single quotes cannot hold",
+    "recorded_at": "spec/spec/config-get-show/tasks.md:136"
+  },
+  {
+    "decision": "Leave as is the plain or single-quoted output of strings containing U+FEFF",
+    "options": [],
+    "reason": "Pre-existing write-back behaviour; changing it would change set's bytes, which this spec must not do",
+    "recorded_at": "spec/spec/config-get-show/tasks.md:137; questions.md:228"
+  },
+  {
+    "decision": "Retarget test_e2e_includes.py's included-collection→5 test to get, and also assert that show exits 0",
+    "options": [],
+    "reason": "The full suite found one more test relying on step 1's scalar-only show",
+    "recorded_at": "spec/spec/config-get-show/tasks.md:138"
+  },
+  {
+    "decision": "Implement the literal-block layout again in the CLI emitter (_literal_block) instead of importing writeback's render_literal",
+    "options": [],
+    "reason": "The CLI does not import writeback; the decisions behind it stay in one place in yaml_style; the reviewer judged this acceptable",
+    "recorded_at": "src/troupe/cli/yaml_output.py:1873-1891; questions.md:229"
+  },
+  {
+    "decision": "Parse PATH before opening the theatre in get and show, so a malformed PATH creates no history state",
+    "options": [],
+    "reason": "Requirements 1.5/2.5",
+    "recorded_at": "src/troupe/cli/get_show_command.py:1488-1491,1514-1519"
+  },
+  {
+    "decision": "show with a scalar and no --sources reuses format_show_output; everything else goes through render_yaml",
+    "options": [],
+    "reason": "2.1: a scalar prints exactly as get prints it",
+    "recorded_at": "src/troupe/cli/get_show_command.py:1522-1532"
+  },
+  {
+    "decision": "A string with a line feed that reaches the one-line path is always double-quoted",
+    "options": [],
+    "reason": "Reads back as the same string (4.5)",
+    "recorded_at": "src/troupe/cli/yaml_output.py:1898-1904"
+  },
+  {
+    "decision": "Wording of the get/show help and description texts (e.g. 'annotate each value with the file it comes from')",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Drop empty_map and empty_list from the expected leaf-path list in test_e2e_show_yaml.py",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:439"
+  },
+  {
+    "decision": "Discovery run (separate run): Path E chosen, with every multi-line string as a literal block when one can hold it, otherwise double-quoted; infinity printed as .inf; LF line endings",
+    "options": [],
+    "reason": "Recorded in that run's brief",
+    "recorded_at": "questions.md:236-255"
+  }
+]

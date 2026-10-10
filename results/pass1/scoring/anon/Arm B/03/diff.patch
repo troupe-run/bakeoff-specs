@@ -1,0 +1,1702 @@
+diff --git a/README.md b/README.md
+index 473c44d..2398cd5 100644
+--- a/README.md
++++ b/README.md
+@@ -20,7 +20,8 @@ Every command takes `--theatre DIR` (default: the current directory).
+ 
+ | Command | What it does |
+ |---|---|
+-| `troupe config show PATH` | Print the scalar at `PATH` |
++| `troupe config get PATH` | Print the scalar at `PATH` (a mapping or list exits 5: use `show`) |
++| `troupe config show [PATH] [--sources]` | Print the value at `PATH`, or the whole configuration, as YAML with includes resolved; `--sources` says which file each value comes from |
+ | `troupe config set PATH VALUE` | Change or create the value at `PATH` and write it back into the file that holds it |
+ | `troupe config history [PATH]` | Print the change events as JSON Lines, oldest first, optionally only for `PATH` and below |
+ | `troupe config watch` | Record hand edits to the files as they happen, until Ctrl-C (SIGINT) or SIGTERM |
+@@ -34,7 +35,7 @@ Example, from the repository root:
+ ```sh
+ mkdir -p /tmp/demo/.troupe
+ printf 'agents:\n  coder:\n    model: big   # strongest\n' > /tmp/demo/.troupe/troupe.yml
+-uv run troupe config show agents.coder.model --theatre /tmp/demo        # big
++uv run troupe config get agents.coder.model --theatre /tmp/demo         # big
+ uv run troupe config set agents.coder.model small --theatre /tmp/demo   # model: small # strongest
+ uv run troupe config set agents.coder.tools '[read, write]' --theatre /tmp/demo
+ uv run troupe config history agents.coder --theatre /tmp/demo
+@@ -57,6 +58,32 @@ kill %1
+ 
+ A `set` made while `watch` runs records exactly its own events. Its write-back is not picked up again.
+ 
++### Showing sections and where values come from
++
++`get` prints one value. `show` prints a value the same way. A mapping or list, or with `PATH` omitted the whole
++configuration, is printed as block YAML. Includes are resolved: an included YAML file appears in place of its
++`file:` string, and a text include's content is a literal block (`|`). The output is a canonical layout of the
++values, not a copy of your files: comments are dropped, `0x1F` shows as `31`, and quoting follows the same rule `set`
++uses for new values. With `--sources`, every line that holds a scalar ends with `# from <file>`, relative to the
++theatre:
++
++```sh
++mkdir -p /tmp/demo/.troupe/agents
++printf 'model: big\nprompt: file:coder.md\n' > /tmp/demo/.troupe/agents/coder.yaml
++printf 'You write code.\n' > /tmp/demo/.troupe/agents/coder.md
++printf 'name: demo\nagents:\n  coder: file:agents/coder.yaml\n' > /tmp/demo/.troupe/troupe.yml
++uv run troupe config show --sources --theatre /tmp/demo
++# name: demo # from .troupe/troupe.yml
++# agents:
++#   coder:
++#     model: big # from .troupe/agents/coder.yaml
++#     prompt: | # from .troupe/agents/coder.md
++#       You write code.
++```
++
++Until step 3, `show PATH` refused mappings and lists with exit 5. Scripts that relied on that should call `get`, whose
++output and exit codes are the same as the old `show PATH`.
++
+ ### Includes
+ 
+ A string starting with `file:` includes the named file, relative to the file containing it. A `.yml`/`.yaml` target is
+@@ -83,14 +110,14 @@ Change events are stored with the [`eventsourcing`](https://eventsourcing.readth
+ 
+ Edits made by hand are recorded by *reconciling*: troupe compares the files with the recorded configuration and
+ records a `set` or `remove` event for each leaf that differs. A formatting-only or comment-only edit records nothing.
+-`show` and `set` reconcile before doing anything else, so edits made while nothing was running are picked up.
++`get`, `show` and `set` reconcile before doing anything else, so edits made while nothing was running are picked up.
+ `history` never reconciles: it reports only what has been recorded. Commands against one theatre take turns (a lock
+ on the `.troupe/` directory), so troupe never records its own write-back a second time.
+ 
+ ## Decisions on points the contract leaves open
+ 
+-These are recorded with their reasons in `spec/changes/archive/2026-10-02-config-load-show-set/design.md`
+-and `spec/changes/archive/2026-10-03-config-sync-with-files/design.md`:
++These are recorded with their reasons in `spec/changes/archive/2026-10-02-config-load-show-set/design.md`,
++`spec/changes/archive/2026-10-03-config-sync-with-files/design.md` and `spec/changes/archive/2026-10-03-config-get-and-show/design.md`:
+ 
+ 1. Setting a key under a null or scalar value (e.g. `agents:` with nothing after it) exits 5. Set the parent to a
+    mapping first: `set agents '{coder: {model: x}}'`.
+@@ -114,6 +141,13 @@ and `spec/changes/archive/2026-10-03-config-sync-with-files/design.md`:
+ 13. Reconcile records removes in the order they were recorded, then sets in the files' document order.
+ 14. `watch` reads the watched files every 0.2 s and reconciles once a change has read the same twice in a row. That
+     way it does not record a file that an editor has emptied halfway through a save.
++15. `show PATH --sources` on a scalar prints it as YAML with the comment (`big # from …`), not in the
++    `get` form, so the source can be shown.
++16. The source comment is ` # from <file>`, on the `|` line for literal blocks. Lines holding `{}` or `[]` get none.
++    `<file>` has `..` folded away and symlinks are not resolved; a file outside the theatre gets a `../` path.
++17. `show` writes every multi-line string as a literal block when one can hold it exactly, otherwise double-quoted.
++    Lists under a key are indented two spaces, and list items that are collections use the compact `- key: v` form.
++18. `get` reconciles before reading, like `show`.
+ 
+ ## Development
+ 
+diff --git a/spec/changes/archive/2026-10-03-config-get-and-show/.method.yaml b/spec/changes/archive/2026-10-03-config-get-and-show/.method.yaml
+new file mode 100644
+index 0000000..6a87d2b
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-get-and-show/.method.yaml
+@@ -0,0 +1,2 @@
++schema: spec-driven
++created: 2026-10-03
+diff --git a/spec/changes/archive/2026-10-03-config-get-and-show/design.md b/spec/changes/archive/2026-10-03-config-get-and-show/design.md
+new file mode 100644
+index 0000000..de55c53
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-get-and-show/design.md
+@@ -0,0 +1,146 @@
++# Design
++
++## Context
++
++See proposal.md for the motivation and `spec/` for the exact behaviour. What exists today (after step 2):
++
++- `cli.py` has a `show PATH` subparser. `commands.show()` opens a `theatre_session(theatre, "show")`, finds the node
++  with `commands.find()`, refuses anything that is not a `ScalarNode` or `TextNode` (`PathError`, exit 5), and returns
++  `schema.show_text(value)`.
++- `RECONCILING_COMMANDS = {"show", "set", "watch"}` in `commands.py` decides which commands reconcile first.
++- The loaded tree (`tree.py`) already holds what `--sources` needs. Every node has `file: SourceFile`, the file its text
++  is in. A text include is a `TextNode` whose `target: SourceFile` is the included file. An included YAML file's
++  root node and everything under it carry that file. An empty included YAML file becomes a `ScalarNode(None)` whose
++  `file` is the included file.
++- `SourceFile.path` is not resolved. It is `<theatre>/.troupe/<name>` for the config file and `base / target` for
++  includes, so it can contain `..` segments.
++- `set` already writes new values into block context:
++  - `edit/scalars.py`: `render_scalar`/`render_key` (plain if it reads back the same, else single, else double quoted)
++    and `can_plain`.
++  - `edit/blocks.py`: `literal(value, owner_col, layout)` builds a literal block, choosing chomping and an indentation
++    digit, and checks that the block reads back exactly (`block_ok`). It returns `None` when a block cannot hold the
++    value.
++  - `edit/blocks.py` also renders whole `Data` trees (`mapping_lines`, `item_lines`), but only from plain data, which
++    has no file information and no `TextNode`s.
++
++## Goals / Non-Goals
++
++**Goals:**
++- One renderer for `show` output. With and without sources it produces the same lines, so the two can never differ
++  except for the comments.
++- Scalars are written by the same helpers `set` uses, so quoting and literal-block rules are decided in one place.
++- Output is checked by reading it back with troupe's own YAML reader, not by eye.
++
++**Non-Goals:**
++- Reproducing the user's original formatting, comments or quoting in `show` output. `show` prints the configuration
++  as troupe understands it, in one canonical layout. The files themselves are never touched.
++- Showing `file:` include strings or marking include boundaries, except through `--sources`.
++- Flow style, anchors, or any output format other than block YAML.
++
++## Decisions
++
++### D1. `get` and `show` share lookup; `get` keeps the step-1 code path
++`commands.get(theatre, path)` is today's `show()` with a new error message. `commands.show(theatre, path | None,
++sources)` uses the same `theatre_session` and `find()`. With no path, the node is `config.root`. Then:
++- a scalar or `TextNode` without `--sources` → `show_text(value)`, the `get` form, so the spec's "prints a scalar like
++  `get`" is the same function call;
++- anything else, or any node with `--sources` → `render.render(node, sources=...)`.
++
++The `get` refusal message lives in one place, `commands.get`: `<path>: is a mapping, not a scalar (use `troupe config
++show <path>` to print it)`. It names the path and contains `config show`, as the spec requires. `"get"` is added to
++`RECONCILING_COMMANDS`, since a read must see hand edits the same way `show` does.
++
++### D2. A new module `render.py` walks the node tree into lines with sources
++`render(node, theatre, *, sources) -> str` walks `Node`s, not `Data`, because only nodes know their file and
++whether a string is a text include. It produces a list of `Line(text, source: SourceFile | None)`. `source` is set only
++on lines that hold a scalar value. Then it joins them. Each line is `text`, plus ` # from <label>` when `sources` is on
++and `source` is set.
++- Mapping entry with a non-empty mapping or list value: `key:` (no source), children at indentation +2.
++- Mapping entry with a scalar: `key: <scalar>` with the scalar's source.
++- Mapping entry with a literal block: `key: |…` with the source, then content lines without a source.
++- Sequence item: `- <scalar>`. Non-empty collections use the compact `- key: v` / `- - x` form: the first child line
++  is joined to the dash, as `edit/blocks.item_lines` does. The source stays with that first line.
++- Empty mapping or list: `{}` / `[]`, no source. An empty root mapping prints `{}`.
++- Root scalar (only reached with `--sources`): the scalar alone, or the literal header alone at indentation 0 with
++  content at 2.
++
++*Alternative:* extend `edit/blocks.py`'s `Data` renderer to carry sources. Rejected: it would need nodes instead of
++data and a `TextNode` case, all for a feature that `set` does not use. That would make `set`'s write path harder
++to verify. The structural rules are short. The scalar rules, which are the hard part, are shared (D3).
++
++### D3. Scalars use `set`'s helpers
++- Non-strings and single-line strings: `edit.scalars.render_scalar(value, None, flow=False)`. That gives `plain_text`
++  for non-strings (`null`, `true`, `31`, `1000.0`, `.inf`), and plain, single or double quotes for strings. Keys use
++  `render_key(key, None, flow=False)`.
++- A `TextNode`, or any string containing `\n`: `edit.blocks.literal(value, owner_col, Layout(unit=2, seq_offset=2))`.
++  `owner_col` is the column of the key or `-` that owns the value, or `-1` at the root. If `literal` returns `None`
++  (a carriage return, a control character, or a value such as `"\n"` that its check rejects), fall back to
++  `render_scalar`. That is double quotes, because single quotes cannot hold a line break.
++So `block_ok`, which reads the candidate block back, is the one definition of what a literal block cannot hold.
++
++### D4. `<file>` is a lexical path relative to the theatre
++`source_label(file, theatre) = os.path.relpath(os.path.normpath(os.path.abspath(file.path)),
++os.path.abspath(theatre))`, with `/` separators. `.troupe/agents/../b.yaml` becomes `.troupe/b.yaml`. Symlinks are
++not resolved. That keeps the label consistent with how the user named the theatre (on macOS, `resolve()` would turn
++`/var/…` into `/private/var/…`), and it matches how `cli.py` already treats `watch`'s `<dir>`. An include outside the
++theatre gets a `../` label. Includes outside the theatre are not forbidden by the contract, so this is not an error.
++The function lives in `render.py`.
++
++### D5. The source of each scalar
++`ScalarNode.file` for ordinary scalars, and `TextNode.target` for text includes. The `file:` string's own file is
++deliberately not used, as the contract says. Mapping keys get no comment of their own. The line's comment always
++describes the value on that line, and in block style a key and its scalar value are always in the same file.
++
++### D6. CLI shape
++- `get` subparser: one required `path`.
++- `show` subparser: `path` with `nargs="?"`, and `--sources` (`store_true`), accepted before or after the path.
++- `run` dispatches to `commands.get` / `commands.show`. Exit-code mapping stays in `main`.
++
++### D7. Testing
++- Move today's `tests/test_show.py` scalar and refusal tests to `tests/test_get.py`, running `get`. Add the
++  `config show` message check.
++- Rewrite `tests/test_show.py` for the spec's exact-output scenarios: whole config, section, list, list of mappings,
++  one-line text include, quoting, scalar types, empty collections, empty config. Also check that `show` of a scalar
++  equals `get`, and that missing paths exit 5.
++- `tests/test_show_sources.py`: the exact `--sources` scenarios, the empty included file, a `..` include, the
++  `troupe.yaml` name, a scalar with `--sources`, and a text include's comment naming the included file.
++- Round-trip test: for a table of tricky configurations (multi-line strings with and without trailing newlines,
++  leading spaces, CRLF text includes, `.nan`/`-.inf`, strings like `true`/`0.2`/`- x`/`#x`/`a: b`, nested lists, lists
++  of mappings, unicode, empty strings), read `show` and `show --sources` output back with `tree.build_tree` +
++  `to_data`, and compare with the loaded configuration using `schema.same`, so types count.
++- Update callers that relied on the old refusal. `tests/test_smoke.py` expects `show agents` → 5, which becomes
++  `get agents` → 5, plus a smoke test for `uv run troupe config show --sources`. Other `show` calls on scalars keep
++  working unchanged. That is itself a check that the `get` form is preserved.
++- Reconcile: add `get` cases to `tests/test_reconcile.py` (hand edit then `get` records the reconcile event, and
++  `get nope` exit 5 still keeps it).
++
++## Risks / Trade-offs
++
++- [Scripts that relied on `show` exiting 5 on collections now get YAML and exit 0] → this is the step-3 contract
++  (**BREAKING** in the proposal). The migration is to call `get`. The README says so.
++- [Canonical output differs from the user's file layout (quoting, `0x1F` shown as `31`, flow lists shown as block)]
++  → this is intended: `show` shows values, not text. The files are never touched.
++- [A string starting with `file:` (only possible through a tag such as `!!str file:x`) prints plain, and troupe's
++  loader would read that back as an include] → the output is still correct YAML 1.2 for the data. Reading `show`
++  output back into troupe is not in the contract.
++- [The literal-block check parses each candidate block] → a few small parses per multi-line value. No performance
++  targets apply.
++
++## Migration Plan
++
++No data migration: events, state and write-back do not change. To roll back, use the step-2 code. `get` disappears
++and `show` refuses collections again.
++
++## Decisions on points the contract leaves open (for product-owner review)
++
++1. `show PATH --sources` on a scalar prints a one-scalar YAML document with the comment (`x # from .troupe/troupe.yml`)
++   instead of the bare `get` form. `--sources` asks for source information, and a bare value cannot carry it.
++2. The comment is written as one space, `#`, one space, then the file. It goes on the `|` header line for literal
++   blocks, because content lines cannot hold comments. Lines with `{}`/`[]` get no comment: they hold no scalar.
++3. `<file>` is normalised lexically (`..` removed) and symlinks are not resolved (D4). Includes outside the theatre
++   get `../` labels.
++4. Strings are quoted by the same rule `set` uses for new values: plain if it reads back the same, else single
++   quotes, else double quotes. Every string containing a line break, not only text includes, is a literal block when
++   one can hold it exactly.
++5. Lists under a mapping key are indented two spaces, and items that are collections use the compact `- key: v` form.
++6. `get` reconciles first, like `show`. A read sees hand edits the same way regardless of which command reads.
+diff --git a/spec/changes/archive/2026-10-03-config-get-and-show/proposal.md b/spec/changes/archive/2026-10-03-config-get-and-show/proposal.md
+new file mode 100644
+index 0000000..53eac91
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-get-and-show/proposal.md
+@@ -0,0 +1,48 @@
++# Proposal
++
++## Why
++
++`show PATH` only prints scalars. A mapping or list exits 5, so people cannot look at a whole agent, a section or the
++whole configuration as troupe sees it, with includes followed. Nor can they find out which file a value comes from.
++They need both to understand configurations that are split across included files. Step 3 splits reading in two:
++`get` for one value, which keeps the step-1 behaviour scripts rely on, and `show` for anything, printed as YAML,
++with `--sources` to say where each value comes from.
++
++## What Changes
++
++- New subcommand `troupe config get PATH`. It prints a scalar exactly as `show PATH` did in steps 1 and 2. On a
++  mapping or list it exits 5, and stderr names the path and mentions `config show`. Missing paths exit 5 as before.
++- **BREAKING**: `troupe config show [PATH] [--sources]` no longer refuses collections.
++  - A scalar (including a text include) is printed as `get` prints it.
++  - A mapping or list is printed as block-style YAML with includes resolved. The value of a text include is printed
++    as a literal block scalar (`|`).
++  - With `PATH` omitted, the whole configuration is printed.
++  - Missing paths still exit 5, naming the path.
++- `--sources` adds an end-of-line comment `# from <file>` to every output line that holds a scalar. `<file>` is the
++  file the scalar comes from, relative to the theatre directory, with `/` separators. A text include's value comes
++  from the included file, not from the file holding the `file:` string.
++- `get` reconciles before it reads, as `show` does. It joins the commands that reconcile first.
++
++## Capabilities
++
++### New Capabilities
++- `config-get`: reading one scalar value with `get PATH`. It takes over the step-1 `show PATH` requirements, plus
++  the rule that a collection exits 5 with a pointer to `config show`.
++
++### Modified Capabilities
++- `config-show`: `show` takes an optional `PATH`, prints collections and the whole configuration as YAML, and adds
++  `--sources`. The requirement "Show refuses collections and missing paths" is removed. Missing paths still exit 5.
++- `config-cli`: `get` joins the list of subcommands. The rule that commands leave user files untouched now covers
++  `get` and `show --sources`.
++- `config-sync`: `get` joins `show`, `set` and `watch` as a command that reconciles first.
++
++## Impact
++
++- Code:
++  - `cli.py`: a `get` subparser, `show` with an optional `path` and a `--sources` flag.
++  - `commands.py`: `get` and `show` share one path lookup. `"get"` is added to `RECONCILING_COMMANDS`.
++  - A new module that renders a configuration subtree as YAML, optionally with sources. It has no new dependencies.
++- Tests: the existing `tests/test_show.py` scalar tests move to `get` and still pass. New tests cover YAML output,
++  output that reads back to the same data, `--sources` comments, and `get` on collections. CLI and smoke tests that
++  call `show` on scalars stay valid. README updated.
++- No change to state, events or write-back.
+diff --git a/spec/changes/archive/2026-10-03-config-get-and-show/spec/config-cli/spec.md b/spec/changes/archive/2026-10-03-config-get-and-show/spec/config-cli/spec.md
+new file mode 100644
+index 0000000..34f29b3
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-get-and-show/spec/config-cli/spec.md
+@@ -0,0 +1,41 @@
++# Spec Delta
++
++## MODIFIED Requirements
++
++### Requirement: Invocation and theatre selection
++The CLI SHALL be invocable as `uv run troupe config <subcommand> [--theatre <dir>] [arguments]` from the repository
++root, with subcommands `get PATH`, `show [PATH] [--sources]`, `set PATH VALUE`, `history [PATH]` and `watch`.
++`--theatre` SHALL default to the current working directory.
++
++#### Scenario: Explicit theatre
++- **WHEN** `uv run troupe config get model --theatre /tmp/t` is run and `/tmp/t/.troupe/troupe.yml` contains `model: x`
++- **THEN** stdout is `x\n` and the exit code is 0
++
++#### Scenario: Default theatre is the current directory
++- **WHEN** `troupe config get model` is run with the current directory set to a theatre whose config has `model: x`
++- **THEN** stdout is `x\n` and the exit code is 0
++
++#### Scenario: Unknown subcommand or missing argument
++- **WHEN** `troupe config frobnicate`, `troupe config get` (no PATH) or `troupe config set model` (no VALUE) is run
++- **THEN** the exit code is 2, stdout is empty and stderr has a usage message
++
++#### Scenario: show takes an optional PATH
++- **WHEN** `troupe config show` and `troupe config show --sources` are run against a theatre that loads
++- **THEN** each exits 0 and prints the whole configuration
++
++#### Scenario: watch takes no positional argument
++- **WHEN** `troupe config watch extra` is run
++- **THEN** the exit code is 2, stdout is empty and stderr has a usage message
++
++### Requirement: State confined to `.troupe/`
++The implementation SHALL keep its own state only under `<theatre>/.troupe/`. It SHALL NOT create or modify any other
++file except as `set`'s write-back rules require, and SHALL NOT create any state when the configuration cannot be
++loaded.
++
++#### Scenario: show leaves user files untouched
++- **WHEN** `get`, `show`, `show --sources`, `history` and `watch` run against a theatre, including while files are edited by hand during `watch`
++- **THEN** no configuration file is created or modified by troupe, and new files appear only under `.troupe/`
++
++#### Scenario: Unloadable theatre creates no state
++- **WHEN** any subcommand runs against a directory with no `.troupe/troupe.yml` or `.yaml`
++- **THEN** the exit code is 4 and no file or directory is created
+diff --git a/spec/changes/archive/2026-10-03-config-get-and-show/spec/config-get/spec.md b/spec/changes/archive/2026-10-03-config-get-and-show/spec/config-get/spec.md
+new file mode 100644
+index 0000000..12d2239
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-get-and-show/spec/config-get/spec.md
+@@ -0,0 +1,50 @@
++# Spec Delta
++
++## Purpose
++
++Lets a user or a script read one scalar setting from a theatre's configuration, following includes, printed in a
++stable textual form. Anything larger is read with `show`.
++
++## ADDED Requirements
++
++### Requirement: Get a scalar value
++`troupe config get PATH` SHALL print the value at `PATH` using the scalar printing rules when that value is a scalar.
++A text include SHALL count as a string scalar. The value SHALL reflect the current contents of the configuration
++files, including edits made by hand since the last command.
++
++#### Scenario: Plain scalar
++- **WHEN** the config is `model: claude-opus-5-5\n` and `get model` is run
++- **THEN** stdout is `claude-opus-5-5\n` and the exit code is 0
++
++#### Scenario: Value through a YAML include
++- **WHEN** `agents.coder` is `file:agents/coder.yaml`, which contains `temperature: 0.2`
++- **THEN** `get agents.coder.temperature` prints `0.2\n`
++
++#### Scenario: Text include
++- **WHEN** `p` is `file:p.txt` and `p.txt` contains `no newline` (no line break)
++- **THEN** `get p` prints `no newline\n`
++
++#### Scenario: Hand edit is visible
++- **WHEN** a command has already run, the user then edits `model: a` to `model: b` by hand, and `get model` runs
++- **THEN** stdout is `b\n`
++
++### Requirement: Get refuses collections and missing paths
++`get` SHALL exit 5 when the value at `PATH` is a mapping or list, when `PATH` does not exist, when an index is out of
++range, or when a segment would have to descend into a scalar. Stderr SHALL name the path. When the value is a mapping
++or list, stderr SHALL also mention `config show`, the command that prints it.
++
++#### Scenario: Mapping
++- **WHEN** `agents` is a mapping and `get agents` is run
++- **THEN** the exit code is 5, stdout is empty, and stderr contains both `agents` and `config show`
++
++#### Scenario: List
++- **WHEN** `tools` is a list and `get tools` is run
++- **THEN** the exit code is 5, stdout is empty, and stderr contains both `tools` and `config show`
++
++#### Scenario: Missing key
++- **WHEN** `get nope` is run and there is no `nope` key
++- **THEN** the exit code is 5, stdout is empty, and stderr names `nope`
++
++#### Scenario: Descending into a scalar
++- **WHEN** `model` is a string and `get model.x` is run
++- **THEN** the exit code is 5 and stderr names `model.x`
+diff --git a/spec/changes/archive/2026-10-03-config-get-and-show/spec/config-show/spec.md b/spec/changes/archive/2026-10-03-config-get-and-show/spec/config-show/spec.md
+new file mode 100644
+index 0000000..0521468
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-get-and-show/spec/config-show/spec.md
+@@ -0,0 +1,134 @@
++# Spec Delta
++
++## MODIFIED Requirements
++
++### Requirement: Show a scalar value
++`troupe config show [PATH] [--sources]` SHALL print the value at `PATH`, or the whole configuration when `PATH` is
++omitted. Without `--sources`, a scalar SHALL be printed exactly as `get PATH` prints it, and a text include SHALL count
++as a string scalar. The value SHALL reflect the current contents of the configuration files, including edits made by
++hand since the last command. `show` SHALL exit 5, naming the path, when `PATH` does not exist, when an index is out of
++range, or when a segment would have to descend into a scalar.
++
++#### Scenario: Plain scalar
++- **WHEN** the config is `model: claude-opus-5-5\n` and `show model` is run
++- **THEN** stdout is `claude-opus-5-5\n` and the exit code is 0
++
++#### Scenario: Value through a YAML include
++- **WHEN** `agents.coder` is `file:agents/coder.yaml`, which contains `temperature: 0.2`
++- **THEN** `show agents.coder.temperature` prints `0.2\n`
++
++#### Scenario: Text include as a scalar
++- **WHEN** `prompt` is `file:prompt.md`, which contains `Hello\nWorld\n`, and `show prompt` is run
++- **THEN** stdout is `Hello\nWorld\n`, the same as `get prompt`
++
++#### Scenario: Hand edit is visible
++- **WHEN** a command has already run, the user then edits `model: a` to `model: b` by hand, and `show model` runs
++- **THEN** stdout is `b\n`
++
++#### Scenario: Missing key
++- **WHEN** `show nope` is run and there is no `nope` key
++- **THEN** the exit code is 5, stdout is empty, and stderr names `nope`
++
++#### Scenario: Descending into a scalar
++- **WHEN** `model` is a string and `show model.x` is run
++- **THEN** the exit code is 5 and stderr names `model.x`
++
++## ADDED Requirements
++
++### Requirement: Show collections as YAML
++When the value at `PATH` (or, with `PATH` omitted, the whole configuration) is a mapping or list, `show` SHALL print
++it as one YAML document in block style, with includes resolved: the content of an included YAML file appears in place
++of its `file:` string. The output SHALL satisfy all of the following:
++- Read as YAML 1.2 with the core schema, it gives exactly the same data as the value at `PATH`, with the same types.
++- Mapping keys appear in the order they have in the files, and list items in their order.
++- Nesting is indented by two spaces. List items are written `- item`, and a list or mapping that is a mapping's value
++  starts on the line after its key.
++- Non-string scalars are written as `null`, `true`/`false`, decimal integers, and floats in Python `repr()` form, with
++  `.inf`, `-.inf` and `.nan` for the special values.
++- A string is written plain when the plain form reads back as the same string. Otherwise it is single-quoted when
++  single quotes can hold it, and double-quoted when they cannot. This is the rule `set` uses for new values.
++- A text include's value is written as a literal block scalar (`|`, `|-` or `|+`, as its trailing line breaks require),
++  even when it is one line or empty. Any other string that contains a line break is written the same way. The only
++  exception is a string that a literal block cannot hold exactly (such as one containing a carriage return or a
++  control character). That string is written double-quoted.
++- An empty mapping is written `{}` and an empty list `[]`.
++The output SHALL end with a single line break, and nothing SHALL be written to stderr.
++
++#### Scenario: Whole configuration with includes
++- **WHEN** `troupe.yml` is `model: claude-opus-5-5\nagents:\n  coder: file:agents/coder.yaml\nprompt: file:prompt.md\ntools: [read, write]\n`, `agents/coder.yaml` is `model: m1\ntemperature: 0.2\n`, `prompt.md` is `Hello\nWorld\n`, and `show` is run
++- **THEN** the exit code is 0 and stdout is `model: claude-opus-5-5\nagents:\n  coder:\n    model: m1\n    temperature: 0.2\nprompt: |\n  Hello\n  World\ntools:\n  - read\n  - write\n`
++
++#### Scenario: A section
++- **WHEN** the same theatre and `show agents` is run
++- **THEN** stdout is `coder:\n  model: m1\n  temperature: 0.2\n`
++
++#### Scenario: A list
++- **WHEN** the same theatre and `show tools` is run
++- **THEN** stdout is `- read\n- write\n`
++
++#### Scenario: List of mappings
++- **WHEN** the config is `steps:\n  - {name: a, n: 1}\n  - name: b\n` and `show steps` is run
++- **THEN** stdout is `- name: a\n  n: 1\n- name: b\n`
++
++#### Scenario: One-line text include
++- **WHEN** the config is `p: file:p.txt\n`, `p.txt` contains `no newline` (no line break), and `show` is run
++- **THEN** stdout is `p: |-\n  no newline\n`
++
++#### Scenario: Strings that need quoting
++- **WHEN** the config is `a: "true"\nb: '0.2'\nc: ""\nd: "x: y"\n` and `show` is run
++- **THEN** stdout is `a: 'true'\nb: '0.2'\nc: ''\nd: 'x: y'\n`
++
++#### Scenario: Scalar types are kept
++- **WHEN** the config is `a: 0x1F\nb: 1e3\nc: ~\nd: .inf\ne: TRUE\n` and `show` is run
++- **THEN** stdout is `a: 31\nb: 1000.0\nc: null\nd: .inf\ne: true\n`
++
++#### Scenario: Empty collections and empty configuration
++- **WHEN** the config is `agents: {}\ntools: []\n` and `show` is run, or the config file is empty and `show` is run
++- **THEN** stdout is `agents: {}\ntools: []\n`, or `{}\n` respectively
++
++#### Scenario: Output reads back as the same data
++- **WHEN** `show` is run on any configuration that loads, including multi-line strings, special floats, nested lists and strings that look like other types
++- **THEN** reading stdout as YAML 1.2 core gives data equal to the loaded configuration, with the same types
++
++### Requirement: Show sources
++`show [PATH] --sources` SHALL print the same YAML as `show [PATH]` would print for a mapping or list, and add an
++end-of-line comment ` # from <file>` (one space, `#`, one space) to every line that holds a scalar value. For a scalar
++written as a literal block, the comment goes on the line with the `|` indicator. Lines that hold only a key whose
++value starts on the next line, the content lines of a literal block, and lines whose value is `{}` or `[]` get no
++comment. `<file>` SHALL be the file the scalar is written in, relative to the theatre directory, with `/` separators
++and no `.` segments. For a text include, `<file>` SHALL be the included file, not the file holding the `file:` string.
++When the value at `PATH` is a scalar, `--sources` SHALL print it as a one-scalar YAML document with the comment, not in
++the `get` form. With or without the comments, the output SHALL read back as the same data.
++
++#### Scenario: Sources across includes
++- **WHEN** the theatre from "Whole configuration with includes" and `show --sources` is run
++- **THEN** stdout is `model: claude-opus-5-5 # from .troupe/troupe.yml\nagents:\n  coder:\n    model: m1 # from .troupe/agents/coder.yaml\n    temperature: 0.2 # from .troupe/agents/coder.yaml\nprompt: | # from .troupe/prompt.md\n  Hello\n  World\ntools:\n  - read # from .troupe/troupe.yml\n  - write # from .troupe/troupe.yml\n`
++
++#### Scenario: Sources for a section
++- **WHEN** the same theatre and `show agents.coder --sources` is run
++- **THEN** stdout is `model: m1 # from .troupe/agents/coder.yaml\ntemperature: 0.2 # from .troupe/agents/coder.yaml\n`
++
++#### Scenario: Sources for a scalar
++- **WHEN** the same theatre and `show model --sources` is run, or `show prompt --sources`
++- **THEN** stdout is `claude-opus-5-5 # from .troupe/troupe.yml\n`, or `| # from .troupe/prompt.md\n  Hello\n  World\n` respectively
++
++#### Scenario: Empty included YAML file
++- **WHEN** `agents.coder` is `file:agents/coder.yaml`, that file is empty, and `show agents --sources` is run
++- **THEN** stdout is `coder: null # from .troupe/agents/coder.yaml\n`
++
++#### Scenario: Include through a parent directory
++- **WHEN** `troupe.yml` has `a: file:sub/a.yaml`, `sub/a.yaml` has `b: file:../b.yaml`, `b.yaml` has `c: 1`, and `show --sources` is run
++- **THEN** the line for `c` ends with `# from .troupe/b.yaml`
++
++#### Scenario: config.yaml name
++- **WHEN** the config file is `.troupe/troupe.yaml` containing `a: 1\n` and `show --sources` is run
++- **THEN** stdout is `a: 1 # from .troupe/troupe.yaml\n`
++
++## REMOVED Requirements
++
++### Requirement: Show refuses collections and missing paths
++**Reason**: From step 3, `show` prints mappings and lists as YAML (see "Show collections as YAML"). Refusing
++collections moved to `get` ("Get refuses collections and missing paths" in config-get). The missing-path rule for
++`show` is now part of "Show a scalar value".
++**Migration**: Scripts that need a single scalar and a failure on collections should call `troupe config get PATH`.
++Its output and exit codes match the step-1 `show PATH`.
+diff --git a/spec/changes/archive/2026-10-03-config-get-and-show/spec/config-sync/spec.md b/spec/changes/archive/2026-10-03-config-get-and-show/spec/config-sync/spec.md
+new file mode 100644
+index 0000000..752bd54
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-get-and-show/spec/config-sync/spec.md
+@@ -0,0 +1,30 @@
++# Spec Delta
++
++## MODIFIED Requirements
++
++### Requirement: Commands reconcile first
++`get`, `show`, `set` and `watch` SHALL reconcile after the configuration loads (and, on a theatre's first command,
++after the import) and before doing their own work, so they pick up edits made while nothing was running. The
++reconcile's events SHALL persist even if the command then exits 3 or 5. `history` SHALL never reconcile: it reports
++only what has been recorded. Nothing SHALL be reconciled when the command line is invalid (exit 2) or the
++configuration cannot be loaded (exit 4).
++
++#### Scenario: set after a hand edit
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `set a 3` runs
++- **THEN** two events are added, in this order: `set a` (old 1, new 2), then `set a` (old 2, new 3)
++
++#### Scenario: get and show reconcile
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `get a` runs (or, separately, `show` runs)
++- **THEN** `history` lists `set a` (old 1, new 2) exactly once
++
++#### Scenario: Reconcile persists when the command fails
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `show nope` (or `get nope`) runs and exits 5
++- **THEN** a later `history` includes `set a` (old 1, new 2)
++
++#### Scenario: history does not reconcile
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `history` runs
++- **THEN** no event mentions the value 2. After `show a` runs, `history` lists `set a` (old 1, new 2)
++
++#### Scenario: Invalid command line or unloadable configuration records nothing
++- **WHEN** the file was edited by hand after import, and then `set a "[x"` (exit 2) runs, or the file is made invalid YAML and `show a` (exit 4) runs
++- **THEN** no event is added
+diff --git a/spec/changes/archive/2026-10-03-config-get-and-show/tasks.md b/spec/changes/archive/2026-10-03-config-get-and-show/tasks.md
+new file mode 100644
+index 0000000..c22599a
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-get-and-show/tasks.md
+@@ -0,0 +1,27 @@
++# Tasks
++
++## 1. The get command
++
++- [x] 1.1 Add the `get PATH` subparser in `cli.py` and `commands.get()` (D1, D6): today's scalar lookup, with the collection refusal message naming the path and `config show`; add `"get"` to `RECONCILING_COMMANDS`; verify `uv run troupe config get` with no PATH exits 2 with a usage message
++- [x] 1.2 Move the scalar, include, list-index, hand-edit and refusal tests from `tests/test_show.py` to `tests/test_get.py` running `get`, and add tests that `get` on a mapping and on a list exits 5 with empty stdout and stderr containing the path and `config show` (config-get spec); verify they pass
++- [x] 1.3 Add `get` cases to `tests/test_reconcile.py` (hand edit then `get a` records `set a` once; `get nope` exit 5 keeps the reconcile event) per the config-sync delta; verify they pass
++
++## 2. Rendering YAML
++
++- [x] 2.1 Add `src/troupe/render.py` (D2–D5): walk nodes into `Line(text, source)` lines, use `edit.scalars.render_scalar`/`render_key` and `edit.blocks.literal` for scalars (text includes always tried as literal blocks, fallback to `render_scalar`), and add `source_label()` for lexical theatre-relative paths; verify `uv run mypy` and `uv run ruff check` are clean
++- [x] 2.2 Add `tests/test_render.py` round-trip tests: for a table of tricky configurations (multi-line strings with 0/1/2 trailing newlines, leading-space first lines, CRLF text includes, empty text include, `.nan`/`-.inf`, strings `true`/`0.2`/`- x`/`#x`/`a: b`/empty, nested lists, lists of mappings, unicode, empty mapping/list), read the output of the renderer with and without sources back with `tree.build_tree` + `to_data` and compare with `schema.same` against the loaded data; verify they pass and that breaking quoting (e.g. forcing plain) makes them fail
++- [x] 2.3 Add unit tests for `source_label`: config file, nested include, `..` include normalised, include outside the theatre gives `../`, relative `--theatre`; verify they pass
++
++## 3. The new show command
++
++- [x] 3.1 Change the `show` subparser to an optional `path` plus `--sources`, and `commands.show(theatre, path | None, sources)` (D1, D6): scalar without `--sources` prints `show_text`, otherwise `render.render`; no path means the whole configuration; missing paths still exit 5; verify `show` and `show --sources` on a loading theatre exit 0
++- [x] 3.2 Rewrite `tests/test_show.py` with the config-show scenarios checked byte for byte: whole configuration with includes, a section, a list, list of mappings, one-line text include (`|-`), strings that need quoting, scalar types kept, empty collections and empty config (`{}\n`), `show` of a scalar equals `get` (including a text include), missing key and descending into a scalar exit 5 naming the path, nothing on stderr; verify they pass
++- [x] 3.3 Add `tests/test_show_sources.py` with the "Show sources" scenarios checked byte for byte: sources across includes, a section, a scalar and a text include with `--sources`, empty included YAML file, `..` include labelled `.troupe/b.yaml`, `troupe.yaml` name, `--sources` before or after PATH; verify they pass
++- [x] 3.4 Update callers of the old refusal: in `tests/test_smoke.py` change `show agents` → 5 to `get agents` → 5, and add a `uv run troupe config show --sources` smoke test with an include; make the "user files untouched" test in `tests/test_cli.py` also run `get`, `show` and `show --sources` (config-cli delta); verify `uv run pytest` passes in full
++- [x] 3.5 Update README: commands table (`get PATH`, `show [PATH] [--sources]`), an example of `show --sources` output, the breaking change and how to migrate (`get`), `get` in the reconcile paragraph, and the design.md decisions in the decisions list; verify each README command runs as written against `/tmp/demo`
++
++## 4. Integration
++
++- [x] 4.1 Run `uv run pytest`, `uv run mypy`, `uv run ruff check` and `uv run ruff format --check`; verify all are clean and show the output
++- [x] 4.2 Run `method validate config-get-and-show --strict`; verify it reports the change as valid
++- [x] 4.3 Commit the work on `main` in small steps with messages that say why (no push, no PR); verify `git status` is clean and `git log` shows the commits
+diff --git a/spec/spec/config-cli/spec.md b/spec/spec/config-cli/spec.md
+index 76eec77..b9c67e2 100644
+--- a/spec/spec/config-cli/spec.md
++++ b/spec/spec/config-cli/spec.md
+@@ -9,21 +9,25 @@ scalars are printed, and how failures are reported through exit codes and messag
+ 
+ ### Requirement: Invocation and theatre selection
+ The CLI SHALL be invocable as `uv run troupe config <subcommand> [--theatre <dir>] [arguments]` from the repository
+-root, with subcommands `show`, `set`, `history` and `watch`. `--theatre` SHALL default to the current working
+-directory.
++root, with subcommands `get PATH`, `show [PATH] [--sources]`, `set PATH VALUE`, `history [PATH]` and `watch`.
++`--theatre` SHALL default to the current working directory.
+ 
+ #### Scenario: Explicit theatre
+-- **WHEN** `uv run troupe config show model --theatre /tmp/t` is run and `/tmp/t/.troupe/troupe.yml` contains `model: x`
++- **WHEN** `uv run troupe config get model --theatre /tmp/t` is run and `/tmp/t/.troupe/troupe.yml` contains `model: x`
+ - **THEN** stdout is `x\n` and the exit code is 0
+ 
+ #### Scenario: Default theatre is the current directory
+-- **WHEN** `troupe config show model` is run with the current directory set to a theatre whose config has `model: x`
++- **WHEN** `troupe config get model` is run with the current directory set to a theatre whose config has `model: x`
+ - **THEN** stdout is `x\n` and the exit code is 0
+ 
+ #### Scenario: Unknown subcommand or missing argument
+-- **WHEN** `troupe config frobnicate` or `troupe config set model` (no VALUE) is run
++- **WHEN** `troupe config frobnicate`, `troupe config get` (no PATH) or `troupe config set model` (no VALUE) is run
+ - **THEN** the exit code is 2, stdout is empty and stderr has a usage message
+ 
++#### Scenario: show takes an optional PATH
++- **WHEN** `troupe config show` and `troupe config show --sources` are run against a theatre that loads
++- **THEN** each exits 0 and prints the whole configuration
++
+ #### Scenario: watch takes no positional argument
+ - **WHEN** `troupe config watch extra` is run
+ - **THEN** the exit code is 2, stdout is empty and stderr has a usage message
+@@ -92,7 +96,7 @@ file except as `set`'s write-back rules require, and SHALL NOT create any state
+ loaded.
+ 
+ #### Scenario: show leaves user files untouched
+-- **WHEN** `show`, `history` and `watch` run against a theatre, including while files are edited by hand during `watch`
++- **WHEN** `get`, `show`, `show --sources`, `history` and `watch` run against a theatre, including while files are edited by hand during `watch`
+ - **THEN** no configuration file is created or modified by troupe, and new files appear only under `.troupe/`
+ 
+ #### Scenario: Unloadable theatre creates no state
+diff --git a/spec/spec/config-get/spec.md b/spec/spec/config-get/spec.md
+new file mode 100644
+index 0000000..d18deb2
+--- /dev/null
++++ b/spec/spec/config-get/spec.md
+@@ -0,0 +1,50 @@
++# config-get Specification
++
++## Purpose
++
++Lets a user or a script read one scalar setting from a theatre's configuration, following includes, printed in a
++stable textual form. Anything larger is read with `show`.
++
++## Requirements
++
++### Requirement: Get a scalar value
++`troupe config get PATH` SHALL print the value at `PATH` using the scalar printing rules when that value is a scalar.
++A text include SHALL count as a string scalar. The value SHALL reflect the current contents of the configuration
++files, including edits made by hand since the last command.
++
++#### Scenario: Plain scalar
++- **WHEN** the config is `model: claude-opus-5-5\n` and `get model` is run
++- **THEN** stdout is `claude-opus-5-5\n` and the exit code is 0
++
++#### Scenario: Value through a YAML include
++- **WHEN** `agents.coder` is `file:agents/coder.yaml`, which contains `temperature: 0.2`
++- **THEN** `get agents.coder.temperature` prints `0.2\n`
++
++#### Scenario: Text include
++- **WHEN** `p` is `file:p.txt` and `p.txt` contains `no newline` (no line break)
++- **THEN** `get p` prints `no newline\n`
++
++#### Scenario: Hand edit is visible
++- **WHEN** a command has already run, the user then edits `model: a` to `model: b` by hand, and `get model` runs
++- **THEN** stdout is `b\n`
++
++### Requirement: Get refuses collections and missing paths
++`get` SHALL exit 5 when the value at `PATH` is a mapping or list, when `PATH` does not exist, when an index is out of
++range, or when a segment would have to descend into a scalar. Stderr SHALL name the path. When the value is a mapping
++or list, stderr SHALL also mention `config show`, the command that prints it.
++
++#### Scenario: Mapping
++- **WHEN** `agents` is a mapping and `get agents` is run
++- **THEN** the exit code is 5, stdout is empty, and stderr contains both `agents` and `config show`
++
++#### Scenario: List
++- **WHEN** `tools` is a list and `get tools` is run
++- **THEN** the exit code is 5, stdout is empty, and stderr contains both `tools` and `config show`
++
++#### Scenario: Missing key
++- **WHEN** `get nope` is run and there is no `nope` key
++- **THEN** the exit code is 5, stdout is empty, and stderr names `nope`
++
++#### Scenario: Descending into a scalar
++- **WHEN** `model` is a string and `get model.x` is run
++- **THEN** the exit code is 5 and stderr names `model.x`
+diff --git a/spec/spec/config-show/spec.md b/spec/spec/config-show/spec.md
+index b260469..cae06ee 100644
+--- a/spec/spec/config-show/spec.md
++++ b/spec/spec/config-show/spec.md
+@@ -2,15 +2,17 @@
+ 
+ ## Purpose
+ 
+-Lets a user read a single setting from a theatre's configuration, following includes, printed in a stable textual
+-form.
++Lets a user read any part of a theatre's configuration, from a single value to the whole configuration, with
++includes resolved, and see which file each value comes from.
+ 
+ ## Requirements
+ 
+ ### Requirement: Show a scalar value
+-`troupe config show PATH` SHALL print the value at `PATH` using the scalar printing rules when that value is a
+-scalar. A text include SHALL count as a string scalar. The value SHALL reflect the current contents of the
+-configuration files, including edits made by hand since the last command.
++`troupe config show [PATH] [--sources]` SHALL print the value at `PATH`, or the whole configuration when `PATH` is
++omitted. Without `--sources`, a scalar SHALL be printed exactly as `get PATH` prints it, and a text include SHALL count
++as a string scalar. The value SHALL reflect the current contents of the configuration files, including edits made by
++hand since the last command. `show` SHALL exit 5, naming the path, when `PATH` does not exist, when an index is out of
++range, or when a segment would have to descend into a scalar.
+ 
+ #### Scenario: Plain scalar
+ - **WHEN** the config is `model: claude-opus-5-5\n` and `show model` is run
+@@ -20,22 +22,107 @@ configuration files, including edits made by hand since the last command.
+ - **WHEN** `agents.coder` is `file:agents/coder.yaml`, which contains `temperature: 0.2`
+ - **THEN** `show agents.coder.temperature` prints `0.2\n`
+ 
++#### Scenario: Text include as a scalar
++- **WHEN** `prompt` is `file:prompt.md`, which contains `Hello\nWorld\n`, and `show prompt` is run
++- **THEN** stdout is `Hello\nWorld\n`, the same as `get prompt`
++
+ #### Scenario: Hand edit is visible
+ - **WHEN** a command has already run, the user then edits `model: a` to `model: b` by hand, and `show model` runs
+ - **THEN** stdout is `b\n`
+ 
+-### Requirement: Show refuses collections and missing paths
+-`show` SHALL exit 5, naming the path, when the value at `PATH` is a mapping or list, when `PATH` does not exist, when
+-an index is out of range, or when a segment would have to descend into a scalar.
+-
+-#### Scenario: Mapping
+-- **WHEN** `agents` is a mapping and `show agents` is run
+-- **THEN** the exit code is 5, stdout is empty, and stderr names `agents`
+-
+ #### Scenario: Missing key
+ - **WHEN** `show nope` is run and there is no `nope` key
+-- **THEN** the exit code is 5 and stderr names `nope`
++- **THEN** the exit code is 5, stdout is empty, and stderr names `nope`
+ 
+ #### Scenario: Descending into a scalar
+ - **WHEN** `model` is a string and `show model.x` is run
+ - **THEN** the exit code is 5 and stderr names `model.x`
++
++### Requirement: Show collections as YAML
++When the value at `PATH` (or, with `PATH` omitted, the whole configuration) is a mapping or list, `show` SHALL print
++it as one YAML document in block style, with includes resolved: the content of an included YAML file appears in place
++of its `file:` string. The output SHALL satisfy all of the following:
++- Read as YAML 1.2 with the core schema, it gives exactly the same data as the value at `PATH`, with the same types.
++- Mapping keys appear in the order they have in the files, and list items in their order.
++- Nesting is indented by two spaces. List items are written `- item`, and a list or mapping that is a mapping's value
++  starts on the line after its key.
++- Non-string scalars are written as `null`, `true`/`false`, decimal integers, and floats in Python `repr()` form, with
++  `.inf`, `-.inf` and `.nan` for the special values.
++- A string is written plain when the plain form reads back as the same string. Otherwise it is single-quoted when
++  single quotes can hold it, and double-quoted when they cannot. This is the rule `set` uses for new values.
++- A text include's value is written as a literal block scalar (`|`, `|-` or `|+`, as its trailing line breaks require),
++  even when it is one line or empty. Any other string that contains a line break is written the same way. The only
++  exception is a string that a literal block cannot hold exactly (such as one containing a carriage return or a
++  control character). That string is written double-quoted.
++- An empty mapping is written `{}` and an empty list `[]`.
++The output SHALL end with a single line break, and nothing SHALL be written to stderr.
++
++#### Scenario: Whole configuration with includes
++- **WHEN** `troupe.yml` is `model: claude-opus-5-5\nagents:\n  coder: file:agents/coder.yaml\nprompt: file:prompt.md\ntools: [read, write]\n`, `agents/coder.yaml` is `model: m1\ntemperature: 0.2\n`, `prompt.md` is `Hello\nWorld\n`, and `show` is run
++- **THEN** the exit code is 0 and stdout is `model: claude-opus-5-5\nagents:\n  coder:\n    model: m1\n    temperature: 0.2\nprompt: |\n  Hello\n  World\ntools:\n  - read\n  - write\n`
++
++#### Scenario: A section
++- **WHEN** the same theatre and `show agents` is run
++- **THEN** stdout is `coder:\n  model: m1\n  temperature: 0.2\n`
++
++#### Scenario: A list
++- **WHEN** the same theatre and `show tools` is run
++- **THEN** stdout is `- read\n- write\n`
++
++#### Scenario: List of mappings
++- **WHEN** the config is `steps:\n  - {name: a, n: 1}\n  - name: b\n` and `show steps` is run
++- **THEN** stdout is `- name: a\n  n: 1\n- name: b\n`
++
++#### Scenario: One-line text include
++- **WHEN** the config is `p: file:p.txt\n`, `p.txt` contains `no newline` (no line break), and `show` is run
++- **THEN** stdout is `p: |-\n  no newline\n`
++
++#### Scenario: Strings that need quoting
++- **WHEN** the config is `a: "true"\nb: '0.2'\nc: ""\nd: "x: y"\n` and `show` is run
++- **THEN** stdout is `a: 'true'\nb: '0.2'\nc: ''\nd: 'x: y'\n`
++
++#### Scenario: Scalar types are kept
++- **WHEN** the config is `a: 0x1F\nb: 1e3\nc: ~\nd: .inf\ne: TRUE\n` and `show` is run
++- **THEN** stdout is `a: 31\nb: 1000.0\nc: null\nd: .inf\ne: true\n`
++
++#### Scenario: Empty collections and empty configuration
++- **WHEN** the config is `agents: {}\ntools: []\n` and `show` is run, or the config file is empty and `show` is run
++- **THEN** stdout is `agents: {}\ntools: []\n`, or `{}\n` respectively
++
++#### Scenario: Output reads back as the same data
++- **WHEN** `show` is run on any configuration that loads, including multi-line strings, special floats, nested lists and strings that look like other types
++- **THEN** reading stdout as YAML 1.2 core gives data equal to the loaded configuration, with the same types
++
++### Requirement: Show sources
++`show [PATH] --sources` SHALL print the same YAML as `show [PATH]` would print for a mapping or list, and add an
++end-of-line comment ` # from <file>` (one space, `#`, one space) to every line that holds a scalar value. For a scalar
++written as a literal block, the comment goes on the line with the `|` indicator. Lines that hold only a key whose
++value starts on the next line, the content lines of a literal block, and lines whose value is `{}` or `[]` get no
++comment. `<file>` SHALL be the file the scalar is written in, relative to the theatre directory, with `/` separators
++and no `.` segments. For a text include, `<file>` SHALL be the included file, not the file holding the `file:` string.
++When the value at `PATH` is a scalar, `--sources` SHALL print it as a one-scalar YAML document with the comment, not in
++the `get` form. With or without the comments, the output SHALL read back as the same data.
++
++#### Scenario: Sources across includes
++- **WHEN** the theatre from "Whole configuration with includes" and `show --sources` is run
++- **THEN** stdout is `model: claude-opus-5-5 # from .troupe/troupe.yml\nagents:\n  coder:\n    model: m1 # from .troupe/agents/coder.yaml\n    temperature: 0.2 # from .troupe/agents/coder.yaml\nprompt: | # from .troupe/prompt.md\n  Hello\n  World\ntools:\n  - read # from .troupe/troupe.yml\n  - write # from .troupe/troupe.yml\n`
++
++#### Scenario: Sources for a section
++- **WHEN** the same theatre and `show agents.coder --sources` is run
++- **THEN** stdout is `model: m1 # from .troupe/agents/coder.yaml\ntemperature: 0.2 # from .troupe/agents/coder.yaml\n`
++
++#### Scenario: Sources for a scalar
++- **WHEN** the same theatre and `show model --sources` is run, or `show prompt --sources`
++- **THEN** stdout is `claude-opus-5-5 # from .troupe/troupe.yml\n`, or `| # from .troupe/prompt.md\n  Hello\n  World\n` respectively
++
++#### Scenario: Empty included YAML file
++- **WHEN** `agents.coder` is `file:agents/coder.yaml`, that file is empty, and `show agents --sources` is run
++- **THEN** stdout is `coder: null # from .troupe/agents/coder.yaml\n`
++
++#### Scenario: Include through a parent directory
++- **WHEN** `troupe.yml` has `a: file:sub/a.yaml`, `sub/a.yaml` has `b: file:../b.yaml`, `b.yaml` has `c: 1`, and `show --sources` is run
++- **THEN** the line for `c` ends with `# from .troupe/b.yaml`
++
++#### Scenario: config.yaml name
++- **WHEN** the config file is `.troupe/troupe.yaml` containing `a: 1\n` and `show --sources` is run
++- **THEN** stdout is `a: 1 # from .troupe/troupe.yaml\n`
+diff --git a/spec/spec/config-sync/spec.md b/spec/spec/config-sync/spec.md
+index 8353a48..086fac6 100644
+--- a/spec/spec/config-sync/spec.md
++++ b/spec/spec/config-sync/spec.md
+@@ -43,18 +43,22 @@ nothing. A reconcile that finds no difference SHALL record nothing.
+ - **THEN** the next reconcile adds `set prompt` with old `"Hi\n"` and new `"Bye\n"`
+ 
+ ### Requirement: Commands reconcile first
+-`show`, `set` and `watch` SHALL reconcile after the configuration loads (and, on a theatre's first command, after the
+-import) and before doing their own work, so they pick up edits made while nothing was running. The reconcile's events
+-SHALL persist even if the command then exits 3 or 5. `history` SHALL never reconcile: it reports only what has been
+-recorded. Nothing SHALL be reconciled when the command line is invalid (exit 2) or the configuration cannot be loaded
+-(exit 4).
++`get`, `show`, `set` and `watch` SHALL reconcile after the configuration loads (and, on a theatre's first command,
++after the import) and before doing their own work, so they pick up edits made while nothing was running. The
++reconcile's events SHALL persist even if the command then exits 3 or 5. `history` SHALL never reconcile: it reports
++only what has been recorded. Nothing SHALL be reconciled when the command line is invalid (exit 2) or the
++configuration cannot be loaded (exit 4).
+ 
+ #### Scenario: set after a hand edit
+ - **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `set a 3` runs
+ - **THEN** two events are added, in this order: `set a` (old 1, new 2), then `set a` (old 2, new 3)
+ 
++#### Scenario: get and show reconcile
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `get a` runs (or, separately, `show` runs)
++- **THEN** `history` lists `set a` (old 1, new 2) exactly once
++
+ #### Scenario: Reconcile persists when the command fails
+-- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `show nope` runs and exits 5
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `show nope` (or `get nope`) runs and exits 5
+ - **THEN** a later `history` includes `set a` (old 1, new 2)
+ 
+ #### Scenario: history does not reconcile
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index f9593d8..ec31c4d 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -1,4 +1,4 @@
+-"""Command-line entry point: `troupe config <show|set|history|watch> [--theatre DIR] …`."""
++"""Command-line entry point: `troupe config <get|show|set|history|watch> [--theatre DIR] …`."""
+ 
+ import argparse
+ import os
+@@ -31,8 +31,11 @@ def _parser() -> argparse.ArgumentParser:
+     config = groups.add_parser("config", parents=[theatre], help="read and change the configuration")
+     sub = config.add_subparsers(dest="command", required=True, parser_class=_Parser)
+ 
+-    show = sub.add_parser("show", parents=[theatre], help="print a setting's value")
+-    show.add_argument("path")
++    get = sub.add_parser("get", parents=[theatre], help="print a scalar setting's value")
++    get.add_argument("path")
++    show = sub.add_parser("show", parents=[theatre], help="print a value or a section as YAML")
++    show.add_argument("path", nargs="?")
++    show.add_argument("--sources", action="store_true", help="say which file each value comes from")
+     set_ = sub.add_parser("set", parents=[theatre], help="change a setting and write it back")
+     set_.add_argument("path")
+     set_.add_argument("value")
+@@ -47,8 +50,11 @@ def run(argv: Sequence[str]) -> str:
+     args = _parser().parse_args(argv)
+     given: str | None = getattr(args, "theatre", None) or os.environ.get("TROUPE_THEATRE") or None
+     theatre = Path(given or ".")
++    if args.command == "get":
++        return commands.get(theatre, parse_path(args.path))
+     if args.command == "show":
+-        return commands.show(theatre, parse_path(args.path))
++        path = parse_path(args.path) if args.path is not None else None
++        return commands.show(theatre, path, args.sources)
+     if args.command == "set":
+         path = parse_path(args.path)
+         commands.set_value(theatre, path, parse_value(args.value))
+diff --git a/src/troupe/commands.py b/src/troupe/commands.py
+index 9de8093..0b65da7 100644
+--- a/src/troupe/commands.py
++++ b/src/troupe/commands.py
+@@ -1,4 +1,4 @@
+-"""The `troupe config` subcommands: show, set, history and watch."""
++"""The `troupe config` subcommands: get, show, set, history and watch."""
+ 
+ import fcntl
+ import json
+@@ -17,6 +17,7 @@ from troupe.errors import LoadError, PathError
+ from troupe.leaves import leaves
+ from troupe.loader import CONFIG_NAMES, Config, find_config, load, state_dir
+ from troupe.paths import Path, format_path, is_index
++from troupe.render import render
+ from troupe.schema import Data, Scalar, show_text
+ from troupe.source import read_source
+ from troupe.store import ConfigStore
+@@ -24,7 +25,7 @@ from troupe.sync import reconcile
+ from troupe.tree import MappingNode, Node, ScalarNode, SequenceNode, TextNode, to_data
+ 
+ # Every command reconciles before its own work, except `history`, which reports only what has been recorded.
+-RECONCILING_COMMANDS = frozenset({"show", "set", "watch"})
++RECONCILING_COMMANDS = frozenset({"get", "show", "set", "watch"})
+ 
+ 
+ @contextmanager
+@@ -89,15 +90,29 @@ def find(root: Node, path: Path) -> Node:
+     return node
+ 
+ 
+-def show(theatre: FsPath, path: Path) -> str:
+-    with theatre_session(theatre, "show") as (config, _):
++def get(theatre: FsPath, path: Path) -> str:
++    """The scalar at `path`, printed; a mapping or list is refused with a pointer to `show`."""
++    with theatre_session(theatre, "get") as (config, _):
+         node = find(config.root, path)
+     if not isinstance(node, ScalarNode | TextNode):
+         kind = "mapping" if isinstance(node, MappingNode) else "list"
+-        raise PathError(f"{format_path(path)}: is a {kind}, not a scalar")
++        where = format_path(path)
++        raise PathError(f"{where}: is a {kind}, not a scalar (use `troupe config show {where}` to print it)")
+     return show_text(node.value)
+ 
+ 
++def show(theatre: FsPath, path: Path | None, sources: bool) -> str:
++    """The value at `path` (or the whole configuration): a scalar as `get` prints it, anything else as YAML.
++
++    With `sources`, the output is always YAML, with each scalar's file in an end-of-line comment.
++    """
++    with theatre_session(theatre, "show") as (config, _):
++        node = config.root if path is None else find(config.root, path)
++    if isinstance(node, ScalarNode | TextNode) and not sources:
++        return show_text(node.value)
++    return render(node, theatre, sources=sources)
++
++
+ def set_value(theatre: FsPath, path: Path, value: Data) -> None:
+     # The lock is held until the events are recorded, so no reconcile can see the written files first.
+     with theatre_session(theatre, "set") as (config, store):
+diff --git a/src/troupe/render.py b/src/troupe/render.py
+new file mode 100644
+index 0000000..11033af
+--- /dev/null
++++ b/src/troupe/render.py
+@@ -0,0 +1,91 @@
++"""Printing a configuration subtree as block YAML for `show`, optionally naming each scalar's file.
++
++The output is one canonical layout (two-space indentation, compact `- key: v` items), not the user's own
++formatting. Scalars are written by the same helpers `set` uses for new values, so quoting and literal blocks
++follow one rule.
++"""
++
++import os
++from dataclasses import dataclass
++from pathlib import Path
++
++from troupe.edit.blocks import literal
++from troupe.edit.scalars import render_key, render_scalar
++from troupe.edit.text import Layout
++from troupe.schema import Scalar
++from troupe.source import SourceFile
++from troupe.tree import MappingNode, Node, ScalarNode, SequenceNode, TextNode
++
++INDENT = 2
++_LAYOUT = Layout(unit=INDENT, seq_offset=INDENT)
++SOURCE_COMMENT = " # from {}"
++
++
++@dataclass(frozen=True)
++class Line:
++    text: str
++    source: SourceFile | None = None  # set only on a line that holds a scalar value
++
++
++def source_label(file: SourceFile, theatre: Path) -> str:
++    """The file's path relative to the theatre, normalised lexically (symlinks are not resolved)."""
++    return Path(os.path.relpath(os.path.abspath(file.path), os.path.abspath(theatre))).as_posix()
++
++
++def render(node: Node, theatre: Path, *, sources: bool) -> str:
++    """`node` as a YAML document; with `sources`, every scalar's line ends with `# from <file>`."""
++    if isinstance(node, MappingNode) and node.entries:
++        lines = _mapping_lines(node, 0)
++    elif isinstance(node, SequenceNode) and node.items:
++        lines = _sequence_lines(node, 0)
++    else:
++        inline, source, rest = _value(node, -1)
++        lines = [Line(inline, source), *rest]
++    out = []
++    for line in lines:
++        comment = SOURCE_COMMENT.format(source_label(line.source, theatre)) if sources and line.source else ""
++        out.append(line.text + comment + "\n")
++    return "".join(out)
++
++
++def _value(node: Node, owner_col: int) -> tuple[str, SourceFile | None, list[Line]]:
++    """A value owned by a key or `-` at `owner_col`: text on the owner's line, its source, lines below."""
++    if isinstance(node, MappingNode):
++        return ("", None, _mapping_lines(node, owner_col + INDENT)) if node.entries else ("{}", None, [])
++    if isinstance(node, SequenceNode):
++        return ("", None, _sequence_lines(node, owner_col + INDENT)) if node.items else ("[]", None, [])
++    if isinstance(node, TextNode):
++        return _scalar(node.value, node.target, owner_col, block=True)
++    assert isinstance(node, ScalarNode)
++    return _scalar(node.value, node.file, owner_col, block=isinstance(node.value, str) and "\n" in node.value)
++
++
++def _scalar(
++    value: Scalar, source: SourceFile, owner_col: int, *, block: bool
++) -> tuple[str, SourceFile | None, list[Line]]:
++    if block and isinstance(value, str):
++        rendered = literal(value, owner_col, _LAYOUT)
++        if rendered is not None:
++            return rendered.inline, source, [Line(text) for text in rendered.lines]
++    return render_scalar(value, None, flow=False), source, []
++
++
++def _mapping_lines(node: MappingNode, col: int) -> list[Line]:
++    lines: list[Line] = []
++    for entry in node.entries:
++        inline, source, rest = _value(entry.value, col)
++        head = " " * col + render_key(entry.key, None, flow=False) + ":" + (" " + inline if inline else "")
++        lines += [Line(head, source), *rest]
++    return lines
++
++
++def _sequence_lines(node: SequenceNode, col: int) -> list[Line]:
++    lines: list[Line] = []
++    for item in node.items:
++        inline, source, rest = _value(item.value, col)
++        if not inline:  # a non-empty collection: its first line joins the dash (compact `- key: v` form)
++            first = rest[0]
++            lines += [Line(" " * col + "- " + first.text[col + INDENT :], first.source), *rest[1:]]
++        else:
++            lines += [Line(" " * col + "- " + inline, source), *rest]
++    return lines
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 02f4bc4..300f5b9 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -97,3 +97,16 @@ def refused(make: Callable[[str], Theatre]) -> Callable[..., Result]:
+         return r
+ 
+     return _refused
++
++
++@pytest.fixture
++def full(theatre: Theatre) -> Theatre:
++    """The theatre from the config-show scenarios: a YAML include, a text include and a flow list."""
++    theatre.write(
++        "troupe.yml",
++        "model: claude-opus-5-5\nagents:\n  coder: file:agents/coder.yaml\nprompt: file:prompt.md\n"
++        "tools: [read, write]\n",
++    )
++    theatre.write("agents/coder.yaml", "model: m1\ntemperature: 0.2\n")
++    theatre.write("prompt.md", "Hello\nWorld\n")
++    return theatre
+diff --git a/tests/test_cli.py b/tests/test_cli.py
+index 89ce1b9..2e270c7 100644
+--- a/tests/test_cli.py
++++ b/tests/test_cli.py
+@@ -36,7 +36,17 @@ def test_theatre_option_may_come_before_the_subcommand(
+     assert run("--theatre", str(t.root), "show", "model").out == "x\n"
+ 
+ 
+-@pytest.mark.parametrize("args", [("frobnicate",), ("set", "model"), ("show",), ("show", "a", "b")])
++@pytest.mark.parametrize(
++    "args",
++    [
++        ("frobnicate",),
++        ("set", "model"),
++        ("get",),
++        ("get", "a", "b"),
++        ("show", "a", "b"),
++        ("get", "a", "--sources"),
++    ],
++)
+ def test_bad_command_lines_exit_2_with_empty_stdout(
+     make: Callable[[str], Theatre], args: tuple[str, ...]
+ ) -> None:
+@@ -45,6 +55,13 @@ def test_bad_command_lines_exit_2_with_empty_stdout(
+     assert r.err
+ 
+ 
++@pytest.mark.parametrize("args", [("show",), ("show", "--sources")])
++def test_show_takes_an_optional_path(make: Callable[[str], Theatre], args: tuple[str, ...]) -> None:
++    r = make("model: x\n").run(*args)
++    assert r.code == 0
++    assert r.out.startswith("model: x")
++
++
+ def test_bad_path_syntax_exits_2_naming_the_path(make: Callable[[str], Theatre]) -> None:
+     r = make("a: 1\n").run("show", "a..b")
+     assert (r.code, r.out) == (2, "")
+@@ -65,9 +82,15 @@ def test_read_commands_leave_every_user_file_untouched(theatre: Theatre) -> None
+     theatre.write("x.yaml", "k: v\n")
+     (theatre.root / "outside.txt").write_text("o")
+     before = theatre.snapshot()
+-    theatre.run("show", "a")
+-    theatre.run("history")
+-    theatre.run("show", "nope")
++    for args in (
++        ("get", "a"),
++        ("show", "a"),
++        ("show",),
++        ("show", "--sources"),
++        ("history",),
++        ("show", "nope"),
++    ):
++        theatre.run(*args)
+     assert theatre.snapshot() == before
+     new = {p.name for p in theatre.root.rglob("*")} - {Path(k).name for k in before} - {"agents", ".troupe"}
+     assert all(name.startswith("events.sqlite") for name in new)
+diff --git a/tests/test_get.py b/tests/test_get.py
+new file mode 100644
+index 0000000..f2f0d5c
+--- /dev/null
++++ b/tests/test_get.py
+@@ -0,0 +1,76 @@
++from collections.abc import Callable
++
++import pytest
++
++from conftest import Theatre
++
++
++def test_get_prints_a_plain_scalar(make: Callable[[str], Theatre]) -> None:
++    r = make("model: claude-opus-5-5\n").run("get", "model")
++    assert (r.code, r.out, r.err) == (0, "claude-opus-5-5\n", "")
++
++
++@pytest.mark.parametrize(
++    ("yaml", "printed"),
++    [
++        ("v: hi\n", "hi\n"),
++        ('v: "hi\\n"\n', "hi\n"),
++        ("v: |\n  a\n  b\n", "a\nb\n"),
++        ("v: |-\n  a\n  b\n", "a\nb\n"),
++        ("v: true\n", "true\n"),
++        ("v: ~\n", "null\n"),
++        ("v:\n", "null\n"),
++        ("v: 0x1F\n", "31\n"),
++        ("v: 0.2\n", "0.2\n"),
++        ("v: .inf\n", "inf\n"),
++        ("v: 1e3\n", "1000.0\n"),
++        ("v: '0.2'\n", "0.2\n"),
++        ("v: >\n  folded\n  text\n", "folded text\n"),
++    ],
++)
++def test_get_prints_each_scalar_type_per_contract(
++    make: Callable[[str], Theatre], yaml: str, printed: str
++) -> None:
++    assert make(yaml).run("get", "v").out == printed
++
++
++def test_get_follows_yaml_includes(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml\n")
++    theatre.write("agents/coder.yaml", "temperature: 0.2\n")
++    assert theatre.run("get", "agents.coder.temperature").out == "0.2\n"
++
++
++def test_get_prints_a_text_include_as_a_string(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "p: file:p.txt\n")
++    theatre.write("p.txt", "no newline")
++    assert theatre.run("get", "p").out == "no newline\n"
++
++
++def test_get_indexes_lists(make: Callable[[str], Theatre]) -> None:
++    t = make("tools: [a, b]\nnested:\n  - - x\n    - y\n")
++    assert t.run("get", "tools.1").out == "b\n"
++    assert t.run("get", "nested.0.1").out == "y\n"
++
++
++def test_get_sees_hand_edits(make: Callable[[str], Theatre]) -> None:
++    t = make("model: a\n")
++    assert t.run("get", "model").out == "a\n"
++    t.write("troupe.yml", "model: b\n")
++    assert t.run("get", "model").out == "b\n"
++
++
++@pytest.mark.parametrize("path", ["agents", "tools", "agents.coder"])
++def test_get_of_a_collection_exits_5_naming_the_path_and_pointing_to_show(
++    make: Callable[[str], Theatre], path: str
++) -> None:
++    r = make("agents:\n  coder: {model: m}\ntools: [a]\n").run("get", path)
++    assert (r.code, r.out) == (5, "")
++    assert path in r.err
++    assert "config show" in r.err
++
++
++@pytest.mark.parametrize("path", ["nope", "agents.nobody", "tools.5", "tools.x", "model.x", "model.0"])
++def test_get_of_a_missing_path_exits_5_naming_it(make: Callable[[str], Theatre], path: str) -> None:
++    r = make("agents: {}\ntools: [a]\nmodel: m\n").run("get", path)
++    assert (r.code, r.out) == (5, "")
++    assert path in r.err
+diff --git a/tests/test_reconcile.py b/tests/test_reconcile.py
+index 71c7e2d..3d7423d 100644
+--- a/tests/test_reconcile.py
++++ b/tests/test_reconcile.py
+@@ -5,6 +5,7 @@ from collections.abc import Callable
+ from pathlib import Path
+ from typing import Any
+ 
++import pytest
+ from test_history import events
+ 
+ from conftest import Theatre
+@@ -166,6 +167,26 @@ def test_reconcile_persists_when_the_command_then_fails(make: Callable[[str], Th
+     assert added(t, 1) == [("set", "a", 1, 2)]
+ 
+ 
++@pytest.mark.parametrize("command", [("get", "a"), ("show", "a"), ("show",), ("show", "--sources")])
++def test_get_and_show_reconcile_a_hand_edit_once(
++    make: Callable[[str], Theatre], command: tuple[str, ...]
++) -> None:
++    t = make("a: 1\n")
++    t.run("history")
++    t.write("troupe.yml", "a: 2\n")
++    assert t.run(*command).code == 0
++    assert t.run(*command).code == 0
++    assert added(t, 1) == [("set", "a", 1, 2)]
++
++
++def test_reconcile_persists_when_get_then_fails(make: Callable[[str], Theatre]) -> None:
++    t = make("a: 1\n")
++    t.run("history")
++    t.write("troupe.yml", "a: 2\n")
++    assert t.run("get", "nope").code == 5
++    assert added(t, 1) == [("set", "a", 1, 2)]
++
++
+ def test_reconcile_persists_when_set_is_refused(make: Callable[[str], Theatre]) -> None:
+     t = make("a: 1\nprompt: file:p.md\n")
+     t.write("p.md", "x\n")
+diff --git a/tests/test_render.py b/tests/test_render.py
+new file mode 100644
+index 0000000..63cddd2
+--- /dev/null
++++ b/tests/test_render.py
+@@ -0,0 +1,111 @@
++"""`show` output reads back as the same data, with and without sources (config-show: Show collections as YAML)."""
++
++from collections.abc import Callable
++from pathlib import Path
++
++import pytest
++
++from conftest import Theatre
++from troupe.loader import load
++from troupe.render import render, source_label
++from troupe.schema import same
++from troupe.source import SourceFile
++from troupe.tree import build_tree, to_data
++
++CONFIGS = {
++    "multi-line strings": 'a: "x\\ny"\nb: "x\\ny\\n"\nc: "x\\ny\\n\\n"\nd: "\\n"\ne: "\\n\\nx\\n"\n',
++    "leading spaces": 'a: "  indented\\nnext\\n"\nb: "\\n  after blank\\n"\nc: " lead"\nd: "trail "\n',
++    "carriage returns and controls": 'a: "x\\r\\ny\\n"\nb: "bell\\a"\nc: "tab\\tin"\nd: "line\\ttab\\n"\n',
++    "special floats": "a: .nan\nb: -.inf\nc: .inf\nd: 1e3\ne: -0.0\nf: 0x1F\ng: 0o17\n",
++    "strings that look like other things": (
++        "a: 'true'\nb: '0.2'\nc: '- x'\nd: '#x'\ne: 'a: b'\nf: ''\ng: 'null'\nh: '~'\ni: \"it's\"\n"
++        "j: '[x]'\nk: '{x}'\nl: '---'\nm: '@x'\nn: 'x #y'\no: ' '\np: '\"q\"'\nq: '-'\nr: '?'\n"
++    ),
++    "keys that need quoting": "'true': 1\n'1': 2\n'a: b': 3\n'#k': 4\n'': 5\n",
++    "nested lists and mappings": (
++        "a:\n  - - x\n    - - y\n      - []\n  - {b: {c: [1, {d: e}]}}\n  - {}\n  - - {f: g, h: [i]}\n"
++    ),
++    "unicode": '名前: 値\nemoji: 🎭\nnbsp: "a\\u00a0b"\n',
++    "empty collections": "a: {}\nb: []\nc: [{}, []]\n",
++    "nulls and booleans": "a:\nb: ~\nc: TRUE\nd: False\n",
++}
++
++
++def read_back(text: str) -> object:
++    root = build_tree(SourceFile(Path("<show>"), text))
++    assert root is not None
++    return to_data(root)
++
++
++def assert_round_trips(theatre: Theatre) -> None:
++    config = load(theatre.root)
++    expected = to_data(config.root)
++    for sources in (False, True):
++        out = render(config.root, theatre.root, sources=sources)
++        assert same(read_back(out), expected), out  # type: ignore[arg-type]
++
++
++@pytest.mark.parametrize("config", CONFIGS.values(), ids=CONFIGS.keys())
++def test_show_output_reads_back_as_the_same_data(make: Callable[[str], Theatre], config: str) -> None:
++    assert_round_trips(make(config))
++
++
++@pytest.mark.parametrize(
++    "text",
++    [
++        "Hello\nWorld\n",
++        "no newline",
++        "",
++        "\n",
++        "two\n\n",
++        "  indented\n",
++        "crlf\r\nline\r\n",
++        "tab\there\n",
++        "ü\n",
++    ],
++)
++def test_text_includes_read_back_exactly(theatre: Theatre, text: str) -> None:
++    theatre.write("troupe.yml", "p: file:p.txt\nl: [file:p.txt]\n")
++    theatre.write("p.txt", text)
++    assert_round_trips(theatre)
++
++
++def test_includes_are_resolved_in_the_output(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml\nl:\n  - file:item.yaml\n")
++    theatre.write("agents/coder.yaml", "model: m1\nprompt: file:../p.md\n")
++    theatre.write("item.yaml", "[x, y]\n")
++    theatre.write("p.md", "be brief\n")
++    out = render(load(theatre.root).root, theatre.root, sources=False)
++    assert "file:" not in out
++    assert_round_trips(theatre)
++
++
++# --- source_label -------------------------------------------------------------------------------------------
++
++
++def src(path: Path) -> SourceFile:
++    return SourceFile(path, "")
++
++
++def test_source_label_of_the_config_file(tmp_path: Path) -> None:
++    assert source_label(src(tmp_path / ".troupe" / "troupe.yml"), tmp_path) == ".troupe/troupe.yml"
++
++
++def test_source_label_of_a_nested_include(tmp_path: Path) -> None:
++    label = source_label(src(tmp_path / ".troupe" / "agents" / "coder.yaml"), tmp_path)
++    assert label == ".troupe/agents/coder.yaml"
++
++
++def test_source_label_removes_parent_segments(tmp_path: Path) -> None:
++    label = source_label(src(tmp_path / ".troupe" / "sub" / ".." / "b.yaml"), tmp_path)
++    assert label == ".troupe/b.yaml"
++
++
++def test_source_label_of_a_file_outside_the_theatre(tmp_path: Path) -> None:
++    theatre = tmp_path / "t"
++    assert source_label(src(theatre / ".troupe" / ".." / ".." / "shared.yaml"), theatre) == "../shared.yaml"
++
++
++def test_source_label_with_a_relative_theatre(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
++    monkeypatch.chdir(tmp_path)
++    assert source_label(src(Path("t") / ".troupe" / "troupe.yml"), Path("t")) == ".troupe/troupe.yml"
+diff --git a/tests/test_show.py b/tests/test_show.py
+index 2ac3d5b..04bddf3 100644
+--- a/tests/test_show.py
++++ b/tests/test_show.py
+@@ -1,73 +1,115 @@
++"""`show [PATH]`: a scalar as `get` prints it, anything else as block YAML (config-show)."""
++
+ from collections.abc import Callable
+ 
+ import pytest
+ 
+ from conftest import Theatre
+ 
+-
+-def test_show_prints_a_plain_scalar(make: Callable[[str], Theatre]) -> None:
+-    r = make("model: claude-opus-5-5\n").run("show", "model")
+-    assert (r.code, r.out, r.err) == (0, "claude-opus-5-5\n", "")
+-
+-
+-@pytest.mark.parametrize(
+-    ("yaml", "printed"),
+-    [
+-        ("v: hi\n", "hi\n"),
+-        ('v: "hi\\n"\n', "hi\n"),
+-        ("v: |\n  a\n  b\n", "a\nb\n"),
+-        ("v: |-\n  a\n  b\n", "a\nb\n"),
+-        ("v: true\n", "true\n"),
+-        ("v: ~\n", "null\n"),
+-        ("v:\n", "null\n"),
+-        ("v: 0x1F\n", "31\n"),
+-        ("v: 0.2\n", "0.2\n"),
+-        ("v: .inf\n", "inf\n"),
+-        ("v: 1e3\n", "1000.0\n"),
+-        ("v: '0.2'\n", "0.2\n"),
+-        ("v: >\n  folded\n  text\n", "folded text\n"),
+-    ],
++WHOLE = (
++    "model: claude-opus-5-5\n"
++    "agents:\n"
++    "  coder:\n"
++    "    model: m1\n"
++    "    temperature: 0.2\n"
++    "prompt: |\n"
++    "  Hello\n"
++    "  World\n"
++    "tools:\n"
++    "  - read\n"
++    "  - write\n"
+ )
+-def test_show_prints_each_scalar_type_per_contract(
+-    make: Callable[[str], Theatre], yaml: str, printed: str
+-) -> None:
+-    assert make(yaml).run("show", "v").out == printed
+ 
+ 
+-def test_show_follows_yaml_includes(theatre: Theatre) -> None:
+-    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml\n")
+-    theatre.write("agents/coder.yaml", "temperature: 0.2\n")
+-    assert theatre.run("show", "agents.coder.temperature").out == "0.2\n"
++def test_show_without_path_prints_the_whole_configuration_with_includes_resolved(full: Theatre) -> None:
++    r = full.run("show")
++    assert (r.code, r.out, r.err) == (0, WHOLE, "")
++
++
++def test_show_of_a_section_prints_it_as_yaml(full: Theatre) -> None:
++    r = full.run("show", "agents")
++    assert (r.code, r.out, r.err) == (0, "coder:\n  model: m1\n  temperature: 0.2\n", "")
++
++
++def test_show_of_a_list_prints_block_items(full: Theatre) -> None:
++    assert full.run("show", "tools").out == "- read\n- write\n"
++
+ 
++def test_show_of_a_list_of_mappings_uses_compact_items(make: Callable[[str], Theatre]) -> None:
++    out = make("steps:\n  - {name: a, n: 1}\n  - name: b\n").run("show", "steps").out
++    assert out == "- name: a\n  n: 1\n- name: b\n"
+ 
+-def test_show_prints_a_text_include_as_a_string(theatre: Theatre) -> None:
++
++def test_show_writes_nested_lists_compactly(make: Callable[[str], Theatre]) -> None:
++    out = make("a: [[x, y], [], [{b: c}]]\n").run("show").out
++    assert out == "a:\n  - - x\n    - y\n  - []\n  - - b: c\n"
++
++
++def test_show_writes_a_one_line_text_include_as_a_literal_block(theatre: Theatre) -> None:
+     theatre.write("troupe.yml", "p: file:p.txt\n")
+     theatre.write("p.txt", "no newline")
+-    assert theatre.run("show", "p").out == "no newline\n"
++    assert theatre.run("show").out == "p: |-\n  no newline\n"
++
++
++def test_show_writes_other_multi_line_strings_as_literal_blocks(make: Callable[[str], Theatre]) -> None:
++    out = make('a: "x\\ny\\n\\n"\nl: ["one\\ntwo"]\n').run("show").out
++    assert out == "a: |+\n  x\n  y\n\nl:\n  - |-\n    one\n    two\n"
++
++
++def test_show_double_quotes_a_text_include_a_literal_block_cannot_hold(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "p: file:p.txt\n")
++    theatre.write("p.txt", "crlf\r\n")
++    assert theatre.run("show").out == 'p: "crlf\\r\\n"\n'
+ 
+ 
+-def test_show_indexes_lists(make: Callable[[str], Theatre]) -> None:
+-    t = make("tools: [a, b]\nnested:\n  - - x\n    - y\n")
+-    assert t.run("show", "tools.1").out == "b\n"
+-    assert t.run("show", "nested.0.1").out == "y\n"
++def test_show_quotes_strings_that_would_read_back_as_something_else(make: Callable[[str], Theatre]) -> None:
++    out = make('a: "true"\nb: \'0.2\'\nc: ""\nd: "x: y"\n').run("show").out
++    assert out == "a: 'true'\nb: '0.2'\nc: ''\nd: 'x: y'\n"
++
++
++def test_show_writes_scalars_in_canonical_form_keeping_their_types(make: Callable[[str], Theatre]) -> None:
++    out = make("a: 0x1F\nb: 1e3\nc: ~\nd: .inf\ne: TRUE\n").run("show").out
++    assert out == "a: 31\nb: 1000.0\nc: null\nd: .inf\ne: true\n"
++
++
++def test_show_writes_empty_collections_in_flow_form(make: Callable[[str], Theatre]) -> None:
++    assert make("agents: {}\ntools: []\n").run("show").out == "agents: {}\ntools: []\n"
++
++
++@pytest.mark.parametrize("config", ["", "# only a comment\n"])
++def test_show_of_an_empty_configuration_prints_an_empty_mapping(
++    make: Callable[[str], Theatre], config: str
++) -> None:
++    r = make(config).run("show")
++    assert (r.code, r.out, r.err) == (0, "{}\n", "")
++
++
++def test_show_keeps_the_files_key_order(make: Callable[[str], Theatre]) -> None:
++    assert make("z: 1\na: 2\nm: {y: 3, b: 4}\n").run("show").out == "z: 1\na: 2\nm:\n  y: 3\n  b: 4\n"
++
++
++@pytest.mark.parametrize("path", ["model", "prompt", "agents.coder.temperature", "tools.1"])
++def test_show_of_a_scalar_prints_what_get_prints(full: Theatre, path: str) -> None:
++    shown, got = full.run("show", path), full.run("get", path)
++    assert (shown.code, shown.out, shown.err) == (got.code, got.out, got.err)
++    assert shown.code == 0
++
++
++def test_show_of_a_text_include_prints_its_text(full: Theatre) -> None:
++    assert full.run("show", "prompt").out == "Hello\nWorld\n"
+ 
+ 
+ def test_show_sees_hand_edits(make: Callable[[str], Theatre]) -> None:
+     t = make("model: a\n")
+-    assert t.run("show", "model").out == "a\n"
++    assert t.run("show").out == "model: a\n"
+     t.write("troupe.yml", "model: b\n")
+     assert t.run("show", "model").out == "b\n"
+-
+-
+-@pytest.mark.parametrize("path", ["agents", "tools", "agents.coder"])
+-def test_show_of_a_collection_exits_5_naming_the_path(make: Callable[[str], Theatre], path: str) -> None:
+-    r = make("agents:\n  coder: {model: m}\ntools: [a]\n").run("show", path)
+-    assert (r.code, r.out) == (5, "")
+-    assert path in r.err
++    assert t.run("show").out == "model: b\n"
+ 
+ 
+ @pytest.mark.parametrize("path", ["nope", "agents.nobody", "tools.5", "tools.x", "model.x", "model.0"])
+ def test_show_of_a_missing_path_exits_5_naming_it(make: Callable[[str], Theatre], path: str) -> None:
+-    r = make("agents: {}\ntools: [a]\nmodel: m\n").run("show", path)
+-    assert (r.code, r.out) == (5, "")
+-    assert path in r.err
++    for args in (("show", path), ("show", path, "--sources")):
++        r = make("agents: {}\ntools: [a]\nmodel: m\n").run(*args)
++        assert (r.code, r.out) == (5, "")
++        assert path in r.err
+diff --git a/tests/test_show_sources.py b/tests/test_show_sources.py
+new file mode 100644
+index 0000000..1df8453
+--- /dev/null
++++ b/tests/test_show_sources.py
+@@ -0,0 +1,96 @@
++"""`show [PATH] --sources`: the same YAML, each scalar's line naming the file it comes from (config-show)."""
++
++from collections.abc import Callable
++from pathlib import Path
++
++import pytest
++from test_render import read_back
++
++from conftest import Result, Theatre
++from troupe.loader import load
++from troupe.tree import to_data
++
++T = " # from .troupe/troupe.yml"
++C = " # from .troupe/agents/coder.yaml"
++WHOLE = (
++    f"model: claude-opus-5-5{T}\n"
++    "agents:\n"
++    "  coder:\n"
++    f"    model: m1{C}\n"
++    f"    temperature: 0.2{C}\n"
++    "prompt: | # from .troupe/prompt.md\n"
++    "  Hello\n"
++    "  World\n"
++    "tools:\n"
++    f"  - read{T}\n"
++    f"  - write{T}\n"
++)
++
++
++def test_sources_name_each_scalars_file_across_includes(full: Theatre) -> None:
++    r = full.run("show", "--sources")
++    assert (r.code, r.out, r.err) == (0, WHOLE, "")
++
++
++def test_sources_output_is_show_output_plus_comments(full: Theatre) -> None:
++    plain = full.run("show").out.splitlines()
++    commented = full.run("show", "--sources").out.splitlines()
++    assert [line.split(" # from ")[0] for line in commented] == plain
++
++
++def test_sources_output_reads_back_as_the_same_data(full: Theatre) -> None:
++    assert read_back(full.run("show", "--sources").out) == to_data(load(full.root).root)
++
++
++def test_sources_for_a_section(full: Theatre) -> None:
++    assert full.run("show", "agents.coder", "--sources").out == f"model: m1{C}\ntemperature: 0.2{C}\n"
++
++
++@pytest.mark.parametrize(
++    "args", [("show", "--sources", "agents.coder"), ("show", "agents.coder", "--sources")]
++)
++def test_sources_flag_may_come_before_or_after_the_path(full: Theatre, args: tuple[str, ...]) -> None:
++    assert full.run(*args).out == f"model: m1{C}\ntemperature: 0.2{C}\n"
++
++
++def test_sources_for_a_scalar_print_it_as_yaml_with_the_comment(full: Theatre) -> None:
++    assert full.run("show", "model", "--sources").out == f"claude-opus-5-5{T}\n"
++
++
++def test_sources_for_a_text_include_name_the_included_file(full: Theatre) -> None:
++    assert full.run("show", "prompt", "--sources").out == "| # from .troupe/prompt.md\n  Hello\n  World\n"
++
++
++def test_sources_for_a_quoted_string_scalar(make: Callable[[str], Theatre]) -> None:
++    assert make("a: 'true'\n").run("show", "a", "--sources").out == f"'true'{T}\n"
++
++
++def test_sources_for_an_empty_included_yaml_file(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml\n")
++    theatre.write("agents/coder.yaml", "")
++    assert theatre.run("show", "agents", "--sources").out == f"coder: null{C}\n"
++
++
++def test_sources_normalise_an_include_through_a_parent_directory(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: file:sub/a.yaml\n")
++    theatre.write("sub/a.yaml", "b: file:../b.yaml\n")
++    theatre.write("b.yaml", "c: 1\n")
++    assert theatre.run("show", "--sources").out == "a:\n  b:\n    c: 1 # from .troupe/b.yaml\n"
++
++
++def test_sources_name_troupe_yaml_when_that_is_the_config_file(theatre: Theatre) -> None:
++    theatre.write("troupe.yaml", "a: 1\n")
++    assert theatre.run("show", "--sources").out == "a: 1 # from .troupe/troupe.yaml\n"
++
++
++def test_sources_put_no_comment_on_empty_collections(make: Callable[[str], Theatre]) -> None:
++    assert make("a: {}\nb: []\nc: [x]\n").run("show", "--sources").out == f"a: {{}}\nb: []\nc:\n  - x{T}\n"
++
++
++def test_sources_with_a_relative_theatre(
++    theatre: Theatre, monkeypatch: pytest.MonkeyPatch, run: Callable[..., Result]
++) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    monkeypatch.chdir(theatre.root.parent)
++    r = run("show", "--sources", "--theatre", Path(theatre.root.name).as_posix())
++    assert r.out == f"a: 1{T}\n"
+diff --git a/tests/test_smoke.py b/tests/test_smoke.py
+index e815822..b47d0ff 100644
+--- a/tests/test_smoke.py
++++ b/tests/test_smoke.py
+@@ -98,9 +98,26 @@ def test_show_set_and_history_through_uv_run(theatre: Path) -> None:
+     assert lines[-1]["old"] == "You write code.\r\nBe brief.\r\n" and lines[-1]["new"] == "Write tests.\r\n"
+ 
+ 
++def test_get_and_show_sources_through_uv_run(theatre: Path) -> None:
++    r = troupe(theatre, "get", "agents.coder.model")
++    assert (r.returncode, r.stdout, r.stderr) == (0, "big\n", "")
++    r = troupe(theatre, "show", "agents.coder", "--sources")
++    assert (r.returncode, r.stderr) == (0, "")
++    assert r.stdout == (
++        "model: big # from .troupe/agents/coder.yaml\n"
++        'prompt: "You write code.\\r\\nBe brief.\\r\\n" # from .troupe/agents/coder.md\n'
++    )
++
++
+ @pytest.mark.parametrize(
+     ("args", "code"),
+-    [(("show", "agents"), 5), (("set", "agents.coder", "x"), 3), (("show", "a..b"), 2), (("bogus",), 2)],
++    [
++        (("get", "agents"), 5),
++        (("show", "nope"), 5),
++        (("set", "agents.coder", "x"), 3),
++        (("show", "a..b"), 2),
++        (("bogus",), 2),
++    ],
+ )
+ def test_exit_codes_through_uv_run(theatre: Path, args: tuple[str, ...], code: int) -> None:
+     r = troupe(theatre, *args)

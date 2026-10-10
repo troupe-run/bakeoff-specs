@@ -1,0 +1,34 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "Should reading (get/show) resolve merge keys, so that `get x.a` succeeds when `a` comes from `<<: *b`?",
+      "reply": null,
+      "escalate": true,
+      "cited": "Aliases (from step 6); General \u2014 Out of contract"
+    },
+    {
+      "question": "Should `--expand-alias` on an alias whose anchor is flow-style (e.g. `&d {model: opus}`) convert the copy to block style, or refuse?",
+      "reply": "Convert it. The contract says `set --expand-alias PATH VALUE` replaces the alias with a block-style copy of the anchored node, so the copy is written in block style whatever style the anchor uses. Nothing else changes, so the anchored node itself stays as it is.",
+      "escalate": false,
+      "cited": "Aliases (from step 6)"
+    },
+    {
+      "question": "What should `set --expand-alias` do when the path does not pass through any alias?",
+      "reply": null,
+      "escalate": true,
+      "cited": "Aliases (from step 6)"
+    },
+    {
+      "question": "What should `set --expand-alias` do when the path passes through more than one alias?",
+      "reply": null,
+      "escalate": true,
+      "cited": "Aliases (from step 6)"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

@@ -1,0 +1,221 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.0.tools"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "project",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/prompt.txt": "You review code.\nBe concise.\n",
+      ".troupe/troupe.yml": "project:\n    name: demo\n    tags: [alpha, beta]\n    empty_map: {}\n    empty_list: []\n    flags:\n        verbose: true\n        level: 0.2\nagents:\n    - name: coder\n      tools:\n          - shell\n          - - nested1\n            - nested2\n      opts: {}\n    - name: reviewer\n      notes: \"yes\"\n      prompt: file:prompt.txt\n      matrix: [[1, 2], [], {}]\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 5,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "project:\n  name: demo\n  tags:\n    - alpha\n    - beta\n  empty_map: {}\n  empty_list: []\n  flags:\n    verbose: true\n    level: 0.2\nagents:\n  - name: coder\n    tools:\n      - shell\n      - - nested1\n        - nested2\n    opts: {}\n  - name: reviewer\n    notes: yes\n    prompt: |\n      You review code.\n      Be concise.\n    matrix:\n      - - 1\n        - 2\n      - []\n      - {}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- name: coder\n  tools:\n    - shell\n    - - nested1\n      - nested2\n  opts: {}\n- name: reviewer\n  notes: yes\n  prompt: |\n    You review code.\n    Be concise.\n  matrix:\n    - - 1\n      - 2\n    - []\n    - {}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.0.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- shell\n- - nested1\n  - nested2\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "project",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo # from .troupe/troupe.yml\ntags:\n  - alpha # from .troupe/troupe.yml\n  - beta # from .troupe/troupe.yml\nempty_map: {}\nempty_list: []\nflags:\n  verbose: true # from .troupe/troupe.yml\n  level: 0.2 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "project:\n  name: demo # from .troupe/troupe.yml\n  tags:\n    - alpha # from .troupe/troupe.yml\n    - beta # from .troupe/troupe.yml\n  empty_map: {}\n  empty_list: []\n  flags:\n    verbose: true # from .troupe/troupe.yml\n    level: 0.2 # from .troupe/troupe.yml\nagents:\n  - name: coder # from .troupe/troupe.yml\n    tools:\n      - shell # from .troupe/troupe.yml\n      - - nested1 # from .troupe/troupe.yml\n        - nested2 # from .troupe/troupe.yml\n    opts: {}\n  - name: reviewer # from .troupe/troupe.yml\n    notes: yes # from .troupe/troupe.yml\n    prompt: | # from .troupe/prompt.txt\n      You review code.\n      Be concise.\n    matrix:\n      - - 1 # from .troupe/troupe.yml\n        - 2 # from .troupe/troupe.yml\n      - []\n      - {}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "project:\n  name: demo\n  tags:\n    - alpha\n    - beta\n  empty_map: {}\n  empty_list: []\n  flags:\n    verbose: true\n    level: 0.2\nagents:\n  - name: coder\n    tools:\n      - shell\n      - - nested1\n        - nested2\n    opts: {}\n  - name: reviewer\n    notes: 'yes'\n    prompt: |\n      You review code.\n      Be concise.\n    matrix:\n      - - 1\n        - 2\n      - []\n      - {}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- name: coder\n  tools:\n    - shell\n    - - nested1\n      - nested2\n  opts: {}\n- name: reviewer\n  notes: 'yes'\n  prompt: |\n    You review code.\n    Be concise.\n  matrix:\n    - - 1\n      - 2\n    - []\n    - {}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.0.tools"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- shell\n- - nested1\n  - nested2\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "project",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo # from .troupe/troupe.yml\ntags:\n  - alpha # from .troupe/troupe.yml\n  - beta # from .troupe/troupe.yml\nempty_map: {}\nempty_list: []\nflags:\n  verbose: true # from .troupe/troupe.yml\n  level: 0.2 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "project:\n  name: demo # from .troupe/troupe.yml\n  tags:\n    - alpha # from .troupe/troupe.yml\n    - beta # from .troupe/troupe.yml\n  empty_map: {}\n  empty_list: []\n  flags:\n    verbose: true # from .troupe/troupe.yml\n    level: 0.2 # from .troupe/troupe.yml\nagents:\n  - name: coder # from .troupe/troupe.yml\n    tools:\n      - shell # from .troupe/troupe.yml\n      - - nested1 # from .troupe/troupe.yml\n        - nested2 # from .troupe/troupe.yml\n    opts: {}\n  - name: reviewer # from .troupe/troupe.yml\n    notes: 'yes' # from .troupe/troupe.yml\n    prompt: | # from .troupe/prompt.txt\n      You review code.\n      Be concise.\n    matrix:\n      - - 1 # from .troupe/troupe.yml\n        - 2 # from .troupe/troupe.yml\n      - []\n      - {}\n"
+            }
+          ]
+        }
+      ],
+      "route": "2-space indent, compact items, {} and []",
+      "route_no": 1
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+```json
+{"score": 3, "evidence": ["/judge/repo/tests/test_e2e_remote.py:562", "/judge/repo/tests/test_e2e_remote.py:612", "/judge/repo/tests/test_e2e_remote.py:225", "/judge/repo/tests/test_e2e_remote.py:276", "/judge/repo/tests/test_e2e_remote.py:247", "/judge/repo/tests/test_e2e_locate_load.py:227", "/judge/repo/tests/test_e2e_reconcile.py:146", "/judge/repo/spec/spec/config-remote-schema/tasks.md:149"]}
+```
+
+```json
+{"score": 3, "evidence": ["/judge/repo/tests/test_e2e_remote.py:562", "/judge/repo/tests/test_e2e_remote.py:612", "/judge/repo/tests/test_e2e_remote.py:225", "/judge/repo/tests/test_e2e_remote.py:276", "/judge/repo/tests/test_e2e_remote.py:247", "/judge/repo/tests/test_e2e_locate_load.py:227", "/judge/repo/tests/test_e2e_reconcile.py:146", "/judge/repo/spec/spec/config-remote-schema/tasks.md:149"], "notes": "Most names read as a spec of step 7 (config-remote-schema): each states a condition and its result, and the body asserts it, e.g. test_fetch_failure_exits_4_naming_file_key_path_and_url_with_no_history_state and test_watch_set_holds_local_files_root_candidates_and_schema_never_a_url. None overclaims, but a few are vague or say less than the body checks: test_schema_file_created_while_watching_is_seen ('is seen'), test_schema_file_edit_reloads_and_fetches_again (it also checks the report and that nothing is recorded), and 'in both forms' in the get/show names."}
+```

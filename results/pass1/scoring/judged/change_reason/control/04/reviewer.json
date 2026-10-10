@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "/judge/repo has no .git directory, so there are no commit messages, and there is no spec, change record or decision file in the repo",
+    "README.md:18-23 (diff.patch:18-23) describes the new lineage fields, which ties the additions to a feature only at a coarse level",
+    "src/troupe/store.py:156-157 (diff.patch:156-157) has an inline comment explaining the default for events recorded before lineage existed; no other hunk carries a reason",
+    "diff.patch:224-236 changes the signature of Troupe.record so that meta is required, and changes how reconcile and import record events, with no stated reason",
+    "README.md:5 still reads 'Step 1', so no record ties this step's diff to its request"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 1, \"evidence\": [\"/judge/repo has no .git directory, so there are no commit messages, and there is no spec, change record or decision file in the repo\", \"README.md:18-23 (diff.patch:18-23) describes the new lineage fields, which ties the additions to a feature only at a coarse level\", \"src/troupe/store.py:156-157 (diff.patch:156-157) has an inline comment explaining the default for events recorded before lineage existed; no other hunk carries a reason\", \"diff.patch:224-236 changes the signature of Troupe.record so that meta is required, and changes how reconcile and import record events, with no stated reason\", \"README.md:5 still reads 'Step 1', so no record ties this step's diff to its request\"]}\n```",
+  "score": 1,
+  "status": "ok"
+}

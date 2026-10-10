@@ -1,0 +1,527 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "robot:x"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "robot:x"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "no.such.path"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "robot:x"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "model",
+          "sonnet",
+          "--reason",
+          "try"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "robot:x"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# team config\nmodel: opus  # default model\nretry: 3\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "TROUPE_ACTOR: invalid value 'robot:x': expected human:<id> or agent:<id>\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "TROUPE_ACTOR: invalid value 'robot:x': expected human:<id> or agent:<id>\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "no.such.path"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "TROUPE_ACTOR: invalid value 'robot:x': expected human:<id> or agent:<id>\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet",
+                "--reason",
+                "try"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "TROUPE_ACTOR: invalid value 'robot:x': expected human:<id> or agent:<id>\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:57:39.591595Z\", \"reason\": null, \"change\": \"424232dd-cd09-4e69-a033-b3a164db7677\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:57:39.591595Z\", \"reason\": null, \"change\": \"424232dd-cd09-4e69-a033-b3a164db7677\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: TROUPE_ACTOR: expected human:<id> or agent:<id>, got 'robot:x'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: TROUPE_ACTOR: expected human:<id> or agent:<id>, got 'robot:x'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "no.such.path"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: TROUPE_ACTOR: expected human:<id> or agent:<id>, got 'robot:x'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet",
+                "--reason",
+                "try"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: TROUPE_ACTOR: expected human:<id> or agent:<id>, got 'robot:x'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:57:42.664244Z\", \"reason\": null, \"change\": \"50be9bc1-c64f-4406-ac0a-edb794c2debc\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:57:42.664244Z\", \"reason\": null, \"change\": \"50be9bc1-c64f-4406-ac0a-edb794c2debc\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: TROUPE_ACTOR: invalid value 'robot:x': expected 'human:<id>' or 'agent:<id>'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: TROUPE_ACTOR: invalid value 'robot:x': expected 'human:<id>' or 'agent:<id>'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "no.such.path"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: TROUPE_ACTOR: invalid value 'robot:x': expected 'human:<id>' or 'agent:<id>'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet",
+                "--reason",
+                "try"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: TROUPE_ACTOR: invalid value 'robot:x': expected 'human:<id>' or 'agent:<id>'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:57:44.476959Z\", \"reason\": null, \"change\": \"370e214e-6cc8-4b1e-9bd6-a2621f315c69\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:57:44.476959Z\", \"reason\": null, \"change\": \"370e214e-6cc8-4b1e-9bd6-a2621f315c69\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: TROUPE_ACTOR must be human:<id> or agent:<id>, not 'robot:x'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: TROUPE_ACTOR must be human:<id> or agent:<id>, not 'robot:x'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "no.such.path"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: TROUPE_ACTOR must be human:<id> or agent:<id>, not 'robot:x'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet",
+                "--reason",
+                "try"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: TROUPE_ACTOR must be human:<id> or agent:<id>, not 'robot:x'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:57:47.480106Z\", \"reason\": null, \"change\": \"14c98c86-2b5e-40a7-a965-076d1599293a\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:57:47.480106Z\", \"reason\": null, \"change\": \"14c98c86-2b5e-40a7-a965-076d1599293a\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: invalid TROUPE_ACTOR: 'robot:x' (expected human:<id> or agent:<id>)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: invalid TROUPE_ACTOR: 'robot:x' (expected human:<id> or agent:<id>)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "no.such.path"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: invalid TROUPE_ACTOR: 'robot:x' (expected human:<id> or agent:<id>)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet",
+                "--reason",
+                "try"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: invalid TROUPE_ACTOR: 'robot:x' (expected human:<id> or agent:<id>)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:57:50.768467Z\", \"reason\": null, \"change\": \"9d68f036-8c3c-4d25-8ae6-7a28d75dec87\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:57:50.768467Z\", \"reason\": null, \"change\": \"9d68f036-8c3c-4d25-8ae6-7a28d75dec87\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: error: TROUPE_ACTOR: 'robot:x' is not human:<id> or agent:<id>\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: error: TROUPE_ACTOR: 'robot:x' is not human:<id> or agent:<id>\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "no.such.path"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: error: TROUPE_ACTOR: 'robot:x' is not human:<id> or agent:<id>\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet",
+                "--reason",
+                "try"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "robot:x"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: error: TROUPE_ACTOR: 'robot:x' is not human:<id> or agent:<id>\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:57:53.918054Z\", \"reason\": null, \"change\": \"bc2ed71f-5e86-4f49-9893-c03e17d73c13\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:57:53.918054Z\", \"reason\": null, \"change\": \"bc2ed71f-5e86-4f49-9893-c03e17d73c13\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Every command, first",
+      "route_no": 1
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# team config\nmodel: opus  # default model\nretry: 3\n",
+        "input": "`TROUPE_ACTOR=robot:x config get model`",
+        "observed": true,
+        "results": {
+          "1": "exit 2, prints nothing on stdout; stderr says the actor value is invalid and must be human:<id> or agent:<id>. All six arms behaved the same except for the wording, e.g. `troupe: invalid TROUPE_ACTOR: 'robot:x' (expected human:<id> or agent:<id>)`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`TROUPE_ACTOR=robot:x config get no.such.path`",
+        "observed": true,
+        "results": {
+          "1": "exit 2 with the same actor error. The bad actor is reported first, so the user never hears that the path doesn't exist. Same in all six arms."
+        }
+      },
+      {
+        "before": "",
+        "input": "`TROUPE_ACTOR=robot:x config history`",
+        "observed": true,
+        "results": {
+          "1": "exit 2 with the same actor error, and no history is printed, even though this command only reads. Same in all six arms."
+        }
+      },
+      {
+        "before": "# team config\nmodel: opus  # default model\nretry: 3\n",
+        "input": "`TROUPE_ACTOR=robot:x config set model sonnet --reason try`, then `TROUPE_ACTOR=human:owner config history`",
+        "observed": true,
+        "results": {
+          "1": "The set exits 2 with the actor error and leaves the file unchanged. The history call then exits 0 and lists only the two original import entries (model = \"opus\" and retry = 3, actor unknown), with no record of the failed set. Same in all six arms."
+        }
+      }
+    ],
+    "in_practice": "There is only one route here, and all six arms behaved the same way: a malformed `TROUPE_ACTOR` stops every command (get, set and history) with exit 2 before it does anything. Only the wording of the error message differs between arms. Once the variable is fixed, everything works normally.",
+    "stakes": "If `TROUPE_ACTOR` holds a bad value, a user wants to find out right away, on any command, and not only when a write goes into the history under a garbage name. The flip side is that a bad value also blocks plain reads.",
+    "tradeoff": "Route 1 catches a bad actor value straight away and never writes anything with it, but the cost is that read-only commands like `get` and `history` also refuse to run until the variable is fixed."
+  },
+  "plan_why": "Shows that an invalid TROUPE_ACTOR is rejected with exit 2 by every command (read-only get/history too) and before anything else (before the import, before a path-not-found error, before set writes), and that nothing was recorded or written as a result",
+  "routes": [
+    [
+      "Every command, first",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

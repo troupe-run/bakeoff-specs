@@ -1,0 +1,11 @@
+```json
+{"score": 3, "evidence": ["tests/e2e/test_set_in_include.py:63", "tests/e2e/test_usage.py:118", "tests/e2e/test_set_in_include.py:77", "tests/e2e/test_set_in_include.py:30", "tests/e2e/test_set_in_include.py:123", "tests/unit/test_merge.py:121", "tests/e2e/test_usage.py:95"]}
+```
+
+**Score: 3.** None of the 16 tests I checked claims more than it asserts. Each name matches what the test actually checks: exact file bytes through `assert_set`, the `shared_part` file and keys, an exit code of 2 with the snapshot unchanged, and identical results with and without the flag. Three names are vague or leave out the expected result:
+
+- `test_flow_mapping_in_the_included_file` doesn't say the flow style is kept.
+- `test_in_include_with_reason` doesn't say the reason is recorded.
+- `test_step_1_fixture_passes_again_with_the_flag` depends on an outside fixture to make sense.
+
+That keeps the step from scoring 4.

@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "spec/troupe-config-lineage-01M436R0/acceptance-matrix.json:8-145 (FR-001..FR-014 each map to named test functions, e.g. FR-014 -> test_lineage_cli.py::test_refused_set_keeps_its_reconcile_but_not_its_reason)",
+    "tests/integration/test_lineage_cli.py:205-207 (test carries '# edge case, FR-014' comment)",
+    "tests/integration/test_lineage_cli.py:144-146 ('# US1-5, FR-004 (DM 01M436TX68S2MGE4DN9AM02KTJ)')",
+    "spec/troupe-config-lineage-01M436R0/tasks/WP03-record-lineage.md:7-55 (requirement_refs FR-003..FR-014 plus owned src/troupe/*.py and test files)",
+    "spec/troupe-config-lineage-01M436R0/acceptance-matrix.json:71 (FR-007 evidence is vague: 'uniform-at-per-change checks', with no named test)",
+    "spec/troupe-config-lineage-01M436R0/spec.md:151-155 (NFR-001..005 do not appear in the acceptance matrix)"
+  ],
+  "notes": "A newcomer can go from each FR in spec.md to named tests through the acceptance matrix. From there the WP frontmatter (requirement_refs and owned src files) leads to the code. The test names I checked exist, and several tests cite FR IDs inline. However, the matrix descriptions are boilerplate ('TODO: replace with a real acceptance criterion'), FR-007's evidence names no specific test, and the NFRs have no matrix links, so the score is not a 4.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"spec/troupe-config-lineage-01M436R0/acceptance-matrix.json:8-145 (FR-001..FR-014 each map to named test functions, e.g. FR-014 -> test_lineage_cli.py::test_refused_set_keeps_its_reconcile_but_not_its_reason)\", \"tests/integration/test_lineage_cli.py:205-207 (test carries '# edge case, FR-014' comment)\", \"tests/integration/test_lineage_cli.py:144-146 ('# US1-5, FR-004 (DM 01M436TX68S2MGE4DN9AM02KTJ)')\", \"spec/troupe-config-lineage-01M436R0/tasks/WP03-record-lineage.md:7-55 (requirement_refs FR-003..FR-014 plus owned src/troupe/*.py and test files)\", \"spec/troupe-config-lineage-01M436R0/acceptance-matrix.json:71 (FR-007 evidence is vague: 'uniform-at-per-change checks', with no named test)\", \"spec/troupe-config-lineage-01M436R0/spec.md:151-155 (NFR-001..005 do not appear in the acceptance matrix)\"], \"notes\": \"A newcomer can go from each FR in spec.md to named tests through the acceptance matrix. From there the WP frontmatter (requirement_refs and owned src files) leads to the code. The test names I checked exist, and several tests cite FR IDs inline. However, the matrix descriptions are boilerplate ('TODO: replace with a real acceptance criterion'), FR-007's evidence names no specific test, and the NFRs have no matrix links, so the score is not a 4.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

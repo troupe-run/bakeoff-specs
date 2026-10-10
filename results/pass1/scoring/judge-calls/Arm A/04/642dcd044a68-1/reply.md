@@ -1,0 +1,5 @@
+Arm X's step-4 test names read almost entirely as a spec of the lineage contract. A few are vague, which keeps it at 3 rather than 4.
+
+```json
+{"score": 3, "evidence": ["/judge/repo/tests/test_e2e_lineage.py:132", "/judge/repo/tests/test_e2e_lineage.py:352", "/judge/repo/tests/test_e2e_lineage.py:378", "/judge/repo/tests/test_cli_actor.py:143", "/judge/repo/tests/test_cli_actor.py:163", "/judge/repo/tests/test_cli_actor.py:175", "/judge/repo/tests/test_cli_set_reason.py:106", "/judge/repo/tests/test_lineage.py:28"], "notes": "Most names state a condition and an expected result, read as a spec of the lineage contract, and the bodies I spot-checked assert exactly that (e.g. ten members in contract order checked byte for byte, identical bytes on reprint). A few say less than their bodies check: 'test_reason_through_the_console_script', 'test_valid_value_lets_the_command_run' and 'test_unset_variable_lets_the_command_run'."}
+```

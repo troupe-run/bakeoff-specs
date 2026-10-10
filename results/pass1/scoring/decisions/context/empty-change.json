@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# team config\nname: \"coder\"   # quoted on purpose\ntemperature: 0.2  # tuned\nmodel: opus\nretries: 3\n",
+        "input": "`config set model opus --reason no-op` (as human:owner; model is already `opus`)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; the file is untouched (all four arms)",
+          "2": "exit 0, no output; the file is untouched (both arms)"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set name coder` (as agent:bot; the file has `name: \"coder\"`, quoted)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; the file is untouched and its quotes and comment are kept (all four arms)",
+          "2": "exit 0, no output; the file is untouched and its quotes and comment are kept (both arms)"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set temperature 0.20` (as agent:bot; the file has `temperature: 0.2`)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; 0.20 is treated as the same value and the file is untouched (all four arms)",
+          "2": "exit 0, no output; 0.20 is treated as the same value and the file is untouched (both arms)"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set retries 4 --reason \"real change\"` (as human:owner)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads:\n# team config\nname: \"coder\"   # quoted on purpose\ntemperature: 0.2  # tuned\nmodel: opus\nretries: 4\n(all four arms)",
+          "2": "exit 0; the file now reads:\n# team config\nname: \"coder\"   # quoted on purpose\ntemperature: 0.2  # tuned\nmodel: opus\nretries: 4\n(both arms)"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history` (after all four commands above)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; 5 entries. Entries 1–4 are `import` records of the starting values (actor unknown). Entry 5 is `set retries 3 -> 4` by human:owner with the reason \"real change\". The three no-op commands left no entry: no \"no-op\" reason, and nothing from agent:bot (all four arms)",
+          "2": "exit 0; 5 entries. Entries 1–4 are `import` records of the starting values (actor unknown). Entry 5 is `set retries 3 -> 4` by human:owner with the reason \"real change\". The three no-op commands left no entry: no \"no-op\" reason, and nothing from agent:bot (both arms)"
+        }
+      }
+    ],
+    "in_practice": "There is no visible difference between the routes. Every arm on both routes skipped saving and logging for the no-op commands. Only the timestamps and change IDs in the history differ.",
+    "stakes": "When someone sets a config key to the value it already has, should the tool leave the file and the history alone, or rewrite the file and log a change that changed nothing? If it logs one, the audit trail fills up with fake changes credited to whoever ran the command. If it rewrites the file, the hand-written comments and quoting are at risk.",
+    "tradeoff": "Route 1 makes 'no change, no save, no history entry' a deliberate rule. Route 2 did not consider the case, yet behaved the same in this run, so the behavior depends on nothing in its design keeping it that way."
+  },
+  "plan_why": "Shows whether a `set` that changes no value still rewrites the file (for example re-quoting or reformatting it) or records history events, including the edge cases of an equal value in another spelling and a `--reason` given with an unchanged value, compared with a real change.",
+  "routes": [
+    [
+      "Save and stamp nothing when there are no events",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

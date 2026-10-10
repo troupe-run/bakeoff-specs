@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\nname: demo\nagents:\n  coder: file:agents/coder.yaml\n\n.troupe/agents/coder.yaml:\nmodel: opus\ntemperature: 0.2",
+        "input": "`config show agents --sources`",
+        "observed": true,
+        "results": {
+          "1": "all five arms: exit 0, prints:\ncoder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml",
+          "2": "exit 0, prints:\ncoder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get agents.coder.model --sources`",
+        "observed": true,
+        "results": {
+          "1": "all five arms: exit 2, nothing on stdout, the error names the flag. The wording differs by arm: `troupe: unrecognized arguments: --sources`; `troupe: troupe: unrecognized arguments: --sources` (\"troupe:\" printed twice); `troupe: unrecognized arguments: --sources (see 'troupe --help')`; `troupe: usage error: unrecognized arguments: --sources`; or a usage line `usage: troupe [-h] COMMAND ...` followed by `troupe: error: unrecognized arguments: --sources`",
+          "2": "exit 2, nothing on stdout; stderr: `usage: troupe [-h] {config} ...` then `troupe: error: unrecognized arguments: --sources`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history agents.coder.model --sources`",
+        "observed": true,
+        "results": {
+          "1": "all five arms: exit 2 with the same message each arm gave for `get`",
+          "2": "exit 2 with the same message it gave for `get`"
+        }
+      },
+      {
+        "before": ".troupe/agents/coder.yaml:\nmodel: opus\ntemperature: 0.2",
+        "input": "`config set agents.coder.model sonnet --sources`, then `config get agents.coder.model`",
+        "observed": true,
+        "results": {
+          "1": "all five arms: the set exits 2 with the unrecognized-arguments error and writes nothing; the follow-up get prints `opus`",
+          "2": "the set exits 2 with the unrecognized-arguments error and writes nothing; the follow-up get prints `opus`"
+        }
+      }
+    ],
+    "in_practice": "The two routes behave the same in practice. `--sources` works only on `show`. On `get`, `history` and `set` it fails with exit 2 and changes nothing. Only the wording of the error differs, both between arms on route 1 and between the routes. One arm on route 1 prints \"troupe: troupe:\" twice.",
+    "stakes": "Whether `--sources` (the annotation showing which file each value came from) works on `show` only or also on the other config commands, and whether passing it to a command that doesn't support it could silently change your config.",
+    "tradeoff": "Route 1 decided on purpose that only `show` takes `--sources`, citing the contract. Route 2 never considered the question but ended up with the same behavior."
+  },
+  "plan_why": "Shows that `show --sources` adds `# from <file>` comments, then what `get --sources`, `history --sources` and `set --sources` do: route 1 rejects each one with exit 2 and changes no file, while implementations that never considered the question may accept the flag, ignore it or treat it differently.",
+  "routes": [
+    [
+      "show only; get --sources exits 2",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

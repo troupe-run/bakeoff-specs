@@ -1,0 +1,29 @@
+{
+  "context": {
+    "examples": [],
+    "in_practice": "Route 1: before each command runs, the program calls a reconcile step on the data store. Only the history command is left out. For a user, every existing command except history works on up-to-date data. For a maintainer, the rule is a single exception written in one place. A new command gets reconciled automatically unless someone adds it to the exception. Nothing in the code says why history is skipped, though, and the only rule is \"everything but history\". Route 2: one shared function that opens the session decides for every command whether reconciling happens. That decision can be on by default, come from a list of commands, or be something each command must state explicitly. The recorded reason is that a new command cannot forget to reconcile. For a user the result is the same today. For a maintainer, the decision lives where the data is opened, so a command cannot get to the data without going through it. The exact behaviour depends on which form is used. With on-by-default, new commands reconcile unless they opt out. With a list, a new command left off the list is not reconciled. With a required statement, a command can't be written without choosing.",
+    "stakes": "Whether every command sees the stored data brought up to date (reconciled) before it runs, and whether a command added later could quietly skip that step and show or act on stale data.",
+    "tradeoff": "Route 1 costs little now, but the reconcile rule is a single hard-coded exception with no stated reason, so it relies on the command list staying as it is; route 2 costs some extra setup in the shared open function, and depending on its form, maintainers must keep a list current or state a choice for every command."
+  },
+  "plan_why": "Both routes are about where in the code the reconcile decision lives (a reconcile call made by each command vs one session/open function deciding for all of them). By design both reconcile before every command except history, so the visible behaviour is the same. The only way to see a difference would be a hand edit to the files between two troupe commands, and the sandbox cannot do that: files are created only once, before the first command, and that first command just imports them. So no command sequence can show which commands reconcile.",
+  "routes": [
+    [
+      "A store reconcile method called before every command except history",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "One session/open function decides for every command (default-on flag, a command list, or a required keyword)",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

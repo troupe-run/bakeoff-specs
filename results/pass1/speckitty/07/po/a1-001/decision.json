@@ -1,0 +1,16 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "What do include strings (a relative `file:` include or a nested `https://`/`http://` include) mean inside the content of a remotely fetched YAML file: should they resolve against the URL and be fetched (A), should only `https://` includes be allowed (B), should any include there exit 4 (C), or something else?",
+      "reply": "The contract defines remote includes as strings starting `https://` or `http://`, \"fetched when the configuration loads\" (Remote includes and schema). It doesn't say how a relative `file:` include inside fetched content resolves, or whether fetched content may contain further includes. This is out of contract, so it's your choice. In the spec, say which option you chose and why.",
+      "escalate": false,
+      "cited": "Remote includes and schema (step 7); brief: Standing answers (out of contract) and Escalated answers (relative `file:` include inside a remotely fetched file)"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

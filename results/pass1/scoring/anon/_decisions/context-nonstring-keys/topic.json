@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "Quoting new keys that would read back as non-strings",
+  "routes": [
+    {
+      "outcome": "Kept; at step 6 a new key named << is also written quoted",
+      "reasoning_given": "Unquoted, it would read back as a boolean or number",
+      "route": "Quote any new key whose plain form would not read back as a string",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept; the show renderer later applied the general rule",
+      "reasoning_given": "The loader refuses a plain <<",
+      "route": "Quote keys spelled << (found in review)",
+      "route_no": 2
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

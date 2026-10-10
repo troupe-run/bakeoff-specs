@@ -1,0 +1,9 @@
+{
+  "kind": "approval",
+  "reply": "Approved. The design matches the Sync with files section and the General and Includes rules. Every command except `history` reconciles leaf by leaf against the recorded configuration. Formatting-only and comment-only edits record nothing. `history` never reconciles but still imports a theatre that has never been imported. `watch` prints `watching <dir>` only after its first snapshot and sync, so it can already observe changes when the line appears. It checks the config file and every included file every 0.2 s, which keeps it within the 2-second bound, and it follows includes added by hand. It exits 0 on SIGINT or SIGTERM. Because of the theatre lock and the comparison against recorded history, a `set` running alongside `watch` records exactly its own events, and its write-back is never recorded a second time. State stays under `.troupe/` and no extra file is created. Errors exit with the step-1 codes, leave stdout empty and name the file or path. The choices where the contract is silent are allowed by the brief and you have stated each one: polling interval, reporting a failure once and retrying, the order of `remove` events, `<dir>` printed as given, and nothing on stdout except the one line.",
+  "answers": [],
+  "approved": true,
+  "command": null,
+  "arguments": "",
+  "significant": false
+}

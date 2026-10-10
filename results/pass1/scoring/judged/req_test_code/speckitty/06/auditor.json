@@ -1,0 +1,18 @@
+{
+  "evidence": [
+    "spec/troupe-config-anchor-aliases-01M48SQ8/acceptance-matrix.json:31",
+    "spec/troupe-config-anchor-aliases-01M48SQ8/spec.md:171-173",
+    "tests/integration/test_set_aliases.py:3",
+    "tests/integration/test_set_aliases.py:61",
+    "tests/integration/test_set_expand_alias.py:3",
+    "tests/integration/test_set_expand_alias.py:61",
+    "spec/troupe-config-anchor-aliases-01M48SQ8/tasks/WP04-alias-expansion-edits.md:23",
+    "spec/troupe-config-get-show-01M411XB/acceptance-matrix.json:31",
+    "tests/integration/test_show.py:1",
+    "tests/unit/test_yamlcore.py:205"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"spec/troupe-config-anchor-aliases-01M48SQ8/acceptance-matrix.json:31\", \"spec/troupe-config-anchor-aliases-01M48SQ8/spec.md:171-173\", \"tests/integration/test_set_aliases.py:3\", \"tests/integration/test_set_aliases.py:61\", \"tests/integration/test_set_expand_alias.py:3\", \"tests/integration/test_set_expand_alias.py:61\", \"spec/troupe-config-anchor-aliases-01M48SQ8/tasks/WP04-alias-expansion-edits.md:23\", \"spec/troupe-config-get-show-01M411XB/acceptance-matrix.json:31\", \"tests/integration/test_show.py:1\", \"tests/unit/test_yamlcore.py:205\"]}\n```\n\nAll five sampled requirements were linked and correct:\n- **Step 6, FR-003 and FR-005:** the acceptance matrix and the test docstrings name the tests, and those tests assert the rules.\n- **Step 6, FR-010** and **step 2's FR-003:** the named tests exist and assert the requirement.\n- **Code:** reachable from the tests through their imports and the WP `authoritative_surface` entries.\n\nIt falls short of a 4 for three reasons. The matrix descriptions are placeholders (\"Verify FR-00X is satisfied\", notes say TODO). FR IDs restart in every mission, but the test docstrings don't say which mission they mean. And `tests/unit/test_yamlcore.py:205` still says anchors are refused \"by default\", which reads like the superseded step-1 rule.",
+  "score": 3,
+  "status": "ok"
+}

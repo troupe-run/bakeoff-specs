@@ -1,0 +1,81 @@
+# tracker database (managed by tracker, not git)
+tracker/
+embeddeddolt/
+proxieddb/
+
+# Runtime files
+tracker-cli.sock
+tracker-cli.sock.startlock
+sync-state.json
+last-touched
+.exclusive-lock
+
+# Daemon runtime (lock, log, pid)
+daemon.*
+
+# Push state (runtime, per-machine)
+push-state.json
+
+# Lock files (various runtime locks)
+*.lock
+
+# Credential key (encryption key for federation peer auth — never commit)
+tracker-credential-key
+
+# Local version tracking (prevents upgrade notification spam after git ops)
+.local_version
+
+proxied_server_client_info.json
+
+# Worktree redirect file (contains relative path to main repo's tracker/)
+# Must not be committed as paths would be wrong in other clones
+redirect
+
+# Sync state (local-only, per-machine)
+# These files are machine-specific and should not be shared across clones
+.sync.lock
+
+# Workspace operation gate (internal/workspacegate): physical-root gate
+# files live beside the guarded root inside tracker (e.g. tracker.gate.lock)
+*.gate.lock*
+export-state/
+export-state.json
+last_pull
+
+# Ephemeral store (SQLite - wisps/molecules, intentionally not versioned)
+ephemeral.sqlite3
+ephemeral.sqlite3-journal
+ephemeral.sqlite3-wal
+ephemeral.sqlite3-shm
+
+# tracker server management (auto-started by tracker-cli)
+tracker-server.pid
+tracker-server.log
+tracker-server.lock
+tracker-server.port
+tracker-server.activity
+
+# Debug-mode pprof artifacts (written when tracker.debug: true in config.yaml)
+tracker-pprof/
+
+# Corrupt backup directories (created by tracker-cli doctor --fix recovery)
+*.corrupt.backup/
+
+# Backup data (auto-exported JSONL, local-only)
+backup/
+
+# Per-project environment file (tracker connection config, GH#2520)
+.env
+
+# Legacy files (from pre-tracker versions)
+*.db
+*.db?*
+*.db-journal
+*.db-wal
+*.db-shm
+db.sqlite
+tracker-cli.db
+# NOTE: Do NOT add negation patterns here.
+# They would override fork protection in .git/info/exclude.
+# Config files (metadata.json, config.yaml) are tracked by git by default
+# since no pattern above ignores them.

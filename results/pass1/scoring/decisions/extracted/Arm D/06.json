@@ -1,0 +1,197 @@
+[
+  {
+    "decision": "Find aliases with a custom PyYAML loader subclass that records where each `*name` token is used (keyed by parent id and key/index). PyYAML itself composes an alias to the anchored node, so the alias position would otherwise be lost.",
+    "options": [],
+    "reason": "PyYAML composes an alias to the anchored node itself, so the node cannot tell its uses apart",
+    "recorded_at": "docs/decisions.md:85"
+  },
+  {
+    "decision": "Refuse with exit 3 any write that would reach a value through an alias, including writes made by setting an enclosing mapping or list",
+    "options": [],
+    "reason": "writing it would change every use of the anchor",
+    "recorded_at": "docs/decisions.md:85"
+  },
+  {
+    "decision": "Refuse a write through an alias even when the value would not change",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:85"
+  },
+  {
+    "decision": "Setting a value at the anchor still changes it there and so everywhere it is aliased",
+    "options": [],
+    "reason": "",
+    "recorded_at": "README.md (Aliases bullet); tests/test_aliases.py test_set_at_anchor_changes_every_alias"
+  },
+  {
+    "decision": "Keep the anchor and tag when replacing an anchored value. This fixes a related bug where the anchor was dropped and the write was refused.",
+    "options": [],
+    "reason": "the write used to drop &s and so was refused",
+    "recorded_at": "docs/decisions.md:85; transcript.md:15"
+  },
+  {
+    "decision": "Add a `--expand-alias` flag to `set` that replaces the alias with its own copy of the anchored value and then sets the value in the copy",
+    "options": [],
+    "reason": "",
+    "recorded_at": "README.md; transcript.md:26"
+  },
+  {
+    "decision": "Mark the expanded copy with a trailing comment `  # expanded from *name by troupe` (two spaces) on the key's line",
+    "options": [],
+    "reason": "the contract asks for exactly two spaces",
+    "recorded_at": "questions.md:31; README.md"
+  },
+  {
+    "decision": "Point the refusal error message to setting the value at the anchor or using `--expand-alias`",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/writer.py _check_shared)"
+  },
+  {
+    "decision": "Resolve merge keys (`<<`) when reading: explicit keys win, then earlier merged mappings, and merged keys sit where the merge key is",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:89"
+  },
+  {
+    "decision": "Never write merge keys. Setting `<<` directly, setting a merged value, or any write that would remove a merged key exits 3.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:89"
+  },
+  {
+    "decision": "With `--expand-alias`, a merged value gets an explicit key beside the merge key instead of the case always exiting 3. This was a design change made mid-implementation, which also changed the test.",
+    "options": [
+      "add explicit key beside <<",
+      "always exit 3"
+    ],
+    "reason": "overrides the merged value without touching <<; small change if owner prefers exit 3",
+    "recorded_at": "transcript.md:27; questions.md:27; docs/decisions.md:89"
+  },
+  {
+    "decision": "Do not expand a value merged from a mapping written in place (`<<: {..}`); refuse it with exit 3",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:89"
+  },
+  {
+    "decision": "Build the expanded copy from the value as read: nested aliases and merges are resolved, and an aliased include is copied as its content",
+    "options": [],
+    "reason": "so the copy shares nothing with the anchor",
+    "recorded_at": "docs/decisions.md:94"
+  },
+  {
+    "decision": "Do not copy comments inside the anchored value into the expansion",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:94"
+  },
+  {
+    "decision": "Refuse `--expand-alias` with exit 3 for an alias inside a flow collection",
+    "options": [],
+    "reason": "a flow collection cannot take a block-style copy",
+    "recorded_at": "docs/decisions.md:94"
+  },
+  {
+    "decision": "Without an alias on the path, `--expand-alias` changes nothing and the command acts as a plain set",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:94"
+  },
+  {
+    "decision": "Make a recursive alias a configuration error (exit 4) rather than letting it hang, and add a visited set to `_detect_indent`",
+    "options": [],
+    "reason": "pre-existing hang: `_detect_indent` walks the node graph without a visited set",
+    "recorded_at": "docs/decisions.md:99; transcript.md:38"
+  },
+  {
+    "decision": "Run the set as two phases: first expand the alias, reload the config with the planned overrides, then set the value in the copy",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:25"
+  },
+  {
+    "decision": "When the expanded copy fails to reload, refuse the write as 'cannot expand the alias faithfully'",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/cli.py _set)"
+  },
+  {
+    "decision": "Expand only the first shared value found along the path",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/writer.py shared_on_path)"
+  },
+  {
+    "decision": "Keep a trailing comment in its column when a value grows, so the gap before `#` can shrink to one space",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:31; tests/test_aliases.py test_set_anchored_scalar_keeps_anchor"
+  },
+  {
+    "decision": "On a line with an existing trailing comment, put the expansion comment before it (`# expanded ... # mine`)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (tests/test_aliases.py test_expand_alias_keeps_trailing_comment)"
+  },
+  {
+    "decision": "Indent an expanded copy inside a list item at the dash column plus max(2, indent)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/writer.py expand)"
+  },
+  {
+    "decision": "Expand an empty collection inline as `{}` or `[]`, and write a multiline scalar as a double-quoted string",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/writer.py expand)"
+  },
+  {
+    "decision": "Match the style of the parent's last key when writing the new explicit key beside a merge key",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/writer.py expand)"
+  },
+  {
+    "decision": "Treat `<<` as a merge key only when it is a plain (unquoted) scalar, and raise a config error when `<<` merges a non-mapping",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/config.py is_merge, merge_sources)"
+  },
+  {
+    "decision": "Record only the user's set in history after an expansion, not the copy's import",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (tests/test_aliases.py test_expand_alias)"
+  },
+  {
+    "decision": "Write the tests first and confirm they fail before implementing",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:15-18"
+  },
+  {
+    "decision": "Commit directly on main, do not push, and do not comment on issue #2",
+    "options": [
+      "post a note on issue #2"
+    ],
+    "reason": "the owner ruled out pushing and PRs; a comment on the issue would be public",
+    "recorded_at": "questions.md:5,47; commit 2588180"
+  },
+  {
+    "decision": "Treat the skill's integration menu (merge locally / push and open a PR / keep as-is) as not applicable and keep the work as is",
+    "options": [
+      "Merge locally",
+      "Push and open PR",
+      "Keep as-is"
+    ],
+    "reason": "already on main with no branch; pushing was ruled out",
+    "recorded_at": "questions.md:39-47"
+  },
+  {
+    "decision": "Document the new flag and alias behaviour in the README",
+    "options": [],
+    "reason": "",
+    "recorded_at": "README.md; transcript.md:41"
+  }
+]

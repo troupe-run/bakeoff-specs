@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "agents:\n  coder:\n    model: opus\n    # coder notes\n\n  reviewer:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n  # agents-level note\n# top-level comment\n\ntools:\n  - git\n  # more tools here\n\n  - shell\n    # deeper comment\n\nnotes: x\n# end of file comment\n",
+        "input": "`config set agents.coder.temperature 0.3`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; the file now reads:\n  coder:\n    model: opus\n    # coder notes\n    temperature: 0.3\n\n  reviewer:",
+          "2": "exit 0, no output; the file now reads:\n  coder:\n    model: opus\n    # coder notes\n    temperature: 0.3\n\n  reviewer:"
+        }
+      },
+      {
+        "before": "",
+        "input": "then `config set agents.reviewer.temperature 0.5`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the new line goes below both reviewer comments and above the less-indented agents-level note:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n    temperature: 0.5\n  # agents-level note",
+          "2": "exit 0; the new line goes below both reviewer comments and above the less-indented agents-level note:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n    temperature: 0.5\n  # agents-level note"
+        }
+      },
+      {
+        "before": "",
+        "input": "then `config set agents.tester '{model: haiku}'`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the new agent goes below the agents-level note and above the top-level comment:\n    temperature: 0.5\n  # agents-level note\n  tester:\n    model: haiku\n# top-level comment",
+          "2": "exit 0; the new agent goes below the agents-level note and above the top-level comment:\n    temperature: 0.5\n  # agents-level note\n  tester:\n    model: haiku\n# top-level comment"
+        }
+      },
+      {
+        "before": "",
+        "input": "then `config set tools.2 make`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the new item goes below the deeper comment, and the blank line stays below it:\n  - shell\n    # deeper comment\n  - make\n\nnotes: x",
+          "2": "exit 0; the new item goes below the deeper comment, and the blank line stays below it:\n  - shell\n    # deeper comment\n  - make\n\nnotes: x"
+        }
+      },
+      {
+        "before": "",
+        "input": "then `config set zeta 1`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the new top-level key goes below the end-of-file comment, above the trailing blank line:\nnotes: x\n# end of file comment\nzeta: 1\n",
+          "2": "exit 0; the new top-level key goes below the end-of-file comment, above the trailing blank line:\nnotes: x\n# end of file comment\nzeta: 1\n"
+        }
+      }
+    ],
+    "in_practice": "A new entry goes after any trailing comments that are indented at least as far as the entries it joins. It stops before the first comment indented less than that. Blank lines that separate sections stay below the new entry. Every arm on both routes did exactly this, so this test shows no difference between the routes.",
+    "stakes": "When `config set` adds a new key or list item, where it lands decides whether hand-written comments and blank lines still sit next to the entries they describe. Both routes gave the same result on every command in this run.",
+    "tradeoff": "Route 1 follows a stated rule for where entries go. Route 2 never considered the question but produced the same files here, so any difference would only show up in layouts this test didn't cover."
+  },
+  "plan_why": "Adds new mapping keys and list items to collections followed by trailing comments at different indents and by blank lines. This shows whether each new entry lands above or below those comments, whether a less-indented comment ends the collection, and whether blank lines stay below the new entry.",
+  "routes": [
+    [
+      "After trailing comments indented at least to the entry column; blank lines stay below the new entry",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

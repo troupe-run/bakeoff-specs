@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml has short keys (`name: demo`, `retry: 3`) next to `very_long_setting_name_here: some fairly long value text`",
+        "input": "`config show --sources`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; every note sits one space after its value, with no column alignment: `name: demo # from .troupe/troupe.yml`, `very_long_setting_name_here: some fairly long value text # from .troupe/troupe.yml`",
+          "2": "same output as route 1: one space before each `#`, no alignment"
+        }
+      },
+      {
+        "before": "agents.coder points to agents/coder.yaml (`model: sonnet`, `system_prompt_identifier: \"x: y\"`); agents.note points to prompt.txt (two lines)",
+        "input": "`config show agents --sources`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; `  model: sonnet # from .troupe/agents/coder.yaml`, `  system_prompt_identifier: 'x: y' # from ...`, `note: | # from .troupe/prompt.txt` with the two text lines below it and no note on them",
+          "2": "same output as route 1"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show models --sources`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; `- opus # from .troupe/troupe.yml` / `- a-much-longer-model-name-entry # from .troupe/troupe.yml`, no alignment",
+          "2": "same output as route 1"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show agents.coder.model --sources`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; `sonnet # from .troupe/agents/coder.yaml`",
+          "2": "same output as route 1"
+        }
+      }
+    ],
+    "in_practice": "Every arm on both routes printed the notes one space after the value, with no lining up. So route 2 made the same choice as route 1 without considering it, and nothing a user sees tells the two apart here. Neither route ever lined the notes up in a column.",
+    "stakes": "How easy `config show --sources` output is to scan: whether the `# from <file>` notes sit one space after each value or line up in a column. In these runs the output was identical on both routes, byte for byte.",
+    "tradeoff": "Route 1: a stated, predictable rule, but notes are ragged when key and value lengths vary. Route 2: the same output with no stated reason behind it."
+  },
+  "plan_why": "Shows where `show --sources` puts `# from <file>` comments when lines have different lengths: one space before `#` with no alignment, or some other spacing such as a fixed column, two spaces, or padding. Covers nested mappings, list items, flow-quoted strings, includes and a multi-line text include.",
+  "routes": [
+    [
+      "One space before #, no alignment",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 4, "evidence": ["/judge/gates.md:1", "/judge/transcript.md:13", "/judge/transcript.md:27", "/judge/transcript.md:38", "/judge/transcript.md:63", "/judge/transcript.md:91"], "notes": "Step 4 builds the tasks list. The costly turns were all settled at earlier stops: TROUPE_ACTOR exiting 2 on every command, old event stores getting no migration, and hand edits recorded with an unknown actor. Those stops ended after the spec and plan, before any code, and asked the reviewer to confirm D-30/D-31 (transcript 13, 27). Step 4 reverses no requirement and changes no rule. It needed no new gate and had none."}
+```

@@ -1,0 +1,231 @@
+[
+  {
+    "decision": "Split reading into two commands: a new `get PATH` keeps the step-1/2 scalar behaviour of `show`, and `show [PATH] [--sources]` prints any value, a section or the whole configuration as YAML. This is marked BREAKING.",
+    "options": [],
+    "reason": "Users need to see whole sections with includes followed, and to know which file each value comes from. Scripts rely on the step-1 scalar behaviour, which `get` keeps.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/proposal.md:3-24"
+  },
+  {
+    "decision": "Scripts that relied on `show` exiting 5 on collections should migrate by calling `get`. The README documents this.",
+    "options": [],
+    "reason": "This is the step-3 contract. `get` has the same output and exit codes as the old `show PATH`.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:119-120"
+  },
+  {
+    "decision": "When `get` meets a mapping or list it exits 5, and the message names the path and suggests `troupe config show <path>`. The message is kept in one place, `commands.get`.",
+    "options": [],
+    "reason": "The spec requires the path and `config show` to appear in stderr.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:49-51"
+  },
+  {
+    "decision": "Add `get` to RECONCILING_COMMANDS so that `get` reconciles hand edits before reading, like `show`.",
+    "options": [],
+    "reason": "A read should see hand edits the same way, whichever command does the reading.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:146"
+  },
+  {
+    "decision": "Without `--sources`, `show` on a scalar or text include calls the same `show_text` function that `get` uses. Everything else goes through `render.render`.",
+    "options": [],
+    "reason": "This makes the spec's rule that `show` of a scalar prints like `get` hold by construction, because both use the same function call.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:43-48"
+  },
+  {
+    "decision": "Write a new `render.py` module that walks Node trees rather than Data, instead of extending the Data renderer in `edit/blocks.py`.",
+    "options": [
+      "new render.py walking Nodes",
+      "extend edit/blocks.py Data renderer to carry sources"
+    ],
+    "reason": "Only nodes know their file and which strings are text includes. Extending blocks.py would make `set`'s write path harder to verify.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:53-69"
+  },
+  {
+    "decision": "Use one renderer that produces Line(text, source). The output with and without `--sources` differs only by the comments.",
+    "options": [],
+    "reason": "The two outputs can then never differ except for the comments.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:30-31"
+  },
+  {
+    "decision": "Render scalars and keys with `set`'s helpers (`render_scalar`/`render_key`), so strings are plain, then single-quoted, then double-quoted. This replaced an earlier spec draft that double-quoted every string that could not be plain.",
+    "options": [
+      "plain else double-quoted",
+      "plain else single else double (set's rule)"
+    ],
+    "reason": "Quoting and literal-block rules are then decided in one place, shared with `set`.",
+    "recorded_at": "transcript.md:19; spec/changes/archive/2026-10-03-config-get-and-show/design.md:71-79"
+  },
+  {
+    "decision": "Write every multi-line string as a literal block when a block can hold it exactly, not only text includes. When it cannot (CR, control characters, \"\\n\"), fall back to double quotes.",
+    "options": [],
+    "reason": "`block_ok` becomes the single definition of what a literal block cannot hold. Single quotes cannot hold a line break.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:75-79,142-144"
+  },
+  {
+    "decision": "Write a text include as a literal block even when it is one line or empty, for example `p: |-`.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/spec/config-show/spec.md:50-53"
+  },
+  {
+    "decision": "With `--sources`, a scalar PATH prints as a one-scalar YAML document with the comment, not in the plain `get` form.",
+    "options": [
+      "YAML with comment",
+      "plain get form",
+      "refuse --sources for scalars"
+    ],
+    "reason": "`--sources` asks for source information, and a bare value cannot carry it.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:136-137; questions.md:18"
+  },
+  {
+    "decision": "Write the source comment as ` # from <file>`: one space, `#`, one space. For literal blocks it goes on the `|` header line. Key-only lines and `{}`/`[]` lines get no comment.",
+    "options": [],
+    "reason": "Content lines cannot hold comments, and `{}`/`[]` lines hold no scalar.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:138-139"
+  },
+  {
+    "decision": "Make the source label a lexical path relative to the theatre, with `..` normalised away and symlinks not resolved. A file outside the theatre gets a `../` label instead of an error.",
+    "options": [
+      "lexical normalisation",
+      "resolve() symlinks"
+    ],
+    "reason": "This matches how the user named the theatre (on macOS `resolve()` would turn /var into /private/var), matches how `watch` treats its directory, and the contract does not forbid includes outside the theatre.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:81-87"
+  },
+  {
+    "decision": "The source of a text include is `TextNode.target`, the included file. Mapping keys get no comment of their own.",
+    "options": [],
+    "reason": "The contract says so. In block style a key and its scalar are always in the same file.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:89-92"
+  },
+  {
+    "decision": "Use a canonical layout: two-space indentation, lists indented two spaces under their key, compact `- key: v` / `- - x` items, and `{}`/`[]` for empty collections. An empty root prints `{}`.",
+    "options": [],
+    "reason": "`show` shows values, not text. Reproducing the user's formatting is a non-goal.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:58-64,145"
+  },
+  {
+    "decision": "Non-goals: no user formatting or comments in the output, no `file:` strings or include-boundary markers (except through `--sources`), and no flow style or anchors.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:35-39"
+  },
+  {
+    "decision": "Accept that a string starting with `file:` prints plain, even though troupe would read it back as an include.",
+    "options": [],
+    "reason": "The output is still correct YAML 1.2, and reading `show` output back into troupe is not in the contract.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:123-125"
+  },
+  {
+    "decision": "CLI shape: `get` takes a required path. `show` takes an optional path (`nargs=\"?\"`) and a `--sources` store_true flag, accepted before or after the path. `--sources` on `get` is a usage error.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:94-97; tests/test_cli.py"
+  },
+  {
+    "decision": "Missing paths still make `show` exit 5, with or without `--sources`. The missing-path rule moves into the 'Show a scalar value' requirement.",
+    "options": [],
+    "reason": "The refusal requirement was removed, but the missing-path behaviour is kept.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/spec/config-show/spec.md:131-135"
+  },
+  {
+    "decision": "Testing strategy: move the old scalar tests to test_get.py, write byte-exact tests in test_show.py and test_show_sources.py, add round-trip read-back tests compared with `schema.same`, and update the smoke and CLI callers.",
+    "options": [],
+    "reason": "Output should be checked by reading it back with troupe's own YAML reader, not by eye.",
+    "recorded_at": "spec/changes/archive/2026-10-03-config-get-and-show/design.md:99-115"
+  },
+  {
+    "decision": "Write render.py during task 1.1, ahead of task 2.1 in the plan order.",
+    "options": [],
+    "reason": "Task 1.1 needs render.py to compile.",
+    "recorded_at": "transcript.md:31"
+  },
+  {
+    "decision": "Check the reconcile tests by temporarily removing `get` from RECONCILING_COMMANDS, after an earlier stash-based check turned out not to test anything.",
+    "options": [
+      "git stash",
+      "mutate RECONCILING_COMMANDS"
+    ],
+    "reason": "The stash also removed the new tests, so it proved nothing.",
+    "recorded_at": "transcript.md:42"
+  },
+  {
+    "decision": "Check the round-trip tests by deliberately breaking the renderer: forcing plain strings and disabling literal blocks. Rely on the exact-output tests to pin the `|` layout.",
+    "options": [],
+    "reason": "Read-back does not catch literal blocks being turned off, because double-quoted strings read back as the same data.",
+    "recorded_at": "transcript.md:48; questions.md:57"
+  },
+  {
+    "decision": "Move the shared `full` fixture into conftest.py instead of importing it from test_show.",
+    "options": [
+      "import from test_show with noqa",
+      "conftest fixture"
+    ],
+    "reason": "Tidy-up.",
+    "recorded_at": "transcript.md:53"
+  },
+  {
+    "decision": "Update existing tests: `show agents` →5 becomes `get agents` →5. `show` with no PATH is no longer a usage error. The files-untouched test now also runs `get`, `show` and `show --sources`.",
+    "options": [],
+    "reason": "These tests assumed the old behaviour.",
+    "recorded_at": "questions.md:52-55"
+  },
+  {
+    "decision": "Add a `show nope` →5 case to the smoke exit-code table, and a uv-run smoke test where a CRLF text include renders double-quoted.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Place the README section 'Showing sections and where values come from' after the `watch` example, before 'Includes'.",
+    "options": [
+      "after the first example",
+      "after the watch example"
+    ],
+    "reason": "Its demo overwrites troupe.yml and would break the watch example otherwise.",
+    "recorded_at": "transcript.md:64; questions.md:59"
+  },
+  {
+    "decision": "Add README decisions 15–18 for the open points and point the decisions list at the archived design.md.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "README.md:144-150"
+  },
+  {
+    "decision": "Sync the delta specs into the main specs when archiving, without asking the owner.",
+    "options": [
+      "sync specs",
+      "archive without sync"
+    ],
+    "reason": "It is the recommended option, and the two earlier changes did the same.",
+    "recorded_at": "questions.md:74"
+  },
+  {
+    "decision": "Rewrite the config-show Purpose to cover reading any part of the configuration and seeing sources.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:78; spec/spec/config-show/spec.md:5-6"
+  },
+  {
+    "decision": "Commit in several small commits (renderer, get/show split, README, task marks), plus a separate archive commit, on main without pushing.",
+    "options": [],
+    "reason": "The task asks for small commits whose messages say why.",
+    "recorded_at": "transcript.md:70,82"
+  },
+  {
+    "decision": "The `get` refusal message reports the kind as 'mapping' or 'list', in the form `<path>: is a <kind>, not a scalar (use ...)`.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "A configuration that contains only a comment prints `{}` from `show`, tested alongside the empty file.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "The compact sequence item is built by slicing the first child line's indentation and joining it to the dash. The first child's source stays on that line.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  }
+]

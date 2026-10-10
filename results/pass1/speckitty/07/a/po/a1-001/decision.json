@@ -1,0 +1,16 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "Should troupe validate the configuration against .troupe/troupe.schema.json by adding the jsonschema library for full JSON Schema 2020-12 validation (A), by writing its own validator for a subset of keywords (B), or some other way?",
+      "reply": "The contract says the schema is JSON Schema 2020-12 and that the loaded configuration must validate against it, else exit 4. A `set` that would make it invalid exits 3. It names no subset of keywords. So validation has to follow JSON Schema 2020-12 as a whole. A validator that refuses some schemas or quietly validates them wrongly does not meet that requirement. Neither the contract nor the brief limits which libraries you may use, so how you implement this, including adding a dependency, is your engineering choice. State what you chose.",
+      "escalate": false,
+      "cited": "Contract: Remote includes and schema (from step 7); Exit codes (General, from step 1)"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

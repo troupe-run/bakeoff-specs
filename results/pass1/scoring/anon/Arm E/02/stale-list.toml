@@ -1,0 +1,44 @@
+# scoring/stale/step-02.toml — step 2: `watch` reconciles hand edits; every other command except `history`
+# reconciles first; troupe's own write-backs must not be picked up again. Nothing is contradicted outright, but
+# the step-1 model "only `set` (and the first import) records changes" goes stale.
+# Drafted 2026-10-05 from scenario/steps/02-sync.md, contract.md "Sync with files (from step 2)" and po-brief.md
+# only. The harness's out-of-workflow hand edit (design §4, step 2) is scored separately ("hand edit detected").
+[[stale]]
+id = "hand-edit-records-nothing"
+kind = "requirement"
+what = "Any requirement, acceptance criterion or recorded decision saying a hand edit to a .troupe/ file produces no history event, or is only noticed as the `old` value of a later `set`"
+why = "po-brief escalated answer (2026-10-01, step 1): 'a hand edit appears in `show` but produces no history event'. Step 2 contract: 'Reconcile: … emit a `set`/`remove` event for each leaf that differs'"
+
+[[stale]]
+id = "hand-edit-no-event-tests"
+kind = "test"
+what = "Tests asserting that after a direct file edit, the next command (`set`, `show`) leaves `history` without a `set`/`remove` event for the edited leaf"
+why = "Contract 'Sync with files': 'Every other command except `history` reconciles first, so edits made while nothing was running are picked up'"
+
+[[stale]]
+id = "events-only-from-set"
+kind = "requirement"
+what = "Any requirement or design text stating `set`/`remove` events are produced only by the `set` command (history's event sources are import + set)"
+why = "Contract 'Sync with files': reconcile emits `set`/`remove` events, and 'An include added by a hand edit is followed; its leaves appear as `set` events'"
+
+[[stale]]
+id = "commands-reconcile-first"
+kind = "code"
+what = "Command entry points for `show` and `set` (every subcommand except `history`): they must run a reconcile against the files before acting; `history` must not"
+why = "Contract 'Sync with files': 'Every other command except `history` reconciles first … `history` never reconciles'"
+
+[[stale]]
+id = "set-writeback-no-echo"
+kind = "code"
+what = "The `set` write-back path: its file write must be marked/suppressed so that a running `watch` (or the next command's reconcile) does not record it again"
+why = "Step 2 brief: 'When troupe itself writes a change back to a file, that must not be picked up again'; contract: 'its write-back produces no further events'"
+
+[[stale]]
+id = "cli-docs-commands"
+kind = "doc"
+what = "README / CLI help / usage docs listing the `config` subcommands, or describing the files as written only through troupe"
+why = "Step 2 adds `watch` and makes hand edits a supported, recorded input ('People edit `.troupe/` files directly … while troupe is running')"
+
+[legitimate]
+paths = ["src/**", "troupe/**", "tests/**", "conftest.py", "README*", "docs/**", "CHANGELOG*", "CLAUDE.md", "AGENTS.md", "pyproject.toml", "uv.lock",
+         ".gitignore", ".python-version", "Makefile", "justfile", ".github/**", "pytest.ini"]

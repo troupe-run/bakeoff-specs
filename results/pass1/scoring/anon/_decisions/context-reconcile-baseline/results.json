@@ -1,0 +1,1016 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: haiku\nretry: 3\nagents:\n  coder: file:agents/coder.yaml\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "temperature: 0.5\nname: coder\n",
+          "path": ".troupe/agents/coder.yaml"
+        },
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "4"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "agent:bot"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: haiku\nretry: 7\nagents:\n  coder: file:agents/coder.yaml\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: haiku\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "retry"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: sonnet\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [
+          "--theatre",
+          ".",
+          "config",
+          "set",
+          "model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "agent:bot"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "temperature: 0.2\nname: coder\n",
+      ".troupe/troupe.yml": "model: opus\nretry: 3\nagents:\n  coder: file:agents/coder.yaml\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/coder.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 3\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "temperature: 0.5\nname: coder\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 4\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:27.662229Z\", \"reason\": null, \"change\": \"7bcd86bd-0f6a-4ddf-a5c5-dd23c064403c\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:27.662229Z\", \"reason\": null, \"change\": \"7bcd86bd-0f6a-4ddf-a5c5-dd23c064403c\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:27.662229Z\", \"reason\": null, \"change\": \"7bcd86bd-0f6a-4ddf-a5c5-dd23c064403c\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.coder.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:27.662229Z\", \"reason\": null, \"change\": \"7bcd86bd-0f6a-4ddf-a5c5-dd23c064403c\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:28.284129Z\", \"reason\": null, \"change\": \"6bf446f5-4a25-42cd-886b-81a4170dd970\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:28.284129Z\", \"reason\": null, \"change\": \"6bf446f5-4a25-42cd-886b-81a4170dd970\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:20:28.286768Z\", \"reason\": null, \"change\": \"ec7ecadc-a12c-4c28-ab0f-8b5478115471\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 7\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "4\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:27.662229Z\", \"reason\": null, \"change\": \"7bcd86bd-0f6a-4ddf-a5c5-dd23c064403c\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:27.662229Z\", \"reason\": null, \"change\": \"7bcd86bd-0f6a-4ddf-a5c5-dd23c064403c\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:27.662229Z\", \"reason\": null, \"change\": \"7bcd86bd-0f6a-4ddf-a5c5-dd23c064403c\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.coder.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:27.662229Z\", \"reason\": null, \"change\": \"7bcd86bd-0f6a-4ddf-a5c5-dd23c064403c\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:28.284129Z\", \"reason\": null, \"change\": \"6bf446f5-4a25-42cd-886b-81a4170dd970\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:28.284129Z\", \"reason\": null, \"change\": \"6bf446f5-4a25-42cd-886b-81a4170dd970\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:20:28.286768Z\", \"reason\": null, \"change\": \"ec7ecadc-a12c-4c28-ab0f-8b5478115471\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder.yaml  29 bytes\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  75 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 3\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "temperature: 0.5\nname: coder\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 4\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:31.911101Z\", \"reason\": null, \"change\": \"8c6b9b41-1429-46f3-b4a2-41122ac98c3c\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:31.911101Z\", \"reason\": null, \"change\": \"8c6b9b41-1429-46f3-b4a2-41122ac98c3c\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:31.911101Z\", \"reason\": null, \"change\": \"8c6b9b41-1429-46f3-b4a2-41122ac98c3c\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.coder.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:31.911101Z\", \"reason\": null, \"change\": \"8c6b9b41-1429-46f3-b4a2-41122ac98c3c\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:32.490961Z\", \"reason\": null, \"change\": \"09cdd3b0-1587-4c5a-8456-35389f232921\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:32.490961Z\", \"reason\": null, \"change\": \"09cdd3b0-1587-4c5a-8456-35389f232921\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:20:32.494296Z\", \"reason\": null, \"change\": \"00de9ed6-7c52-4519-bae5-558f6a940fdc\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 7\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "4\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:31.911101Z\", \"reason\": null, \"change\": \"8c6b9b41-1429-46f3-b4a2-41122ac98c3c\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:31.911101Z\", \"reason\": null, \"change\": \"8c6b9b41-1429-46f3-b4a2-41122ac98c3c\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:31.911101Z\", \"reason\": null, \"change\": \"8c6b9b41-1429-46f3-b4a2-41122ac98c3c\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.coder.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:31.911101Z\", \"reason\": null, \"change\": \"8c6b9b41-1429-46f3-b4a2-41122ac98c3c\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:32.490961Z\", \"reason\": null, \"change\": \"09cdd3b0-1587-4c5a-8456-35389f232921\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:32.490961Z\", \"reason\": null, \"change\": \"09cdd3b0-1587-4c5a-8456-35389f232921\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:20:32.494296Z\", \"reason\": null, \"change\": \"00de9ed6-7c52-4519-bae5-558f6a940fdc\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"model\", \"old\": \"haiku\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:34.194369Z\", \"reason\": null, \"change\": \"fe7bd29b-7a13-4159-b741-66d5f9c7db4d\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder.yaml  29 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  75 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 3\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "temperature: 0.5\nname: coder\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 4\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:35.716184Z\", \"reason\": null, \"change\": \"2360f5b8-7a1b-4730-ba4a-2db3a13ed4c0\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:35.716184Z\", \"reason\": null, \"change\": \"2360f5b8-7a1b-4730-ba4a-2db3a13ed4c0\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:35.716184Z\", \"reason\": null, \"change\": \"2360f5b8-7a1b-4730-ba4a-2db3a13ed4c0\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.coder.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:35.716184Z\", \"reason\": null, \"change\": \"2360f5b8-7a1b-4730-ba4a-2db3a13ed4c0\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:36.315984Z\", \"reason\": null, \"change\": \"3012b844-9a83-43be-9081-ca241afab893\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:36.315984Z\", \"reason\": null, \"change\": \"3012b844-9a83-43be-9081-ca241afab893\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:20:36.319881Z\", \"reason\": null, \"change\": \"e99c6485-e799-410c-aa8a-fd07a7e41f38\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 7\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "4\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument {config}: invalid choice: '.' (choose from config) (see 'troupe --help')\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:35.716184Z\", \"reason\": null, \"change\": \"2360f5b8-7a1b-4730-ba4a-2db3a13ed4c0\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:35.716184Z\", \"reason\": null, \"change\": \"2360f5b8-7a1b-4730-ba4a-2db3a13ed4c0\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:35.716184Z\", \"reason\": null, \"change\": \"2360f5b8-7a1b-4730-ba4a-2db3a13ed4c0\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.coder.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:35.716184Z\", \"reason\": null, \"change\": \"2360f5b8-7a1b-4730-ba4a-2db3a13ed4c0\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:36.315984Z\", \"reason\": null, \"change\": \"3012b844-9a83-43be-9081-ca241afab893\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:36.315984Z\", \"reason\": null, \"change\": \"3012b844-9a83-43be-9081-ca241afab893\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:20:36.319881Z\", \"reason\": null, \"change\": \"e99c6485-e799-410c-aa8a-fd07a7e41f38\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder.yaml  29 bytes\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  75 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 3\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "temperature: 0.5\nname: coder\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 4\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:39.359956Z\", \"reason\": null, \"change\": \"913b7d8b-7d8c-4269-b8a7-9a48d5bad786\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:39.359956Z\", \"reason\": null, \"change\": \"913b7d8b-7d8c-4269-b8a7-9a48d5bad786\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:39.359956Z\", \"reason\": null, \"change\": \"913b7d8b-7d8c-4269-b8a7-9a48d5bad786\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.coder.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:39.359956Z\", \"reason\": null, \"change\": \"913b7d8b-7d8c-4269-b8a7-9a48d5bad786\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:39.874041Z\", \"reason\": null, \"change\": \"7b25a366-9aa0-4b2f-b3b1-69386a289b1b\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:39.874041Z\", \"reason\": null, \"change\": \"7b25a366-9aa0-4b2f-b3b1-69386a289b1b\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:20:39.874412Z\", \"reason\": null, \"change\": \"83f65a91-4a4c-4538-ae55-2a54a23b7e16\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 7\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "4\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: argument group: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:39.359956Z\", \"reason\": null, \"change\": \"913b7d8b-7d8c-4269-b8a7-9a48d5bad786\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:39.359956Z\", \"reason\": null, \"change\": \"913b7d8b-7d8c-4269-b8a7-9a48d5bad786\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:39.359956Z\", \"reason\": null, \"change\": \"913b7d8b-7d8c-4269-b8a7-9a48d5bad786\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.coder.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:39.359956Z\", \"reason\": null, \"change\": \"913b7d8b-7d8c-4269-b8a7-9a48d5bad786\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:39.874041Z\", \"reason\": null, \"change\": \"7b25a366-9aa0-4b2f-b3b1-69386a289b1b\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:39.874041Z\", \"reason\": null, \"change\": \"7b25a366-9aa0-4b2f-b3b1-69386a289b1b\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:20:39.874412Z\", \"reason\": null, \"change\": \"83f65a91-4a4c-4538-ae55-2a54a23b7e16\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder.yaml  29 bytes\n.troupe/troupe-state.sqlite  12288 bytes\n.troupe/troupe.yml  75 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 3\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "temperature: 0.5\nname: coder\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 4\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:42.847718Z\", \"reason\": null, \"change\": \"d485833d-c801-418d-9844-a6b7df4395fe\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:42.847718Z\", \"reason\": null, \"change\": \"d485833d-c801-418d-9844-a6b7df4395fe\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:42.847718Z\", \"reason\": null, \"change\": \"d485833d-c801-418d-9844-a6b7df4395fe\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.coder.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:42.847718Z\", \"reason\": null, \"change\": \"d485833d-c801-418d-9844-a6b7df4395fe\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:43.400122Z\", \"reason\": null, \"change\": \"43719a2a-3239-4106-87ba-24c6996e7c02\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:43.400122Z\", \"reason\": null, \"change\": \"43719a2a-3239-4106-87ba-24c6996e7c02\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:20:43.401796Z\", \"reason\": null, \"change\": \"8e06468b-c609-4cb7-821d-e565fb7d041b\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 7\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "4\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: argument command: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:42.847718Z\", \"reason\": null, \"change\": \"d485833d-c801-418d-9844-a6b7df4395fe\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:42.847718Z\", \"reason\": null, \"change\": \"d485833d-c801-418d-9844-a6b7df4395fe\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:42.847718Z\", \"reason\": null, \"change\": \"d485833d-c801-418d-9844-a6b7df4395fe\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.coder.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:42.847718Z\", \"reason\": null, \"change\": \"d485833d-c801-418d-9844-a6b7df4395fe\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:43.400122Z\", \"reason\": null, \"change\": \"43719a2a-3239-4106-87ba-24c6996e7c02\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:43.400122Z\", \"reason\": null, \"change\": \"43719a2a-3239-4106-87ba-24c6996e7c02\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:20:43.401796Z\", \"reason\": null, \"change\": \"8e06468b-c609-4cb7-821d-e565fb7d041b\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder.yaml  29 bytes\n.troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  75 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 3\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "temperature: 0.5\nname: coder\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 4\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:47.293479Z\", \"reason\": null, \"change\": \"d401afdd-4a6f-4e59-9569-cad95b234747\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:47.293479Z\", \"reason\": null, \"change\": \"d401afdd-4a6f-4e59-9569-cad95b234747\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:47.293479Z\", \"reason\": null, \"change\": \"d401afdd-4a6f-4e59-9569-cad95b234747\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.coder.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:47.293479Z\", \"reason\": null, \"change\": \"d401afdd-4a6f-4e59-9569-cad95b234747\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:47.880345Z\", \"reason\": null, \"change\": \"44a1ac21-6280-4dc9-a9c0-bbdd2a6e13fb\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:47.880345Z\", \"reason\": null, \"change\": \"44a1ac21-6280-4dc9-a9c0-bbdd2a6e13fb\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:20:47.886299Z\", \"reason\": null, \"change\": \"68422b25-a39a-4713-97c4-63cce4baa819\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 7\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "4\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:bot"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:47.293479Z\", \"reason\": null, \"change\": \"d401afdd-4a6f-4e59-9569-cad95b234747\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:47.293479Z\", \"reason\": null, \"change\": \"d401afdd-4a6f-4e59-9569-cad95b234747\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:47.293479Z\", \"reason\": null, \"change\": \"d401afdd-4a6f-4e59-9569-cad95b234747\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.coder.name\", \"old\": null, \"new\": \"coder\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:20:47.293479Z\", \"reason\": null, \"change\": \"d401afdd-4a6f-4e59-9569-cad95b234747\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:47.880345Z\", \"reason\": null, \"change\": \"44a1ac21-6280-4dc9-a9c0-bbdd2a6e13fb\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:20:47.880345Z\", \"reason\": null, \"change\": \"44a1ac21-6280-4dc9-a9c0-bbdd2a6e13fb\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"agent\", \"id\": \"bot\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:20:47.886299Z\", \"reason\": null, \"change\": \"68422b25-a39a-4713-97c4-63cce4baa819\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/agents/\n.troupe/agents/coder.yaml  29 bytes\n.troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  75 bytes\n"
+            }
+          ]
+        }
+      ],
+      "route": "The recorded configuration (projection of the events), diffed leaf by leaf against the loaded files",
+      "route_no": 1
+    }
+  ]
+}

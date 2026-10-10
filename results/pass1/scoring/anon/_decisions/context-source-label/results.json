@@ -1,0 +1,1111 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [],
+        "env": {},
+        "symlink": {
+          "path": "proj/.troupe/agents",
+          "target": "real"
+        }
+      },
+      {
+        "args": [],
+        "env": {},
+        "symlink": {
+          "path": "linked",
+          "target": "proj"
+        }
+      },
+      {
+        "args": [
+          "--theatre",
+          "linked",
+          "config",
+          "show",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources",
+          "--theatre=proj"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "coder.model",
+          "sonnet",
+          "--theatre",
+          "linked"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources",
+          "--theatre",
+          "linked"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: sonnet  # default model\ntemperature: 0.5\n",
+          "path": "proj/.troupe/real/coder.yaml"
+        },
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "coder.temperature",
+          "--theatre",
+          "proj"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources",
+          "--theatre",
+          "proj"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "--theatre",
+          "linked"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "proj/.troupe"
+      }
+    ],
+    "files": {
+      "proj/.troupe/real/coder.yaml": "model: opus  # default model\ntemperature: 0.2\n",
+      "proj/.troupe/real/prompt.txt": "Be terse.\n",
+      "proj/.troupe/troupe.yml": "# team config\ncoder: file:agents/coder.yaml  # via symlinked dir\nreviewer: file:real/coder.yaml  # same file, real name\nprompt: file:agents/prompt.txt\nretry: 3\n"
+    },
+    "passwd": true,
+    "show": [
+      "proj/.troupe/troupe.yml",
+      "proj/.troupe/real/coder.yaml",
+      "proj/.troupe/real/prompt.txt"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "proj/.troupe/agents",
+                "target": "real"
+              }
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "linked",
+                "target": "proj"
+              }
+            },
+            {
+              "args": [
+                "--theatre",
+                "linked",
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument COMMAND: invalid choice: 'linked' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre=proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\nreviewer:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\nprompt: | # from .troupe/agents/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.model",
+                "sonnet",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                "proj/.troupe/real/coder.yaml": "model: sonnet # default model\ntemperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: sonnet # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\nreviewer:\n  model: sonnet # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\nprompt: | # from .troupe/agents/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                "proj/.troupe/real/coder.yaml": "model: sonnet  # default model\ntemperature: 0.5\n"
+              },
+              "hand_edit": "proj/.troupe/real/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.temperature",
+                "--theatre",
+                "proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.5\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre",
+                "proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: sonnet # from .troupe/agents/coder.yaml\n  temperature: 0.5 # from .troupe/agents/coder.yaml\nreviewer:\n  model: sonnet # from .troupe/agents/coder.yaml\n  temperature: 0.5 # from .troupe/agents/coder.yaml\nprompt: | # from .troupe/agents/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:12.515976Z\", \"reason\": null, \"change\": \"f2720a5b-0040-4e44-aae0-7e760c64edcd\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:12.515976Z\", \"reason\": null, \"change\": \"f2720a5b-0040-4e44-aae0-7e760c64edcd\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"reviewer.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:12.515976Z\", \"reason\": null, \"change\": \"f2720a5b-0040-4e44-aae0-7e760c64edcd\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"reviewer.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:12.515976Z\", \"reason\": null, \"change\": \"f2720a5b-0040-4e44-aae0-7e760c64edcd\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"prompt\", \"old\": null, \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:12.515976Z\", \"reason\": null, \"change\": \"f2720a5b-0040-4e44-aae0-7e760c64edcd\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:12.515976Z\", \"reason\": null, \"change\": \"f2720a5b-0040-4e44-aae0-7e760c64edcd\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:28:13.117970Z\", \"reason\": null, \"change\": \"3e77ab84-5966-47cc-8ad4-cc19a86919bd\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"reviewer.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:28:13.117970Z\", \"reason\": null, \"change\": \"3e77ab84-5966-47cc-8ad4-cc19a86919bd\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:14.305260Z\", \"reason\": null, \"change\": \"4c790d34-7a1a-43b4-963e-0ca4a1612ba5\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"reviewer.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:14.305260Z\", \"reason\": null, \"change\": \"4c790d34-7a1a-43b4-963e-0ca4a1612ba5\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": "proj/.troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": "proj/.troupe/agents -> real\nproj/.troupe/history.sqlite  12288 bytes\nproj/.troupe/real/\nproj/.troupe/real/coder.yaml  48 bytes\nproj/.troupe/real/prompt.txt  10 bytes\nproj/.troupe/troupe.yml  160 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "proj/.troupe/agents",
+                "target": "real"
+              }
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "linked",
+                "target": "proj"
+              }
+            },
+            {
+              "args": [
+                "--theatre",
+                "linked",
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\nreviewer:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/agents/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre=proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\nreviewer:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/agents/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.model",
+                "sonnet",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: coder.model: the edited files would not read back as intended; not writing\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\nreviewer:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/agents/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                "proj/.troupe/real/coder.yaml": "model: sonnet  # default model\ntemperature: 0.5\n"
+              },
+              "hand_edit": "proj/.troupe/real/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.temperature",
+                "--theatre",
+                "proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.5\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre",
+                "proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: sonnet # from .troupe/agents/coder.yaml\n  temperature: 0.5 # from .troupe/agents/coder.yaml\nreviewer:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.5 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/agents/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:16.507290Z\", \"reason\": null, \"change\": \"8a0ab210-fbf5-4299-9bdc-47e62e63b478\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:16.507290Z\", \"reason\": null, \"change\": \"8a0ab210-fbf5-4299-9bdc-47e62e63b478\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"reviewer.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:16.507290Z\", \"reason\": null, \"change\": \"8a0ab210-fbf5-4299-9bdc-47e62e63b478\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"reviewer.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:16.507290Z\", \"reason\": null, \"change\": \"8a0ab210-fbf5-4299-9bdc-47e62e63b478\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"prompt\", \"old\": null, \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:16.507290Z\", \"reason\": null, \"change\": \"8a0ab210-fbf5-4299-9bdc-47e62e63b478\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:16.507290Z\", \"reason\": null, \"change\": \"8a0ab210-fbf5-4299-9bdc-47e62e63b478\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:18.784915Z\", \"reason\": null, \"change\": \"574d8fdb-dda6-4b6b-88c6-f2f1ceb8a16e\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:18.784915Z\", \"reason\": null, \"change\": \"574d8fdb-dda6-4b6b-88c6-f2f1ceb8a16e\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"reviewer.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:18.784915Z\", \"reason\": null, \"change\": \"574d8fdb-dda6-4b6b-88c6-f2f1ceb8a16e\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"reviewer.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:18.784915Z\", \"reason\": null, \"change\": \"574d8fdb-dda6-4b6b-88c6-f2f1ceb8a16e\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": "proj/.troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": "proj/.troupe/agents -> real\nproj/.troupe/events.sqlite  12288 bytes\nproj/.troupe/real/\nproj/.troupe/real/coder.yaml  48 bytes\nproj/.troupe/real/prompt.txt  10 bytes\nproj/.troupe/troupe.yml  160 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "proj/.troupe/agents",
+                "target": "real"
+              }
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "linked",
+                "target": "proj"
+              }
+            },
+            {
+              "args": [
+                "--theatre",
+                "linked",
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument {config}: invalid choice: 'linked' (choose from config) (see 'troupe --help')\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre=proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nreviewer:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/real/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.model",
+                "sonnet",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: coder.model: cannot write this change byte-surgically; no file changed\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nreviewer:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/real/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                "proj/.troupe/real/coder.yaml": "model: sonnet  # default model\ntemperature: 0.5\n"
+              },
+              "hand_edit": "proj/.troupe/real/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.temperature",
+                "--theatre",
+                "proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.5\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre",
+                "proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.5 # from .troupe/real/coder.yaml\nreviewer:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.5 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/real/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:21.146662Z\", \"reason\": null, \"change\": \"c4f040d4-f1d2-4b42-b76f-7f14922a4869\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:21.146662Z\", \"reason\": null, \"change\": \"c4f040d4-f1d2-4b42-b76f-7f14922a4869\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"reviewer.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:21.146662Z\", \"reason\": null, \"change\": \"c4f040d4-f1d2-4b42-b76f-7f14922a4869\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"reviewer.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:21.146662Z\", \"reason\": null, \"change\": \"c4f040d4-f1d2-4b42-b76f-7f14922a4869\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"prompt\", \"old\": null, \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:21.146662Z\", \"reason\": null, \"change\": \"c4f040d4-f1d2-4b42-b76f-7f14922a4869\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:21.146662Z\", \"reason\": null, \"change\": \"c4f040d4-f1d2-4b42-b76f-7f14922a4869\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:22.991799Z\", \"reason\": null, \"change\": \"c1c62291-6971-426c-949c-cbcf7ed2736f\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:22.991799Z\", \"reason\": null, \"change\": \"c1c62291-6971-426c-949c-cbcf7ed2736f\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"reviewer.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:22.991799Z\", \"reason\": null, \"change\": \"c1c62291-6971-426c-949c-cbcf7ed2736f\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"reviewer.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:22.991799Z\", \"reason\": null, \"change\": \"c1c62291-6971-426c-949c-cbcf7ed2736f\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": "proj/.troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": "proj/.troupe/agents -> real\nproj/.troupe/history.sqlite  12288 bytes\nproj/.troupe/real/\nproj/.troupe/real/coder.yaml  48 bytes\nproj/.troupe/real/prompt.txt  10 bytes\nproj/.troupe/troupe.yml  160 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "proj/.troupe/agents",
+                "target": "real"
+              }
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "linked",
+                "target": "proj"
+              }
+            },
+            {
+              "args": [
+                "--theatre",
+                "linked",
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: argument group: invalid choice: 'linked' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre=proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nreviewer:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/real/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.model",
+                "sonnet",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                "proj/.troupe/real/coder.yaml": "model: sonnet # default model\ntemperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nreviewer:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/real/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                "proj/.troupe/real/coder.yaml": "model: sonnet  # default model\ntemperature: 0.5\n"
+              },
+              "hand_edit": "proj/.troupe/real/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.temperature",
+                "--theatre",
+                "proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.5\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre",
+                "proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.5 # from .troupe/real/coder.yaml\nreviewer:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.5 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/real/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:25.384723Z\", \"reason\": null, \"change\": \"0391bf51-279a-41c4-81fb-2879ea17dbce\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:25.384723Z\", \"reason\": null, \"change\": \"0391bf51-279a-41c4-81fb-2879ea17dbce\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"reviewer.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:25.384723Z\", \"reason\": null, \"change\": \"0391bf51-279a-41c4-81fb-2879ea17dbce\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"reviewer.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:25.384723Z\", \"reason\": null, \"change\": \"0391bf51-279a-41c4-81fb-2879ea17dbce\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"prompt\", \"old\": null, \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:25.384723Z\", \"reason\": null, \"change\": \"0391bf51-279a-41c4-81fb-2879ea17dbce\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:25.384723Z\", \"reason\": null, \"change\": \"0391bf51-279a-41c4-81fb-2879ea17dbce\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:28:25.846522Z\", \"reason\": null, \"change\": \"46deffc9-9512-4560-8bb3-ba64812d3758\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"reviewer.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:28:25.846522Z\", \"reason\": null, \"change\": \"46deffc9-9512-4560-8bb3-ba64812d3758\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:26.788510Z\", \"reason\": null, \"change\": \"9d1f979d-a5a2-44c9-a75e-20eb146d9519\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"reviewer.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:26.788510Z\", \"reason\": null, \"change\": \"9d1f979d-a5a2-44c9-a75e-20eb146d9519\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": "proj/.troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": "proj/.troupe/agents -> real\nproj/.troupe/real/\nproj/.troupe/real/coder.yaml  48 bytes\nproj/.troupe/real/prompt.txt  10 bytes\nproj/.troupe/troupe-state.sqlite  12288 bytes\nproj/.troupe/troupe.yml  160 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "proj/.troupe/agents",
+                "target": "real"
+              }
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "linked",
+                "target": "proj"
+              }
+            },
+            {
+              "args": [
+                "--theatre",
+                "linked",
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: argument command: invalid choice: 'linked' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre=proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\nreviewer:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/agents/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.model",
+                "sonnet",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                "proj/.troupe/real/coder.yaml": "model: sonnet # default model\ntemperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: sonnet # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\nreviewer:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/agents/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                "proj/.troupe/real/coder.yaml": "model: sonnet  # default model\ntemperature: 0.5\n"
+              },
+              "hand_edit": "proj/.troupe/real/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.temperature",
+                "--theatre",
+                "proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.5\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre",
+                "proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: sonnet # from .troupe/agents/coder.yaml\n  temperature: 0.5 # from .troupe/agents/coder.yaml\nreviewer:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.5 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/agents/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:29.096357Z\", \"reason\": null, \"change\": \"dd40d02b-6474-4fad-b8f3-b2c7200a78e6\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:29.096357Z\", \"reason\": null, \"change\": \"dd40d02b-6474-4fad-b8f3-b2c7200a78e6\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"reviewer.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:29.096357Z\", \"reason\": null, \"change\": \"dd40d02b-6474-4fad-b8f3-b2c7200a78e6\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"reviewer.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:29.096357Z\", \"reason\": null, \"change\": \"dd40d02b-6474-4fad-b8f3-b2c7200a78e6\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"prompt\", \"old\": null, \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:29.096357Z\", \"reason\": null, \"change\": \"dd40d02b-6474-4fad-b8f3-b2c7200a78e6\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:29.096357Z\", \"reason\": null, \"change\": \"dd40d02b-6474-4fad-b8f3-b2c7200a78e6\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:28:29.613111Z\", \"reason\": null, \"change\": \"9fc2e941-b24f-4cfc-a2d9-138c7f135ac6\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"reviewer.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:30.120287Z\", \"reason\": null, \"change\": \"f35ece19-a03a-4b9b-be33-fc4db32eb829\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:30.639894Z\", \"reason\": null, \"change\": \"4450a9ad-ca95-4b44-a140-5c6d1feb73b0\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"reviewer.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:30.639894Z\", \"reason\": null, \"change\": \"4450a9ad-ca95-4b44-a140-5c6d1feb73b0\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": "proj/.troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": "proj/.troupe/agents -> real\nproj/.troupe/events.lock  0 bytes\nproj/.troupe/events.sqlite  12288 bytes\nproj/.troupe/real/\nproj/.troupe/real/coder.yaml  48 bytes\nproj/.troupe/real/prompt.txt  10 bytes\nproj/.troupe/troupe.yml  160 bytes\n"
+            }
+          ]
+        }
+      ],
+      "route": "Lexical path relative to the theatre with / separators; ../ outside; symlinks not resolved",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "proj/.troupe/agents",
+                "target": "real"
+              }
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "",
+              "symlink": {
+                "path": "linked",
+                "target": "proj"
+              }
+            },
+            {
+              "args": [
+                "--theatre",
+                "linked",
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: argument COMMAND: invalid choice: 'linked' (choose from config)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre=proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nreviewer:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/real/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.model",
+                "sonnet",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                "proj/.troupe/real/coder.yaml": "model: sonnet # default model\ntemperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nreviewer:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/real/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                "proj/.troupe/real/coder.yaml": "model: sonnet  # default model\ntemperature: 0.5\n"
+              },
+              "hand_edit": "proj/.troupe/real/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "coder.temperature",
+                "--theatre",
+                "proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.5\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources",
+                "--theatre",
+                "proj"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.5 # from .troupe/real/coder.yaml\nreviewer:\n  model: sonnet # from .troupe/real/coder.yaml\n  temperature: 0.5 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/real/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "--theatre",
+                "linked"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:33.120593Z\", \"reason\": null, \"change\": \"0fbda532-287c-40dc-b5f2-824599f8d26c\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:33.120593Z\", \"reason\": null, \"change\": \"0fbda532-287c-40dc-b5f2-824599f8d26c\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"reviewer.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:33.120593Z\", \"reason\": null, \"change\": \"0fbda532-287c-40dc-b5f2-824599f8d26c\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"reviewer.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:33.120593Z\", \"reason\": null, \"change\": \"0fbda532-287c-40dc-b5f2-824599f8d26c\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"prompt\", \"old\": null, \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:33.120593Z\", \"reason\": null, \"change\": \"0fbda532-287c-40dc-b5f2-824599f8d26c\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T05:28:33.120593Z\", \"reason\": null, \"change\": \"0fbda532-287c-40dc-b5f2-824599f8d26c\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:28:33.654591Z\", \"reason\": null, \"change\": \"3454b442-122c-41cd-82e3-c34e6197f3aa\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"reviewer.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T05:28:33.654591Z\", \"reason\": null, \"change\": \"3454b442-122c-41cd-82e3-c34e6197f3aa\"}\n{\"seq\": 9, \"op\": \"set\", \"path\": \"coder.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:34.960395Z\", \"reason\": null, \"change\": \"40f6f1e6-441c-402a-a599-41f30d29ca5b\"}\n{\"seq\": 10, \"op\": \"set\", \"path\": \"reviewer.temperature\", \"old\": 0.2, \"new\": 0.5, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T05:28:34.960395Z\", \"reason\": null, \"change\": \"40f6f1e6-441c-402a-a599-41f30d29ca5b\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": "proj/.troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": "proj/.troupe/agents -> real\nproj/.troupe/events.sqlite3  12288 bytes\nproj/.troupe/events.sqlite3.lock  0 bytes\nproj/.troupe/real/\nproj/.troupe/real/coder.yaml  48 bytes\nproj/.troupe/real/prompt.txt  10 bytes\nproj/.troupe/troupe.yml  160 bytes\n"
+            }
+          ]
+        }
+      ],
+      "route": "Real paths with symlinks resolved, relative to the resolved theatre (reworked from lexical during planning)",
+      "route_no": 2
+    }
+  ]
+}

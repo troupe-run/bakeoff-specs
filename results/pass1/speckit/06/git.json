@@ -1,0 +1,21 @@
+{
+  "sha_before": "62cb1068f3f57907d8657bd478c0017746fe5dbd",
+  "sha_after": "32d38d2d6b8c46c92d99a1651894e7ec368d5a51",
+  "head": "32d38d2d6b8c46c92d99a1651894e7ec368d5a51",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "32d38d2d6b8c46c92d99a1651894e7ec368d5a51",
+      "author": "Developer",
+      "subject": "Record verification of the yaml-alias-set fix"
+    },
+    {
+      "sha": "8ec062d9b0f0e0dc276e18c464820281571447a6",
+      "author": "Developer",
+      "subject": "Refuse setting through a YAML alias; add set --expand-alias"
+    }
+  ],
+  "diffstat": ".specify/bugs/yaml-alias-set/assessment.md | 154 +++++++++++++++++++++++++++++\n .specify/bugs/yaml-alias-set/fix.md        |  84 ++++++++++++++++\n .specify/bugs/yaml-alias-set/test.md       |  64 ++++++++++++\n README.md                                  |  13 ++-\n src/troupe/cli.py                          |   6 ++\n src/troupe/config/commands.py              |   9 +-\n src/troupe/config/edit/alias.py            | 109 ++++++++++++++++++++\n src/troupe/config/edit/apply.py            |  28 +++++-\n src/troupe/config/edit/planner.py          |  84 ++++++++++++++--\n src/troupe/config/loader.py                |  67 ++++++++++++-\n src/troupe/config/scalars.py               |  33 ++++++-\n src/troupe/config/tree.py                  |  28 +++++-\n tests/e2e/test_set_alias.py                | 121 +++++++++++++++++++++++\n tests/unit/test_verify.py                  |   2 +-\n 14 files changed, 778 insertions(+), 24 deletions(-)"
+}

@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "repo/docs/decisions.md:52-55 (TROUPE_ACTOR is checked by every command; an empty value counts as invalid, with a reason)",
+    "repo/docs/decisions.md:56-59 (reconcile is its own change, separate from the set; change ids are random UUIDs, stated with no reason)",
+    "repo/docs/decisions.md:60-64 (legacy events are upcast, not guessed at; old set/remove events get null via and change)",
+    "transcript.md:22 (the via:null value outside the contract's three values is flagged in the transcript, not in the docs)",
+    "transcript.md:21 commit 30b372a"
+  ],
+  "notes": "The step's main open choices are recorded in docs/decisions.md 21-23 with project-specific reasons: the TROUPE_ACTOR strictness, splitting the reconcile change from the set's change, and upcasting old events. Some alternatives are named there, but random UUID ids, the microsecond UTC `at` format and the null actor id when no login name is found have no options and no reason, and the trade-off that via:null breaks the contract's three values is stated only in the transcript.",
+  "raw": "{\"score\": 3, \"evidence\": [\"repo/docs/decisions.md:52-55 (TROUPE_ACTOR is checked by every command; an empty value counts as invalid, with a reason)\", \"repo/docs/decisions.md:56-59 (reconcile is its own change, separate from the set; change ids are random UUIDs, stated with no reason)\", \"repo/docs/decisions.md:60-64 (legacy events are upcast, not guessed at; old set/remove events get null via and change)\", \"transcript.md:22 (the via:null value outside the contract's three values is flagged in the transcript, not in the docs)\", \"transcript.md:21 commit 30b372a\"], \"notes\": \"The step's main open choices are recorded in docs/decisions.md 21-23 with project-specific reasons: the TROUPE_ACTOR strictness, splitting the reconcile change from the set's change, and upcasting old events. Some alternatives are named there, but random UUID ids, the microsecond UTC `at` format and the null actor id when no login name is found have no options and no reason, and the trade-off that via:null breaks the contract's three values is stated only in the transcript.\"}",
+  "score": 3,
+  "status": "ok"
+}

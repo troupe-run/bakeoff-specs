@@ -1,0 +1,65 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# theatre config\nagents:\n  coder:\n    model: opus  # main model\n    temperature: 0.2\nretry: 3\n",
+        "input": "`TROUPE_ACTOR=agent:planner config set agents.coder.model sonnet --reason \"try sonnet\"`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0, no output; the file now reads:\n# theatre config\nagents:\n  coder:\n    model: sonnet # main model\n    temperature: 0.2\nretry: 3\n\nThe comment is kept, but the two spaces before it became one."
+        }
+      },
+      {
+        "before": "",
+        "input": "`TROUPE_ACTOR=human:owner config set limits \"{timeout: 30, tags: [a, b]}\"`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0, no output; the file gains:\nlimits:\n  timeout: 30\n  tags:\n    - a\n    - b\n\nHistory then shows this as 3 entries (seq 5–7: `limits.timeout`, `limits.tags.0`, `limits.tags.1`). All 3 carry actor human:owner and share one change id and timestamp."
+        }
+      },
+      {
+        "before": "",
+        "input": "`TROUPE_ACTOR=human:owner config set agents.coder.model sonnet` (value already sonnet)",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0, no output, the file is unchanged, and no history entry is added (history still ends at seq 7)."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0. Prints 7 JSON lines numbered 1–7 with no gaps. Seqs 1–3 are `import` entries for the file's starting values (actor kind \"unknown\", reason null). Seq 4 is `{\"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"reason\": \"try sonnet\", ...}`. Seqs 5–7 are the limits entries."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history agents.coder`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0. Prints only seqs 1, 2 and 4 (the import of model and temperature, then the planner's model change). The original numbers are kept, so the filtered list has a gap at 3."
+        }
+      }
+    ],
+    "in_practice": "On this route all six arms gave the same results. The only differences were timestamps and change ids. The starting config is imported into history the first time a command runs, so history always starts from the file's original values.",
+    "stakes": "This choice decides whether every config change is kept as a numbered, ordered record of who changed what, when and why, and whether `config history` can show it. The file stays readable with its comments, and one command's changes are recorded together.",
+    "tradeoff": "Route 1: it needs a database under .troupe/ next to the YAML, plus an external library. Imports and nested values become one history line per leaf, so a single `set` can add several entries."
+  },
+  "plan_why": "Shows history persisting across separate runs as one gapless, totally ordered stream: import events, then a multi-leaf set saved as one unit (all its events share one change id), then a set that changes nothing and adds no events, with actor and reason surviving into a later history call",
+  "routes": [
+    [
+      "eventsourcing with SQLite under .troupe/, one aggregate per theatre with a fixed id, each command's events saved in one save",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

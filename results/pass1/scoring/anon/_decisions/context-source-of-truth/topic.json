@@ -1,0 +1,12 @@
+{
+  "kind": "unanimous",
+  "question": "Are the files or the event store the source of current values",
+  "routes": [
+    {
+      "outcome": "Kept; the 'hand edits produce no events' part was superseded by reconcile at step 2 in every arm",
+      "reasoning_given": "A projection would show stale values after a hand edit; matches 'importing is not reconciling'",
+      "route": "Files on disk are authoritative; show and set read the files; the store is change history only",
+      "route_no": 1
+    }
+  ]
+}

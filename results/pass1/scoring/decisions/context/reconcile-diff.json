@@ -1,0 +1,55 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "cli:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c",
+        "input": "`config set cli.m \"{x: 10, y: 2, z: 3}\"`, then `config set cli.l \"[a, true]\"`, then `config history cli`",
+        "observed": true,
+        "results": {
+          "1": "Three arms: both sets exit 0 and the file now reads `x: 10`, `y: 2`, `z: 3`, with `tags` gone and `l` as `a`, `true`. History adds, all marked via cli: set cli.m.x 1→10, set cli.m.z →3, remove cli.m.tags.0/1/2, set cli.l.1 b→true, remove cli.l.2. The unchanged y gets no entry. One arm: same file and same events, but in a different order: the three tags removes come first, then set x and set z, then remove cli.l.2 before set cli.l.1.",
+          "2": "Exit 0 and the same file. History adds the same events in the same order as the three-arm group on route 1: set x, set z, remove tags.0/1/2, set l.1, remove l.2.",
+          "3": "Exit 0 and the same file. History adds the same events in the same order as the three-arm group on route 1: set x, set z, remove tags.0/1/2, set l.1, remove l.2."
+        }
+      },
+      {
+        "before": "hand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c",
+        "input": "Edit the `hand:` section by hand to the same new values (first m, then l to `a`, `true`), then `config history hand`",
+        "observed": true,
+        "results": {
+          "1": "On every arm, `config get hand.m.z` prints 3 and `config get hand.l.1` prints true. The history adds the same events, in the same order, as that arm's own `config set` run (via file, actor unknown). Three arms: set x, set z, remove tags.0/1/2, set l.1, remove l.2. One arm: remove tags.0/1/2, set x, set z, remove l.2, set l.1.",
+          "2": "`config get` prints 3 and true. The history adds set x, set z, remove tags.0/1/2, set l.1, remove l.2 (via file, actor unknown). That is the same order as this route's `config set` run.",
+          "3": "`config get` prints 3 and true. The history adds set x, set z, remove tags.0/1/2, set l.1, remove l.2 (via file, actor unknown). That is the same order as this route's `config set` run."
+        }
+      }
+    ],
+    "in_practice": "Every arm on every route logged a hand edit with the same events as the matching `config set`, and in the same order. Only the via and actor fields differ: via file and actor unknown for the hand edit, versus via cli and actor human. Route 2's stated reason was a different remove order for hand edits, but that did not show up in these runs. The only difference seen was on route 1: one arm put the removes before the sets, for both `config set` and hand edits. That arm stayed consistent with itself, but its order differs from the other route 1 arms and from routes 2 and 3.",
+    "stakes": "This decides whether the change history (`config history`) records a hand edit of the config file the same way it records the same change made with `config set`. If the two disagree, anyone reading or diffing the history would see the same change logged two different ways.",
+    "tradeoff": "Route 1 uses one diff for both, so the two paths can't drift apart, but its arms didn't all agree on event order. Route 2 keeps a second, smaller diff that has to be kept in step by hand. Route 3 was never planned or reasoned about, yet it behaved the same as route 2 here."
+  },
+  "plan_why": "Each change is made twice, once with `config set` on the cli.* twin and once as a hand edit on the hand.* twin. The changes are: replace mapping m so x changes, z is added and the nested list tags is dropped; and shrink list l from [a, b, c] to [a, true]. `config history` then shows whether the events and their order (sets vs. removes, how removes are ordered) match.",
+  "routes": [
+    [
+      "One shared diff function for set and reconcile",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm F"
+      ]
+    ],
+    [
+      "Separate small reconcile diff reusing the shared scalar comparison",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

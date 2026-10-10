@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["README.md:23-28", "README.md:30-32", "tests/test_config.py:286-307", "tests/test_config.py:310-320", "tests/test_config.py:154-164"], "notes": "The only spec is prose in the README, with no requirement IDs, and the tests carry no references back to it. Most of the lineage requirements (actor, via, at, reason, change, bad TROUPE_ACTOR exits 2) can be matched by topic to test_lineage and test_bad_actor, and the README's layout list points to lineage.py, but the pre-lineage legacy-event rule (README.md:27-28) has no test I could find."}
+```

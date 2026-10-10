@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "Editing folded scalars with more-indented lines",
+  "routes": [
+    {
+      "outcome": "Reworked at step 1 from refusing any edit, then kept",
+      "reasoning_given": "Final validation: the contract refuses only adding such a line",
+      "route": "Edit allowed; existing indented runs are kept as opaque units; only adding a new more-indented line exits 3",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "None recorded",
+      "route": "Refuse (exit 3) a change that would introduce a more-indented line",
+      "route_no": 2
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Its paragraphs cannot be split reliably; the owner confirmed",
+      "route": "Refuse any change to a folded value that already has more-indented lines",
+      "route_no": 3
+    }
+  ]
+}

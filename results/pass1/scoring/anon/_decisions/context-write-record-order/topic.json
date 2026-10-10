@@ -1,0 +1,30 @@
+{
+  "kind": "divergent",
+  "question": "Files first or events first, and what if one of them fails",
+  "routes": [
+    {
+      "outcome": "Kept (reconcile at step 2 later records such missed changes as hand edits)",
+      "reasoning_given": "The reverse order could record a change that never reached disk; losing an event on a crash is acceptable",
+      "route": "Write files, then record; a failed write records nothing; a crash between them can lose an event",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Never leave a written change without its history",
+      "route": "Write files, then record; if recording fails, restore the files and exit 4 naming the store",
+      "route_no": 2
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "The atomic rename would replace read-only files; a change must never be written without its events",
+      "route": "Write then record, but refuse up front (exit 3) when the target, its directory or the store is not writable; other store failures exit 4",
+      "route_no": 3
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 4
+    }
+  ]
+}

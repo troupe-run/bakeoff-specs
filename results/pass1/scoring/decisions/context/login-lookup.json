@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "retry: 0\nname: demo\n",
+        "input": "`USER=alice config set retry 1`, then `config history retry`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, prints nothing; the file now reads:\nretry: 1\nname: demo\nThe history entry for this change shows actor {\"kind\": \"human\", \"id\": \"alice\"}. All six arms did the same."
+        }
+      },
+      {
+        "before": "",
+        "input": "`LOGNAME=bob USER=alice config set retry 3`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, value stored; the history records \"bob\". When both are set, LOGNAME wins over USER. All six arms did the same."
+        }
+      },
+      {
+        "before": "",
+        "input": "`USERNAME=carol config set retry 4`, then `LNAME=dave USERNAME=carol config set retry 6`",
+        "observed": true,
+        "results": {
+          "1": "both exit 0, values stored. The first is recorded as \"carol\". The second is recorded as \"dave\": LNAME wins over USERNAME. All six arms did the same."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set retry 7` with none of LOGNAME, USER, LNAME or USERNAME set, and no account entry for the user",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no warning, and retry is now 7. The history entry reads {\"kind\": \"human\", \"id\": null}: the change is saved without saying who made it. All six arms did the same."
+        }
+      }
+    ],
+    "in_practice": "The name comes from whichever of these variables is set first, in this order: LOGNAME, USER, LNAME, USERNAME. It works without a terminal. Anyone can claim to be someone else by setting one of these variables. When none is set and there is no account entry, saving still succeeds and gives no warning, and the history records a human with no name.",
+    "stakes": "Every change gets stamped with a login name taken from the environment, and `config history` shows that name as the person who made the change. If the name is wrong or missing, the history can't say who changed the setting.",
+    "tradeoff": "Route 1: always works, even without a terminal, but anyone who sets an environment variable can pick the name, and with nothing set the change is saved with no name and no warning."
+  },
+  "plan_why": "One plan can't hold both passwd cases because passwd applies to the whole plan; this one uses passwd false. With TROUPE_ACTOR unset, each `set retry` runs with one login-variable setup: USER=alice only, LOGNAME=bob only, both set, USERNAME=carol only, LNAME=dave only, LNAME+USERNAME both set, and all unset. The final `history retry` shows the actor id recorded for each, which reveals which variables are read and in what order (getpass.getuser checks LOGNAME, USER, LNAME, USERNAME). The last set shows what happens when there is no login name and no account entry: an error exit, an id of null, or some fallback. The 'all unset with the normal passwd entry' case would need a second plan with passwd true; there it should record the sandbox account name. Values 1-7 are used instead of 5 every time so that each set is a real change and records an event.",
+  "routes": [
+    [
+      "getpass.getuser",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

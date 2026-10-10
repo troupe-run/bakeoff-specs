@@ -1,0 +1,324 @@
+[
+  {
+    "decision": "Work on branch fix/troupe-config-anchor-aliases, started from main, and merge into main locally at the end, with no push and no PR",
+    "options": [],
+    "reason": "method won't commit planning files straight to main",
+    "recorded_at": "questions.md:9"
+  },
+  {
+    "decision": "Treat the bug as missing step-6 support. Anchors and aliases must start loading and set gets the contract rules, because on main the reporter's file can't load at all (exit 4)",
+    "options": [],
+    "reason": "The reported wrong write cannot happen today; anchors are refused outright at load",
+    "recorded_at": "spec/troupe-config-anchor-aliases-01M48SQ8/spec.md:21"
+  },
+  {
+    "decision": "A-0: read merge keys (<<) with standard YAML merge semantics. Keys written in the mapping win, and in a list the earlier source wins",
+    "options": [
+      "(A) standard reading, set through << exits 3, --expand-alias also exits 3",
+      "(B) set adds a local key next to <<",
+      "(C) refuse any file with << at load (exit 4)",
+      "(D) something else"
+    ],
+    "reason": "Every YAML reader gives the file this meaning, so reads match what the user expects",
+    "recorded_at": "questions.md:26; spec.md:51; decisions/DM-01M48SQVABR08ZCXGCZD5S8GXV.md"
+  },
+  {
+    "decision": "A-0: a value that arrives through << counts as reached through an alias. set exits 3, and set --expand-alias also exits 3 saying merge keys are never written",
+    "options": [
+      "A",
+      "B: write a local key beside <<",
+      "C: refuse at load"
+    ],
+    "reason": "Refusing can't lose data and never writes <<. Option B would quietly override a shared value without the opt-in the reporter asked for",
+    "recorded_at": "questions.md:41-43; spec.md:51"
+  },
+  {
+    "decision": "A-0: a key that doesn't exist yet, added directly to the mapping holding <<, is an ordinary write and the << line is not touched",
+    "options": [],
+    "reason": "Step-1 placement; << is not touched",
+    "recorded_at": "spec.md:51"
+  },
+  {
+    "decision": "A <<  value that is not a mapping, an alias to a mapping, or a list of those makes the file unloadable (exit 4)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec.md:51; research.md:67"
+  },
+  {
+    "decision": "Three more writes exit 3 because << is never written: a new key named <<, replacing a whole mapping that holds <<, and an expansion whose copy would contain <<",
+    "options": [],
+    "reason": "Because << is never written (found during implementation)",
+    "recorded_at": "spec.md:51; FR-007 spec.md:175"
+  },
+  {
+    "decision": "Only a plain unquoted << is a merge key; a quoted '<<' stays an ordinary key",
+    "options": [],
+    "reason": "YAML 1.1 readers treat it this way",
+    "recorded_at": "research.md:62"
+  },
+  {
+    "decision": "Use YAML 1.1 merge-key semantics even though files are otherwise read as YAML 1.2",
+    "options": [],
+    "reason": "Merge keys exist only in 1.1 and every common reader applies them",
+    "recorded_at": "spec.md:210"
+  },
+  {
+    "decision": "C1: reads resolve aliases. show prints no &, * or <<, and show --sources attributes an aliased value to the file that holds the anchor",
+    "options": [],
+    "reason": "show already prints the effective configuration, not the file text",
+    "recorded_at": "spec.md:52"
+  },
+  {
+    "decision": "C2: tags still make a file unloadable (exit 4)",
+    "options": [],
+    "reason": "The contract adds only anchors and aliases",
+    "recorded_at": "spec.md:53"
+  },
+  {
+    "decision": "C3: exit 4 for an anchor on an include reference, on a node containing one, or on a mapping key, and for an alias used as a key",
+    "options": [],
+    "reason": "Aliasing an include has undefined semantics; this keeps the step-5 rule, and keys must stay plain names for paths to work",
+    "recorded_at": "spec.md:54"
+  },
+  {
+    "decision": "C4: a value that is itself an alias (model: *m) counts as reached through an alias. With --expand-alias the line becomes 'model: x  # expanded from *m by troupe'",
+    "options": [],
+    "reason": "The value is shared; the contract's expansion rule applied to a scalar gives exactly this line",
+    "recorded_at": "spec.md:55"
+  },
+  {
+    "decision": "C5: replacing a whole anchored collection keeps its anchor. If the anchor is not on the key's line, exit 3",
+    "options": [],
+    "reason": "Contract rule 1 applied to collections; dropping the anchor would leave dangling aliases, and moving it would rewrite a line the user didn't ask to change",
+    "recorded_at": "spec.md:56; research.md:139"
+  },
+  {
+    "decision": "C6: a new key under a path reached through an alias exits 3. With --expand-alias it is added to the copy. A new key under the anchored node itself appears everywhere",
+    "options": [],
+    "reason": "Adding a key under a shared node changes every user of it",
+    "recorded_at": "spec.md:57"
+  },
+  {
+    "decision": "Keep refusing a plain set of a new key under an alias inside an included file, even where step 5 would write it as an override (owner ruling after delivery)",
+    "options": [
+      "keep the refusal",
+      "allow it as a step-5 override"
+    ],
+    "reason": "The alias rule doesn't depend on which file the write lands in. The Overrides section only says where a new key is written; it doesn't lift the alias rule",
+    "recorded_at": "questions.md:264-268; spec.md:57; commit 4a1ca69"
+  },
+  {
+    "decision": "C7: --expand-alias expands every alias on PATH, outermost first, each with its own comment. Aliases in the copy that are not on PATH stay aliases",
+    "options": [],
+    "reason": "The value can't be set otherwise without changing a shared node",
+    "recorded_at": "spec.md:58"
+  },
+  {
+    "decision": "C8: leave inner anchors and comments out of the copy. Inner aliases stay aliases, and single-line scalars keep their written form",
+    "options": [],
+    "reason": "Copying an anchor would redefine the name and repoint later aliases. Comments describe the original. Keeping written forms changes the least",
+    "recorded_at": "spec.md:59"
+  },
+  {
+    "decision": "C9: for a list-item alias the comment goes on the dash line. Exit 3 for an alias in a flow collection, a line that already has a user comment, or an alias not on its key's or dash's line",
+    "options": [],
+    "reason": "A block copy can't go inside a flow collection, and a user's comment or line must not be lost or moved (TROUPE-001/002)",
+    "recorded_at": "spec.md:60; DM-01M48T5X483RCHEXYJ60R4N35P"
+  },
+  {
+    "decision": "C9 additions found during implementation: exit 3 for a copy ending in a |+ block that is followed by more lines, for an inner alias whose anchor name is redefined before the alias, and when the expansion and a new key would land in different files",
+    "options": [],
+    "reason": "The copy would absorb lines or refer to a different node; C-005 requires one write of one file",
+    "recorded_at": "spec.md:60; FR-006 spec.md:174"
+  },
+  {
+    "decision": "When a value is set on a line the expansion created, write the troupe comment with exactly two spaces before #; user comments elsewhere keep their columns",
+    "options": [],
+    "reason": "Implementer deviation (b), accepted in review",
+    "recorded_at": "spec.md:60; transcript.md:375"
+  },
+  {
+    "decision": "set --expand-alias coder.settings 5, where the alias itself is at PATH, writes 'settings: 5  # expanded from *d by troupe'",
+    "options": [],
+    "reason": "Implementer deviation (c), accepted in review",
+    "recorded_at": "spec.md:60; transcript.md:375"
+  },
+  {
+    "decision": "C10: --expand-alias is accepted only by set and combines with --reason and --in-include. Other subcommands exit 2, and on a path not reached through an alias it has no effect",
+    "options": [],
+    "reason": "Mirrors --reason and --in-include",
+    "recorded_at": "spec.md:61"
+  },
+  {
+    "decision": "C11: history records one set event per resolved leaf whose value changed. An anchor change records every alias path, and an expand-and-set records only PATH",
+    "options": [],
+    "reason": "The history section records one event per leaf, and leaves are resolved paths",
+    "recorded_at": "spec.md:62"
+  },
+  {
+    "decision": "C12: files with no anchors, aliases or merge keys behave exactly as in steps 1–5",
+    "options": [],
+    "reason": "Locality of change (DIRECTIVE_024)",
+    "recorded_at": "spec.md:63"
+  },
+  {
+    "decision": "C13: a << beside $ref makes the file unloadable (exit 4)",
+    "options": [],
+    "reason": "Combining merge keys with step-5 overrides has no defined meaning; refusing can't corrupt anything",
+    "recorded_at": "spec.md:64; gates.md:87"
+  },
+  {
+    "decision": "C14 / FR-010: anchors and aliases in a set VALUE are refused (exit 2)",
+    "options": [],
+    "reason": "An alias in VALUE could only name an anchor in the file, which the contract doesn't offer; writing an anchor from the CLI would create sharing nobody asked for",
+    "recorded_at": "spec.md:65"
+  },
+  {
+    "decision": "FR-004: the alias refusal comes before the no-op rule. An unchanged VALUE through an alias still exits 3; with --expand-alias and an unchanged VALUE nothing is expanded or written",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec.md:172; research.md:135"
+  },
+  {
+    "decision": "With --in-include, --in-include first decides where a new key goes, and an alias on an override side is not expanded",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec.md:161"
+  },
+  {
+    "decision": "Build a custom composer from ruamel parser events instead of using ruamel's composer",
+    "options": [
+      "subclass ruamel's Composer",
+      "scan the text for *",
+      "compose from parser events"
+    ],
+    "reason": "ruamel returns the shared node object for every alias and loses where each alias is written; subclassing ties the code to ruamel internals; text scanning is fragile",
+    "recorded_at": "research.md:5-18; gates.md:64"
+  },
+  {
+    "decision": "Spans of anchored nodes start at the content, not at &name; an anchored empty value becomes a zero-width null",
+    "options": [],
+    "reason": "Existing writers assume a block collection starts at its first key or dash, so they keep working unchanged",
+    "recorded_at": "research.md:21-31"
+  },
+  {
+    "decision": "Add an allow_anchors switch to compose, defaulting to False, so WP01 keeps today's refusal until WP02 opts the loader in",
+    "options": [],
+    "reason": "Keeps the suite green between work packages; steps 1–5 unchanged",
+    "recorded_at": "tasks/WP01-event-composer.md (diff.patch:1951)"
+  },
+  {
+    "decision": "Add a transparent AliasNode to the tree, unwrapped like an include, with the anchored node as one shared object",
+    "options": [],
+    "reason": "Readers then see resolved values with no other change, and a write at the anchor shows through every alias",
+    "recorded_at": "research.md:33-58; gates.md:69"
+  },
+  {
+    "decision": "Model merge keys as a read-only MergeKeyMapping view; writers only ever get the mapping as written",
+    "options": [],
+    "reason": "",
+    "recorded_at": "research.md:60-75"
+  },
+  {
+    "decision": "Only placement.place decides 'reached through an alias', scanning both the route and the side a new key would be written to",
+    "options": [],
+    "reason": "One decision, one place (TROUPE-007); the write-side scan covers aliases inside step-5 override mappings",
+    "recorded_at": "research.md:86-99; plan.md:33"
+  },
+  {
+    "decision": "Expand one alias at a time, then reload in memory and place again, with a 64-iteration guard; verify once against the original tree",
+    "options": [],
+    "reason": "Nested aliases each get their own comment; the result is one verified write of one file",
+    "recorded_at": "research.md:121-135"
+  },
+  {
+    "decision": "Add three verifier rules: an alias is unchanged if it points at the same anchor; on the route and with the flag an alias may become a copy; anchor names can't change outside PATH",
+    "options": [],
+    "reason": "A change at the anchor shows through aliases only as the same anchor",
+    "recorded_at": "research.md:130-133; plan.md:14-17"
+  },
+  {
+    "decision": "Inside an expanded copy the verifier ignores flow/block style and scalar quoting",
+    "options": [],
+    "reason": "Implementer deviation (a), accepted in review",
+    "recorded_at": "transcript.md:375"
+  },
+  {
+    "decision": "Accept the redefined-anchor and |+ copy refusals using generic messages without 'no file changed', and an integration test that imports private _same_outside",
+    "options": [],
+    "reason": "Deviations (d) and (e), judged acceptable in review",
+    "recorded_at": "transcript.md:375; tasks/WP05-set-wiring-and-stories/review-cycle-1.md:11"
+  },
+  {
+    "decision": "Put expansion text in a new writeback/aliases.py module",
+    "options": [],
+    "reason": "The copy and comment rules live in one place",
+    "recorded_at": "plan.md:131"
+  },
+  {
+    "decision": "Make detect_indent parse with anchors allowed, and let expansion callers pass the step explicitly",
+    "options": [],
+    "reason": "detect_indent fell back to step 2 on anchored files, which would be wrong for 4-space files",
+    "recorded_at": "transcript.md:292,340; diff.patch:2945"
+  },
+  {
+    "decision": "Don't guard against exponential alias expansion in show and history; only note it",
+    "options": [],
+    "reason": "There are no performance targets (TROUPE-004)",
+    "recorded_at": "plan.md:153; gates.md:91"
+  },
+  {
+    "decision": "Update the existing step-1 and step-5 anchor/tag refusal tests to the new messages; the exit code stays 4",
+    "options": [],
+    "reason": "",
+    "recorded_at": "research.md:84,155"
+  },
+  {
+    "decision": "Split the work into 6 work packages; WP03 and WP04 run in parallel after WP02",
+    "options": [],
+    "reason": "No ownership overlaps or dependency cycles",
+    "recorded_at": "questions.md:207-221"
+  },
+  {
+    "decision": "Expanding in an included file, with the new key landing as an override in another file, exits 3 instead of hitting the assertion (exit 1 traceback)",
+    "options": [],
+    "reason": "One write of one file (C-005); exposed by an acceptance test",
+    "recorded_at": "transcript.md:419,433"
+  },
+  {
+    "decision": "Treat the flaky test_watch_never_changes_configuration_files failure as timing-sensitive, file a low-priority bug and merge anyway after a green rerun",
+    "options": [],
+    "reason": "It passes alone every time and this work didn't touch it",
+    "recorded_at": "questions.md:250; transcript.md:466-467"
+  },
+  {
+    "decision": "Run acceptance with --lenient on the fix branch, then fast-forward main",
+    "options": [],
+    "reason": "The repo has no docs/ directory and acceptance won't run on main; the previous mission did the same",
+    "recorded_at": "questions.md:280-289"
+  },
+  {
+    "decision": "Don't recreate the lane branches or force method merge when it failed after the mission was already merged",
+    "options": [],
+    "reason": "That would only redo a merge that's already on main",
+    "recorded_at": "questions.md:297-305"
+  },
+  {
+    "decision": "Skip the optional post-merge mission review",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:262"
+  },
+  {
+    "decision": "Treat the '1 pre-existing failure' as a tooling artifact (no JUnit report) rather than a real test failure",
+    "options": [],
+    "reason": "The coverage step produced no report",
+    "recorded_at": "questions.md:231"
+  },
+  {
+    "decision": "Resume the interrupted WP01 implementer from its uncommitted partial work instead of restarting",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:237"
+  }
+]

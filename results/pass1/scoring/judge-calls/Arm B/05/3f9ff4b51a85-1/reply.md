@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["/judge/transcript.md:2-15 (read the specs, README, archived change and loader/edit code before planning Q1)", "/judge/transcript.md:41 (Q1 lists six choices; #1 names an alternative with its consequence; #3 and #6 give no reason)", "/judge/transcript.md:171-172 (Q5 checked archive instructions and status first, then gave two options and recommended sync because earlier changes were archived that way)", "/judge/questions.md:17-24"]}
+```

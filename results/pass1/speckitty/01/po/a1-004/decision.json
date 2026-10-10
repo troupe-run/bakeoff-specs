@@ -1,0 +1,16 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "Should history be stored with (A) the eventsourcing library's built-in SQLite storage in <theatre>/.troupe/history.sqlite, (B) a custom JSON-file store built on the library's in-memory storage, or (C) something else?",
+      "reply": "A is consistent with the contract and the step brief. The contract does not prescribe a storage format. It requires that state be kept only under `<dir>/.troupe/`, including any database temporary files such as -journal and -wal. No file may be created or modified except as the write-back rules require. The step brief requires the projection to be held with the `eventsourcing` library and persisted under `.troupe/` so it survives between commands. The library's SQLite storage at `.troupe/history.sqlite` meets all of these, so the storage choice is yours, and A is fine.",
+      "escalate": false,
+      "cited": "Contract: General (State); step brief (step.md: event-sourced projection using the eventsourcing library, persisted under .troupe/)"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": false
+}

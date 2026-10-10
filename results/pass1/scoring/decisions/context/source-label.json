@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "proj/.troupe/agents -> real\nproj/.troupe/troupe.yml:\n# team config\ncoder: file:agents/coder.yaml  # via symlinked dir\nreviewer: file:real/coder.yaml  # same file, real name\nprompt: file:agents/prompt.txt\nretry: 3",
+        "input": "`config show --sources --theatre=proj`",
+        "observed": true,
+        "results": {
+          "1": "The 5 arms on this route gave three different outputs, all exit 0.\nTwo arms used the name each key was written with:\ncoder:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\nreviewer:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/agents/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml\nOne arm used the symlinked name for everything, including reviewer:\nreviewer:\n  model: opus # from .troupe/agents/coder.yaml\n  temperature: 0.2 # from .troupe/agents/coder.yaml\nTwo arms used the real name everywhere, the same output as route 2.",
+          "2": "exit 0; every file is shown by its real path:\ncoder:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nreviewer:\n  model: opus # from .troupe/real/coder.yaml\n  temperature: 0.2 # from .troupe/real/coder.yaml\nprompt: | # from .troupe/real/prompt.txt\n  Be terse.\nretry: 3 # from .troupe/troupe.yml"
+        }
+      },
+      {
+        "before": "proj/.troupe/real/coder.yaml:\nmodel: opus  # default model\ntemperature: 0.2",
+        "input": "`config set coder.model sonnet --theatre linked` (`linked` is a symlink to `proj`)",
+        "observed": true,
+        "results": {
+          "1": "Three arms: exit 0; the file now reads:\nmodel: sonnet # default model\ntemperature: 0.2\n(the two spaces before the comment became one). Two arms refused with exit 3 and changed nothing. One printed `troupe: coder.model: the edited files would not read back as intended; not writing`; the other printed `troupe: coder.model: cannot write this change byte-surgically; no file changed`.",
+          "2": "exit 0; the file now reads:\nmodel: sonnet # default model\ntemperature: 0.2"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history --theatre linked`, run after the set above and a hand edit of real/coder.yaml to `temperature: 0.5`",
+        "observed": true,
+        "results": {
+          "1": "Two arms: the `reviewer.model` opus->sonnet change is logged under the same change as `coder.model`, by `human:owner` via `cli`. One arm: `coder.model` is logged by `human:owner` via `cli`, but `reviewer.model` gets a separate entry by an unknown actor via `file`, as if someone had edited it by hand. Two arms (the ones that refused the set): both model changes appear only when the hand edit is picked up, by an unknown actor via `file`.",
+          "2": "`coder.model` and `reviewer.model` are logged as one change by `human:owner` via `cli`. The hand edit is logged by an unknown actor via `file`."
+        }
+      }
+    ],
+    "in_practice": "Route 2 always names a symlinked file by its real path, so the same file never appears under two names. In route 1's two arms that shows only the real path, the source column looked exactly like route 2's. On route 1, how a symlink was named, and whether `set` through a symlinked theatre worked, depended on the arm.",
+    "stakes": "When a config file is reached through a symlink (here `agents/` points to `real/`), this decides which name `config show --sources` gives for it. It also decides whether troupe treats `agents/coder.yaml` and `real/coder.yaml` as one file, which affects `config set` and the history log.",
+    "tradeoff": "Route 1 shows the path you typed, but the arms disagreed on the output and two refused the write; route 2 shows a path you may never have typed, but behaved consistently and treated both names as one file."
+  },
+  "plan_why": "The same included file is reached through a symlinked name (.troupe/agents -> real) and its real name, and the theatre is passed both as a symlink (linked -> proj) and directly. show --sources then shows whether each file is reported by its typed name ('agents/coder.yaml', route 1) or its resolved real path ('real/coder.yaml', route 2). A set through the symlinked name, a hand edit of the real file and the full history show whether the two names count as one file or two.",
+  "routes": [
+    [
+      "Lexical path relative to the theatre with / separators; ../ outside; symlinks not resolved",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "Real paths with symlinks resolved, relative to the resolved theatre (reworked from lexical during planning)",
+      [
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

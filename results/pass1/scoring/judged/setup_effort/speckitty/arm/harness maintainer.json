@@ -1,0 +1,16 @@
+{
+  "evidence": [
+    "/judge/setup/shell/07.log:1",
+    "/judge/setup/shell/06.log:1",
+    "/judge/setup/shell/06.log:10",
+    "/judge/setup/shell/01.log:1",
+    "/judge/setup/shell/02.log:50",
+    "/judge/setup/checklist.json:76-77",
+    "/judge/setup/setup-turns.json:6",
+    "/judge/setup/transcripts/-work-repo/381997bf-f698-401c-a251-73711e4e908e.jsonl:36"
+  ],
+  "notes": "The documented route worked on the first run: `method init`, `verify-setup`, the tracker-cli init/setup commands and one charter turn, all exit 0 with every checklist item passing. Beyond that, the harness set `tracker.egress=permitted` directly in the config with an inline Python call to the method's internal API (shell/07.log:1), and the tracker bind needed the `method_ENABLE_SAAS_SYNC=1` env flag, which the docs may not mention, plus a logged-out warning (shell/06.log:1,10). Together these count as one arm-specific config workaround; it does not change what the method is.",
+  "raw": "{\"score\": 2, \"evidence\": [\"/judge/setup/shell/07.log:1\", \"/judge/setup/shell/06.log:1\", \"/judge/setup/shell/06.log:10\", \"/judge/setup/shell/01.log:1\", \"/judge/setup/shell/02.log:50\", \"/judge/setup/checklist.json:76-77\", \"/judge/setup/setup-turns.json:6\", \"/judge/setup/transcripts/-work-repo/381997bf-f698-401c-a251-73711e4e908e.jsonl:36\"], \"notes\": \"The documented route worked on the first run: `method init`, `verify-setup`, the tracker-cli init/setup commands and one charter turn, all exit 0 with every checklist item passing. Beyond that, the harness set `tracker.egress=permitted` directly in the config with an inline Python call to the method's internal API (shell/07.log:1), and the tracker bind needed the `method_ENABLE_SAAS_SYNC=1` env flag, which the docs may not mention, plus a logged-out warning (shell/06.log:1,10). Together these count as one arm-specific config workaround; it does not change what the method is.\"}",
+  "score": 2,
+  "status": "ok"
+}

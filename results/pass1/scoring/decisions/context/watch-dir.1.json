@@ -1,0 +1,65 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "",
+        "input": "start watching with no directory option and no TROUPE_THEATRE variable, from /home/sam/show",
+        "observed": false,
+        "results": {
+          "1": "the line names `/home/sam/show`, the full path of the current folder",
+          "2": "the line names `.`",
+          "3": "no behaviour defined"
+        }
+      },
+      {
+        "before": "",
+        "input": "start watching with `--theatre ../stage` (or TROUPE_THEATRE=../stage)",
+        "observed": false,
+        "results": {
+          "1": "the line names `../stage`, exactly as typed",
+          "2": "the line names `../stage`, exactly as typed",
+          "3": "no behaviour defined"
+        }
+      },
+      {
+        "before": "",
+        "input": "on macOS, start watching with `--theatre /var/shows`",
+        "observed": false,
+        "results": {
+          "1": "the line names `/var/shows`, not the system's real path `/private/var/shows`",
+          "2": "the line names `/var/shows`, not the system's real path `/private/var/shows`",
+          "3": "no behaviour defined"
+        }
+      }
+    ],
+    "in_practice": "Routes 1 and 2 only differ when the user gives no directory. In that case route 1 shows the real full path, so a log or screenshot shows which folder was watched. Route 2 shows `.`, which only makes sense if you know where the command was run. When a directory is given, both routes print it exactly as typed, relative parts included, and neither turns it into the system's real path. Route 3 is only a placeholder: nobody considered it, so it describes no behaviour.",
+    "stakes": "When the tool starts watching, it prints a line naming the directory it is watching. That line is how a user confirms the tool is looking at the right place, and whether it is useful depends on whether the path is unambiguous and recognisable.",
+    "tradeoff": "Route 1 costs one extra lookup of the current folder, which buys a clear line when no directory is given. Route 2 is the simplest, but the default case only says `.`. Route 3 defines nothing."
+  },
+  "plan_why": "The routes only differ in the `watching <dir>` line printed by `troupe config watch`, which runs until SIGINT/SIGTERM. Watch is forbidden in this sandbox and would hit the 20-second limit, and no other command prints the theatre directory, so the difference between the absolute cwd (route 1) and '.' (route 2) can't be shown.",
+  "routes": [
+    [
+      "--theatre or TROUPE_THEATRE as given; the absolute cwd when neither is set",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "As given, falling back to '.'",
+      [
+        "Arm D"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

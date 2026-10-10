@@ -1,0 +1,580 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "prompt",
+          "42"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "prompt",
+          "{a: 1, b: [x, y]}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "prompt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "notes",
+          "\"new one\\nnew two\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "notes",
+          "true"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/notes.txt": "line one\r\nline two\r\n",
+      ".troupe/prompt.txt": "You are a helpful coder.\nBe brief.\n",
+      ".troupe/troupe.yml": "prompt: file:prompt.txt  # LF text include\nnotes: file:notes.txt  # CRLF text include\nmodel: opus\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/prompt.txt",
+      ".troupe/notes.txt"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "42"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/prompt.txt": "42"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "{a: 1, b: [x, y]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/prompt.txt": "{a: 1, b: [x, y]}"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{a: 1, b: [x, y]}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"new one\\nnew two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/notes.txt": "new one\r\nnew two\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "true"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: notes: text include /theatre/.troupe/notes.txt uses CRLF line endings, so VALUE must be a string; no file changed\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Any VALUE on an LF target (non-strings written as typed); refuse only a non-string for a CRLF target. Reworked from an early draft that refused mappings and lists",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "42"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: write refused: /theatre/.troupe/prompt.txt: a text include can only be set to a string\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "{a: 1, b: [x, y]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: write refused: /theatre/.troupe/prompt.txt: a text include can only be set to a string\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You are a helpful coder.\nBe brief.\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"new one\\nnew two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/notes.txt": "new one\r\nnew two\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "true"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: write refused: /theatre/.troupe/notes.txt: a text include can only be set to a string\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "42"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: prompt: text include .troupe/prompt.txt can only be set to a string\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "{a: 1, b: [x, y]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: prompt: text include .troupe/prompt.txt can only be set to a string\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You are a helpful coder.\nBe brief.\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"new one\\nnew two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/notes.txt": "new one\r\nnew two\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "true"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: notes: text include .troupe/notes.txt can only be set to a string\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Only strings (otherwise exit 3); CRLF endings of the target are preserved",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "42"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "/theatre/.troupe/prompt.txt: prompt: the value is the text include file:prompt.txt, which can only be set to a string\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "{a: 1, b: [x, y]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "/theatre/.troupe/prompt.txt: prompt: the value is the text include file:prompt.txt, which can only be set to a string\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You are a helpful coder.\nBe brief.\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"new one\\nnew two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/notes.txt": "new one\r\nnew two\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "true"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "/theatre/.troupe/notes.txt: notes: the value is the text include file:notes.txt, which can only be set to a string\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "42"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: prompt: is the text of .troupe/prompt.txt; VALUE must be a string\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "{a: 1, b: [x, y]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: prompt: is the text of .troupe/prompt.txt; VALUE must be a string\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You are a helpful coder.\nBe brief.\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"new one\\nnew two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/notes.txt": "new one\r\nnew two\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "true"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: notes: is the text of .troupe/notes.txt; VALUE must be a string\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "42"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: error: prompt: is a text include of /theatre/.troupe/prompt.txt; its value must be a string\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "prompt",
+                "{a: 1, b: [x, y]}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: error: prompt: is a text include of /theatre/.troupe/prompt.txt; its value must be a string\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You are a helpful coder.\nBe brief.\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "\"new one\\nnew two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/notes.txt": "new one\r\nnew two\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "notes",
+                "true"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: error: notes: is a text include of /theatre/.troupe/notes.txt; its value must be a string\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

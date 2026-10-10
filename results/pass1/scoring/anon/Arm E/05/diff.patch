@@ -1,0 +1,504 @@
+diff --git a/DECISIONS.md b/DECISIONS.md
+new file mode 100644
+index 0000000..2d2c672
+--- /dev/null
++++ b/DECISIONS.md
+@@ -0,0 +1,22 @@
++# Decisions
++
++Choices made where the contract is silent. Where it allowed more than one reading, the one taken is the one least
++likely to lose or corrupt data or to contradict the contract.
++
++## `set --in-include` still refuses to disturb other settings (CR-B)
++
++If the included file is also included elsewhere in the same theatre, writing a new key into it changes the
++configuration at every place that includes it. `set --in-include` then exits 3 ("write-back would disturb …"), just
++like any other `set` whose write-back would change a setting other than the one named.
++
++Reason: the contract calls `--in-include` "the step 1 rule", and step 1 writes with this check in place. Refusing
++loses nothing: the files are untouched, and the user can use an override or edit the shared file by hand. Skipping the
++check would silently change settings the user never named.
++
++## Overrides go next to the nearest include reference (CR-A)
++
++When includes nest (`troupe.yml` → `outer.yaml` → `coder.yaml`), a new key under `coder.yaml` content is written as
++an override in `outer.yaml`, the file that holds that include reference, even though `outer.yaml` is itself included.
++
++Reason: this follows the contract's wording ("the file that contains the include reference"). Values already
++overridden in `outer.yaml` live there, so writing the new key there too keeps them together.
+diff --git a/README.md b/README.md
+index 15cf477..b1cccd6 100644
+--- a/README.md
++++ b/README.md
+@@ -5,14 +5,22 @@ AI orchestration tool. Step 1: the configuration subsystem.
+ ```
+ uv run troupe config get PATH [--theatre DIR]
+ uv run troupe config show [PATH] [--sources] [--theatre DIR]
+-uv run troupe config set PATH VALUE [--reason TEXT] [--theatre DIR]
++uv run troupe config set PATH VALUE [--reason TEXT] [--in-include] [--theatre DIR]
+ uv run troupe config history [PATH] [--theatre DIR]
+ uv run troupe config watch [--theatre DIR]
+ ```
+ 
+ Configuration lives in `<theatre>/.troupe/troupe.yml` (or `.yaml`); `file:` strings include other files.
+ `get` prints a single value; `show` prints a value or a whole section as YAML (includes resolved), and
+-with `--sources` tags each scalar with `# from <file>` (relative to the theatre). `set` writes changes back byte-surgically into whichever file holds the value. Every change is recorded
++with `--sources` tags each scalar with `# from <file>` (relative to the theatre). `set` writes changes back byte-surgically into whichever file holds the value.
++
++An include may also be written in mapping form, `{$ref: file:x.yaml, …}`: the other keys are overrides, deep-merged
++into the included content (mappings merge; scalars and lists replace). Included files are shared, so a new key under
++included content is written as an override next to the nearest include reference (a scalar-form include is first
++turned into mapping form); appended list items and new keys inside list items still go to the file holding the list.
++`set --in-include` puts a new key into the included file itself instead (refused, exit 3, if that would change
++settings elsewhere that include the same file). Choices made where the contract is silent are in `DECISIONS.md`.
++Overrides on a non-YAML include are a load error (exit 4). Every change is recorded
+ as events (via `eventsourcing`, SQLite at `.troupe/events.sqlite`).
+ 
+ Files and the recorded configuration are kept in sync: every command except `history` first *reconciles*
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index ee6224a..4233b29 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -39,6 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
+     st.add_argument("path")
+     st.add_argument("value")
+     st.add_argument("--reason", help="why the change is made (recorded in history)")
++    st.add_argument("--in-include", action="store_true", help="write a new key into the included file, not as an override")
+     hist = csub.add_parser("history", parents=[theatre], help="list changes")
+     hist.add_argument("path", nargs="?")
+     csub.add_parser("watch", parents=[theatre], help="follow edits to the configuration files")
+@@ -159,7 +160,7 @@ def act(args: argparse.Namespace, path_segs: list[str] | None, value: Any, actor
+ 
+     # set
+     old = leaves(root)
+-    editor.set(path_segs, value)
++    editor.set(path_segs, value, args.in_include)
+     new_root = editor.load()
+     try:
+         target = lookup(new_root, path_segs)
+diff --git a/src/troupe/editor.py b/src/troupe/editor.py
+index 038fee7..7b78573 100644
+--- a/src/troupe/editor.py
++++ b/src/troupe/editor.py
+@@ -20,6 +20,7 @@ from .render import (
+ )
+ from .yamldoc import (
+     Doc,
++    construct,
+     Loader,
+     VNode,
+     indent_of,
+@@ -180,7 +181,8 @@ class Editor:
+         self.overlay[doc.path] = text
+ 
+     # operations ----------------------------------------------------------
+-    def set(self, segs: list[str], value: Any) -> None:
++    def set(self, segs: list[str], value: Any, in_include: bool = False) -> None:
++        """Set a value; `in_include` puts new keys in the included file rather than an override."""
+         node = self.load()
+         i = 0
+         while i < len(segs):
+@@ -190,11 +192,11 @@ class Editor:
+             node = c
+             i += 1
+         if i == len(segs):
+-            self.assign(segs, node, value)
++            self.assign(segs, node, value, in_include)
+         else:
+-            self.create(segs, node, i, value)
++            self.create(segs, node, i, value, in_include)
+ 
+-    def assign(self, segs: list[str], vn: VNode, value: Any) -> None:
++    def assign(self, segs: list[str], vn: VNode, value: Any, in_include: bool = False) -> None:
+         path = ".".join(segs)
+         if vn.include == "text":
+             if not isinstance(value, str):
+@@ -213,7 +215,7 @@ class Editor:
+         if vn.kind == "map" and isinstance(value, dict) and value and vn.children:
+             old_keys = list(vn.children)
+             for k, v in value.items():
+-                self.set(segs + [k], v)
++                self.set(segs + [k], v, in_include)
+             for k in old_keys:
+                 if k not in value:
+                     self.remove(segs + [k])
+@@ -221,13 +223,13 @@ class Editor:
+         if vn.kind == "seq" and isinstance(value, list) and value and vn.children:
+             n = len(vn.children)
+             for i, v in enumerate(value):
+-                self.set(segs + [str(i)], v)
++                self.set(segs + [str(i)], v, in_include)
+             for i in reversed(range(len(value), n)):
+                 self.remove(segs + [str(i)])
+             return
+         self.replace(vn, value)
+ 
+-    def create(self, segs: list[str], parent: VNode, i: int, value: Any) -> None:
++    def create(self, segs: list[str], parent: VNode, i: int, value: Any, in_include: bool = False) -> None:
+         path = ".".join(segs)
+         new = value
+         for seg in reversed(segs[i + 1 :]):
+@@ -239,7 +241,12 @@ class Editor:
+                 new = {seg: new}
+         seg = segs[i]
+         if parent.kind == "map":
+-            self.insert(parent, seg, new)
++            if in_include:
++                while parent.base is not None:  # the included side of a merged mapping
++                    parent = parent.base
++                self.insert(parent, seg, new)
++            else:
++                self.insert_key(parent, seg, new)
+         elif parent.kind == "seq":
+             if not seg.isdigit():
+                 raise PathError(f"{path}: {'.'.join(segs[:i]) or 'root'} is a list")
+@@ -249,6 +256,68 @@ class Editor:
+         else:
+             raise PathError(f"{path}: {'.'.join(segs[:i])} is not a mapping or list")
+ 
++    def insert_key(self, parent: VNode, key: str, value: Any) -> None:
++        """Add a new key; under included content it becomes an override in the including file."""
++        include, rel, a = parent, [], parent
++        while include is not None and not (include.include == "yaml" and include.include_doc is not None):
++            include = include.parent
++        if include is not None:
++            while a is not include and a.doc is include.include_doc:  # climb to the nearest override
++                p = a.parent
++                if p.kind != "map":  # overrides cannot address list items
++                    break
++                rel.insert(0, next(k for k, c in p.children.items() if c is a))
++                a = p
++            else:
++                for k in reversed(rel):
++                    key, value = k, {key: value}
++                if a.doc is include.include_doc:
++                    self.to_mapping_form(a, {key: value})
++                else:
++                    self.insert(a, key, value)
++                return
++        self.insert(parent, key, value)
++
++    def to_mapping_form(self, vn: VNode, overrides: dict[str, Any]) -> None:
++        """Rewrite `key: file:x` as `key:` / `$ref: file:x` / overrides."""
++        doc = vn.src_doc
++        node = vn.src_node
++        text = doc.text
++        r = layout(doc)
++        nl = doc.newline
++        s, e = node.start_mark.index, node.end_mark.index
++        ref = text[s:e]
++        if "\n" in ref:
++            ref = scalar(construct(node), None, False)
++        if vn.flow_parent:
++            entry = r.flow(overrides)
++            self.apply(doc, [(s, e, "{$ref: " + ref + ", " + entry[1:], True)])
++            return
++        rest = text[e : doc.eol(e)]
++        if vn.key_node is not None:
++            col = vn.anchor_indent + r.step
++            lines = [" " * col + "$ref: " + ref] + r.block(overrides, col)
++            if doc.line_of(s) == doc.line_of(vn.anchor):
++                edits = [(vn.anchor, doc.eol(e) if not rest.strip() else e, "", False)]
++            else:  # value on its own line: replace that line
++                edits = [(doc.line_start(s), doc.next_line(e), "", False)]
++        else:  # a list item or the whole document
++            col = vn.anchor_indent + 2 if vn.anchor is not None else 0
++            lines = r.block(overrides, col)
++            edits = [(s, e, "$ref: " + ref, False)]
++        pos = doc.next_line(e)
++        pre = nl if pos == len(text) and not text.endswith("\n") else ""
++        edits.append((pos, pos, pre + _join(lines, nl), False))
++        self.apply(doc, edits)
++
++    @staticmethod
++    def siblings(parent: VNode, container: Node | None) -> list[VNode]:
++        """Entries of `parent` written in the same collection node, in file order."""
++        out = [e for e in parent.entries() if e.container is container]
++        if parent.ref_entry is not None and parent.ref_entry.container is container:
++            out.append(parent.ref_entry)
++        return sorted(out, key=lambda e: e.start)
++
+     def remove(self, segs: list[str]) -> None:
+         vn = self.load()
+         for s in segs:
+@@ -257,10 +326,10 @@ class Editor:
+         assert parent is not None
+         doc = vn.src_doc
+         text = doc.text
+-        entries = parent.entries()
++        entries = self.siblings(parent, vn.container)
+         idx = entries.index(vn)
+         st, en = vn.start, vn.end
+-        if parent.node is not None and is_flow(parent.node):
++        if vn.container is not None and is_flow(vn.container):
+             if idx < len(entries) - 1:
+                 edit = (st, entries[idx + 1].start, "", True)
+             elif idx > 0:
+@@ -282,7 +351,7 @@ class Editor:
+         doc = parent.doc
+         node = parent.node
+         r = layout(doc)
+-        entries = parent.entries()
++        entries = self.siblings(parent, node)
+         last = entries[-1] if entries else None
+         kstyle = style_of(last.key_node) if last is not None and last.key_node is not None else None
+         vstyle = style_of(last.src_node) if last is not None else None
+diff --git a/src/troupe/yamldoc.py b/src/troupe/yamldoc.py
+index 19fe4c5..4080b98 100644
+--- a/src/troupe/yamldoc.py
++++ b/src/troupe/yamldoc.py
+@@ -186,6 +186,10 @@ class VNode:
+     value: Any = None  # scalar value
+     children: dict[str, "VNode"] | list["VNode"] = field(default_factory=dict)
+     end: int = 0  # end of content in src_doc
++    container: Node | None = None  # ruamel collection in src_doc holding this entry
++    include_doc: Doc | None = None  # for include roots: the included YAML document
++    ref_entry: "VNode | None" = None  # for mapping-form includes: the `$ref` entry itself
++    base: "VNode | None" = None  # for merged mappings: the included mapping the overrides merge into
+ 
+     def py(self) -> Any:
+         if self.kind == "map":
+@@ -298,13 +302,19 @@ class Loader:
+         anchor_indent: int,
+         flow_parent: bool,
+         stack: tuple[str, ...],
++        src_end: int | None = None,
+     ) -> VNode:
++        def end_in_src() -> int:
++            return src_end if src_end is not None else content_end(src_doc, src_node, anchor, None)
++
+         v = VNode("scalar", doc, node, src_doc, src_node, parent, key_node, anchor, anchor_indent, flow_parent)
+         if isinstance(node, ScalarNode):
+             value = construct(node)
+             if isinstance(value, str) and value.startswith("file:"):
+-                return self.include(v, value[5:], stack)
++                return self.include(v, value[5:], stack, end_in_src())
+             v.value = value
++        elif isinstance(node, MappingNode) and ref_of(node) is not None:
++            return self.ref_include(v, node, stack, src_end)
+         elif isinstance(node, MappingNode):
+             v.kind = "map"
+             children: dict[str, VNode] = {}
+@@ -312,12 +322,13 @@ class Loader:
+             for k, cn in node.value:
+                 a = find_colon(doc, k.end_mark.index)
+                 c = self.build(doc, cn, doc, cn, v, k, a, doc.col(k.start_mark.index), bool(node.flow_style), stack)
++                c.container = node
+                 children[key_text(k)] = c
+                 last_end = c.end
+             v.children = children
+             v.end = content_end(doc, node, anchor, last_end)
+             if doc is not src_doc:
+-                v.end = content_end(src_doc, src_node, anchor, None)
++                v.end = end_in_src()
+             return v
+         elif isinstance(node, SequenceNode):
+             v.kind = "seq"
+@@ -326,6 +337,7 @@ class Loader:
+             if node.flow_style:
+                 for cn in node.value:
+                     c = self.build(doc, cn, doc, cn, v, None, None, 0, True, stack)
++                    c.container = node
+                     items.append(c)
+                     last_end = c.end
+             else:
+@@ -334,17 +346,18 @@ class Loader:
+                     raise LoadError(f"{doc.path}: unsupported sequence layout")
+                 for d, cn in zip(dashes, node.value):
+                     c = self.build(doc, cn, doc, cn, v, None, d + 1, doc.col(d), False, stack)
++                    c.container = node
+                     items.append(c)
+                     last_end = c.end
+             v.children = items
+             v.end = content_end(doc, node, anchor, last_end)
+             if doc is not src_doc:
+-                v.end = content_end(src_doc, src_node, anchor, None)
++                v.end = end_in_src()
+             return v
+-        v.end = content_end(src_doc, src_node, anchor, None)
++        v.end = end_in_src()
+         return v
+ 
+-    def include(self, v: VNode, rel: str, stack: tuple[str, ...]) -> VNode:
++    def include(self, v: VNode, rel: str, stack: tuple[str, ...], src_end: int, overrides: bool = False) -> VNode:
+         base = os.path.dirname(v.doc.path)
+         target = os.path.normpath(os.path.join(base, rel))
+         real = os.path.realpath(target)
+@@ -360,27 +373,86 @@ class Loader:
+         except UnicodeDecodeError:
+             raise LoadError(f"{target}: included file is not UTF-8 (from {v.doc.path})") from None
+         if not target.endswith((".yml", ".yaml")):
++            if overrides:
++                raise LoadError(f"{v.doc.path}: overrides on {target}, which is not a YAML include")
+             v.include = "text"
+             v.include_path = target
+             v.value = text
+-            v.end = content_end(v.src_doc, v.src_node, v.anchor, None)
++            v.end = src_end
+             return v
+         if tdoc.root is None:
+             v.include = "yaml"
+             v.include_path = target
++            v.include_doc = tdoc
+             v.value = None
+-            v.end = content_end(v.src_doc, v.src_node, v.anchor, None)
++            v.end = src_end
+             return v
+         inner = self.build(
+             tdoc, tdoc.root, v.src_doc, v.src_node, v.parent, v.key_node, v.anchor, v.anchor_indent,
+-            v.flow_parent, stack + (real,),
++            v.flow_parent, stack + (real,), src_end,
+         )
+-        inner.include = "yaml"
+-        inner.include_path = target
+-        if inner.kind == "scalar":
+-            inner.end = content_end(v.src_doc, v.src_node, v.anchor, None)
++        if inner.include is None:  # else the included file is itself an include: the nearer one counts
++            inner.include = "yaml"
++            inner.include_path = target
++            inner.include_doc = tdoc
+         return inner
+ 
++    def ref_include(self, v: VNode, node: MappingNode, stack: tuple[str, ...], src_end: int | None) -> VNode:
++        """A mapping-form include: `$ref: file:…` plus overrides deep-merged into the included content."""
++        doc = v.doc
++        ref_k, ref_v = ref_of(node)
++        a = find_colon(doc, ref_k.end_mark.index)
++        over = VNode("map", doc, node, v.src_doc, v.src_node, v.parent, v.key_node, v.anchor, v.anchor_indent, v.flow_parent)
++        ref = VNode("scalar", doc, ref_v, doc, ref_v, over, ref_k, a, doc.col(ref_k.start_mark.index), bool(node.flow_style))
++        ref.value = construct(ref_v)
++        ref.end = content_end(doc, ref_v, a, None)
++        ref.container = node
++        children: dict[str, VNode] = {}
++        last_end = ref.end
++        for k, cn in node.value:
++            if k is ref_k:
++                continue
++            ka = find_colon(doc, k.end_mark.index)
++            c = self.build(doc, cn, doc, cn, over, k, ka, doc.col(k.start_mark.index), bool(node.flow_style), stack)
++            c.container = node
++            children[key_text(k)] = c
++            last_end = max(last_end, c.end)
++        if src_end is None:
++            src_end = content_end(doc, node, v.anchor, last_end) if doc is v.src_doc else content_end(v.src_doc, v.src_node, v.anchor, None)
++        over.end = src_end
++        inc = self.include(v, ref.value[5:], stack, src_end, overrides=bool(children))
++        if inc.include == "text" or (not children and inc.kind != "map"):
++            return inc
++        over.include, over.include_path, over.include_doc = "yaml", inc.include_path, inc.include_doc
++        over.ref_entry = ref
++        over.base = inc if inc.kind == "map" else None
++        over.children = merge(inc.children if inc.kind == "map" else {}, children, over)
++        return over
++
++
++def ref_of(node: MappingNode) -> tuple[Node, Node] | None:
++    """The `$ref: file:…` entry making a mapping an include, if any."""
++    for k, cn in node.value:
++        if isinstance(k, ScalarNode) and k.value == "$ref" and isinstance(cn, ScalarNode):
++            value = construct(cn)
++            if isinstance(value, str) and value.startswith("file:"):
++                return k, cn
++    return None
++
++
++def merge(base: dict[str, VNode], over: dict[str, VNode], parent: VNode) -> dict[str, VNode]:
++    """Deep-merge override entries into included ones: mappings merge, anything else replaces."""
++    out = dict(base)
++    for k, o in over.items():
++        b = out.get(k)
++        if b is not None and b.kind == "map" and o.kind == "map":
++            o.children = merge(b.children, o.children, o)
++            o.base = b
++        out[k] = o
++    for c in out.values():
++        c.parent = parent
++    return out
++
+ 
+ def leaves(v: VNode, prefix: str = "") -> dict[str, Any]:
+     out: dict[str, Any] = {}
+diff --git a/tests/test_config.py b/tests/test_config.py
+index 3a10b00..f343381 100644
+--- a/tests/test_config.py
++++ b/tests/test_config.py
+@@ -319,3 +319,79 @@ def test_bad_actor(theatre, actor, args):
+     assert cfg(theatre) == before
+     assert not (theatre / ".troupe/events.sqlite").exists()  # nothing recorded, not even the import
+ 
++
++
++def test_new_key_under_include_is_an_override(theatre):
++    coder = theatre / ".troupe/agents/coder.yaml"
++    coder.write_text("model: sonnet\nlimits:\n  tokens: 5\ntools: [read, write]\nsteps:\n  - name: a\n")
++    shared = coder.read_text()
++    p = theatre / ".troupe/troupe.yml"
++    p.write_text(cfg(theatre).replace("coder: file:agents/coder.yaml", "coder: file:agents/coder.yaml  # c"))
++    set_ok(theatre, "agents.coder.temperature", "0.3")
++    assert "  coder:  # c\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n  reviewer:" in cfg(theatre)
++    set_ok(theatre, "agents.coder.limits.time", "9")
++    assert "    temperature: 0.3\n    limits:\n      time: 9\n  reviewer:" in cfg(theatre)
++    assert coder.read_text() == shared
++    # an overridden value changes the override; one that is not is changed where it lives
++    set_ok(theatre, "agents.coder.temperature", "0.5")
++    assert "    temperature: 0.5\n" in cfg(theatre)
++    set_ok(theatre, "agents.coder.limits.tokens", "7")
++    assert "  tokens: 7\n" in coder.read_text()
++    # lists: appending, and new keys in list items, go to the file holding the list
++    set_ok(theatre, "agents.coder.tools.2", "run")
++    set_ok(theatre, "agents.coder.steps.0.n", "1")
++    assert coder.read_text() == "model: sonnet\nlimits:\n  tokens: 7\ntools: [read, write, run]\nsteps:\n  - name: a\n    n: 1\n"
++    assert troupe(theatre, "get", "agents.coder.limits.time").stdout == b"9\n"
++    assert troupe(theatre, "get", "agents.coder.model").stdout == b"sonnet\n"
++
++
++def test_mapping_form_includes(theatre):
++    d = theatre / ".troupe"
++    (d / "base.yaml").write_text("model: sonnet\nlimits: {tokens: 5, time: 1}\nlist: [1]\n")
++    (d / "troupe.yml").write_text(
++        "a:\n  $ref: file:base.yaml\n  model: opus\n  limits:\n    time: 2\n  list: [9]\n"
++        "b: {$ref: file:base.yaml}\n"
++        "c:\n  - file:base.yaml # ic\n"
++        "t:\n  $ref: file:agents/prompt.md\n"
++    )
++    r = troupe(theatre, "show", "a")
++    assert r.stdout == b"model: opus\nlimits:\n  tokens: 5\n  time: 2\nlist:\n  - 9\n"
++    assert troupe(theatre, "get", "t").stdout == b"Review.\r\nBe nice.\r\n"
++    set_ok(theatre, "a.model", "haiku")
++    set_ok(theatre, "a.limits.x", "3")
++    set_ok(theatre, "b.x", "4")
++    set_ok(theatre, "c.0.x", "5")
++    assert (d / "base.yaml").read_text() == "model: sonnet\nlimits: {tokens: 5, time: 1}\nlist: [1]\n"
++    assert cfg(theatre) == (
++        "a:\n  $ref: file:base.yaml\n  model: haiku\n  limits:\n    time: 2\n    x: 3\n  list: [9]\n"
++        "b: {$ref: file:base.yaml, x: 4}\n"
++        "c:\n  - $ref: file:base.yaml # ic\n    x: 5\n"
++        "t:\n  $ref: file:agents/prompt.md\n"
++    )
++    (d / "troupe.yml").write_text(cfg(theatre) + "  x: 1\n")  # overrides on a text include
++    r = troupe(theatre, "show")
++    assert r.returncode == 4 and b"prompt.md" in r.stderr
++
++
++def test_set_in_include(theatre):
++    d = theatre / ".troupe"
++    (d / "base.yaml").write_text("sub: {a: 1}\n")
++    (d / "troupe.yml").write_text(cfg(theatre) + "b:\n  $ref: file:base.yaml\n  sub:\n    q: 1\n")
++    for path, value in [("agents.coder.temperature", "0.3"), ("b.sub.z", "3"), ("b.w", "4"), ("b.sub.q", "5")]:
++        r = troupe(theatre, "set", "--in-include", path, value)
++        assert r.returncode == 0, r.stderr
++    assert (d / "agents/coder.yaml").read_text() == "model: sonnet\ntools: [read, write]\ntemperature: 0.3\n"
++    assert (d / "base.yaml").read_text() == "sub: {a: 1, z: 3}\nw: 4\n"
++    assert "  coder: file:agents/coder.yaml\n" in cfg(theatre)
++    assert cfg(theatre).endswith("b:\n  $ref: file:base.yaml\n  sub:\n    q: 5\n")
++
++
++def test_set_in_include_refuses_to_disturb_other_includers(theatre):
++    d = theatre / ".troupe"
++    (d / "troupe.yml").write_text(cfg(theatre) + "twin: file:agents/coder.yaml\n")
++    before = (cfg(theatre), (d / "agents/coder.yaml").read_text())
++    r = troupe(theatre, "set", "--in-include", "agents.coder.temperature", "0.3")
++    assert r.returncode == 3 and b"twin.temperature" in r.stderr
++    assert (cfg(theatre), (d / "agents/coder.yaml").read_text()) == before
++    set_ok(theatre, "agents.coder.temperature", "0.3")  # as an override it is fine
++    assert troupe(theatre, "get", "twin.temperature").returncode == 5

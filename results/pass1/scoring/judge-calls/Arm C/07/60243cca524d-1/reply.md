@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["/judge/questions.md:5-18", "/judge/questions.md:22-85", "/judge/questions.md:110-118", "/judge/questions.md:283-292", "/judge/questions.md:296-311"], "notes": "Three questions dealt with real gaps. How includes resolve inside a remote file (Q1, lines 5-18) and the fetch size limit and http redirects (Q11, lines 283-292) were both answered 'out of contract: your choice'; the Q11 answer led to the 1 MiB limit and the refused https-to-http redirect in f172d52. The validator-library question (Q4, lines 110-118) was escalated and answered by the fallback. The long intent-summary approval (Q2, lines 22-85) only got 'Confirmed' and changed nothing; the arm could also have chosen the library itself. That keeps the score below 4."}
+```

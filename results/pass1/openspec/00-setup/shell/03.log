@@ -1,0 +1,5 @@
+$ python3 -c 'import pathlib; p = pathlib.Path("openspec/config.yaml"); t = p.read_text() if p.exists() else ""; assert "\ncontext:" not in "\n" + t, "config.yaml already has a context"; body = pathlib.Path("/setup/project-principles.md").read_text(); p.write_text(t.rstrip("\n") + ("\n" if t else "") + "context: |\n" + "".join("  " + l + "\n" for l in body.splitlines()))' 
+
+--- stderr ---
+
+exit 0

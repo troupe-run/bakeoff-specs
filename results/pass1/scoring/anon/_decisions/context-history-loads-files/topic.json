@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "Does history load the files once a store exists",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "It reports only what was recorded",
+      "route": "No; once state exists it reads recorded events without loading",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "It loads in order to import; one load path",
+      "route": "Yes; broken files make history exit 4; at step 7 schema and remote fetches apply to it too",
+      "route_no": 2
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

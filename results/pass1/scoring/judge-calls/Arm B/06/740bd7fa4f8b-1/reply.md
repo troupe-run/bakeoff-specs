@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["tests/test_aliases_loading.py:52", "tests/test_set_merge_keys.py:55", "tests/test_aliases_loading.py:83", "tests/test_set_anchors.py:56", "tests/test_set_anchors.py:68", "tests/test_set_through_alias.py:52", "tests/conftest.py:99"], "notes": "No checked name overclaims. In each test, the body fails if the name's claim is false: refusals check exit 3 and an unchanged snapshot through the `refused` fixture, the anchor-kept tests compare whole files byte for byte, and 'expanded once and shared' asserts `a.value is b.value`. Two names are vague: test_merge_key_with_an_inline_mapping and test_writes_next_to_a_merge_key give no expected result, although their bodies assert exact output."}
+```

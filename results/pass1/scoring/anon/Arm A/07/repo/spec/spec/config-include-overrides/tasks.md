@@ -1,0 +1,155 @@
+# Implementation Plan
+
+**Conventions.** Every test written for this spec names the requirement IDs it proves in its docstring (for
+example `"""Req 4.1: ..."""`), as in the earlier specs. Tests use real theatres on disk and the real CLI
+(`testing.md`). Preservation tests compare whole files byte for byte. Each task ends with
+`uv run pytest -n auto`, `uv run mypy --strict .`, `uv run ruff check .` and `uv run ruff format --check .`
+passing.
+
+**External prerequisites.** config-foundation, config-set-writeback, config-file-sync, config-get-show and
+config-lineage are complete. No new runtime dependency is added.
+
+- [x] 1. Foundation: the layered model and its lookups
+- [x] 1.1 Record mapping-form includes and merged mappings in the model, and provide the deep merge and the written-mapping lookups
+  - The model records the `$ref` mapping as written for a mapping-form include, and both layers (included side, override side) for every merged mapping. Scalar-form includes and unmerged nodes look exactly as before. The reserved key `$ref` has one named home.
+  - The deep merge keeps the included keys in their order, replaces an overridden value in place (merging recursively where both sides are mappings), appends the override-only keys in their order, never carries the `$ref` entry, and never mutates its inputs.
+  - The lookups give, for a key of a merged mapping, the written mapping and entry that hold its value (override side first). They also give every written mapping that holds a key, with the override chain leading to it, and the written parts of a node for walks over the files.
+  - The loader does not recognise `$ref` yet (task 2.1), so these tests build merged mappings by calling the deep merge on mappings loaded from real files
+  - Done when unit tests prove the merge result and order (nested mappings, scalar over mapping, list replaces, mapping over scalar), that overridden scalars keep their own origin, and each lookup for override-only, included-only and two-sided keys
+  - _Boundary: Model, Constants, Overrides_
+  - _Requirements: 1.2, 1.3, 1.5, 7.1, 7.2_
+
+- [x] 2. Core: loading mapping-form includes
+- [x] 2.1 Load mapping-form includes wherever a value may be written
+  - A mapping with a `$ref` key whose value is an include string becomes an include of that target, relative to the file holding it. With overrides, its value is the deep merge. Bare, it is exactly the scalar-form include (YAML or text).
+  - Works in the root file and in included files, at the document root, as a list item, in block and flow style, inside overrides and inside included content. An override value that is itself an include is resolved before merging. Missing targets, cycles and unloadable targets fail as for scalar-form includes, and the targets are listed among the files read.
+  - Done when loader unit tests show these cases loading to the expected values (and the same plain form as the scalar form for a bare include), with no `$ref` key anywhere in the loaded value
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8_
+
+- [x] 2.2 Refuse mapping-form includes that cannot mean anything
+  - A non-YAML target with overrides, a `$ref` whose value is not an include string, and overrides on a YAML target whose content is not a mapping (including an empty file) are load errors (exit 4). Each message names the file, the key path and, where there is one, the target, and states the problem.
+  - Done when loader unit tests assert each message, and an e2e test runs `get` on each case and gets exit 4, empty stdout, the message, and no history store created
+  - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+- [x] 2.3 Validate that every command reads the merged configuration
+  - `get` and `show` print merged values. `show --sources` names the including file for overridden scalars and the included file for the others. Import and reconcile record the merged leaves: a hand-added override is recorded as `set` events of the leaves it changes, and rewriting an include between scalar and bare mapping form records nothing. `watch` follows `$ref` targets. A `$ref` segment in a `get`/`show` PATH is not found.
+  - Done when e2e tests through the real CLI prove each of these, including a `watch` that reconciles an edit to a `$ref` target file
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 8.3_
+
+- [x] 3. File layer: writing below mapping-form includes
+- [x] 3.1 Teach the file layout about `$ref` mappings and merged mappings
+  - At a slot whose value is a mapping-form include root, the layout uses the `$ref` mapping as written (inline extent, body lines, content end). The walks that find token ends (comment detection), indentation step, dash offset and block-scalar owner columns visit the written parts of merged mappings and `$ref` mappings.
+  - Done when layout unit tests on files with block and flow `$ref` mappings show the right comment positions, indentation step, content ends, and insertion point of a `$ref` mapping, and an existing-value change next to such a mapping leaves its lines untouched
+  - _Requirements: 5.5, 9.1_
+
+- [x] 3.2 (P) Compare and verify configurations whose root or values are mapping-form includes
+  - The plain form of the root unwraps a root include, and read-back verification uses it (target resolution adopts it in 3.3).
+  - A VALUE mapping whose `$ref` is an include string is an include directive with overrides. It equals a loaded include with the same string whose content contains the overrides (mappings recursively, other values equal).
+  - Done when compare unit tests prove the containment equality (equal, missing override, differing override, nested) and the root unwrapping, and a verify test accepts a patched root `$ref` file that reads back as intended and refuses one that does not
+  - _Boundary: Compare, Verify_
+  - _Requirements: 8.2, 9.2_
+
+- [x] 3.3 Decide where new keys are written and refuse `$ref` in a set PATH
+  - A set PATH with a `$ref` segment is refused (exit 3) before anything else, naming PATH and stating that `$ref` is reserved for includes. Target resolution takes the current configuration from the unwrapped root plain form.
+  - The placement walk goes up from the deepest existing mapping. A merged mapping places into its override side (descending through what the override already holds, and creating the keys it lacks as intermediate mappings). A bare mapping-form include places into its `$ref` mapping. A scalar-form YAML include is marked for conversion in its directive's file. A list item, or reaching the root, keeps the step 1 rule. The add-key target carries the result. The planner keeps writing into the deepest mapping until 3.4, so behaviour does not change yet.
+  - Done when target unit tests cover each walk case (merged root, bare form, scalar form, nested includes choosing the innermost directive file, an existing override mapping, a key below an included nested mapping, a list item inside an include, a list-item include, a plain root mapping) and the `$ref` refusal
+  - _Boundary: Target_
+  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.6, 6.2, 6.3, 8.1_
+
+- [x] 3.4 Write a new key at its placement when that is a written mapping
+  - The planner writes the new key (with any intermediate mappings from the placement) into the written mapping the placement names, under the step 1 rules for new keys there (insertion point, sibling styles, block or flow). A placement that needs a conversion keeps the step 1 behaviour (the deepest mapping) until 3.5 switches it over, so the suite keeps passing.
+  - Done when planner unit tests show the exact texts for a key added to an existing override, to a bare `$ref` mapping, below an included nested mapping (creating `params:` in the override), and to a plain mapping (unchanged behaviour), and the full suite passes
+  - _Requirements: 4.1, 4.3, 4.4, 4.5, 4.6_
+
+- [x] 3.5 Convert a scalar-form include to mapping form when its first override is added
+  - Rendering helpers produce the `$ref` line and the new entries in block style (at a given column) and the `{$ref: <string>, k: v}` flow form, with the include string kept as written.
+  - In a block mapping, the key line keeps its bytes through the `:`, then the whitespace before the end-of-line comment and the comment (or it ends at the `:`). Then follow `$ref: <include string as written>` and the new entries, one indentation step deeper. A block list item is compact without a comment, and starts on the next line with one. In a flow collection, the include string becomes `{$ref: <string>, k: v}`. An include string that does not end on its owner's line is refused (exit 3). The included file never changes.
+  - Conversion placements switch over from the step 1 behaviour here. In the same change, the step 1 test that expected a new key below a scalar-form YAML include in the included file (and any other test pinning that) is rewritten to expect the step 5 result, and documented as superseding the old rule 2.
+  - Done when render unit tests cover the helpers, and planner unit tests reproduce the contract example byte for byte and cover no comment, a list item with and without a comment, a flow mapping, a quoted include string kept verbatim, nested intermediate keys and the refused layout
+  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.3_
+
+- [x] 3.6 Change existing values at their written place
+  - An existing value is changed where it is written: in the override when it is overridden, otherwise in the file it comes from. A whole mapping-form include root that would change is still refused, and a bare text include is still replaced in its target.
+  - Done when planner unit tests show the exact file texts for an overridden scalar change (included file unchanged), a non-overridden change inside the include (including file unchanged), a merged mapping replaced by a scalar (only the override changes), the mapping-form root refusal and the bare text include replacement
+  - _Requirements: 7.1, 7.2, 7.5, 7.6_
+
+- [x] 3.7 Merge mappings across layers: removals, pruning and new keys
+  - A mapping placed over a merged mapping changes kept keys at their written place and removes dropped keys from every layer that writes them. An override mapping that would lose every entry is removed from its holder instead, never past a `$ref` mapping.
+  - New keys of any mapping replacement (merged or not) go through the placement walk, into a written mapping or through the conversion.
+  - Done when planner unit tests show the exact texts for a merge with removals in both layers, pruning of an emptied override, a merge whose new key becomes an override in an existing `$ref` mapping, and one whose new key converts a scalar-form include
+  - _Requirements: 4.5, 7.3, 7.4_
+
+- [x] 3.8 Write new keys into the included file when `--in-include` is chosen (CR-B)
+  - A set can ask for the step 1 placement. The new key (and the new keys of a mapping VALUE) then goes into the included side of the deepest existing ancestor, or into that ancestor itself when it is not merged. Existing values, appends and removals do not depend on the choice.
+  - When keys go into the included side of a merged mapping, the intended configuration lists them after the included keys and before the override-only keys, so the ordered read-back holds.
+  - Done when target and planner unit tests show the exact texts for: a scalar-form include, a merged mapping (with the merged order checked after reload), nested includes (innermost file), an ancestor written only in an override, a mapping VALUE with new keys, and a plain root mapping (same as without the choice)
+  - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
+
+- [x] 4. Integration and validation
+- [x] 4.1 Validate new keys below includes end to end
+  - E2E (byte-exact, every other file unchanged, history checked): the contract example with exactly one `set` event; a second new key after the first override; missing intermediate keys; a key below an included nested mapping; nested includes writing in the middle file; a bare `$ref` mapping gaining an override; a flow include; a `troupe.yaml` theatre.
+  - Done when these e2e tests pass through the real CLI and each fails if the override is written into the included file
+  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 5.1, 5.2, 5.3, 5.4, 5.5, 9.1, 9.3_
+
+- [x] 4.2 Validate lists, existing values, collection replacement and `$ref` end to end
+  - Appending to a list in an included file stays there. A new key inside a list item of an included list goes to the included file. A list-item include is converted in the list's file.
+  - An overridden value changes in the override. A non-overridden value changes in the included file. A collection replacement under an include changes, removes and adds across layers. Replacing a mapping-form include root is refused with exit 3 and no change.
+  - A `$ref` PATH segment gives exit 3 with no change. A VALUE with `$ref` round-trips as an include, and one with a missing target is refused with exit 3 and no change.
+  - Done when these e2e tests pass byte-exactly through the real CLI, with no extra file left behind
+  - _Requirements: 6.1, 6.2, 6.3, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 8.1, 8.2, 9.1, 9.2, 9.3_
+
+- [x] 4.3 Accept `--in-include` on `set` and validate it end to end (CR-B)
+  - `set` accepts `--in-include` without a value, anywhere among the arguments and together with `--reason`, and passes the choice to the set use case. `--in-include=TEXT` is a usage error (exit 2, empty stdout, no file or history change).
+  - Done when e2e tests through the real CLI show byte-exact results for the cases of 3.8, the parsing cases above, one `set` event per created leaf with cli lineage and the given reason, and that without the option the same commands write overrides
+  - _Depends: 3.8_
+  - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7_
+
+- [x] 4.4 Align the earlier specs, docstrings and roadmap with step 5 and check traceability
+  - Add step-5 notes to config-foundation Requirement 4, config-set-writeback rule 2 / Requirements 2 and 3 and 11.5 (the conversion exception), and config-get-show (merged view, override provenance), and the `--in-include` option on config-set-writeback's `set` usage (CR-B). Update module docstrings that describe includes or the new-key rule. Tick the step-5 items in the roadmap.
+  - The spec, docstring and roadmap edits are the bookkeeping of the same change (collaboration.md). This task adds no behaviour.
+  - Done when every requirement ID of this spec is named by at least one test docstring, the notes are in place, and the full test suite, mypy and ruff pass
+
+- [x] 5. Product owner decisions after implementation (choices 16, 17)
+- [x] 5.1 Refuse an include's own string over an include that has overrides
+  - A VALUE include (a `file:` string, or a `$ref` mapping) equals a loaded include only when the string is the same and its overrides are exactly the written overrides; so the bare string or `{$ref: <same>}` over an include with overrides exits 3 naming PATH and the included file, while the same string over a scalar-form or bare include stays a no-op (config-set-writeback 2.8), and a VALUE with exactly the written overrides is a no-op.
+  - The read-back of a VALUE `$ref` mapping written at a new place still verifies (overrides written as given), including include overrides absorbed by the merge.
+  - Done when compare unit tests and e2e tests show: own string over overrides → exit 3, no change; `{$ref: <same>}` with fewer/other overrides → exit 3; exactly the written overrides → exit 0, no change; own string over scalar-form and bare forms → no-op; the earlier `$ref` VALUE round-trip tests still pass
+  - _Requirements: 7.5, 8.2_
+
+- [x] 5.2 Write the override in an including file that is itself included at several places
+  - When the placement's written mapping or include site is reached at more than one path of the merged configuration, the intended configuration gains the same new keys at every such path, in merged position (after that layer's keys, before outer override-only keys), so the read-back accepts the write; this applies to new keys placed by the override rule (Requirement 4 and the new keys of collection replacements); changed existing values and `--in-include` keep the step 1 shared-file refusal.
+  - The test that pinned the shared-middle refusal now expects the write; history records the new leaves at every place.
+  - Done when target/planner unit tests and e2e tests show a shared bare and a shared scalar-root middle file, a shared file whose nested `coder: file:leaf.yaml` is converted, and a shared file reached once via an outer include with overrides of its own (merged order), each written once in the middle file with the key visible at every place and one `set` event per new leaf path; plus guards that an existing-value change and `--in-include` into a shared file are still refused
+  - _Requirements: 4.2, 4.8, 9.2_
+
+- [x] 6. Writes to files included at more than one place (choice 18)
+- [x] 6.1 Replicate every written change at every place that reaches its written location
+  - Generalise the 5.2 widening of the intended configuration from override-rule additions to every planned change: existing-value changes (rule 1), additions by the step 1 rule (`--in-include`, list items), list appends, removals, conversions and text-include target replacements. Identify each change by its written location (file real path and span). At every other path reaching that location, apply the change merged with that place's own overrides, so an outer override still wins there. The read-back comparison stays exact.
+  - The guards from 5.2 that pinned refusals for existing values, `--in-include` and list items in shared files now expect the write.
+  - Done when unit and e2e tests show, for a file included at two places: an existing value changed (and one shadowed by an outer override at one place); `--in-include`; a new key in a list item; a list append; a removal in a collection replacement; and a text include shared by two places. Each must be written once, with the change visible at every place it is not shadowed and one event per changed leaf path. Non-shared behaviour is unchanged.
+  - _Requirements: 11.1, 11.2, 11.3, 6.1, 6.2, 7.2, 7.4, 10.1_
+
+- [x] 6.2 Write agreeing keys once and refuse conflicting ones for the same shared location
+  - One VALUE whose new keys at two places map to the same written location in a shared file: the planner groups placements by written location (not object identity). Agreeing values give one write; conflicting values give exit 3 naming PATH and the file, with no change.
+  - Done when unit and e2e tests show the agreeing case (written once, events at both places) and the conflicting case (exit 3, empty stdout, message names PATH and the file, tree unchanged, no event)
+  - _Requirements: 11.4, 11.5_
+
+- [x] 6.3 Note the step 1 read-back example as superseded and check traceability
+  - Add a step-5 note to config-set-writeback 14.2 (a file included at more than one place no longer causes a refusal by itself; config-include-overrides Requirement 11), update design.md (Verify, Planner) and the module docstrings, and check that 11.1–11.5 are named by tests
+  - Done when the notes are in place and the full suite, mypy and ruff pass
+
+## Implementation Notes
+- 1.1: merged entries for a key that is a mapping on both sides keep the base entry's key/key_origin; writers must locate written positions through `physical_entry`/`physical_holders`, never merged entries. Pruning (3.7) uses `Holder.is_override` and `holder_of(parent, key, written)`. `ConfigMapping` equality includes `layers`: never compare merged and plain trees with `==` (use plain trees).
+- 2.1: a mapping-form root now loads with `root.include` set; writeback must unwrap it (3.2 root plain, 3.3 resolve_target). Guards for 2.2's three refusals already raise ConfigLoadError in loader.py; 2.2 adds their tests and final messages.
+- 3.1: layout `_local(node)` resolves what is written at a slot; walks use `written_parts`. Planner callers must pass written (physical) mappings to `content_end`/`insertion_point`, never merged ones. The loader now keeps a target root's own `$ref` include on the included side of a merge (fixed after 3.1).
+- 3.2: `plain_equal` containment for VALUE `$ref` directives ignores key order (the renderer writes VALUE order); a contentless directive (plain `file:` VALUE, or `$ref` without overrides) still equals any loaded include with the same text, so such a `set` over an include with overrides is a no-op rather than a removal of the overrides (pre-existing leniency, recorded for validation).
+- 3.5: `_Planner.convert_include(site, entries, path)` is the single conversion entry point (3.7 routes merge additions to it). A list item written with extra spaces after `-` cannot be converted (read-back refuses, exit 3), as step 1 already behaves for scalar → block mapping on such items.
+- 3.6: `_change_value` has an interim exit-3 refusal for a merged mapping replaced by a mapping (`node.layers is not None and isinstance(value, NewMapping)`) and its test `test_merged_mapping_replaced_by_a_mapping_is_refused_for_now`; 3.7 must replace both with the layered merge.
+- 3.7: removals and additions into written mappings are deferred to `_flush_removals` (start of `patches()`), so pruning and sibling styles see the final picture; emptied non-prunable mappings become `{}` (research Decision 9). The 3.6 interim refusal is gone.
+- 4.2: setting a mapping-form include root to a mapping equal to its merged value exits 3, exactly as for a scalar-form include (rule 4: a directive never equals a non-directive VALUE). 7.5 says "as for a scalar-form include", so this is kept; 4.4 pins it with a test and clarifies 7.5's wording.
+- validate-impl round 1: new keys sharing a written mapping or an include are merged before rendering (one insertion/conversion each). The placement walk follows the holder chain of the layers holding A's content and stops at the innermost include (choice 5); `IncludeRef.inner` keeps a target root's own include when the outer include has no overrides; a whole-file root `file:` string is converted to a root `$ref` mapping. A middle file shared by two includes now refuses such keys (exit 3, read-back), as shared nested includes already did.
+- validate-impl round 2: GO. Open for the product owner: (a) own include string (or bare `$ref` VALUE) over an include with overrides is a no-op (Note 3.2); (b) a middle file shared by two includes refuses new keys below it (exit 3, generic read-back message), pinned by `test_key_from_a_middle_file_shared_by_two_includes_is_refused`.
+- 5.1: supersedes the 3.2 leniency. A VALUE include equals a loaded include only with the same string and exactly the written overrides (unordered); `IncludeDirective.overrides` on loaded directives holds the written overrides.
+- 5.2: `plan_set` returns the patches and the intended configuration widened by `shared.with_other_places` (placement identity = file real path + span); only `by_override` placements widen it. A new key in a list item of a shared file, an existing-value change in a shared file and `--in-include` into a shared file still refuse (exit 3, step 1 14.2). One VALUE adding keys at two places of the same shared file also still refuses.
+- 6.1: the planner records every edit as `WrittenChanges` keyed by written location; `shared.with_other_places` recomputes the configuration from the pre-write document with and without them and widens the intended configuration off PATH, refusing (exit 3) recorded locations not reached at PATH's own place. New VALUE includes merged at another place are loaded from pre-write files via `loader.load_include`. The 5.2 `by_override` flag is gone.
+- 6.2: placements, conversions, removals and slot changes are grouped by written location; agreeing requests are written once, conflicting ones refused with the CONFLICT message. Through the CLI only text includes reach this (YAML two-place VALUEs are refused earlier at the include root, rule 4). A text include kept at one place and changed at the other is refused by the read-back (generic message), not CONFLICT.

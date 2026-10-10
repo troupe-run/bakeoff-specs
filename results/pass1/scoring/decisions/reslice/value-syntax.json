@@ -1,0 +1,280 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "ANCHOR": {
+        "group": "REFUSE",
+        "why": "Exit 2 with the message 'anchors and aliases are refused'."
+      },
+      "BLOCK": {
+        "group": "REFUSE",
+        "why": "Exit 2, and the message suggests flow style such as {a: 1}."
+      },
+      "EMPTY": {
+        "group": "REFUSE",
+        "why": "Exit 2 with the message 'VALUE is empty'; the file was not changed."
+      },
+      "TAG": {
+        "group": "REFUSE",
+        "why": "Exit 2 with the message 'tags are refused'."
+      }
+    },
+    "2": {
+      "ANCHOR": {
+        "group": "REFUSE",
+        "why": "Exit 2: anchors and aliases cannot be written."
+      },
+      "BLOCK": {
+        "group": "REFUSE",
+        "why": "Exit 2, and the message says to quote it to make a string."
+      },
+      "EMPTY": {
+        "group": "NULL",
+        "why": "Exit 0, and the file now has 'empty: null'."
+      },
+      "TAG": {
+        "group": "HONOUR",
+        "why": "Exit 0, and the file now has tagged: '5' (a string)."
+      }
+    },
+    "3": {
+      "ANCHOR": {
+        "group": "REFUSE",
+        "why": "Exit 2: anchors and tags are not supported."
+      },
+      "BLOCK": {
+        "group": "REFUSE_NOFIX",
+        "why": "Exit 2; the message only says it is not a single flow node and gives no fix."
+      },
+      "EMPTY": {
+        "group": "NULL",
+        "why": "Exit 0, and the file now has 'empty: null'."
+      },
+      "TAG": {
+        "group": "REFUSE",
+        "why": "Exit 2: anchors and tags are not supported."
+      }
+    },
+    "4": {
+      "ANCHOR": {
+        "group": "DROP",
+        "why": "Exit 0, and the file now has 'anchored: 1'."
+      },
+      "BLOCK": {
+        "group": "REFUSE_NOFIX",
+        "why": "Exit 2; the message says it must be a single flow node and gives no fix."
+      },
+      "EMPTY": {
+        "group": "NULL",
+        "why": "Exit 0, and the file now has 'empty: null'."
+      },
+      "TAG": {
+        "group": "NUMBER",
+        "why": "Exit 0, and the file now has 'tagged: 5' (the number)."
+      }
+    },
+    "5": {
+      "ANCHOR": {
+        "group": "DROP",
+        "why": "Exit 0, and the file now has 'anchored: 1'."
+      },
+      "BLOCK": {
+        "group": "MAP",
+        "why": "Exit 0, and the file now has 'block:' with nested 'a: b'."
+      },
+      "EMPTY": {
+        "group": "NULL",
+        "why": "Exit 0, and the file now has 'empty: null'."
+      },
+      "TAG": {
+        "group": "NUMBER",
+        "why": "Exit 0, and the file now has 'tagged: 5' (the number)."
+      }
+    },
+    "6": {
+      "ANCHOR": {
+        "group": "DROP",
+        "why": "Exit 0, and the file now has 'anchored: 1'."
+      },
+      "BLOCK": {
+        "group": "REFUSE_NOFIX",
+        "why": "Exit 2; the message says block collections are not flow nodes and gives no fix."
+      },
+      "EMPTY": {
+        "group": "REFUSE",
+        "why": "Exit 2: expected a YAML flow node; the file was not changed."
+      },
+      "TAG": {
+        "group": "HONOUR",
+        "why": "Exit 0, and the file now has tagged: '5' (a string)."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "empty",
+          ""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "block",
+          "a: b"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tagged",
+          "!!str 5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "anchored",
+          "&n 1"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "name: demo  # project\nretries: 3\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Sets a new key to four borderline VALUEs: empty, block mapping 'a: b', tagged '!!str 5' and anchored '&n 1'. Route 1 accepts them all (empty becomes null, 'a: b' becomes a mapping, the tag makes \"5\"). Route 2 rejects each with exit 2 and leaves the file unchanged. A final whole-config show makes the stored results visible."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "refused (exit 2)",
+            "id": "REFUSE"
+          },
+          {
+            "description": "writes null",
+            "id": "NULL"
+          }
+        ],
+        "id": "EMPTY",
+        "text": "set empty \"\""
+      },
+      {
+        "groups": [
+          {
+            "description": "refused, and the message gives the fix (quote it to make a string, or use flow style such as {a: 1})",
+            "id": "REFUSE"
+          },
+          {
+            "description": "refused (exit 2), but the message gives no fix",
+            "id": "REFUSE_NOFIX"
+          },
+          {
+            "description": "writes a nested map",
+            "id": "MAP"
+          }
+        ],
+        "id": "BLOCK",
+        "text": "set block \"a: b\""
+      },
+      {
+        "groups": [
+          {
+            "description": "writes the string '5'",
+            "id": "HONOUR"
+          },
+          {
+            "description": "refused (exit 2)",
+            "id": "REFUSE"
+          },
+          {
+            "description": "drops the tag and writes the number 5",
+            "id": "NUMBER"
+          }
+        ],
+        "id": "TAG",
+        "text": "set tagged \"!!str 5\""
+      },
+      {
+        "groups": [
+          {
+            "description": "refused (exit 2)",
+            "id": "REFUSE"
+          },
+          {
+            "description": "drops the anchor and writes 1",
+            "id": "DROP"
+          }
+        ],
+        "id": "ANCHOR",
+        "text": "set anchored \"&n 1\""
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Compose VALUE as a single flow-sequence item; empty or whitespace-only VALUE becomes null",
+      [
+        "Arm E"
+      ]
+    ],
+    [
+      "Exactly one scalar or flow node; empty input, block collections, multi-document, tags and anchors exit 2",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C"
+      ]
+    ]
+  ],
+  "sheet_id": "T82",
+  "status": "ok"
+}

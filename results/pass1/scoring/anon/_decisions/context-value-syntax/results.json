@@ -1,0 +1,577 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "empty",
+          ""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "block",
+          "a: b"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tagged",
+          "!!str 5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "anchored",
+          "&n 1"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "name: demo  # project\nretries: 3\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "empty",
+                ""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nretries: 3\nempty: null\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "block",
+                "a: b"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nretries: 3\nempty: null\nblock:\n  a: b\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tagged",
+                "!!str 5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nretries: 3\nempty: null\nblock:\n  a: b\ntagged: 5\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "anchored",
+                "&n 1"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nretries: 3\nempty: null\nblock:\n  a: b\ntagged: 5\nanchored: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nretries: 3\nempty: null\nblock:\n  a: b\ntagged: 5\nanchored: 1\n"
+            }
+          ]
+        }
+      ],
+      "route": "Compose VALUE as a single flow-sequence item; empty or whitespace-only VALUE becomes null",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "empty",
+                ""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "empty: VALUE is not a single flow node: VALUE is empty or contains only comments\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "block",
+                "a: b"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "block: VALUE is not a single flow node: block mapping (write it in flow style, e.g. {a: 1} or [a, b])\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tagged",
+                "!!str 5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "tagged: VALUE is not a single flow node: explicit tag '!!str' (tags are refused)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "anchored",
+                "&n 1"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "anchored: VALUE is not a single flow node: anchor '&n' (anchors and aliases are refused)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nretries: 3\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "empty",
+                ""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nretries: 3\nempty: null\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "block",
+                "a: b"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: invalid VALUE 'a: b': value must be a single flow node\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tagged",
+                "!!str 5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nretries: 3\nempty: null\ntagged: 5\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "anchored",
+                "&n 1"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nretries: 3\nempty: null\ntagged: 5\nanchored: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nretries: 3\nempty: null\ntagged: 5\nanchored: 1\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "empty",
+                ""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: error: invalid VALUE '': expected a YAML flow node\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "block",
+                "a: b"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: error: invalid VALUE 'a: b': block collections are not flow nodes\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tagged",
+                "!!str 5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nretries: 3\ntagged: '5'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "anchored",
+                "&n 1"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nretries: 3\ntagged: '5'\nanchored: 1\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nretries: 3\ntagged: '5'\nanchored: 1\n"
+            }
+          ]
+        }
+      ],
+      "route": "Exactly one scalar or flow node; empty input, block collections, multi-document, tags and anchors exit 2",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "empty",
+                ""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nretries: 3\nempty: null\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "block",
+                "a: b"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: invalid VALUE 'a: b': must be a single flow node (quote it to make a string)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tagged",
+                "!!str 5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nretries: 3\nempty: null\ntagged: '5'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "anchored",
+                "&n 1"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: invalid VALUE '&n 1': anchors (&) and aliases (*) cannot be written\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nretries: 3\nempty: null\ntagged: '5'\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "empty",
+                ""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nretries: 3\nempty: null\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "block",
+                "a: b"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: VALUE is not a single YAML flow node: 'a: b'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tagged",
+                "!!str 5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: cannot parse VALUE '!!str 5': anchors and tags are not supported at line 1\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "anchored",
+                "&n 1"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: cannot parse VALUE '&n 1': anchors and tags are not supported at line 1\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nretries: 3\nempty: null\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

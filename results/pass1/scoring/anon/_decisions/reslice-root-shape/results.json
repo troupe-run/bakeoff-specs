@@ -1,0 +1,1207 @@
+{
+  "outcomes": [
+    {
+      "outcome": "1",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "tilde"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "tilde/.troupe/troupe.yml: the top-level node is a scalar; expected a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "tilde",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "tilde/.troupe/troupe.yml: the top-level node is a scalar; expected a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "dashes"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "dashes/.troupe/troupe.yml: the top-level node is a scalar; expected a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "dashes",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "dashes/.troupe/troupe.yml: the top-level node is a scalar; expected a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "scalar"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "scalar/.troupe/troupe.yml: the top-level node is a scalar; expected a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "scalar",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "scalar/.troupe/troupe.yml: the top-level node is a scalar; expected a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "list"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "list/.troupe/troupe.yml: the top-level node is a list; expected a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "list",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "list/.troupe/troupe.yml: the top-level node is a list; expected a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "empty"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "empty",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {
+            "empty/.troupe/troupe.yml": "x: 1\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "comment"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "comment",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {
+            "comment/.troupe/troupe.yml": "# only a comment here\nx: 1\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        }
+      ]
+    },
+    {
+      "outcome": "2",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "tilde"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "null\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "tilde",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: x:  is a scalar, not a mapping or list\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "dashes"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "null\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "dashes",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: x:  is a scalar, not a mapping or list\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "scalar"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "hello\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "scalar",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: x:  is a scalar, not a mapping or list\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "list"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "- a\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "list",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: x: the root is a list\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "empty"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "empty",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {
+            "empty/.troupe/troupe.yml": "x: 1\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "comment"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "comment",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {
+            "comment/.troupe/troupe.yml": "# only a comment here\nx: 1\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        }
+      ]
+    },
+    {
+      "outcome": "3",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "tilde"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "null\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "tilde",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: x: (root) is a scalar\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "dashes"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "null\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "dashes",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: x: (root) is a scalar\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "scalar"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "hello\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "scalar",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: x: (root) is a scalar\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "list"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "- a\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "list",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: x: (root) is a list; expected an index, got 'x'\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "empty"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "empty",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {
+            "empty/.troupe/troupe.yml": "x: 1\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "comment"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "comment",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {
+            "comment/.troupe/troupe.yml": "# only a comment here\nx: 1\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        }
+      ]
+    },
+    {
+      "outcome": "4",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "tilde"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "null\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "tilde",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: path not found: x ( is not a mapping or list)\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "dashes"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "null\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "dashes",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: path not found: x ( is not a mapping or list)\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "scalar"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "hello\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "scalar",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: path not found: x ( is not a mapping or list)\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "list"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "- a\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "list",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: path not found: x (not a list index: x)\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "empty"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "null\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "empty",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {
+            "empty/.troupe/troupe.yml": "x: 1\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "comment"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "null\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "comment",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {
+            "comment/.troupe/troupe.yml": "# only a comment here\nx: 1\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        }
+      ]
+    },
+    {
+      "outcome": "5",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "tilde"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "null\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "tilde",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: x:  is not a mapping or list\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "dashes"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "null\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "dashes",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: x:  is not a mapping or list\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "scalar"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "hello\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "scalar",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: x:  is not a mapping or list\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "list"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "- a\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "list",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 5,
+          "stderr": "troupe: x: root is a list\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "empty"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "empty",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {
+            "empty/.troupe/troupe.yml": "x: 1\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "comment"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "comment",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {
+            "comment/.troupe/troupe.yml": "# only a comment here\nx: 1\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        }
+      ]
+    },
+    {
+      "outcome": "6",
+      "results": [
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "tilde"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "troupe: error: /theatre/tilde/.troupe/troupe.yml: the top level must be a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "tilde",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "troupe: error: /theatre/tilde/.troupe/troupe.yml: the top level must be a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "dashes"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "troupe: error: /theatre/dashes/.troupe/troupe.yml: the top level must be a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "dashes",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "troupe: error: /theatre/dashes/.troupe/troupe.yml: the top level must be a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "scalar"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "troupe: error: /theatre/scalar/.troupe/troupe.yml: the top level must be a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "scalar",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "troupe: error: /theatre/scalar/.troupe/troupe.yml: the top level must be a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "list"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "troupe: error: /theatre/list/.troupe/troupe.yml: the top level must be a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "list",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 4,
+          "stderr": "troupe: error: /theatre/list/.troupe/troupe.yml: the top level must be a mapping\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "empty"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "empty",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {
+            "empty/.troupe/troupe.yml": "x: 1\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "--theatre",
+            "comment"
+          ],
+          "env": {},
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--theatre",
+            "comment",
+            "x",
+            "1"
+          ],
+          "env": {},
+          "files": {
+            "comment/.troupe/troupe.yml": "# only a comment here\nx: 1\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        }
+      ]
+    }
+  ],
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show",
+          "--theatre",
+          "tilde"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "tilde",
+          "x",
+          "1"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--theatre",
+          "dashes"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "dashes",
+          "x",
+          "1"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--theatre",
+          "scalar"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "scalar",
+          "x",
+          "1"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--theatre",
+          "list"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "list",
+          "x",
+          "1"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--theatre",
+          "empty"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "empty",
+          "x",
+          "1"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--theatre",
+          "comment"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--theatre",
+          "comment",
+          "x",
+          "1"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      "comment/.troupe/troupe.yml": "# only a comment here\n",
+      "dashes/.troupe/troupe.yml": "---\n",
+      "empty/.troupe/troupe.yml": "",
+      "list/.troupe/troupe.yml": "- a\n",
+      "scalar/.troupe/troupe.yml": "hello\n",
+      "tilde/.troupe/troupe.yml": "~\n"
+    },
+    "passwd": true,
+    "show": [
+      "tilde/.troupe/troupe.yml",
+      "dashes/.troupe/troupe.yml",
+      "scalar/.troupe/troupe.yml",
+      "list/.troupe/troupe.yml",
+      "empty/.troupe/troupe.yml",
+      "comment/.troupe/troupe.yml"
+    ]
+  }
+}

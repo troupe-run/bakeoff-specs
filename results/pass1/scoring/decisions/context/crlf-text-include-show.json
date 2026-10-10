@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/prompts/coder.txt holds \"Line one\\r\\nLine two\\r\\n\" (CRLF endings); troupe.yml has `prompt: file:prompts/coder.txt`",
+        "input": "`config show agents.coder`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the prompt prints as a literal block, and each line still ends in a raw, invisible carriage-return byte:\nprompt: |\n  Line one\n  Line two",
+          "2": "exit 0; the prompt prints as an escaped string on one line (all three arms):\nprompt: \"Line one\\r\\nLine two\\r\\n\"",
+          "3": "exit 0; the prompt prints as a literal block with the CRs dropped (plain LF lines):\nprompt: |\n  Line one\n  Line two"
+        }
+      },
+      {
+        "before": ".troupe/prompts/notes.txt holds \"  indented first line\\nlast line, no final newline\"",
+        "input": "`config show agents.coder` (the notes field)",
+        "observed": true,
+        "results": {
+          "1": "exit 0;\nnotes: |2-\n    indented first line\n  last line, no final newline",
+          "2": "two arms: exit 0;\nnotes: |2-\n    indented first line\n  last line, no final newline\none arm: exit 0; it is double-quoted instead:\nnotes: \"  indented first line\\nlast line, no final newline\"",
+          "3": "exit 0;\nnotes: |2-\n    indented first line\n  last line, no final newline"
+        }
+      },
+      {
+        "before": "same files as above",
+        "input": "`config show agents.coder --sources`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; `prompt: | # from .troupe/prompts/coder.txt`, followed by the two lines with raw CRs still in them",
+          "2": "exit 0; `prompt: \"Line one\\r\\nLine two\\r\\n\" # from .troupe/prompts/coder.txt` (one arm also double-quotes notes)",
+          "3": "exit 0; `prompt: | # from .troupe/prompts/coder.txt`, followed by the two lines with no CRs"
+        }
+      },
+      {
+        "before": "coder.txt with CRLF endings",
+        "input": "`config get agents.coder.prompt`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints the exact bytes \"Line one\\r\\nLine two\\r\\n\"",
+          "2": "exit 0; prints the exact bytes \"Line one\\r\\nLine two\\r\\n\"",
+          "3": "exit 0; prints the exact bytes \"Line one\\r\\nLine two\\r\\n\""
+        }
+      }
+    ],
+    "in_practice": "`get` returns the exact file bytes on every route. Only `show` differs. Route 1 looks clean in a terminal, but the stray CR bytes sit inside the block, and a YAML reader treats a bare CR as a line break, so its output does not read back as the original text. Route 2 is the only one whose `show` output reads back to exactly the file's bytes, but you see `\\r\\n` escapes instead of lines. Route 3 shows clean lines, but `show` no longer matches the file: the CRs vanish from the display, and only `get` reveals them. Files without CRs (plain.txt, and notes.txt on most arms) print as literal blocks on every route.",
+    "stakes": "When an included prompt file has Windows line endings (CRLF), `config show` has to pick one: print the text so it reads as plain lines, or keep it exact. Depending on the route, a user sees the text with invisible carriage returns, as an escaped string with \\r\\n, or with the CRs quietly removed from what is shown.",
+    "tradeoff": "Route 1: always a literal block, but raw CRs are hidden inside the output. Route 2: exact text, shown as an escaped one-line string. Route 3: readable block that silently differs from the file, which only `get` shows exactly."
+  },
+  "plan_why": "Shows how `show` prints a mapping whose text include has CRLF line endings or a leading-space, no-final-newline text: an exact literal block (route 1), a double-quoted string with \\r\\n escapes (route 2), or a literal block with CR dropped (route 3). `get` is included to check whether the bytes stay exact.",
+  "routes": [
+    [
+      "Double-quoted at first; reworked so every text include is a literal block of the exact text",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "Double-quoted with escapes",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D"
+      ]
+    ],
+    [
+      "Literal block with CRLF turned into LF; get keeps the bytes",
+      [
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

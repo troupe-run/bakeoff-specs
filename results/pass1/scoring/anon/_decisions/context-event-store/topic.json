@@ -1,0 +1,12 @@
+{
+  "kind": "unanimous",
+  "question": "How history is persisted",
+  "routes": [
+    {
+      "outcome": "Kept; event classes were versioned at step 4",
+      "reasoning_given": "Required library; one stream gives a total order and gapless numbering; SQLite saves are atomic",
+      "route": "eventsourcing with SQLite under .troupe/, one aggregate per theatre with a fixed id, each command's events saved in one save",
+      "route_no": 1
+    }
+  ]
+}

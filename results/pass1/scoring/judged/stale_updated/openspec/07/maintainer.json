@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "repo/spec/spec/config-loading/spec.md:48 — the Includes requirement now says `file:`, `https://` or `http://` strings are includes, with exceptions for `!literal` and `format: uri`",
+    "repo/spec/spec/config-set/spec.md:310 — the 'Values that are includes' requirement was rewritten: an include-looking value is written `!literal` unless `--include` is given; the old scenario now uses `--include` (diff.patch:1525)",
+    "diff.patch:4071-4098 — the test_set_targets.py tests that expected `set prompt file:p.md` to create an include were renamed and now pass `--include`",
+    "repo/src/troupe/includes.py:3 — the module docstring describes both `file:` and URL includes",
+    "repo/README.md:25 and repo/README.md:125-128 — the README lists `--include`, covers remote includes and `!literal`, has a Schema section (README.md:262-287) and an 'Upgrading scripts' note (README.md:257)",
+    "repo/spec/spec/config-sync/spec.md:74-79 — the watch requirement now covers the schema file and reconciling remote content"
+  ],
+  "notes": "Every stale requirement, test, code path and doc was updated, including the loader, set planner, watch/reconcile, README and CLI help. The only leftovers are slightly incomplete wording at README.md:4 ('split across files with `file:` includes') and README.md:47 (the watch summary leaves out the schema file, though README.md:287 covers it); neither contradicts the new behaviour.",
+  "raw": "{\"score\": 4, \"evidence\": [\"repo/spec/spec/config-loading/spec.md:48 — the Includes requirement now says `file:`, `https://` or `http://` strings are includes, with exceptions for `!literal` and `format: uri`\", \"repo/spec/spec/config-set/spec.md:310 — the 'Values that are includes' requirement was rewritten: an include-looking value is written `!literal` unless `--include` is given; the old scenario now uses `--include` (diff.patch:1525)\", \"diff.patch:4071-4098 — the test_set_targets.py tests that expected `set prompt file:p.md` to create an include were renamed and now pass `--include`\", \"repo/src/troupe/includes.py:3 — the module docstring describes both `file:` and URL includes\", \"repo/README.md:25 and repo/README.md:125-128 — the README lists `--include`, covers remote includes and `!literal`, has a Schema section (README.md:262-287) and an 'Upgrading scripts' note (README.md:257)\", \"repo/spec/spec/config-sync/spec.md:74-79 — the watch requirement now covers the schema file and reconciling remote content\"], \"notes\": \"Every stale requirement, test, code path and doc was updated, including the loader, set planner, watch/reconcile, README and CLI help. The only leftovers are slightly incomplete wording at README.md:4 ('split across files with `file:` includes') and README.md:47 (the watch summary leaves out the schema file, though README.md:287 covers it); neither contradicts the new behaviour.\"}",
+  "score": 4,
+  "status": "ok"
+}

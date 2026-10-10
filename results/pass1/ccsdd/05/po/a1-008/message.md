@@ -1,0 +1,1 @@
+The implementer is now reworking the placement walk. The new rule follows the files that actually hold the parent's content and stops at the innermost include. That covers bare, scalar and override forms, including a file whose root is itself an include. I'll re-review and re-validate when it reports back.

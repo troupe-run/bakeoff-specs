@@ -1,0 +1,204 @@
+[
+  {
+    "decision": "Allow an include to be written as a mapping: a `$ref: file:...` key, with the other keys acting as overrides deep-merged into the included content (mappings merge key by key, anything else replaces)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "README.md (diff hunk @@ -5,15); questions.md:8"
+  },
+  {
+    "decision": "A new key under content from an included file is written into the including file as an override, and the shared included file is left untouched",
+    "options": [],
+    "reason": "Contract change CR-A",
+    "recorded_at": "README.md (diff); questions.md:9"
+  },
+  {
+    "decision": "When a key is added, a scalar-form include is rewritten in mapping form (`key:  # c` / `$ref: file:...` / new keys), using the file's own indentation, keeping the original quoting and keeping the end-of-line comment on the key line",
+    "options": [],
+    "reason": "Matches the contract's example",
+    "recorded_at": "questions.md:9; tests/test_overrides.py test_conversion_uses_file_indentation_and_quoting"
+  },
+  {
+    "decision": "An existing value changes where it is set: in the override if there is one, otherwise in the file it comes from",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:10; README.md (diff)"
+  },
+  {
+    "decision": "Appending a list item, or adding a key inside a list item, still writes to the file that holds the list (no override)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:11; src/troupe/writer.py override_site docstring"
+  },
+  {
+    "decision": "Change the existing test_include_refused so it expects coder.yaml to be left alone, replacing the earlier expectation that a new key is written into it",
+    "options": [],
+    "reason": "The contract change reverses the old behaviour",
+    "recorded_at": "questions.md:14; tests/test_config.py:265"
+  },
+  {
+    "decision": "'The including file' means one level up: with nested includes, the new key goes into the file that directly includes the source, even if that file is itself included",
+    "options": [],
+    "reason": "The contract was silent",
+    "recorded_at": "docs/decisions.md:66"
+  },
+  {
+    "decision": "A section already in mapping form takes new keys next to its existing overrides",
+    "options": [],
+    "reason": "The contract was silent",
+    "recorded_at": "docs/decisions.md:68"
+  },
+  {
+    "decision": "A file whose whole content is an include (`file:b.yml`) is converted to `$ref: file:b.yml` plus the new keys at the top level",
+    "options": [],
+    "reason": "The contract was silent",
+    "recorded_at": "docs/decisions.md:69"
+  },
+  {
+    "decision": "A scalar-form include inside a flow collection is converted to a flow mapping `{$ref: ..., k: v}`",
+    "options": [],
+    "reason": "The contract was silent",
+    "recorded_at": "docs/decisions.md:71"
+  },
+  {
+    "decision": "A scalar-form include that is a block list item becomes `- $ref: file:...` with the overrides aligned below it, using a width of max(2, indent)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:72; width rule unrecorded (src/troupe/writer.py _add_to_scalar_include)"
+  },
+  {
+    "decision": "If the `file:` string is not on the same line as its key or dash, converting it is refused with exit 3 instead of reflowing the lines",
+    "options": [
+      "refuse (exit 3)",
+      "reflow"
+    ],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:74"
+  },
+  {
+    "decision": "A `$ref` whose value is not a `file:` string is an error (exit 4); so is a mapping-form text include that has sibling keys. A mapping-form include holding only `$ref` is exactly the include",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:75"
+  },
+  {
+    "decision": "If the included YAML is not a mapping, overrides (a mapping) replace it; with no overrides, the included value is returned unchanged",
+    "options": [],
+    "reason": "Follows the merge rule that anything other than two mappings is replaced",
+    "recorded_at": "docs/decisions.md:77"
+  },
+  {
+    "decision": "Setting a mapping in a way that removes a key from a merged mapping removes the key everywhere it is set (in the include and in the overrides)",
+    "options": [],
+    "reason": "So that the merged value is what was asked for",
+    "recorded_at": "docs/decisions.md:79"
+  },
+  {
+    "decision": "Drop the drafted sentence saying that removing only an override fails the write check and exits 3",
+    "options": [
+      "keep the sentence about exit 3 when removing only an override",
+      "replace it with 'so the merged value is what was asked for'"
+    ],
+    "reason": "",
+    "recorded_at": "transcript.md:20"
+  },
+  {
+    "decision": "Replacing a whole mapping-form include (overrides included) with set still exits 3, as scalar-form includes already did; amend decision 5 to say this",
+    "options": [],
+    "reason": "Consistent with the existing rule for scalar-form includes",
+    "recorded_at": "docs/decisions.md:15"
+  },
+  {
+    "decision": "A new key several levels deep under an include is written into the overrides as nested mappings that wrap the path keys",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/writer.py add_entries; tests/test_overrides.py test_new_nested_key_under_included_section)"
+  },
+  {
+    "decision": "Merged mapping key order: the included keys come first (in their order), then keys that appear only in the overrides",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/config.py merge)"
+  },
+  {
+    "decision": "Represent merged mappings with new Item fields `ref` (the including doc and node) and `parts` (the included part first, then the overrides), with doc/node pointing at the overrides mapping where new keys go",
+    "options": [],
+    "reason": "",
+    "recorded_at": "src/troupe/config.py Item docstring (diff)"
+  },
+  {
+    "decision": "For a whole-file include chain, keep the innermost include reference (do not overwrite `ref` that is already set)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "src/troupe/config.py comment 'a whole-file include keeps the innermost'; transcript.md:17"
+  },
+  {
+    "decision": "Remove the unused assignment of `ref` on mapping-form includes",
+    "options": [],
+    "reason": "It was unused",
+    "recorded_at": "transcript.md:18"
+  },
+  {
+    "decision": "Move the include resolution into an `include()` helper, and move the colon lookup out of anchor_of into `_colon_end`",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/config.py, src/troupe/writer.py)"
+  },
+  {
+    "decision": "Put the new tests in a new file, tests/test_overrides.py",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Commit CR-A directly on main without a feature branch, push or PR",
+    "options": [],
+    "reason": "The delivery instructions require a commit on main and no push or PR",
+    "recorded_at": "commit 26aa408; questions.md:5"
+  },
+  {
+    "decision": "At finishing, choose 'keep as-is' over merging back or opening a PR",
+    "options": [
+      "merge back to main",
+      "push and open a PR",
+      "keep as-is"
+    ],
+    "reason": "There is no feature branch, and pushing or opening a PR is ruled out",
+    "recorded_at": "questions.md:36-39; transcript.md:26"
+  },
+  {
+    "decision": "Add `--in-include` as a boolean store_true flag on set, passed through to the Writer constructor",
+    "options": [],
+    "reason": "",
+    "recorded_at": "src/troupe/cli.py (diff); transcript.md:30"
+  },
+  {
+    "decision": "`--in-include` only decides where new keys go; existing values still change where they are set",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:81"
+  },
+  {
+    "decision": "With `--in-include` under a merged mapping, the new key goes into the included file and never into the overrides, even if the overrides already hold part of the path (the code descends through parts[0] while it is a map)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:82; src/troupe/writer.py add_entries"
+  },
+  {
+    "decision": "Without any include, `--in-include` changes nothing",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:83"
+  },
+  {
+    "decision": "Test the flag placed both before and after PATH VALUE",
+    "options": [],
+    "reason": "The contract writes the flag before the positionals",
+    "recorded_at": "transcript.md:31; tests/test_overrides.py test_in_include_writes_new_key_into_included_file"
+  },
+  {
+    "decision": "Commit CR-B directly on main as f219b7e, with no push or PR",
+    "options": [],
+    "reason": "Delivery instructions",
+    "recorded_at": "commit f219b7e; questions.md:61"
+  }
+]

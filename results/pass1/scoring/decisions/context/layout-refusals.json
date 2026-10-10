@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# agents and their tools\ntools:\n- - read\n  - write\n- - shell\nsteps:\n  -\n    plain\n  - # note\n    second\n  - third\nretry: 3  # attempts\n",
+        "input": "`config show`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; it loads the file and prints it with normal layout:\ntools:\n  - - read\n    - write\n  - - shell\nsteps:\n  - plain\n  - second\n  - third\nretry: 3",
+          "2": "Same as route 1 (all five arms): exit 0, identical output."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get tools.1.0`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints `shell`",
+          "2": "exit 0; prints `shell` (all five arms)"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set tools.0.1 edit`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; only that item changes, and the comments and odd layout stay as they were:\n# agents and their tools\ntools:\n- - read\n  - edit\n- - shell",
+          "2": "Same as route 1 (all five arms): exit 0, identical file."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set steps.0 first` (this step has a dash alone on its line with the value on the next line)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the value is replaced in place and the layout is kept:\nsteps:\n  -\n    first\n  - # note\n    second\n  - third",
+          "2": "Same as route 1 (all five arms): exit 0, identical file."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set steps.3 fourth` (adds a new item to the list)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the new item goes at the end of the list, and `retry` and its comment are kept:\n  - third\n  - fourth\nretry: 3  # attempts",
+          "2": "Same as route 1 (all five arms): exit 0, identical file."
+        }
+      }
+    ],
+    "in_practice": "Route 1 is supposed to refuse a file with exit 4 when the dash layout doesn't match the parsed items. This file has nested dashes, a dash alone on its line, and a comment after a dash, and route 1 still did not refuse it. Both routes gave the same result on every command, so this test never triggered the refusal.",
+    "stakes": "A config file with an unusual but valid layout (nested dash lists, a dash alone on its line with the value below it, a comment right after the dash) must either be read and edited correctly or be refused. A silent misedit would damage the user's file. In this test both routes read and edited it correctly, and neither refused it.",
+    "tradeoff": "Route 1 adds a load-time check that can refuse a file with exit 4, but nothing here triggered it. Route 2 has no such check, and it handled every layout tested correctly."
+  },
+  "plan_why": "The config uses unusual but valid block-sequence layouts: nested items on one line (`- - read`), a lone dash with its item on the next line, and a dash followed by a comment. Route 1 refuses to load this file and exits 4 on every command. Route 2 loads it, prints the values and writes changes into these lists.",
+  "routes": [
+    [
+      "Block sequences whose dash layout does not match the parsed items exit 4",
+      [
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

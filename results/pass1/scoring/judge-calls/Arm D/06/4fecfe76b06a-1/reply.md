@@ -1,0 +1,5 @@
+```json
+{"score": 3, "evidence": ["/judge/repo/README.md:23-27", "/judge/repo/docs/decisions.md:85-99", "/judge/diff.patch:561 (tests/test_aliases.py test_set_at_anchor_changes_every_alias)", "/judge/diff.patch:584-602 (test_set_through_alias_is_refused checks the --expand-alias pointer)", "/judge/diff.patch:688 (test_merge_keys_are_never_written)"]}
+```
+
+{"score": 3, "evidence": ["/judge/repo/README.md:23-27", "/judge/repo/docs/decisions.md:85-99", "/judge/diff.patch:561 (tests/test_aliases.py test_set_at_anchor_changes_every_alias)", "/judge/diff.patch:584-602 (test_set_through_alias_is_refused checks the --expand-alias pointer)", "/judge/diff.patch:688 (test_merge_keys_are_never_written)"], "notes": "The README and decisions 30-33 state every alias rule: a set at the anchor changes all uses, a set through an alias exits 3, --expand-alias makes a copy, and merge keys are never written. tests/test_aliases.py covers each rule, but neither spec file references the bug report or tracker entry or links to the tests, so as the reporter I cannot trace from my report to the spec change."}

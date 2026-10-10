@@ -1,0 +1,18 @@
+{
+  "kind": "divergent",
+  "question": "How a set's edited text is checked before anything is written",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "A formatting bug then becomes a refused write, not a corrupted config",
+      "route": "Re-parse the edited text and compare only the value at PATH with VALUE",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept; later widened with allowances for include conversion, aliases and schema checks",
+      "reasoning_given": "Turns any renderer bug into a refusal instead of a corrupted file; the loader is the single definition of meaning",
+      "route": "Reload the whole configuration from the edited in-memory texts; require PATH to read back as VALUE and nothing else to change; otherwise exit 3 with no write",
+      "route_no": 2
+    }
+  ]
+}

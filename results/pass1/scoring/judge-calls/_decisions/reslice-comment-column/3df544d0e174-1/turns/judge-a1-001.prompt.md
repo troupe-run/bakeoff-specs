@@ -1,0 +1,8 @@
+You are classifying behaviour in a blind comparison of several implementations of the same CLI. The same example commands were run against each implementation's final code; implementations that produced identical results were merged into one numbered outcome.
+
+Inputs (read-only; Read, Glob, Grep): /judge/questions.json (one or more questions, each with behaviour groups the owner described) and /judge/results.json ("plan": the files created first and the steps run, in order, in a fresh directory; "outcomes": for each numbered outcome, per step: exit code, stdout, stderr, and the shown files that step changed - null means deleted. A step with "hand_edit" is a file edited by hand, "sleep" a pause, "symlink" a symlink the harness made and "list" a listing of files; none of these ran the program. "watch": "start"/"stop" started and signalled `config watch` in the background).
+
+For EVERY outcome and EVERY question, choose the ONE group whose description matches what that outcome's results show. Judge only by the results, never by what an implementation might intend. When no group fits (or the results cannot show it, e.g. a command failed before the behaviour was reached), answer "none" and say why in one line. Never name an implementation, arm, method or tool.
+
+Reply with exactly one JSON object and nothing else, keyed by outcome number then question id:
+{"outcomes": {"1": {"Q1": {"group": "<group id>", "why": "<one line>"}}, "2": {"Q1": {"group": "none", "why": "<why no group fits>"}}}}

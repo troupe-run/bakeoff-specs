@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "/judge/repo/README.md:16-19",
+    "/judge/transcript.md:25",
+    "/judge/transcript.md:26",
+    "/judge/gates.md:1",
+    "/judge/repo/src/troupe/sync.py"
+  ],
+  "notes": "Only one decision has a reason in the repo: serialising commands on `.troupe/events.lock`, which README.md:18-19 and commit 1f533bf justify so that a `set`'s own write-back is not recorded twice by `watch`. The rest I could only infer from code or the transcript, with no alternatives recorded: polling instead of inotify, the 0.1s poll and settle intervals, exempting `history` from reconciling, `watch` exiting 4 when no config file exists rather than waiting for one, carrying on after broken YAML, and new includes being recorded as `set` events.",
+  "raw": "{\"score\": 1, \"evidence\": [\"/judge/repo/README.md:16-19\", \"/judge/transcript.md:25\", \"/judge/transcript.md:26\", \"/judge/gates.md:1\", \"/judge/repo/src/troupe/sync.py\"], \"notes\": \"Only one decision has a reason in the repo: serialising commands on `.troupe/events.lock`, which README.md:18-19 and commit 1f533bf justify so that a `set`'s own write-back is not recorded twice by `watch`. The rest I could only infer from code or the transcript, with no alternatives recorded: polling instead of inotify, the 0.1s poll and settle intervals, exempting `history` from reconciling, `watch` exiting 4 when no config file exists rather than waiting for one, carrying on after broken YAML, and new includes being recorded as `set` events.\"}",
+  "score": 1,
+  "status": "ok"
+}

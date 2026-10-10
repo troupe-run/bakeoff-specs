@@ -1,0 +1,5 @@
+Every `troupe config` command now rejects a malformed `TROUPE_ACTOR`, and the change is committed on `main` as `b88f379`.
+
+The check runs first in every command, before the theatre is resolved and before any reconcile, import or write. On a bad value, `get`, `show`, `set`, `history` and `watch` all exit 2 with empty stdout and a `troupe: invalid TROUPE_ACTOR: …` message on stderr. `watch` fails before it prints `watching …`. A valid or unset `TROUPE_ACTOR` works exactly as before.
+
+I extended `test_bad_actor` to run all five commands against five malformed values (`""`, `human`, `human:`, `robot:x`, `agent`). For each one it checks exit 2, empty stdout, the stderr message, an unchanged config file, and no `events.sqlite` created. The full suite passes (49 tests), and I also ran `watch` by hand with `TROUPE_ACTOR=bogus` and it exited 2. The README now says the rule applies to every command.

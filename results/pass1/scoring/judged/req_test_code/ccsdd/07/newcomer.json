@@ -1,0 +1,16 @@
+{
+  "evidence": [
+    "spec/spec/config-remote-schema/tasks.md:3-17 (each test must cite its Req IDs in its docstring; lists the exact test files for this spec)",
+    "spec/spec/config-remote-schema/tasks.md:180 (task 5.1 requires every requirement ID to appear in a test docstring, and no test may cite an ID that does not exist)",
+    "spec/spec/config-remote-schema/design.md:113-144,202-221 (Requirements Traceability table maps IDs to components and to the files config/fetch.py, config/schema.py and writeback/remote_guard.py)",
+    "tests/test_set_remote.py:403 (\"Req 6.1, 6.2, 6.6\" docstring for the remote read-only refusal)",
+    "tests/test_schema.py:164-220 (Req 4.5 walker tests)",
+    "tests/test_set_literals.py:252 (Req 9.2 --include=TEXT exits 2)",
+    "tests/test_e2e_remote.py:565 (Req 2.3, 3.6)",
+    "spec/spec/config-set-writeback/requirements.md:89,133,164,186 (decision D and 2.7–2.8 marked as superseded by step 7)"
+  ],
+  "notes": "Starting from the spec, I could follow explicit links all the way through: requirement ID, then the task, then the named test file whose docstring cites the same Req ID, then the code file the design names. I sampled the IDs this step introduced (1.6, 2.3, 3.4, 3.6, 4.5, 5.4, 5.6, 6.1, 8.8, 9.2, 9.6) and every one has a test that asserts it, and the earlier text this step overrode is marked superseded. One small weakness: Req IDs carry no spec name, so the same number means different things in older test files. The per-spec file list in tasks.md resolves this.",
+  "raw": "{\"score\": 4, \"evidence\": [\"spec/spec/config-remote-schema/tasks.md:3-17 (each test must cite its Req IDs in its docstring; lists the exact test files for this spec)\", \"spec/spec/config-remote-schema/tasks.md:180 (task 5.1 requires every requirement ID to appear in a test docstring, and no test may cite an ID that does not exist)\", \"spec/spec/config-remote-schema/design.md:113-144,202-221 (Requirements Traceability table maps IDs to components and to the files config/fetch.py, config/schema.py and writeback/remote_guard.py)\", \"tests/test_set_remote.py:403 (\\\"Req 6.1, 6.2, 6.6\\\" docstring for the remote read-only refusal)\", \"tests/test_schema.py:164-220 (Req 4.5 walker tests)\", \"tests/test_set_literals.py:252 (Req 9.2 --include=TEXT exits 2)\", \"tests/test_e2e_remote.py:565 (Req 2.3, 3.6)\", \"spec/spec/config-set-writeback/requirements.md:89,133,164,186 (decision D and 2.7–2.8 marked as superseded by step 7)\"], \"notes\": \"Starting from the spec, I could follow explicit links all the way through: requirement ID, then the task, then the named test file whose docstring cites the same Req ID, then the code file the design names. I sampled the IDs this step introduced (1.6, 2.3, 3.4, 3.6, 4.5, 5.4, 5.6, 6.1, 8.8, 9.2, 9.6) and every one has a test that asserts it, and the earlier text this step overrode is marked superseded. One small weakness: Req IDs carry no spec name, so the same number means different things in older test files. The per-spec file list in tasks.md resolves this.\"}",
+  "score": 4,
+  "status": "ok"
+}

@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/setup/shell/01.log:1-14 (`method --claude-skills` ran without prompts, wrote 50/50 files and exited 0)",
+    "/judge/setup/shell/01.log:12-13 (in a non-interactive run it keeps existing files unless given --yes or --overwrite=force, which matters for upgrades)",
+    "/judge/setup/setup-turns.json:6 (the one documented agent turn, /method-command, finished ok in 66s)",
+    "/judge/setup/checklist.json:33-102 (all 17 checklist items ok, including method.version 3.1.0)",
+    "/judge/setup/versions.json:8 (method pinned at 3.1.0 in the image)",
+    "/judge/setup/egress.log:8-31 (network traffic went only to api.anthropic.com and api.github.com)"
+  ],
+  "notes": "The setup took one pinnable install command and one documented agent turn, with no workarounds and no harness changes for this arm, and every checklist item passed with no tool errors in the transcript. The one trap when rolling this out to many repos: a non-interactive re-run silently keeps existing files, so upgrades need an explicit --yes or --overwrite=force, which can then overwrite local edits to templates or steering files.",
+  "raw": "{\"score\": 4, \"evidence\": [\"/judge/setup/shell/01.log:1-14 (`method --claude-skills` ran without prompts, wrote 50/50 files and exited 0)\", \"/judge/setup/shell/01.log:12-13 (in a non-interactive run it keeps existing files unless given --yes or --overwrite=force, which matters for upgrades)\", \"/judge/setup/setup-turns.json:6 (the one documented agent turn, /method-command, finished ok in 66s)\", \"/judge/setup/checklist.json:33-102 (all 17 checklist items ok, including method.version 3.1.0)\", \"/judge/setup/versions.json:8 (method pinned at 3.1.0 in the image)\", \"/judge/setup/egress.log:8-31 (network traffic went only to api.anthropic.com and api.github.com)\"], \"notes\": \"The setup took one pinnable install command and one documented agent turn, with no workarounds and no harness changes for this arm, and every checklist item passed with no tool errors in the transcript. The one trap when rolling this out to many repos: a non-interactive re-run silently keeps existing files, so upgrades need an explicit --yes or --overwrite=force, which can then overwrite local edits to templates or steering files.\"}",
+  "score": 4,
+  "status": "ok"
+}

@@ -1,0 +1,3 @@
+```json
+{"score": null, "status": "not_applicable", "evidence": ["/judge/questions.md:3-20", "/judge/transcript.md:15"], "notes": "The only item in this step is the step_done report at transcript line 15. It describes the work and the choices the arm made where the spec was silent, but it asks the PO nothing. With no question at this step, there is nothing to judge for research_first."}
+```

@@ -1,0 +1,49 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "name: demo  # project\nretry: 3\nagents:\n  coder:\n    model: opus\n    tools: [git, shell]\n  prompt: file:prompt.txt",
+        "input": "`config history` (first run on a project that has never been imported)",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0. It prints 6 \"import\" entries (seq 1-6) with actor unknown and no reason: name=demo, retry=3, agents.coder.model=opus, agents.coder.tools.0=git, agents.coder.tools.1=shell, and agents.prompt=\"Be concise.\\n\" (the content of prompt.txt, not the `file:` reference). The config files are unchanged."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history` (run again right away)",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0. It prints the same 6 entries with the same timestamps and change id. Nothing is imported a second time."
+        }
+      },
+      {
+        "before": "",
+        "input": "`TROUPE_ACTOR=agent:planner config set agents.coder.model sonnet --reason \"try sonnet\"`, then `config history agents`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: set exits 0 with no output, and the file now reads:\n  coder:\n    model: sonnet\nThe comment `# project` is kept. Then `history agents` exits 0 and prints seq 3-6 (the imported agents.* entries) plus a new entry: {\"seq\": 7, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"agent\", \"id\": \"planner\"}, \"via\": \"cli\", \"reason\": \"try sonnet\", ...}"
+        }
+      }
+    ],
+    "in_practice": "All six arms behaved the same; only timestamps and change ids differed. These runs never edited the file by hand, so they don't show what history does with a change made outside the tool. Going by the route's own description (never reconciles), such an edit would not show up in history.",
+    "stakes": "Whether `config history` can be trusted as a record of every config change. Route 1 builds a starting record the first time history is read and logs changes made through the tool. It never checks the file for edits made outside the tool.",
+    "tradeoff": "Route 1: history is simple and stable, but it only records the initial import and changes made through the tool, so hand edits can leave history out of step with the file."
+  },
+  "plan_why": "Shows that a fresh theatre's first `history` imports it (one import event per leaf, including list items and a text-include leaf), that a second `history` adds nothing, and that a later `set` shows up as its own events. The other half of the route, 'never reconciles on a hand edit', cannot be shown because the sandbox cannot edit files between commands.",
+  "routes": [
+    [
+      "Never reconciles; still imports a never-imported theatre",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

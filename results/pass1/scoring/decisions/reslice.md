@@ -1,0 +1,189 @@
+# Topics to re-slice after rating (owner, 2026-10-10)
+
+The owner rates **behaviour**, not the aligner's routes. Where arms on one route behave differently, the
+per-route rating on the sheet is a placeholder. Fix these up after the sitting so each behaviour group gets
+its own rating (arms identified only through `.import/`, never shown to the owner).
+
+- **T6**: two questions, rated separately.
+  - Reproduces a valid file: route 1 = 3, route 2 = 5.
+  - Detects a fidelity problem when writing: route 1 = 5, route 2 = n/a.
+  - Sheet placeholder: 4 5 (averaged).
+- **T7**: unknown removes replay as no effect, so every arm = 5.
+  - The route-2 arm that logs a block replacement's remove before its set (swapped history order) = 2.
+  - Sheet placeholder: 5 5. The owner did not accept this weighting.
+- **T8**: `config show` keeps the `!literal` mark = 5; drops it = 2.
+  - Route 1 drops it (2).
+  - Route 2: the two arms that keep it = 5, the three that drop it = 2.
+  - Sheet placeholder: 2 3.
+- **T10**: every arm refuses both files (exit 4).
+  - Error says what to do ("keep only one" / "remove one") = 5. Problem only = 4.
+  - Route 1: both arms problem-only (4).
+  - Route 2: two arms say what to do (5), two problem-only (4).
+  - Sheet placeholder: 4 4.5.
+- **T11**: single-newline value `config set e "\n"`.
+  - Block `|+` that round-trips = 4.5.
+  - Quoted `"\n"` = 4.
+  - Quoted, but show disagrees with the file = 2.
+  - Refuses a valid value = 3.
+  - Route 2 (one arm) = 4.5.
+  - Route 1: two arms 4.5, one 4, one 2, one 3.
+  - Sheet placeholder: 3.5 4.5.
+- **T13**: comment column when a value's length changes.
+  - Keeps it everywhere = 5. Drifts when a flow list grows = 1 (contract rule).
+  - Route 2 (one arm) = 5.
+  - Route 1: four arms 5, one arm 1.
+  - Sheet placeholder: 4 5.
+- **T15**: replacing a list entry whose first key is on the dash line.
+  - Refuses = 4. Writes and keeps the remaining comments = 5. Writes and strips the comments = n/a (the proposal, accepted).
+  - Route 1 = 4. Route 2 = 5.
+  - Route 3: two arms 5, two arms n/a.
+  - Sheet placeholder: 4 5 5.
+- **T16**: complex keys; every arm refuses (exit 4).
+  - Error names the file and line = 5. File only = 4. Neither = 3.
+  - Route 1: two arms 4, one arm 3.
+  - Route 2: two arms 5, one arm 4.
+  - Sheet placeholder: 3.5 4.5.
+- **T20**: duplicate key in the file.
+  - Raises it = 5. Silently takes the last value = 2. Silently takes the first value, with get/show/history disagreeing = 1.
+  - Route 1: both arms 5.
+  - Route 2: one arm 5, two arms 2, one arm 1.
+  - Sheet placeholder: 5 2.5.
+- **T25**: error wording (exit codes identical). Rated on the out-of-range index message.
+  - Tells you the fix = 4. Gives the facts = 3. Bare = 3.
+  - Route 1: one arm 4, three arms 3.
+  - Route 2: one arm 4, one arm 3.
+  - Sheet placeholder: 3 3.5.
+- **T26**: `file:` value in set.
+  - Drops the mark in show = 2. Keeps it, exit 3 = 4. Keeps it, exit 4 (load error, incorrect) = 3.
+  - Route 1 = 2. Route 2 = 2.
+  - Route 3: one arm 4, one arm 3.
+  - Sheet placeholder: 2 2 3.5.
+- **T27**: replacing an inline collection.
+  - Becomes a block = 3. Stays inline but the comment gap shrinks = 3. Stays inline with spacing kept = 4.
+  - Route 1 = 3. Route 2 = 3.
+  - Route 3: three arms 3, one arm 4.
+  - Sheet placeholder: 3 3 3.
+- **T33**: two questions.
+  - **Q1, history escaping:** all ASCII-escaped = 1. Readable = 4 (would be better still with U+2028 escaped).
+  - **Q2, U+2028 in the config file:** escaped `\L` in quotes = 4. Raw in quotes = 2. Raw unquoted = 2.
+  - Route 1: Q1 1, Q2 2.
+  - Route 2: Q1 4, Q2 2.
+  - Route 3: Q1 4 for all four arms. Q2: two arms 4, one arm (raw unquoted) 2, one arm (raw quoted) 2.
+  - Sheet placeholder (per-arm averages): 1.5 3 3.5.
+- **T34**: history after the config breaks its schema.
+  - Keeps working = 5. Fails = 4.
+  - Route 1 = 5. Route 2 = 4.
+  - Route 3: one arm 5, two arms 4.
+  - Sheet placeholder: 5 4 4.5.
+- **T36**: include cycle refused on write.
+  - Exit 3 = 5. Exit 4 (load error, wrong on a write) = 4, one point off, consistent with T26.
+  - Route 1: two arms 5, one arm 4.
+  - Route 2 = 5.
+  - Sheet placeholder: 4.5 5.
+- **T46**: refusing a key over 1024 characters (none names the real cause or the fix).
+  - A, exit 3 with a clear "nothing written" refusal = 4. B, exit 3 but worded as if it wrote ("written value cannot be read back") = 3. C, exit 4 with only the raw parser trace = 2.
+  - Route 1: one arm A, one arm B.
+  - Route 2: three arms A, one arm C.
+  - Sheet placeholder: 3.5 3.5.
+- **T47**: malformed PATH (`a..b`, `models.`, `""`). All arms exit 2, nothing written, no history; only wording differs.
+  - A, states the rule (no leading, trailing or doubled '.') = 5. B, states the problem (empty segment) = 4. C, bare "invalid path" = 3.
+  - Route 1: one arm A, one arm B.
+  - Route 2: two arms B, two arms C.
+  - Sheet placeholder: 4.5 3.5.
+- **T50**: quoting when `config set` replaces a section and drops its last entry.
+  - Owner: C is correct. The set names every entry, so the result should match it, and there's no semantic difference.
+  - A, copies the last remaining entry = 4. B, copies the deleted entry = 4. C, rewrites the section unquoted, as given = 5.
+  - Route 1: one arm A, two arms B.
+  - Route 2: one arm B, two arms C.
+  - Sheet placeholder: 4 4.5.
+- **T48**: a set that changes troupe.yml and a file: prompt (re-run). The failure-partway case was never exercised, so rollback is code-only.
+  - A, writes both files, keeps the link and comment, refuses a non-string prompt = 5. B, copies the prompt into troupe.yml (link and comment lost), accepts `prompt: 42` over the link = 2.
+  - Route 1: one arm A, two arms B.
+  - Route 2: A. Route 3: two arms A.
+  - Sheet placeholder: 3 5 5.
+- **T51**: does a failed config load leave state behind (re-run with file listings).
+  - A, nothing left = 5. B, an empty lock file left = 4. C, a lock file plus a new event database left = 2.
+  - Route 1: four arms A, one arm B.
+  - Route 2: C.
+  - Sheet placeholder: 5 2.
+- **T61**: a commented list item replaced by a map or list.
+  - Owner: the comment belongs on the item (the whole map), not on its first key.
+  - A, bare dash keeps the comment, collection below = 4. B, compact, comment lands on the first key = 3.
+  - Route 1: two arms A, two arms B.
+  - Route 2: two arms A.
+  - Sheet placeholder: 3.5 4.
+- **T57**: where the replacing set goes among the remove events (re-run).
+  - Owner: a scalar can't hold keys, so the ideal is one atomic `set m = 0` that implicitly drops the children. The removes are superfluous. All events share one change id.
+  - A, set then removes = 4. B, removes then set = 3.
+  - Route 1: A. Route 2: two arms A, one arm B. Route 3: A. Route 4: A.
+  - Sheet placeholder: 4 3.5 4 4.
+- **T59**: a non-mapping root file (re-run with `~`, `---`, a scalar and a list).
+  - A, exit 4 on every command with "top level must be a mapping" = 5. B, show prints it and set exits 5 with a not-found style message = 3.
+  - Route 1: two arms A, three arms B.
+  - Route 2: B.
+  - Sheet placeholder: 4 3.
+- **T66**: writing into a file that two agents include.
+  - W, writes the shared file silently (reviewer changes too, no warning) = 4. R1, refuses naming the conflict ("would disturb reviewer.model"), even with --in-include = 3. R2, refuses with a vague message ("byte-surgically" / "would not read back as intended") = 2.
+  - Route 1: W. Route 2: W.
+  - Route 3: one arm R1, one arm R2.
+  - Route 4: one arm W, one arm R2.
+  - Sheet placeholder: 4 4 2.5 3.
+- **T68**: how exponent floats are written to the file.
+  - P, keeps the typed spelling (1e20, 1e-7) = 5. N, rewrites to repr (1e+20, 1e-07) = 4.
+  - Route 1: two arms P, one arm N.
+  - Route 2: one arm P, two arms N.
+  - Sheet placeholder: 4.5 4.5.
+- **T70**: files reached through a symlink (re-run). Two questions; average them per arm.
+  - Q1, source naming: R, real path everywhere = 5. L, each as written, so one file has two names = 4. S, symlinked name even for a key written with the real path = 2.
+  - Q2, set through a symlinked theatre: G, writes and logs one change by the actor = 5. H, writes but logs the shared side as an unknown hand edit = 2. F, refuses with a vague message = 2.
+  - Route 1 (5 arms): Q1 two R, two L, one S. Q2 two G, one H, two F. The arm mapping across Q1 and Q2 is needed from the context record.
+  - Route 2: R and G.
+  - Sheet placeholder: 3.5 5 (route 1 = mean of Q1 4.0 and Q2 3.2).
+- **T74**: what a command leaves in .troupe (re-run with watch and listings). The lock file is counted at T44 and signal handling at T117.
+  - A, clean (database and config only) = 5. B, an empty lock file left = 5. C, -wal/-shm side files left after watch was killed (exit 137) = 4.
+  - Route 1: two arms A.
+  - Route 2: two arms B, two arms C.
+  - Sheet placeholder: 5 4.5.
+- **T78**: where --theatre is accepted (re-run).
+  - Owner: theatre underpins everything, so before the command feels natural; forcing it after the subcommand is overly strict; anywhere is most expected.
+  - Anywhere = 5. Two places (config level and subcommand) = 4. Subcommand only = 3.
+  - Route 1: two places.
+  - Route 2: three arms subcommand only.
+  - Route 3: one arm anywhere, one arm two places.
+  - Sheet placeholder: 4 3 4.5.
+- **T81**: how non-string scalars are spelled when written. This is the general case of T68.
+  - K, keeps the typed spelling = 5. C, canonical spelling = 4.
+  - Route 1: C. Route 2: K.
+  - Route 3: one arm K, one arm C.
+  - Sheet placeholder: 4 5 4.5.
+- **T82**: odd VALUE forms passed to set. Four cases; average them per arm.
+  - Empty "": refuse = 5. Write null = 3.
+  - `a: b`: refuse with the fix = 5. Refuse without the fix = 4 (owner, after the reslice run). Silently write a map = 3.
+  - `!!str 5`: honour as '5' = 5. Refuse = 4. Drop the tag and write the number 5 = 1.
+  - `&n 1`: refuse = 5. Silently drop the anchor = 3.
+  - Route 1: null, map, number, drop (2.5).
+  - Route 2 (3 arms): one arm refuses all four. The other two refuse the map; empty split refuse/null; tag split '5'/number; both drop the anchor. The arm mapping is needed from the context record.
+  - Route 3 (2 arms): null, refuse map, refuse anchor; tag split '5'/refuse.
+  - Sheet placeholder: 2.5 4 4.5.
+- **T87**: watch's stderr report of a broken hand edit (re-run).
+  - A, one line with location and reason = 5. D, multi-line parser dump = 4. X, no location and no reason = 2.
+  - Route 1: three arms A, one arm D.
+  - Route 2: one arm D, one arm X.
+  - Sheet placeholder: 5 3.
+- **T96**: re-wrapping a folded scalar. Unanimous route; the arms split on reordered paragraphs.
+  - K, keeps a moved unchanged paragraph's bytes = 5. W, re-wraps it = 4.
+  - Route 1: one arm K, five arms W.
+  - Sheet placeholder: 4.
+- **T99**: indentation for new list items in a file with flush lists. Unanimous route; the arms split.
+  - F, follows the file's flush list style = 5. I, indents the items and mixes styles = 3.
+  - Route 1: four arms F, two arms I.
+  - Sheet placeholder: 4.5.
+- **T73**: corrupt history store (the earlier examples were restored after three pin-rejected re-runs).
+  - T, every command (reads included) exits 1 with a Python traceback = 1. U, didn't open the planted junk file, so untested = n/a.
+  - Route 1: three arms U.
+  - Route 2: two arms T, one arm U.
+  - Sheet placeholder: n/a 1. Only the two T arms get the 1; the U arm in route 2 is n/a.
+- **T117**: stopping watch with SIGINT or SIGTERM (re-run). Unanimous route; the arms split. This also absorbs the Ctrl-C issues deferred from T74, T84, T85, T87, T89, T101, T115 and T116.
+  - C, always exits 0 cleanly = 5. S, stops promptly but exits 143 or 130 = 4. K, sometimes doesn't stop and is force-killed (137), leaving -wal/-shm = 2. A Ctrl-C traceback seen elsewhere goes with K or S per arm.
+  - Route 1: two arms C, about two S, about two K. The exact mapping is needed from the context record.
+  - Sheet placeholder: 3.5.

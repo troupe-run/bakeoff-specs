@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "",
+        "input": "`config history`",
+        "observed": true,
+        "results": {
+          "1": "All three arms: exit 0. None of them read the planted junk file. Each printed a fresh two-row history it had just made by importing troupe.yml: `model` → \"opus\" and `retry` → 3, both with op \"import\" and actor kind \"unknown\". No warning about the corrupt file.",
+          "2": "Two arms: exit 1, nothing on stdout, and a full Python traceback on stderr ending in `sqlite3.DatabaseError: file is not a database`. One arm: same as route 1 (exit 0, a fresh two-row import history, no warning)."
+        }
+      },
+      {
+        "before": ".troupe/troupe.yml:\nmodel: opus  # main model\nretry: 3\n",
+        "input": "`config get model`",
+        "observed": true,
+        "results": {
+          "1": "All three arms: exit 0, prints `opus`.",
+          "2": "Two arms: exit 1 with the same full traceback (`sqlite3.DatabaseError: file is not a database`) and no value printed. A plain read fails because the store is opened first. One arm: exit 0, prints `opus`."
+        }
+      },
+      {
+        "before": ".troupe/troupe.yml:\nmodel: opus  # main model\nretry: 3\n",
+        "input": "`TROUPE_ACTOR=agent:coder config set --include agent file:sub` (where `.troupe/sub` is a directory)",
+        "observed": true,
+        "results": {
+          "1": "All three arms: exit 3, troupe.yml unchanged, and each arm words the error differently: `/theatre/.troupe/troupe.yml: agent: written value cannot be read back: ... include target /theatre/.troupe/sub does not exist or is not a regular file`; `troupe: agent: include target is a directory: /theatre/.troupe/sub (included from /theatre/.troupe/troupe.yml, at agent); no file changed`; `troupe: error: agent: the change to /theatre/.troupe/troupe.yml would not load back (/theatre/.troupe/sub: is a directory, not a file); no file was changed`.",
+          "2": "Two arms: exit 1 with the corrupt-store traceback. The include problem is never reached, and troupe.yml is unchanged. One arm: exit 3, `troupe: write refused: agent: cannot write this change faithfully (/theatre/.troupe/troupe.yml: include target /theatre/.troupe/sub not found)`, troupe.yml unchanged."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history model` (after the commands above)",
+        "observed": true,
+        "results": {
+          "1": "All three arms: exit 0. Shows only the single import row for `model` (\"opus\"). The refused set left no entry.",
+          "2": "Two arms: exit 1 with the same traceback. One arm: exit 0, shows the single import row for `model`."
+        }
+      }
+    ],
+    "in_practice": "Route 1's promised 'exit 4 naming the store' never showed up, because no route 1 arm opened any of the planted corrupt files. They kept history somewhere else and started over without a warning. So this run doesn't show what route 1 does with a truly corrupt store, only that none of its arms crashed here. On route 2, the two arms that did open a corrupt file made every command unusable, and each one dumped about 40 lines of Python internals instead of a message. The design notes also say one route 1 arm accepted a traceback for a damaged history row missing a field; this test did not exercise that.",
+    "stakes": "If the history store is damaged, a user could get a clear one-line error, a Python crash dump on every command (including plain reads like `config get`), or no sign of the damage at all, with a fresh history quietly started next to the broken file. This test planted junk files named `.troupe/events.db`, `events.sqlite`, `eventstore.db` and `troupe.db`, each containing \"this is not a sqlite database, it is corrupt history\".",
+    "tradeoff": "Route 1: no crashes in this test, but its clean exit-4 error went untested, and a broken file under one of these names was ignored with no warning. Route 2: no error handling for the store, so in two of three arms a corrupt file meant a traceback and exit 1 on every command, reads included."
+  },
+  "plan_why": "Garbage text sits at likely event-store file names, and a set points an include at a directory; this shows whether each implementation exits 4 with a message naming the store or file, or crashes with a traceback (if no guessed store name matches, the store commands simply succeed)",
+  "routes": [
+    [
+      "Exit 4 naming the store (sqlite, persistence and OS errors; corrupt or unknown lineage values)",
+      [
+        "Arm A",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

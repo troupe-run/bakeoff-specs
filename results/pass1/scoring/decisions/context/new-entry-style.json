@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "agents:\n  coder: opus\n  'reviewer': 'sonnet'",
+        "input": "`config set agents.planner haiku`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads:\nagents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'",
+          "2": "exit 0; same as route 1: the new key copies the single quotes of the entry above it:\nagents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'"
+        }
+      },
+      {
+        "before": "tags:\n  - alpha\n  - \"beta\"",
+        "input": "`config set tags.2 gamma`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads:\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"",
+          "2": "exit 0; same as route 1:\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\""
+        }
+      },
+      {
+        "before": "teams:\n  red: one\n  \"blue\": \"two\"\n  'green': 'three'",
+        "input": "`config set teams '{red: one, blue: two, gold: four}'` (this replaces the section, drops green and adds gold)",
+        "observed": true,
+        "results": {
+          "1": "exit 0. Arms on this route differed. One arm: gold copies the double quotes of blue, now the last remaining entry:\nteams:\n  red: one\n  \"blue\": \"two\"\n  \"gold\": \"four\"\nTwo arms: gold copies the single quotes of the deleted green entry:\nteams:\n  red: one\n  \"blue\": \"two\"\n  'gold': 'four'",
+          "2": "exit 0. Arms on this route differed. One arm: gold copies the single quotes of the deleted green entry:\nteams:\n  red: one\n  \"blue\": \"two\"\n  'gold': 'four'\nTwo arms: the whole section is rewritten without quotes, and the existing blue entry loses its quotes too:\nteams:\n  red: one\n  blue: two\n  gold: four"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set fresh.name 'x y'` (a new section with nothing to copy)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the following is added at the end, unquoted:\nfresh:\n  name: x y",
+          "2": "exit 0; same as route 1:\nfresh:\n  name: x y"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show` after the four commands above",
+        "observed": true,
+        "results": {
+          "1": "exit 0; same output in every arm, quotes removed:\nteams:\n  red: one\n  blue: two\n  gold: four\nfresh:\n  name: x y",
+          "2": "exit 0; identical to route 1"
+        }
+      }
+    ],
+    "in_practice": "Adding one key or list item gave the same result on both routes: the new entry copies the quoting of the entry above it, and a brand-new section gets no quotes. The routes only differed when `config set` replaced a whole section and dropped its last entry. Neither route was consistent across its arms in that case. On route 1 the new entry was quoted in one of two ways, but no existing quoting changed. On route 2, two arms stripped the quotes from the untouched blue entry. `config show` displays the values the same way everywhere, so these differences only appear in the file on disk.",
+    "stakes": "When you add a key or list item to a hand-edited config, the tool decides how to quote it. If it guesses wrong, the file ends up with mixed quoting styles, or quotes you wrote are removed. In one case below, replacing a whole section with `config set` strips quotes from an entry you did not change.",
+    "tradeoff": "Route 1: never removes your existing quotes, but a new key can still copy the style of an entry the same command just deleted. Route 2: same as route 1 for single additions, but replacing a section can remove quotes from entries you didn't change."
+  },
+  "plan_why": "Shows which quoting new keys and list items get: the style of the entry just before them (not the first entry), the last remaining entry's style after a whole-mapping set deletes the last key, and plain style when there is no sibling.",
+  "routes": [
+    [
+      "Copy the preceding sibling's style (after a merge deletes the last entry, the last remaining one), else the minimal style",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

@@ -1,0 +1,5 @@
+```json
+{"score": 4, "evidence": ["/judge/setup/shell/01.log:1-25 (`method init --tools claude` exit 0, 6 skills and 6 commands created)", "/judge/setup/shell/02.log:1-6 (`method config set telemetry.enabled false`, a documented config command, exit 0)", "/judge/setup/shell/03.log:1-5 (writes project principles into the `context:` key of spec/config.yaml, which is the method's own config field; exit 0)", "/judge/setup/checklist.json:33-97 (all method.* and setup.* items ok, including skills, commands, telemetry-off, context and entry-commands)", "/judge/setup/setup-turns.json:1 (no agent setup turns were needed)", "/judge/setup/egress.log:6-11 (only api.github.com was reached; no extra network allowance)"]}
+```
+
+Setup took three commands: init, turning telemetry off through the documented config command, and adding the project context to the config.yaml `context` field. No retries, patches or extra servers were needed, every checklist item passed, and the egress log shows only api.github.com was contacted. A new adopter would not have been stuck at any point.

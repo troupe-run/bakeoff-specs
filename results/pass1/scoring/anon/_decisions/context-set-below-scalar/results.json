@@ -1,0 +1,559 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.reviewer.model",
+          "haiku"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.planner.model",
+          "opus"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.tester.model",
+          "haiku"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# team config\nagents:\n  coder: opus  # main model\n  reviewer:\n  planner: null  # tbd\nretry: 3\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "/theatre/.troupe/troupe.yml: agents.coder.model: not found: a scalar value has no children (at segment 'model')\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer.model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "/theatre/.troupe/troupe.yml: agents.reviewer.model: not found: a null value has no children (at segment 'model')\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.planner.model",
+                "opus"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "/theatre/.troupe/troupe.yml: agents.planner.model: not found: a null value has no children (at segment 'model')\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.tester.model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\nagents:\n  coder: opus  # main model\n  reviewer:\n  planner: null  # tbd\n  tester:\n    model: haiku\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder: opus\n  reviewer: null\n  planner: null\n  tester:\n    model: haiku\nretry: 3\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.coder.model: agents.coder is a scalar, not a mapping or list\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer.model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.reviewer.model: agents.reviewer is a scalar, not a mapping or list\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.planner.model",
+                "opus"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.planner.model: agents.planner is a scalar, not a mapping or list\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.tester.model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\nagents:\n  coder: opus  # main model\n  reviewer:\n  planner: null  # tbd\n  tester:\n    model: haiku\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder: opus\n  reviewer: null\n  planner: null\n  tester:\n    model: haiku\nretry: 3\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.coder.model: agents.coder is a scalar\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer.model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.reviewer.model: agents.reviewer is a scalar\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.planner.model",
+                "opus"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.planner.model: agents.planner is a scalar\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.tester.model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\nagents:\n  coder: opus  # main model\n  reviewer:\n  planner: null  # tbd\n  tester:\n    model: haiku\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder: opus\n  reviewer: null\n  planner: null\n  tester:\n    model: haiku\nretry: 3\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: error: agents.coder.model: its parent is a scalar, not a mapping or list\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer.model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: error: agents.reviewer.model: its parent is a scalar, not a mapping or list\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.planner.model",
+                "opus"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: error: agents.planner.model: its parent is a scalar, not a mapping or list\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.tester.model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\nagents:\n  coder: opus  # main model\n  reviewer:\n  planner: null  # tbd\n  tester:\n    model: haiku\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder: opus\n  reviewer: null\n  planner: null\n  tester:\n    model: haiku\nretry: 3\n"
+            }
+          ]
+        }
+      ],
+      "route": "Exit 5; a scalar or null parent is not a mapping (a bare `key:` counts as null)",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: path not found: agents.coder.model (agents.coder is not a mapping or list)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer.model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: path not found: agents.reviewer.model (agents.reviewer is not a mapping or list)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.planner.model",
+                "opus"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: path not found: agents.planner.model (agents.planner is not a mapping or list)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.tester.model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\nagents:\n  coder: opus  # main model\n  reviewer:\n  planner: null  # tbd\n  tester:\n    model: haiku\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder: opus\n  reviewer: null\n  planner: null\n  tester:\n    model: haiku\nretry: 3\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.coder.model: agents.coder is not a mapping or list\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer.model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.reviewer.model: agents.reviewer is not a mapping or list\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.planner.model",
+                "opus"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.planner.model: agents.planner is not a mapping or list\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.tester.model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# team config\nagents:\n  coder: opus  # main model\n  reviewer:\n  planner: null  # tbd\n  tester:\n    model: haiku\nretry: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder: opus\n  reviewer: null\n  planner: null\n  tester:\n    model: haiku\nretry: 3\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

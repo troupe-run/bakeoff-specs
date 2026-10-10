@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "Which events a set records and in what order",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Deterministic; the same order is reused by reconcile",
+      "route": "Leaf diff of before/after; set events in new document order, then remove events in old document order",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "None recorded",
+      "route": "Leaf diff with one event per changed/new/removed leaf; order not pinned",
+      "route_no": 2
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "None recorded",
+      "route": "Leaf diff; remove events in old document order before set events",
+      "route_no": 3
+    }
+  ]
+}

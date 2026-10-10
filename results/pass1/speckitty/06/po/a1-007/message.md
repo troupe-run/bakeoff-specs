@@ -1,0 +1,1 @@
+The WP01 implementer (python-pedro profile) is running in the lane-a worktree. The "1 pre-existing failure" Spec Kitty reported is a tooling artifact: its coverage step produced no JUnit report. It isn't a real test failure. I also committed the claim bookkeeping that Spec Kitty left in the main checkout (`da4fb6d`). Next: review WP01 when it finishes, then WP02.

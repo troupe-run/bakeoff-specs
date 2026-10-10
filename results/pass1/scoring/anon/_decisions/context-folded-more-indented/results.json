@@ -1,0 +1,555 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "note"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "note",
+          "\"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph changed now and ends.\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "note",
+          "\"First paragraph line one continues here.\\n\\n  indented code CHANGED\\n\\nLast paragraph changed now and ends.\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "summary",
+          "\"Short folded text on two lines.\\n  new indented line\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "note"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# folded scalars\nnote: >\n  First paragraph line one\n  continues here.\n\n    indented code line\n\n  Last paragraph is here\n  and ends.\nsummary: >\n  Short folded text\n  on two lines.\nother: x  # end\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "note"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "First paragraph line one continues here.\n\n  indented code line\n\nLast paragraph is here and ends.\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "note",
+                "\"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph changed now and ends.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# folded scalars\nnote: >\n  First paragraph line one\n  continues here.\n\n    indented code line\n\n  Last paragraph changed\n  now and ends.\nsummary: >\n  Short folded text\n  on two lines.\nother: x  # end\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "note",
+                "\"First paragraph line one continues here.\\n\\n  indented code CHANGED\\n\\nLast paragraph changed now and ends.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "/theatre/.troupe/troupe.yml: note: the line '  indented code CHANGED' would be more-indented in a folded block\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "summary",
+                "\"Short folded text on two lines.\\n  new indented line\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "/theatre/.troupe/troupe.yml: summary: the line '  new indented line' would be more-indented in a folded block\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "note"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"note\", \"old\": null, \"new\": \"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph is here and ends.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:04:30.192072Z\", \"reason\": null, \"change\": \"65248c4c-752d-4f8e-9931-567c754de555\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"note\", \"old\": \"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph is here and ends.\\n\", \"new\": \"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph changed now and ends.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:04:30.773034Z\", \"reason\": null, \"change\": \"5fd23586-615f-4b69-9e75-478fa15bd0f5\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Edit allowed; existing indented runs are kept as opaque units; only adding a new more-indented line exits 3",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "note"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "First paragraph line one continues here.\n\n  indented code line\n\nLast paragraph is here and ends.\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "note",
+                "\"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph changed now and ends.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: note: cannot rewrite this value safely (unsupported tag or block layout)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "note",
+                "\"First paragraph line one continues here.\\n\\n  indented code CHANGED\\n\\nLast paragraph changed now and ends.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: note: cannot rewrite this value safely (unsupported tag or block layout)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "summary",
+                "\"Short folded text on two lines.\\n  new indented line\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: summary: the new value would need a more-indented line in a folded scalar\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "note"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"note\", \"old\": null, \"new\": \"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph is here and ends.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:04:33.465663Z\", \"reason\": null, \"change\": \"e4ab7796-1a74-45d7-b722-129754370fc7\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "note"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "First paragraph line one continues here.\n\n  indented code line\n\nLast paragraph is here and ends.\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "note",
+                "\"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph changed now and ends.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: write refused: /theatre/.troupe/troupe.yml: value would put a more-indented line into a folded scalar\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "note",
+                "\"First paragraph line one continues here.\\n\\n  indented code CHANGED\\n\\nLast paragraph changed now and ends.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: write refused: /theatre/.troupe/troupe.yml: value would put a more-indented line into a folded scalar\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "summary",
+                "\"Short folded text on two lines.\\n  new indented line\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: write refused: /theatre/.troupe/troupe.yml: value would put a more-indented line into a folded scalar\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "note"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"note\", \"old\": null, \"new\": \"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph is here and ends.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:04:39.677432Z\", \"reason\": null, \"change\": \"0fdc14ae-ebfa-42ee-84f7-fe47adc310f4\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "note"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "First paragraph line one continues here.\n\n  indented code line\n\nLast paragraph is here and ends.\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "note",
+                "\"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph changed now and ends.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: value would put a more-indented line into a folded scalar\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "note",
+                "\"First paragraph line one continues here.\\n\\n  indented code CHANGED\\n\\nLast paragraph changed now and ends.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: value would put a more-indented line into a folded scalar\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "summary",
+                "\"Short folded text on two lines.\\n  new indented line\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: value would put a more-indented line into a folded scalar\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "note"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"note\", \"old\": null, \"new\": \"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph is here and ends.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:04:42.406047Z\", \"reason\": null, \"change\": \"4ccfab9e-0d4e-46df-b82f-564c895a576b\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Refuse (exit 3) a change that would introduce a more-indented line",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "note"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "First paragraph line one continues here.\n\n  indented code line\n\nLast paragraph is here and ends.\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "note",
+                "\"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph changed now and ends.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: cannot write note: its folded value contains a more-indented line, and writing it back would put a more-indented line into a folded value\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "note",
+                "\"First paragraph line one continues here.\\n\\n  indented code CHANGED\\n\\nLast paragraph changed now and ends.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: cannot write note: its folded value contains a more-indented line, and writing it back would put a more-indented line into a folded value\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "summary",
+                "\"Short folded text on two lines.\\n  new indented line\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: cannot write summary: the change would put a more-indented line ('  new indented line') into a folded value\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "note"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"note\", \"old\": null, \"new\": \"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph is here and ends.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:04:36.489679Z\", \"reason\": null, \"change\": \"7da774d1-a3a8-4bea-a1e0-a0633ab9aa92\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "note"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "First paragraph line one continues here.\n\n  indented code line\n\nLast paragraph is here and ends.\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "note",
+                "\"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph changed now and ends.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: error: note: the new value would put a more-indented line into the folded value at line 2 of /theatre/.troupe/troupe.yml\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "note",
+                "\"First paragraph line one continues here.\\n\\n  indented code CHANGED\\n\\nLast paragraph changed now and ends.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: error: note: the new value would put a more-indented line into the folded value at line 2 of /theatre/.troupe/troupe.yml\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "summary",
+                "\"Short folded text on two lines.\\n  new indented line\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: error: summary: the new value would put a more-indented line into the folded value at line 10 of /theatre/.troupe/troupe.yml\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "note"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"note\", \"old\": null, \"new\": \"First paragraph line one continues here.\\n\\n  indented code line\\n\\nLast paragraph is here and ends.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:04:45.468054Z\", \"reason\": null, \"change\": \"416ae6ca-120f-4467-8da9-3cb61129b8e5\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Refuse any change to a folded value that already has more-indented lines",
+      "route_no": 3
+    }
+  ]
+}

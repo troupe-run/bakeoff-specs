@@ -1,0 +1,445 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "agents.coder.temperature"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "prompt"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "agents.coder"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "tools"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "model: opus\ntemperature: 0.2\n",
+      ".troupe/prompt.txt": "Be concise.\nBe kind.\n",
+      ".troupe/troupe.yml": "retry: 3  # attempts\nname: \"demo\"\nagents:\n  coder: file:agents/coder.yaml\ntools: [git, shell]\nprompt: file:prompt.txt\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.temperature"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "Be concise.\nBe kind.\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 5,
+              "stderr": "/theatre/.troupe/agents/coder.yaml: agents.coder: is a mapping, not a value; print it with `troupe config show agents.coder`\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "tools"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- git\n- shell\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "retry: 3\nname: demo\nagents:\n  coder:\n    model: opus\n    temperature: 0.2\ntools:\n  - git\n  - shell\nprompt: |\n  Be concise.\n  Be kind.\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.temperature"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "Be concise.\nBe kind.\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.coder: is a mapping, not a scalar (use `troupe config show agents.coder` to print it)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "tools"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- git\n- shell\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "retry: 3\nname: demo\nagents:\n  coder:\n    model: opus\n    temperature: 0.2\ntools:\n  - git\n  - shell\nprompt: |\n  Be concise.\n  Be kind.\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.temperature"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "Be concise.\nBe kind.\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.coder is a mapping, not a scalar; use 'troupe config show agents.coder'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "tools"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- git\n- shell\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "retry: 3\nname: demo\nagents:\n  coder:\n    model: opus\n    temperature: 0.2\ntools:\n  - git\n  - shell\nprompt: |\n  Be concise.\n  Be kind.\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.temperature"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "Be concise.\nBe kind.\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.coder: is a mapping, not a scalar; use `troupe config show agents.coder` to print it\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "tools"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- git\n- shell\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "retry: 3\nname: demo\nagents:\n  coder:\n    model: opus\n    temperature: 0.2\ntools:\n  - git\n  - shell\nprompt: |\n  Be concise.\n  Be kind.\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.temperature"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "Be concise.\nBe kind.\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: agents.coder: is a mapping, not a scalar (use `troupe config show agents.coder`)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "tools"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- git\n- shell\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "retry: 3\nname: demo\nagents:\n  coder:\n    model: opus\n    temperature: 0.2\ntools:\n  - git\n  - shell\nprompt: |\n  Be concise.\n  Be kind.\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.temperature"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "prompt"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "Be concise.\nBe kind.\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: error: agents.coder: is a mapping, not a scalar; use `troupe config show agents.coder` to print it\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "tools"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- git\n- shell\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "retry: 3\nname: demo\nagents:\n  coder:\n    model: opus\n    temperature: 0.2\ntools:\n  - git\n  - shell\nprompt: |\n  Be concise.\n  Be kind.\n"
+            }
+          ]
+        }
+      ],
+      "route": "get keeps step-1 scalar show; collections exit 5 with a message naming the path and `troupe config show`; show takes an optional PATH",
+      "route_no": 1
+    }
+  ]
+}

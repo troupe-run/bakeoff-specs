@@ -1,0 +1,888 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: opus\ncoder: file:agents/coder.yaml\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 2
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: sonnet\n",
+          "path": ".troupe/agents/coder.yaml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 2.5
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: [sonnet\n  temperature: : 0.3\n",
+          "path": ".troupe/agents/coder.yaml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: haiku\n",
+          "path": ".troupe/agents/coder.yaml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 2.5
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "model: opus\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/coder.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ncoder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: sonnet\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2.5,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: [sonnet\n  temperature: : 0.3\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: haiku\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2.5,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "/theatre/.troupe/troupe.yml: coder: include target /theatre/.troupe/agents/coder.yaml does not exist or is not a regular file\n/theatre/.troupe/agents/coder.yaml: invalid YAML: while parsing a flow sequence, expected ',' or ']', but got ':' (line 2, column 14)\n",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:22:24.060972Z\", \"reason\": null, \"change\": \"e7cdf0bb-ee24-4391-90a0-6c90bf265e18\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"coder.model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:22:26.268885Z\", \"reason\": null, \"change\": \"be016aba-49ef-4768-94f7-e95bf164c4b0\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"coder.model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:22:31.967943Z\", \"reason\": null, \"change\": \"a36151c7-5f57-4a60-b6f0-47e15dc08e40\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus\ncoder:\n  model: haiku\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ncoder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: sonnet\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2.5,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: [sonnet\n  temperature: : 0.3\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: haiku\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2.5,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "troupe: .troupe/agents/coder.yaml: included file not found (from .troupe/troupe.yml)\ntroupe: .troupe/agents/coder.yaml: invalid YAML (line 2, column 14): expected ',' or ']', but got ':'\n",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:22:36.753069Z\", \"reason\": null, \"change\": \"a864646e-6a1c-48a9-a181-6eeb018d7c4c\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"coder.model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:22:38.881670Z\", \"reason\": null, \"change\": \"e84b0ea3-bac1-45ff-8097-817ab3699186\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"coder.model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:22:44.532423Z\", \"reason\": null, \"change\": \"19957f7b-fe61-4518-a39a-d007b3c0d504\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus\ncoder:\n  model: haiku\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ncoder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: sonnet\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2.5,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: [sonnet\n  temperature: : 0.3\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: haiku\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2.5,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "troupe: include target not found: /theatre/.troupe/agents/coder.yaml (included from /theatre/.troupe/troupe.yml, at coder)\ntroupe: cannot parse /theatre/.troupe/agents/coder.yaml: expected ',' or ']', but got ':' at line 2\n",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:22:49.256785Z\", \"reason\": null, \"change\": \"efa36b81-d2e0-47bb-901f-3d5d4e50c89a\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"coder.model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:22:51.365990Z\", \"reason\": null, \"change\": \"afc8545c-6aba-4036-8a21-ec034384cb4d\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"coder.model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:22:57.042726Z\", \"reason\": null, \"change\": \"772d05fa-17e6-4b08-a39b-bc05b3a115a4\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus\ncoder:\n  model: haiku\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ncoder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: sonnet\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2.5,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: [sonnet\n  temperature: : 0.3\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: haiku\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2.5,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 137,
+              "signal": "SIGINT",
+              "stderr": "troupe: /theatre/.troupe/troupe.yml: include target /theatre/.troupe/agents/coder.yaml not found\ntroupe: /theatre/.troupe/agents/coder.yaml: invalid YAML: while parsing a flow sequence\n",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:23:01.812131Z\", \"reason\": null, \"change\": \"e19b717c-0f36-4e94-b501-a0d51879a7e6\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"coder.model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:23:03.928065Z\", \"reason\": null, \"change\": \"1abaf8b8-fd64-4844-8b66-24d6435e06e1\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"coder.model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:23:09.520942Z\", \"reason\": null, \"change\": \"2e834db3-3879-4da1-8771-2a86789920a8\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus\ncoder:\n  model: haiku\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ncoder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: sonnet\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2.5,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: [sonnet\n  temperature: : 0.3\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: haiku\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2.5,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "troupe: .troupe/agents/coder.yaml: included file not found (from ./.troupe/troupe.yml)\ntroupe: .troupe/agents/coder.yaml: invalid YAML: while parsing a flow sequence\n  in \"<unicode string>\", line 1, column 8:\n    model: [sonnet\n           ^ (line: 1)\nexpected ',' or ']', but got ':'\n  in \"<unicode string>\", line 2, column 14:\n      temperature: : 0.3\n                 ^ (line: 2)\n",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:23:16.163305Z\", \"reason\": null, \"change\": \"e7488785-72e4-41c0-8d34-4c31c3f6cd04\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"coder.model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:23:18.358272Z\", \"reason\": null, \"change\": \"7f03942f-00f5-4729-96d7-6aeff5f258e0\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"coder.model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:23:23.950793Z\", \"reason\": null, \"change\": \"4de63355-dd36-4227-bfeb-4ccffa123fc8\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus\ncoder:\n  model: haiku\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ncoder: file:agents/coder.yaml\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: sonnet\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2.5,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: [sonnet\n  temperature: : 0.3\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/agents/coder.yaml": "model: haiku\n"
+              },
+              "hand_edit": ".troupe/agents/coder.yaml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2.5,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "troupe: error: /theatre/.troupe/troupe.yml: included file /theatre/.troupe/agents/coder.yaml not found\ntroupe: error: /theatre/.troupe/agents/coder.yaml: invalid YAML: while parsing a flow sequence\n  in \"<unicode string>\", line 1, column 8:\n    model: [sonnet\n           ^ (line: 1)\nexpected ',' or ']', but got ':'\n  in \"<unicode string>\", line 2, column 14:\n      temperature: : 0.3\n                 ^ (line: 2)\n",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:23:28.861924Z\", \"reason\": null, \"change\": \"5551f94e-4b15-4b65-b714-023e80317f98\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"coder.model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:23:31.145147Z\", \"reason\": null, \"change\": \"eea23b2d-9188-43a4-bf2e-8015abc22328\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"coder.model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T07:23:36.577022Z\", \"reason\": null, \"change\": \"35c853cc-1ef9-49ca-9afa-9709d1e01eaf\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus\ncoder:\n  model: haiku\n"
+            }
+          ]
+        }
+      ],
+      "route": "Report on stderr (each distinct message once), record nothing, retry every tick, resume when it loads",
+      "route_no": 1
+    }
+  ]
+}

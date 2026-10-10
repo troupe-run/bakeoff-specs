@@ -1,0 +1,538 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "model",
+          "haiku"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# duplicate key below\nmodel: opus  # first\nretry: 3\nmodel: sonnet  # second\nagents:\n  coder:\n    temperature: 0.2\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.yml: model: duplicate key in mapping\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.yml: model: duplicate key in mapping\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.yml: model: duplicate key in mapping\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.yml: model: duplicate key in mapping\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.yml: model: duplicate key in mapping\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: cannot load /theatre/.troupe/troupe.yml: duplicate key model at line 4\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: cannot load /theatre/.troupe/troupe.yml: duplicate key model at line 4\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: cannot load /theatre/.troupe/troupe.yml: duplicate key model at line 4\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: cannot load /theatre/.troupe/troupe.yml: duplicate key model at line 4\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: cannot load /theatre/.troupe/troupe.yml: duplicate key model at line 4\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Exit 4 (load error)",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.yml (line 4, column 1): duplicate key 'model'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.yml (line 4, column 1): duplicate key 'model'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.yml (line 4, column 1): duplicate key 'model'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.yml (line 4, column 1): duplicate key 'model'\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.yml (line 4, column 1): duplicate key 'model'\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sonnet\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# duplicate key below\nmodel: opus  # first\nretry: 3\nmodel: haiku   # second\nagents:\n  coder:\n    temperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# duplicate key below\nmodel: opus  # first\nretry: 5\nmodel: haiku   # second\nagents:\n  coder:\n    temperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: haiku\nretry: 5\nagents:\n  coder:\n    temperature: 0.2\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:56:48.662632Z\", \"reason\": null, \"change\": \"bdddbd9b-2e8b-4c27-bbcf-36ba259dddf6\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:56:48.662632Z\", \"reason\": null, \"change\": \"bdddbd9b-2e8b-4c27-bbcf-36ba259dddf6\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:56:48.662632Z\", \"reason\": null, \"change\": \"bdddbd9b-2e8b-4c27-bbcf-36ba259dddf6\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:56:49.122121Z\", \"reason\": null, \"change\": \"4ef92b90-577f-463b-9877-81f69db2c43a\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:56:49.588741Z\", \"reason\": null, \"change\": \"81e2382c-23ed-49c1-ac92-1f3085593b6a\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sonnet\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# duplicate key below\nmodel: opus  # first\nretry: 3\nmodel: haiku   # second\nagents:\n  coder:\n    temperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# duplicate key below\nmodel: opus  # first\nretry: 5\nmodel: haiku   # second\nagents:\n  coder:\n    temperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: haiku\nretry: 5\nagents:\n  coder:\n    temperature: 0.2\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:56:51.434983Z\", \"reason\": null, \"change\": \"613abc2b-53fa-40b7-8118-1bdb2fc7b7aa\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:56:51.434983Z\", \"reason\": null, \"change\": \"613abc2b-53fa-40b7-8118-1bdb2fc7b7aa\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:56:51.434983Z\", \"reason\": null, \"change\": \"613abc2b-53fa-40b7-8118-1bdb2fc7b7aa\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"model\", \"old\": \"sonnet\", \"new\": \"haiku\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:56:51.939615Z\", \"reason\": null, \"change\": \"0cb72a71-72c0-42ca-99a3-c9693e9aa7f5\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:56:52.460521Z\", \"reason\": null, \"change\": \"b0e89d35-8402-441d-ab41-a77d42969a1c\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# duplicate key below\nmodel: haiku # first\nretry: 3\nmodel: sonnet  # second\nagents:\n  coder:\n    temperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# duplicate key below\nmodel: haiku # first\nretry: 5\nmodel: sonnet  # second\nagents:\n  coder:\n    temperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: haiku\nretry: 5\nmodel: sonnet\nagents:\n  coder:\n    temperature: 0.2\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:56:54.614176Z\", \"reason\": null, \"change\": \"8fba90ca-c1c1-4696-b43c-cbbec8d83f48\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:56:54.614176Z\", \"reason\": null, \"change\": \"8fba90ca-c1c1-4696-b43c-cbbec8d83f48\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:56:54.614176Z\", \"reason\": null, \"change\": \"8fba90ca-c1c1-4696-b43c-cbbec8d83f48\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:56:55.677685Z\", \"reason\": null, \"change\": \"08c06347-76bb-47c0-bf66-e0753e73e859\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

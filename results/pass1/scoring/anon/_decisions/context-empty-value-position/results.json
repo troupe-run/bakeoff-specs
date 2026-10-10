@@ -1,0 +1,221 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "model",
+          "opus"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "timeout",
+          "30"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tags.0",
+          "a"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "last",
+          "done"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "model:\ntimeout:   # seconds\nname: x\ntags:\n  -\n  - b\nlast:"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "opus"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ntimeout:   # seconds\nname: x\ntags:\n  -\n  - b\nlast:"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "timeout",
+                "30"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ntimeout: 30 # seconds\nname: x\ntags:\n  -\n  - b\nlast:"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.0",
+                "a"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ntimeout: 30 # seconds\nname: x\ntags:\n  - a\n  - b\nlast:"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "last",
+                "done"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ntimeout: 30 # seconds\nname: x\ntags:\n  - a\n  - b\nlast: done"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus\ntimeout: 30\nname: x\ntags:\n  - a\n  - b\nlast: done\n"
+            }
+          ]
+        }
+      ],
+      "route": "Right after the ':' indicator rather than at the parser's mark",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 4,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "opus"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ntimeout:   # seconds\nname: x\ntags:\n  -\n  - b\nlast:"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "timeout",
+                "30"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ntimeout: 30 # seconds\nname: x\ntags:\n  -\n  - b\nlast:"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.0",
+                "a"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ntimeout: 30 # seconds\nname: x\ntags:\n  - a\n  - b\nlast:"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "last",
+                "done"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: opus\ntimeout: 30 # seconds\nname: x\ntags:\n  - a\n  - b\nlast: done"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus\ntimeout: 30\nname: x\ntags:\n  - a\n  - b\nlast: done\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

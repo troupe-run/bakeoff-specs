@@ -1,0 +1,16 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "With nested includes, should a new key whose deepest existing ancestor comes from a nested included file be written as an override in the file holding the nearest include reference (A, e.g. agents/coder.yaml), only in the root troupe.yml (B), or somewhere else (C)?",
+      "reply": "Option (A). The contract says the override goes in \"the file that contains the include reference (the *including* file)\". With nested includes, that is the file holding the reference to the include that the key's deepest existing ancestor comes from. In your example that is `agents/coder.yaml`, which gets the override `model: {$ref: file:models/base.yaml, temperature: 0.3}` written in block form. Follow the contract's definition. The change request explains why the rule exists, and the contract says what to do.",
+      "escalate": false,
+      "cited": "Contract: Overrides (from step 5); Brief: Escalated answers ($ref / nested includes, 2026-10-05)"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

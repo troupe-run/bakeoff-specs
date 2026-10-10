@@ -1,0 +1,475 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "m.y",
+          "2"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "n.y",
+          "2"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--in-include",
+          "inc.z",
+          "3"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "a",
+          "\"l1\\nl2\\n\""
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      ".troupe/inc.yaml": "k: 1\r\nj: 2\n",
+      ".troupe/troupe.yml": "a: 1\nm:\r\n  x: 1\r\nn:\r\n  x: 1\ninc: file:inc.yaml\r\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/inc.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "m.y",
+                "2"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: 1\nm:\r\n  x: 1\r\n  y: 2\r\nn:\r\n  x: 1\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "n.y",
+                "2"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: 1\nm:\r\n  x: 1\r\n  y: 2\r\nn:\r\n  x: 1\n  y: 2\r\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--in-include",
+                "inc.z",
+                "3"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/inc.yaml": "k: 1\r\nj: 2\nz: 3\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a",
+                "\"l1\\nl2\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: |\r\n  l1\r\n  l2\nm:\r\n  x: 1\r\n  y: 2\r\nn:\r\n  x: 1\n  y: 2\r\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a: | # from .troupe/troupe.yml\n  l1\n  l2\nm:\n  x: 1 # from .troupe/troupe.yml\n  y: 2 # from .troupe/troupe.yml\nn:\n  x: 1 # from .troupe/troupe.yml\n  y: 2 # from .troupe/troupe.yml\ninc:\n  k: 1 # from .troupe/inc.yaml\n  j: 2 # from .troupe/inc.yaml\n  z: 3 # from .troupe/inc.yaml\n"
+            }
+          ]
+        }
+      ],
+      "route": "CRLF if any CRLF appears in the file, else LF",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "m.y",
+                "2"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: 1\nm:\r\n  x: 1\r\n  y: 2\r\nn:\r\n  x: 1\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "n.y",
+                "2"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: 1\nm:\r\n  x: 1\r\n  y: 2\r\nn:\r\n  x: 1\n  y: 2\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--in-include",
+                "inc.z",
+                "3"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/inc.yaml": "k: 1\r\nj: 2\nz: 3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a",
+                "\"l1\\nl2\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: |\n  l1\n  l2\nm:\r\n  x: 1\r\n  y: 2\r\nn:\r\n  x: 1\n  y: 2\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a: | # from .troupe/troupe.yml\n  l1\n  l2\nm:\n  x: 1 # from .troupe/troupe.yml\n  y: 2 # from .troupe/troupe.yml\nn:\n  x: 1 # from .troupe/troupe.yml\n  y: 2 # from .troupe/troupe.yml\ninc:\n  k: 1 # from .troupe/inc.yaml\n  j: 2 # from .troupe/inc.yaml\n  z: 3 # from .troupe/inc.yaml\n"
+            }
+          ]
+        }
+      ],
+      "route": "Copy the preceding line's ending",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "m.y",
+                "2"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: 1\nm:\r\n  x: 1\r\n  y: 2\nn:\r\n  x: 1\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "n.y",
+                "2"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: 1\nm:\r\n  x: 1\r\n  y: 2\nn:\r\n  x: 1\n  y: 2\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--in-include",
+                "inc.z",
+                "3"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/inc.yaml": "k: 1\r\nj: 2\nz: 3\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a",
+                "\"l1\\nl2\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: |\n  l1\n  l2\nm:\r\n  x: 1\r\n  y: 2\nn:\r\n  x: 1\n  y: 2\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a: | # from .troupe/troupe.yml\n  l1\n  l2\nm:\n  x: 1 # from .troupe/troupe.yml\n  y: 2 # from .troupe/troupe.yml\nn:\n  x: 1 # from .troupe/troupe.yml\n  y: 2 # from .troupe/troupe.yml\ninc:\n  k: 1 # from .troupe/inc.yaml\n  j: 2 # from .troupe/inc.yaml\n  z: 3 # from .troupe/inc.yaml\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "m.y",
+                "2"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: 1\nm:\r\n  x: 1\r\n  y: 2\nn:\r\n  x: 1\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "n.y",
+                "2"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: 1\nm:\r\n  x: 1\r\n  y: 2\nn:\r\n  x: 1\n  y: 2\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--in-include",
+                "inc.z",
+                "3"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/inc.yaml": "k: 1\r\nj: 2\nz: 3\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a",
+                "\"l1\\nl2\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: |\n  l1\n  l2\nm:\r\n  x: 1\r\n  y: 2\nn:\r\n  x: 1\n  y: 2\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a: | # from .troupe/troupe.yml\n  l1\n  l2\nm:\n  x: 1 # from .troupe/troupe.yml\n  'y': 2 # from .troupe/troupe.yml\n'n':\n  x: 1 # from .troupe/troupe.yml\n  'y': 2 # from .troupe/troupe.yml\ninc:\n  k: 1 # from .troupe/inc.yaml\n  j: 2 # from .troupe/inc.yaml\n  z: 3 # from .troupe/inc.yaml\n"
+            }
+          ]
+        }
+      ],
+      "route": "Taken from the file's first line break; LF for empty or LF-only files",
+      "route_no": 3
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "m.y",
+                "2"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: 1\nm:\r\n  x: 1\r\n  y: 2\nn:\r\n  x: 1\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "n.y",
+                "2"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: 1\nm:\r\n  x: 1\r\n  y: 2\nn:\r\n  x: 1\n  y: 2\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--in-include",
+                "inc.z",
+                "3"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/inc.yaml": "k: 1\r\nj: 2\nz: 3\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a",
+                "\"l1\\nl2\\n\""
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "a: |\n  l1\n  l2\nm:\r\n  x: 1\r\n  y: 2\nn:\r\n  x: 1\n  y: 2\ninc: file:inc.yaml\r\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a: | # from .troupe/troupe.yml\n  l1\n  l2\nm:\n  x: 1 # from .troupe/troupe.yml\n  y: 2 # from .troupe/troupe.yml\nn:\n  x: 1 # from .troupe/troupe.yml\n  y: 2 # from .troupe/troupe.yml\ninc:\n  k: 1 # from .troupe/inc.yaml\n  j: 2 # from .troupe/inc.yaml\n  z: 3 # from .troupe/inc.yaml\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 4
+    }
+  ]
+}

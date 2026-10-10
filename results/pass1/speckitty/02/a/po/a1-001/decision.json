@@ -1,0 +1,16 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "If a hand edit leaves the configuration unloadable (YAML syntax error, missing include target, include cycle, or both troupe.yml and troupe.yaml present) while `watch` is running, should `watch` keep watching or exit 4?",
+      "reply": "Option A: keep watching. The contract says `watch` runs in the foreground until SIGINT or SIGTERM and then exits 0, so a broken save must not make it exit. While the files can't be loaded, print an error to stderr that names the file involved and record no events. When the files load again, reconcile as usual against the recorded configuration.",
+      "escalate": false,
+      "cited": "contract.md: Sync with files (watch runs until SIGINT or SIGTERM, then exits 0); po-brief.md: Standing answers (error messages must name the path or file involved)"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

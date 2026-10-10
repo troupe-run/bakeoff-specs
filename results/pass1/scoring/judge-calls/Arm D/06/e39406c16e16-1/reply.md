@@ -1,0 +1,4 @@
+```json
+{"score": 3, "evidence": ["/judge/diff.patch:18-22 (README.md now states the alias rules: set at the anchor changes every *name; a set through an alias or merge key exits 3; --expand-alias makes a block-style copy; merge keys are never written)", "/judge/diff.patch:34-48 (docs/decisions.md adds decisions 30-33 on alias detection, merge keys, the expanded copy and recursive aliases)", "/judge/diff.patch:561-605 (tests/test_aliases.py: test_set_at_anchor_changes_every_alias, test_set_through_alias_is_refused checks for the --expand-alias pointer, test_expand_alias)", "/judge/repo/README.md:23-27"]}
+{"notes": "The spec and code changed together in one diff; there is no commit history, so I can't tell which came first. The spec states every alias rule and regression tests cover them, but neither README.md nor docs/decisions.md references the bug report or links the tests, and the repo had no earlier out-of-scope alias text to replace."}
+```

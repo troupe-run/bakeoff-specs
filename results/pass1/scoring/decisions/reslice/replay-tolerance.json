@@ -1,0 +1,153 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "SET_FIRST",
+        "why": "History logs set agents.coder=solo (seq 8) before remove agents.coder.model (seq 9)."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "SWAP",
+        "why": "History logs remove agents.coder.model (seq 8) before set agents.coder=solo (seq 9)."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "SET_FIRST",
+        "why": "History logs set agents.coder=solo (seq 8) before remove agents.coder.model (seq 9)."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "SET_FIRST",
+        "why": "History logs set agents.coder=solo (seq 8) before remove agents.coder.model (seq 9)."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "SET_FIRST",
+        "why": "History logs set agents.coder=solo (seq 8) before remove agents.coder.model (seq 9)."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "SET_FIRST",
+        "why": "History logs set agents.coder=solo (seq 8) before remove agents.coder.model (seq 9)."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "empty.model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.tags",
+          "[]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder",
+          "solo"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tools.0",
+          "hammer"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "name: demo\nempty: {}\ntools: []\nagents:\n  coder:\n    model: opus  # main model\n    tags: [a, b]\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Changes leaves into empty collections and back, and replaces a mapping with a scalar, so remove events can name paths the stored state never recorded. Each later command replays the event history: route 1 (pop(path, None)) carries on, while an implementation that doesn't allow for this may fail with a non-zero exit once such a remove is in the log."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "the new value's set event is logged before the remove of the old key (or no swapped order); unknown removes replay as no effect",
+            "id": "SET_FIRST"
+          },
+          {
+            "description": "the remove of the old key is logged BEFORE the new value's set (swapped order)",
+            "id": "SWAP"
+          }
+        ],
+        "id": "Q1",
+        "text": "history order when one block replaces another"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "pop(path, None)",
+      [
+        "Arm C"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T7",
+  "status": "ok"
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["/judge/repo/tests/test_config.py:191", "/judge/repo/tests/test_config.py:230", "/judge/repo/tests/test_config.py:100", "/judge/repo/README.md:18", "/judge/repo/README.md:23"], "notes": "The requirements live only as prose in the README. They have no IDs, and the tests have no references or docstrings pointing back to them. For the three tests I sampled (test_reconcile_on_command, test_watch, test_show_sources), I could only match each to a requirement by topic words such as 'reconciles', 'watch' and '--sources'. The tests drive the CLI through subprocess, so finding the code they exercise means looking up the README's module layout (for example, sync.py) and searching within it."}
+```

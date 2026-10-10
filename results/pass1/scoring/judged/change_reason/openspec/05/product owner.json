@@ -1,0 +1,16 @@
+{
+  "evidence": [
+    "/judge/diff.patch:359-362 (proposal.md says step 5 is change request CR-A and explains why new keys under includes now become overrides)",
+    "/judge/diff.patch:373-376 (proposal flags the write-back target change as BREAKING and says it displaces the earlier step-1 behaviour)",
+    "/judge/diff.patch:406 (proposal says the old test 'new key inside an included mapping goes into that file' is replaced by its opposite)",
+    "/judge/diff.patch:2788-2789 (that test is renamed and inverted in tests/test_set_targets.py)",
+    "/judge/diff.patch:570-575 and 1209-1212 (MODIFIED requirement 'Target file for an existing value' in the delta spec, synced into spec/spec/config-set/spec.md)",
+    "/judge/diff.patch:935-937 (config-set-in-include proposal ties --in-include to CR-B)",
+    "/judge/diff.patch:1954-1964 (edit/text.py owned_end change, not mentioned in any proposal, design or tasks record)",
+    "/judge/repo (no .git directory, so commit messages cannot be checked)"
+  ],
+  "notes": "Two archived change records (proposal, design, delta specs and tasks) tie both requests, CR-A and CR-B, to the diff. They name the modified requirements, the BREAKING change to where new keys are written, and the one test that was inverted, with reasons. The score is 3 rather than 4 because a few small code hunks, such as text.py owned_end, appear in no record, and there is no commit history to tie individual hunks to a reason.",
+  "raw": "{\"score\": 3, \"evidence\": [\"/judge/diff.patch:359-362 (proposal.md says step 5 is change request CR-A and explains why new keys under includes now become overrides)\", \"/judge/diff.patch:373-376 (proposal flags the write-back target change as BREAKING and says it displaces the earlier step-1 behaviour)\", \"/judge/diff.patch:406 (proposal says the old test 'new key inside an included mapping goes into that file' is replaced by its opposite)\", \"/judge/diff.patch:2788-2789 (that test is renamed and inverted in tests/test_set_targets.py)\", \"/judge/diff.patch:570-575 and 1209-1212 (MODIFIED requirement 'Target file for an existing value' in the delta spec, synced into spec/spec/config-set/spec.md)\", \"/judge/diff.patch:935-937 (config-set-in-include proposal ties --in-include to CR-B)\", \"/judge/diff.patch:1954-1964 (edit/text.py owned_end change, not mentioned in any proposal, design or tasks record)\", \"/judge/repo (no .git directory, so commit messages cannot be checked)\"], \"notes\": \"Two archived change records (proposal, design, delta specs and tasks) tie both requests, CR-A and CR-B, to the diff. They name the modified requirements, the BREAKING change to where new keys are written, and the one test that was inverted, with reasons. The score is 3 rather than 4 because a few small code hunks, such as text.py owned_end, appear in no record, and there is no commit history to tie individual hunks to a reason.\"}",
+  "score": 3,
+  "status": "ok"
+}

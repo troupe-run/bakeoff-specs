@@ -1,0 +1,106 @@
+{
+  "sha_before": "32d38d2d6b8c46c92d99a1651894e7ec368d5a51",
+  "sha_after": "a99c5f2af927b50ad01f24323e4b0a42b6159126",
+  "head": "a99c5f2af927b50ad01f24323e4b0a42b6159126",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "a99c5f2af927b50ad01f24323e4b0a42b6159126",
+      "author": "Developer",
+      "subject": "Make SC-606 and step 1's set rules agree with the updated tests"
+    },
+    {
+      "sha": "0120c13baf6bde63e04351d7137e9febcd641035",
+      "author": "Developer",
+      "subject": "Append step 7 convergence task: SC-606 disagrees with the updated step 1 tests"
+    },
+    {
+      "sha": "d15af4a5ade039e8a213c84f4c0585f190dc4561",
+      "author": "Developer",
+      "subject": "Record step 7 decisions made while implementing and converging"
+    },
+    {
+      "sha": "704b5e456d126b1c9b1ba1fe2acac79987b002d4",
+      "author": "Developer",
+      "subject": "Name the local include line when a nested remote include fails"
+    },
+    {
+      "sha": "5002cef01b9c8d19da31cc03b5f1bacfcab8d05a",
+      "author": "Developer",
+      "subject": "Let set --include remove a !literal tag on block and empty values"
+    },
+    {
+      "sha": "7b678f4d02840bc8d3e1740ce2fa214e210e77ec",
+      "author": "Developer",
+      "subject": "Stop watch polling a URL that cannot be fetched"
+    },
+    {
+      "sha": "e9f161da5893dfb66f79325dba71e624a83fc89b",
+      "author": "Developer",
+      "subject": "Test refusals via $ref remote includes, folded literals, outside $dynamicRef"
+    },
+    {
+      "sha": "e50bc880de06e4a493a6efa853268383c5334c99",
+      "author": "Developer",
+      "subject": "Append step 7 convergence tasks: watch polling, tag removal, untested paths"
+    },
+    {
+      "sha": "8fa9208ed97a317994c9a8d2f7cc1473f87e0462",
+      "author": "Developer",
+      "subject": "Document remote includes, the schema and literals; update step 1's set tests"
+    },
+    {
+      "sha": "e634a5d0497e6b3a85831532dedf721919528b3b",
+      "author": "Developer",
+      "subject": "Write include-like set values as !literal unless --include is given"
+    },
+    {
+      "sha": "679060c4a16d2c94059a6f0d511068f71abd5382",
+      "author": "Developer",
+      "subject": "Validate the loaded configuration against the theatre's schema"
+    },
+    {
+      "sha": "fc622748bf13d01b9b0fe99d2a4d71166968ced2",
+      "author": "Developer",
+      "subject": "Keep URL settings literal: !literal tag and schema format: uri"
+    },
+    {
+      "sha": "251c4d1aa58c5a03c60a7ae3a8621a23331972db",
+      "author": "Developer",
+      "subject": "Refuse changes to remote content, naming the include line to change"
+    },
+    {
+      "sha": "5c755ce921a7c57ce178dfa0c5064f1f2bbba016",
+      "author": "Developer",
+      "subject": "Load https:// and http:// includes, fetched once per command"
+    },
+    {
+      "sha": "c1fd28c5ef8100bd4b497d67f88e26b7764e791a",
+      "author": "Developer",
+      "subject": "Prepare for URL includes: one include vocabulary, sources that may be URLs"
+    },
+    {
+      "sha": "dd208b2ff03134f364e452259258d89ebd1010cd",
+      "author": "Developer",
+      "subject": "Add jsonschema for step 7's 2020-12 schema validation"
+    },
+    {
+      "sha": "8392274e82f1ec88a9c519bac6ae091d1039e729",
+      "author": "Developer",
+      "subject": "Add step 7 task list: remote includes and schema, tests first by user story"
+    },
+    {
+      "sha": "c011391a8cd705f5f49b5d88c2b835ac4721a02c",
+      "author": "Developer",
+      "subject": "Add step 7 plan: remote sources are unwritable by type, schema travels with the load"
+    },
+    {
+      "sha": "3b4d3467b20982fd739a52339fe4ec41b5c9d981",
+      "author": "Developer",
+      "subject": "Add step 7 spec: remote includes are read-only, a schema marks URI literals"
+    }
+  ],
+  "diffstat": "README.md                                          |  33 +-\n pyproject.toml                                     |   2 +\n specs/001-config-load-show-set/spec.md             |   5 +\n .../checklists/requirements.md                     |  43 ++\n specs/007-remote-includes-schema/contracts/cli.md  |  80 ++++\n specs/007-remote-includes-schema/data-model.md     |  90 ++++\n specs/007-remote-includes-schema/plan.md           | 165 ++++++++\n specs/007-remote-includes-schema/quickstart.md     |  55 +++\n specs/007-remote-includes-schema/research.md       | 230 ++++++++++\n specs/007-remote-includes-schema/spec.md           | 467 +++++++++++++++++++++\n specs/007-remote-includes-schema/tasks.md          | 371 ++++++++++++++++\n src/troupe/cli.py                                  |   7 +\n src/troupe/config/commands.py                      |   5 +\n src/troupe/config/edit/alias.py                    |  32 +-\n src/troupe/config/edit/apply.py                    |  39 +-\n src/troupe/config/edit/literals.py                 |  48 +++\n src/troupe/config/edit/override.py                 |   7 +-\n src/troupe/config/edit/planner.py                  | 131 ++++--\n src/troupe/config/edit/render.py                   |  16 +-\n src/troupe/config/fetch.py                         |  66 +++\n src/troupe/config/files.py                         |  28 +-\n src/troupe/config/includes.py                      |  38 ++\n src/troupe/config/loader.py                        | 177 ++++++--\n src/troupe/config/remote.py                        |  69 +++\n src/troupe/config/scalars.py                       |  40 +-\n src/troupe/config/schema.py                        | 109 +++++\n src/troupe/config/tree.py                          |  11 +\n src/troupe/config/view.py                          |   3 +\n src/troupe/config/watch.py                         |  26 +-\n tests/conftest.py                                  | 154 ++++++-\n tests/e2e/test_literals.py                         | 146 +++++++\n tests/e2e/test_remote_errors.py                    | 120 ++++++\n tests/e2e/test_remote_read.py                      | 143 +++++++\n tests/e2e/test_remote_readonly.py                  | 142 +++++++\n tests/e2e/test_remote_watch.py                     |  63 +++\n tests/e2e/test_schema_validation.py                | 138 ++++++\n tests/e2e/test_set_includes.py                     |  21 +-\n tests/e2e/test_set_literal.py                      | 173 ++++++++\n tests/e2e/test_usage.py                            |  19 +\n tests/unit/test_includes.py                        |  97 +++++\n tests/unit/test_merge.py                           |   8 +-\n tests/unit/test_schema_lookup.py                   |  54 +++\n tests/unit/test_verify.py                          |   2 +-\n tests/unit/test_web_fixture.py                     |  27 ++\n uv.lock                                            | 174 ++++++++\n 45 files changed, 3754 insertions(+), 120 deletions(-)"
+}

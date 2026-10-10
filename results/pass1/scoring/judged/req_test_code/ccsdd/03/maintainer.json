@@ -1,0 +1,17 @@
+{
+  "evidence": [
+    "repo/tests/test_e2e_show_sources.py:134",
+    "repo/tests/test_e2e_show_sources.py:1",
+    "repo/tests/test_cli_get.py:1",
+    "repo/tests/test_cli_get.py:121",
+    "repo/tests/test_yaml_output.py:8",
+    "repo/tests/test_yaml_output.py:19",
+    "repo/spec/spec/config-get-show/tasks.md:3",
+    "repo/spec/spec/config-get-show/tasks.md:124",
+    "repo/spec/spec/config-get-show/requirements.md:176"
+  ],
+  "notes": "I sampled three step-3 tests: test_e2e_show_sources.py:134, test_cli_get.py:121 and test_yaml_output.py:44. Each docstring names the requirement IDs it proves (for example 'Req 5.1, 5.2'), and each ID matches the current config-get-show requirements text. Unit tests import the code they exercise (render_yaml, source_label), and the tasks file maps each test module to its task, requirements and boundary. Several new modules (test_yaml_output.py, test_e2e_show_sources.py) say neither which spec the IDs belong to nor which code module the CLI reaches. Since all four specs number their requirements the same way, 'Req 5.1' is ambiguous there, so the score falls short of 4.",
+  "raw": "{\"score\": 3, \"evidence\": [\"repo/tests/test_e2e_show_sources.py:134\", \"repo/tests/test_e2e_show_sources.py:1\", \"repo/tests/test_cli_get.py:1\", \"repo/tests/test_cli_get.py:121\", \"repo/tests/test_yaml_output.py:8\", \"repo/tests/test_yaml_output.py:19\", \"repo/spec/spec/config-get-show/tasks.md:3\", \"repo/spec/spec/config-get-show/tasks.md:124\", \"repo/spec/spec/config-get-show/requirements.md:176\"], \"notes\": \"I sampled three step-3 tests: test_e2e_show_sources.py:134, test_cli_get.py:121 and test_yaml_output.py:44. Each docstring names the requirement IDs it proves (for example 'Req 5.1, 5.2'), and each ID matches the current config-get-show requirements text. Unit tests import the code they exercise (render_yaml, source_label), and the tasks file maps each test module to its task, requirements and boundary. Several new modules (test_yaml_output.py, test_e2e_show_sources.py) say neither which spec the IDs belong to nor which code module the CLI reaches. Since all four specs number their requirements the same way, 'Req 5.1' is ambiguous there, so the score falls short of 4.\"}",
+  "score": 3,
+  "status": "ok"
+}

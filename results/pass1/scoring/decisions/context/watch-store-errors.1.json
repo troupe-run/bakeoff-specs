@@ -1,0 +1,34 @@
+{
+  "context": {
+    "examples": [],
+    "in_practice": "Route 1: a failed save is handled like a file that couldn't be loaded. The user sees a report, watching keeps going and the save is tried again, so a hand edit isn't silently dropped. The risk is that if the problem never clears, the user keeps seeing repeated reports while watch stays up. Route 2: any unexpected failure that isn't a load error ends watch and shows up as an ordinary error. A save failure stops everything instead of being skipped quietly, so the user knows right away but has to fix the cause and start watch again. Nothing is retried for them. Route 3: this case wasn't designed for. What happens on a failed save is whatever the code does by default, and nobody chose that behaviour. It could be a crash, a silent skip or something in between, so neither users nor maintainers can count on it.",
+    "stakes": "While a watch mode is running and picking up the user's hand edits, saving the result can fail (for example, a full disk, a locked file or a permission problem). What matters is whether the user notices, whether their edit survives, and whether watching keeps going.",
+    "tradeoff": "Route 1 costs possible repeated reports from a watcher that stays up while the problem lasts. Route 2 costs a stopped watch and a manual restart after every save failure. Route 3 costs predictability, because the behaviour was never decided."
+  },
+  "plan_why": "The routes differ only in how a running `watch` handles a failure of the event store mid-session: it reports and retries, or it exits through the error path. Seeing that would mean running `watch`, a long-running process that only stops on SIGINT/SIGTERM, which the sandbox does not allow. It would also mean breaking the store while `watch` runs, which a sequence of one-shot commands in a fresh theatre cannot do. No other command makes the difference visible.",
+  "routes": [
+    [
+      "Report and retry like load errors",
+      [
+        "Arm A",
+        "Arm F"
+      ]
+    ],
+    [
+      "Unexpected non-load exceptions end watch through the normal error path",
+      [
+        "Arm B"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm C",
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

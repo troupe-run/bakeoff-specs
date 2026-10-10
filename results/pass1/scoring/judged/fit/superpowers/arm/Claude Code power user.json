@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/setup/checklist.json:33-48 (method plugin 6.4.2 loaded from /opt/plugins/method, all skills present, SessionStart hook registered via ${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd)",
+    "/judge/setup/installed-commands.json:2-31 (method installs as Claude Code skills and slash commands: brainstorming, writing-plans, test-driven-development, etc.)",
+    "/judge/setup/checklist.json:51-66 (no model overrides; smoke run invoked method-command via Skill tool)",
+    "/judge/setup/checklist.json:69-71 (GitHub Issues access ok)",
+    "/judge/06/transcript.md:2-5 (Skill method-command invoked natively, then the issue had to be fetched by hand with gh issue view / gh api from Bash, retried three times)",
+    "/judge/01/transcript.md:2 (step starts straight with Bash, with no method skill or command invoked)"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/setup/checklist.json:33-48 (method plugin 6.4.2 loaded from /opt/plugins/method, all skills present, SessionStart hook registered via ${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd)\", \"/judge/setup/installed-commands.json:2-31 (method installs as Claude Code skills and slash commands: brainstorming, writing-plans, test-driven-development, etc.)\", \"/judge/setup/checklist.json:51-66 (no model overrides; smoke run invoked method-command via Skill tool)\", \"/judge/setup/checklist.json:69-71 (GitHub Issues access ok)\", \"/judge/06/transcript.md:2-5 (Skill method-command invoked natively, then the issue had to be fetched by hand with gh issue view / gh api from Bash, retried three times)\", \"/judge/01/transcript.md:2 (step starts straight with Bash, with no method skill or command invoked)\"]}\n```\n\nThe method is a native Claude Code plugin with its own skills and a SessionStart hook, loaded from the arm's config without overriding any settings. The friction point is that the GitHub Issues tracking is never part of the workflow: the model fetches issues by hand with `gh`/`gh api` from the shell. Also, the entry skill was called only once across all seven steps, so the model has to remember to invoke it.",
+  "score": 3,
+  "status": "ok"
+}

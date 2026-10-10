@@ -1,0 +1,12 @@
+{
+  "kind": "unanimous",
+  "question": "How set changes a file",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Re-dumping normalises indentation, quoting, comments and folded scalars; splicing leaves untouched bytes alone",
+      "route": "Splice replacement text into the original at the node's span; never re-serialise the file",
+      "route_no": 1
+    }
+  ]
+}

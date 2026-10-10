@@ -1,0 +1,576 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "c",
+          "0o20"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "m",
+          "\"crème brûlée 😀😀\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "n",
+          "1e3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 017   # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"café 😀\"  # note\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"a\", \"old\": null, \"new\": \"yes\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:34.301373Z\", \"reason\": null, \"change\": \"2c1d6aa3-8d96-40c1-a9f8-31f58f2467a8\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"b\", \"old\": null, \"new\": 15, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:34.301373Z\", \"reason\": null, \"change\": \"2c1d6aa3-8d96-40c1-a9f8-31f58f2467a8\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"c\", \"old\": null, \"new\": 17, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:34.301373Z\", \"reason\": null, \"change\": \"2c1d6aa3-8d96-40c1-a9f8-31f58f2467a8\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"d\", \"old\": null, \"new\": \"1_000\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:34.301373Z\", \"reason\": null, \"change\": \"2c1d6aa3-8d96-40c1-a9f8-31f58f2467a8\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"e\", \"old\": null, \"new\": 1000.0, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:34.301373Z\", \"reason\": null, \"change\": \"2c1d6aa3-8d96-40c1-a9f8-31f58f2467a8\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"f\", \"old\": null, \"new\": \"1:30\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:34.301373Z\", \"reason\": null, \"change\": \"2c1d6aa3-8d96-40c1-a9f8-31f58f2467a8\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"g\", \"old\": null, \"new\": Infinity, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:34.301373Z\", \"reason\": null, \"change\": \"2c1d6aa3-8d96-40c1-a9f8-31f58f2467a8\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"h\", \"old\": null, \"new\": 31, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:34.301373Z\", \"reason\": null, \"change\": \"2c1d6aa3-8d96-40c1-a9f8-31f58f2467a8\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"i\", \"old\": null, \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:34.301373Z\", \"reason\": null, \"change\": \"2c1d6aa3-8d96-40c1-a9f8-31f58f2467a8\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"j\", \"old\": null, \"new\": \"Off\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:34.301373Z\", \"reason\": null, \"change\": \"2c1d6aa3-8d96-40c1-a9f8-31f58f2467a8\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"k\", \"old\": null, \"new\": \"2001-12-14\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:34.301373Z\", \"reason\": null, \"change\": \"2c1d6aa3-8d96-40c1-a9f8-31f58f2467a8\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"m\", \"old\": null, \"new\": \"café 😀\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:34.301373Z\", \"reason\": null, \"change\": \"2c1d6aa3-8d96-40c1-a9f8-31f58f2467a8\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a: yes # from .troupe/troupe.yml\nb: 15 # from .troupe/troupe.yml\nc: 17 # from .troupe/troupe.yml\nd: 1_000 # from .troupe/troupe.yml\ne: 1000.0 # from .troupe/troupe.yml\nf: 1:30 # from .troupe/troupe.yml\ng: .inf # from .troupe/troupe.yml\nh: 31 # from .troupe/troupe.yml\ni: null # from .troupe/troupe.yml\nj: Off # from .troupe/troupe.yml\nk: 2001-12-14 # from .troupe/troupe.yml\nm: café 😀 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "c",
+                "0o20"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 0o20  # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"café 😀\"  # note\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "m",
+                "\"crème brûlée 😀😀\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 0o20  # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"crème brûlée 😀😀\" # note\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "n",
+                "1e3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 0o20  # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"crème brûlée 😀😀\" # note\nn: 1e3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "PyYAML compose for node positions, with custom YAML 1.2 core resolution",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"a\", \"old\": null, \"new\": \"yes\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:24.908062Z\", \"reason\": null, \"change\": \"2450cc06-b2cc-48bc-a96e-eb1fc3180570\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"b\", \"old\": null, \"new\": 15, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:24.908062Z\", \"reason\": null, \"change\": \"2450cc06-b2cc-48bc-a96e-eb1fc3180570\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"c\", \"old\": null, \"new\": 17, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:24.908062Z\", \"reason\": null, \"change\": \"2450cc06-b2cc-48bc-a96e-eb1fc3180570\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"d\", \"old\": null, \"new\": \"1_000\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:24.908062Z\", \"reason\": null, \"change\": \"2450cc06-b2cc-48bc-a96e-eb1fc3180570\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"e\", \"old\": null, \"new\": 1000.0, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:24.908062Z\", \"reason\": null, \"change\": \"2450cc06-b2cc-48bc-a96e-eb1fc3180570\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"f\", \"old\": null, \"new\": \"1:30\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:24.908062Z\", \"reason\": null, \"change\": \"2450cc06-b2cc-48bc-a96e-eb1fc3180570\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"g\", \"old\": null, \"new\": \".inf\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:24.908062Z\", \"reason\": null, \"change\": \"2450cc06-b2cc-48bc-a96e-eb1fc3180570\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"h\", \"old\": null, \"new\": 31, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:24.908062Z\", \"reason\": null, \"change\": \"2450cc06-b2cc-48bc-a96e-eb1fc3180570\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"i\", \"old\": null, \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:24.908062Z\", \"reason\": null, \"change\": \"2450cc06-b2cc-48bc-a96e-eb1fc3180570\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"j\", \"old\": null, \"new\": \"Off\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:24.908062Z\", \"reason\": null, \"change\": \"2450cc06-b2cc-48bc-a96e-eb1fc3180570\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"k\", \"old\": null, \"new\": \"2001-12-14\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:24.908062Z\", \"reason\": null, \"change\": \"2450cc06-b2cc-48bc-a96e-eb1fc3180570\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"m\", \"old\": null, \"new\": \"caf\\u00e9 \\ud83d\\ude00\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:24.908062Z\", \"reason\": null, \"change\": \"2450cc06-b2cc-48bc-a96e-eb1fc3180570\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a: yes # from .troupe/troupe.yml\nb: 15 # from .troupe/troupe.yml\nc: 17 # from .troupe/troupe.yml\nd: 1_000 # from .troupe/troupe.yml\ne: 1000.0 # from .troupe/troupe.yml\nf: 1:30 # from .troupe/troupe.yml\ng: .inf # from .troupe/troupe.yml\nh: 31 # from .troupe/troupe.yml\ni: null # from .troupe/troupe.yml\nj: Off # from .troupe/troupe.yml\nk: 2001-12-14 # from .troupe/troupe.yml\nm: café 😀 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "c",
+                "0o20"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 0o20  # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"café 😀\"  # note\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "m",
+                "\"crème brûlée 😀😀\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 0o20  # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"crème brûlée 😀😀\" # note\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "n",
+                "1e3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 0o20  # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"crème brûlée 😀😀\" # note\nn: 1e3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"a\", \"old\": null, \"new\": \"yes\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:28.182529Z\", \"reason\": null, \"change\": \"9b4e4926-a4d9-4c9f-8641-f2519ef84a07\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"b\", \"old\": null, \"new\": 15, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:28.182529Z\", \"reason\": null, \"change\": \"9b4e4926-a4d9-4c9f-8641-f2519ef84a07\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"c\", \"old\": null, \"new\": 17, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:28.182529Z\", \"reason\": null, \"change\": \"9b4e4926-a4d9-4c9f-8641-f2519ef84a07\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"d\", \"old\": null, \"new\": \"1_000\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:28.182529Z\", \"reason\": null, \"change\": \"9b4e4926-a4d9-4c9f-8641-f2519ef84a07\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"e\", \"old\": null, \"new\": 1000.0, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:28.182529Z\", \"reason\": null, \"change\": \"9b4e4926-a4d9-4c9f-8641-f2519ef84a07\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"f\", \"old\": null, \"new\": \"1:30\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:28.182529Z\", \"reason\": null, \"change\": \"9b4e4926-a4d9-4c9f-8641-f2519ef84a07\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"g\", \"old\": null, \"new\": \".inf\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:28.182529Z\", \"reason\": null, \"change\": \"9b4e4926-a4d9-4c9f-8641-f2519ef84a07\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"h\", \"old\": null, \"new\": 31, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:28.182529Z\", \"reason\": null, \"change\": \"9b4e4926-a4d9-4c9f-8641-f2519ef84a07\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"i\", \"old\": null, \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:28.182529Z\", \"reason\": null, \"change\": \"9b4e4926-a4d9-4c9f-8641-f2519ef84a07\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"j\", \"old\": null, \"new\": \"Off\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:28.182529Z\", \"reason\": null, \"change\": \"9b4e4926-a4d9-4c9f-8641-f2519ef84a07\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"k\", \"old\": null, \"new\": \"2001-12-14\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:28.182529Z\", \"reason\": null, \"change\": \"9b4e4926-a4d9-4c9f-8641-f2519ef84a07\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"m\", \"old\": null, \"new\": \"café 😀\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:28.182529Z\", \"reason\": null, \"change\": \"9b4e4926-a4d9-4c9f-8641-f2519ef84a07\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a: yes # from .troupe/troupe.yml\nb: 15 # from .troupe/troupe.yml\nc: 17 # from .troupe/troupe.yml\nd: 1_000 # from .troupe/troupe.yml\ne: 1000.0 # from .troupe/troupe.yml\nf: 1:30 # from .troupe/troupe.yml\ng: .inf # from .troupe/troupe.yml\nh: 31 # from .troupe/troupe.yml\ni: null # from .troupe/troupe.yml\nj: Off # from .troupe/troupe.yml\nk: 2001-12-14 # from .troupe/troupe.yml\nm: café 😀 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "c",
+                "0o20"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 16    # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"café 😀\"  # note\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "m",
+                "\"crème brûlée 😀😀\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 16    # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"crème brûlée 😀😀\" # note\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "n",
+                "1e3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 16    # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"crème brûlée 😀😀\" # note\nn: 1000.0\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"a\", \"old\": null, \"new\": \"yes\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:31.234603Z\", \"reason\": null, \"change\": \"4022768a-7aa7-4978-8768-c9a21d72f234\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"b\", \"old\": null, \"new\": 15, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:31.234603Z\", \"reason\": null, \"change\": \"4022768a-7aa7-4978-8768-c9a21d72f234\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"c\", \"old\": null, \"new\": 17, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:31.234603Z\", \"reason\": null, \"change\": \"4022768a-7aa7-4978-8768-c9a21d72f234\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"d\", \"old\": null, \"new\": \"1_000\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:31.234603Z\", \"reason\": null, \"change\": \"4022768a-7aa7-4978-8768-c9a21d72f234\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"e\", \"old\": null, \"new\": 1000.0, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:31.234603Z\", \"reason\": null, \"change\": \"4022768a-7aa7-4978-8768-c9a21d72f234\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"f\", \"old\": null, \"new\": \"1:30\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:31.234603Z\", \"reason\": null, \"change\": \"4022768a-7aa7-4978-8768-c9a21d72f234\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"g\", \"old\": null, \"new\": Infinity, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:31.234603Z\", \"reason\": null, \"change\": \"4022768a-7aa7-4978-8768-c9a21d72f234\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"h\", \"old\": null, \"new\": 31, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:31.234603Z\", \"reason\": null, \"change\": \"4022768a-7aa7-4978-8768-c9a21d72f234\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"i\", \"old\": null, \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:31.234603Z\", \"reason\": null, \"change\": \"4022768a-7aa7-4978-8768-c9a21d72f234\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"j\", \"old\": null, \"new\": \"Off\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:31.234603Z\", \"reason\": null, \"change\": \"4022768a-7aa7-4978-8768-c9a21d72f234\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"k\", \"old\": null, \"new\": \"2001-12-14\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:31.234603Z\", \"reason\": null, \"change\": \"4022768a-7aa7-4978-8768-c9a21d72f234\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"m\", \"old\": null, \"new\": \"café 😀\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:31.234603Z\", \"reason\": null, \"change\": \"4022768a-7aa7-4978-8768-c9a21d72f234\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a: 'yes' # from .troupe/troupe.yml\nb: 15 # from .troupe/troupe.yml\nc: 17 # from .troupe/troupe.yml\nd: '1_000' # from .troupe/troupe.yml\ne: 1000.0 # from .troupe/troupe.yml\nf: '1:30' # from .troupe/troupe.yml\ng: .inf # from .troupe/troupe.yml\nh: 31 # from .troupe/troupe.yml\ni: null # from .troupe/troupe.yml\nj: 'Off' # from .troupe/troupe.yml\nk: '2001-12-14' # from .troupe/troupe.yml\nm: café 😀 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "c",
+                "0o20"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 16    # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"café 😀\"  # note\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "m",
+                "\"crème brûlée 😀😀\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 16    # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"crème brûlée 😀😀\" # note\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "n",
+                "1e3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 16    # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"crème brûlée 😀😀\" # note\nn: 1000.0\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"a\", \"old\": null, \"new\": \"yes\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:37.214927Z\", \"reason\": null, \"change\": \"0197fff3-0042-487c-b230-7b037348a634\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"b\", \"old\": null, \"new\": 15, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:37.214927Z\", \"reason\": null, \"change\": \"0197fff3-0042-487c-b230-7b037348a634\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"c\", \"old\": null, \"new\": 17, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:37.214927Z\", \"reason\": null, \"change\": \"0197fff3-0042-487c-b230-7b037348a634\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"d\", \"old\": null, \"new\": \"1_000\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:37.214927Z\", \"reason\": null, \"change\": \"0197fff3-0042-487c-b230-7b037348a634\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"e\", \"old\": null, \"new\": 1000.0, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:37.214927Z\", \"reason\": null, \"change\": \"0197fff3-0042-487c-b230-7b037348a634\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"f\", \"old\": null, \"new\": \"1:30\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:37.214927Z\", \"reason\": null, \"change\": \"0197fff3-0042-487c-b230-7b037348a634\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"g\", \"old\": null, \"new\": Infinity, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:37.214927Z\", \"reason\": null, \"change\": \"0197fff3-0042-487c-b230-7b037348a634\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"h\", \"old\": null, \"new\": 31, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:37.214927Z\", \"reason\": null, \"change\": \"0197fff3-0042-487c-b230-7b037348a634\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"i\", \"old\": null, \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:37.214927Z\", \"reason\": null, \"change\": \"0197fff3-0042-487c-b230-7b037348a634\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"j\", \"old\": null, \"new\": \"Off\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:37.214927Z\", \"reason\": null, \"change\": \"0197fff3-0042-487c-b230-7b037348a634\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"k\", \"old\": null, \"new\": \"2001-12-14\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:37.214927Z\", \"reason\": null, \"change\": \"0197fff3-0042-487c-b230-7b037348a634\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"m\", \"old\": null, \"new\": \"café 😀\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:37.214927Z\", \"reason\": null, \"change\": \"0197fff3-0042-487c-b230-7b037348a634\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a: yes # from .troupe/troupe.yml\nb: 15 # from .troupe/troupe.yml\nc: 17 # from .troupe/troupe.yml\nd: 1_000 # from .troupe/troupe.yml\ne: 1000.0 # from .troupe/troupe.yml\nf: 1:30 # from .troupe/troupe.yml\ng: .inf # from .troupe/troupe.yml\nh: 31 # from .troupe/troupe.yml\ni: null # from .troupe/troupe.yml\nj: Off # from .troupe/troupe.yml\nk: 2001-12-14 # from .troupe/troupe.yml\nm: café 😀 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "c",
+                "0o20"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 16    # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"café 😀\"  # note\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "m",
+                "\"crème brûlée 😀😀\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 16    # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"crème brûlée 😀😀\" # note\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "n",
+                "1e3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 16    # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"crème brûlée 😀😀\" # note\nn: 1000.0\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"a\", \"old\": null, \"new\": \"yes\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:40.321621Z\", \"reason\": null, \"change\": \"74a5f1ec-a0fb-41e1-a17a-34ae1e74e42e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"b\", \"old\": null, \"new\": 15, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:40.321621Z\", \"reason\": null, \"change\": \"74a5f1ec-a0fb-41e1-a17a-34ae1e74e42e\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"c\", \"old\": null, \"new\": 17, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:40.321621Z\", \"reason\": null, \"change\": \"74a5f1ec-a0fb-41e1-a17a-34ae1e74e42e\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"d\", \"old\": null, \"new\": \"1_000\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:40.321621Z\", \"reason\": null, \"change\": \"74a5f1ec-a0fb-41e1-a17a-34ae1e74e42e\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"e\", \"old\": null, \"new\": 1000.0, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:40.321621Z\", \"reason\": null, \"change\": \"74a5f1ec-a0fb-41e1-a17a-34ae1e74e42e\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"f\", \"old\": null, \"new\": \"1:30\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:40.321621Z\", \"reason\": null, \"change\": \"74a5f1ec-a0fb-41e1-a17a-34ae1e74e42e\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"g\", \"old\": null, \"new\": Infinity, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:40.321621Z\", \"reason\": null, \"change\": \"74a5f1ec-a0fb-41e1-a17a-34ae1e74e42e\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"h\", \"old\": null, \"new\": 31, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:40.321621Z\", \"reason\": null, \"change\": \"74a5f1ec-a0fb-41e1-a17a-34ae1e74e42e\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"i\", \"old\": null, \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:40.321621Z\", \"reason\": null, \"change\": \"74a5f1ec-a0fb-41e1-a17a-34ae1e74e42e\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"j\", \"old\": null, \"new\": \"Off\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:40.321621Z\", \"reason\": null, \"change\": \"74a5f1ec-a0fb-41e1-a17a-34ae1e74e42e\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"k\", \"old\": null, \"new\": \"2001-12-14\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:40.321621Z\", \"reason\": null, \"change\": \"74a5f1ec-a0fb-41e1-a17a-34ae1e74e42e\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"m\", \"old\": null, \"new\": \"café 😀\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:56:40.321621Z\", \"reason\": null, \"change\": \"74a5f1ec-a0fb-41e1-a17a-34ae1e74e42e\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a: yes # from .troupe/troupe.yml\nb: 15 # from .troupe/troupe.yml\nc: 17 # from .troupe/troupe.yml\nd: 1_000 # from .troupe/troupe.yml\ne: 1000.0 # from .troupe/troupe.yml\nf: 1:30 # from .troupe/troupe.yml\ng: .inf # from .troupe/troupe.yml\nh: 31 # from .troupe/troupe.yml\ni: null # from .troupe/troupe.yml\nj: Off # from .troupe/troupe.yml\nk: 2001-12-14 # from .troupe/troupe.yml\nm: café 😀 # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "c",
+                "0o20"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 0o20  # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"café 😀\"  # note\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "m",
+                "\"crème brûlée 😀😀\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 0o20  # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"crème brûlée 😀😀\" # note\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "n",
+                "1e3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# typing probes\na: yes\nb: 0o17\nc: 0o20  # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"crème brûlée 😀😀\" # note\nn: 1e3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "ruamel.yaml compose only (nodes and marks); never use its dumper",
+      "route_no": 2
+    }
+  ]
+}

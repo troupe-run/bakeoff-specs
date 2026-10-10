@@ -1,0 +1,1 @@
+{"outcomes": {"1": {"Q1": {"group": "K", "why": "File stores 0x1A, TRUE, ~, 1E3 and the nested True/Null/0o17/+007/-.INF/2.50 exactly as typed"}}, "2": {"Q1": {"group": "C", "why": "File stores 26, true, null, 1000.0 and the nested values as true/null/15/7/-.inf/2.5"}}}}

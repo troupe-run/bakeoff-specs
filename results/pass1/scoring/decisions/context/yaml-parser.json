@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "c: 017   # leading zero",
+        "input": "`config set c 0o20`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the line now reads:\nc: 0o20  # leading zero",
+          "2": "two arms: exit 0; the line now reads:\nc: 0o20  # leading zero\nthree arms: exit 0; your spelling is replaced by its decimal value:\nc: 16    # leading zero"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set n 1e3` (new key)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; a line is appended at the end of the file:\nn: 1e3",
+          "2": "two arms: exit 0; appended:\nn: 1e3\nthree arms: exit 0; appended:\nn: 1000.0"
+        }
+      },
+      {
+        "before": "m: \"café 😀\"  # note",
+        "input": "`config set m '\"crème brûlée 😀😀\"'`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the line now reads (the comment is kept, with one space before it instead of two):\nm: \"crème brûlée 😀😀\" # note",
+          "2": "all five arms: exit 0; the same line as route 1:\nm: \"crème brûlée 😀😀\" # note"
+        }
+      },
+      {
+        "before": "# typing probes\na: yes\nb: 0o17\nc: 017   # leading zero\nd: 1_000\ne: 1e3\nf: 1:30\ng: .inf\nh: 0x1F\ni: ~\nj: Off\nk: 2001-12-14\nm: \"café 😀\"  # note",
+        "input": "`config history` on the starting file (the import of the existing values)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; a, d, f, j and k are imported as strings (\"yes\", \"1_000\", \"1:30\", \"Off\", \"2001-12-14\"). b = 15, c = 17, e = 1000.0, g = Infinity, h = 31, i = null, m = \"café 😀\"",
+          "2": "four arms: the same as route 1; one arm: the same, except that g is recorded as the string \".inf\" instead of Infinity, and m is written with escape codes (\"caf\\u00e9 \\ud83d\\ude00\")"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show --sources`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; plain values, e.g. `a: yes # from .troupe/troupe.yml`, `c: 17 …`, `g: .inf …`, `j: Off …`",
+          "2": "four arms: output identical to route 1; one arm: string values are shown in quotes: `a: 'yes'`, `d: '1_000'`, `f: '1:30'`, `j: 'Off'`, `k: '2001-12-14'`"
+        }
+      }
+    ],
+    "in_practice": "Both routes read the file the same way: `yes`/`Off` stay text, `017` is 17 and `0o17` is 15. In both routes, every arm leaves untouched lines and comments byte-for-byte as they were. The only differences are what a `set` writes and some small display differences. Route 1's single arm, and two of route 2's five arms, write your value exactly as typed. The other three route 2 arms rewrite numbers in a normalized form (`0o20` becomes `16`, `1e3` becomes `1000.0`).",
+    "stakes": "When you set a value through the CLI, the question is whether the YAML file gets exactly what you typed or a re-rendered version of it. The other question is whether existing values like `yes`, `017` or `.inf` are typed the same way when they are read back.",
+    "tradeoff": "Route 1 needs its own typing rules on top of a library built for an older YAML version. Route 2 gets those rules from its library, but its arms were inconsistent: three normalized the numbers you typed, one recorded `.inf` as text, and one quoted strings in `show`."
+  },
+  "plan_why": "Shows which YAML rules each parser actually applies (YAML 1.1 vs 1.2 core) by loading and setting tricky values: yes/Off, 0o17, 017, 1_000, 1e3, 1:30, .inf, 0x1F, ~ and a date. Also checks byte-exact write-back next to a non-ASCII value and an end-of-line comment.",
+  "routes": [
+    [
+      "PyYAML compose for node positions, with custom YAML 1.2 core resolution",
+      [
+        "Arm D"
+      ]
+    ],
+    [
+      "ruamel.yaml compose only (nodes and marks); never use its dumper",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

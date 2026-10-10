@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "retry: 3  # attempts\nlimit: 10\nname: alpha\n",
+        "input": "`config set retry -1e3`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads:\nretry: -1e3 # attempts\nlimit: 10\nname: alpha\nThe history records the new value as -1000.0.",
+          "2": "All five arms: exit 2, file unchanged. The error says the value is missing, worded differently per arm, e.g. `troupe: troupe config set: the following arguments are required: value`. Two arms also print the full usage block first."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set limit -.inf`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads:\nlimit: -.inf\nThe history records the new value as the string \"-.inf\".",
+          "2": "All five arms: exit 2, file unchanged, same 'required: value' error as above."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set name -beta --reason -x`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads:\nname: -beta\nThe history records reason \"-x\".",
+          "2": "All five arms: exit 2, file unchanged. Error: `argument --reason: expected one argument` (wording varies slightly by arm)."
+        }
+      },
+      {
+        "before": "retry: 3  # attempts\nlimit: 10\nname: alpha\n",
+        "input": "`config set -- retry -5`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the retry line now reads (earlier commands had already changed it):\nretry: -5   # attempts",
+          "2": "All five arms: exit 2 → no, exit 0; the file now reads:\nretry: -5 # attempts\nlimit: 10\nname: alpha"
+        }
+      }
+    ],
+    "in_practice": "On route 1, any single-dash word after the key is taken as the value, and `--reason` accepts a dash-leading reason. Long `--` options still work as options. On route 2, the only way to set a dash-leading value is to type `--` before the key. A dash-leading reason cannot be given at all in these runs. On route 1, `-1e3` and `-.inf` are stored as typed. The history logs `-1e3` as the number -1000.0 but logs `-.inf` as the text \"-.inf\".",
+    "stakes": "This decides whether a user can set a negative or dash-leading value directly, e.g. `config set retry -1e3`, or must remember to insert `--`. Without that, the command fails with a message that says the value is missing, even though the user typed it.",
+    "tradeoff": "Route 1 accepts dash values directly but relies on overriding a private part of the argument parser, which could break in a future version. Route 2 uses the parser as it comes, but users must know to add `--`, and the error message doesn't tell them."
+  },
+  "plan_why": "Shows whether a VALUE starting with '-' (negative int, -1e3, -.inf, a -word string) and a '--reason' text starting with '-' are accepted without '--' (route 1) or rejected as a usage error (exit 2, route 2); a '--' run is the baseline that should work everywhere.",
+  "routes": [
+    [
+      "Override argparse's private _parse_optional (via a parser subclass) so single-dash VALUEs are positional",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

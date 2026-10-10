@@ -1,0 +1,173 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "A",
+        "why": "Single stderr line giving the reason (expected ',' or ']', but got ':') and the location (line 4, column 7)."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "A",
+        "why": "Single stderr line giving the location (line 4, column 7) and the reason (expected ',' or ']', but got ':')."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "A",
+        "why": "Single stderr line giving the reason (expected ',' or ']', but got ':') and the location (line 4, no column)."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "X",
+        "why": "Single stderr line says only 'while parsing a flow sequence', with no line/column and no actual reason."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "D",
+        "why": "Multi-line raw parser output with 'in \"<unicode string>\"' lines, quoted source lines and caret markers."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "D",
+        "why": "Multi-line raw parser output with quoted source lines and caret markers at line 3 and line 4."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        },
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "# troupe settings\nmodel: sonnet  # default model\nretry: 3\nagents:\n  coder:\n    temperature: 0.2\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "# troupe settings\nmodel: sonnet  # default model\nretry: [3\nagents:\n  coder:\n    temperature: 0.2\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "# troupe settings\nmodel: sonnet  # default model\nretry: 5\nagents:\n  coder:\n    temperature: 0.2\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# troupe settings\nmodel: opus  # default model\nretry: 3\nagents:\n  coder:\n    temperature: 0.2\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Records everything watch prints to stdout and stderr during one session: start, a hand edit that changes a value, an edit that breaks the YAML, an edit that fixes it (changing another value), then SIGINT. Afterwards, history shows which edits were recorded as events, and a file listing shows what state watch left under .troupe. Route 1 should print only the `watching` line on stdout, put the broken-YAML diagnostic on stderr, keep running, and exit 0."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "one line with location (line/column) and reason",
+            "id": "A"
+          },
+          {
+            "description": "multi-line parser dump with carets",
+            "id": "D"
+          },
+          {
+            "description": "no location and no reason",
+            "id": "X"
+          }
+        ],
+        "id": "Q1",
+        "text": "watch's stderr report of a broken hand edit"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Only the watching line; diagnostics on stderr; events visible through history",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "sheet_id": "T87",
+  "status": "ok"
+}

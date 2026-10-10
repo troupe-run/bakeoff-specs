@@ -1,0 +1,1335 @@
+diff --git a/README.md b/README.md
+index 8a33b2d..1758f5a 100644
+--- a/README.md
++++ b/README.md
+@@ -5,12 +5,21 @@ AI orchestration. This package currently provides the configuration subsystem:
+ ```
+ uv run troupe config get PATH [--theatre DIR]
+ uv run troupe config show [PATH] [--sources] [--theatre DIR]
+-uv run troupe config set PATH VALUE [--in-include] [--expand-alias] [--reason TEXT] [--theatre DIR]
++uv run troupe config set PATH VALUE [--include] [--in-include] [--expand-alias] [--reason TEXT] [--theatre DIR]
+ uv run troupe config history [PATH] [--theatre DIR]
+ uv run troupe config watch [--theatre DIR]
+ ```
+ 
+ - Configuration lives in `DIR/.troupe/troupe.yml` (or `.yaml`); `file:` strings include other files.
++- `https://` and `http://` strings are remote includes, fetched on every load (YAML if the URL path ends
++  `.yml`/`.yaml`, else text; a failed fetch exits 4). They are read-only: changing a value that comes from
++  one exits 3 and names the include line in the local file to change instead. New keys under one become
++  local overrides. A `file:` include inside a remote file is relative to its URL.
++- `.troupe/troupe.schema.json` (JSON Schema 2020-12), if present, must validate the loaded configuration
++  (else exit 4; a `set` that would break it exits 3). A string whose schema (through `properties`, `items`,
++  `additionalProperties`) has `"format": "uri"`, or that is tagged `!literal`, is a literal, never an
++  include. `set` writes a string that would read as an include, at a path the schema does not mark as a
++  URI, tagged `!literal`, unless `--include` is given; `show` tags such strings the same way.
+ - An include may also be written as a mapping, `{$ref: file:..., key: value}`: the other keys override
+   the included YAML (deep-merged: mappings merge, anything else replaces).
+ - `get` prints one value; `show` prints a value or a whole section as YAML (includes resolved), and with
+diff --git a/docs/decisions.md b/docs/decisions.md
+index d78b3a3..8e34ec8 100644
+--- a/docs/decisions.md
++++ b/docs/decisions.md
+@@ -97,3 +97,33 @@ corrupt user data or to contradict the contract.
+     take a block-style copy: `--expand-alias` exits 3 there. Without an alias on the path,
+     `--expand-alias` changes nothing.
+ 33. **A recursive alias (`a: &a {b: *a}`) is a configuration error (exit 4).**
++34. **Remote includes are fetched with `urllib`, once per command** (the `set` verification re-reads what
++    the command loaded), with a 30 s timeout. HTTP errors, unreachable hosts and non-UTF-8 bodies are
++    failed fetches (exit 4), also when the include is new in a `set --include`. `watch` does not poll
++    remote includes; it rereads them whenever a local file changes.
++35. **A `file:` include inside a remote file is resolved against its URL**, so it is remote too; a remote
++    file can never name a local file.
++36. **"The include string exactly as written" is its source text** (quotes included, anchor/tag left out),
++    with the local file and line: `troupe.yml:2: 'https://…/c.yml'`. For a remote include reached through
++    another remote include, that is the local include of the outer one (every such line, if several).
++    The remote file's own URL is named too.
++37. **Setting a remote value to the value it already has changes nothing and exits 0**, as for any other
++    unchanged value; replacing a whole remote include still exits 3 (see 5). `--in-include` and
++    `--expand-alias` cannot write into a remote file either (exit 3).
++38. **Schema validation uses `jsonschema` (Draft 2020-12)**; `format` is an annotation, not checked. An
++    unreadable, non-JSON or invalid schema is a configuration error (exit 4). The configuration is
++    validated as loaded: includes resolved, merge keys applied.
++39. **The schema decides `format: uri` only through `properties`, `items` and `additionalProperties`**, as
++    the contract says: `$ref`, `allOf`, `patternProperties` and the like are not followed. A key matched by
++    `patternProperties` does not take `additionalProperties`, and `items` applies after `prefixItems`.
++    A value merged from an include or a merge key takes the schema of where it appears.
++40. **`!literal` only stops a string being an include**; the value is read as it would be without the tag
++    (`!literal 3` is still 3). On a mapping or list it means nothing.
++41. **`set` treats every include-like string in VALUE alike**, also inside a flow collection
++    (`[file:x, y]` → `- !literal file:x`). A tagged string is written on one line (double-quoted if
++    multi-line). Replacing a `!literal` value keeps the tag (one is not added twice); with `--include` the
++    tag is removed. `--include` where the schema says `format: uri` exits 3, and with no include-like
++    string it changes nothing. With `--include` the write is verified by reading each such string back
++    as an include of exactly that string.
++42. **`show` tags strings that would be read as includes `!literal`** (unless the schema marks them URIs),
++    so its output still reads back as the same configuration.
+diff --git a/pyproject.toml b/pyproject.toml
+index a7a0773..02ea62b 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -9,6 +9,7 @@ authors = [
+ requires-python = ">=3.12"
+ dependencies = [
+     "eventsourcing>=9.5.5",
++    "jsonschema>=4.26.0",
+     "pyyaml>=6.0.3",
+ ]
+ 
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index 99db25b..7679cb9 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -13,22 +13,27 @@ import threading
+ from contextlib import contextmanager
+ from pathlib import Path
+ 
++from . import schema as schemas
+ from .config import (
++    LITERAL,
+     Config,
+     ConfigError,
++    FetchError,
+     Item,
+     PathNotFound,
+     WriteRefused,
+     find_config,
+     flatten,
++    include_like,
++    is_remote,
+     load,
+     lookup,
+     split_path,
+ )
+ from .dump import dump, source_namer
+ from .store import STATE_FILE, ConfigStore, diff, lineage
+-from .writer import Writer, expand, node_val, shared_on_path
+-from .yamlcore import ValueError_, format_scalar, parse_value, same
++from .writer import Writer, expand, matches, node_val, shared_on_path
++from .yamlcore import Val, ValueError_, format_scalar, parse_value, same
+ 
+ 
+ class UsageError(Exception):
+@@ -76,6 +81,11 @@ def _parser() -> argparse.ArgumentParser:
+                 action="store_true",
+                 help="replace the alias on PATH with its own copy of the anchored value, then set the copy",
+             )
++            p.add_argument(
++                "--include",
++                action="store_true",
++                help="write a string that reads as an include (file:..., https://...) as an include, not a literal",
++            )
+     return parser
+ 
+ 
+@@ -155,7 +165,9 @@ def run(argv: list[str]) -> int:
+             _reconcile(store, cfg)
+             if args.cmd == "set":
+                 how = lineage("cli", actor, args.reason)
+-                return _set(theatre, cfg, store, segs, args.path, value, how, args.in_include, args.expand_alias)
++                return _set(
++                    theatre, cfg, store, segs, args.path, value, how, args.in_include, args.expand_alias, args.include
++                )
+ 
+     if args.cmd in ("get", "show"):
+         item = lookup(cfg.root, segs, args.path) if segs is not None else cfg.root
+@@ -212,7 +224,9 @@ def _set(
+     how: dict,
+     in_include: bool = False,
+     expand_alias: bool = False,
++    include: bool = False,
+ ) -> int:
++    _mark_includes(value, _schema_at(cfg, segs), include, path)
+     planned: dict[Path, str] = {}
+     target = cfg
+     shared, depth = shared_on_path(cfg.root, segs) if expand_alias else (None, 0)
+@@ -223,7 +237,9 @@ def _set(
+         planned = expander.results()
+         if depth < len(segs):
+             try:
+-                target = load(theatre, overrides=planned)
++                target = load(theatre, overrides=planned, fetched=cfg.fetched)
++            except FetchError:
++                raise
+             except ConfigError as exc:
+                 raise WriteRefused(f"{path}: cannot expand the alias faithfully ({exc})") from exc
+     if shared is None or depth < len(segs):
+@@ -235,12 +251,18 @@ def _set(
+         return 0
+     # Check the planned write before touching any file.
+     try:
+-        new_cfg = load(theatre, overrides=results)
++        new_cfg = load(theatre, overrides=results, fetched=cfg.fetched)
+         written = lookup(new_cfg.root, segs, path)
++    except FetchError:
++        raise  # a new remote include that cannot be fetched
+     except (ConfigError, PathNotFound) as exc:
+         raise WriteRefused(f"{path}: cannot write this change faithfully ({exc})") from exc
+-    expected = results.get(written.include, value.value) if written.kind == "text" else value.py()
+-    if not same(written.py(), expected):
++    if _has_include(value):
++        faithful = matches(written, value)
++    else:
++        expected = results.get(written.include, value.value) if written.kind == "text" else value.py()
++        faithful = same(written.py(), expected)
++    if not faithful:
+         raise WriteRefused(f"{path}: cannot write this change faithfully")
+     for p, text in results.items():
+         p.write_bytes(text.encode("utf-8"))
+@@ -249,19 +271,65 @@ def _set(
+     return 0
+ 
+ 
++def _schema_at(cfg: Config, segs: list[str]):
++    """The schema of PATH, following the configuration where it exists (a digit is an index only in a list)."""
++    schema, item = cfg.schema, cfg.root
++    for seg in segs:
++        if item is not None and item.kind == "seq" and seg.isdigit():
++            i = int(seg)
++            schema = schemas.item_schema(schema, i)
++            item = item.value[i] if i < len(item.value) else None
++        else:
++            schema = schemas.prop_schema(schema, seg)
++            item = item.value.get(seg) if item is not None and item.kind == "map" else None
++    return schema
++
++
++def _mark_includes(v: Val, schema, include: bool, path: str) -> None:
++    """Decide how each string of VALUE that reads as an include is written.
++
++    Where the schema says `format: uri` it is a literal anyway; elsewhere it is tagged `!literal`, or with
++    `--include` meant as an include.
++    """
++    if v.kind == "map":
++        for k, x in v.value.items():
++            _mark_includes(x, schemas.prop_schema(schema, k), include, path)
++    elif v.kind == "seq":
++        for i, x in enumerate(v.value):
++            _mark_includes(x, schemas.item_schema(schema, i), include, path)
++    elif v.kind == "str" and include_like(v.value):
++        if schemas.is_uri(schema):
++            if include:
++                raise WriteRefused(f"{path}: the schema says {v.value!r} is a URI (format: uri), not an include")
++        elif include:
++            v.include = True
++        else:
++            v.tag = LITERAL
++
++
++def _has_include(v: Val) -> bool:
++    if v.kind == "map":
++        return any(_has_include(x) for x in v.value.values())
++    if v.kind == "seq":
++        return any(_has_include(x) for x in v.value)
++    return v.include
++
++
+ # ---------------------------------------------------------------------------- watch
+ 
+ POLL_SECONDS = 0.1
+ 
+ 
+ def _loaded_texts(cfg: Config) -> dict[Path, str | None]:
+-    """The contents `load` read, by file: the config file, its includes, and the absent other config name."""
+-    texts: dict[Path, str | None] = {p: doc.text for p, doc in cfg.docs.items()}
++    """The contents `load` read, by local file: the config file, its includes, the schema, and the absent
++    other config name. Remote includes are not watched."""
++    texts: dict[Path, str | None] = {p: doc.text for p, doc in cfg.docs.items() if not is_remote(p)}
+     for name in ("troupe.yml", "troupe.yaml"):
+         texts.setdefault(cfg.config_path.parent / name, None)
++    texts[cfg.config_path.parent / schemas.SCHEMA_FILE] = cfg.schema_text
+ 
+     def walk(item: Item) -> None:
+-        if item.kind == "text":
++        if item.kind == "text" and not is_remote(item.include):
+             texts[item.include] = item.value
+         elif item.kind == "map":
+             for child in item.value.values():
+diff --git a/src/troupe/config.py b/src/troupe/config.py
+index 26f8b04..3187455 100644
+--- a/src/troupe/config.py
++++ b/src/troupe/config.py
+@@ -3,13 +3,18 @@
+ from __future__ import annotations
+ 
+ import bisect
++import http.client
+ import re
++import urllib.error
++import urllib.parse
++import urllib.request
+ from dataclasses import dataclass, field
+ from pathlib import Path
+ from typing import Any
+ 
+ import yaml
+ 
++from . import schema as schemas
+ from .yamlcore import scalar_value
+ 
+ 
+@@ -17,6 +22,10 @@ class ConfigError(Exception):
+     """Exit 4: the configuration cannot be loaded."""
+ 
+ 
++class FetchError(ConfigError):
++    """Exit 4: a remote include cannot be fetched."""
++
++
+ class PathNotFound(Exception):
+     """Exit 5: path not found, or the wrong kind of node."""
+ 
+@@ -29,6 +38,35 @@ _BREAK = re.compile(r"\r\n|\r|\n")
+ 
+ MERGE = "<<"
+ 
++LITERAL = "!literal"  # the tag that makes an include-like string a literal
++REMOTE = ("https://", "http://")
++FETCH_TIMEOUT = 30
++
++
++def include_like(value: Any) -> bool:
++    """Whether a string would be read as an include (unless the schema or a `!literal` tag says otherwise)."""
++    return isinstance(value, str) and value.startswith(("file:", *REMOTE))
++
++
++def is_remote(location: Path | str | None) -> bool:
++    """Whether an include target (or a `Doc.path`) is a URL rather than a local file."""
++    return isinstance(location, str)
++
++
++_PROPS = re.compile(r"(?:[&!][^ \t\r\n]*[ \t]+)*")
++
++
++@dataclass(frozen=True)
++class Origin:
++    """An include string as written in a local file, and its line (1-based)."""
++
++    path: Path
++    line: int
++    text: str
++
++    def __str__(self) -> str:
++        return f"{self.path}:{self.line}: {self.text}"
++
+ 
+ @dataclass(frozen=True)
+ class Alias:
+@@ -70,8 +108,8 @@ class _Loader(yaml.SafeLoader):
+ class Doc:
+     """A YAML file: its text, composed node tree, line index, and pending edits."""
+ 
+-    def __init__(self, path: Path, text: str):
+-        self.path = path
++    def __init__(self, path: Path | str, text: str):
++        self.path = path  # a URL for a remote include
+         self.text = text
+         loader = _Loader(text)
+         try:
+@@ -85,6 +123,20 @@ class Doc:
+         self.newline = "\r\n" if "\r\n" in text else "\n"
+         self.indent = _detect_indent(self.root)
+         self.edits: list[tuple[int, int, int, str]] = []
++        self.origins: list[Origin] = []  # remote: the local include strings that lead to it
++
++    @property
++    def remote(self) -> bool:
++        return is_remote(self.path)
++
++    def origins_of(self, node: yaml.Node) -> list[Origin]:
++        """Where the include string `node` (in this file) is written locally."""
++        if self.remote:
++            return self.origins
++        start, end = node.start_mark.index, node.end_mark.index
++        text = self.text[start:end]
++        text = text[_PROPS.match(text).end() :]
++        return [Origin(self.path, self.line_of(start) + 1, text)]
+ 
+     # line helpers -----------------------------------------------------------
+     def line_of(self, idx: int) -> int:
+@@ -161,6 +213,18 @@ def _detect_indent(root: yaml.Node | None) -> int:
+     return 2
+ 
+ 
++def fetch(url: str, cache: dict[str, str]) -> str:
++    """The text at `url`, fetched once per `cache`."""
++    if url not in cache:
++        try:
++            with urllib.request.urlopen(url, timeout=FETCH_TIMEOUT) as response:
++                data = response.read()
++            cache[url] = data.decode("utf-8")
++        except (OSError, ValueError, http.client.HTTPException) as exc:  # URLError is an OSError
++            raise FetchError(f"{url}: cannot fetch remote include: {exc}") from exc
++    return cache[url]
++
++
+ def read_text(path: Path) -> str:
+     try:
+         return path.read_bytes().decode("utf-8")
+@@ -176,7 +240,7 @@ class Item:
+ 
+     kind: map | seq | scalar | text (a text include).
+     node: the YAML node in `doc` (for `text`, the `file:` string node).
+-    include: the include target when this value came from an include.
++    include: the include target when this value came from an include (a URL for a remote include).
+     parent/key: position in the containing collection (None for a document root).
+     ref: for the root of a YAML include, the including file and the `file:` string (scalar form) or
+         `$ref` mapping (mapping form) that includes it.
+@@ -185,13 +249,15 @@ class Item:
+     alias: the alias this value is used through, when it is written `*name` here.
+     merged: the alias of the mapping a merge key (`<<`) of the parent mapping takes this value from
+         (`MERGE_INLINE` if that mapping is written in place).
++    via: the include string this value is read from, when it is written as a scalar-form include.
++    uri: the schema marks this value `format: uri`.
+     """
+ 
+     kind: str
+     doc: Doc
+     node: yaml.Node | None
+     value: Any = None
+-    include: Path | None = None
++    include: Path | str | None = None
+     parent: "Item | None" = None
+     key: Any = None  # str for mapping entries, int for sequence items
+     key_node: yaml.Node | None = None
+@@ -200,6 +266,8 @@ class Item:
+     parts: "list[Item] | None" = None
+     alias: Alias | None = None
+     merged: Alias | None = None
++    via: str | None = None
++    uri: bool = False
+ 
+     @property
+     def yaml_include(self) -> bool:
+@@ -217,7 +285,10 @@ class Item:
+ class Config:
+     config_path: Path
+     root: Item
+-    docs: dict[Path, Doc] = field(default_factory=dict)
++    docs: dict[Path | str, Doc] = field(default_factory=dict)
++    schema: Any = None
++    fetched: dict[str, str] = field(default_factory=dict)
++    schema_text: str | None = None  # the text the schema was read from (None: no schema file)
+ 
+ 
+ def find_config(theatre: Path) -> Path:
+@@ -230,23 +301,37 @@ def find_config(theatre: Path) -> Path:
+     return found[0]
+ 
+ 
+-def load(theatre: Path, overrides: dict[Path, str] | None = None) -> Config:
+-    """Load the configuration; `overrides` substitutes file contents (to check a planned write)."""
++def load(theatre: Path, overrides: dict[Path, str] | None = None, fetched: dict[str, str] | None = None) -> Config:
++    """Load the configuration.
++
++    `overrides` substitutes file contents (to check a planned write); `fetched` caches remote includes
++    (pass the one of an earlier load to read them as that load did).
++    """
+     path = find_config(theatre).resolve()
+-    docs: dict[Path, Doc] = {}
++    try:
++        schema, schema_text = schemas.load_schema(path.parent)
++    except schemas.SchemaProblem as exc:
++        raise ConfigError(str(exc)) from exc
++    docs: dict[Path | str, Doc] = {}
+     overrides = overrides or {}
++    fetched = {} if fetched is None else fetched
+ 
+-    def text_of(p: Path) -> str:
++    def text_of(p: Path | str) -> str:
++        if is_remote(p):
++            return fetch(p, fetched)
+         return overrides[p] if p in overrides else read_text(p)
+ 
+-    def get_doc(p: Path) -> Doc:
++    def get_doc(p: Path | str) -> Doc:
+         if p not in docs:
+             docs[p] = Doc(p, text_of(p))
+         return docs[p]
+ 
+-    def build(doc: Doc, node: yaml.Node | None, stack: tuple[Path, ...], flow: bool, nodes: tuple = ()) -> Item:
++    def build(
++        doc: Doc, node: yaml.Node | None, stack: tuple, flow: bool, nodes: tuple = (), schema: Any = None
++    ) -> Item:
++        """The value of `node`; `schema` is the schema of its position in the configuration."""
+         if node is None:
+-            return Item("scalar", doc, None, None)
++            return Item("scalar", doc, None, None, uri=schemas.is_uri(schema))
+         if isinstance(node, (yaml.MappingNode, yaml.SequenceNode)):
+             if any(n is node for n in nodes):
+                 raise ConfigError(f"{doc.path}: recursive alias")
+@@ -263,13 +348,13 @@ def load(theatre: Path, overrides: dict[Path, str] | None = None) -> Config:
+                     continue
+                 if is_merge(k):
+                     # Merged keys sit where the merge key is; explicit keys win, then earlier mappings.
+-                    for source, alias in merge_sources(doc, node, k, v, stack, nodes):
++                    for source, alias in merge_sources(doc, node, k, v, stack, nodes, schema):
+                         for key, child in source.value.items():
+                             if key not in explicit and key not in item.value:
+                                 child.parent, child.merged = item, alias or MERGE_INLINE
+                                 item.value[key] = child
+                     continue
+-                child = build(doc, v, stack, bool(node.flow_style), nodes)
++                child = build(doc, v, stack, bool(node.flow_style), nodes, schemas.prop_schema(schema, k.value))
+                 child.parent, child.key, child.key_node = item, k.value, k
+                 child.alias = doc.alias_at(node, k)
+                 item.value[k.value] = child
+@@ -277,9 +362,9 @@ def load(theatre: Path, overrides: dict[Path, str] | None = None) -> Config:
+                 return item
+             # Mapping form: the included content, deep-merged with the other keys as overrides.
+             value = scalar_value(ref) if isinstance(ref, yaml.ScalarNode) else None
+-            if not (isinstance(value, str) and value.startswith("file:")):
+-                raise ConfigError(f"{doc.path}: $ref must be a file: include")
+-            included = include(doc, ref, value, stack, flow)
++            if not include_like(value):
++                raise ConfigError(f"{doc.path}: $ref must be an include (file: or a URL)")
++            included = include(doc, ref, value, stack, flow, schema)
+             if included.kind == "text":
+                 if item.value:
+                     raise ConfigError(f"{doc.path}: overrides apply only to YAML includes, not {included.include}")
+@@ -292,21 +377,23 @@ def load(theatre: Path, overrides: dict[Path, str] | None = None) -> Config:
+         if isinstance(node, yaml.SequenceNode):
+             item = Item("seq", doc, node, [], flow=flow)
+             for i, v in enumerate(node.value):
+-                child = build(doc, v, stack, bool(node.flow_style), nodes)
++                child = build(doc, v, stack, bool(node.flow_style), nodes, schemas.item_schema(schema, i))
+                 child.parent, child.key = item, i
+                 child.alias = doc.alias_at(node, i)
+                 item.value.append(child)
+             return item
+         value = scalar_value(node)
+-        if isinstance(value, str) and value.startswith("file:"):
+-            item = include(doc, node, value, stack, flow)
++        uri = schemas.is_uri(schema)
++        if include_like(value) and not uri and node.tag != LITERAL:
++            item = include(doc, node, value, stack, flow, schema)
+             if item.kind != "text" and item.ref is None:  # a whole-file include keeps the innermost
+                 item.ref = (doc, node)
++            item.via = value
+             return item
+-        return Item("scalar", doc, node, value, flow=flow)
++        return Item("scalar", doc, node, value, flow=flow, uri=uri)
+ 
+     def merge_sources(
+-        doc: Doc, node: yaml.Node, k: yaml.Node, v: yaml.Node, stack: tuple[Path, ...], nodes: tuple
++        doc: Doc, node: yaml.Node, k: yaml.Node, v: yaml.Node, stack: tuple, nodes: tuple, schema: Any
+     ) -> list[tuple[Item, Alias | None]]:
+         """The mappings merged by merge key `k` (value `v`): one mapping, or a list of them."""
+         if isinstance(v, yaml.SequenceNode):
+@@ -317,26 +404,42 @@ def load(theatre: Path, overrides: dict[Path, str] | None = None) -> Config:
+         for source, alias in sources:
+             if not isinstance(source, yaml.MappingNode):
+                 raise ConfigError(f"{doc.path}: a merge key (<<) must merge mappings")
+-            out.append((build(doc, source, stack, bool(node.flow_style), nodes), alias))
++            out.append((build(doc, source, stack, bool(node.flow_style), nodes, schema), alias))
+         return out
+ 
+-    def include(doc: Doc, node: yaml.Node, value: str, stack: tuple[Path, ...], flow: bool) -> Item:
+-        target = (doc.path.parent / value[5:]).resolve()
++    def include(doc: Doc, node: yaml.Node, value: str, stack: tuple, flow: bool, schema: Any) -> Item:
++        target: Path | str
++        if not value.startswith("file:"):
++            target = value
++        elif doc.remote:
++            target = urllib.parse.urljoin(doc.path, value[5:])  # relative to the remote file
++        else:
++            target = (doc.path.parent / value[5:]).resolve()
+         if target in stack:
+             raise ConfigError(f"{doc.path}: include cycle through {target}")
+-        if not target.is_file():
+-            raise ConfigError(f"{doc.path}: include target {target} not found")
+-        if target.suffix in (".yml", ".yaml"):
++        if is_remote(target):
++            is_yaml = urllib.parse.urlsplit(target).path.endswith((".yml", ".yaml"))
++        else:
++            if not target.is_file():
++                raise ConfigError(f"{doc.path}: include target {target} not found")
++            is_yaml = target.suffix in (".yml", ".yaml")
++        if is_yaml:
+             tdoc = get_doc(target)
+-            item = build(tdoc, tdoc.root, stack + (target,), False)
++            if tdoc.remote:
++                tdoc.origins += [o for o in doc.origins_of(node) if o not in tdoc.origins]
++            item = build(tdoc, tdoc.root, stack + (target,), False, (), schema)
+             item.include = target
+             item.flow = flow
+             return item
+         return Item("text", doc, node, text_of(target), include=target, flow=flow)
+ 
+     root_doc = get_doc(path)
+-    root = build(root_doc, root_doc.root, (path,), False)
+-    return Config(path, root, docs)
++    root = build(root_doc, root_doc.root, (path,), False, (), schema)
++    try:
++        schemas.validate(schema, root.py(), path.parent / schemas.SCHEMA_FILE)
++    except schemas.SchemaProblem as exc:
++        raise ConfigError(str(exc)) from exc
++    return Config(path, root, docs, schema, fetched, schema_text)
+ 
+ 
+ def merge(base: Item, over: Item) -> Item:
+diff --git a/src/troupe/dump.py b/src/troupe/dump.py
+index 1733728..e0b1be7 100644
+--- a/src/troupe/dump.py
++++ b/src/troupe/dump.py
+@@ -7,7 +7,7 @@ import os
+ from pathlib import Path
+ from typing import Any, Callable
+ 
+-from .config import Item
++from .config import LITERAL, Item, include_like, is_remote
+ from .yamlcore import chomp_for, literal_lines, literal_ok, render_double, render_str
+ 
+ INDENT = 2
+@@ -33,7 +33,17 @@ def yaml_scalar(value: Any) -> str:
+ 
+ 
+ def _scalar(item: Item, indent: int) -> tuple[str, list[str]]:
+-    """The inline text of a scalar, and the content lines of a literal block (if it is written as one)."""
++    """The inline text of a scalar, and the content lines of a literal block (if it is written as one).
++
++    A string that would be read back as an include is tagged `!literal`, unless the schema marks it a URI.
++    """
++    text, block = _untagged(item, indent)
++    if include_like(item.value) and not item.uri:
++        text = f"{LITERAL} {text}"
++    return text, block
++
++
++def _untagged(item: Item, indent: int) -> tuple[str, list[str]]:
+     value = item.value
+     if not isinstance(value, str):
+         return yaml_scalar(value), []
+@@ -97,6 +107,8 @@ def source_namer(theatre: Path) -> Callable[[Item], str]:
+ 
+     def name(item: Item) -> str:
+         path = item.include if item.kind == "text" else item.doc.path
++        if is_remote(path):
++            return path
+         return Path(os.path.relpath(path, base)).as_posix()
+ 
+     return name
+diff --git a/src/troupe/schema.py b/src/troupe/schema.py
+new file mode 100644
+index 0000000..83aea29
+--- /dev/null
++++ b/src/troupe/schema.py
+@@ -0,0 +1,82 @@
++"""The theatre's JSON Schema (`.troupe/troupe.schema.json`): which strings are URIs, and validation."""
++
++from __future__ import annotations
++
++import json
++import re
++from pathlib import Path
++from typing import Any
++
++from jsonschema import Draft202012Validator
++from jsonschema.exceptions import SchemaError, best_match
++
++SCHEMA_FILE = "troupe.schema.json"
++
++
++class SchemaProblem(Exception):
++    """The schema cannot be read, or the configuration does not satisfy it."""
++
++
++def load_schema(troupe_dir: Path) -> tuple[Any, str | None]:
++    """The schema (None if there is none) and the text it was read from."""
++    path = troupe_dir / SCHEMA_FILE
++    try:
++        text = path.read_bytes().decode("utf-8")
++    except FileNotFoundError:
++        return None, None
++    except (OSError, UnicodeDecodeError) as exc:
++        raise SchemaProblem(f"{path}: cannot read: {exc}") from exc
++    try:
++        schema = json.loads(text)
++    except ValueError as exc:
++        raise SchemaProblem(f"{path}: invalid JSON: {exc}") from exc
++    try:
++        Draft202012Validator.check_schema(schema)
++    except SchemaError as exc:
++        raise SchemaProblem(f"{path}: not a valid JSON Schema: {exc.message}") from exc
++    return schema, text
++
++
++def prop_schema(schema: Any, key: str) -> Any:
++    """The schema of mapping entry `key`: from `properties`, else `additionalProperties`."""
++    if not isinstance(schema, dict):
++        return None
++    props = schema.get("properties")
++    if isinstance(props, dict) and key in props:
++        return props[key]
++    patterns = schema.get("patternProperties")
++    if isinstance(patterns, dict) and any(_search(p, key) for p in patterns):
++        return None  # additionalProperties does not apply to it
++    extra = schema.get("additionalProperties")
++    return extra if isinstance(extra, dict) else None
++
++
++def item_schema(schema: Any, index: int) -> Any:
++    """The schema of list item `index`: from `items` (which applies after any `prefixItems`)."""
++    if not isinstance(schema, dict):
++        return None
++    prefix = schema.get("prefixItems")
++    if isinstance(prefix, list) and index < len(prefix):
++        return None
++    items = schema.get("items")
++    return items if isinstance(items, dict) else None
++
++
++def is_uri(schema: Any) -> bool:
++    return isinstance(schema, dict) and schema.get("format") == "uri"
++
++
++def validate(schema: Any, instance: Any, where: Path) -> None:
++    if schema is None:
++        return
++    error = best_match(Draft202012Validator(schema).iter_errors(instance))
++    if error is not None:
++        at = ".".join(str(p) for p in error.absolute_path) or "(root)"
++        raise SchemaProblem(f"configuration does not match {where}: at {at}: {error.message}")
++
++
++def _search(pattern: str, key: str) -> bool:
++    try:
++        return re.search(pattern, key) is not None
++    except re.error:
++        return False
+diff --git a/src/troupe/writer.py b/src/troupe/writer.py
+index 8340609..e3b86f8 100644
+--- a/src/troupe/writer.py
++++ b/src/troupe/writer.py
+@@ -12,7 +12,7 @@ from pathlib import Path
+ 
+ import yaml
+ 
+-from .config import MERGE, MERGE_INLINE, Doc, Item, PathNotFound, WriteRefused, is_merge
++from .config import LITERAL, MERGE, MERGE_INLINE, Doc, Item, Origin, PathNotFound, WriteRefused, is_merge
+ from .yamlcore import (
+     Val,
+     scalar_value,
+@@ -37,8 +37,11 @@ class Writer:
+         self.in_include = in_include  # new keys go into the included file, not into overrides
+         self.docs: dict[Path, Doc] = {}
+         self.raw: dict[Path, str] = {}  # whole-file writes (text includes)
++        self.path = ""  # the PATH being set, for messages
+ 
+     def _edit(self, doc: Doc, start: int, end: int, new: str) -> None:
++        if doc.remote:
++            _refuse_remote(self.path, doc.path, doc.origins)
+         self.docs[doc.path] = doc
+         doc.edit(start, end, new)
+ 
+@@ -50,6 +53,7 @@ class Writer:
+     # ------------------------------------------------------------------ entry points
+ 
+     def set_path(self, root: Item, segs: list[str], value: Val, path: str) -> None:
++        self.path = path
+         item = root
+         for i, seg in enumerate(segs):
+             last = i == len(segs) - 1
+@@ -91,15 +95,15 @@ class Writer:
+                 return
+             raise PathNotFound(f"path not found: {path} ({'.'.join(segs[:i])} is not a mapping or list)")
+         if item.yaml_include:
+-            raise WriteRefused(f"{path}: value comes from include {item.include}; refusing to replace it")
++            _refuse_include(item, path)
+         self.assign(item, value)
+ 
+     def assign(self, item: Item, v: Val) -> None:
+-        if same(item.py(), v.py()):
++        if matches(item, v):
+             return
+         _check_shared(item, "", "")
+         if item.yaml_include:
+-            raise WriteRefused(f"value comes from include {item.include}; refusing to replace it")
++            _refuse_include(item, "")
+         if item.kind == "text":
+             self.write_text_include(item, v)
+             return
+@@ -129,6 +133,8 @@ class Writer:
+         self.replace(item, v)
+ 
+     def write_text_include(self, item: Item, v: Val) -> None:
++        if isinstance(item.include, str):
++            _refuse_remote(self.path, item.include, item.doc.origins_of(item.node))
+         if v.kind != "str":
+             raise WriteRefused(f"{item.include}: a text include can only be set to a string")
+         content = v.value
+@@ -145,6 +151,10 @@ class Writer:
+         style = style_name(node)
+         # An anchor or tag on the value stays, and so do the aliases of that anchor.
+         s, props_end = content_start(doc, node)
++        if node.tag == LITERAL and v.tag == LITERAL:
++            v = Val(v.kind, v.value, v.src)  # already tagged
++        elif node.tag == LITERAL and v.include:
++            self._drop_literal_tag(doc, node, s)
+         if item.flow:
+             text = render_flow(v, style if style in ("plain", "single", "double") else None)
+             self._replace_inline(doc, s, node_end(doc, node), text, needs_space=props_end == s)
+@@ -188,7 +198,7 @@ class Writer:
+                 new_inline = " " * (w - 1) + doc.newline.join([sub[0][pcol + w :], *sub[1:]])
+             else:
+                 body = block_lines(v, pcol + indent, indent)
+-        elif v.kind == "str" and style in ("literal", "folded") and literal_ok(v.value):
++        elif v.kind == "str" and v.tag is None and style in ("literal", "folded") and literal_ok(v.value):
+             hm = _HEADER.match(doc.text, s)
+             chomp = hm.group(2) or hm.group(4)
+             want, k = chomp_for(v.value)
+@@ -226,6 +236,15 @@ class Writer:
+         if body or bs != be:
+             self._edit(doc, bs, be, "".join(doc.newline + ln for ln in body))
+ 
++    def _drop_literal_tag(self, doc: Doc, node: yaml.Node, content: int) -> None:
++        """Remove the `!literal` tag of `node`, so that its new value is read as an include."""
++        m = re.compile(r"(?<![^ \t&!\r\n])" + re.escape(LITERAL) + r"(?=[ \t\r\n])[ \t]*").search(
++            doc.text, node.start_mark.index, content
++        )
++        if m is None:
++            raise WriteRefused(f"{doc.path}: cannot remove the {LITERAL} tag of {self.path}")
++        self._edit(doc, m.start(), m.end(), "")
++
+     def _replace_inline(
+         self, doc: Doc, is_: int, ie: int, new: str, needs_space: bool, anchor: int | None = None
+     ) -> None:
+@@ -411,6 +430,43 @@ class Writer:
+             i = j + 1
+ 
+ 
++# ---------------------------------------------------------------------- includes
++
++
++def _refuse_remote(path: str, url: str, origins: list[Origin]) -> None:
++    where = "; ".join(str(o) for o in origins) or "(unknown)"
++    raise WriteRefused(
++        f"{path or 'value'} comes from remote include {url}, which troupe never changes."
++        f" Change the include in the local file instead: {where}"
++    )
++
++
++def _refuse_include(item: Item, path: str) -> None:
++    """Refuse to replace a value that comes wholly from a YAML include."""
++    if item.doc.remote:
++        _refuse_remote(path, item.include, item.doc.origins)
++    raise WriteRefused(f"{path or 'value'}: value comes from include {item.include}; refusing to replace it")
++
++
++def matches(item: Item, v: Val) -> bool:
++    """Whether `item` is what `v` asks for; a string meant as an include must be read as that include."""
++    if v.include:
++        return item.via == v.value
++    if v.kind == "map":
++        return (
++            item.kind == "map"
++            and item.value.keys() == v.value.keys()
++            and all(matches(item.value[k], x) for k, x in v.value.items())
++        )
++    if v.kind == "seq":
++        return (
++            item.kind == "seq"
++            and len(item.value) == len(v.value)
++            and all(matches(c, x) for c, x in zip(item.value, v.value))
++        )
++    return same(item.py(), v.py())
++
++
+ # ---------------------------------------------------------------------- aliases
+ 
+ 
+@@ -466,7 +522,7 @@ def node_val(node: yaml.Node) -> Val:
+         return Val("seq", [node_val(v) for v in node.value])
+     value = scalar_value(node)
+     if isinstance(value, str):
+-        return Val("str", value)
++        return Val("str", value, tag=LITERAL if node.tag == LITERAL else None)
+     return Val("other", value, src=node.value if node.value != "" else "null")
+ 
+ 
+diff --git a/src/troupe/yamlcore.py b/src/troupe/yamlcore.py
+index e582e89..bcba067 100644
+--- a/src/troupe/yamlcore.py
++++ b/src/troupe/yamlcore.py
+@@ -82,11 +82,16 @@ def format_scalar(value: Any) -> str:
+ 
+ @dataclass
+ class Val:
+-    """A value given on the command line. `kind` is map, seq, str or other (non-string scalar)."""
++    """A value given on the command line. `kind` is map, seq, str or other (non-string scalar).
++
++    A string can be written with a `tag` (`!literal`), or be meant as an include (`include`).
++    """
+ 
+     kind: str
+     value: Any = None  # dict[str, Val] | list[Val] | str | scalar
+     src: str = ""  # source text of a non-string scalar
++    tag: str | None = None
++    include: bool = False
+ 
+     def py(self) -> Any:
+         if self.kind == "map":
+@@ -101,7 +106,7 @@ class Val:
+ 
+     @property
+     def multiline(self) -> bool:
+-        return self.kind == "str" and "\n" in self.value
++        return self.kind == "str" and "\n" in self.value and self.tag is None  # a tagged string stays inline
+ 
+ 
+ class ValueError_(Exception):
+@@ -232,9 +237,8 @@ def render_str(s: str, style: str | None, flow: bool) -> str:
+ 
+ def render_inline_scalar(v: Val, style: str | None, flow: bool) -> str:
+     if v.kind == "str":
+-        if "\n" in v.value:
+-            return render_double(v.value)
+-        return render_str(v.value, style, flow)
++        text = render_double(v.value) if "\n" in v.value else render_str(v.value, style, flow)
++        return f"{v.tag} {text}" if v.tag else text
+     return v.src
+ 
+ 
+diff --git a/tests/test_remote.py b/tests/test_remote.py
+new file mode 100644
+index 0000000..36c630c
+--- /dev/null
++++ b/tests/test_remote.py
+@@ -0,0 +1,240 @@
++import json
++import threading
++from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
++
++import pytest
++
++
++class Server:
++    def __init__(self):
++        self.files: dict[str, str] = {}
++        self.requests: list[str] = []
++        files, requests = self.files, self.requests
++
++        class Handler(BaseHTTPRequestHandler):
++            def do_GET(self):
++                requests.append(self.path)
++                body = files.get(self.path)
++                if body is None:
++                    self.send_response(404)
++                    self.end_headers()
++                    return
++                data = body.encode("utf-8")
++                self.send_response(200)
++                self.send_header("Content-Length", str(len(data)))
++                self.end_headers()
++                self.wfile.write(data)
++
++            def log_message(self, *args):
++                pass
++
++        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
++        self.url = f"http://127.0.0.1:{self.httpd.server_address[1]}"
++        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
++
++
++@pytest.fixture
++def server():
++    s = Server()
++    yield s
++    s.httpd.shutdown()
++    s.httpd.server_close()
++
++
++def test_remote_yaml_and_text_includes(theatre, server):
++    server.files["/team/coder.yml"] = "model: opus\nparams:\n  t: 1\n"
++    server.files["/team/prompt"] = "Be brief.\n"
++    theatre.write("troupe.yml", f"coder: {server.url}/team/coder.yml\nprompt: {server.url}/team/prompt\n")
++    assert theatre.get("coder.model") == "opus\n"
++    assert theatre.get("coder.params.t") == "1\n"
++    assert theatre.get("prompt") == "Be brief.\n"
++    code, out, _ = theatre.run("show", "--sources")
++    assert code == 0
++    assert f"  model: opus # from {server.url}/team/coder.yml\n" in out
++    assert f"prompt: |\n" in out or f"prompt: | # from {server.url}/team/prompt\n" in out
++    assert {e["path"] for e in theatre.history()} == {"coder.model", "coder.params.t", "prompt"}
++
++
++def test_failed_fetch_exits_4(theatre, server):
++    theatre.write("troupe.yml", f"coder: {server.url}/missing.yml\n")
++    code, _, err = theatre.run("get", "coder")
++    assert code == 4 and "/missing.yml" in err
++    theatre.write("troupe.yml", "coder: http://127.0.0.1:1/x.yml\n")
++    assert theatre.run("get", "coder")[0] == 4
++
++
++def test_changing_a_remote_value_is_refused_naming_the_include(theatre, server):
++    server.files["/c.yml"] = "model: opus\nprompt: file:p.txt\n"
++    server.files["/p.txt"] = "hi"
++    url = f"{server.url}/c.yml"
++    text = f"agents:\n  coder: '{url}'  # team\n"
++    theatre.write("troupe.yml", text)
++    for path, value, extra in [
++        ("agents.coder.model", "sonnet", ()),
++        ("agents.coder.model", "haiku", ("--expand-alias",)),
++        ("agents.coder", "{model: x}", ()),
++        ("agents.coder.prompt", "bye", ()),  # a text include relative to the remote file
++        ("agents.coder.new", "1", ("--in-include",)),
++    ]:
++        code, _, err = theatre.run("set", path, value, *extra)
++        assert code == 3, (path, err)
++        assert f"'{url}'" in err, err
++        assert "troupe.yml:2" in err
++    assert theatre.read() == text
++    assert theatre.get("agents.coder.prompt") == "hi\n"
++    theatre.set("agents.coder.model", "opus")  # unchanged: nothing to write
++
++
++def test_refusal_names_the_local_line_of_a_nested_remote(theatre, server):
++    server.files["/a.yml"] = f"inner: {server.url}/b.yml\n"
++    server.files["/b.yml"] = "x: 1\n"
++    theatre.write("troupe.yml", "top: file:local.yml\n")
++    theatre.write("local.yml", f"shared: {server.url}/a.yml\n")
++    code, _, err = theatre.run("set", "top.shared.inner.x", "2")
++    assert code == 3
++    assert f"{server.url}/b.yml" in err and f"local.yml:1: {server.url}/a.yml" in err
++
++
++def test_new_key_under_remote_include_is_a_local_override(theatre, server):
++    server.files["/c.yml"] = "model: opus\n"
++    theatre.write("troupe.yml", f"coder: {server.url}/c.yml\n")
++    theatre.set("coder.t", "0.3")
++    assert theatre.read() == f"coder:\n  $ref: {server.url}/c.yml\n  t: 0.3\n"
++    assert theatre.get("coder.model") == "opus\n"
++    assert theatre.get("coder.t") == "0.3\n"
++    theatre.set("coder.model", "sonnet", expect=3)
++    theatre.set("coder.t", "0.5")  # an override is local
++    assert theatre.read() == f"coder:\n  $ref: {server.url}/c.yml\n  t: 0.5\n"
++
++
++def test_set_include_like_string_is_written_literal(theatre, server):
++    server.files["/c.yml"] = "model: opus\n"
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.set("a", f"{server.url}/c.yml")
++    theatre.set("b", "file:nothing.yml")
++    theatre.set("c", "[file:x, y]")
++    assert theatre.read() == (
++        f"a: !literal {server.url}/c.yml\nb: !literal file:nothing.yml\nc:\n  - !literal file:x\n  - y\n"
++    )
++    assert theatre.get("a") == f"{server.url}/c.yml\n"
++    assert theatre.get("b") == "file:nothing.yml\n"
++    assert server.requests == []
++    code, out, _ = theatre.run("show")
++    assert out == f"a: !literal {server.url}/c.yml\nb: !literal file:nothing.yml\nc:\n  - !literal file:x\n  - y\n"
++    # With --include, the string is an include; a !literal tag on the old value goes.
++    theatre.set("a", f"{server.url}/c.yml", "--include")
++    assert theatre.read().startswith(f"a: {server.url}/c.yml\n")
++    assert theatre.get("a.model") == "opus\n"
++    theatre.write("p.md", "text\n")
++    theatre.set("d", "file:p.md", "--include")
++    assert theatre.get("d") == "text\n"
++    # An include that does not exist is not written.
++    theatre.set("e", "file:missing.yml", "--include", expect=3)
++    code, _, _ = theatre.run("set", "e", f"{server.url}/missing.yml", "--include")
++    assert code == 4
++    assert "\ne:" not in theatre.read()
++
++
++def test_literal_tag_is_read_as_literal(theatre):
++    theatre.write("troupe.yml", "a: !literal file:none.yml\nb: !literal https://example.invalid/x.yml\n")
++    assert theatre.get("a") == "file:none.yml\n"
++    assert theatre.get("b") == "https://example.invalid/x.yml\n"
++    theatre.set("a", "file:other.yml")
++    assert theatre.read().startswith("a: !literal file:other.yml\n")
++
++
++SCHEMA = {
++    "$schema": "https://json-schema.org/draft/2020-12/schema",
++    "type": "object",
++    "properties": {
++        "endpoint": {"type": "string", "format": "uri"},
++        "mirrors": {"type": "array", "items": {"type": "string", "format": "uri"}},
++        "hooks": {"type": "object", "additionalProperties": {"type": "string", "format": "uri"}},
++        "agents": {"type": "object", "additionalProperties": {"type": "object"}},
++        "level": {"type": "integer", "maximum": 5},
++    },
++}
++
++
++def test_schema_uri_strings_are_literals(theatre, server):
++    theatre.write("troupe.schema.json", json.dumps(SCHEMA))
++    theatre.write(
++        "troupe.yml",
++        "endpoint: https://api.example.invalid/v1.yml\nmirrors: [file:m.yml]\nhooks:\n  done: http://h.invalid/\n",
++    )
++    assert theatre.get("endpoint") == "https://api.example.invalid/v1.yml\n"
++    assert theatre.get("mirrors.0") == "file:m.yml\n"
++    assert theatre.get("hooks.done") == "http://h.invalid/\n"
++    code, out, _ = theatre.run("show")
++    assert out == "endpoint: https://api.example.invalid/v1.yml\nmirrors:\n  - file:m.yml\nhooks:\n  done: http://h.invalid/\n"
++    # Setting a URI path writes the string plain; --include cannot make it an include.
++    theatre.set("hooks.start", "https://s.invalid/")
++    assert theatre.read().endswith("  done: http://h.invalid/\n  start: https://s.invalid/\n")
++    theatre.set("endpoint", "file:x.yml", "--include", expect=3)
++
++
++def test_schema_validation(theatre):
++    theatre.write("troupe.schema.json", json.dumps(SCHEMA))
++    theatre.write("troupe.yml", "level: 9\n")
++    code, _, err = theatre.run("get", "level")
++    assert code == 4 and "level" in err
++    theatre.write("troupe.yml", "level: 3\n")
++    theatre.set("level", "7", expect=3)
++    theatre.set("level", "x", expect=3)
++    theatre.set("agents", "[1]", expect=3)
++    assert theatre.read() == "level: 3\n"
++    theatre.set("level", "4")
++    assert theatre.read() == "level: 4\n"
++    theatre.write("troupe.schema.json", "{not json")
++    assert theatre.run("get", "level")[0] == 4
++    theatre.write("troupe.schema.json", json.dumps({"type": 5}))
++    assert theatre.run("get", "level")[0] == 4
++
++
++def test_schema_applies_to_included_values(theatre, server):
++    theatre.write("troupe.schema.json", json.dumps(SCHEMA))
++    server.files["/agents.yml"] = "coder:\n  model: 1\n"
++    theatre.write("troupe.yml", f"agents: {server.url}/agents.yml\nlevel: 1\n")
++    assert theatre.get("agents.coder.model") == "1\n"
++    server.files["/agents.yml"] = "coder: 1\n"  # agents.coder must be an object
++    assert theatre.run("get", "level")[0] == 4
++
++
++def test_mapping_form_remote_include(theatre, server):
++    server.files["/c.yml"] = "model: opus\ntemp: 1\n"
++    url = f"{server.url}/c.yml"
++    theatre.write("troupe.yml", f"coder:\n  $ref: \"{url}\"\n  model: sonnet\n")
++    assert theatre.get("coder.model") == "sonnet\n"
++    assert theatre.get("coder.temp") == "1\n"
++    theatre.set("coder.model", "haiku")  # the override is local
++    code, _, err = theatre.run("set", "coder.temp", "2")
++    assert code == 3 and f'"{url}"' in err and "troupe.yml:2" in err
++    theatre.set("coder.new", "x")
++    assert theatre.read() == f"coder:\n  $ref: \"{url}\"\n  model: haiku\n  new: x\n"
++
++
++def test_watch_ignores_remote_includes(theatre, server):
++    import signal
++    import subprocess
++    import sys
++    import time
++
++    server.files["/c.yml"] = "model: opus\n"
++    theatre.write("troupe.yml", f"coder: {server.url}/c.yml\nlevel: 1\n")
++    proc = subprocess.Popen(
++        [sys.executable, "-m", "troupe.cli", "config", "watch", "--theatre", str(theatre.root)],
++        stdout=subprocess.PIPE,
++        stderr=subprocess.PIPE,
++    )
++    try:
++        assert proc.stdout.readline().startswith(b"watching")
++        theatre.write("troupe.yml", f"coder: {server.url}/c.yml\nlevel: 2\n")
++        for _ in range(50):
++            if any(e["path"] == "level" and e["op"] == "set" for e in theatre.history()):
++                break
++            time.sleep(0.1)
++        else:
++            pytest.fail("watch did not reconcile the edit")
++    finally:
++        proc.send_signal(signal.SIGTERM)
++        assert proc.wait(timeout=10) == 0
+diff --git a/uv.lock b/uv.lock
+index 1a8c0ad..5a49717 100644
+--- a/uv.lock
++++ b/uv.lock
+@@ -2,6 +2,15 @@ version = 1
+ revision = 3
+ requires-python = ">=3.12"
+ 
++[[package]]
++name = "attrs"
++version = "26.1.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/9a/8e/82a0fe20a541c03148528be8cac2408564a6c9a0cc7e9171802bc1d26985/attrs-26.1.0.tar.gz", hash = "sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32", size = 952055, upload-time = "2026-03-19T14:22:25.026Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/64/b4/17d4b0b2a2dc85a6df63d1157e028ed19f90d4cd97c36717afef2bc2f395/attrs-26.1.0-py3-none-any.whl", hash = "sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309", size = 67548, upload-time = "2026-03-19T14:22:23.645Z" },
++]
++
+ [[package]]
+ name = "colorama"
+ version = "0.4.6"
+@@ -32,6 +41,33 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
+ ]
+ 
++[[package]]
++name = "jsonschema"
++version = "4.26.0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "attrs" },
++    { name = "jsonschema-specifications" },
++    { name = "referencing" },
++    { name = "rpds-py" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/b3/fc/e067678238fa451312d4c62bf6e6cf5ec56375422aee02f9cb5f909b3047/jsonschema-4.26.0.tar.gz", hash = "sha256:0c26707e2efad8aa1bfc5b7ce170f3fccc2e4918ff85989ba9ffa9facb2be326", size = 366583, upload-time = "2026-01-07T13:41:07.246Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/69/90/f63fb5873511e014207a475e2bb4e8b2e570d655b00ac19a9a0ca0a385ee/jsonschema-4.26.0-py3-none-any.whl", hash = "sha256:d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce", size = 90630, upload-time = "2026-01-07T13:41:05.306Z" },
++]
++
++[[package]]
++name = "jsonschema-specifications"
++version = "2025.9.1"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "referencing" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/19/74/a633ee74eb36c44aa6d1095e7cc5569bebf04342ee146178e2d36600708b/jsonschema_specifications-2025.9.1.tar.gz", hash = "sha256:b540987f239e745613c7a9176f3edb72b832a4ac465cf02712288397832b5e8d", size = 32855, upload-time = "2025-09-08T01:34:59.186Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/41/45/1a4ed80516f02155c51f51e8cedb3c1902296743db0bbc66608a0db2814f/jsonschema_specifications-2025.9.1-py3-none-any.whl", hash = "sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe", size = 18437, upload-time = "2025-09-08T01:34:57.871Z" },
++]
++
+ [[package]]
+ name = "packaging"
+ version = "26.3"
+@@ -121,12 +157,135 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/f1/12/de94a39c2ef588c7e6455cfbe7343d3b2dc9d6b6b2f40c4c6565744c873d/pyyaml-6.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:ebc55a14a21cb14062aa4162f906cd962b28e2e9ea38f9b4391244cd8de4ae0b", size = 149341, upload-time = "2025-09-25T21:32:56.828Z" },
+ ]
+ 
++[[package]]
++name = "referencing"
++version = "0.37.0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "attrs" },
++    { name = "rpds-py" },
++    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/22/f5/df4e9027acead3ecc63e50fe1e36aca1523e1719559c499951bb4b53188f/referencing-0.37.0.tar.gz", hash = "sha256:44aefc3142c5b842538163acb373e24cce6632bd54bdb01b21ad5863489f50d8", size = 78036, upload-time = "2025-10-13T15:30:48.871Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/2c/58/ca301544e1fa93ed4f80d724bf5b194f6e4b945841c5bfd555878eea9fcb/referencing-0.37.0-py3-none-any.whl", hash = "sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231", size = 26766, upload-time = "2025-10-13T15:30:47.625Z" },
++]
++
++[[package]]
++name = "rpds-py"
++version = "2026.9.1"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/42/68/3bd46b8a5e01d3c2ebdf9c5e9497912e3fe0cde02bac21a7130ca866e403/rpds_py-2026.9.1.tar.gz", hash = "sha256:4793ef7f78268b124b73fa933440f01d258bbae01de9fa53e9080c9ab0425a12", size = 63948, upload-time = "2026-10-04T16:32:36.469Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/5d/34/a828586ea3329fbb50895b50e9cf98ca3d924a9f41a0b26d443bff1b3794/rpds_py-2026.9.1-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:50906f5aea24b5a865cbd0a589698288631d9f3a54c3a937c83aefa95a0d14af", size = 346822, upload-time = "2026-10-04T16:29:16.258Z" },
++    { url = "https://files.pythonhosted.org/packages/90/81/ac6a0d064982251856ce009c9e1dd51a34110b3c055aa7d1aad18b4899a3/rpds_py-2026.9.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:e21c1429e205828ea886a2293a4a2c8e01f4c25d9893ca330e97a6cf73f52e7b", size = 341380, upload-time = "2026-10-04T16:29:17.706Z" },
++    { url = "https://files.pythonhosted.org/packages/42/ff/bf7d54f362748fd6a49277b9d6531c394074110fedf50ad791ec59133fbb/rpds_py-2026.9.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2693b2728bbcc48d09a981a356954b0c47c53ff25b545856f28a889ea619f69a", size = 373053, upload-time = "2026-10-04T16:29:19.063Z" },
++    { url = "https://files.pythonhosted.org/packages/60/de/74b0ccdbbd28687b9b5fdb34c1cabed88352182facaced9d6f5486b8b9ed/rpds_py-2026.9.1-cp312-cp312-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:8601470267d938bcb7f3ab1a336100af51a4fd5b6ed030ef52461bb3ef5e7e07", size = 377742, upload-time = "2026-10-04T16:29:20.543Z" },
++    { url = "https://files.pythonhosted.org/packages/c2/6d/b979775a3057b2a5c26d75ecbff60a20a24ef081db6dd76836fca3f20247/rpds_py-2026.9.1-cp312-cp312-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:3890a6aa36e6baa53d5258a2a25d3ef8b37ad165a6ab27a892d7c3e3a432cd69", size = 487289, upload-time = "2026-10-04T16:29:21.958Z" },
++    { url = "https://files.pythonhosted.org/packages/1d/5d/7c34734ce3ece943d9d6ee0122a74a21bbc75b47acb5b7053c83f6efb1ed/rpds_py-2026.9.1-cp312-cp312-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:6b5b393eda5ea42cca1c1a6665f2a4882b4fd5d1777e41ce0545a107fb008c9d", size = 390710, upload-time = "2026-10-04T16:29:23.378Z" },
++    { url = "https://files.pythonhosted.org/packages/1d/6d/b26eb1e75395925b3a142ed351cbed2ec8212f5c9d937aee3df32c701baa/rpds_py-2026.9.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:addeda51556dac7c1a2f14cda62db8b621cd12afba3091d03a96c72932387eab", size = 371261, upload-time = "2026-10-04T16:29:25.1Z" },
++    { url = "https://files.pythonhosted.org/packages/7c/98/b2fdfe10301a9e27af21e634337fbba7baac0bc17fe44619a17c26bba2cb/rpds_py-2026.9.1-cp312-cp312-manylinux_2_31_riscv64.whl", hash = "sha256:d9edf30457d74eebfd76b045535e36f1cd89062566a128a0db2145ca042d787e", size = 376075, upload-time = "2026-10-04T16:29:26.748Z" },
++    { url = "https://files.pythonhosted.org/packages/c5/b1/c4b8d954e49c3c69cf8063c0c9e0919c99f3d2cecc46311606a1cbe835dc/rpds_py-2026.9.1-cp312-cp312-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:815d26356930846a40c7bc1366e7b1b0320ab8a063e66c11298a208bed0fd237", size = 399358, upload-time = "2026-10-04T16:29:28.282Z" },
++    { url = "https://files.pythonhosted.org/packages/b3/59/9559a7293c97dff0cbb293efffbd36644103883ecc27741af8ef90c84ca8/rpds_py-2026.9.1-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:3b5a6f40f0a1486b4b36c888123afc67acdbd9f33235927acf5ff295429a0ba3", size = 550267, upload-time = "2026-10-04T16:29:29.851Z" },
++    { url = "https://files.pythonhosted.org/packages/6c/9d/6dc60e49511de4c8b00e74f9c1d43aed4d27f712cdb1ade92f2c199cbf64/rpds_py-2026.9.1-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:b5b8b0753718d258fd454283fbd57e14545d3b40583fa672e27cb4f987626bcc", size = 614018, upload-time = "2026-10-04T16:29:31.54Z" },
++    { url = "https://files.pythonhosted.org/packages/fb/bc/92a4ecf27301b886232a413360f6b348a81d55ffef654f2ebda5970ebc3d/rpds_py-2026.9.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:46d80bc76b51a6c24f9944368c28d38b8bcbcea1da4f2f8d3ebc31a67e8c6ec6", size = 578509, upload-time = "2026-10-04T16:29:33.01Z" },
++    { url = "https://files.pythonhosted.org/packages/08/53/efb97f2e6589b7ab8394385a73870e0b2ab2a195281c117b21fd6d7d4855/rpds_py-2026.9.1-cp312-cp312-win32.whl", hash = "sha256:befc2d6a953e563f8a7bfd87a42c22ebf8a3e980dcb7b6a4d17b70b0e914e8a3", size = 205401, upload-time = "2026-10-04T16:29:34.451Z" },
++    { url = "https://files.pythonhosted.org/packages/1c/84/1700cc748d0eaa747486e4e82882d2575224e6e9a3148df583058850c629/rpds_py-2026.9.1-cp312-cp312-win_amd64.whl", hash = "sha256:5ce8943f79c2210f7abcc28e86367b03b28d95027fd01c46d2472373ae70c86f", size = 222923, upload-time = "2026-10-04T16:29:35.709Z" },
++    { url = "https://files.pythonhosted.org/packages/c3/89/0302215373c2f8b4408b0fdfee955368cc378a98ff59508d47a7e0dc2dbf/rpds_py-2026.9.1-cp312-cp312-win_arm64.whl", hash = "sha256:501909f2e4a1e2dee528ef766fe3c469060ebc17e54a8383d404ba07a81a6f02", size = 218415, upload-time = "2026-10-04T16:29:37.263Z" },
++    { url = "https://files.pythonhosted.org/packages/83/ea/ee88fd9e756ff93fb6b1182a47ec09504a242620e33ce1d20679efefe841/rpds_py-2026.9.1-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:a36b70596407634ca82d4b989a3729074a008537a0522e4c8046a67c729103e9", size = 346229, upload-time = "2026-10-04T16:29:38.82Z" },
++    { url = "https://files.pythonhosted.org/packages/57/71/a097d6552f837500fc36e6b23d09cfb9890c3cc47531f9ca64e149799615/rpds_py-2026.9.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:eba5d173f7d5708b22a93815017a4611873ed54db9f268077c0dd1ed99cfc858", size = 340514, upload-time = "2026-10-04T16:29:40.405Z" },
++    { url = "https://files.pythonhosted.org/packages/tracker-cli/b7/497e85768bf4e0d8ddbaa096a4cac31d1509251dee2728a8490aa367e0b5/rpds_py-2026.9.1-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:457866b85daf5034296666168b84a69e0b2e89dc4f1af102b46f6448a60b9063", size = 372611, upload-time = "2026-10-04T16:29:41.778Z" },
++    { url = "https://files.pythonhosted.org/packages/52/4b/74ab4108916250b6e198e0d3af05bc6835eb046315f22f7a0ceb49667c5a/rpds_py-2026.9.1-cp313-cp313-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:a3a52a3ba86436ab3aef510fbe21512abc2ddd1993005dfe50514bd2284ef025", size = 377712, upload-time = "2026-10-04T16:29:43.242Z" },
++    { url = "https://files.pythonhosted.org/packages/0c/8e/067e77d9d7b3cc793c9d909b7e97e7aadbbb1fb094093b6876902cc96d38/rpds_py-2026.9.1-cp313-cp313-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:d7841166b7fa64c9c56404617ae4341448847482d45933b13135d26c130519e5", size = 488106, upload-time = "2026-10-04T16:29:44.692Z" },
++    { url = "https://files.pythonhosted.org/packages/3c/b4/c5aae6c2dde269bf955f6b7d35065c655a57e47750d9668052ad67e74dda/rpds_py-2026.9.1-cp313-cp313-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:926bdd3e3b5998ddf70cc64bc8cf57209571f9044542913afb673799fec77dd0", size = 390795, upload-time = "2026-10-04T16:29:46.129Z" },
++    { url = "https://files.pythonhosted.org/packages/a0/36/76fab39973ee11e7f9f357c55138197bb01c86f6502cb76487e3b4f42db0/rpds_py-2026.9.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7868b85224291c6cb6759f9b5adb9745f486d226f62b16a614dd5a2a5ab2b35b", size = 370794, upload-time = "2026-10-04T16:29:47.603Z" },
++    { url = "https://files.pythonhosted.org/packages/3d/fe/cd2a80e6d7b871937a60e935c5d507aa390d143f4ff3636f640b9733d5df/rpds_py-2026.9.1-cp313-cp313-manylinux_2_31_riscv64.whl", hash = "sha256:3cd182d7291d29b92c521a0069d9c01ba6193628a9a105531d11b40a6d731a33", size = 375673, upload-time = "2026-10-04T16:29:49.223Z" },
++    { url = "https://files.pythonhosted.org/packages/6c/18/7464a9953724e55a3b3206062fa0ffdeaa519584c6aabf65d3956d94f131/rpds_py-2026.9.1-cp313-cp313-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:e6ea1cda8d8c688278430e4268a42f5e5da3bdd74578dfadc0820c3f1766ce83", size = 398758, upload-time = "2026-10-04T16:29:50.601Z" },
++    { url = "https://files.pythonhosted.org/packages/c0/86/1534b436700fd49ff411063b7c4d7e938adfabf90895b6cf1622d5a7d1f6/rpds_py-2026.9.1-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:5943980471829f6de242a20b109de3111ba6b77e3af0ffc587028ac854b05e6c", size = 550370, upload-time = "2026-10-04T16:29:52.002Z" },
++    { url = "https://files.pythonhosted.org/packages/57/1c/e1fa82a8a01e3c5820f3ba98a8b2673f642128eb368fa88871b01dd2c909/rpds_py-2026.9.1-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:76d3af9732d2dab69f28179b40ba2d87e2f1d5824b4a694780aa787d685e8f36", size = 613106, upload-time = "2026-10-04T16:29:53.655Z" },
++    { url = "https://files.pythonhosted.org/packages/29/55/b20b8c4c3dde8755bfcd5b08492a02d0cd2e26929aedf6199ca2a377d42a/rpds_py-2026.9.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:78326f4cb4427a56ba4996c0762b63be45f06b85f086526420d2b3a66e40f84d", size = 578235, upload-time = "2026-10-04T16:29:55.157Z" },
++    { url = "https://files.pythonhosted.org/packages/55/42/df3f7bbc3f7ab37a8a9db8d6c2ff2c985422899f1f7926afbf7ec3c0b8b4/rpds_py-2026.9.1-cp313-cp313-win32.whl", hash = "sha256:172e47169583f46ce118cbec68e6795d0da0f4606b488b6434f8276bca0a058c", size = 205293, upload-time = "2026-10-04T16:29:56.669Z" },
++    { url = "https://files.pythonhosted.org/packages/31/9c/ba5a9569d719bfdd6ce863df4133ac6a1658cf1b07cc3534c31db729fbbc/rpds_py-2026.9.1-cp313-cp313-win_amd64.whl", hash = "sha256:3e93b2cd69a9830be33e03945cd7cda940a0a8bfcfbff41d6144f0cb0d3d8bd9", size = 222409, upload-time = "2026-10-04T16:29:58.049Z" },
++    { url = "https://files.pythonhosted.org/packages/35/72/f28ca566f6c23c35bbf7445f65eb0364577b25a026305995e24f78b83d94/rpds_py-2026.9.1-cp313-cp313-win_arm64.whl", hash = "sha256:d151e148117294133bf8af7eeace085e7e87432db15ab6adf640330298a47f6f", size = 217681, upload-time = "2026-10-04T16:29:59.449Z" },
++    { url = "https://files.pythonhosted.org/packages/8a/f2/67b94be1532767803415c1c5a1fd88ea487643d74a673cec1ba140af77bb/rpds_py-2026.9.1-cp314-cp314-macosx_10_12_x86_64.whl", hash = "sha256:c9d1aca01f49170fdcf5c92761b1fafe97f554b721ca4570c5949fff778f0d4b", size = 347178, upload-time = "2026-10-04T16:30:00.865Z" },
++    { url = "https://files.pythonhosted.org/packages/04/37/b751de2b59b0197a1d92a5dd491de88e8a5e928c2e6562581974f1e85263/rpds_py-2026.9.1-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:3f0e9ac28fc067d4d34b88ae43c48e9489455c97fee9633d851f7eeed5a05d35", size = 341878, upload-time = "2026-10-04T16:30:02.564Z" },
++    { url = "https://files.pythonhosted.org/packages/72/e2/5873bc4643c250db9e05d48dc0c93763d4aa68bc3b81164cb1af3b45b284/rpds_py-2026.9.1-cp314-cp314-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:07deecbfce94c78473018bc7d10b337cc651d12df87a1eb2cb3e4024bc9c33d0", size = 373963, upload-time = "2026-10-04T16:30:04.026Z" },
++    { url = "https://files.pythonhosted.org/packages/51/03/5acf7632158247f3f6386ff0af3a1ee48167d575037e8d0920594b76d92b/rpds_py-2026.9.1-cp314-cp314-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:821b2755db9194409254012f429c56643416fb96ef9be090be82ec8826b7f477", size = 377975, upload-time = "2026-10-04T16:30:05.555Z" },
++    { url = "https://files.pythonhosted.org/packages/e6/00/63fda451b8bffa5808fc8bb311ee7c073b340974b09f273c7b2a145d3d62/rpds_py-2026.9.1-cp314-cp314-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:3c91c210ae7645626c608400e3519b4a642f837cce09ca830db3beb2e9f274d4", size = 490347, upload-time = "2026-10-04T16:30:07.156Z" },
++    { url = "https://files.pythonhosted.org/packages/a1/ae/c093ffd070ba0fb02f76c565d06fecc65ad6e4afdbae78f7031076d3cdac/rpds_py-2026.9.1-cp314-cp314-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:54ac2158a6f96cfbabff0b2eedaf94b90c5ec7ca8317fcadc61e1c2b2e0ff6ef", size = 392962, upload-time = "2026-10-04T16:30:08.77Z" },
++    { url = "https://files.pythonhosted.org/packages/22/9d/d08a1128ab199b2f0cf25bfeb0639bd05119fff4b7c47bec24ef9a8ec23f/rpds_py-2026.9.1-cp314-cp314-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:eac2f5dbafd585dfe31f86a23ebf0d3ba480a9d49ebc87947267b5608d4ea0cd", size = 371623, upload-time = "2026-10-04T16:30:10.501Z" },
++    { url = "https://files.pythonhosted.org/packages/53/c7/4758ddcbb75609414bbccfcb11d612436f9b3ee821bd2f33f0f1604ee648/rpds_py-2026.9.1-cp314-cp314-manylinux_2_31_riscv64.whl", hash = "sha256:8aa5dda18d39b6143eb24809d158f9252c88f402749b6f1b62a506cc7d96cc35", size = 376997, upload-time = "2026-10-04T16:30:12.124Z" },
++    { url = "https://files.pythonhosted.org/packages/87/e4/947bd7f608ff60faf46dc9d389c3dffd0e3d767d78a0be19978448ef0ce7/rpds_py-2026.9.1-cp314-cp314-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:5c90e7fa02e8f5de0d10c17595c568ada48c5302e749462c0ea1a4c362111a86", size = 400169, upload-time = "2026-10-04T16:30:13.804Z" },
++    { url = "https://files.pythonhosted.org/packages/4b/35/fe93e020a0543b5670472c18d7e6af3197c08da571240ce1965c84f85c0f/rpds_py-2026.9.1-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:e6d198bad4e49dd6732fbd636e2fc5c082f45c8cad0b4acb756b00c82c76072e", size = 551615, upload-time = "2026-10-04T16:30:15.332Z" },
++    { url = "https://files.pythonhosted.org/packages/0d/4f/5d2a0136bb03b2a56a39dc6ff92d58a6e3e53a2e17079238b86228882f16/rpds_py-2026.9.1-cp314-cp314-musllinux_1_2_i686.whl", hash = "sha256:96beca19ec79de272e8668585380ff9092c47077c1d7a1e098e00bbd921f4785", size = 614655, upload-time = "2026-10-04T16:30:16.92Z" },
++    { url = "https://files.pythonhosted.org/packages/09/1c/3f1025aaf70d9bf7272cc41f8b64ee76b48bf01726248138430e16f23b38/rpds_py-2026.9.1-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:a5cf77eb04f20b720be95265a3e00eb2a14814074255cc27069c551b2db53118", size = 579602, upload-time = "2026-10-04T16:30:18.555Z" },
++    { url = "https://files.pythonhosted.org/packages/53/0d/5c72e6204f76610608706da32b6b7e11ef7e10317558a7bb15a122e008dc/rpds_py-2026.9.1-cp314-cp314-win32.whl", hash = "sha256:a03d57b86d2a51d0a66c92177e2be154ad015f357791d306e714569999cdb4cc", size = 206315, upload-time = "2026-10-04T16:30:20.05Z" },
++    { url = "https://files.pythonhosted.org/packages/a4/0b/489d48abbcc7d70cf3fbf662d9d22abf1f4650761c0a9ae05260800800d3/rpds_py-2026.9.1-cp314-cp314-win_amd64.whl", hash = "sha256:837c6b305e26fe0f75b15c92cf3b2ba29e0ae19dc40b1c557b026cb426347d0c", size = 222852, upload-time = "2026-10-04T16:30:21.604Z" },
++    { url = "https://files.pythonhosted.org/packages/91/16/bbb05a7e6a10cf79ba639be7f799d770ee15f64175cc61d081b218dd402a/rpds_py-2026.9.1-cp314-cp314-win_arm64.whl", hash = "sha256:fce4b85234a0cbad67bf8e6e1201ee815d172c9aebad75f25645bc4d834f8e31", size = 218709, upload-time = "2026-10-04T16:30:23.036Z" },
++    { url = "https://files.pythonhosted.org/packages/22/ac/ac507a0a4ec478ca470440a09583db4be5259ba7670aeba0620822f1e57a/rpds_py-2026.9.1-cp314-cp314t-macosx_10_12_x86_64.whl", hash = "sha256:3a72c11530d71abfb66c8d7696a2f86c43e63fca8b948f1a784ac490f4ec688e", size = 349596, upload-time = "2026-10-04T16:30:24.558Z" },
++    { url = "https://files.pythonhosted.org/packages/e9/f2/817a46b658d5070f477f722c298ee9a24525b0e4017347964146ef5fdd0e/rpds_py-2026.9.1-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:068c37bba854ec2fe42f7365c640af11dd9895890ccbf2df5070d0c059bd7f96", size = 343114, upload-time = "2026-10-04T16:30:26.048Z" },
++    { url = "https://files.pythonhosted.org/packages/6c/42/6ade976b13ac1b4cb3bf2eb603f1be2fe74df19a29988d4c2b386be59d6f/rpds_py-2026.9.1-cp314-cp314t-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d7fca4eb6df565e2a928f1c7dad92d27db8f9df0f449e76423ed5d7e713ed445", size = 374197, upload-time = "2026-10-04T16:30:27.699Z" },
++    { url = "https://files.pythonhosted.org/packages/d9/70/77cdf1d3f1a07faabe936016ae623aec7981f73108a8fe7a203ed2e21998/rpds_py-2026.9.1-cp314-cp314t-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:c933c6678c6f116ff8af47a4c6db0868b8ace74af0343016c0ef00f00272ea69", size = 378025, upload-time = "2026-10-04T16:30:29.451Z" },
++    { url = "https://files.pythonhosted.org/packages/3f/6b/18a44a3beaa9b7931acb04af7bd9539836477c630a794452d4826d6185d4/rpds_py-2026.9.1-cp314-cp314t-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:028ad274ea951dac64491b5d1e65712a4aeabfdbdb9fccf797b57bd899b0c495", size = 491969, upload-time = "2026-10-04T16:30:30.995Z" },
++    { url = "https://files.pythonhosted.org/packages/73/27/fb39cfd6bddaf741b024f813890374578ff8ac1f1adc473659c048b03b05/rpds_py-2026.9.1-cp314-cp314t-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:740d0a99cf9de0b17a3943388e9294a59becf75e7c43421f387bd3c7a9901f7c", size = 393905, upload-time = "2026-10-04T16:30:32.628Z" },
++    { url = "https://files.pythonhosted.org/packages/ed/71/0fa7bb77b57af0d710273964180d11b503f62b8a5c358eb2d8c3f62feff6/rpds_py-2026.9.1-cp314-cp314t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0da298fb372dc192610a4b9ecbc68a0cd8b675bbbd1fc519d01b41cfd658333e", size = 374569, upload-time = "2026-10-04T16:30:34.257Z" },
++    { url = "https://files.pythonhosted.org/packages/54/22/f41cfac269af3b449513ef1bc3d7f32fde52abbbd2d01c7e76b47743acd9/rpds_py-2026.9.1-cp314-cp314t-manylinux_2_31_riscv64.whl", hash = "sha256:eb61be926bb81567c1f48bdc8aa22b9855048dc2efd53871f9f7e6e9a5632346", size = 377482, upload-time = "2026-10-04T16:30:35.997Z" },
++    { url = "https://files.pythonhosted.org/packages/b4/fc/312b49006e7f8f9ca5f96647577b8aa6f3df30519c46bd448f5c425af0b2/rpds_py-2026.9.1-cp314-cp314t-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:42e75466f83cd43f6026c81eab74246efb2bdadafb307b85700632d06c68f299", size = 400040, upload-time = "2026-10-04T16:30:37.76Z" },
++    { url = "https://files.pythonhosted.org/packages/cf/a6/18cca7a878dc7fa95165a83343fd4d7b65643fd22e54e47340a451121d5c/rpds_py-2026.9.1-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:617f59cde379b4f648a09797b7f683d04b90a46344cddab85639da5aff0f5531", size = 551849, upload-time = "2026-10-04T16:30:39.443Z" },
++    { url = "https://files.pythonhosted.org/packages/e4/6d/1f5685e20f39604691bdc3c05aaa6b8bd2f954e9e996477adf2376768e33/rpds_py-2026.9.1-cp314-cp314t-musllinux_1_2_i686.whl", hash = "sha256:3edae8c5ddfdb6985d49ae9d150516e5076888879022f91a26c2de9276ce0bdb", size = 614842, upload-time = "2026-10-04T16:30:41.231Z" },
++    { url = "https://files.pythonhosted.org/packages/c6/25/98652109fd9f7e10268dd4571aa52b81987001b806f37ef1a18260de714a/rpds_py-2026.9.1-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:0f045bb053c9057720d72c56dffe30dffdc05997b2897a827b9325f0ab6623fa", size = 582606, upload-time = "2026-10-04T16:30:43.345Z" },
++    { url = "https://files.pythonhosted.org/packages/19/03/11ca09099bab5f53373a80a334c424ec917c13d050760a59499d2af5171e/rpds_py-2026.9.1-cp314-cp314t-win32.whl", hash = "sha256:bf35d0568abda97233239ce32896d3ad53fccc537832c104e30c94aa5fb93569", size = 203341, upload-time = "2026-10-04T16:30:44.954Z" },
++    { url = "https://files.pythonhosted.org/packages/6f/8a/88909e3ffd9f47f5b58211473875d8c3c09079f0058c46fb72c55a702a26/rpds_py-2026.9.1-cp314-cp314t-win_amd64.whl", hash = "sha256:1e8d4d79d828299bf44a55db22a9388ab967b49d17132c88eab0f4360b48da8e", size = 222843, upload-time = "2026-10-04T16:30:46.486Z" },
++    { url = "https://files.pythonhosted.org/packages/f6/b7/a662f367d4896dd0a10cef2fc91f10b7f08af1c10858e287e019563f338d/rpds_py-2026.9.1-cp315-cp315-macosx_10_12_x86_64.whl", hash = "sha256:1d77b649e6f7cdf12ca5c2a98dad0ad37f9ea9b6f960408a92f0cb12bb3d04d9", size = 347463, upload-time = "2026-10-04T16:30:48.203Z" },
++    { url = "https://files.pythonhosted.org/packages/ae/3f/ad45d03df4f84ebae5439577ee81f3999d182711e82235c8037b6528890e/rpds_py-2026.9.1-cp315-cp315-macosx_11_0_arm64.whl", hash = "sha256:00ba2d8c7dd4ee537978ddf4b3fbd712bef2d8751603f7f3146b3f4287768e25", size = 342051, upload-time = "2026-10-04T16:30:49.872Z" },
++    { url = "https://files.pythonhosted.org/packages/7e/31/3dcd68c13d4bcc59c1f7eb33ac8e80698f06f3eb0d8a1e06419836071c20/rpds_py-2026.9.1-cp315-cp315-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ec450527cbf485e13c8d3602a54f428ab0432fdade0ede75efd74b735421c871", size = 374143, upload-time = "2026-10-04T16:30:51.508Z" },
++    { url = "https://files.pythonhosted.org/packages/cf/0d/68c1f058a250fbd1380ebda9fc227cbf50117adf8ffe8161ef383ea79f68/rpds_py-2026.9.1-cp315-cp315-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:306ee1850d8105b5baf977e78d45fcadd12c1a54678d614c9baf217708446e91", size = 378604, upload-time = "2026-10-04T16:30:53.206Z" },
++    { url = "https://files.pythonhosted.org/packages/d7/d6/2d4c59b85397cb4800594fadf692688ccf5ce556adc930e7a5bf21061a5e/rpds_py-2026.9.1-cp315-cp315-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:ef6b65b03247c54692ad4fd9ee97cb772781927db72e3cb05e70b3db6d1ff14f", size = 490790, upload-time = "2026-10-04T16:30:54.925Z" },
++    { url = "https://files.pythonhosted.org/packages/da/04/7e05dc3aebaf52f4e026766bd668fdd09a9d0e23f64a14686b36b3501892/rpds_py-2026.9.1-cp315-cp315-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:a575404ebc9cf2e91edd32eaf570ec1430eb900d4f56724ba7dd4bc1fc9c176d", size = 393146, upload-time = "2026-10-04T16:30:56.625Z" },
++    { url = "https://files.pythonhosted.org/packages/57/ca/e2e9a0a46a74ed51a0498ba1fe10f4ea6b2d9a155f372a2f91e51f18cf10/rpds_py-2026.9.1-cp315-cp315-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2c16ab111bc27c646ba8aa005d0527754edc538ebb636f0b1bf8e244b48d1945", size = 372022, upload-time = "2026-10-04T16:30:58.295Z" },
++    { url = "https://files.pythonhosted.org/packages/ba/cb/8f8774df5134e23424372838bcc5c7ed4127d723e1ff52f7bebd4dcb2563/rpds_py-2026.9.1-cp315-cp315-manylinux_2_31_riscv64.whl", hash = "sha256:7664419f27db41d4f1c43a78dccda7dd6e8ef2428df3ee01d0c2a07a6b071297", size = 377092, upload-time = "2026-10-04T16:30:59.984Z" },
++    { url = "https://files.pythonhosted.org/packages/90/02/8d7095d73bf9114219be40230baa5df00611e0a82ed9517779ff9c19f82b/rpds_py-2026.9.1-cp315-cp315-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:4b26b03d9d2658ee2fa234f8f4f19f38a09773fe5261028025032e26d4d35af0", size = 400830, upload-time = "2026-10-04T16:31:01.721Z" },
++    { url = "https://files.pythonhosted.org/packages/ec/02/8206856f8f363cd042a8315dc86b3912f5dcb6d3c66bbb24b69c2bfb0775/rpds_py-2026.9.1-cp315-cp315-musllinux_1_2_aarch64.whl", hash = "sha256:be3e47e2d91aa3942ff9bf4077a505226005abfc39b6f7554a91c1b9393986b9", size = 551478, upload-time = "2026-10-04T16:31:03.472Z" },
++    { url = "https://files.pythonhosted.org/packages/41/6b/36211f1bb1f0b0313f496d92f5905b74ea107f27cb16fa3355a82f04575e/rpds_py-2026.9.1-cp315-cp315-musllinux_1_2_i686.whl", hash = "sha256:6307a0da524939decb8ca4a3933b8ab62525794411d6984fca6726e732804af6", size = 615173, upload-time = "2026-10-04T16:31:05.281Z" },
++    { url = "https://files.pythonhosted.org/packages/35/77/cda0c4a6f055446b692f0ed5692f73707cafd3dff82672ede31b1a9b59de/rpds_py-2026.9.1-cp315-cp315-musllinux_1_2_x86_64.whl", hash = "sha256:159a7aab5c5e8b112c8830f54717ce56da1252ebdbb526f5be2df2309280b9e7", size = 579653, upload-time = "2026-10-04T16:31:07.065Z" },
++    { url = "https://files.pythonhosted.org/packages/74/ec/d8385f446240aed643b9e92a5055cff3015cc04a13c61f73b2883c478ed5/rpds_py-2026.9.1-cp315-cp315-win32.whl", hash = "sha256:dbc2673f9223d420c91145599b3ba45a8a50c207d1976908e5fb5ddb0c9b9429", size = 206498, upload-time = "2026-10-04T16:31:08.989Z" },
++    { url = "https://files.pythonhosted.org/packages/6d/a5/71b5cd00e0521e3b6b81828baea368c62b6b700ebdd9554cd7d41ddf12fa/rpds_py-2026.9.1-cp315-cp315-win_amd64.whl", hash = "sha256:75c38c50ab9aca840225d9a9a3810bf11d04bd5c1f186cabbb8aee56db3e9b15", size = 223121, upload-time = "2026-10-04T16:31:10.84Z" },
++    { url = "https://files.pythonhosted.org/packages/33/58/dba857c3bc8221b31b62eb170a3080f4f191de79f047200389b7ed1b06a7/rpds_py-2026.9.1-cp315-cp315-win_arm64.whl", hash = "sha256:a431156bb41865fc14cd5d79bb9d7bbed83110b0159e34e62ae30951f96c0009", size = 218741, upload-time = "2026-10-04T16:31:12.592Z" },
++    { url = "https://files.pythonhosted.org/packages/5b/d0/320ab28ccc1415eeb509d68682b0014fb74690cd49f1c2d29a232475af50/rpds_py-2026.9.1-cp315-cp315t-macosx_10_12_x86_64.whl", hash = "sha256:ef0d8c843e2827d6c120ab4687e9423fb1d893db1df27b7c1506615bcb9734a0", size = 349719, upload-time = "2026-10-04T16:31:14.48Z" },
++    { url = "https://files.pythonhosted.org/packages/56/88/f5b12f1358f443c08b7ce3cc8391d82d335f4872580e2e097847fd36087a/rpds_py-2026.9.1-cp315-cp315t-macosx_11_0_arm64.whl", hash = "sha256:45bc6bccf78b20fd834237d18db64965d7ee68ba7f60440a26c7ab71e7b8d51a", size = 343267, upload-time = "2026-10-04T16:31:16.827Z" },
++    { url = "https://files.pythonhosted.org/packages/f7/0c/c765b0059d532acb3b9c45d781ccc22f15a96dbe443d00903f643ba9df10/rpds_py-2026.9.1-cp315-cp315t-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:1d55198263bb51f557550c6ed2e6d1cb6a6fed6eb5c9120b741c5926bef8a45d", size = 374555, upload-time = "2026-10-04T16:31:18.931Z" },
++    { url = "https://files.pythonhosted.org/packages/6b/8a/cafddfda77564a10cd21184640c3bffda6a2b8d20972fb5dedd5e0166328/rpds_py-2026.9.1-cp315-cp315t-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:a8763f20692da7df39b0afdd1ba3042b004c50a45994f76c2d9a25641f7673db", size = 378346, upload-time = "2026-10-04T16:31:20.75Z" },
++    { url = "https://files.pythonhosted.org/packages/b9/01/5e626016eff72c183bf6c96539240cace15d402468647a453ec08415b2fc/rpds_py-2026.9.1-cp315-cp315t-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:e43d4a1f673e8a1cbd8533e809e02b4bf9d4f2280269bb640436556312121250", size = 492373, upload-time = "2026-10-04T16:31:22.614Z" },
++    { url = "https://files.pythonhosted.org/packages/3b/9c/15a2469e9389242f46896b3f0a01d68caea8a5a35c011fcb05ef333aae73/rpds_py-2026.9.1-cp315-cp315t-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:ea394a937f17a54c51239348bdbe2e3518124c8d4a8951ba04a311d3095bd18f", size = 394371, upload-time = "2026-10-04T16:31:24.768Z" },
++    { url = "https://files.pythonhosted.org/packages/63/f5/c100ff77e1e6366e947c75969c258fdfc4b7bc5bbfe7351e62ffbf2a1228/rpds_py-2026.9.1-cp315-cp315t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cdeaa99ce822dca76cfb1b993e9120c5ea212f2eb66d48950ad63c349668a018", size = 375132, upload-time = "2026-10-04T16:31:26.588Z" },
++    { url = "https://files.pythonhosted.org/packages/dd/f4/fe0269c9de253e99c81cabc12b8971a5feaa083debdaff1221e06264d9e3/rpds_py-2026.9.1-cp315-cp315t-manylinux_2_31_riscv64.whl", hash = "sha256:b4f062343e7ad3fa94f2c66e5ae667dee47ee74dd41a9057c4fbe163236a123d", size = 377642, upload-time = "2026-10-04T16:31:28.677Z" },
++    { url = "https://files.pythonhosted.org/packages/05/65/b34a7b257baccff8f4a24a722933166d4941d5ebdc9c3f4bc4ffcd5ce4f4/rpds_py-2026.9.1-cp315-cp315t-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:22ffd29a63d71fb1b81552c21f2c2b734949b7ac751a9be70675a939a900839b", size = 400855, upload-time = "2026-10-04T16:31:30.802Z" },
++    { url = "https://files.pythonhosted.org/packages/98/32/844e54176b6071b90b38a564e6940bc6eb8f97b2890dc709c19db9dec0f4/rpds_py-2026.9.1-cp315-cp315t-musllinux_1_2_aarch64.whl", hash = "sha256:08dae4a4095150a7c4545a1fb40b98e1ab1744fbc2770d92c977b9dadaa49ab6", size = 552573, upload-time = "2026-10-04T16:31:32.709Z" },
++    { url = "https://files.pythonhosted.org/packages/17/73/6041d20729dffbfdf155c02d65be58bc225a1c1fb548fd87c23ef306138f/rpds_py-2026.9.1-cp315-cp315t-musllinux_1_2_i686.whl", hash = "sha256:9a0460d43603d1fd9ef59c30278531e15d78581721ddb538fa560aa7817ea4ad", size = 615840, upload-time = "2026-10-04T16:31:34.565Z" },
++    { url = "https://files.pythonhosted.org/packages/af/9e/418094adaee6b056ce199051b255448ed872829051e341b2294c80da0977/rpds_py-2026.9.1-cp315-cp315t-musllinux_1_2_x86_64.whl", hash = "sha256:1c2d1f6da5128eabf34e963d7163a818846075a52568250d006c4c953b40f903", size = 582764, upload-time = "2026-10-04T16:31:36.665Z" },
++    { url = "https://files.pythonhosted.org/packages/3d/9b/1698ebf6b840ddfe8b472198abbed6ace35c6e398faeecd6c47dae742a4e/rpds_py-2026.9.1-cp315-cp315t-win32.whl", hash = "sha256:5c6ee90dee3e85e055ddfd502d611643d9b0fd94c818220bda84ec3dacd9b27b", size = 203795, upload-time = "2026-10-04T16:31:38.53Z" },
++    { url = "https://files.pythonhosted.org/packages/8a/e2/91f70d804c61f8eac39a417e82aa1024f655ab9e8bdd7393b196242bc41b/rpds_py-2026.9.1-cp315-cp315t-win_amd64.whl", hash = "sha256:fe5ad0664ec772b02c45859041aa17655709cced7a31005817fbbbd988c25567", size = 223037, upload-time = "2026-10-04T16:31:40.468Z" },
++    { url = "https://files.pythonhosted.org/packages/a3/90/a9ba81408369d34c1aca73319c15adc91ed45c1d21e9e8ee4832ffb7fe0b/rpds_py-2026.9.1-pp312-pypy312_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6cdc537c8633d7fd92a82e2e0d2ab74320a3f63d5e59fb9cf08711e08fe151c4", size = 381109, upload-time = "2026-10-04T16:32:08.994Z" },
++    { url = "https://files.pythonhosted.org/packages/b3/44/5192a0bed94cec86bd2a5e1cc5a1bb8f7eec3aec907eacd2deb13e87e326/rpds_py-2026.9.1-pp312-pypy312_pp73-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:10e208f2425d973938afcd56e28a7c4be32e27b6a60b5d381f49fb9d8acf9759", size = 388222, upload-time = "2026-10-04T16:32:11.321Z" },
++    { url = "https://files.pythonhosted.org/packages/92/cd/5356549711448f18b52f7a11ffbe90f1228774996fbf3c6cd1b18d22abaf/rpds_py-2026.9.1-pp312-pypy312_pp73-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:6c0dbbcc19735fe5f8b0a54c07659d154a9e69f47e15d0a6ab7299215daf62cb", size = 500384, upload-time = "2026-10-04T16:32:13.478Z" },
++    { url = "https://files.pythonhosted.org/packages/7a/88/ddda9d28adfe33119c75b2e733d4ba7e326f41d7e1b1093951771768ca48/rpds_py-2026.9.1-pp312-pypy312_pp73-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:684fd492fff4fead00587544e059be2bbcb6f93454f21fa2a91b66fc7508be82", size = 401661, upload-time = "2026-10-04T16:32:15.653Z" },
++    { url = "https://files.pythonhosted.org/packages/32/c3/bb59ba16a6b4a57995d15b8c04c00f28df3b938c4dcdde48fbe0f73edb0c/rpds_py-2026.9.1-pp312-pypy312_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d1028417bb44037eb3069c1009bd7b7277212876cda22fbe565b0bca9fab6d2c", size = 380748, upload-time = "2026-10-04T16:32:17.727Z" },
++    { url = "https://files.pythonhosted.org/packages/f5/b8/0580faa1c5a32ddc160130dd7ae54d2d007272a89a40a6b5db3e50f9f585/rpds_py-2026.9.1-pp312-pypy312_pp73-manylinux_2_31_riscv64.whl", hash = "sha256:492e5e428cbe126221611f47e068f01660352feec4ad18bc0f5ea9b2ae88fb14", size = 385731, upload-time = "2026-10-04T16:32:19.855Z" },
++    { url = "https://files.pythonhosted.org/packages/bf/70/f73564642bbe3322c7eeef2c2f258cf040b71c41a430b532e59d04a1b838/rpds_py-2026.9.1-pp312-pypy312_pp73-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:88b5268892fde430d5531f95bc560b6efbbd67c929662c586afd729a96e7461c", size = 412131, upload-time = "2026-10-04T16:32:22.285Z" },
++    { url = "https://files.pythonhosted.org/packages/8c/5d/17fff2e1f8f68721a2afb5cb48f7e442c751bb6b4883157c5abaf618cd08/rpds_py-2026.9.1-pp312-pypy312_pp73-musllinux_1_2_aarch64.whl", hash = "sha256:01445c8d194aa032a08e944f16567672da1c62dbdbefd8b6d0693032e290cf68", size = 558193, upload-time = "2026-10-04T16:32:24.4Z" },
++    { url = "https://files.pythonhosted.org/packages/2a/d0/869ab6fb08531f97aae4a780b4d61b4190d8aef48fe054ee28bcf7114466/rpds_py-2026.9.1-pp312-pypy312_pp73-musllinux_1_2_i686.whl", hash = "sha256:eef6a03b0b6d08d0835ccfa8ec8d1bc70525e3801387567137b50c557695e6da", size = 622448, upload-time = "2026-10-04T16:32:26.844Z" },
++    { url = "https://files.pythonhosted.org/packages/ba/a5/9672e532fe02cd3b92c78cfd8743abca939d96853006c63835009a1ecb6f/rpds_py-2026.9.1-pp312-pypy312_pp73-musllinux_1_2_x86_64.whl", hash = "sha256:6b9bf3135b4ad5981df9a73d71a35272d650a2985ae9c2746357b24d59de2448", size = 591126, upload-time = "2026-10-04T16:32:29.274Z" },
++    { url = "https://files.pythonhosted.org/packages/80/ef/3a9f8e4279c7920af561deed4cb7ebebed2794a8f608cf404d5eef14a105/rpds_py-2026.9.1-pp312-pypy312_pp80-macosx_10_12_x86_64.whl", hash = "sha256:56c6952a9b15047466d0c2347c446a761d4527f89976156341e68f0ce5cc08b0", size = 357108, upload-time = "2026-10-04T16:32:31.641Z" },
++    { url = "https://files.pythonhosted.org/packages/b7/55/4b2fa381a583760aea5c92841e4e928a358e1c6511b129219e9c2826a226/rpds_py-2026.9.1-pp312-pypy312_pp80-macosx_11_0_arm64.whl", hash = "sha256:b242c27c8f836305a4a72df9cdd564386ac57b807bd252a063223331c9316b37", size = 346877, upload-time = "2026-10-04T16:32:34.061Z" },
++]
++
+ [[package]]
+ name = "troupe"
+ version = "0.1.0"
+ source = { editable = "." }
+ dependencies = [
+     { name = "eventsourcing" },
++    { name = "jsonschema" },
+     { name = "pyyaml" },
+ ]
+ 
+@@ -138,6 +297,7 @@ dev = [
+ [package.metadata]
+ requires-dist = [
+     { name = "eventsourcing", specifier = ">=9.5.5" },
++    { name = "jsonschema", specifier = ">=4.26.0" },
+     { name = "pyyaml", specifier = ">=6.0.3" },
+ ]
+ 

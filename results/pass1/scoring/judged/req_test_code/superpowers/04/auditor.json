@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "repo/docs/decisions.md:52-64 (step-4 lineage decisions 21-23 have no IDs and name no tests)",
+    "repo/tests/test_lineage.py:73 (test_bad_actor_is_usage_error matches decision 21 by topic only)",
+    "repo/tests/test_lineage.py:60 (test_hand_edits_are_file_events_apart_from_the_set matches decision 22 by name)",
+    "repo/tests/test_lineage.py:93 (test_events_from_before_lineage_say_what_is_unknown matches decision 23)",
+    "repo/tests/test_config.py:80 (test_set_keeps_everything_else matches README.md:16, byte-surgical set)",
+    "repo/tests/test_sync.py:122 (test_watch_prints_line_and_exits_0 matches README.md:20, watch until SIGINT/SIGTERM)"
+  ],
+  "notes": "I sampled five requirements: three from step 4 (decisions 21-23 on actor, change and upcast) and two from earlier steps (byte-surgical set, watch exit). All five lead to a test that checks them, but only through matching names and topics. No test, decision or README line uses an ID or cross-reference, and getting from a test to its code in cli.py, store.py or writer.py means searching.",
+  "raw": "{\"score\": 2, \"evidence\": [\"repo/docs/decisions.md:52-64 (step-4 lineage decisions 21-23 have no IDs and name no tests)\", \"repo/tests/test_lineage.py:73 (test_bad_actor_is_usage_error matches decision 21 by topic only)\", \"repo/tests/test_lineage.py:60 (test_hand_edits_are_file_events_apart_from_the_set matches decision 22 by name)\", \"repo/tests/test_lineage.py:93 (test_events_from_before_lineage_say_what_is_unknown matches decision 23)\", \"repo/tests/test_config.py:80 (test_set_keeps_everything_else matches README.md:16, byte-surgical set)\", \"repo/tests/test_sync.py:122 (test_watch_prints_line_and_exits_0 matches README.md:20, watch until SIGINT/SIGTERM)\"], \"notes\": \"I sampled five requirements: three from step 4 (decisions 21-23 on actor, change and upcast) and two from earlier steps (byte-surgical set, watch exit). All five lead to a test that checks them, but only through matching names and topics. No test, decision or README line uses an ID or cross-reference, and getting from a test to its code in cli.py, store.py or writer.py means searching.\"}",
+  "score": 2,
+  "status": "ok"
+}

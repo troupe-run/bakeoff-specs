@@ -1,0 +1,351 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "name",
+          "ab"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "123456789"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tags.2",
+          "c"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "ports.2",
+          "3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "model: opus        # main model\nname: abcdefgh  # shrinks\nretry: 3   # tries\ntags: [a, b]      # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 4,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: abcdefgh  # shrinks\nretry: 3   # tries\ntags: [a, b]      # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "ab"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: ab        # shrinks\nretry: 3   # tries\ntags: [a, b]      # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "123456789"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: ab        # shrinks\nretry: 123456789 # tries\ntags: [a, b]      # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.2",
+                "c"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: ab        # shrinks\nretry: 123456789 # tries\ntags: [a, b, c]   # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "ports.2",
+                "3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: ab        # shrinks\nretry: 123456789 # tries\ntags: [a, b, c]   # roomy flow list\nports: [1, 2, 3] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: abcdefgh  # shrinks\nretry: 3   # tries\ntags: [a, b]      # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "ab"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: ab        # shrinks\nretry: 3   # tries\ntags: [a, b]      # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "123456789"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: ab        # shrinks\nretry: 123456789 # tries\ntags: [a, b]      # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.2",
+                "c"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: ab        # shrinks\nretry: 123456789 # tries\ntags: [a, b, c]      # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "ports.2",
+                "3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: ab        # shrinks\nretry: 123456789 # tries\ntags: [a, b, c]      # roomy flow list\nports: [1, 2, 3] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Keep its column if possible, else one space before #; also when a flow collection grows",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: abcdefgh  # shrinks\nretry: 3   # tries\ntags: [a, b]      # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "ab"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: ab        # shrinks\nretry: 3   # tries\ntags: [a, b]      # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "123456789"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: ab        # shrinks\nretry: 123456789 # tries\ntags: [a, b]      # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.2",
+                "c"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: ab        # shrinks\nretry: 123456789 # tries\ntags: [a, b, c]   # roomy flow list\nports: [1, 2] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "ports.2",
+                "3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet      # main model\nname: ab        # shrinks\nretry: 123456789 # tries\ntags: [a, b, c]   # roomy flow list\nports: [1, 2, 3] # tight flow list\nplain: x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

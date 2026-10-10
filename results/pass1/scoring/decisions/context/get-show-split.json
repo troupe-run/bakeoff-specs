@@ -1,0 +1,65 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\nagents:\n  coder: file:agents/coder.yaml\n\n.troupe/agents/coder.yaml:\nmodel: opus\ntemperature: 0.2",
+        "input": "`config get agents.coder.temperature`",
+        "observed": true,
+        "results": {
+          "1": "all six arms: exit 0, prints `0.2` (it follows the file reference into coder.yaml)"
+        }
+      },
+      {
+        "before": ".troupe/troupe.yml:\nprompt: file:prompt.txt\n\n.troupe/prompt.txt:\nBe concise.\nBe kind.",
+        "input": "`config get prompt`",
+        "observed": true,
+        "results": {
+          "1": "all six arms: exit 0, prints the file's text:\nBe concise.\nBe kind."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get agents.coder`",
+        "observed": true,
+        "results": {
+          "1": "all six arms: exit 5, nothing on stdout. All the error messages name the path and point to `troupe config show agents.coder`, but the wording differs. One arm: `/theatre/.troupe/agents/coder.yaml: agents.coder: is a mapping, not a value; print it with `troupe config show agents.coder``. Five arms start with `troupe:` and say 'is a mapping, not a scalar', e.g. `troupe: agents.coder: is a mapping, not a scalar (use `troupe config show agents.coder` to print it)`. One of those five starts with `troupe: error:`."
+        }
+      },
+      {
+        "before": ".troupe/troupe.yml:\ntools: [git, shell]",
+        "input": "`config show tools`",
+        "observed": true,
+        "results": {
+          "1": "all six arms: exit 0, prints:\n- git\n- shell"
+        }
+      },
+      {
+        "before": ".troupe/troupe.yml:\nretry: 3  # attempts\nname: \"demo\"\nagents:\n  coder: file:agents/coder.yaml\ntools: [git, shell]\nprompt: file:prompt.txt",
+        "input": "`config show`",
+        "observed": true,
+        "results": {
+          "1": "all six arms: exit 0, prints:\nretry: 3\nname: demo\nagents:\n  coder:\n    model: opus\n    temperature: 0.2\ntools:\n  - git\n  - shell\nprompt: |\n  Be concise.\n  Be kind."
+        }
+      }
+    ],
+    "in_practice": "There is only one route, and all six arms gave the same exit codes and output. The only difference is the wording of the error on stderr. `show` prints the resolved config: the referenced files are pulled in, and the `# attempts` comment and the quotes around \"demo\" are not shown. Nothing on disk changed.",
+    "stakes": "Scripts that run `config get` on a single setting need to keep getting a plain value back. Asking `get` for a whole section has to fail clearly and point to `config show`, and `show` must print the merged config, either all of it or just one part.",
+    "tradeoff": "Route 1: scripts keep getting plain values from `get`, but anyone who wants a whole section has to switch to `show`, because `get` exits with 5 instead of printing it."
+  },
+  "plan_why": "Shows how get and show split the work: get prints scalars (including a text include) like step-1 show, and on a mapping or list it exits 5 with a message naming the path and `troupe config show`. show prints a scalar, a subtree with an optional PATH, or the whole config with no PATH, as YAML with includes resolved.",
+  "routes": [
+    [
+      "get keeps step-1 scalar show; collections exit 5 with a message naming the path and `troupe config show`; show takes an optional PATH",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

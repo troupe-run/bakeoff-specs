@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "How a set VALUE that is a file: string is handled (before step 7)",
+  "routes": [
+    {
+      "outcome": "Superseded at step 7",
+      "reasoning_given": "Contract silent",
+      "route": "Verify a file: string as the written text",
+      "route_no": 1
+    },
+    {
+      "outcome": "Reworked at step 1 in two arms; superseded at step 7 by writing !literal unless --include",
+      "reasoning_given": "Refusing narrows the contract; verification keeps it safe. One arm reworked from a blanket refusal, another from comparing against the literal string",
+      "route": "Write it as a string and let the read-back load decide; a missing, cyclic or unloadable target exits 3",
+      "route_no": 2
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

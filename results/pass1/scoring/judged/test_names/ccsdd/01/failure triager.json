@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "repo/tests/test_cli_set.py:59",
+    "repo/tests/test_cli_set.py:218",
+    "repo/tests/test_cli_set.py:131",
+    "repo/tests/test_cli_usage.py:57",
+    "repo/tests/test_cli_usage.py:212",
+    "repo/tests/test_cli_usage.py:239"
+  ],
+  "notes": "I checked 30 tests: the 15 in test_cli_set.py and the first 15 in test_cli_usage.py. Most names state the condition and the expected result, and their bodies assert it (for example, test_set_from_the_repository_root_changes_the_value_and_prints_nothing checks byte for byte), and none overclaims. A few say less than their bodies check: test_show_list_item_by_index and test_leading_dash_values_in_process give no expected result, and test_mapping_target_exits_5 and test_empty_path_exits_2 also assert stderr content and/or no-state checks that the names leave out. From the name alone you would still know which behaviour broke.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"repo/tests/test_cli_set.py:59\", \"repo/tests/test_cli_set.py:218\", \"repo/tests/test_cli_set.py:131\", \"repo/tests/test_cli_usage.py:57\", \"repo/tests/test_cli_usage.py:212\", \"repo/tests/test_cli_usage.py:239\"], \"notes\": \"I checked 30 tests: the 15 in test_cli_set.py and the first 15 in test_cli_usage.py. Most names state the condition and the expected result, and their bodies assert it (for example, test_set_from_the_repository_root_changes_the_value_and_prints_nothing checks byte for byte), and none overclaims. A few say less than their bodies check: test_show_list_item_by_index and test_leading_dash_values_in_process give no expected result, and test_mapping_target_exits_5 and test_empty_path_exits_2 also assert stderr content and/or no-state checks that the names leave out. From the name alone you would still know which behaviour broke.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

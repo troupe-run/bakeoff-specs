@@ -1,0 +1,528 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "a.model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "b.model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "b"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/shared.yml": "model: opus  # shared\ntemperature: 0.2\n",
+      ".troupe/troupe.yml": "# two agents share one settings file\na: file:shared.yml\nb: file:shared.yml  # same include\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/shared.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"a.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:16.839772Z\", \"reason\": null, \"change\": \"7d87b321-42f4-46ac-95af-98d4f7b16939\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"a.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:16.839772Z\", \"reason\": null, \"change\": \"7d87b321-42f4-46ac-95af-98d4f7b16939\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"b.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:16.839772Z\", \"reason\": null, \"change\": \"7d87b321-42f4-46ac-95af-98d4f7b16939\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"b.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:16.839772Z\", \"reason\": null, \"change\": \"7d87b321-42f4-46ac-95af-98d4f7b16939\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/shared.yml": "model: sonnet # shared\ntemperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "b.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sonnet\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a:\n  model: sonnet # from .troupe/shared.yml\n  temperature: 0.2 # from .troupe/shared.yml\nb:\n  model: sonnet # from .troupe/shared.yml\n  temperature: 0.2 # from .troupe/shared.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "b"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"b.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:16.839772Z\", \"reason\": null, \"change\": \"7d87b321-42f4-46ac-95af-98d4f7b16939\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"b.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:16.839772Z\", \"reason\": null, \"change\": \"7d87b321-42f4-46ac-95af-98d4f7b16939\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"b.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T13:12:17.427678Z\", \"reason\": null, \"change\": \"f501a862-4321-46a7-a8c4-eb21b7fa04b2\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"a.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:20.114955Z\", \"reason\": null, \"change\": \"371d9aac-a511-4056-94a9-96fb5ded8f81\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"a.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:20.114955Z\", \"reason\": null, \"change\": \"371d9aac-a511-4056-94a9-96fb5ded8f81\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"b.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:20.114955Z\", \"reason\": null, \"change\": \"371d9aac-a511-4056-94a9-96fb5ded8f81\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"b.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:20.114955Z\", \"reason\": null, \"change\": \"371d9aac-a511-4056-94a9-96fb5ded8f81\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: a.model: the edited files would not read back as intended; not writing\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "b.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a:\n  model: opus # from .troupe/shared.yml\n  temperature: 0.2 # from .troupe/shared.yml\nb:\n  model: opus # from .troupe/shared.yml\n  temperature: 0.2 # from .troupe/shared.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "b"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"b.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:20.114955Z\", \"reason\": null, \"change\": \"371d9aac-a511-4056-94a9-96fb5ded8f81\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"b.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:20.114955Z\", \"reason\": null, \"change\": \"371d9aac-a511-4056-94a9-96fb5ded8f81\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"a.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:23.120413Z\", \"reason\": null, \"change\": \"6b274a0b-4996-4f57-892a-b4751b45059e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"a.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:23.120413Z\", \"reason\": null, \"change\": \"6b274a0b-4996-4f57-892a-b4751b45059e\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"b.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:23.120413Z\", \"reason\": null, \"change\": \"6b274a0b-4996-4f57-892a-b4751b45059e\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"b.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:23.120413Z\", \"reason\": null, \"change\": \"6b274a0b-4996-4f57-892a-b4751b45059e\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: a.model: cannot write this change byte-surgically; no file changed\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "b.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a:\n  model: opus # from .troupe/shared.yml\n  temperature: 0.2 # from .troupe/shared.yml\nb:\n  model: opus # from .troupe/shared.yml\n  temperature: 0.2 # from .troupe/shared.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "b"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"b.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:23.120413Z\", \"reason\": null, \"change\": \"6b274a0b-4996-4f57-892a-b4751b45059e\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"b.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:23.120413Z\", \"reason\": null, \"change\": \"6b274a0b-4996-4f57-892a-b4751b45059e\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"a.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:26.105255Z\", \"reason\": null, \"change\": \"f29a09a2-384c-4093-b01d-6bfd98f6a239\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"a.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:26.105255Z\", \"reason\": null, \"change\": \"f29a09a2-384c-4093-b01d-6bfd98f6a239\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"b.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:26.105255Z\", \"reason\": null, \"change\": \"f29a09a2-384c-4093-b01d-6bfd98f6a239\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"b.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:26.105255Z\", \"reason\": null, \"change\": \"f29a09a2-384c-4093-b01d-6bfd98f6a239\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/shared.yml": "model: sonnet # shared\ntemperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "b.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sonnet\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a:\n  model: sonnet # from .troupe/shared.yml\n  temperature: 0.2 # from .troupe/shared.yml\nb:\n  model: sonnet # from .troupe/shared.yml\n  temperature: 0.2 # from .troupe/shared.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "b"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"b.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:26.105255Z\", \"reason\": null, \"change\": \"f29a09a2-384c-4093-b01d-6bfd98f6a239\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"b.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:26.105255Z\", \"reason\": null, \"change\": \"f29a09a2-384c-4093-b01d-6bfd98f6a239\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"b.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T13:12:26.566842Z\", \"reason\": null, \"change\": \"ee3db0cf-ef8d-48c6-bc15-cccdad307b2a\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"a.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:28.811664Z\", \"reason\": null, \"change\": \"24295b73-5ac4-4239-b60c-d0d24a5f3960\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"a.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:28.811664Z\", \"reason\": null, \"change\": \"24295b73-5ac4-4239-b60c-d0d24a5f3960\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"b.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:28.811664Z\", \"reason\": null, \"change\": \"24295b73-5ac4-4239-b60c-d0d24a5f3960\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"b.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:28.811664Z\", \"reason\": null, \"change\": \"24295b73-5ac4-4239-b60c-d0d24a5f3960\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: a.model: write-back would disturb b.model\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "b.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a:\n  model: opus # from .troupe/shared.yml\n  temperature: 0.2 # from .troupe/shared.yml\nb:\n  model: opus # from .troupe/shared.yml\n  temperature: 0.2 # from .troupe/shared.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "b"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"b.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:28.811664Z\", \"reason\": null, \"change\": \"24295b73-5ac4-4239-b60c-d0d24a5f3960\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"b.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:28.811664Z\", \"reason\": null, \"change\": \"24295b73-5ac4-4239-b60c-d0d24a5f3960\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"a.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:31.728090Z\", \"reason\": null, \"change\": \"b5e92c4c-02ca-4fe6-8ed4-6b925348740d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"a.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:31.728090Z\", \"reason\": null, \"change\": \"b5e92c4c-02ca-4fe6-8ed4-6b925348740d\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"b.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:31.728090Z\", \"reason\": null, \"change\": \"b5e92c4c-02ca-4fe6-8ed4-6b925348740d\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"b.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:31.728090Z\", \"reason\": null, \"change\": \"b5e92c4c-02ca-4fe6-8ed4-6b925348740d\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/shared.yml": "model: sonnet # shared\ntemperature: 0.2\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "b.model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sonnet\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a:\n  model: sonnet # from .troupe/shared.yml\n  temperature: 0.2 # from .troupe/shared.yml\nb:\n  model: sonnet # from .troupe/shared.yml\n  temperature: 0.2 # from .troupe/shared.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "b"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"b.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:31.728090Z\", \"reason\": null, \"change\": \"b5e92c4c-02ca-4fe6-8ed4-6b925348740d\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"b.temperature\", \"old\": null, \"new\": 0.2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T13:12:31.728090Z\", \"reason\": null, \"change\": \"b5e92c4c-02ca-4fe6-8ed4-6b925348740d\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"b.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T13:12:32.262054Z\", \"reason\": null, \"change\": \"ca714d4e-ca2f-4474-8fa5-b05c9c9fb7ec\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Files on disk are authoritative; show and set read the files; the store is change history only",
+      "route_no": 1
+    }
+  ]
+}

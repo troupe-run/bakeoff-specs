@@ -1,0 +1,46 @@
+[project]
+name = "troupe"
+version = "0.1.0"
+description = "troupe configuration subsystem: load, show, set and history of a theatre's configuration"
+requires-python = ">=3.12"
+dependencies = [
+    "eventsourcing>=9.5,<10",
+    "jsonschema>=4.18,<5",
+    "ruamel.yaml>=0.19,<0.20",
+]
+
+[project.scripts]
+troupe = "troupe.cli:main"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.11",
+    "pytest>=8",
+    "ruff>=0.6",
+    "types-jsonschema>=4.26.0.20261006",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# Byte-exact before/after tables read best one scenario per line.
+"tests/**" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["troupe", "conftest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

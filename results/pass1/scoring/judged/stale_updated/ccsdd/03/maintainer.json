@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "spec/spec/config-foundation/requirements.md:99-103 (diff) — Req 6.7 gets a step-3 note: the exit-5 rule now applies to `get`, and `show` on a mapping exits 0",
+    "src/troupe/cli/get_show_command.py:1547-1558 (diff) — `show` PATH is now optional (nargs='?') and `--sources` is added",
+    "src/troupe/config/theatre.py:1980-1981 (diff) — `get_value`'s WrongNodeKindError now mentions `troupe config show {path}`",
+    "tests/test_cli_usage.py:3228-3252 (diff) — the missing-PATH and mapping→5 tests now target `get`",
+    "repo/spec/spec/config-foundation/design.md:898 — the error table still lists 'Mapping/list for `show` | WrongNodeKindError | 5', with no step-3 note",
+    "repo/spec/spec/config-foundation/design.md:932 — the test strategy still says '`show`: ... mapping/list → 5'"
+  ],
+  "notes": "Every stale requirement (foundation and file-sync requirements.md), every stale test, the handler and parser, the `get` error hint and the CLI help were updated. The diff never touched config-foundation/design.md, which still says `show` on a mapping or list exits 5 (lines 898 and 932), so a maintainer reading that design doc would be misled about how `show` behaves now.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"spec/spec/config-foundation/requirements.md:99-103 (diff) — Req 6.7 gets a step-3 note: the exit-5 rule now applies to `get`, and `show` on a mapping exits 0\", \"src/troupe/cli/get_show_command.py:1547-1558 (diff) — `show` PATH is now optional (nargs='?') and `--sources` is added\", \"src/troupe/config/theatre.py:1980-1981 (diff) — `get_value`'s WrongNodeKindError now mentions `troupe config show {path}`\", \"tests/test_cli_usage.py:3228-3252 (diff) — the missing-PATH and mapping→5 tests now target `get`\", \"repo/spec/spec/config-foundation/design.md:898 — the error table still lists 'Mapping/list for `show` | WrongNodeKindError | 5', with no step-3 note\", \"repo/spec/spec/config-foundation/design.md:932 — the test strategy still says '`show`: ... mapping/list → 5'\"], \"notes\": \"Every stale requirement (foundation and file-sync requirements.md), every stale test, the handler and parser, the `get` error hint and the CLI help were updated. The diff never touched config-foundation/design.md, which still says `show` on a mapping or list exits 5 (lines 898 and 932), so a maintainer reading that design doc would be misled about how `show` behaves now.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

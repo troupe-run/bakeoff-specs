@@ -1,0 +1,399 @@
+[
+  {
+    "decision": "Includes inside remote content: a `file:` include resolves against the containing URL and is fetched; nested http(s) includes are allowed; a URL cycle exits 4; everything reached this way is read-only",
+    "options": [
+      "(A) resolve file: against the URL, allow nested remote includes",
+      "(B) allow https includes, refuse file: inside remote content",
+      "(C) no includes in remote content at all",
+      "(D) something else"
+    ],
+    "reason": "Keeps the step-1 meaning of a relative include for remote files; a shared file cannot sensibly point at a path on each user's disk",
+    "recorded_at": "spec/troupe-config-remote-includes-01M4BMJ5/spec.md:39 (S-1, DM 01M4BMKNXT8SSZTQ8ZX7H562MN); questions.md Question 1"
+  },
+  {
+    "decision": "A reference in remote content that resolves outside http(s) is refused (exit 4); a scheme-relative `file://host/x` resolves to http(s)://host/x by standard URL rules",
+    "options": [],
+    "reason": "It gives nothing a remote file could not name directly (post-merge review R-c)",
+    "recorded_at": "spec.md:39 (S-1); mission-review.md:21"
+  },
+  {
+    "decision": "Settle the remaining out-of-contract points itself and offer them for one round of confirmation, rather than asking about each one",
+    "options": [
+      "ask a question per gap",
+      "bundle the agent choices into one confirmation"
+    ],
+    "reason": "Most of what remains is outside the contract",
+    "recorded_at": "gates.md:3"
+  },
+  {
+    "decision": "Fetch every remote include fresh on every load with no cache between runs; each URL is fetched at most once per load",
+    "options": [],
+    "reason": "Files are already read fresh on every run; a cache could show stale shared values",
+    "recorded_at": "spec.md:40 (S-2)"
+  },
+  {
+    "decision": "Fetch timeout of 10 seconds, as one total deadline across the whole fetch",
+    "options": [
+      "per-call socket timeout",
+      "environment variable to set the timeout"
+    ],
+    "reason": "Keeps a dead server from hanging every command; a configurable timeout would be a configuration surface nobody asked for",
+    "recorded_at": "spec.md:40 (S-2); research.md:19,29"
+  },
+  {
+    "decision": "The 10 s deadline also bounds DNS lookup (run in a daemon thread), every connect attempt, the TLS handshake and every read",
+    "options": [
+      "fix only the connect timeout reported by the reviewer",
+      "bound every step including DNS"
+    ],
+    "reason": "WP01 review reproduced a 20-second fetch; a full fix makes the 'never more than 10 s' claim hold without exceptions",
+    "recorded_at": "transcript.md:362; src/troupe/remote.py (_Deadline, _resolve)"
+  },
+  {
+    "decision": "Redirects are followed only to http/https targets; any other scheme is a failed fetch",
+    "options": [],
+    "reason": "Stops redirects from reaching file:// URLs and reading local files (challenge A-2)",
+    "recorded_at": "spec.md:40 (S-2); research.md:18,193"
+  },
+  {
+    "decision": "Check the redirect scheme in http_error_30x rather than redirect_request",
+    "options": [
+      "redirect_request",
+      "http_error_30x"
+    ],
+    "reason": "urllib rejects file: targets before redirect_request with an HTTPError that reads like a status failure, and it would even follow ftp:",
+    "recorded_at": "src/troupe/remote.py _RedirectHandler docstring (diff.patch:6670)"
+  },
+  {
+    "decision": "Verify TLS certificates, send no credentials or cookies; the body must be strict UTF-8 with no newline translation",
+    "options": [],
+    "reason": "Refusing an unverified or undecodable response cannot corrupt anything (TROUPE-002)",
+    "recorded_at": "spec.md:40 (S-2)"
+  },
+  {
+    "decision": "The YAML-or-text decision for a URL uses the URL path only (query and fragment ignored), with the same case-sensitive .yml/.yaml test",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec.md:40 (S-2); research.md:39"
+  },
+  {
+    "decision": "A failed fetch exits 4 and names the URL plus the location holding the include (the local file, or the remote URL for a nested include)",
+    "options": [],
+    "reason": "Aligned with contracts/cli.md after post-merge finding D-3",
+    "recorded_at": "spec.md:40; mission-review.md:17"
+  },
+  {
+    "decision": "Use only the standard library's urllib.request for fetching",
+    "options": [
+      "httpx",
+      "requests"
+    ],
+    "reason": "Covers redirects, TLS verification and timeouts with no new dependency",
+    "recorded_at": "research.md:14-28 (R-2)"
+  },
+  {
+    "decision": "Honour proxies from the environment, as urllib does by default",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/remote.py docstring, diff.patch:6301)"
+  },
+  {
+    "decision": "Ignore any charset in Content-Type; keep a leading BOM in the text, as for local files; any 2xx is success and a 204 yields an empty string; keep urllib's cap on the number of redirects",
+    "options": [],
+    "reason": "S-2 says the body must be UTF-8",
+    "recorded_at": "unrecorded (src/troupe/remote.py docstring, diff.patch:6312-6317)"
+  },
+  {
+    "decision": "$ref mapping form accepts remote includes with overrides; a $ref value is always an include, and !literal on it exits 4",
+    "options": [],
+    "reason": "New keys under a remote include become local overrides, which needs the mapping form; a non-include $ref was already refused in step 5",
+    "recorded_at": "spec.md:41 (S-3)"
+  },
+  {
+    "decision": "Read-only scope: changing a remote value, replacing a remote include, --in-include into remote content, appending to a remote list or adding a key in a remote list item, and --expand-alias in remote content all exit 3, quoting the outermost local include string",
+    "options": [],
+    "reason": "These are every write that would otherwise land in remote content; only a line in a local file can be changed",
+    "recorded_at": "spec.md:42 (S-4)"
+  },
+  {
+    "decision": "Enforce read-only with one guard (placement.remote_refusal) at two checkpoints (after walk, before alias routing; and on the planned files), plus an assertion in write_files",
+    "options": [
+      "a check in every placement branch"
+    ],
+    "reason": "With about eight branches one could be missed; checkpoint 2 looks at what would actually be written",
+    "recorded_at": "research.md:89-104 (R-7)"
+  },
+  {
+    "decision": "New keys under a remote include become local overrides, using the step-5 scalar-to-mapping conversion; the step-6 alias refusal still applies",
+    "options": [],
+    "reason": "Contract plus step-5 conversion and step-6 ruling C6",
+    "recorded_at": "spec.md:43 (S-5)"
+  },
+  {
+    "decision": "Remote changes on the server are recorded at the next reconcile as file-lineage events; watch does not poll URLs and reconciles only when local files or the schema file change",
+    "options": [
+      "(A) record like a hand edit at the next reconcile",
+      "(B) watch also polls URLs on a slower interval",
+      "(C) keep remote leaves out of history",
+      "(D) something else"
+    ],
+    "reason": "Keeps history complete, adds no polling, and reuses the existing reconcile rule",
+    "recorded_at": "spec.md:44 (S-6); questions.md Discovery run Question 2"
+  },
+  {
+    "decision": "While the configuration cannot load, watch keeps retrying on every tick, re-fetching a failing remote include each time",
+    "options": [
+      "back off to at most every 10 s (proposed in discovery run)",
+      "keep step-3 retry on every tick"
+    ],
+    "reason": "Existing step-3 behaviour (analysis finding I1)",
+    "recorded_at": "spec.md:44 (S-6); analysis-report.md:46"
+  },
+  {
+    "decision": "show --sources attributes remote scalars to the resolved URL",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec.md:44 (S-6)"
+  },
+  {
+    "decision": "Schema lookup walks properties, additionalProperties (when it is an object) and items only; $ref, combinators, patternProperties and prefixItems are not followed; for aliased strings the anchored node's path decides",
+    "options": [],
+    "reason": "The contract names exactly these keywords; following more would guess at the meaning of combinators",
+    "recorded_at": "spec.md:45 (S-7)"
+  },
+  {
+    "decision": "Each schema step carries its container kind (mapping or list)",
+    "options": [],
+    "reason": "A segment like \"0\" could be either",
+    "recorded_at": "research.md:81"
+  },
+  {
+    "decision": "Schema is read fresh each load and must be strict UTF-8 JSON (NaN/Infinity refused), valid 2020-12, $schema naming 2020-12 if present, and every $ref/$dynamicRef must be a local fragment; format is not asserted; the resolved configuration is what gets validated",
+    "options": [],
+    "reason": "Matches 'the loaded configuration must validate'; 2020-12 treats format as an annotation; not fetching references keeps loading offline-safe",
+    "recorded_at": "spec.md:46 (S-8); research.md:73-82"
+  },
+  {
+    "decision": "The first reported violation is ordered by smallest JSON path (key name, numeric indexes), then shortest path, then validator name",
+    "options": [
+      "document order"
+    ],
+    "reason": "Deterministic; the spec does not fix an order (post-merge finding D-1 corrected the research wording)",
+    "recorded_at": "research.md:82; mission-review.md:15"
+  },
+  {
+    "decision": "Add jsonschema (Draft202012Validator, empty Registry, no format checker) as a runtime dependency",
+    "options": [
+      "(A) add jsonschema",
+      "(B) hand-write a validator",
+      "(C) something else",
+      "fastjsonschema"
+    ],
+    "reason": "A subtly wrong hand-written validator would accept or refuse configurations against the contract; fastjsonschema's 2020-12 support is incomplete; owner said take the safest assumption",
+    "recorded_at": "decisions/DM-01M4BMXJXSNEY2QMXYA1W16W04.md; research.md:83-87; questions.md Question 4"
+  },
+  {
+    "decision": "Set no-build-package for rpds-py so uv never builds it from source",
+    "options": [],
+    "reason": "A source build would run arbitrary build code (challenge A-5)",
+    "recorded_at": "research.md:183,196"
+  },
+  {
+    "decision": "Skip the multi-agent challenge squad and do a single-reviewer challenge pass",
+    "options": [],
+    "reason": "The only security-relevant dependency decision was directed by the owner and is covered by supply-chain mitigations",
+    "recorded_at": "research.md:188"
+  },
+  {
+    "decision": "A set whose result fails validation exits 3 naming PATH and the schema file",
+    "options": [],
+    "reason": "Contract; refusing before writing cannot corrupt anything",
+    "recorded_at": "spec.md:47 (S-9)"
+  },
+  {
+    "decision": "Validate in a separate configuration.load_configuration entry point, not inside loader.load",
+    "options": [
+      "validate inside loader.load"
+    ],
+    "reason": "A set needs a different exit code (3) for the same violation",
+    "recorded_at": "research.md:132-146 (R-10)"
+  },
+  {
+    "decision": "Reuse fetched remote content across all reloads within one command",
+    "options": [],
+    "reason": "The command's own reloads cannot fail on a remote change mid-command",
+    "recorded_at": "research.md:143"
+  },
+  {
+    "decision": "!literal allowed on scalars of any style (value is the text as a string); on mapping/list exits 4; other tags exit 4; get/show print without tag; anchors allowed on literals; !literal on a mapping key exits 4",
+    "options": [],
+    "reason": "Only scalars are strings; reads print values, not file syntax; keys are never includes (analysis U1)",
+    "recorded_at": "spec.md:48 (S-10)"
+  },
+  {
+    "decision": "Record the !literal tag span in the composer and move the scalar start past the tag",
+    "options": [
+      "strip tag text out in the writers"
+    ],
+    "reason": "Otherwise span knowledge would spread across about eight writers and a rewrite would delete the tag",
+    "recorded_at": "research.md:47-60 (R-4)"
+  },
+  {
+    "decision": "Every include-looking string in a set VALUE, including nested ones, is written as !literal, judged at its own path; an existing tag is kept when the new value is a string; text-include content is never tagged",
+    "options": [],
+    "reason": "A nested string would otherwise become an unwanted include; keeping a tag keeps the user's intent and changes the fewest bytes",
+    "recorded_at": "spec.md:49 (S-11)"
+  },
+  {
+    "decision": "Use LiteralStr/IncludeStr str-subclass markers to carry literal/include intent to renderers",
+    "options": [
+      "pass a per-path predicate down every renderer"
+    ],
+    "reason": "A str subclass travels unchanged through renderers; the alternative changes about 15 signatures",
+    "recorded_at": "research.md:106-125 (R-8); questions.md Question 6"
+  },
+  {
+    "decision": "--include only on set (exit 2 elsewhere); no effect on values that are not include-looking; exit 3 if the new include cannot be read or fetched, or if PATH is format: uri; removes an existing !literal tag",
+    "options": [],
+    "reason": "Mirrors --in-include/--expand-alias; writing an unloadable include would break the configuration (analysis U2)",
+    "recorded_at": "spec.md:50 (S-12)"
+  },
+  {
+    "decision": "Change step-1 behaviour so set b file:p.md writes !literal, and update the two existing tests to pass --include",
+    "options": [],
+    "reason": "The contract requires it",
+    "recorded_at": "spec.md:51 (S-13); questions.md Question 11"
+  },
+  {
+    "decision": "Introduce Location = Path | Url and retype SourceFile.path while keeping the field name",
+    "options": [
+      "rename the field to location",
+      "add a separate url field",
+      "fake a Path for URLs"
+    ],
+    "reason": "mypy flags every disk-only use; a rename would touch about 10 modules for no gain",
+    "recorded_at": "research.md:5-12 (R-1); questions.md Question 6"
+  },
+  {
+    "decision": "Centralise the include rule in a new includes.py module",
+    "options": [
+      "keep the rule inside loader.py"
+    ],
+    "reason": "TROUPE-007; apply.py and value tagging also need it",
+    "recorded_at": "research.md:31-45 (R-3)"
+  },
+  {
+    "decision": "Alias copies via --expand-alias keep the !literal tag",
+    "options": [],
+    "reason": "Otherwise a copy of a literal would become a remote include",
+    "recorded_at": "research.md:115; questions.md Question 6"
+  },
+  {
+    "decision": "Tags other than !literal keep the step-6 error message",
+    "options": [],
+    "reason": "So existing tests don't change",
+    "recorded_at": "questions.md Question 6"
+  },
+  {
+    "decision": "No-op check: an include node matches only an IncludeStr; a literal ScalarNode matches only a non-IncludeStr string",
+    "options": [],
+    "reason": "Otherwise repeating an existing include string inside a collection would wrongly be a no-op",
+    "recorded_at": "research.md:127-130 (R-9)"
+  },
+  {
+    "decision": "Test remote content against a local threaded HTTP server with a request log; test TLS with an openssl self-signed certificate, skipped with a reason if openssl is missing",
+    "options": [],
+    "reason": "TROUPE-005 and offline tests (C-006)",
+    "recorded_at": "research.md:161-169 (R-13)"
+  },
+  {
+    "decision": "Initially set no size limit on fetched bodies",
+    "options": [],
+    "reason": "The spec doesn't ask for one; don't invent one",
+    "recorded_at": "plan.md:173; questions.md Question 5"
+  },
+  {
+    "decision": "Limit each fetched body to 1 MiB, checked against Content-Length and again while reading",
+    "options": [
+      "no limit",
+      "a limit"
+    ],
+    "reason": "Configurations are small; an unbounded body could exhaust memory; refusing cannot lose data",
+    "recorded_at": "spec.md:52 (S-14); questions.md Question 12"
+  },
+  {
+    "decision": "Refuse https to http redirects at every hop; still follow http to https and same-scheme redirects",
+    "options": [],
+    "reason": "Following a downgrade would silently drop the encryption the owner asked for",
+    "recorded_at": "spec.md:53 (S-15)"
+  },
+  {
+    "decision": "No warning for http:// includes",
+    "options": [
+      "warn on stderr",
+      "no warning"
+    ],
+    "reason": "The contract makes http:// a normal include; a warning would add stderr noise with no contract basis",
+    "recorded_at": "spec.md:54 (S-16)"
+  },
+  {
+    "decision": "WP05 fix: anchor identity goes back to the written path while schema lookups stay at the merge mount point, reaching the merge source through MergeKeyMapping.written",
+    "options": [],
+    "reason": "A loader change had let a set silently change an unrelated value through a shared YAML anchor; the path lookup goes through a merge view that hides <<",
+    "recorded_at": "transcript.md:529,538"
+  },
+  {
+    "decision": "WP08 fix: run the read-only check before edit rendering",
+    "options": [],
+    "reason": "Read-only refusals could come with the wrong error message",
+    "recorded_at": "transcript.md:813"
+  },
+  {
+    "decision": "Resume stopped implementer agents from their saved transcripts rather than restarting them",
+    "options": [
+      "start over",
+      "resume"
+    ],
+    "reason": "Uncommitted work was intact in the worktrees",
+    "recorded_at": "transcript.md:225"
+  },
+  {
+    "decision": "Resolve the planning-file conflict during workspace creation using the planning branch's version",
+    "options": [],
+    "reason": "Only the planning file conflicted",
+    "recorded_at": "transcript.md:147"
+  },
+  {
+    "decision": "Finish WP06/WP07 itself and run the full suites as detached processes logging to files",
+    "options": [],
+    "reason": "Sessions kept ending before long jobs could finish",
+    "recorded_at": "transcript.md:658-660"
+  },
+  {
+    "decision": "Leave the parent issue 1j5 open rather than force-closing it",
+    "options": [
+      "force close",
+      "leave open with a note"
+    ],
+    "reason": "The tracker won't close a parent while its children are open",
+    "recorded_at": "transcript.md:1021"
+  },
+  {
+    "decision": "Run acceptance with --mission and --lenient after fast-forwarding the feature branch to main, without creating a docs/ directory",
+    "options": [],
+    "reason": "Followed what the previous mission did in the same situation",
+    "recorded_at": "questions.md Question 13"
+  },
+  {
+    "decision": "Leave the mission coordination branch in place",
+    "options": [],
+    "reason": "Its worktree is still checked out, and earlier missions left theirs",
+    "recorded_at": "questions.md Question 11"
+  },
+  {
+    "decision": "Commit the plan-document amendments and the status bookkeeping as two separate commits",
+    "options": [],
+    "reason": "Precedent from commit 297995b",
+    "recorded_at": "transcript.md:122"
+  }
+]

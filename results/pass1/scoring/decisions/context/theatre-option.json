@@ -1,0 +1,95 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\nname: root-theatre\nretry: 3\n\nsub/.troupe/troupe.yml:\nname: sub-theatre\nretry: 7\n",
+        "input": "`config get name` (no `--theatre`, run from the directory that holds `.troupe/` and `sub/`)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, prints `root-theatre`",
+          "2": "all three arms: exit 0, print `root-theatre`",
+          "3": "both arms: exit 0, print `root-theatre`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get name --theatre=sub` (also `config get --theatre=sub name`)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, prints `sub-theatre`",
+          "2": "all three arms: exit 0, print `sub-theatre`",
+          "3": "both arms: exit 0, print `sub-theatre`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config --theatre=sub get name`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, prints `sub-theatre`",
+          "2": "all three arms: exit 2, `unrecognized arguments: --theatre=sub`",
+          "3": "both arms: exit 0, print `sub-theatre`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config --theatre . get name`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, prints `root-theatre`",
+          "2": "all three arms: exit 2, the error reads the `.` as the subcommand: `invalid choice: '.' (choose from get, show, set, history, watch)` (the order of the list varies)",
+          "3": "both arms: exit 0, print `root-theatre`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`--theatre=sub config get name`",
+        "observed": true,
+        "results": {
+          "1": "exit 2, `troupe: error: unrecognized arguments: --theatre=sub`",
+          "2": "all three arms: exit 2, `unrecognized arguments: --theatre=sub`",
+          "3": "one arm: exit 0, prints `sub-theatre`; the other arm: exit 2, `unrecognized arguments: --theatre=sub (see 'troupe --help')`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`--theatre . config get name`",
+        "observed": true,
+        "results": {
+          "1": "exit 2, the error reads the `.` as the command: `invalid choice: '.' (choose from config)`",
+          "2": "all three arms: exit 2, same kind of `invalid choice: '.' (choose from config)` error",
+          "3": "one arm: exit 0, prints `root-theatre`; the other arm: exit 2, `invalid choice: '.' (choose from config) (see 'troupe --help')`"
+        }
+      }
+    ],
+    "in_practice": "`--theatre` works after the subcommand (`config get --theatre X …`) on every route. Route 1 also accepts it between `config` and the subcommand. Route 2 accepts it only after the subcommand. Route 3's two arms differ: both accept it in both of those places, and one arm also accepts it before `config`. When `--theatre` is in a place it isn't accepted, the error doesn't name the flag. Instead it says its value (`.`) is an invalid command or subcommand, which can confuse people.",
+    "stakes": "This decides where `--theatre` can go on the command line. Put it in a spot a route doesn't accept and the command stops with exit 2 and a usage error. It never reads the wrong theatre. Every route uses the current directory when `--theatre` is left out.",
+    "tradeoff": "Route 1 lets you put `--theatre` in two places, but `troupe --theatre …` still fails. Route 2 has one fixed place, and every other placement fails with exit 2. Route 3 behaves differently depending on the arm: one accepts the flag anywhere, the other behaves like route 1."
+  },
+  "plan_why": "The same `config get name` runs with --theatre in each position: before `config`, between `config` and `get`, after `get`, after the path, and as --theatre=sub, plus once with no --theatre at all. The root theatre's value is `root-theatre` and the sub theatre's is `sub-theatre`, so each step's exit code and output show whether that position was accepted, rejected as a usage error (exit 2) or ignored, and which theatre was read. The final list shows where state was created.",
+  "routes": [
+    [
+      "Both at the config level and the subcommand level, defaulting to `.`",
+      [
+        "Arm E"
+      ]
+    ],
+    [
+      "Only after the subcommand, defaulting to the current directory. One arm added it before the subcommand, then removed it",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

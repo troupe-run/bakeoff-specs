@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "repo/tests/e2e/test_set_in_include.py:1-2 (module docstring links FR-460 to FR-466, D-50, D-51; per-test links in spec/006-set-in-include/tasks.md:62-73)",
+    "repo/tests/e2e/test_usage.py:96 (FR-466 test) and :112 (FR-460 test)",
+    "repo/src/troupe/config/edit/override.py:88 (code comment cites step 5 CR-B FR-461, FR-462, D-51)",
+    "repo/tests/e2e/test_overrides_new_key.py:2 and repo/src/troupe/config/edit/override.py:2 (CR-A FR-420 to FR-427)",
+    "repo/tests/e2e/test_set_new_key.py:1,105-106 and repo/src/troupe/config/edit/planner.py:574 (step 1 FR-022; superseded include case is relabelled to CR-A)"
+  ],
+  "notes": "I sampled five requirements: FR-461, FR-466, FR-421, FR-022 and FR-040-044. All five are linked and correct. They trace from the spec to the tests through task entries or ID tags, and on to code that carries ID comments. Most test links are ID ranges in the file's module docstring, not tags on each test. FR-022's test file still lists a case whose behaviour CR-A changed, so it needs that docstring to read correctly. I scored 3, not 4, for this coarse linking.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"repo/tests/e2e/test_set_in_include.py:1-2 (module docstring links FR-460 to FR-466, D-50, D-51; per-test links in spec/006-set-in-include/tasks.md:62-73)\", \"repo/tests/e2e/test_usage.py:96 (FR-466 test) and :112 (FR-460 test)\", \"repo/src/troupe/config/edit/override.py:88 (code comment cites step 5 CR-B FR-461, FR-462, D-51)\", \"repo/tests/e2e/test_overrides_new_key.py:2 and repo/src/troupe/config/edit/override.py:2 (CR-A FR-420 to FR-427)\", \"repo/tests/e2e/test_set_new_key.py:1,105-106 and repo/src/troupe/config/edit/planner.py:574 (step 1 FR-022; superseded include case is relabelled to CR-A)\"], \"notes\": \"I sampled five requirements: FR-461, FR-466, FR-421, FR-022 and FR-040-044. All five are linked and correct. They trace from the spec to the tests through task entries or ID tags, and on to code that carries ID comments. Most test links are ID ranges in the file's module docstring, not tags on each test. FR-022's test file still lists a case whose behaviour CR-A changed, so it needs that docstring to read correctly. I scored 3, not 4, for this coarse linking.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

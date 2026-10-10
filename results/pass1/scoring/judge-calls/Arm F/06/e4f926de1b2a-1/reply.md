@@ -1,0 +1,5 @@
+```json
+{"score": 1, "evidence": ["/judge/questions.md:22", "/judge/questions.md:36", "/judge/questions.md:62", "/judge/questions.md:87-89", "/judge/questions.md:93", "/judge/transcript.md:1"]}
+```
+
+{"score": 1, "evidence": ["/judge/questions.md:22", "/judge/questions.md:36", "/judge/questions.md:62", "/judge/questions.md:87-89", "/judge/questions.md:93", "/judge/transcript.md:1"], "notes": "In the scored run, Arm X sent only finished-work handoffs that asked for the next command, and their answers could not change what was built. It did flag one real gap the contract leaves open: whether replacing the alias itself (e.g. `set coder.settings none`) should be refused. It raised this after building and never got it answered, so it shaped nothing; the anchored-include point also got no reply."}

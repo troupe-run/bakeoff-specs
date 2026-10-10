@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/setup/shell/01.log:1-8 (`method init --tools claude` installs 6 skills and 6 commands into .claude/)",
+    "/judge/setup/manifest.json:2-13 (.claude/commands/method/*.md and .claude/skills/method-*/SKILL.md)",
+    "/judge/setup/checklist.json:21-24 (no foreign plugins), :38-48 (skills and commands missing: none), :74-78 (entry commands present)",
+    "/judge/setup/setup-turns.json:1 (no setup turns needed by the model)",
+    "/judge/01/transcript.md:3-4,19,24 (every planning step runs the `method` CLI from Bash: new change / instructions / validate / status)",
+    "/judge/07/transcript.md:165 (archive runs from the shell after task boxes are ticked with sed by hand)",
+    "/judge/01/transcript.md:26,29 (hand-off between steps goes through the `/method-command` slash command)"
+  ],
+  "notes": "The method installs as native Claude Code skills and slash commands from the arm's own .claude/ with no overrides to settings, memory or hooks, and its file-based change tracking (spec/changes, archive) works end to end. Its one friction point is that each skill step has the model drive a separate `method` CLI from Bash and tick tasks.md checkboxes by hand before archiving, so it falls short of fully seamless.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/setup/shell/01.log:1-8 (`method init --tools claude` installs 6 skills and 6 commands into .claude/)\", \"/judge/setup/manifest.json:2-13 (.claude/commands/method/*.md and .claude/skills/method-*/SKILL.md)\", \"/judge/setup/checklist.json:21-24 (no foreign plugins), :38-48 (skills and commands missing: none), :74-78 (entry commands present)\", \"/judge/setup/setup-turns.json:1 (no setup turns needed by the model)\", \"/judge/01/transcript.md:3-4,19,24 (every planning step runs the `method` CLI from Bash: new change / instructions / validate / status)\", \"/judge/07/transcript.md:165 (archive runs from the shell after task boxes are ticked with sed by hand)\", \"/judge/01/transcript.md:26,29 (hand-off between steps goes through the `/method-command` slash command)\"], \"notes\": \"The method installs as native Claude Code skills and slash commands from the arm's own .claude/ with no overrides to settings, memory or hooks, and its file-based change tracking (spec/changes, archive) works end to end. Its one friction point is that each skill step has the model drive a separate `method` CLI from Bash and tick tasks.md checkboxes by hand before archiving, so it falls short of fully seamless.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

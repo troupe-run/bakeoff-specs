@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# team config\nretry: 3  # attempts\nagents:\n  coder:\n    model: opus",
+        "input": "`config history` (as human:owner, nothing set yet)",
+        "observed": true,
+        "results": {
+          "1": "exit 0. Two entries, retry=3 and agents.coder.model=opus, both `\"op\": \"import\", \"via\": \"import\", \"actor\": {\"kind\": \"unknown\"}`. No `source` field.",
+          "2": "All five arms gave the same result as route 1: two import entries with `via: import`, unknown actor and no `source` field."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set retry 5 --reason \"more attempts\"` (as agent:planner)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, prints nothing. The file now reads `retry: 5  # attempts`, with the comment kept.",
+          "2": "All five arms behaved the same: exit 0, `retry: 5  # attempts`, comment kept."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set agents.coder.model sonnet` (as human:owner), then `config history`",
+        "observed": true,
+        "results": {
+          "1": "The file now has `model: sonnet`. History adds seq 3 `retry 3→5, actor agent/planner, via cli, reason \"more attempts\"` and seq 4 `model opus→sonnet, actor human/owner, via cli, reason null`.",
+          "2": "All five arms gave the same seq 3 and seq 4 entries as route 1, with `via: cli` and the actor recorded. Only timestamps and change ids differ."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history retry` (no actor set)",
+        "observed": true,
+        "results": {
+          "1": "exit 0. Shows only seq 1 (import, 3) and seq 3 (set 3→5 by agent:planner via cli).",
+          "2": "All five arms behaved the same: seq 1 and seq 3 only."
+        }
+      }
+    ],
+    "in_practice": "The two routes behaved the same in every run. The only differences were timestamps and change ids. No test edited troupe.yml by hand and then read the history, so how either route records a real hand edit was never observed. The only non-`cli` entries seen are the initial `import` ones.",
+    "stakes": "When reading `config history`, a user wants to tell a value someone typed into troupe.yml by hand apart from one changed with `config set`. Neither route adds a separate source field. In every run, each entry carries a `via` value (\"import\" or \"cli\") plus who made the change.",
+    "tradeoff": "Route 1 deliberately skips a source field and relies on `via` (import/cli) to show where a change came from. Route 2 never considered a source field and ends up with the same `via`-only history."
+  },
+  "plan_why": "Shows the lineage fields on history events, so you can check whether an import and a CLI set are told apart only by `via` or also by an extra `source` field. A file-originated event cannot be shown, because the sandbox only runs troupe commands and cannot hand-edit files between them.",
+  "routes": [
+    [
+      "No source field",
+      [
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

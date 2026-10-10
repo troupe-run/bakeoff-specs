@@ -1,0 +1,85 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# agent settings\nretry: 3\ndebug: false\ntimeout: 30\nratio: 0.5\n",
+        "input": "`config set retry 0x1A`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; file line becomes `retry: 26`",
+          "2": "exit 0, no output; file line becomes `retry: 0x1A`",
+          "3": "two arms differ. One arm: `retry: 0x1A`. The other arm: `retry: 26`. Both exit 0 with no output."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set debug TRUE`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; `debug: true`",
+          "2": "exit 0; `debug: TRUE`",
+          "3": "one arm: `debug: TRUE`; the other arm: `debug: true`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set timeout ~`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; `timeout: null`",
+          "2": "exit 0; `timeout: ~`",
+          "3": "one arm: `timeout: ~`; the other arm: `timeout: null`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set ratio 1E3`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; `ratio: 1000.0`",
+          "2": "exit 0; `ratio: 1E3`",
+          "3": "one arm: `ratio: 1E3`; the other arm: `ratio: 1000.0`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set extra \"{flag: True, none: Null, oct: 0o17, pad: +007, inf: -.INF, num: 2.50}\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now ends with:\nextra:\n  flag: true\n  none: null\n  oct: 15\n  pad: 7\n  inf: -.inf\n  num: 2.5",
+          "2": "exit 0; the file now ends with:\nextra:\n  flag: True\n  none: Null\n  oct: 0o17\n  pad: +007\n  inf: -.INF\n  num: 2.50",
+          "3": "One arm: the file ends with\nextra:\n  flag: True\n  none: Null\n  oct: 0o17\n  pad: +007\n  inf: -.INF\n  num: 2.50\nThe other arm: the file ends with\nextra:\n  flag: true\n  none: null\n  oct: 15\n  pad: 7\n  inf: -.inf\n  num: 2.5"
+        }
+      }
+    ],
+    "in_practice": "Every command on every route exited 0 with no output, and the comment line `# agent settings` was kept every time. The routes differ only in how the value is spelled in the file. Route 1 always writes the standard form, so `0o17` becomes `15` and `2.50` becomes `2.5`. Route 2 writes exactly what you typed. On route 3, one arm behaved like route 2 and the other like route 1.",
+    "stakes": "When you set a number, boolean or null, the config file either keeps it the way you typed it (`0x1A`, `TRUE`, `~`, `1E3`) or rewrites it in one standard spelling (`26`, `true`, `null`, `1000.0`). Either way the value means the same thing. What differs is whether the file still looks like what you wrote.",
+    "tradeoff": "Route 1 loses your own spelling (hex, octal, padding, `~`, capitals) in exchange for a uniform file. Route 2 keeps your spelling, so the file can mix styles like `TRUE`/`true` and `~`/`null`. On route 3 you get one or the other depending on the arm."
+  },
+  "plan_why": "Writes non-string scalars in unusual but valid YAML 1.2 spellings (0x1A, TRUE, ~, 1E3, +007, 0o17, -.INF, 2.50). It does this both by replacing existing values and through a new block mapping. The file then shows whether each implementation rewrites them in canonical form (26, true, null, 1000.0, 7, 15, -.inf, 2.5) or keeps the spelling that was typed.",
+  "routes": [
+    [
+      "Canonical plain form (true/false, null, decimal int, repr(float), .inf/.nan)",
+      [
+        "Arm B",
+        "Arm C"
+      ]
+    ],
+    [
+      "Keep VALUE's own spelling (floats fall back to repr; .inf/.nan for non-finite)",
+      [
+        "Arm A",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

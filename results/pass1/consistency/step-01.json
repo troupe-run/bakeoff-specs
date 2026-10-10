@@ -1,0 +1,42 @@
+{
+  "pass": "pass1",
+  "step": 1,
+  "rounds": [
+    {
+      "at": "2026-10-01T12:40:29+00:00",
+      "groups": [
+        {
+          "question": "After the initial import, if a file is hand-edited, are the files on disk or the stored event-sourced projection the source of truth for show and set?",
+          "answers": [
+            {
+              "arm": "speckitty",
+              "answer": "A\n   The files are the truth.** `show` and `set` always read the files as they are on disk. The stored projection is only the change history, so a hand edit appears in `show` but produces no history event. A later `set` records its `old` value as what was in the file.",
+              "step": 1
+            }
+          ],
+          "id": "Q1",
+          "conflict": false,
+          "overlaps": [],
+          "earlier": []
+        }
+      ],
+      "owner": {
+        "Q1": {
+          "ok": true,
+          "note": "",
+          "seconds": 2133.012895792024
+        }
+      }
+    }
+  ],
+  "confirmed": [
+    "- **Q:** After the initial import, if a file is hand-edited, are the files on disk or the stored event-sourced projection the source of truth for show and set? **A:** A\n   The files are the truth.** `show` and `set` always read the files as they are on disk. The stored projection is only the change history, so a hand edit appears in `show` but produces no history event. A later `set` records its `old` value as what was in the file. _(2026-10-01; pass1; first raised by speckitty at step 1; answered by the real owner)_"
+  ],
+  "status": "confirmed",
+  "fallbacks": [],
+  "brief_sha_before": "fa3f88f603049cc9f51616e787a381fdc63add931d7db0d177902ce19142d1d4",
+  "brief_sha_after": "fa3f88f603049cc9f51616e787a381fdc63add931d7db0d177902ce19142d1d4",
+  "edited": false,
+  "committed": false,
+  "committed_now": false
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 4, "evidence": ["/judge/questions.md:7-13", "/judge/questions.md:35", "/judge/questions.md:43", "/judge/questions.md:146", "/judge/others-questions.md:23", "/judge/others-questions.md:286"], "notes": "Arm X asked one real question: what `show PATH --sources` should print for a single value. The contract's two rules conflict there, I answered 'out of contract: your choice', and the arm's choice of option A was recorded as a decision and shipped (questions.md:43, 146). Other arms chose this themselves without asking. The bundled list of defaults raised only points the contract leaves open, and every other turn was a routine prompt for the next command, not a question, so no question was within reach or pointless."}
+```

@@ -1,0 +1,3 @@
+The refusal stays as it is, so no code changed. I added your ruling to the reason for choice C6 in the spec: the alias rule doesn't depend on which file the write would land in, and the Overrides section only decides placement, so it doesn't lift that rule. With `--expand-alias`, the key goes into the copy.
+
+That's committed on `main` as `4a1ca69`. Only `spec.md` changed, and the existing C6 tests already cover this behaviour. The working tree is clean, and nothing was pushed.

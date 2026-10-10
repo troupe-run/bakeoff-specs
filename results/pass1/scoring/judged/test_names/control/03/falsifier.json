@@ -1,0 +1,12 @@
+{
+  "evidence": [
+    "/judge/repo/tests/test_config.py:191",
+    "/judge/repo/tests/test_config.py:230",
+    "/judge/repo/tests/test_config.py:261",
+    "/judge/repo/tests/test_config.py:243"
+  ],
+  "notes": "The repo has no git history, so I assumed this step's tests are the reconcile and watch tests after the new events/edits helpers (lines 181-264). No name overclaims, but `test_watch` and `test_watch_sigint` mostly just name the command: `test_watch` checks about six behaviours (formatting-only edits are ignored, new includes are followed, the watch survives broken YAML, it exits cleanly on SIGTERM) that its name doesn't mention, and `test_watch_sigint` doesn't say the expected result (exit 0). `test_reconcile_on_command` also checks less obvious claims, such as `history` not reconciling, that its name doesn't mention.",
+  "raw": "{\"score\": 2, \"evidence\": [\"/judge/repo/tests/test_config.py:191\", \"/judge/repo/tests/test_config.py:230\", \"/judge/repo/tests/test_config.py:261\", \"/judge/repo/tests/test_config.py:243\"], \"notes\": \"The repo has no git history, so I assumed this step's tests are the reconcile and watch tests after the new events/edits helpers (lines 181-264). No name overclaims, but `test_watch` and `test_watch_sigint` mostly just name the command: `test_watch` checks about six behaviours (formatting-only edits are ignored, new includes are followed, the watch survives broken YAML, it exits cleanly on SIGTERM) that its name doesn't mention, and `test_watch_sigint` doesn't say the expected result (exit 0). `test_reconcile_on_command` also checks less obvious claims, such as `history` not reconciling, that its name doesn't mention.\"}",
+  "score": 2,
+  "status": "ok"
+}

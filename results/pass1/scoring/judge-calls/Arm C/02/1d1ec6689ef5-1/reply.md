@@ -1,0 +1,3 @@
+```json
+{"score": 4, "evidence": ["/judge/transcript.md:3-6 (read the charter, the step-1 spec and the session/cli/history code before discovery Q1)", "/judge/transcript.md:10 (Q1: 'What I found' cites the contract and step-1 exit-4 behaviour; options A/B/C with consequences; recommends A with a reason)", "/judge/transcript.md:21-23 (read loader, fileio, errors and conftest before planning Q1; states the atomic write, eventsourcing version check and leaves.diff; option A recommended over the fragile B, with a reason)", "/judge/transcript.md:336-338 (ran mission accept, reports the two blockers and where they came from, compares feat+--lenient with creating docs/, and recommends one with a reason)", "/judge/questions.md:5-24, 57-81, 191-198"]}
+```

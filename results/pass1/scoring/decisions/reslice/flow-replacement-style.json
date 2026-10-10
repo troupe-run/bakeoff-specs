@@ -1,0 +1,143 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "1",
+    "Arm C": "2",
+    "Arm D": "3",
+    "Arm E": "1",
+    "Arm F": "1"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "INLINE_GAP",
+        "why": "tools stays as the flow list [grep, edit, run], but the two spaces before '# default tools' became one"
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "BLOCK",
+        "why": "tools and limits were rewritten as block sequence/mapping (the comment stayed on the 'tools:' line); nested agent.opts stayed inline"
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "INLINE_KEPT",
+        "why": "tools stays as the flow list [grep, edit, run], and the two spaces before '# default tools' are kept"
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "tools",
+          "[grep, edit, run]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "limits",
+          "{cpu: 4, gpu: 1}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agent.opts",
+          "[x, y]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "agent.opts.1"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# troupe config\nname: demo\ntools: [read, write]  # default tools\nlimits: {cpu: 1, mem: 2}\nagent: {model: opus, opts: {temp: 1}, tags: [a]}\nretry: 3\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Replaces existing flow collections with new collection values: a flow list and a flow mapping under block parents (with an end-of-line comment), and a flow mapping inside a flow parent. The file shows whether each replacement comes out in block style or in flow style like the old value, and the final reads show whether the file still loads."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "the replaced value becomes block style",
+            "id": "BLOCK"
+          },
+          {
+            "description": "stays inline but the gap before the comment shrinks",
+            "id": "INLINE_GAP"
+          },
+          {
+            "description": "stays inline with comment spacing kept",
+            "id": "INLINE_KEPT"
+          }
+        ],
+        "id": "Q1",
+        "text": "replacing an inline collection"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Block style (the 'new collection value' rule read literally; owner confirmed)",
+      [
+        "Arm C"
+      ]
+    ],
+    [
+      "Render in the old one's style; new collections inside a flow parent use flow",
+      [
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "sheet_id": "T27",
+  "status": "ok"
+}

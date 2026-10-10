@@ -1,0 +1,18 @@
+{
+  "kind": "divergent",
+  "question": "Which YAML library provides the node positions for byte-surgical write-back",
+  "routes": [
+    {
+      "outcome": "Kept; a loader subclass was added at step 6 to locate aliases",
+      "reasoning_given": "PyYAML follows YAML 1.1 rules, so scalar typing is replaced",
+      "route": "PyYAML compose for node positions, with custom YAML 1.2 core resolution",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept through step 7; later extended with composer hooks for aliases",
+      "reasoning_given": "The round-trip dumper reformats untouched text, PyYAML is YAML 1.1 only, and a hand-written parser is too big a risk",
+      "route": "ruamel.yaml compose only (nodes and marks); never use its dumper",
+      "route_no": 2
+    }
+  ]
+}

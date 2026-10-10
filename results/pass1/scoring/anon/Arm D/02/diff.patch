@@ -1,0 +1,550 @@
+diff --git a/README.md b/README.md
+index 98fa87e..fbab976 100644
+--- a/README.md
++++ b/README.md
+@@ -6,11 +6,14 @@ AI orchestration. This package currently provides the configuration subsystem:
+ uv run troupe config show PATH [--theatre DIR]
+ uv run troupe config set PATH VALUE [--theatre DIR]
+ uv run troupe config history [PATH] [--theatre DIR]
++uv run troupe config watch [--theatre DIR]
+ ```
+ 
+ - Configuration lives in `DIR/.troupe/troupe.yml` (or `.yaml`); `file:` strings include other files.
+ - `set` writes changes back byte-surgically: only the bytes of the changed value change.
+ - The configuration is held as an event-sourced projection (`eventsourcing`, SQLite at
+   `.troupe/troupe-state.sqlite`); `history` lists per-leaf `import`/`set`/`remove` events.
++- Every command except `history` first reconciles the projection with the files (hand edits become
++  `set`/`remove` events); `watch` keeps reconciling as files change, until SIGINT/SIGTERM.
+ 
+ Run the tests with `uv run pytest`.
+diff --git a/docs/decisions.md b/docs/decisions.md
+index c95f9b7..4160eda 100644
+--- a/docs/decisions.md
++++ b/docs/decisions.md
+@@ -7,7 +7,7 @@ corrupt user data or to contradict the contract.
+    done when committed on `main` and forbids pushing and opening PRs. The work was committed directly to
+    `main`, so there is nothing to merge and nothing to clean up.
+ 2. **`show` reads the files, not the event store.** Files are the source of truth that people edit by
+-   hand; "importing is not reconciling", so hand edits are not turned into events.
++   hand. (Since step 2, `show` reconciles first, so the two agree anyway.)
+ 3. **Every write is verified before any file is touched.** The edited texts are re-parsed and the value at
+    `PATH` is compared with `VALUE`; on mismatch the command exits 3 and changes nothing.
+ 4. **A mapping/list set onto a node of the same kind is merged key-by-key** (index-by-index for lists),
+@@ -24,3 +24,16 @@ corrupt user data or to contradict the contract.
+    following deeper-indented comment lines, is written double-quoted instead**, so the comments do not
+    silently become part of the value.
+ 10. **Event state lives in `.troupe/troupe-state.sqlite`** (the only place the contract allows state).
++11. **Every load-reconcile-write holds an exclusive `flock` on the `.troupe` directory.** `set` writes its
++    files and records its events under the lock, so `watch` can only see the write-back after the events
++    exist, and reconciling it emits nothing. Locking the directory needs no extra file in `.troupe/`.
++12. **`watch` polls file contents (every 0.1 s) rather than using OS notifications.** It compares the
++    current bytes of the config file, every include and the other config name with exactly what it last
++    loaded, so a change cannot fall between loading and starting to watch, and includes outside
++    `.troupe/` or not yet existing are covered. No new dependency is needed.
++13. **If `watch` cannot load the configuration at start, it exits 4** like every other command. If a later
++    edit breaks it (e.g. mid-save, or an include whose target is not written yet), it prints the error to
++    stderr once and keeps retrying until the files load again.
++14. **`history` does not need loadable files once something has been recorded**; it only loads them to
++    perform the first import.
++15. **Reconcile emits `set`s in document order, then `remove`s**, the same order as `set`'s own events.
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index 8367eeb..ffb9264 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -1,16 +1,30 @@
+-"""`troupe config show|set|history`."""
++"""`troupe config show|set|history|watch`."""
+ 
+ from __future__ import annotations
+ 
+ import argparse
++import fcntl
+ import json
+ import os
++import signal
+ import sys
++import threading
++from contextlib import contextmanager
+ from pathlib import Path
+-from typing import Any
+ 
+-from .config import ConfigError, PathNotFound, WriteRefused, flatten, load, lookup, split_path
+-from .store import ConfigStore
++from .config import (
++    Config,
++    ConfigError,
++    Item,
++    PathNotFound,
++    WriteRefused,
++    find_config,
++    flatten,
++    load,
++    lookup,
++    split_path,
++)
++from .store import STATE_FILE, ConfigStore, diff
+ from .writer import Writer
+ from .yamlcore import ValueError_, format_scalar, parse_value, same
+ 
+@@ -29,7 +43,7 @@ def _parser() -> argparse.ArgumentParser:
+     sub = parser.add_subparsers(dest="group", required=True)
+     config = sub.add_parser("config", help="show and change the theatre configuration")
+     cmds = config.add_subparsers(dest="cmd", required=True)
+-    for name, extra in (("show", ["path"]), ("set", ["path", "value"]), ("history", ["path?"])):
++    for name, extra in (("show", ["path"]), ("set", ["path", "value"]), ("history", ["path?"]), ("watch", [])):
+         p = cmds.add_parser(name)
+         p.add_argument(
+             "--theatre", default=None, help="theatre directory (default: $TROUPE_THEATRE, else current directory)"
+@@ -67,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
+ def run(argv: list[str]) -> int:
+     args = _parser().parse_args(argv)
+     segs: list[str] | None = None
+-    if args.path is not None:
++    if getattr(args, "path", None) is not None:
+         try:
+             segs = split_path(args.path)
+         except ValueError as exc:
+@@ -79,10 +93,29 @@ def run(argv: list[str]) -> int:
+         except ValueError_ as exc:
+             raise UsageError(f"invalid VALUE {args.value!r}: {exc}") from exc
+ 
+-    theatre = Path(args.theatre if args.theatre is not None else os.environ.get("TROUPE_THEATRE") or ".")
+-    cfg = load(theatre)
+-    store = ConfigStore(cfg.config_path.parent)
+-    store.ensure_imported(flatten(cfg.root))
++    shown = args.theatre if args.theatre is not None else os.environ.get("TROUPE_THEATRE") or "."
++    theatre = Path(shown)
++    troupe_dir = find_config(theatre).parent
++
++    if args.cmd == "watch":
++        return _watch(theatre, troupe_dir, shown)
++
++    with _locked(troupe_dir):
++        if args.cmd == "history":
++            # History reports what has been recorded; it never reconciles.
++            if (troupe_dir / STATE_FILE).exists():
++                entries = ConfigStore(troupe_dir).history()
++            else:
++                leaves = flatten(load(theatre).root)
++                store = ConfigStore(troupe_dir)
++                store.ensure_imported(leaves)
++                entries = store.history()
++        else:
++            cfg = load(theatre)
++            store = ConfigStore(troupe_dir)
++            _reconcile(store, cfg)
++            if args.cmd == "set":
++                return _set(theatre, cfg, store, segs, args.path, value)
+ 
+     if args.cmd == "show":
+         item = lookup(cfg.root, segs, args.path)
+@@ -92,16 +125,37 @@ def run(argv: list[str]) -> int:
+         _out(text if text.endswith("\n") else text + "\n")
+         return 0
+ 
+-    if args.cmd == "set":
+-        return _set(theatre, cfg, store, segs, args.path, value)
+-
+-    for entry in store.history():
++    for entry in entries:
+         p = entry["path"]
+         if args.path is None or p == args.path or p.startswith(args.path + "."):
+             _out(json.dumps(entry, ensure_ascii=False) + "\n")
+     return 0
+ 
+ 
++@contextmanager
++def _locked(troupe_dir: Path):
++    """Hold an exclusive lock on the `.troupe` directory.
++
++    Every load-reconcile-write runs under it, so `watch` never sees a write-back by `set` before `set`
++    has recorded its events.
++    """
++    fd = os.open(troupe_dir, os.O_RDONLY)
++    try:
++        fcntl.flock(fd, fcntl.LOCK_EX)
++        yield
++    finally:
++        os.close(fd)
++
++
++def _reconcile(store: ConfigStore, cfg: Config) -> None:
++    """Bring the recorded configuration in line with the loaded files. Call with the lock held."""
++    leaves = flatten(cfg.root)
++    if store.exists():
++        store.reconcile(leaves)
++    else:
++        store.ensure_imported(leaves)
++
++
+ def _set(theatre: Path, cfg, store: ConfigStore, segs: list[str], path: str, value) -> int:
+     writer = Writer()
+     writer.set_path(cfg.root, segs, value, path)
+@@ -120,19 +174,80 @@ def _set(theatre: Path, cfg, store: ConfigStore, segs: list[str], path: str, val
+     for p, text in results.items():
+         p.write_bytes(text.encode("utf-8"))
+ 
+-    before, after = flatten(cfg.root), flatten(new_cfg.root)
+-    changes: list[tuple[str, str, Any, Any]] = []
+-    for p, v in after.items():
+-        if p not in before:
+-            changes.append(("set", p, None, v))
+-        elif not same(before[p], v):
+-            changes.append(("set", p, before[p], v))
+-    for p, v in before.items():
+-        if p not in after:
+-            changes.append(("remove", p, v, None))
+-    store.record(changes)
++    store.record(diff(flatten(cfg.root), flatten(new_cfg.root)))
+     return 0
+ 
+ 
++# ---------------------------------------------------------------------------- watch
++
++POLL_SECONDS = 0.1
++
++
++def _loaded_texts(cfg: Config) -> dict[Path, str | None]:
++    """The contents `load` read, by file: the config file, its includes, and the absent other config name."""
++    texts: dict[Path, str | None] = {p: doc.text for p, doc in cfg.docs.items()}
++    for name in ("troupe.yml", "troupe.yaml"):
++        texts.setdefault(cfg.config_path.parent / name, None)
++
++    def walk(item: Item) -> None:
++        if item.kind == "text":
++            texts[item.include] = item.value
++        elif item.kind == "map":
++            for child in item.value.values():
++                walk(child)
++        elif item.kind == "seq":
++            for child in item.value:
++                walk(child)
++
++    walk(cfg.root)
++    return texts
++
++
++def _unchanged(texts: dict[Path, str | None]) -> bool:
++    for p, text in texts.items():
++        try:
++            current: str | None = p.read_bytes().decode("utf-8")
++        except FileNotFoundError:
++            current = None
++        except (OSError, UnicodeDecodeError):
++            return False
++        if current != text:
++            return False
++    return True
++
++
++def _watch(theatre: Path, troupe_dir: Path, shown: str) -> int:
++    stop = threading.Event()
++    previous = {sig: signal.signal(sig, lambda *_: stop.set()) for sig in (signal.SIGINT, signal.SIGTERM)}
++    try:
++        with _locked(troupe_dir):
++            cfg = load(theatre)
++            store = ConfigStore(troupe_dir)
++            _reconcile(store, cfg)
++        texts: dict[Path, str | None] | None = _loaded_texts(cfg)
++        # Every later change makes the files differ from `texts`, which is what was reconciled.
++        _out(f"watching {shown}\n")
++        error = None
++        while not stop.wait(POLL_SECONDS):
++            if texts is not None and _unchanged(texts):
++                continue
++            try:
++                with _locked(troupe_dir):
++                    cfg = load(theatre)
++                    _reconcile(store, cfg)
++                texts = _loaded_texts(cfg)
++                error = None
++            except ConfigError as exc:
++                # Mid-edit or broken: keep retrying until the files load again.
++                texts = None
++                if str(exc) != error:
++                    error = str(exc)
++                    print(f"troupe: {exc}", file=sys.stderr, flush=True)
++        return 0
++    finally:
++        for sig, handler in previous.items():
++            signal.signal(sig, handler)
++
++
+ if __name__ == "__main__":
+     sys.exit(main())
+diff --git a/src/troupe/store.py b/src/troupe/store.py
+index c7c7acd..b828fcf 100644
+--- a/src/troupe/store.py
++++ b/src/troupe/store.py
+@@ -9,6 +9,8 @@ from uuid import NAMESPACE_URL, UUID, uuid5
+ from eventsourcing.application import AggregateNotFoundError, Application
+ from eventsourcing.domain import Aggregate, event
+ 
++from .yamlcore import same
++
+ STATE_FILE = "troupe-state.sqlite"
+ 
+ 
+@@ -59,6 +61,9 @@ class ConfigStore(Application):
+         except AggregateNotFoundError:
+             return None
+ 
++    def exists(self) -> bool:
++        return self._get() is not None
++
+     def ensure_imported(self, leaves: dict[str, Any]) -> None:
+         if self._get() is not None:
+             return
+@@ -79,6 +84,26 @@ class ConfigStore(Application):
+                 agg.leaf_set(path, old, new)
+         self.save(agg)
+ 
++    def reconcile(self, leaves: dict[str, Any]) -> None:
++        """Record a `set`/`remove` for each leaf where `leaves` (the files) differ from the projection."""
++        agg = self._get()
++        assert agg is not None
++        self.record(diff(agg.leaves, leaves))
++
+     def history(self) -> list[dict[str, Any]]:
+         agg = self._get()
+         return list(agg.log) if agg else []
++
++
++def diff(before: dict[str, Any], after: dict[str, Any]) -> list[tuple[str, str, Any, Any]]:
++    """The leaf changes from `before` to `after`: sets in `after`'s order, then removes."""
++    changes: list[tuple[str, str, Any, Any]] = []
++    for p, v in after.items():
++        if p not in before:
++            changes.append(("set", p, None, v))
++        elif not same(before[p], v):
++            changes.append(("set", p, before[p], v))
++    for p, v in before.items():
++        if p not in after:
++            changes.append(("remove", p, v, None))
++    return changes
+diff --git a/tests/test_config.py b/tests/test_config.py
+index ea1b83f..4d3ba65 100644
+--- a/tests/test_config.py
++++ b/tests/test_config.py
+@@ -321,12 +321,11 @@ def test_history(theatre):
+     assert theatre.history("m.y.0") == [h[1], h[4]]
+ 
+ 
+-def test_import_is_not_reconciling(theatre):
++def test_import_happens_once(theatre):
+     theatre.write("troupe.yml", "a: 1\n")
+     theatre.show("a")
+-    theatre.write("troupe.yml", "a: 2\n")
+-    assert theatre.show("a") == "2\n"
+-    assert len(theatre.history()) == 1
++    theatre.show("a")
++    assert [e["op"] for e in theatre.history()] == ["import"]
+ 
+ 
+ def test_cli_entrypoint(tmp_path):
+diff --git a/tests/test_sync.py b/tests/test_sync.py
+new file mode 100644
+index 0000000..2c9be50
+--- /dev/null
++++ b/tests/test_sync.py
+@@ -0,0 +1,200 @@
++import os
++import signal
++import subprocess
++import sys
++import time
++
++import pytest
++
++# ---------------------------------------------------------------- reconcile on every command
++
++
++def ops(history):
++    return [(e["op"], e["path"], e["old"], e["new"]) for e in history]
++
++
++def test_commands_reconcile_hand_edits(theatre):
++    theatre.write("troupe.yml", "a: 1\nb: x\n")
++    theatre.show("a")
++    theatre.write("troupe.yml", "a: 2\nc: y\n")
++    # history reports what has been recorded: the edit is not picked up yet
++    assert ops(theatre.history()) == [("import", "a", None, 1), ("import", "b", None, "x")]
++    assert theatre.show("a") == "2\n"
++    assert ops(theatre.history())[2:] == [("set", "a", 1, 2), ("set", "c", None, "y"), ("remove", "b", "x", None)]
++    assert theatre.show("a") == "2\n"
++    assert len(theatre.history()) == 5
++
++
++def test_set_reconciles_first(theatre):
++    theatre.write("troupe.yml", "a: 1\nb: 1\n")
++    theatre.show("a")
++    theatre.write("troupe.yml", "a: 2\nb: 1\n")
++    theatre.set("b", "3")
++    assert ops(theatre.history())[2:] == [("set", "a", 1, 2), ("set", "b", 1, 3)]
++
++
++def test_reconcile_failure_shows_error(theatre):
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.show("a")
++    theatre.write("troupe.yml", "a: [1\n")
++    assert theatre.run("show", "a")[0] == 4
++    assert len(theatre.history()) == 1  # history needs no loadable files once recorded
++
++
++def test_formatting_and_comment_edits_emit_nothing(theatre):
++    theatre.write("troupe.yml", "a: 1\nm: {x: [1, 2]}\ns: hi\n")
++    theatre.show("a")
++    theatre.write("troupe.yml", "# comment\na:   0x1  # one\nm:\n  x:\n    - 1\n    - 2\ns: 'hi'\n")
++    theatre.show("a")
++    assert [e["op"] for e in theatre.history()] == ["import"] * 4
++
++
++def test_type_change_is_a_change(theatre):
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.show("a")
++    theatre.write("troupe.yml", "a: '1'\n")
++    theatre.show("a")
++    assert ops(theatre.history())[1:] == [("set", "a", 1, "1")]
++
++
++def test_special_values_round_trip(theatre):
++    theatre.write("troupe.yml", "a: .nan\nb: -.inf\nc: null\nd: \"x\\r\\ny\"\ne: 123456789012345678901234567890\n")
++    theatre.show("a")
++    theatre.show("a")
++    assert len(theatre.history()) == 5
++
++
++def test_hand_added_include_is_followed(theatre):
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.show("a")
++    theatre.write("inc.yml", "x: 1\ny: [2]\n")
++    theatre.write("troupe.yml", "a: 1\nb: file:inc.yml\n")
++    theatre.show("a")
++    assert ops(theatre.history())[1:] == [("set", "b.x", None, 1), ("set", "b.y.0", None, 2)]
++
++
++# ---------------------------------------------------------------- watch
++
++
++class Watch:
++    def __init__(self, theatre):
++        self.theatre = theatre
++        self.proc = subprocess.Popen(
++            [sys.executable, "-m", "troupe.cli", "config", "watch", "--theatre", str(theatre.root)],
++            stdout=subprocess.PIPE,
++            stderr=subprocess.PIPE,
++            text=True,
++        )
++        self.line = self.proc.stdout.readline()
++
++    def stop(self, sig=signal.SIGTERM) -> int:
++        self.proc.send_signal(sig)
++        code = self.proc.wait(timeout=10)
++        self.proc.stdout.close()
++        self.proc.stderr.close()
++        return code
++
++
++@pytest.fixture
++def watch(theatre):
++    watches = []
++
++    def start():
++        w = Watch(theatre)
++        watches.append(w)
++        return w
++
++    yield start
++    for w in watches:
++        if w.proc.poll() is None:
++            w.stop(signal.SIGKILL)
++
++
++def wait_history(theatre, n, timeout=2.0):
++    deadline = time.monotonic() + timeout
++    while True:
++        h = theatre.history()
++        if len(h) >= n or time.monotonic() > deadline:
++            return h
++        time.sleep(0.05)
++
++
++def test_watch_prints_line_and_exits_0(theatre, watch):
++    theatre.write("troupe.yml", "a: 1\n")
++    w = watch()
++    assert w.line == f"watching {theatre.root}\n"
++    assert w.stop(signal.SIGINT) == 0
++    w = watch()
++    assert w.stop(signal.SIGTERM) == 0
++
++
++def test_watch_fails_on_broken_config(theatre, watch):
++    theatre.write("troupe.yml", "a: [1\n")
++    w = watch()
++    assert w.line == ""
++    assert w.proc.wait(timeout=10) == 4
++
++
++def test_watch_picks_up_edits(theatre, watch):
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.write("t.txt", "one\n")
++    theatre.show("a")
++    theatre.write("troupe.yml", "a: 2\n")  # edited while nothing ran
++    w = watch()
++    assert ops(theatre.history())[1:] == [("set", "a", 1, 2)]
++    theatre.write("troupe.yml", "a: 3\nt: file:t.txt\n")
++    assert ops(wait_history(theatre, 4))[2:] == [("set", "a", 2, 3), ("set", "t", None, "one\n")]
++    theatre.write("t.txt", "two\n")
++    assert ops(wait_history(theatre, 5))[4:] == [("set", "t", "one\n", "two\n")]
++    theatre.write("troupe.yml", "# just a comment\na:   3\nt: 'file:t.txt'\n")
++    time.sleep(0.6)
++    assert len(theatre.history()) == 5
++    assert w.stop() == 0
++
++
++def test_watch_survives_broken_edit(theatre, watch):
++    theatre.write("troupe.yml", "a: 1\n")
++    w = watch()
++    theatre.write("troupe.yml", "a: [1\n")
++    time.sleep(0.4)
++    theatre.write("troupe.yml", "a: 2\n")
++    assert ops(wait_history(theatre, 2)) == [("import", "a", None, 1), ("set", "a", 1, 2)]
++    assert w.stop() == 0
++
++
++def test_watch_follows_new_include(theatre, watch):
++    theatre.write("troupe.yml", "a: 1\n")
++    w = watch()
++    theatre.write("troupe.yml", "a: 1\nb: file:inc/b.yml\n")  # target not there yet
++    time.sleep(0.3)
++    theatre.write("inc/b.yml", "x: 1\n")
++    assert ops(wait_history(theatre, 2))[1:] == [("set", "b.x", None, 1)]
++    theatre.write("inc/b.yml", "x: 2\n")
++    assert ops(wait_history(theatre, 3))[2:] == [("set", "b.x", 1, 2)]
++    assert w.stop() == 0
++
++
++def test_set_while_watching_emits_only_its_own_events(theatre, watch):
++    theatre.write("troupe.yml", "a: 1\nm:\n  x: 1\n  y: 2\n")
++    w = watch()
++    for i in range(2, 12):
++        theatre.set("a", str(i))
++    theatre.set("m", "{x: 5}")
++    time.sleep(0.6)
++    h = ops(theatre.history())
++    assert h[3:] == [("set", "a", i - 1, i) for i in range(2, 12)] + [
++        ("set", "m.x", 1, 5),
++        ("remove", "m.y", 2, None),
++    ]
++    assert w.stop() == 0
++
++
++def test_set_in_subprocess_while_watching(theatre, watch):
++    theatre.write("troupe.yml", "a: 1\n")
++    w = watch()
++    env = dict(os.environ, TROUPE_THEATRE=str(theatre.root))
++    for i in range(2, 7):
++        subprocess.run([sys.executable, "-m", "troupe.cli", "config", "set", "a", str(i)], env=env, check=True)
++    time.sleep(0.6)
++    assert ops(theatre.history())[1:] == [("set", "a", i - 1, i) for i in range(2, 7)]
++    assert w.stop() == 0

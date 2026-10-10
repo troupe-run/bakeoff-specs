@@ -1,0 +1,22 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "Should there be a limit on how large a fetched remote file can be (issue 1j5.3)?",
+      "reply": "The contract says a remote include is fetched when the configuration loads and that a failed fetch exits 4 (Remote includes and schema). It doesn't set a size limit or say what counts as a failed fetch. The brief sets no performance targets and says configurations are small (under 1,000 leaves, under 50 files). A size limit is out of contract, so it's your choice. State which you chose and why.",
+      "escalate": false,
+      "cited": "Contract: Remote includes and schema; Brief: Standing answers (Performance; out-of-contract choices)"
+    },
+    {
+      "question": "Should `http://` includes, which travel unencrypted, come with a warning, and should an `https` include be allowed to redirect to `http` (issue 1j5.4)?",
+      "reply": "The contract says a string starting `https://` or `http://` is an include, fetched when the configuration loads (Remote includes and schema). So `http://` includes must keep working. The contract doesn't define a warning for them or say how redirects are handled, so both are out of contract and your choice. If you do warn, the warning can't go on stdout of a successful command when that would change contracted output, and any non-zero exit must still leave stdout empty (General, Exit codes). State which you chose and why.",
+      "escalate": false,
+      "cited": "Contract: Remote includes and schema; General (Exit codes); Brief: Standing answers (out-of-contract choices)"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

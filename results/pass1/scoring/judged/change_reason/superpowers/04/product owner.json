@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "/judge/diff.patch:31-43 (docs/decisions.md entries 21-23 explain TROUPE_ACTOR validation, reconcile-as-separate-change, legacy event upcasting)",
+    "/judge/diff.patch:18-20 (README records the new lineage fields on history events and the set --reason flag)",
+    "/judge/diff.patch:195-196 (store.py comment explains the v1→v2 event schema change)",
+    "/judge/diff.patch:319 (test_config.py test_history change says lineage moved to test_lineage.py)",
+    "/judge/repo has no .git directory, so no commit messages can be checked"
+  ],
+  "notes": "The decisions log, README and inline comments explain the additions and the main changes to existing behaviour: the event schema version bump, splitting reconcile from set, and stripping lineage in the existing history test. However, there is no commit history, and no record names the request or step, so a product owner can only infer where the request landed; some hunks, such as the store.record signature change and the conftest set helper, rely on reading the code.",
+  "raw": "{\"score\": 3, \"evidence\": [\"/judge/diff.patch:31-43 (docs/decisions.md entries 21-23 explain TROUPE_ACTOR validation, reconcile-as-separate-change, legacy event upcasting)\", \"/judge/diff.patch:18-20 (README records the new lineage fields on history events and the set --reason flag)\", \"/judge/diff.patch:195-196 (store.py comment explains the v1→v2 event schema change)\", \"/judge/diff.patch:319 (test_config.py test_history change says lineage moved to test_lineage.py)\", \"/judge/repo has no .git directory, so no commit messages can be checked\"], \"notes\": \"The decisions log, README and inline comments explain the additions and the main changes to existing behaviour: the event schema version bump, splitting reconcile from set, and stripping lineage in the existing history test. However, there is no commit history, and no record names the request or step, so a product owner can only infer where the request landed; some hunks, such as the store.record signature change and the conftest set helper, rely on reading the code.\"}",
+  "score": 3,
+  "status": "ok"
+}

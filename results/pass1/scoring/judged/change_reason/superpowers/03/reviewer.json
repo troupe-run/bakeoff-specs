@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "docs/decisions.md:40-51 (new decisions 16-20 explain the design of the new show/--sources output and dump.py)",
+    "docs/decisions.md:9 (decision 2 edited from `show` to `get`/`show` with no reason for the rename)",
+    "README.md:9-11 (documents the new `get` and `show [PATH] [--sources]` but gives no reason for moving scalar printing from `show` to `get`)",
+    "src/troupe/cli.py:99-112 (diff.patch: old scalar-only `show` behaviour replaced by `get`; new error text pointing to `show`; no record explains this)",
+    "tests/test_config.py & tests/test_sync.py (diff.patch:243-650: dozens of existing `show` assertions rewritten to `get` with no record of what replaced them or why)",
+    "/judge/repo has no .git; no commit messages are available to tie hunks to the request"
+  ],
+  "notes": "The additions (dump.py, --sources, test_show.py) are tied to the request through decisions 16-20. The biggest change to existing behaviour is not explained anywhere: scalar printing moved from `show` to the new `get` command, and every existing test was rewritten to match. Decision 2 and the README only describe the new state. The `get` error now points users to `show` without a reason, and no commit messages are available.",
+  "raw": "{\"score\": 2, \"evidence\": [\"docs/decisions.md:40-51 (new decisions 16-20 explain the design of the new show/--sources output and dump.py)\", \"docs/decisions.md:9 (decision 2 edited from `show` to `get`/`show` with no reason for the rename)\", \"README.md:9-11 (documents the new `get` and `show [PATH] [--sources]` but gives no reason for moving scalar printing from `show` to `get`)\", \"src/troupe/cli.py:99-112 (diff.patch: old scalar-only `show` behaviour replaced by `get`; new error text pointing to `show`; no record explains this)\", \"tests/test_config.py & tests/test_sync.py (diff.patch:243-650: dozens of existing `show` assertions rewritten to `get` with no record of what replaced them or why)\", \"/judge/repo has no .git; no commit messages are available to tie hunks to the request\"], \"notes\": \"The additions (dump.py, --sources, test_show.py) are tied to the request through decisions 16-20. The biggest change to existing behaviour is not explained anywhere: scalar printing moved from `show` to the new `get` command, and every existing test was rewritten to match. Decision 2 and the README only describe the new state. The `get` error now points users to `show` without a reason, and no commit messages are available.\"}",
+  "score": 2,
+  "status": "ok"
+}

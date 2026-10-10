@@ -1,0 +1,155 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show",
+          "model",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.coder.temperature",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "prompt",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "prompt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.coder",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "temperature: 0.2\nname: \"Coder\"\n",
+      ".troupe/prompts/system.txt": "You are helpful.\nBe brief.\n",
+      ".troupe/troupe.yml": "model: opus  # main model\nretries: 3\nprompt: file:prompts/system.txt\nagents:\n  coder: file:agents/coder.yaml\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 6,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "model",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.temperature",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2 # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "prompt",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "| # from .troupe/prompts/system.txt\n  You are helpful.\n  Be brief.\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You are helpful.\nBe brief.\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "temperature: 0.2 # from .troupe/agents/coder.yaml\nname: Coder # from .troupe/agents/coder.yaml\n"
+            }
+          ]
+        }
+      ],
+      "route": "One-scalar YAML with the comment; a text include becomes a literal block",
+      "route_no": 1
+    }
+  ]
+}

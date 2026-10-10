@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "repo/tests/test_config.py:345-362",
+    "repo/tests/test_sync.py:195 (added in diff.patch:545)",
+    "repo/src/troupe/cli.py:49",
+    "repo/src/troupe/cli.py:96",
+    "repo/README.md:6-9",
+    "repo/docs/decisions.md (no mention of TROUPE_THEATRE)"
+  ],
+  "notes": "test_config.py:345 tests the TROUPE_THEATRE behaviour (env sets the default theatre, an explicit --theatre wins, an empty value falls back to the current directory), and this step reuses the variable in a new test_sync test. But no spec, requirement or decision note in docs/decisions.md describes it, and the README only shows `[--theatre DIR]`, so the default is reconciled in tests only.",
+  "raw": "{\"score\": 2, \"evidence\": [\"repo/tests/test_config.py:345-362\", \"repo/tests/test_sync.py:195 (added in diff.patch:545)\", \"repo/src/troupe/cli.py:49\", \"repo/src/troupe/cli.py:96\", \"repo/README.md:6-9\", \"repo/docs/decisions.md (no mention of TROUPE_THEATRE)\"], \"notes\": \"test_config.py:345 tests the TROUPE_THEATRE behaviour (env sets the default theatre, an explicit --theatre wins, an empty value falls back to the current directory), and this step reuses the variable in a new test_sync test. But no spec, requirement or decision note in docs/decisions.md describes it, and the README only shows `[--theatre DIR]`, so the default is reconciled in tests only.\"}",
+  "score": 2,
+  "status": "ok"
+}

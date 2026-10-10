@@ -1,0 +1,156 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "U",
+        "why": "History and get worked normally (rc 0); the planted junk files were evidently not its store."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "T",
+        "why": "Every command, reads included, exited 1 with a Python traceback ending in 'sqlite3.DatabaseError: file is not a database'."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "U",
+        "why": "Reads succeeded normally and history was intact, so the junk files were not its store."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "U",
+        "why": "Reads succeeded normally and history was intact, so the junk files were not its store."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "T",
+        "why": "Every command, reads included, exited 1 with a Python traceback: 'sqlite3.DatabaseError: file is not a database'."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "U",
+        "why": "Reads succeeded normally and history was intact, so the junk files were not its store."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--include",
+          "agent",
+          "file:sub"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "agent:coder"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/events.db": "this is not a sqlite database, it is corrupt history\n",
+      ".troupe/events.sqlite": "this is not a sqlite database, it is corrupt history\n",
+      ".troupe/eventstore.db": "this is not a sqlite database, it is corrupt history\n",
+      ".troupe/sub/keep.txt": "placeholder so .troupe/sub is a directory\n",
+      ".troupe/troupe.db": "this is not a sqlite database, it is corrupt history\n",
+      ".troupe/troupe.yml": "model: opus  # main model\nretry: 3\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Garbage text sits at likely event-store file names, and a set points an include at a directory; this shows whether each implementation exits 4 with a message naming the store or file, or crashes with a traceback (if no guessed store name matches, the store commands simply succeed)"
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "commands (reads included) exit 1 with a Python traceback",
+            "id": "T"
+          },
+          {
+            "description": "the planted junk file was not its store; behaved normally (untested)",
+            "id": "U"
+          }
+        ],
+        "id": "Q1",
+        "text": "a corrupt history store"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Exit 4 naming the store (sqlite, persistence and OS errors; corrupt or unknown lineage values)",
+      [
+        "Arm A",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "sheet_id": "T73",
+  "status": "ok"
+}

@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "repo/tests/test_remote.py:216",
+    "repo/tests/test_remote.py:176",
+    "repo/tests/test_remote.py:203",
+    "repo/tests/test_remote.py:44",
+    "repo/tests/test_remote.py:110"
+  ],
+  "notes": "I couldn't find any git history, so I took step 7's tests to be test_remote.py, which covers the remote-include and schema decisions (34-42). Most names state a rule, such as test_failed_fetch_exits_4 and test_refusal_names_the_local_line_of_a_nested_remote. One name overclaims: test_watch_ignores_remote_includes only checks that a local edit is still reconciled, so it would pass even if watch polled the remote include. Three names are too vague to say what failed (test_schema_validation, test_mapping_form_remote_include, test_remote_yaml_and_text_includes), and test_set_include_like_string_is_written_literal also checks --include rules its name doesn't mention.",
+  "raw": "{\"score\": 2, \"evidence\": [\"repo/tests/test_remote.py:216\", \"repo/tests/test_remote.py:176\", \"repo/tests/test_remote.py:203\", \"repo/tests/test_remote.py:44\", \"repo/tests/test_remote.py:110\"], \"notes\": \"I couldn't find any git history, so I took step 7's tests to be test_remote.py, which covers the remote-include and schema decisions (34-42). Most names state a rule, such as test_failed_fetch_exits_4 and test_refusal_names_the_local_line_of_a_nested_remote. One name overclaims: test_watch_ignores_remote_includes only checks that a local edit is still reconciled, so it would pass even if watch polled the remote include. Three names are too vague to say what failed (test_schema_validation, test_mapping_form_remote_include, test_remote_yaml_and_text_includes), and test_set_include_like_string_is_written_literal also checks --include rules its name doesn't mention.\"}",
+  "score": 2,
+  "status": "ok"
+}

@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "spec/spec/config-set-writeback/requirements.md:170-171 (diff.patch:1691): step-5 note added to Req 3.1 saying new keys below an include become overrides, and that the old rule still applies with --in-include",
+    "spec/spec/config-foundation/requirements.md:22 (diff.patch:22): Includes requirement now has a note on the mapping form with $ref",
+    "tests/test_set_targets.py (diff.patch:8540-8560) and tests/writeback/test_planner_add.py:340-346: old new-key-in-included-file tests rewritten to assert the override is written in troupe.yml",
+    "src/troupe/cli/set_command.py:116-122: --in-include help text added",
+    "tests/test_set_overrides.py:104,158: override events checked with via and cli lineage",
+    "repo/tests/writeback/test_target.py:140-145: test left unchanged; its docstring still says 'a new key below an included mapping is added in the included file' (old rule 2)"
+  ],
+  "notes": "Every stale requirement, the code items (planner, loader, lineage) and the write-location tests were changed or given step-5 notes. One unchanged test docstring, tests/writeback/test_target.py:141, still describes the old placement; its assertion checks only the deepest mapping's origin, so no test still enforces the old behaviour.",
+  "raw": "{\"score\": 3, \"evidence\": [\"spec/spec/config-set-writeback/requirements.md:170-171 (diff.patch:1691): step-5 note added to Req 3.1 saying new keys below an include become overrides, and that the old rule still applies with --in-include\", \"spec/spec/config-foundation/requirements.md:22 (diff.patch:22): Includes requirement now has a note on the mapping form with $ref\", \"tests/test_set_targets.py (diff.patch:8540-8560) and tests/writeback/test_planner_add.py:340-346: old new-key-in-included-file tests rewritten to assert the override is written in troupe.yml\", \"src/troupe/cli/set_command.py:116-122: --in-include help text added\", \"tests/test_set_overrides.py:104,158: override events checked with via and cli lineage\", \"repo/tests/writeback/test_target.py:140-145: test left unchanged; its docstring still says 'a new key below an included mapping is added in the included file' (old rule 2)\"], \"notes\": \"Every stale requirement, the code items (planner, loader, lineage) and the write-location tests were changed or given step-5 notes. One unchanged test docstring, tests/writeback/test_target.py:141, still describes the old placement; its assertion checks only the deepest mapping's origin, so no test still enforces the old behaviour.\"}",
+  "score": 3,
+  "status": "ok"
+}

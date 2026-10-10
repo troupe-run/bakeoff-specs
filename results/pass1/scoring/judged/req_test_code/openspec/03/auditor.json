@@ -1,0 +1,17 @@
+{
+  "evidence": [
+    "repo/spec/changes/archive/2026-10-03-config-get-and-show/tasks.md:6",
+    "repo/spec/changes/archive/2026-10-03-config-get-and-show/tasks.md:19",
+    "repo/tests/test_get.py:62",
+    "repo/tests/test_show_sources.py:1",
+    "repo/tests/test_reconcile.py:1",
+    "repo/spec/changes/archive/2026-10-03-config-sync-with-files/tasks.md:14",
+    "repo/tests/test_set_scalars.py:1",
+    "repo/spec/spec/config-set/spec.md:131",
+    "repo/spec/spec/config-history/spec.md:70"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 2, \"evidence\": [\"repo/spec/changes/archive/2026-10-03-config-get-and-show/tasks.md:6\", \"repo/spec/changes/archive/2026-10-03-config-get-and-show/tasks.md:19\", \"repo/tests/test_get.py:62\", \"repo/tests/test_show_sources.py:1\", \"repo/tests/test_reconcile.py:1\", \"repo/spec/changes/archive/2026-10-03-config-sync-with-files/tasks.md:14\", \"repo/tests/test_set_scalars.py:1\", \"repo/spec/spec/config-set/spec.md:131\", \"repo/spec/spec/config-history/spec.md:70\"]}\n```\n\nI sampled five requirements. Three have explicit, correct links. Two link only by topic name:\n\n- **config-get \"Get refuses collections and missing paths\":** linked and correct. Task 1.2 names this spec and `test_get.py`, which asserts it.\n- **config-show \"Show sources\":** linked and correct. Task 3.3 names this requirement and `test_show_sources.py`, which asserts it.\n- **config-sync \"Commands reconcile first\":** linked and correct. The step 2 change's task 2.3 links these scenarios, and step 3 task 1.3 names `test_reconcile.py`.\n- **config-set \"Scalar quoting\":** untraceable by explicit link. `test_set_scalars.py` matches only by topic.\n- **config-history \"Listing history\":** untraceable by explicit link. `test_history.py` matches only by topic.\n\nThe first change's `tasks.md` names no tests at all. Some test docstrings name a capability, but none use requirement IDs. Because explicit links cover only the newer changes, this scores 2.",
+  "score": 2,
+  "status": "ok"
+}

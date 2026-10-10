@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "repo/tests/integration/test_literals.py:28",
+    "repo/tests/integration/test_literals.py:117",
+    "repo/tests/integration/test_remote_acceptance.py:87",
+    "repo/tests/integration/test_remote_acceptance.py:268",
+    "repo/tests/integration/test_remote_read.py:94",
+    "repo/tests/integration/test_remote_read.py:150"
+  ],
+  "notes": "I couldn't see the git diff, so I took step 7 to be the remote-includes mission (spec/troupe-config-remote-includes-01M4BMJ5) and treated its new test files, in alphabetical path order, as the diff order. In that set, nearly every name states a condition and an expected result that the body asserts, often byte for byte (for example, `nfr001_..._sends_only_gets_and_changes_nothing` checks snapshot, events and `{\"GET\"}`). A few names are loose: `literal_string_is_validated_as_a_string` only checks that `get` succeeds; `..._fetched_from_the_same_server` says less than the body, which checks URL-relative resolution and a nested remote include; and `..._after_the_10_s_deadline` checks the timeout message but does not measure the elapsed time.",
+  "raw": "{\"score\": 3, \"evidence\": [\"repo/tests/integration/test_literals.py:28\", \"repo/tests/integration/test_literals.py:117\", \"repo/tests/integration/test_remote_acceptance.py:87\", \"repo/tests/integration/test_remote_acceptance.py:268\", \"repo/tests/integration/test_remote_read.py:94\", \"repo/tests/integration/test_remote_read.py:150\"], \"notes\": \"I couldn't see the git diff, so I took step 7 to be the remote-includes mission (spec/troupe-config-remote-includes-01M4BMJ5) and treated its new test files, in alphabetical path order, as the diff order. In that set, nearly every name states a condition and an expected result that the body asserts, often byte for byte (for example, `nfr001_..._sends_only_gets_and_changes_nothing` checks snapshot, events and `{\\\"GET\\\"}`). A few names are loose: `literal_string_is_validated_as_a_string` only checks that `get` succeeds; `..._fetched_from_the_same_server` says less than the body, which checks URL-relative resolution and a nested remote include; and `..._after_the_10_s_deadline` checks the timeout message but does not measure the elapsed time.\"}",
+  "score": 3,
+  "status": "ok"
+}

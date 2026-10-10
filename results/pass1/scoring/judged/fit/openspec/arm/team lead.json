@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/setup/manifest.json:2-13",
+    "/judge/setup/checklist.json:39-48",
+    "/judge/06/transcript.md:2",
+    "/judge/06/transcript.md:16-17",
+    "/judge/06/transcript.md:41",
+    "/judge/06/transcript.md:64"
+  ],
+  "notes": "The method loads natively from the arm's own config: six slash commands and skills under .claude/ (manifest.json:2-13), and the checklist finds none missing. But it runs its steps through a separate `method` CLI that the model calls from the shell (06/transcript.md:16-17). The GitHub Issues tracker is not part of the workflow: the model reads issue #2 with its own `gh issue view` call (06/transcript.md:2) and only mentions it in commit text as 'Part of troupe-run/repo#2' (06/transcript.md:64). No transcript shows an issue being created or closed, so the tracker works one way at most and stays a separate chore.",
+  "raw": "```json\n{\"score\": 2, \"evidence\": [\"/judge/setup/manifest.json:2-13\", \"/judge/setup/checklist.json:39-48\", \"/judge/06/transcript.md:2\", \"/judge/06/transcript.md:16-17\", \"/judge/06/transcript.md:41\", \"/judge/06/transcript.md:64\"], \"notes\": \"The method loads natively from the arm's own config: six slash commands and skills under .claude/ (manifest.json:2-13), and the checklist finds none missing. But it runs its steps through a separate `method` CLI that the model calls from the shell (06/transcript.md:16-17). The GitHub Issues tracker is not part of the workflow: the model reads issue #2 with its own `gh issue view` call (06/transcript.md:2) and only mentions it in commit text as 'Part of troupe-run/repo#2' (06/transcript.md:64). No transcript shows an issue being created or closed, so the tracker works one way at most and stays a separate chore.\"}\n```",
+  "score": 2,
+  "status": "ok"
+}

@@ -1,0 +1,151 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "PROBLEM",
+        "why": "Error only says both troupe.yml and troupe.yaml exist and gives no instruction."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "FIX",
+        "why": "Error ends with 'keep only one'."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "FIX",
+        "why": "Error ends with 'remove one'."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "PROBLEM",
+        "why": "Error only says both files exist in .troupe and gives no instruction."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "PROBLEM",
+        "why": "Error only says both files exist and gives no instruction."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "PROBLEM",
+        "why": "Error calls the configuration ambiguous because both files exist and gives no instruction."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yaml": "model: from-yaml  # yaml file\nretry: 2\n",
+      ".troupe/troupe.yml": "model: from-yml  # yml file\nretry: 1\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/troupe.yaml"
+    ],
+    "why": "Both .troupe/troupe.yml and .troupe/troupe.yaml exist with different values; shows whether get/show/set/history refuse with exit 4 or silently pick one file (and which one), and whether set rewrites a file. The 'neither' case can't be shown because the files are created before every command and can't be removed."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "the error says what to do, e.g. 'keep only one' / 'remove one'",
+            "id": "FIX"
+          },
+          {
+            "description": "the error states the problem only, with no instruction",
+            "id": "PROBLEM"
+          }
+        ],
+        "id": "Q1",
+        "text": "error when both troupe.yml and troupe.yaml exist (all exit 4)"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Exit 4 in both cases",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T10",
+  "status": "ok"
+}

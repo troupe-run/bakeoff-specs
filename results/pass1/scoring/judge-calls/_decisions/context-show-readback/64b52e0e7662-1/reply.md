@@ -1,0 +1,1 @@
+{"runnable": false, "why": "The question is about how the implementations test `show` output (round-trip tests over a pure renderer). That is test structure and internals, so running CLI commands shows nothing about it. All implementations took the same route, so there are no differences to show.", "files": {}, "commands": [], "show": []}

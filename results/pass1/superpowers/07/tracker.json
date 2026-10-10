@@ -1,0 +1,19 @@
+{
+  "backend": "github",
+  "survives_restore": true,
+  "initialised": true,
+  "at": "2026-10-07T14:59:06Z",
+  "issues": [
+    {
+      "body": "Our troupe.yml shares settings between agents with a YAML anchor:\n\n    defaults: &d\n      model: opus\n    coder:\n      settings: *d\n    reviewer:\n      settings: *d\n\nI ran `troupe config set coder.settings.model sonnet` and now `reviewer` uses sonnet too, and `defaults`\nchanged. I only meant to change coder.\n\nExpected: changing `defaults.model` changes everyone (that's what the anchor is for). Changing\n`coder.settings.model` should not silently change anyone else \u2014 refuse, and let me explicitly ask for coder's\ncopy to be expanded so I can override it.\n",
+      "closedAt": null,
+      "comments": [],
+      "createdAt": "2026-10-05T22:19:56Z",
+      "labels": [],
+      "number": 2,
+      "state": "OPEN",
+      "title": "Setting one agent's model changed another agent's model",
+      "url": "https://github.com/troupe-run/bakeoff-specs-superpowers-pass1/issues/2"
+    }
+  ]
+}

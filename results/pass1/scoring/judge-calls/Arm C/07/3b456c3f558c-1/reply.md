@@ -1,0 +1,10 @@
+I scored Arm X a 3: three of its four questions were well prepared, and the last one was not.
+
+- **Question 1 (includes inside a remote file), transcript line 15:** the arm read the loader, the earlier specs and the include tests first (lines 5–13). It said the contract is silent on the point, gave options A–D, and recommended A because relative `file:` paths are already resolved against the file that contains them.
+- **Question 2 (confirming the draft summary), line 19:** this comes after reading the CLI and reconcile code (line 18). Each of its choices S-1 to S-13 has a reason.
+- **The schema-validator question, line 42:** the arm first checked `pyproject.toml`, `uv.lock` and whether PyPI was reachable (lines 7 and 31). It offered A, B or C and recommended adding `jsonschema` because it passes the official 2020-12 test suite and a hand-written validator could quietly get it wrong. Question 4 (line 62) only repeats this question.
+- **The final report (questions.md line 283):** it asks for decisions on issues `1j5.3` (no size limit on fetched files) and `1j5.4` (`http://` is unencrypted, and `https` can redirect to `http`) with no options and no recommendation. As the senior engineer, I would have sent this one back.
+
+```json
+{"score": 3, "evidence": ["/judge/transcript.md:5-13 (read the loader, earlier specs and tests before Q1)", "/judge/transcript.md:15 (Q1: options A-D, recommends A with a reason)", "/judge/transcript.md:31 and :42 (checked uv.lock and PyPI access, then asked the validator question with options and a recommendation with its reason)", "/judge/questions.md:282-284 (Q11: 1j5.3 and 1j5.4 brought for decision with no options or recommendation)"], "notes": "Q1, the S-1 to S-13 confirmation and the validator question all came after reading the repo and specs, and each laid out options with a recommendation and a reason, so I could have answered them on the spot. The one exception is the final 'Needs your decision' item on size limits and http/redirect handling, which brought the problems with no options or recommendation."}
+```

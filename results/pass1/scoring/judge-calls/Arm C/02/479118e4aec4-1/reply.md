@@ -1,0 +1,5 @@
+```json
+{"score": 3, "evidence": ["repo/spec/troupe-config-sync-files-01M3ZT6R/spec.md:159", "repo/spec/troupe-config-sync-files-01M3ZT6R/contracts/cli-watch.md:31", "repo/tests/integration/test_cli_basics.py:101-116", "repo/tests/integration/test_watch.py:94", "repo/src/troupe/cli.py:50", "repo/spec/troupe-config-sync-files-01M3ZT6R/analysis-report.md:66"]}
+```
+
+The spec (FR-008, FR-009, D-8) and the watch contract state the precedence: `--theatre` first, then `$TROUPE_THEATRE`, then the current directory. Tests cover the env default, the explicit flag winning and the empty-value fallback, and the CLI help documents all three. Nothing records that the env default came from a commit outside the workflow, though: "drift" appears only for unrelated signature issues, and the step-1 spec and contract were not updated. The spec also never states that an empty value falls back.

@@ -1,0 +1,3 @@
+```json
+{"score": 1, "evidence": ["/judge/questions.md:3-27", "/judge/questions.md:29-50", "/judge/questions.md:52-72"], "notes": "Of the three handoffs, only Q1 raised a real gap: it listed open choices, most notably labelling pre-step-4 set events as via \"file\". The PO approved it with a bare /method-command, so the plan stayed as it was. Q2 and Q3 were completion reports whose answers could not change what was built, so wasteful handoffs outnumber valuable ones."}
+```

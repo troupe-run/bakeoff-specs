@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "agents:\n  coder: [opus, sonnet\n  reviewer: haiku\n",
+        "input": "`config watch` (the file has an unclosed `[`), then fix the file by hand, wait 3s, press Ctrl-C",
+        "observed": true,
+        "results": {
+          "1": "All five arms: exit 4 straight away. Nothing went to stdout and no watching line was printed. The process had already exited before Ctrl-C, so the hand fix was never picked up. The error wording differs by arm:\n- two arms give the full parser report, line 2 col 10 and line 3 col 11, with caret pointers\n- one arm: `troupe: .troupe/troupe.yml: invalid YAML (line 3, column 11): expected ',' or ']', but got ':'`\n- one arm: `troupe: cannot parse /theatre/.troupe/troupe.yml: expected ',' or ']', but got ':' at line 3`\n- one arm: `troupe: /theatre/.troupe/troupe.yml: invalid YAML: while parsing a flow sequence` (no line number)",
+          "2": "Exit 4 straight away. Nothing went to stdout and no watching line was printed. The process had already exited before Ctrl-C, so the hand fix was never picked up. The error has no `troupe:` prefix: `/theatre/.troupe/troupe.yml: invalid YAML: while parsing a flow sequence, expected ',' or ']', but got ':' (line 3, column 11)`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`ls .troupe` after the failed watch",
+        "observed": true,
+        "results": {
+          "1": "Three arms: only `troupe.yml` is there. One arm: the failed watch also left `events.lock` (0 bytes) and `events.sqlite` (12288 bytes). One arm: it left `events.sqlite3.lock` (0 bytes).",
+          "2": "Only `troupe.yml` is there."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history` after the hand fix",
+        "observed": true,
+        "results": {
+          "1": "All arms: exit 0. It lists 3 import entries: `agents.coder.0`=opus, `agents.coder.1`=sonnet, `agents.reviewer`=haiku.",
+          "2": "Exit 0. It lists the same 3 import entries."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config watch --theatre sub` (the directory has no `.troupe/`), wait 2s, Ctrl-C",
+        "observed": true,
+        "results": {
+          "1": "All arms: exit 4 straight away with no watching line, and nothing is created in `sub/`. The message differs by arm, for example `troupe: sub/.troupe/troupe.yml: no configuration file (expected troupe.yml or troupe.yaml)` or `troupe: error: no configuration file: expected sub/.troupe/troupe.yml or sub/.troupe/troupe.yaml`.",
+          "2": "Exit 4 straight away with no watching line, and nothing is created in `sub/`. Message: `sub/.troupe/troupe.yml: no configuration file (expected troupe.yml or troupe.yaml)`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`--theatre sub config get agents.reviewer`",
+        "observed": true,
+        "results": {
+          "1": "One arm: exit 4, `troupe: sub/.troupe/troupe.yml: no configuration file (expected troupe.yml or troupe.yaml)` (the option is accepted before the command). Four arms: exit 2, a usage error along the lines of `invalid choice: 'sub' (choose from config)`.",
+          "2": "Exit 2: `troupe: argument COMMAND: invalid choice: 'sub' (choose from config)`"
+        }
+      }
+    ],
+    "in_practice": "Both routes fail fast in the same way: exit 4, no watching line, no waiting for a fix. The differences are small. Route 2's error has no `troupe:` prefix. On route 1 the wording varies by arm, and two of its arms leave lock or database files in `.troupe/` even though watch never started.",
+    "stakes": "If the config file is broken or missing when someone starts `config watch`, the question is whether watch stops at once with a clear error or stays running and waits for a fix. In every run, on both routes, watch stopped at once. It never printed its \"watching\" line and did not notice the fix made afterwards.",
+    "tradeoff": "Route 1 fails fast like every other command, but its five arms word the error differently and two leave stray files behind. Route 2 also fails fast and leaves nothing behind, but its error has no `troupe:` prefix."
+  },
+  "plan_why": "Starts `config watch` once with broken YAML and once in a sub-theatre that has no troupe.yml. For each, it shows whether watch prints the `watching` line or exits 4 with a message, its exit code after SIGINT, and whether it creates any state under .troupe. For the broken case it also shows whether a still-running watch notices when the file is fixed by hand.",
+  "routes": [
+    [
+      "Exit 4 without the line",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

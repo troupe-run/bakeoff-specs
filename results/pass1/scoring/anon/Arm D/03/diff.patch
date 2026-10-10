@@ -1,0 +1,650 @@
+diff --git a/README.md b/README.md
+index fbab976..aa81a2d 100644
+--- a/README.md
++++ b/README.md
+@@ -3,13 +3,16 @@
+ AI orchestration. This package currently provides the configuration subsystem:
+ 
+ ```
+-uv run troupe config show PATH [--theatre DIR]
++uv run troupe config get PATH [--theatre DIR]
++uv run troupe config show [PATH] [--sources] [--theatre DIR]
+ uv run troupe config set PATH VALUE [--theatre DIR]
+ uv run troupe config history [PATH] [--theatre DIR]
+ uv run troupe config watch [--theatre DIR]
+ ```
+ 
+ - Configuration lives in `DIR/.troupe/troupe.yml` (or `.yaml`); `file:` strings include other files.
++- `get` prints one value; `show` prints a value or a whole section as YAML (includes resolved), and with
++  `--sources` marks every scalar with the file it comes from.
+ - `set` writes changes back byte-surgically: only the bytes of the changed value change.
+ - The configuration is held as an event-sourced projection (`eventsourcing`, SQLite at
+   `.troupe/troupe-state.sqlite`); `history` lists per-leaf `import`/`set`/`remove` events.
+diff --git a/docs/decisions.md b/docs/decisions.md
+index 4160eda..b087215 100644
+--- a/docs/decisions.md
++++ b/docs/decisions.md
+@@ -6,7 +6,7 @@ corrupt user data or to contradict the contract.
+ 1. **Integration: keep the work on `main`; no push, no pull request.** The delivery rule says the work is
+    done when committed on `main` and forbids pushing and opening PRs. The work was committed directly to
+    `main`, so there is nothing to merge and nothing to clean up.
+-2. **`show` reads the files, not the event store.** Files are the source of truth that people edit by
++2. **`get`/`show` read the files, not the event store.** Files are the source of truth that people edit by
+    hand. (Since step 2, `show` reconciles first, so the two agree anyway.)
+ 3. **Every write is verified before any file is touched.** The edited texts are re-parsed and the value at
+    `PATH` is compared with `VALUE`; on mismatch the command exits 3 and changes nothing.
+@@ -37,3 +37,15 @@ corrupt user data or to contradict the contract.
+ 14. **`history` does not need loadable files once something has been recorded**; it only loads them to
+     perform the first import.
+ 15. **Reconcile emits `set`s in document order, then `remove`s**, the same order as `set`'s own events.
++16. **`show` writes YAML that reads back as the same configuration.** Keys and strings are quoted only when
++    plain style would change their meaning (minimal style: plain, then single, then double quotes); comments
++    and the files' own quoting are not carried over. Empty collections are written `{}` / `[]`, and a list
++    item that is a collection is written compactly (`- k: v`, `- - x`).
++17. **A multi-line string, or a text include, is a literal block only if a literal block can hold it
++    exactly**; otherwise (carriage returns, a first line starting with a space, a value of only line
++    breaks, ...) it is written double-quoted, escapes and all.
++18. **With `--sources`, a literal block's comment goes on its header line** (`key: | # from p.md`): a
++    comment on a content line would become part of the value.
++19. **`show PATH --sources` on a scalar prints it as YAML (quoted if needed) with the comment**, rather than
++    the raw `get` form, since the contract describes `--sources` output as YAML.
++20. **Source files outside the theatre directory are named with `..` segments**, still relative to it.
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index ffb9264..e6e9516 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -1,4 +1,4 @@
+-"""`troupe config show|set|history|watch`."""
++"""`troupe config get|show|set|history|watch`."""
+ 
+ from __future__ import annotations
+ 
+@@ -24,6 +24,7 @@ from .config import (
+     lookup,
+     split_path,
+ )
++from .dump import dump, source_namer
+ from .store import STATE_FILE, ConfigStore, diff
+ from .writer import Writer
+ from .yamlcore import ValueError_, format_scalar, parse_value, same
+@@ -43,7 +44,14 @@ def _parser() -> argparse.ArgumentParser:
+     sub = parser.add_subparsers(dest="group", required=True)
+     config = sub.add_parser("config", help="show and change the theatre configuration")
+     cmds = config.add_subparsers(dest="cmd", required=True)
+-    for name, extra in (("show", ["path"]), ("set", ["path", "value"]), ("history", ["path?"]), ("watch", [])):
++    commands = (
++        ("get", ["path"]),
++        ("show", ["path?"]),
++        ("set", ["path", "value"]),
++        ("history", ["path?"]),
++        ("watch", []),
++    )
++    for name, extra in commands:
+         p = cmds.add_parser(name)
+         p.add_argument(
+             "--theatre", default=None, help="theatre directory (default: $TROUPE_THEATRE, else current directory)"
+@@ -53,6 +61,8 @@ def _parser() -> argparse.ArgumentParser:
+                 p.add_argument(arg[:-1], nargs="?")
+             else:
+                 p.add_argument(arg)
++        if name == "show":
++            p.add_argument("--sources", action="store_true", help="say which file each value comes from")
+     return parser
+ 
+ 
+@@ -117,10 +127,16 @@ def run(argv: list[str]) -> int:
+             if args.cmd == "set":
+                 return _set(theatre, cfg, store, segs, args.path, value)
+ 
+-    if args.cmd == "show":
+-        item = lookup(cfg.root, segs, args.path)
+-        if item.kind not in ("scalar", "text"):
+-            raise PathNotFound(f"{args.path}: is a {'mapping' if item.kind == 'map' else 'list'}, not a scalar")
++    if args.cmd in ("get", "show"):
++        item = lookup(cfg.root, segs, args.path) if segs is not None else cfg.root
++        if args.cmd == "show" and (args.sources or item.kind in ("map", "seq")):
++            _out(dump(item, source_namer(theatre) if args.sources else None))
++            return 0
++        if item.kind in ("map", "seq"):
++            raise PathNotFound(
++                f"{args.path}: is a {'mapping' if item.kind == 'map' else 'list'}, not a scalar;"
++                f" use `troupe config show {args.path}` to print it"
++            )
+         text = format_scalar(item.value)
+         _out(text if text.endswith("\n") else text + "\n")
+         return 0
+diff --git a/src/troupe/dump.py b/src/troupe/dump.py
+new file mode 100644
+index 0000000..1733728
+--- /dev/null
++++ b/src/troupe/dump.py
+@@ -0,0 +1,102 @@
++"""Rendering a configuration subtree as block-style YAML, optionally annotated with source files."""
++
++from __future__ import annotations
++
++import math
++import os
++from pathlib import Path
++from typing import Any, Callable
++
++from .config import Item
++from .yamlcore import chomp_for, literal_lines, literal_ok, render_double, render_str
++
++INDENT = 2
++
++Source = Callable[[Item], str] | None
++
++
++def yaml_scalar(value: Any) -> str:
++    """A non-string scalar as a YAML 1.2 core-schema plain scalar."""
++    if value is None:
++        return "null"
++    if value is True:
++        return "true"
++    if value is False:
++        return "false"
++    if isinstance(value, int):
++        return str(value)
++    if math.isnan(value):
++        return ".nan"
++    if math.isinf(value):
++        return "-.inf" if value < 0 else ".inf"
++    return repr(value)
++
++
++def _scalar(item: Item, indent: int) -> tuple[str, list[str]]:
++    """The inline text of a scalar, and the content lines of a literal block (if it is written as one)."""
++    value = item.value
++    if not isinstance(value, str):
++        return yaml_scalar(value), []
++    # A value of only line breaks has no content line to carry them, so it cannot be a literal block.
++    if (item.kind == "text" or "\n" in value) and (value.strip("\n") or not value) and literal_ok(value):
++        chomp, _ = chomp_for(value)
++        return "|" + chomp, literal_lines(value, indent + INDENT)
++    if "\n" in value:
++        return render_double(value), []
++    return render_str(value, None, False), []
++
++
++def _key(key: str) -> str:
++    return render_str(key, None, False)
++
++
++def _lines(item: Item, indent: int, source: Source) -> list[str]:
++    """Lines of a non-empty collection whose entries start at column `indent`."""
++    pad = " " * indent
++    out: list[str] = []
++    entries = item.value.items() if item.kind == "map" else enumerate(item.value)
++    for key, child in entries:
++        lead = f"{pad}{_key(key)}:" if item.kind == "map" else f"{pad}-"
++        if child.kind in ("map", "seq") and child.value:
++            nested = _lines(child, indent + INDENT, source)
++            if item.kind == "map":
++                out.append(lead)
++                out.extend(nested)
++            else:
++                # Compact: the first nested entry goes on the dash line.
++                out.append(lead + " " + nested[0][indent + INDENT :])
++                out.extend(nested[1:])
++        elif child.kind in ("map", "seq"):
++            out.append(f"{lead} {'{}' if child.kind == 'map' else '[]'}")
++        else:
++            text, block = _scalar(child, indent)
++            out.append(f"{lead} {text}{_comment(child, source)}")
++            out.extend(block)
++    return out
++
++
++def _comment(item: Item, source: Source) -> str:
++    return f" # from {source(item)}" if source else ""
++
++
++def dump(item: Item, source: Source = None) -> str:
++    """`item` as a block-style YAML document; `source` names each scalar's file for an end-of-line comment."""
++    if item.kind in ("map", "seq") and item.value:
++        lines = _lines(item, 0, source)
++    elif item.kind in ("map", "seq"):
++        lines = ["{}" if item.kind == "map" else "[]"]
++    else:
++        text, block = _scalar(item, 0)
++        lines = [text + _comment(item, source)] + block
++    return "".join(line + "\n" for line in lines)
++
++
++def source_namer(theatre: Path) -> Callable[[Item], str]:
++    """Name the file a scalar comes from, relative to the theatre directory, with `/` separators."""
++    base = theatre.resolve()
++
++    def name(item: Item) -> str:
++        path = item.include if item.kind == "text" else item.doc.path
++        return Path(os.path.relpath(path, base)).as_posix()
++
++    return name
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 90813ee..a73d6bd 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -31,8 +31,8 @@ class Theatre:
+             assert err
+         return code, out, err
+ 
+-    def show(self, path: str) -> str:
+-        code, out, err = self.run("show", path)
++    def get(self, path: str) -> str:
++        code, out, err = self.run("get", path)
+         assert code == 0, err
+         return out
+ 
+diff --git a/tests/test_config.py b/tests/test_config.py
+index 4d3ba65..d4b6cb9 100644
+--- a/tests/test_config.py
++++ b/tests/test_config.py
+@@ -15,39 +15,39 @@ def test_show_scalars(theatre):
+         "troupe.yml",
+         "s: abc\nf: 0.2\nb: true\nn: null\ni: 0x1F\nq: \"0.2\"\nl:\n  - x\n  - y\ne: 1e3\nm: {a: 1}\nt: ~\n",
+     )
+-    assert theatre.show("s") == "abc\n"
+-    assert theatre.show("f") == "0.2\n"
+-    assert theatre.show("b") == "true\n"
+-    assert theatre.show("n") == "null\n"
+-    assert theatre.show("t") == "null\n"
+-    assert theatre.show("i") == "31\n"
+-    assert theatre.show("q") == "0.2\n"
+-    assert theatre.show("l.1") == "y\n"
+-    assert theatre.show("e") == "1000.0\n"
+-    assert theatre.show("m.a") == "1\n"
+-    assert theatre.run("show", "l")[0] == 5
+-    assert theatre.run("show", "m")[0] == 5
+-    assert theatre.run("show", "nope")[0] == 5
+-    assert theatre.run("show", "l.5")[0] == 5
+-    assert theatre.run("show", "s.x")[0] == 5
++    assert theatre.get("s") == "abc\n"
++    assert theatre.get("f") == "0.2\n"
++    assert theatre.get("b") == "true\n"
++    assert theatre.get("n") == "null\n"
++    assert theatre.get("t") == "null\n"
++    assert theatre.get("i") == "31\n"
++    assert theatre.get("q") == "0.2\n"
++    assert theatre.get("l.1") == "y\n"
++    assert theatre.get("e") == "1000.0\n"
++    assert theatre.get("m.a") == "1\n"
++    assert theatre.run("get", "l")[0] == 5
++    assert theatre.run("get", "m")[0] == 5
++    assert theatre.run("get", "nope")[0] == 5
++    assert theatre.run("get", "l.5")[0] == 5
++    assert theatre.run("get", "s.x")[0] == 5
+ 
+ 
+ def test_show_block_string(theatre):
+     theatre.write("troupe.yml", "a: |\n  one\n  two\nb: |-\n  x\n")
+-    assert theatre.show("a") == "one\ntwo\n"
+-    assert theatre.show("b") == "x\n"
++    assert theatre.get("a") == "one\ntwo\n"
++    assert theatre.get("b") == "x\n"
+ 
+ 
+ def test_missing_or_both_config(theatre):
+-    assert theatre.run("show", "a")[0] == 4
++    assert theatre.run("get", "a")[0] == 4
+     theatre.write("troupe.yml", "a: 1\n")
+     theatre.write("troupe.yaml", "a: 1\n")
+-    assert theatre.run("show", "a")[0] == 4
++    assert theatre.run("get", "a")[0] == 4
+ 
+ 
+ def test_yaml_config_name(theatre):
+     theatre.write("troupe.yaml", "a: 1\n")
+-    assert theatre.show("a") == "1\n"
++    assert theatre.get("a") == "1\n"
+ 
+ 
+ def test_includes(theatre):
+@@ -55,23 +55,23 @@ def test_includes(theatre):
+     theatre.write("agents/coder.yaml", "model: x\nprompt: file:../p/c.txt\n")
+     theatre.write("p/sys.md", "hello\r\nworld")
+     theatre.write("p/c.txt", "code\n")
+-    assert theatre.show("agents.coder.model") == "x\n"
+-    assert theatre.show("agents.coder.prompt") == "code\n"
+-    assert theatre.show("prompt") == "hello\r\nworld\n"
+-    assert theatre.run("show", "agents.coder")[0] == 5
++    assert theatre.get("agents.coder.model") == "x\n"
++    assert theatre.get("agents.coder.prompt") == "code\n"
++    assert theatre.get("prompt") == "hello\r\nworld\n"
++    assert theatre.run("get", "agents.coder")[0] == 5
+ 
+ 
+ def test_include_missing_and_cycle(theatre):
+     theatre.write("troupe.yml", "a: file:x.yml\n")
+-    assert theatre.run("show", "a")[0] == 4
++    assert theatre.run("get", "a")[0] == 4
+     theatre.write("x.yml", "b: file:troupe.yml\n")
+-    assert theatre.run("show", "a")[0] == 4
++    assert theatre.run("get", "a")[0] == 4
+     assert not (theatre.dir / "troupe-state.sqlite").exists()
+ 
+ 
+ def test_invalid_yaml(theatre):
+     theatre.write("troupe.yml", "a: [1\n")
+-    assert theatre.run("show", "a")[0] == 4
++    assert theatre.run("get", "a")[0] == 4
+ 
+ 
+ # ---------------------------------------------------------------- set: scalars
+@@ -102,7 +102,7 @@ def test_quoting_kept_or_fallback(theatre):
+     assert "c: 'a: b'\n" in theatre.read()
+     theatre.set("a", "7")
+     assert "a: 7\n" in theatre.read()
+-    assert theatre.show("a") == "7\n"
++    assert theatre.get("a") == "7\n"
+ 
+ 
+ def test_double_quoted_escapes_only_required(theatre):
+@@ -146,7 +146,7 @@ def test_folded_rewrap(theatre):
+         "  Second paragraph stays.\n"
+         "next: 1\n"
+     )
+-    assert theatre.show("notes") == "The quick brown fox jumps over the very lazy dog.\nSecond paragraph stays.\n"
++    assert theatre.get("notes") == "The quick brown fox jumps over the very lazy dog.\nSecond paragraph stays.\n"
+ 
+ 
+ def test_folded_keeps_unchanged_paragraph_bytes(theatre):
+@@ -323,8 +323,8 @@ def test_history(theatre):
+ 
+ def test_import_happens_once(theatre):
+     theatre.write("troupe.yml", "a: 1\n")
+-    theatre.show("a")
+-    theatre.show("a")
++    theatre.get("a")
++    theatre.get("a")
+     assert [e["op"] for e in theatre.history()] == ["import"]
+ 
+ 
+@@ -354,7 +354,7 @@ def test_theatre_from_env(theatre, tmp_path, monkeypatch, capsys):
+     capsys.readouterr()
+     assert main(["config", "show", "a"]) == 0
+     assert capsys.readouterr().out == "1\n"
+-    assert theatre.show("a") == "1\n"
++    assert theatre.get("a") == "1\n"
+     assert main(["config", "show", "a", "--theatre", str(other)]) == 0
+     assert capsys.readouterr().out == "2\n"
+     monkeypatch.setenv("TROUPE_THEATRE", "")
+diff --git a/tests/test_show.py b/tests/test_show.py
+new file mode 100644
+index 0000000..f9d14e1
+--- /dev/null
++++ b/tests/test_show.py
+@@ -0,0 +1,184 @@
++import math
++
++import pytest
++
++from troupe.config import load
++from troupe.yamlcore import same
++
++
++def show(theatre, *args: str) -> str:
++    code, out, err = theatre.run("show", *args)
++    assert code == 0, err
++    return out
++
++
++# ---------------------------------------------------------------- get
++
++
++def test_get_refuses_collections_pointing_to_show(theatre):
++    theatre.write("troupe.yml", "m:\n  a: 1\nl: [1]\n")
++    code, _, err = theatre.run("get", "m")
++    assert code == 5 and "config show" in err
++    code, _, err = theatre.run("get", "l")
++    assert code == 5 and "config show" in err
++    assert theatre.get("m.a") == "1\n"
++    assert theatre.run("get")[0] == 2
++
++
++# ---------------------------------------------------------------- show
++
++
++def test_show_scalar_like_get(theatre):
++    theatre.write("troupe.yml", "s: abc\nq: \"0.2\"\nb: |\n  one\n  two\nn: ~\n")
++    for path in ("s", "q", "b", "n"):
++        assert show(theatre, path) == theatre.get(path)
++    assert theatre.run("show", "nope")[0] == 5
++    assert theatre.run("show", "s.x")[0] == 5
++
++
++def test_show_whole_config_block_style(theatre):
++    theatre.write(
++        "troupe.yml",
++        "# head\nname: x   # c\nm: {a: 1, b: [true, null, 0x10]}\nl:\n- {k: v, j: w}\n- [1, 2]\n- []\ne: {}\n",
++    )
++    assert show(theatre) == (
++        "name: x\n"
++        "m:\n"
++        "  a: 1\n"
++        "  b:\n"
++        "    - true\n"
++        "    - null\n"
++        "    - 16\n"
++        "l:\n"
++        "  - k: v\n"
++        "    j: w\n"
++        "  - - 1\n"
++        "    - 2\n"
++        "  - []\n"
++        "e: {}\n"
++    )
++    assert show(theatre, "m") == "a: 1\nb:\n  - true\n  - null\n  - 16\n"
++    assert show(theatre, "l.0") == "k: v\nj: w\n"
++
++
++def test_show_quotes_what_needs_quoting(theatre, tmp_path):
++    theatre.write(
++        "troupe.yml",
++        "a: '0.2'\nb: 'true'\nc: 'x: y'\nd: \"tab\\there\"\ne: .nan\nf: -.inf\ng: 1.5\n"
++        "h: \"x\\r\\ny\"\n'1': k\n\"k: v\": 2\ni: \"\\n\"\n",
++    )
++    out = show(theatre)
++    assert out == (
++        "a: '0.2'\n"
++        "b: 'true'\n"
++        "c: 'x: y'\n"
++        "d: 'tab\there'\n"
++        "e: .nan\n"
++        "f: -.inf\n"
++        "g: 1.5\n"
++        "h: \"x\\r\\ny\"\n"
++        "'1': k\n"
++        "'k: v': 2\n"
++        "i: \"\\n\"\n"
++    )
++    expected = load(theatre.root).root.py()
++    loaded = load_text(tmp_path, out)
++    assert math.isnan(loaded.pop("e")) and math.isnan(expected.pop("e"))
++    assert same(loaded, expected)
++
++
++def load_text(tmp_path, text):
++    other = tmp_path / "other"
++    (other / ".troupe").mkdir(parents=True)
++    (other / ".troupe" / "troupe.yml").write_bytes(text.encode("utf-8"))
++    return load(other).root.py()
++
++
++def test_show_resolves_includes_text_as_literal(theatre, tmp_path):
++    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml\nprompt: file:p/sys.md\nmulti: \"a\\nb\\n\"\n")
++    theatre.write("agents/coder.yaml", "model: x\nprompt: file:../p/c.txt\nlist: [file:../p/one.txt]\n")
++    theatre.write("p/sys.md", "hello\nworld")
++    theatre.write("p/c.txt", "code\n\n")
++    theatre.write("p/one.txt", "one")
++    out = show(theatre)
++    assert out == (
++        "agents:\n"
++        "  coder:\n"
++        "    model: x\n"
++        "    prompt: |+\n"
++        "      code\n"
++        "\n"
++        "    list:\n"
++        "      - |-\n"
++        "        one\n"
++        "prompt: |-\n"
++        "  hello\n"
++        "  world\n"
++        "multi: |\n"
++        "  a\n"
++        "  b\n"
++    )
++    assert same(load_text(tmp_path, out), load(theatre.root).root.py())
++    assert show(theatre, "agents.coder") == "model: x\nprompt: |+\n  code\n\nlist:\n  - |-\n    one\n"
++
++
++def test_show_text_include_not_representable_as_literal(theatre):
++    theatre.write("troupe.yml", "a: file:crlf.txt\nb: file:lead.txt\nc: file:empty.txt\n")
++    theatre.write("crlf.txt", "x\r\ny\r\n")
++    theatre.write("lead.txt", "  indented\n")
++    theatre.write("empty.txt", "")
++    assert show(theatre) == 'a: "x\\r\\ny\\r\\n"\nb: "  indented\\n"\nc: |-\n'
++
++
++# ---------------------------------------------------------------- show --sources
++
++
++def test_show_sources(theatre, tmp_path):
++    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml\nprompt: file:p/sys.md\nn: 1\ne: []\n")
++    theatre.write("agents/coder.yaml", "model: x\nprompt: file:../p/c.txt\ntools:\n  - a\n  - {b: 2}\n")
++    theatre.write("p/sys.md", "hello\nworld\n")
++    theatre.write("p/c.txt", "code")
++    out = show(theatre, "--sources")
++    assert out == (
++        "agents:\n"
++        "  coder:\n"
++        "    model: x # from .troupe/agents/coder.yaml\n"
++        "    prompt: |- # from .troupe/p/c.txt\n"
++        "      code\n"
++        "    tools:\n"
++        "      - a # from .troupe/agents/coder.yaml\n"
++        "      - b: 2 # from .troupe/agents/coder.yaml\n"
++        "prompt: | # from .troupe/p/sys.md\n"
++        "  hello\n"
++        "  world\n"
++        "n: 1 # from .troupe/troupe.yml\n"
++        "e: []\n"
++    )
++    assert same(load_text(tmp_path, out), load(theatre.root).root.py())
++    assert show(theatre, "agents.coder.tools", "--sources") == (
++        "- a # from .troupe/agents/coder.yaml\n- b: 2 # from .troupe/agents/coder.yaml\n"
++    )
++    assert show(theatre, "n", "--sources") == "1 # from .troupe/troupe.yml\n"
++    assert show(theatre, "prompt", "--sources") == "| # from .troupe/p/sys.md\n  hello\n  world\n"
++
++
++def test_show_sources_outside_theatre_dir(theatre, tmp_path):
++    outside = tmp_path.parent / (tmp_path.name + "-shared")
++    outside.mkdir()
++    (outside / "s.yml").write_text("k: v\n")
++    theatre.write("troupe.yml", f"s: file:../../{outside.name}/s.yml\n")
++    assert show(theatre, "--sources") == f"s:\n  k: v # from ../{outside.name}/s.yml\n"
++
++
++def test_show_reconciles(theatre):
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.get("a")
++    theatre.write("troupe.yml", "a: 2\n")
++    show(theatre)
++    assert [e["op"] for e in theatre.history()] == ["import", "set"]
++
++
++@pytest.mark.parametrize("text", ["", "5\n", "[]\n"])
++def test_show_root_not_a_mapping(theatre, text):
++    theatre.write("troupe.yml", text)
++    assert show(theatre) == {"": "null\n", "5\n": "5\n", "[]\n": "[]\n"}[text]
+diff --git a/tests/test_sync.py b/tests/test_sync.py
+index 2c9be50..ac112ae 100644
+--- a/tests/test_sync.py
++++ b/tests/test_sync.py
+@@ -15,19 +15,19 @@ def ops(history):
+ 
+ def test_commands_reconcile_hand_edits(theatre):
+     theatre.write("troupe.yml", "a: 1\nb: x\n")
+-    theatre.show("a")
++    theatre.get("a")
+     theatre.write("troupe.yml", "a: 2\nc: y\n")
+     # history reports what has been recorded: the edit is not picked up yet
+     assert ops(theatre.history()) == [("import", "a", None, 1), ("import", "b", None, "x")]
+-    assert theatre.show("a") == "2\n"
++    assert theatre.get("a") == "2\n"
+     assert ops(theatre.history())[2:] == [("set", "a", 1, 2), ("set", "c", None, "y"), ("remove", "b", "x", None)]
+-    assert theatre.show("a") == "2\n"
++    assert theatre.get("a") == "2\n"
+     assert len(theatre.history()) == 5
+ 
+ 
+ def test_set_reconciles_first(theatre):
+     theatre.write("troupe.yml", "a: 1\nb: 1\n")
+-    theatre.show("a")
++    theatre.get("a")
+     theatre.write("troupe.yml", "a: 2\nb: 1\n")
+     theatre.set("b", "3")
+     assert ops(theatre.history())[2:] == [("set", "a", 1, 2), ("set", "b", 1, 3)]
+@@ -35,41 +35,41 @@ def test_set_reconciles_first(theatre):
+ 
+ def test_reconcile_failure_shows_error(theatre):
+     theatre.write("troupe.yml", "a: 1\n")
+-    theatre.show("a")
++    theatre.get("a")
+     theatre.write("troupe.yml", "a: [1\n")
+-    assert theatre.run("show", "a")[0] == 4
++    assert theatre.run("get", "a")[0] == 4
+     assert len(theatre.history()) == 1  # history needs no loadable files once recorded
+ 
+ 
+ def test_formatting_and_comment_edits_emit_nothing(theatre):
+     theatre.write("troupe.yml", "a: 1\nm: {x: [1, 2]}\ns: hi\n")
+-    theatre.show("a")
++    theatre.get("a")
+     theatre.write("troupe.yml", "# comment\na:   0x1  # one\nm:\n  x:\n    - 1\n    - 2\ns: 'hi'\n")
+-    theatre.show("a")
++    theatre.get("a")
+     assert [e["op"] for e in theatre.history()] == ["import"] * 4
+ 
+ 
+ def test_type_change_is_a_change(theatre):
+     theatre.write("troupe.yml", "a: 1\n")
+-    theatre.show("a")
++    theatre.get("a")
+     theatre.write("troupe.yml", "a: '1'\n")
+-    theatre.show("a")
++    theatre.get("a")
+     assert ops(theatre.history())[1:] == [("set", "a", 1, "1")]
+ 
+ 
+ def test_special_values_round_trip(theatre):
+     theatre.write("troupe.yml", "a: .nan\nb: -.inf\nc: null\nd: \"x\\r\\ny\"\ne: 123456789012345678901234567890\n")
+-    theatre.show("a")
+-    theatre.show("a")
++    theatre.get("a")
++    theatre.get("a")
+     assert len(theatre.history()) == 5
+ 
+ 
+ def test_hand_added_include_is_followed(theatre):
+     theatre.write("troupe.yml", "a: 1\n")
+-    theatre.show("a")
++    theatre.get("a")
+     theatre.write("inc.yml", "x: 1\ny: [2]\n")
+     theatre.write("troupe.yml", "a: 1\nb: file:inc.yml\n")
+-    theatre.show("a")
++    theatre.get("a")
+     assert ops(theatre.history())[1:] == [("set", "b.x", None, 1), ("set", "b.y.0", None, 2)]
+ 
+ 
+@@ -138,7 +138,7 @@ def test_watch_fails_on_broken_config(theatre, watch):
+ def test_watch_picks_up_edits(theatre, watch):
+     theatre.write("troupe.yml", "a: 1\n")
+     theatre.write("t.txt", "one\n")
+-    theatre.show("a")
++    theatre.get("a")
+     theatre.write("troupe.yml", "a: 2\n")  # edited while nothing ran
+     w = watch()
+     assert ops(theatre.history())[1:] == [("set", "a", 1, 2)]

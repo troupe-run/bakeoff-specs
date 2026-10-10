@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/gates.md:1",
+    "/judge/repo/README.md:27-28",
+    "/judge/repo/README.md:25",
+    "/judge/transcript.md:22",
+    "/judge/transcript.md:21",
+    "/judge/transcript.md:15",
+    "/judge/transcript.md:27"
+  ],
+  "notes": "This step had no gates and no fallback or 'your choice' answers. It touched several areas outside the contract. The README records two with a reason: legacy set/remove events get `via: null` because their source was never recorded (README.md:27-28), and every command rejects a malformed TROUPE_ACTOR (README.md:25, reason in commit b88f379). Other decisions have no reason in repo docs: legacy change ids that are not UUIDs (`unrecorded-N`/`unrecorded-import`, transcript:22 only), defaulting the actor to the login name, unknown actor for imports and file edits (reason only in a code comment), and dropping the automated legacy-compatibility test (transcript:15, 22). No decision lists the options considered, so about half the significant decisions are recorded with a reason.",
+  "raw": "```json\n{\"score\": 2, \"evidence\": [\"/judge/gates.md:1\", \"/judge/repo/README.md:27-28\", \"/judge/repo/README.md:25\", \"/judge/transcript.md:22\", \"/judge/transcript.md:21\", \"/judge/transcript.md:15\", \"/judge/transcript.md:27\"], \"notes\": \"This step had no gates and no fallback or 'your choice' answers. It touched several areas outside the contract. The README records two with a reason: legacy set/remove events get `via: null` because their source was never recorded (README.md:27-28), and every command rejects a malformed TROUPE_ACTOR (README.md:25, reason in commit b88f379). Other decisions have no reason in repo docs: legacy change ids that are not UUIDs (`unrecorded-N`/`unrecorded-import`, transcript:22 only), defaulting the actor to the login name, unknown actor for imports and file edits (reason only in a code comment), and dropping the automated legacy-compatibility test (transcript:15, 22). No decision lists the options considered, so about half the significant decisions are recorded with a reason.\"}\n```",
+  "score": 2,
+  "status": "ok"
+}

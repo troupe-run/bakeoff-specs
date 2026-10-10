@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "models:\n  default: opus  # main model\nretry: 3\n",
+        "input": "`config set a..b 1`",
+        "observed": true,
+        "results": {
+          "1": "Both arms: exit 2 and the file is unchanged. One arm prints `a..b: malformed PATH 'a..b': segments must not be empty (no leading, trailing or doubled '.')`. The other prints `troupe: error: invalid path 'a..b': path segments must not be empty`.",
+          "2": "All four arms: exit 2 and the file is unchanged. Two arms print `troupe: invalid path 'a..b': empty segment`. One arm prints `troupe: usage error: invalid path: 'a..b'`. One arm prints `troupe: invalid path: 'a..b'`."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get \"\"` (empty PATH)",
+        "observed": true,
+        "results": {
+          "1": "Both arms: exit 2. One arm prints `malformed PATH '': PATH is empty`. The other prints `troupe: error: invalid path '': path segments must not be empty`.",
+          "2": "All four arms: exit 2. Two arms print `troupe: invalid path '': empty segment`. One arm prints `troupe: usage error: invalid path: ''`. One arm prints `troupe: invalid path: ''`."
+        }
+      },
+      {
+        "before": "models:\n  default: opus  # main model\nretry: 3\n",
+        "input": "`config set models. sonnet`",
+        "observed": true,
+        "results": {
+          "1": "Both arms: exit 2, and `models.default` stays `opus`. One arm prints `models.: malformed PATH 'models.': segments must not be empty (no leading, trailing or doubled '.')`. The other prints `troupe: error: invalid path 'models.': path segments must not be empty`.",
+          "2": "All four arms: exit 2 and the file is unchanged. Two arms print `troupe: invalid path 'models.': empty segment`. One arm prints `troupe: usage error: invalid path: 'models.'`. One arm prints `troupe: invalid path: 'models.'`."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history models..default`",
+        "observed": true,
+        "results": {
+          "1": "Both arms: exit 2 with an invalid-path message (one says `malformed PATH 'models..default': segments must not be empty ...`, the other says `troupe: error: invalid path 'models..default': path segments must not be empty`).",
+          "2": "All four arms: exit 2 with an invalid-path message (two arms: `troupe: invalid path 'models..default': empty segment`; the others: `troupe: usage error: invalid path: 'models..default'` and `troupe: invalid path: 'models..default'`)."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history` (after the four rejected commands)",
+        "observed": true,
+        "results": {
+          "1": "Both arms: exit 0. History lists only the 2 import entries (`models.default` = opus, `retry` = 3); none of the rejected commands was recorded.",
+          "2": "All four arms: exit 0. History lists only the same 2 import entries; nothing from the rejected commands."
+        }
+      }
+    ],
+    "in_practice": "From the user's side the two routes behaved the same: every malformed path was refused with exit 2, troupe.yml was never touched, and history kept no trace of the rejected attempts. What a user would notice is the error text. Some arms explain the problem (empty segment, no leading, trailing or doubled dot). Others only say the path is invalid. These runs can't show whether any arm opened or created its state before refusing, because a theatre with history already existed by the end in every case.",
+    "stakes": "If someone mistypes a key path (a doubled dot, a trailing dot, or an empty string), the tool should refuse it clearly instead of writing a strange key into troupe.yml or recording a bogus change in history. In these runs, every arm on both routes refused all four bad paths the same way: exit 2, nothing written. The only difference is the wording of the error.",
+    "tradeoff": "Route 1 commits to a clear message about the rule up front. Route 2 left the behaviour unplanned, but here it still refused cleanly, with messages ranging from explanatory to a bare \"invalid path\"."
+  },
+  "plan_why": "Shows what each implementation does with malformed paths (`a..b`, an empty path, a trailing dot) in set, get and history: whether it exits 2 with a clear message or treats the path as some other error or a real key, and whether troupe.yml gets changed. The final history shows anything that was recorded.",
+  "routes": [
+    [
+      "Exit 2 before the theatre is opened (history too), with a clear message",
+      [
+        "Arm A",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

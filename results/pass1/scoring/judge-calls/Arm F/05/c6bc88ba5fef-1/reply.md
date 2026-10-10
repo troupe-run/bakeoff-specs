@@ -1,0 +1,5 @@
+```json
+{"score": 3, "evidence": ["/judge/repo/spec/005-include-overrides/spec.md:298-331", "/judge/repo/spec/006-set-in-include/spec.md:149-162", "/judge/repo/spec/005-include-overrides/research.md:20-22", "/judge/repo/spec/005-include-overrides/research.md:130-159", "/judge/repo/spec/006-set-in-include/research.md:19-20", "/judge/gates.md:1"]}
+```
+
+{"score": 3, "evidence": ["/judge/repo/spec/005-include-overrides/spec.md:298-331", "/judge/repo/spec/006-set-in-include/spec.md:149-162", "/judge/repo/spec/005-include-overrides/research.md:20-22", "/judge/repo/spec/005-include-overrides/research.md:130-159", "/judge/repo/spec/006-set-in-include/research.md:19-20", "/judge/gates.md:1"], "notes": "Every significant decision (D-40–D-52, O-1–O-9, I-1–I-5) is recorded in repo specs or research notes with reasons tied to this project. Several give real alternatives with reasons for rejecting them (O-1, O-5, D-50 on overridden values, D-40 on main-file placement). Many others give no alternatives (D-45, D-46, D-48, O-7–O-9), and D-52's reason is boilerplate ('consistency'), which keeps this below 4."}

@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "  coder:\n    model: opus  # main model\n    # interior comment about temperature\n    temperature: 0.2\n    # trailing comment after coder\n  reviewer:",
+        "input": "`config set agents.coder retired`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; becomes `coder: retired`. `# main model` and the interior temperature comment are gone; `# trailing comment after coder` stays, still indented under it",
+          "2": "all five arms: same as route 1"
+        }
+      },
+      {
+        "before": "tools:\n  - lint\n  # between lint and test\n  - test\n  - deploy\n  # after tools",
+        "input": "`config set tools [lint]`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; `- test` and `- deploy` removed; `# between lint and test` and `# after tools` both kept",
+          "2": "three arms: same as route 1; two arms: also delete `# between lint and test`, leaving only `- lint` and `# after tools`"
+        }
+      },
+      {
+        "before": "flow: {a: 1, b: {c: 2, d: 3}, e: 4}",
+        "input": "`config set flow.b 5`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; `flow: {a: 1, b: 5, e: 4}`",
+          "2": "all five arms: same as route 1"
+        }
+      },
+      {
+        "before": "multi: {\n  x: {y: 1,  # comment on y\n      z: 2},\n  w: 3\n}",
+        "input": "`config set multi.x 7`",
+        "observed": true,
+        "results": {
+          "1": "exit 0 (not refused with exit 3); becomes `x: 7,` and `# comment on y` is silently deleted",
+          "2": "all five arms: same as route 1"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history` (after the commands above)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; logs the `set agents.coder` entry, then removals of `agents.coder.model` and `agents.coder.temperature` with their old values",
+          "2": "four arms: same order as route 1; one arm: logs the two removals before the set"
+        }
+      }
+    ],
+    "in_practice": "On this run, route 1 did not do what it says. Its description promises exit 3 when a deletion inside `{...}` text spans several lines. Instead it made the `multi.x` change, exited 0, and dropped the comment, exactly as every route-2 arm did. The only file difference between the routes is the comment between list items. Route 1 and three route-2 arms keep it; two route-2 arms delete it.",
+    "stakes": "Replacing a section with a single value deletes its old entries. The question is which nearby comments disappear along with them, and whether a change inside multi-line `{...}` text is refused or done anyway, silently dropping a comment.",
+    "tradeoff": "Route 1 keeps comments between list items but did not refuse the multi-line `{...}` edit it says it refuses. Route 2 is inconsistent across arms: two of five also delete comments between list items."
+  },
+  "plan_why": "Replaces collections with smaller values to show which lines a deletion removes. A block mapping shows whether the interior comment goes and the trailing comment stays. A block list shows the same for list items. A one-line flow map shows a flow deletion on one line, and a flow map spread over several lines shows whether the program refuses with exit 3 or rewrites it (possibly losing its comment).",
+  "routes": [
+    [
+      "Whole block lines (interior comments go, trailing ones stay); a flow deletion only on one line, otherwise exit 3",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

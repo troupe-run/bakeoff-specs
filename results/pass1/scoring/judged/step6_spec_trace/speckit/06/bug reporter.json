@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "spec/bugs/yaml-alias-set/assessment.md:11 (Source: troupe-run/repo#2, the reporter's issue)",
+    "spec/bugs/yaml-alias-set/assessment.md:37-43 (all four alias rules: anchor set changes everyone, refuse through alias with --expand-alias, expand makes a commented copy, merge keys never written)",
+    "spec/bugs/yaml-alias-set/fix.md:213-223 (links tests/e2e/test_set_alias.py::test_setting_through_an_alias_is_refused, which reproduces the reported case)",
+    "spec/001-config-load-show-set/spec.md:288-289 (Out of contract still lists 'YAML anchors, aliases and merge keys (until step 6)'; not updated)",
+    "README.md:338-342 (user docs updated)"
+  ],
+  "notes": "Starting from issue #2, I can find spec/bugs/yaml-alias-set/, which references the issue, states every alias rule and links a regression test that reproduces my scenario. But the feature spec and contracts were not changed: spec 001 still lists aliases as out of contract, and no feature spec or contracts/cli.md describes the new rules or --expand-alias, so this falls short of a 4.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"spec/bugs/yaml-alias-set/assessment.md:11 (Source: troupe-run/repo#2, the reporter's issue)\", \"spec/bugs/yaml-alias-set/assessment.md:37-43 (all four alias rules: anchor set changes everyone, refuse through alias with --expand-alias, expand makes a commented copy, merge keys never written)\", \"spec/bugs/yaml-alias-set/fix.md:213-223 (links tests/e2e/test_set_alias.py::test_setting_through_an_alias_is_refused, which reproduces the reported case)\", \"spec/001-config-load-show-set/spec.md:288-289 (Out of contract still lists 'YAML anchors, aliases and merge keys (until step 6)'; not updated)\", \"README.md:338-342 (user docs updated)\"], \"notes\": \"Starting from issue #2, I can find spec/bugs/yaml-alias-set/, which references the issue, states every alias rule and links a regression test that reproduces my scenario. But the feature spec and contracts were not changed: spec 001 still lists aliases as out of contract, and no feature spec or contracts/cli.md describes the new rules or --expand-alias, so this falls short of a 4.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

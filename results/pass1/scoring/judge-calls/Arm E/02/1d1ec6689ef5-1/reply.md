@@ -1,0 +1,1 @@
+{"score": null, "status": "not_applicable", "evidence": ["/judge/questions.md:3-22", "/judge/transcript.md:26"], "notes": "At this step the arm sent only a step_done completion report: the summary of commit 1f533bf at transcript line 26. It asked no clarifying question, so there is nothing to judge for research_first."}

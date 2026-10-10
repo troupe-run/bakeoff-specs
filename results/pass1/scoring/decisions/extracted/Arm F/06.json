@@ -1,0 +1,238 @@
+[
+  {
+    "decision": "Move straight from the assessment to the fix without stopping for confirmation",
+    "options": [],
+    "reason": "The request said 'handle it' and that the work is done once the fix is committed on main",
+    "recorded_at": "transcript.md:16"
+  },
+  {
+    "decision": "Auto-generate the slug 'yaml-alias-set'",
+    "options": [],
+    "reason": "No slug was given",
+    "recorded_at": "questions.md:7"
+  },
+  {
+    "decision": "Rate the bug valid and high severity",
+    "options": [],
+    "reason": "Reproduced: other agents' settings change silently with exit 0",
+    "recorded_at": "spec/bugs/yaml-alias-set/assessment.md:5-6"
+  },
+  {
+    "decision": "Mark alias occurrences with a ruamel Composer subclass that returns a stand-in node spanning the *name token and pointing at the anchored node",
+    "options": [
+      "Composer subclass with stand-in node",
+      "Scan the text after each key's ':' for *name",
+      "Count first vs. later encounters of a node object during build()"
+    ],
+    "reason": "Text scanning is fragile (comments, flow context, list items, keys that are aliases). Counting encounters finds aliases but not where the *name token is, which the expansion needs",
+    "recorded_at": "spec/bugs/yaml-alias-set/assessment.md:93-116"
+  },
+  {
+    "decision": "Build the stand-in from slotted subclasses (_AliasScalar/_AliasSequence/_AliasMapping) by copying slots, instead of copy.copy",
+    "options": [
+      "copy.copy(target)",
+      "slotted subclasses with copied slots"
+    ],
+    "reason": "",
+    "recorded_at": "transcript.md:40; spec/bugs/yaml-alias-set/fix.md:19"
+  },
+  {
+    "decision": "Make a node's start offset skip a leading &anchor (content_start), so replacing a value keeps the anchor",
+    "options": [],
+    "reason": "The node's start mark sits at the &name token, so replacing the node deleted the anchor and setting at the anchor broke",
+    "recorded_at": "spec/bugs/yaml-alias-set/assessment.md:98-99"
+  },
+  {
+    "decision": "Put content_start and the ALIAS_NAME/ALIAS_TARGET constants in scalars.py rather than tree.py",
+    "options": [
+      "tree.py",
+      "scalars.py"
+    ],
+    "reason": "Scalar typing also reads the node start to spot explicit tags, and this avoids a circular import",
+    "recorded_at": "transcript.md:24-26"
+  },
+  {
+    "decision": "Type an alias scalar as its target, and recognise an explicit tag that comes after an anchor",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/bugs/yaml-alias-set/fix.md:20"
+  },
+  {
+    "decision": "Refuse with exit 3 (WriteRefused) any set that goes below an alias, with a message naming the alias, &anchor and `set --expand-alias`",
+    "options": [],
+    "reason": "Required by the contract",
+    "recorded_at": "spec/bugs/yaml-alias-set/assessment.md:100-103"
+  },
+  {
+    "decision": "Allow replacing the alias node itself (e.g. set coder.settings none), changing only the *d token; log it as an open question",
+    "options": [
+      "allow",
+      "refuse"
+    ],
+    "reason": "It replaces only the *d token and changes nobody else; the contract doesn't settle it",
+    "recorded_at": "spec/bugs/yaml-alias-set/assessment.md:151-152"
+  },
+  {
+    "decision": "Expansion re-plans the set on the reloaded expanded text with the expand flag still on, so any alias further down the path is also expanded",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Render the copy block-style from the anchored node's plain value, so nested anchors are not duplicated and nested aliases become copies",
+    "options": [],
+    "reason": "So nested anchors are not duplicated",
+    "recorded_at": "spec/bugs/yaml-alias-set/assessment.md:104-108"
+  },
+  {
+    "decision": "For an alias that is a list item, put the expansion comment on the dash's line ('-  # expanded from *b by troupe')",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "--expand-alias on a path with no alias acts as a plain set",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/bugs/yaml-alias-set/assessment.md:110"
+  },
+  {
+    "decision": "Refuse any set whose path has a '<<' segment, instead of only refusing an expansion under <<",
+    "options": [
+      "refuse only an expansion under <<",
+      "refuse in the new-key branch only",
+      "refuse any path with a << segment"
+    ],
+    "reason": "`set coder.<< x` would otherwise write the merge key's value",
+    "recorded_at": "spec/bugs/yaml-alias-set/fix.md:72-73; transcript.md:44-45"
+  },
+  {
+    "decision": "Refuse an expansion when the anchored node itself holds a merge key",
+    "options": [],
+    "reason": "troupe never writes a merge key",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "--expand-alias refuses (exit 3) for an alias inside a flow collection",
+    "options": [],
+    "reason": "A block-style copy can't go inside a flow collection",
+    "recorded_at": "spec/bugs/yaml-alias-set/fix.md:74-75"
+  },
+  {
+    "decision": "Refuse an expansion whose final write would land in a different file, rather than splitting it across two files",
+    "options": [
+      "split across files",
+      "refuse"
+    ],
+    "reason": "",
+    "recorded_at": "spec/bugs/yaml-alias-set/fix.md:76-77"
+  },
+  {
+    "decision": "Refuse with exit 3 when the expanded text fails to load back, writing nothing",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "When the alias line already has a comment, put the expansion comment in front of it",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/bugs/yaml-alias-set/fix.md:82-83"
+  },
+  {
+    "decision": "Leave merge-key semantics on read out of scope (<< stays an ordinary key)",
+    "options": [],
+    "reason": "The contract only requires that troupe never writes merge keys",
+    "recorded_at": "spec/bugs/yaml-alias-set/assessment.md:153-154; fix.md:81"
+  },
+  {
+    "decision": "Leave recursive anchors (a: &a [*a]) unhandled",
+    "options": [],
+    "reason": "They were already unsupported before this change",
+    "recorded_at": "spec/bugs/yaml-alias-set/fix.md:84"
+  },
+  {
+    "decision": "Verifier: an alias takes its anchor's identity; replacing an alias token is verified only at PATH; verification runs against plan.basis",
+    "options": [],
+    "reason": "Setting at an anchor must be verified at every alias, while replacing an alias changes it alone",
+    "recorded_at": "spec/bugs/yaml-alias-set/fix.md:24"
+  },
+  {
+    "decision": "Add an EditPlan.basis field to carry the expanded configuration the plan was made on",
+    "options": [],
+    "reason": "--expand-alias plans the set on the expanded text",
+    "recorded_at": "src/troupe/config/edit/planner.py (EditPlan.basis comment)"
+  },
+  {
+    "decision": "Add _after_properties so empty, block and collection rewrites keep the &name on the key's line",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/bugs/yaml-alias-set/fix.md:22"
+  },
+  {
+    "decision": "Add an is_alias TypeGuard and an Alias type alias",
+    "options": [],
+    "reason": "mypy needed alias nodes narrowed away from TextInclude",
+    "recorded_at": "transcript.md:46"
+  },
+  {
+    "decision": "Treat the earlier test_file_without_final_newline failure as a half-written-code artifact and don't investigate further",
+    "options": [],
+    "reason": "It passed on re-run; the planner had probably imported alias.py before it existed",
+    "recorded_at": "transcript.md:38"
+  },
+  {
+    "decision": "Put the 13 new e2e tests in a new file tests/e2e/test_set_alias.py, including a history check that only one event is recorded",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/bugs/yaml-alias-set/fix.md:27"
+  },
+  {
+    "decision": "Check the new tests against the pre-fix code by stashing src/",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:56"
+  },
+  {
+    "decision": "Add the expand_alias keyword to the stand-in planner in tests/unit/test_verify.py",
+    "options": [],
+    "reason": "Four tests failed without it; the previous step made the same change for in_include",
+    "recorded_at": "transcript.md:59; spec/bugs/yaml-alias-set/fix.md:28"
+  },
+  {
+    "decision": "Document --expand-alias in the README with a before/after example",
+    "options": [],
+    "reason": "",
+    "recorded_at": "README.md diff"
+  },
+  {
+    "decision": "Commit directly to main, no push or PR, and amend the commit to update fix.md with the full-suite result",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:5; transcript.md:67"
+  },
+  {
+    "decision": "Mark the fix verified and recommend closing the bug, deciding the alias-replacement open question separately",
+    "options": [],
+    "reason": "Every reproduction step was re-run through the real CLI on the committed code",
+    "recorded_at": "spec/bugs/yaml-alias-set/test.md:59-62"
+  },
+  {
+    "decision": "Convergence: report no gaps for 005 and leave tasks.md unmodified",
+    "options": [],
+    "reason": "All of 005's FRs, SCs and decisions were checked; 005's own tests pass",
+    "recorded_at": "transcript.md:85"
+  },
+  {
+    "decision": "Recommend /method-command for a step 6 spec rather than adding the alias work to 005's tasks",
+    "options": [],
+    "reason": "No feature spec describes the Aliases behaviour yet, the constitution needs spec, code and tests to agree, and this command can't change a different feature's tasks.md",
+    "recorded_at": "questions.md:88"
+  },
+  {
+    "decision": "Accept that adding a new key under an anchored include string is refused with exit 3, leaving it for a step 6 spec",
+    "options": [],
+    "reason": "It is the safe outcome and 005 doesn't cover this case",
+    "recorded_at": "questions.md:89"
+  }
+]

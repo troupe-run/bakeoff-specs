@@ -1,0 +1,65 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\nmodel: opus\nschema_text: file:troupe.schema.json\n\n.troupe/troupe.schema.json:\n{\"type\": \"object\"}\n",
+        "input": "`config set schema_text '{\"type\": \"object\", \"required\": [\"absent\"]}'` then `config history`",
+        "observed": true,
+        "results": {
+          "1": "The set exits 0 and the schema file now reads:\n{\"type\": \"object\", \"required\": [\"absent\"]}\nThen `config history` exits 0 and lists all 3 events: the two imports (model, schema_text) and seq 3, the `set` of schema_text by human:owner.",
+          "2": "Both arms behave the same. The set exits 0 and rewrites the schema file. Then `config history` exits 4 with nothing on stdout. Its stderr says the configuration does not match the schema: 'absent' is a required property.",
+          "3": "The set exits 0 in all three arms. After it, the arms differ on `config history`. Two arms: exit 4, nothing listed, with the error \"'absent' is a required property\". One arm: exit 0 and all 3 events listed, the same as route 1."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history model` (same broken state)",
+        "observed": true,
+        "results": {
+          "1": "Exit 0. It prints only seq 1: the import of model, old null, new \"opus\".",
+          "2": "Both arms: exit 4, same schema error, nothing listed.",
+          "3": "Two arms: exit 4, same schema error. One arm: exit 0, seq 1 for model only."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get model` (same broken state)",
+        "observed": true,
+        "results": {
+          "1": "Exit 4: \"configuration does not match … 'absent' is a required property\".",
+          "2": "Both arms: exit 4, same schema error.",
+          "3": "All three arms: exit 4, same schema error."
+        }
+      }
+    ],
+    "in_practice": "All routes refuse to read config values once the files break the schema. The difference is history. On route 1, history keeps working from what was already recorded, so you can find the change that broke things. On route 2, history fails with exit 4 like every other command until the files are fixed. Route 3 is split: two arms fail, one keeps working.",
+    "stakes": "This decides whether you can still see who changed what once the config files no longer pass their own schema. A schema change that breaks the config is the moment you most need the change history, and on some routes it becomes unreadable.",
+    "tradeoff": "Route 1 keeps history available but doesn't check the files' current state. Route 2 keeps a single load path and consistent errors, but you lose history exactly when the config is broken. Route 3's arms don't agree."
+  },
+  "plan_why": "The theatre is imported, then a `set` on a text include rewrites the schema file so the files no longer load. Under route 1, `history` still prints the recorded events. Under route 2, `history` reloads the files and exits 4. The final `get` shows that the files really are broken now.",
+  "routes": [
+    [
+      "No; once state exists it reads recorded events without loading",
+      [
+        "Arm D"
+      ]
+    ],
+    [
+      "Yes; broken files make history exit 4; at step 7 schema and remote fetches apply to it too",
+      [
+        "Arm A",
+        "Arm C"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

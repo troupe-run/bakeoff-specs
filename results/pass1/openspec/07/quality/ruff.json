@@ -1,0 +1,1225 @@
+[
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 93,
+      "row": 11
+    },
+    "filename": "/work/bakeoff-specs-openspec/src/troupe/edit/blocks.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from dataclasses import dataclass, field\nfrom pathlib import Path\n\nfrom troupe.edit.scalars import is_printable, render_key, render_scalar, tagged\nfrom troupe.edit.text import Layout\nfrom troupe.errors import LoadError\nfrom troupe.schema import LITERAL_TAG, Data, Literal\nfrom troupe.source import SourceFile\nfrom troupe.tree import (\n    Entry,\n    Item,\n    MappingNode,\n    Node,\n    ScalarNode,\n    SequenceNode,\n    build_tree,\n)\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 14
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 105,
+      "row": 16
+    },
+    "filename": "/work/bakeoff-specs-openspec/src/troupe/edit/plan.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from dataclasses import dataclass\n\nfrom troupe.errors import MergeKeyWrite, PathError, ThroughAlias, WriteRefused\nfrom troupe.overrides import is_bare\nfrom troupe.paths import Path, format_path, is_index\nfrom troupe.schema import Data, same\nfrom troupe.tree import (\n    Alias,\n    MappingNode,\n    Node,\n    ScalarNode,\n    SequenceNode,\n    TextNode,\n    merged_in,\n    to_data,\n)\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 19
+          },
+          "location": {
+            "column": 1,
+            "row": 10
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 10
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 10,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 93,
+      "row": 8
+    },
+    "filename": "/work/bakeoff-specs-openspec/src/troupe/edit/text.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from collections.abc import Iterator\nfrom dataclasses import dataclass\nfrom itertools import pairwise\n\nfrom troupe.source import SourceFile\nfrom troupe.tree import (\n    Entry,\n    Item,\n    MappingNode,\n    Node,\n    ScalarNode,\n    SequenceNode,\n    build_tree,\n)\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 10
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "FURB166",
+    "end_location": {
+      "column": 32,
+      "row": 45
+    },
+    "filename": "/work/bakeoff-specs-openspec/src/troupe/schema.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "text",
+          "end_location": {
+            "column": 28,
+            "row": 45
+          },
+          "location": {
+            "column": 20,
+            "row": 45
+          }
+        },
+        {
+          "content": "0",
+          "end_location": {
+            "column": 31,
+            "row": 45
+          },
+          "location": {
+            "column": 30,
+            "row": 45
+          }
+        }
+      ],
+      "message": "Replace with `base=0`"
+    },
+    "location": {
+      "column": 16,
+      "row": 45
+    },
+    "message": "Use of `int` with explicit `base=8` after removing prefix",
+    "name": "int-on-sliced-str",
+    "noqa_row": 45,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/int-on-sliced-str"
+  },
+  {
+    "cell": null,
+    "code": "FURB166",
+    "end_location": {
+      "column": 33,
+      "row": 47
+    },
+    "filename": "/work/bakeoff-specs-openspec/src/troupe/schema.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "text",
+          "end_location": {
+            "column": 28,
+            "row": 47
+          },
+          "location": {
+            "column": 20,
+            "row": 47
+          }
+        },
+        {
+          "content": "0",
+          "end_location": {
+            "column": 32,
+            "row": 47
+          },
+          "location": {
+            "column": 30,
+            "row": 47
+          }
+        }
+      ],
+      "message": "Replace with `base=0`"
+    },
+    "location": {
+      "column": 16,
+      "row": 47
+    },
+    "message": "Use of `int` with explicit `base=16` after removing prefix",
+    "name": "int-on-sliced-str",
+    "noqa_row": 47,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/int-on-sliced-str"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 37,
+      "row": 35
+    },
+    "filename": "/work/bakeoff-specs-openspec/src/troupe/tree.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from collections.abc import Iterator\nfrom dataclasses import dataclass, field\nfrom pathlib import Path\n\nfrom ruamel.yaml import YAML\nfrom ruamel.yaml.error import MarkedYAMLError, YAMLError\nfrom ruamel.yaml.events import (\n    AliasEvent,\n    DocumentEndEvent,\n    DocumentStartEvent,\n    Event,\n    MappingEndEvent,\n    MappingStartEvent,\n    ScalarEvent,\n    SequenceEndEvent,\n    SequenceStartEvent,\n    StreamEndEvent,\n    StreamStartEvent,\n)\n\nfrom troupe.blockscalar import BlockLayout, parse_block\nfrom troupe.errors import LoadError\nfrom troupe.schema import (\n    LITERAL_TAG,\n    Data,\n    Scalar,\n    key_text,\n    resolve_plain,\n    resolve_tagged,\n)\nfrom troupe.source import SourceFile\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 38
+          },
+          "location": {
+            "column": 1,
+            "row": 12
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 12
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 12,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 36,
+      "row": 11
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_aliases_loading.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import json\nfrom collections.abc import Callable\nfrom pathlib import Path\n\nimport pytest\nfrom conftest import Theatre\n\nfrom troupe.loader import load\nfrom troupe.tree import MappingNode\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 13
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 37,
+      "row": 6
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_cli.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from collections.abc import Callable\nfrom pathlib import Path\n\nimport pytest\nfrom conftest import Result, Theatre\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 9
+          },
+          "location": {
+            "column": 1,
+            "row": 1
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 1,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 29,
+      "row": 5
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_get.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from collections.abc import Callable\n\nimport pytest\nfrom conftest import Theatre\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 8
+          },
+          "location": {
+            "column": 1,
+            "row": 1
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 1,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 32,
+      "row": 8
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_http_fixture.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import urllib.request\nfrom urllib.error import HTTPError\n\nimport pytest\nfrom conftest import HttpServer\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 11
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 49,
+      "row": 12
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_lineage.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import calendar\nimport re\nimport time\nfrom collections.abc import Callable\nfrom typing import Any\n\nimport pytest\nfrom conftest import TEST_LOGIN, Result, Theatre\nfrom test_history import events\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 14
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 29,
+      "row": 13
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_lineage_legacy.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import re\nimport shutil\nfrom pathlib import Path\n\nimport pytest\nfrom conftest import Theatre\nfrom test_history import events\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 15
+          },
+          "location": {
+            "column": 1,
+            "row": 6
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 6
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 6,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 97,
+      "row": 9
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_lineage_values.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import calendar\nimport pwd\nimport re\nimport time\n\nimport pytest\n\nfrom troupe.errors import UsageError\nfrom troupe.lineage import (\n    Actor,\n    actor_from_env,\n    for_cli,\n    for_file,\n    for_import,\n    login_name,\n    now,\n)\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 11
+          },
+          "location": {
+            "column": 1,
+            "row": 1
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 1,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 37,
+      "row": 8
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_literal_tag.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from collections.abc import Callable\n\nimport pytest\nfrom conftest import Result, Theatre\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 11
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 32,
+      "row": 9
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_loading.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from collections.abc import Callable\nfrom pathlib import Path\n\nimport pytest\nfrom conftest import Theatre\n\nfrom troupe.errors import LoadError\nfrom troupe.loader import load\nfrom troupe.tree import to_data\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 12
+          },
+          "location": {
+            "column": 1,
+            "row": 1
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 1,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 29,
+      "row": 5
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_overrides_loading.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import pytest\nfrom conftest import Theatre\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 7
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 32,
+      "row": 17
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_reconcile.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import math\nfrom collections.abc import Callable\nfrom pathlib import Path\nfrom typing import Any\n\nimport pytest\nfrom conftest import HttpServer, Theatre\nfrom test_history import events\n\nfrom troupe.leaves import leaves\nfrom troupe.lineage import for_import\nfrom troupe.loader import load\nfrom troupe.store import Change, ConfigStore\nfrom troupe.sync import reconcile\nfrom troupe.tree import to_data\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 20
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 58,
+      "row": 5
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_remote_loading.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import pytest\nfrom conftest import HttpServer, Theatre, closed_port_url\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 7
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 44,
+      "row": 13
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_render.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from collections.abc import Callable\nfrom pathlib import Path\n\nimport pytest\nfrom conftest import Theatre\n\nfrom troupe.loader import load\nfrom troupe.render import render\nfrom troupe.schema import same\nfrom troupe.source import SourceFile, source_label\nfrom troupe.tree import build_tree, to_data\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 15
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 49,
+      "row": 9
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_schema.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import json\nfrom collections.abc import Callable\n\nimport pytest\nfrom conftest import HttpServer, Result, Theatre\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 11
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 37,
+      "row": 8
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_set_anchors.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import json\nfrom collections.abc import Callable\n\nimport pytest\nfrom conftest import Result, Theatre\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 10
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 28,
+      "row": 7
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_set_blocks.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from collections.abc import Callable\n\nimport pytest\nfrom conftest import Result\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 10
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 29,
+      "row": 11
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_set_expand_alias.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import json\nfrom collections.abc import Callable\n\nimport pytest\nfrom conftest import Theatre\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 13
+          },
+          "location": {
+            "column": 1,
+            "row": 6
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 6
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 6,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 29,
+      "row": 10
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_set_in_include.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import json\n\nimport pytest\nfrom conftest import Theatre\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 13
+          },
+          "location": {
+            "column": 1,
+            "row": 6
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 6
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 6,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 41,
+      "row": 9
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_set_literal_values.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import json\nfrom collections.abc import Callable\n\nimport pytest\nfrom conftest import HttpServer, Theatre\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 11
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 29,
+      "row": 8
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_set_merge_keys.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import json\nfrom collections.abc import Callable\n\nimport pytest\nfrom conftest import Theatre\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 10
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 29,
+      "row": 9
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_set_overrides.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import pytest\nfrom conftest import Theatre\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 12
+          },
+          "location": {
+            "column": 1,
+            "row": 7
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 7,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 49,
+      "row": 10
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_set_remote.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import json\n\nimport pytest\nfrom conftest import HttpServer, Result, Theatre\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 13
+          },
+          "location": {
+            "column": 1,
+            "row": 6
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 6
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 6,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 37,
+      "row": 8
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_set_targets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import os\nfrom collections.abc import Callable\n\nimport pytest\nfrom conftest import Result, Theatre\n\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 11
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 37,
+      "row": 11
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_set_through_alias.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import json\nfrom collections.abc import Callable\n\nimport pytest\nfrom conftest import Result, Theatre\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 13
+          },
+          "location": {
+            "column": 1,
+            "row": 6
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 6
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 6,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 29,
+      "row": 7
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_show.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from collections.abc import Callable\n\nimport pytest\nfrom conftest import Theatre\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 9
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 32,
+      "row": 11
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_show_sources.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from collections.abc import Callable\nfrom pathlib import Path\n\nimport pytest\nfrom conftest import HttpServer, Result, Theatre\nfrom test_render import read_back\n\nfrom troupe.loader import load\nfrom troupe.tree import to_data\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 13
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "ISC004",
+    "end_location": {
+      "column": 57,
+      "row": 117
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_show_sources.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "(",
+          "end_location": {
+            "column": 9,
+            "row": 116
+          },
+          "location": {
+            "column": 9,
+            "row": 116
+          }
+        },
+        {
+          "content": ")",
+          "end_location": {
+            "column": 57,
+            "row": 117
+          },
+          "location": {
+            "column": 57,
+            "row": 117
+          }
+        }
+      ],
+      "message": "Did you forget a comma?"
+    },
+    "location": {
+      "column": 9,
+      "row": 116
+    },
+    "message": "Unparenthesized implicit string concatenation in collection",
+    "name": "implicit-string-concatenation-in-collection-literal",
+    "noqa_row": 116,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/implicit-string-concatenation-in-collection-literal"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 37,
+      "row": 17
+    },
+    "filename": "/work/bakeoff-specs-openspec/tests/test_watch.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import fcntl\nimport os\nimport selectors\nimport signal\nimport subprocess\nimport sys\nimport time\nfrom collections.abc import Callable, Iterator\nfrom typing import Any\n\nimport pytest\nfrom conftest import Theatre\nfrom test_history import events\n\nfrom troupe.store import ConfigStore\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 19
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  }
+]

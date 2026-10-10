@@ -1,0 +1,97 @@
+{
+  "pass": "pass1",
+  "step": 6,
+  "rounds": [
+    {
+      "at": "2026-10-06T03:17:32+00:00",
+      "groups": [
+        {
+          "question": "Should reading (get/show) resolve merge keys, so that `get x.a` succeeds when `a` comes from `<<: *b`?",
+          "answers": [
+            {
+              "arm": "speckit",
+              "answer": "The contract's Aliases section (from step 6) covers writing only: setting a value defined at an anchor changes it at the anchor; setting a path reached through an alias -> exit 3 with stderr mentioning `--expand-alias`; `set --expand-alias PATH VALUE` \"replaces that alias with a block-style copy of the anchored node, puts the end-of-line comment `# expanded from *<name> by troupe` on the key's line ... and then sets the value in the copy. Nothing else changes; other aliases still refer to the anchor.\" Merge keys (`<<`) are never written. Flow-style anchor: the copy is block-style, as the contract says; the anchor itself does not change (\"Nothing else changes\"), so neither converting the anchor nor refusing is what the contract describes. Reading through merge keys, `--expand-alias` when the path has no alias, and paths through more than one alias: the contract does not define these. They are out of contract: your choice - state which you chose and why.",
+              "step": 6
+            }
+          ],
+          "id": "Q1",
+          "conflict": false,
+          "overlaps": [],
+          "earlier": []
+        },
+        {
+          "question": "What should `set --expand-alias` do when the path does not pass through any alias?",
+          "answers": [
+            {
+              "arm": "speckit",
+              "answer": "The contract's Aliases section (from step 6) covers writing only: setting a value defined at an anchor changes it at the anchor; setting a path reached through an alias -> exit 3 with stderr mentioning `--expand-alias`; `set --expand-alias PATH VALUE` \"replaces that alias with a block-style copy of the anchored node, puts the end-of-line comment `# expanded from *<name> by troupe` on the key's line ... and then sets the value in the copy. Nothing else changes; other aliases still refer to the anchor.\" Merge keys (`<<`) are never written. Flow-style anchor: the copy is block-style, as the contract says; the anchor itself does not change (\"Nothing else changes\"), so neither converting the anchor nor refusing is what the contract describes. Reading through merge keys, `--expand-alias` when the path has no alias, and paths through more than one alias: the contract does not define these. They are out of contract: your choice - state which you chose and why.",
+              "step": 6
+            }
+          ],
+          "id": "Q2",
+          "conflict": false,
+          "overlaps": [
+            "Q3"
+          ],
+          "earlier": []
+        },
+        {
+          "question": "What should `set --expand-alias` do when the path passes through more than one alias?",
+          "answers": [
+            {
+              "arm": "speckit",
+              "answer": "The contract's Aliases section (from step 6) covers writing only: setting a value defined at an anchor changes it at the anchor; setting a path reached through an alias -> exit 3 with stderr mentioning `--expand-alias`; `set --expand-alias PATH VALUE` \"replaces that alias with a block-style copy of the anchored node, puts the end-of-line comment `# expanded from *<name> by troupe` on the key's line ... and then sets the value in the copy. Nothing else changes; other aliases still refer to the anchor.\" Merge keys (`<<`) are never written. Flow-style anchor: the copy is block-style, as the contract says; the anchor itself does not change (\"Nothing else changes\"), so neither converting the anchor nor refusing is what the contract describes. Reading through merge keys, `--expand-alias` when the path has no alias, and paths through more than one alias: the contract does not define these. They are out of contract: your choice - state which you chose and why.",
+              "step": 6
+            }
+          ],
+          "id": "Q3",
+          "conflict": false,
+          "overlaps": [
+            "Q2"
+          ],
+          "earlier": []
+        }
+      ],
+      "owner": {
+        "Q1": {
+          "ok": true,
+          "note": "",
+          "seconds": 1004.500013249999
+        },
+        "Q2": {
+          "ok": true,
+          "note": "",
+          "seconds": 17.999864875004278
+        },
+        "Q3": {
+          "ok": true,
+          "note": "",
+          "seconds": 9.090175625009579
+        }
+      }
+    }
+  ],
+  "confirmed": [
+    "- **Q:** Should reading (get/show) resolve merge keys, so that `get x.a` succeeds when `a` comes from `<<: *b`? **A:** The contract's Aliases section (from step 6) covers writing only: setting a value defined at an anchor changes it at the anchor; setting a path reached through an alias -> exit 3 with stderr mentioning `--expand-alias`; `set --expand-alias PATH VALUE` \"replaces that alias with a block-style copy of the anchored node, puts the end-of-line comment `# expanded from *<name> by troupe` on the key's line ... and then sets the value in the copy. Nothing else changes; other aliases still refer to the anchor.\" Merge keys (`<<`) are never written. Flow-style anchor: the copy is block-style, as the contract says; the anchor itself does not change (\"Nothing else changes\"), so neither converting the anchor nor refusing is what the contract describes. Reading through merge keys, `--expand-alias` when the path has no alias, and paths through more than one alias: the contract does not define these. They are out of contract: your choice - state which you chose and why. _(2026-10-06; pass1; first raised by speckit at step 6; answered by the real owner)_",
+    "- **Q:** What should `set --expand-alias` do when the path does not pass through any alias? **A:** The contract's Aliases section (from step 6) covers writing only: setting a value defined at an anchor changes it at the anchor; setting a path reached through an alias -> exit 3 with stderr mentioning `--expand-alias`; `set --expand-alias PATH VALUE` \"replaces that alias with a block-style copy of the anchored node, puts the end-of-line comment `# expanded from *<name> by troupe` on the key's line ... and then sets the value in the copy. Nothing else changes; other aliases still refer to the anchor.\" Merge keys (`<<`) are never written. Flow-style anchor: the copy is block-style, as the contract says; the anchor itself does not change (\"Nothing else changes\"), so neither converting the anchor nor refusing is what the contract describes. Reading through merge keys, `--expand-alias` when the path has no alias, and paths through more than one alias: the contract does not define these. They are out of contract: your choice - state which you chose and why. _(2026-10-06; pass1; first raised by speckit at step 6; answered by the real owner)_",
+    "- **Q:** What should `set --expand-alias` do when the path passes through more than one alias? **A:** The contract's Aliases section (from step 6) covers writing only: setting a value defined at an anchor changes it at the anchor; setting a path reached through an alias -> exit 3 with stderr mentioning `--expand-alias`; `set --expand-alias PATH VALUE` \"replaces that alias with a block-style copy of the anchored node, puts the end-of-line comment `# expanded from *<name> by troupe` on the key's line ... and then sets the value in the copy. Nothing else changes; other aliases still refer to the anchor.\" Merge keys (`<<`) are never written. Flow-style anchor: the copy is block-style, as the contract says; the anchor itself does not change (\"Nothing else changes\"), so neither converting the anchor nor refusing is what the contract describes. Reading through merge keys, `--expand-alias` when the path has no alias, and paths through more than one alias: the contract does not define these. They are out of contract: your choice - state which you chose and why. _(2026-10-06; pass1; first raised by speckit at step 6; answered by the real owner)_"
+  ],
+  "status": "confirmed",
+  "fallbacks": [
+    {
+      "arm": "openspec",
+      "step": 5,
+      "question": "Should the change's spec deltas be synced into openspec/specs/ before archiving (the recommended option), or should the change be archived without syncing?"
+    },
+    {
+      "arm": "control",
+      "step": 5,
+      "question": "When the same file is included in two places in one theatre, should `set --in-include` keep refusing with exit 3 because the new key would appear under both, or skip that check because writing to the shared file is deliberate?"
+    }
+  ],
+  "brief_sha_before": "1ea8fe65ead0d7accd1225373974664ffa3f14fb329fa2f07217e847ebfdb9c8",
+  "brief_sha_after": "1ea8fe65ead0d7accd1225373974664ffa3f14fb329fa2f07217e847ebfdb9c8",
+  "edited": false,
+  "committed": false,
+  "committed_now": false
+}

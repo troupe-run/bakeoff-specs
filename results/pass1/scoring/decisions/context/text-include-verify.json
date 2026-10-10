@@ -1,0 +1,95 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "`.troupe/troupe.yml` has `prompt: file:prompt.txt  # system prompt`, and `.troupe/prompt.txt` holds \"You are a coder.\\r\\nBe brief.\\r\\n\" (CRLF line endings)",
+        "input": "`config set agents.coder.prompt \"line one\\nline two\\n\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; prompt.txt now reads (CRLF line endings):\nline one\nline two\n",
+          "2": "exit 0, no output; prompt.txt now reads (CRLF line endings):\nline one\nline two\n",
+          "3": "exit 0, no output; prompt.txt now reads (CRLF line endings):\nline one\nline two\n",
+          "4": "all three arms: exit 0, no output; prompt.txt now reads (CRLF line endings):\nline one\nline two\n"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set agents.coder.prompt \"alpha\\nbeta\"` (no final newline)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prompt.txt is exactly \"alpha\\r\\nbeta\"",
+          "2": "exit 0; prompt.txt is exactly \"alpha\\r\\nbeta\"",
+          "3": "exit 0; prompt.txt is exactly \"alpha\\r\\nbeta\"",
+          "4": "all three arms: exit 0; prompt.txt is exactly \"alpha\\r\\nbeta\""
+        }
+      },
+      {
+        "before": "prompt.txt is \"alpha\\r\\nbeta\"",
+        "input": "`config set agents.coder.prompt \"mixed\\r\\nends\\nhere\\r\\n\"` (mixed line endings)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; prompt.txt is now \"mixed\\r\\nends\\r\\nhere\\r\\n\" (the bare \\n became CRLF)",
+          "2": "exit 0, no output; prompt.txt is now \"mixed\\r\\nends\\r\\nhere\\r\\n\" (the bare \\n became CRLF)",
+          "3": "exit 3; stderr `troupe: agents.coder.prompt: value cannot be written back faithfully`; prompt.txt is unchanged (\"alpha\\r\\nbeta\")",
+          "4": "all three arms: exit 0, no output; prompt.txt is now \"mixed\\r\\nends\\r\\nhere\\r\\n\""
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get agents.coder.prompt` (after the three sets)",
+        "observed": true,
+        "results": {
+          "1": "prints \"mixed\\r\\nends\\r\\nhere\\r\\n\"",
+          "2": "prints \"mixed\\r\\nends\\r\\nhere\\r\\n\"",
+          "3": "prints \"alpha\\r\\nbeta\" plus a newline (the old value)",
+          "4": "all three arms: print \"mixed\\r\\nends\\r\\nhere\\r\\n\""
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history agents.coder.prompt`",
+        "observed": true,
+        "results": {
+          "1": "shows the import plus three sets (seq 3, 4, 5); the last set records new \"mixed\\r\\nends\\r\\nhere\\r\\n\"",
+          "2": "shows the import plus three sets (seq 3, 4, 5); the last set records new \"mixed\\r\\nends\\r\\nhere\\r\\n\"",
+          "3": "shows the import plus two sets (seq 3, 4); the rejected mixed-ending set is not recorded",
+          "4": "all three arms: show the import plus three sets (seq 3, 4, 5), as in routes 1 and 2"
+        }
+      }
+    ],
+    "in_practice": "On every route, setting text that uses plain \\n line endings works and is saved with CRLF endings, matching the file. Routes 1, 2 and 4 behaved identically in every run: a value with mixed endings is accepted and saved with all-CRLF endings, and the history records the converted value. Only route 3 behaved differently: it refuses mixed endings with exit 3, and the file, the stored value and the history all stay as they were.",
+    "stakes": "A system prompt kept in a separate file with Windows (CRLF) line endings is rewritten when you set it from the command line. What matters is whether a value with mixed line endings is saved with consistent CRLF endings or rejected outright, leaving the old prompt in place.",
+    "tradeoff": "Routes 1, 2 and 4 accept any line endings and quietly convert them all to CRLF. Route 3 never changes your text without telling you, but it rejects values that mix line endings, so you have to clean those up yourself first."
+  },
+  "plan_why": "Sets a CRLF text include to multi-line values (plain LF, no trailing newline, already containing CRLF) to show whether the read-back check accepts the CRLF-converted write, rejects it, or never runs; also shows what lands in the file, what get returns and which history events are recorded.",
+  "routes": [
+    [
+      "Compare against a CRLF-converted expectation",
+      [
+        "Arm B"
+      ]
+    ],
+    [
+      "Compare against the raw content written",
+      [
+        "Arm D"
+      ]
+    ],
+    [
+      "Normalise line endings before comparing",
+      [
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

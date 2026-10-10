@@ -1,0 +1,18 @@
+{
+  "evidence": [
+    "/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:51",
+    "/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:220",
+    "/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:246",
+    "/judge/repo/tests/integration/test_set_existing.py:528",
+    "/judge/repo/tests/integration/test_set_literal.py:89",
+    "/judge/repo/src/troupe/loader.py:9",
+    "/judge/repo/src/troupe/commands/set_value.py:31",
+    "/judge/repo/src/troupe/tree.py:138",
+    "/judge/repo/src/troupe/tree.py:155",
+    "/judge/repo/spec/troupe-config-load-show-set-01M3XGPG/spec.md:116"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:51\", \"/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:220\", \"/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:246\", \"/judge/repo/tests/integration/test_set_existing.py:528\", \"/judge/repo/tests/integration/test_set_literal.py:89\", \"/judge/repo/src/troupe/loader.py:9\", \"/judge/repo/src/troupe/commands/set_value.py:31\", \"/judge/repo/src/troupe/tree.py:138\", \"/judge/repo/src/troupe/tree.py:155\", \"/judge/repo/spec/troupe-config-load-show-set-01M3XGPG/spec.md:116\"]}\n```\n\nEvery stale requirement and test was changed. The new spec redefines the include rule and states the S-13 `set` change and the exceptions to step-1 behaviour (spec.md:51, 220, 246). Old `set file:` tests were rewritten to use `--include` or to expect `!literal`. The loader, the `set` code (`set_value.py`) and the reconcile/watch code were all updated. There is no README.\n\nTwo things still describe the old behaviour. The `YamlInclude`/`TextInclude` docstrings in `tree.py` (lines 138 and 155) still call includes \"a `file:` string\". The step-1 spec's FR-007 (line 116) still reads as file-only and was never marked as superseded. Neither is enforced by a test, so this scores 3.",
+  "score": 3,
+  "status": "ok"
+}

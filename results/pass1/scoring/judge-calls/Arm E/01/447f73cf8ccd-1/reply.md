@@ -1,0 +1,3 @@
+```json
+{"score": 1, "evidence": ["/judge/repo/README.md:3-18", "/judge/repo/tests/test_config.py:76-79", "/judge/repo/tests/test_config.py:101-104", "/judge/repo/tests/test_config.py:135-136", "/judge/repo/src/troupe/cli.py:28-30"], "notes": "The only requirement text is a short README with no IDs. Its file-layout line points to modules, and tests can be matched to it only by topic names such as show, set, include and history. Most tested behaviour has no requirement text a newcomer could start from, including exit codes 3, 4 and 5, comment-column preservation and quoting, so tracing means reverse-engineering the tests and code."}
+```

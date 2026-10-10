@@ -1,0 +1,133 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.reviewer",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.style",
+          "\"keep it short\\nand clear\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.coder",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/prompts/coder.txt": "You are the coder.\nWrite small diffs.\n",
+      ".troupe/prompts/reviewer.txt": "You are the reviewer.\n# not a comment, just text\nNo trailing newline",
+      ".troupe/troupe.yml": "name: demo  # project\nagents:\n  coder:\n    prompt: file:prompts/coder.txt\n    model: opus\n  reviewer:\n    prompt: file:prompts/reviewer.txt\n    notes: |\n      inline line one\n      inline line two\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/prompts/coder.txt",
+      ".troupe/prompts/reviewer.txt"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 6,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo # from .troupe/troupe.yml\nagents:\n  coder:\n    prompt: | # from .troupe/prompts/coder.txt\n      You are the coder.\n      Write small diffs.\n    model: opus # from .troupe/troupe.yml\n  reviewer:\n    prompt: |- # from .troupe/prompts/reviewer.txt\n      You are the reviewer.\n      # not a comment, just text\n      No trailing newline\n    notes: | # from .troupe/troupe.yml\n      inline line one\n      inline line two\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.reviewer",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "prompt: |- # from .troupe/prompts/reviewer.txt\n  You are the reviewer.\n  # not a comment, just text\n  No trailing newline\nnotes: | # from .troupe/troupe.yml\n  inline line one\n  inline line two\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.style",
+                "\"keep it short\\nand clear\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo  # project\nagents:\n  coder:\n    prompt: file:prompts/coder.txt\n    model: opus\n    style: |\n      keep it short\n      and clear\n  reviewer:\n    prompt: file:prompts/reviewer.txt\n    notes: |\n      inline line one\n      inline line two\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "prompt: | # from .troupe/prompts/coder.txt\n  You are the coder.\n  Write small diffs.\nmodel: opus # from .troupe/troupe.yml\nstyle: | # from .troupe/troupe.yml\n  keep it short\n  and clear\n"
+            }
+          ]
+        }
+      ],
+      "route": "On the `|` header line",
+      "route_no": 1
+    }
+  ]
+}

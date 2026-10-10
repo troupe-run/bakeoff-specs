@@ -1,0 +1,24 @@
+{
+  "context": {
+    "examples": [],
+    "in_practice": "Route 1: the watcher compares each file against the exact text the last load read. That covers every included file and both root config files. A file that was missing at load time is recorded as missing. The baseline is rebuilt after every successful sync. So if someone saves an edit in the short gap between the program loading its config and starting to watch, the watcher still sees the file as different from what was loaded and picks up the change. A file that was absent at load time and appears later also counts as a change. Saving a file without changing its content does not trigger a reload, because the bytes match what was loaded. For maintainers, the watcher's idea of 'current' always matches what the program is actually running on, not a separate snapshot taken at some other moment.",
+    "stakes": "When the watcher decides whether a config file has changed, a wrong baseline can make it miss an edit made right after loading, so the running program keeps stale settings without any warning, or it can make it reload for no reason.",
+    "tradeoff": "Route 1 costs keeping a copy of every loaded file's text (plus a 'missing' marker for absent files) in memory and rebuilding it after each sync, in exchange for never missing an edit made between loading and watching."
+  },
+  "plan_why": "The question is only about what the `watch` loop compares newly read file bytes against (its in-memory baseline). The sandbox forbids `watch` and anything that waits for input, and the race this baseline prevents (an edit made between load and the `watching` line) needs a concurrently running watcher plus a timed edit. Other commands reconcile on their own and never use watch's baseline, so a one-shot command cannot show it. The topic also has only one route, kept by every implementation, so there is no difference to show.",
+  "routes": [
+    [
+      "The exact texts the last load read (all includes plus both root names, absent files as None), rebuilt after each sync",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["repo/tests/test_config.py:403", "repo/tests/test_config.py:417", "repo/tests/test_config.py:426", "repo/README.md:25", "repo/DECISIONS.md:31"], "notes": "I sampled three alias tests that look new at this step (test_set_at_anchor_changes_every_alias, test_set_through_alias_is_refused, test_set_expand_alias). Each one can be matched by topic to the README alias paragraph and to the DECISIONS.md 'issue #2' entries, but no test carries an ID or reference. The tests run the CLI as a subprocess, so finding the code they exercise means searching src/."}
+```

@@ -1,0 +1,526 @@
+$ .venv/bin/python -m pytest -q -p no:cacheprovider -x  (baseline)
+........................................................................ [ 10%]
+.s...................................................................... [ 20%]
+........................................................................ [ 31%]
+........................................................................ [ 41%]
+........................................................................ [ 52%]
+........................................................................ [ 62%]
+........................................................................ [ 73%]
+........................................................................ [ 83%]
+........................................................................ [ 93%]
+..........................................                               [100%]
+689 passed, 1 skipped in 472.91s (0:07:52)
+
+# listing, run and results containers: UV_PROJECT_ENVIRONMENT=/work/bakeoff-specs-speckit/.venv  (so `uv run` from inside mutants/ uses the prepared venv; the baseline above ran without it)
+$ .venv/bin/mutmut run --max-children 4 troupe.cli.x__parser__mutmut_129 troupe.cli.x__parser__mutmut_13 ... <198 more>  (sampled 200; under timeout 3600s)
+��� 0  🧙 0⠸ 71/3509  🎉 0 🫥 71  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠼ 72/3509  🎉 0 🫥 72  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠴ 73/3509  🎉 0 🫥 73  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠦ 74/3509  🎉 0 🫥 74  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠧ 75/3509  🎉 0 🫥 75  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠇ 76/3509  🎉 0 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠏ 76/3509  🎉 0 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠋ 76/3509  🎉 0 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠙ 76/3509  🎉 0 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠹ 76/3509  🎉 0 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠸ 77/3509  🎉 1 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠼ 78/3509  🎉 2 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠴ 79/3509  🎉 3 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠦ 80/3509  🎉 4 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠧ 81/3509  🎉 5 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠇ 82/3509  🎉 6 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠏ 83/3509  🎉 7 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠋ 84/3509  🎉 8 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠙ 85/3509  🎉 9 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠹ 86/3509  🎉 10 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠸ 87/3509  🎉 11 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠼ 88/3509  🎉 12 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠴ 89/3509  🎉 13 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠦ 90/3509  🎉 14 🫥 76  ⏰ 0  🤔 0  🙁 0  🔇 0  🧙 0⠧ 91/3509  🎉 14 🫥 76  ⏰ 0  🤔 0  🙁 1  🔇 0  🧙 0⠇ 92/3509  🎉 15 🫥 76  ⏰ 0  🤔 0  🙁 1  🔇 0  🧙 0⠏ 93/3509  🎉 16 🫥 76  ⏰ 0  🤔 0  🙁 1  🔇 0  🧙 0⠋ 94/3509  🎉 17 🫥 76  ⏰ 0  🤔 0  🙁 1  🔇 0  🧙 0⠙ 95/3509  🎉 18 🫥 76  ⏰ 0  🤔 0  🙁 1  🔇 0  🧙 0⠹ 96/3509  🎉 19 🫥 76  ⏰ 0  🤔 0  🙁 1  🔇 0  🧙 0⠸ 97/3509  🎉 20 🫥 76  ⏰ 0  🤔 0  🙁 1  🔇 0  🧙 0⠼ 98/3509  🎉 21 🫥 76  ⏰ 0  🤔 0  🙁 1  🔇 0  🧙 0⠴ 99/3509  🎉 22 🫥 76  ⏰ 0  🤔 0  🙁 1  🔇 0  🧙 0⠦ 100/3509  🎉 22 🫥 76  ⏰ 0  🤔 0  🙁 2  🔇 0  🧙 0⠧ 101/3509  🎉 23 🫥 76  ⏰ 0  🤔 0  🙁 2  🔇 0  🧙 0⠇ 102/3509  🎉 24 🫥 76  ⏰ 0  🤔 0  🙁 2  🔇 0  🧙 0⠏ 103/3509  🎉 25 🫥 76  ⏰ 0  🤔 0  🙁 2  🔇 0  🧙 0⠋ 104/3509  🎉 25 🫥 76  ⏰ 0  🤔 0  🙁 3  🔇 0  🧙 0⠙ 105/3509  🎉 25 🫥 76  ⏰ 0  🤔 0  🙁 4  🔇 0  🧙 0⠹ 106/3509  🎉 25 🫥 76  ⏰ 0  🤔 0  🙁 5  🔇 0  🧙 0⠸ 107/3509  🎉 25 🫥 76  ⏰ 0  🤔 0  🙁 6  🔇 0  🧙 0⠼ 108/3509  🎉 25 🫥 76  ⏰ 0  🤔 0  🙁 7  🔇 0  🧙 0⠴ 109/3509  🎉 25 🫥 76  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠦ 110/3509  🎉 26 🫥 76  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠧ 111/3509  🎉 27 🫥 76  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠇ 112/3509  🎉 28 🫥 76  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠏ 113/3509  🎉 28 🫥 76  ⏰ 0  🤔 0  🙁 9  🔇 0  🧙 0⠋ 114/3509  🎉 28 🫥 76  ⏰ 0  🤔 0  🙁 10  🔇 0  🧙 0⠙ 115/3509  🎉 28 🫥 76  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠹ 116/3509  🎉 29 🫥 76  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠸ 117/3509  🎉 29 🫥 76  ⏰ 0  🤔 0  🙁 12  🔇 0  🧙 0⠼ 118/3509  🎉 29 🫥 76  ⏰ 0  🤔 0  🙁 13  🔇 0  🧙 0⠴ 119/3509  🎉 29 🫥 76  ⏰ 0  🤔 0  🙁 14  🔇 0  🧙 0⠦ 120/3509  🎉 29 🫥 76  ⏰ 0  🤔 0  🙁 15  🔇 0  🧙 0⠧ 121/3509  🎉 29 🫥 76  ⏰ 0  🤔 0  🙁 16  🔇 0  🧙 0⠇ 122/3509  🎉 29 🫥 76  ⏰ 0  🤔 0  🙁 17  🔇 0  🧙 0⠏ 123/3509  🎉 30 🫥 76  ⏰ 0  🤔 0  🙁 17  🔇 0  🧙 0⠋ 124/3509  🎉 31 🫥 76  ⏰ 0  🤔 0  🙁 17  🔇 0  🧙 0⠙ 125/3509  🎉 32 🫥 76  ⏰ 0  🤔 0  🙁 17  🔇 0  🧙 0⠹ 126/3509  🎉 32 🫥 76  ⏰ 0  🤔 0  🙁 18  🔇 0  🧙 0⠸ 127/3509  🎉 33 🫥 76  ⏰ 0  🤔 0  🙁 18  🔇 0  🧙 0⠼ 128/3509  🎉 33 🫥 76  ⏰ 0  🤔 0  🙁 19  🔇 0  🧙 0⠴ 129/3509  🎉 33 🫥 76  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠦ 130/3509  🎉 34 🫥 76  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠧ 131/3509  🎉 35 🫥 76  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠇ 132/3509  🎉 36 🫥 76  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠏ 133/3509  🎉 37 🫥 76  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠋ 134/3509  🎉 38 🫥 76  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠙ 135/3509  🎉 39 🫥 76  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠹ 136/3509  🎉 40 🫥 76  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠸ 137/3509  🎉 41 🫥 76  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠼ 138/3509  🎉 42 🫥 76  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠴ 139/3509  🎉 43 🫥 76  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠦ 140/3509  🎉 43 🫥 76  ⏰ 0  🤔 0  🙁 21  🔇 0  🧙 0⠧ 141/3509  🎉 43 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠇ 142/3509  🎉 44 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠏ 143/3509  🎉 45 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠋ 144/3509  🎉 46 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠙ 145/3509  🎉 47 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠹ 146/3509  🎉 48 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠸ 147/3509  🎉 49 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠼ 148/3509  🎉 50 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠴ 149/3509  🎉 51 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠦ 150/3509  🎉 52 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠧ 151/3509  🎉 53 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠇ 152/3509  🎉 54 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠏ 153/3509  🎉 55 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠋ 154/3509  🎉 56 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠙ 155/3509  🎉 57 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠹ 156/3509  🎉 58 🫥 76  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠸ 157/3509  🎉 58 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠼ 158/3509  🎉 59 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠴ 159/3509  🎉 60 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠦ 160/3509  🎉 61 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠧ 161/3509  🎉 62 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠇ 162/3509  🎉 63 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠏ 163/3509  🎉 64 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠋ 164/3509  🎉 65 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠙ 165/3509  🎉 66 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠹ 166/3509  🎉 67 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠸ 167/3509  🎉 68 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠼ 168/3509  🎉 69 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠴ 169/3509  🎉 70 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠦ 170/3509  🎉 71 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠧ 171/3509  🎉 72 🫥 76  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠇ 172/3509  🎉 72 🫥 76  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠏ 173/3509  🎉 73 🫥 76  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠋ 174/3509  🎉 73 🫥 76  ⏰ 0  🤔 0  🙁 25  🔇 0  🧙 0⠙ 175/3509  🎉 73 🫥 76  ⏰ 0  🤔 0  🙁 26  🔇 0  🧙 0⠹ 176/3509  🎉 74 🫥 76  ⏰ 0  🤔 0  🙁 26  🔇 0  🧙 0⠸ 177/3509  🎉 75 🫥 76  ⏰ 0  🤔 0  🙁 26  🔇 0  🧙 0⠼ 178/3509  🎉 76 🫥 76  ⏰ 0  🤔 0  🙁 26  🔇 0  🧙 0⠴ 179/3509  🎉 77 🫥 76  ⏰ 0  🤔 0  🙁 26  🔇 0  🧙 0⠦ 180/3509  🎉 78 🫥 76  ⏰ 0  🤔 0  🙁 26  🔇 0  🧙 0⠧ 181/3509  🎉 79 🫥 76  ⏰ 0  🤔 0  🙁 26  🔇 0  🧙 0⠇ 182/3509  🎉 80 🫥 76  ⏰ 0  🤔 0  🙁 26  🔇 0  🧙 0⠏ 183/3509  🎉 81 🫥 76  ⏰ 0  🤔 0  🙁 26  🔇 0  🧙 0⠋ 184/3509  🎉 82 🫥 76  ⏰ 0  🤔 0  🙁 26  🔇 0  🧙 0⠙ 185/3509  🎉 82 🫥 76  ⏰ 0  🤔 0  🙁 27  🔇 0  🧙 0⠹ 186/3509  🎉 83 🫥 76  ⏰ 0  🤔 0  🙁 27  🔇 0  🧙 0⠸ 187/3509  🎉 83 🫥 76  ⏰ 0  🤔 0  🙁 28  🔇 0  🧙 0⠼ 188/3509  🎉 84 🫥 76  ⏰ 0  🤔 0  🙁 28  🔇 0  🧙 0⠴ 189/3509  🎉 84 🫥 76  ⏰ 0  🤔 0  🙁 29  🔇 0  🧙 0⠦ 190/3509  🎉 84 🫥 76  ⏰ 0  🤔 0  🙁 30  🔇 0  🧙 0⠧ 191/3509  🎉 84 🫥 76  ⏰ 0  🤔 0  🙁 31  🔇 0  🧙 0⠇ 192/3509  🎉 84 🫥 76  ⏰ 0  🤔 0  🙁 32  🔇 0  🧙 0⠏ 193/3509  🎉 85 🫥 76  ⏰ 0  🤔 0  🙁 32  🔇 0  🧙 0⠋ 194/3509  🎉 86 🫥 76  ⏰ 0  🤔 0  🙁 32  🔇 0  🧙 0⠙ 195/3509  🎉 87 🫥 76  ⏰ 0  🤔 0  🙁 32  🔇 0  🧙 0⠹ 200/3509  🎉 90 🫥 76  ⏰ 0  🤔 0  🙁 34  🔇 0  🧙 0
+5.20 mutations/second
+
+Mutant results
+--------------
+🫥 troupe.cli.x__parser__mutmut_129
+🫥 troupe.cli.x__parser__mutmut_13
+🫥 troupe.cli.x__parser__mutmut_148
+🫥 troupe.cli.x__parser__mutmut_162
+🫥 troupe.cli.x__parser__mutmut_17
+🫥 troupe.cli.x__parser__mutmut_3
+🫥 troupe.cli.x__parser__mutmut_84
+🫥 troupe.cli.x__parser__mutmut_95
+🫥 troupe.cli.x__report__mutmut_8
+🫥 troupe.cli.x_main__mutmut_10
+🫥 troupe.cli.x_main__mutmut_14
+🫥 troupe.cli.x_run__mutmut_21
+🫥 troupe.cli.x_run__mutmut_45
+🫥 troupe.config.commands.x_get__mutmut_19
+🎉 troupe.config.commands.x_history__mutmut_1
+🙁 troupe.config.commands.x_history__mutmut_15
+🙁 troupe.config.commands.x_history__mutmut_29
+🙁 troupe.config.commands.x_history__mutmut_41
+🙁 troupe.config.commands.x_history__mutmut_49
+🙁 troupe.config.commands.x_history__mutmut_50
+🫥 troupe.config.commands.x_node_kind__mutmut_1
+🎉 troupe.config.commands.x_resolve__mutmut_13
+🙁 troupe.config.commands.x_resolve__mutmut_31
+🙁 troupe.config.commands.x_resolve__mutmut_6
+🎉 troupe.config.commands.x_set_value__mutmut_13
+🎉 troupe.config.commands.x_set_value__mutmut_5
+🫥 troupe.config.commands.x_show__mutmut_17
+🫥 troupe.config.commands.x_watch__mutmut_14
+🫥 troupe.config.commands.x_watch__mutmut_3
+🫥 troupe.config.commands.x_watch__mutmut_4
+🎉 troupe.config.edit.apply.x__aliases__mutmut_12
+🎉 troupe.config.edit.apply.x__aliases__mutmut_14
+🎉 troupe.config.edit.apply.x__aliases__mutmut_3
+🎉 troupe.config.edit.apply.x__aliases__mutmut_8
+🎉 troupe.config.edit.apply.x__reload__mutmut_1
+🙁 troupe.config.edit.apply.x__verify__mutmut_51
+🎉 troupe.config.edit.apply.x_apply_set__mutmut_10
+🎉 troupe.config.edit.apply.x_apply_set__mutmut_23
+🎉 troupe.config.edit.apply.x_apply_set__mutmut_5
+🎉 troupe.config.edit.folded.x_parse_old__mutmut_12
+🎉 troupe.config.edit.folded.x_parse_old__mutmut_24
+🎉 troupe.config.edit.folded.x_parse_old__mutmut_31
+🎉 troupe.config.edit.folded.x_rewrite__mutmut_25
+🎉 troupe.config.edit.folded.x_rewrite__mutmut_27
+🎉 troupe.config.edit.folded.x_rewrite__mutmut_33
+🎉 troupe.config.edit.folded.x_rewrite__mutmut_43
+🎉 troupe.config.edit.folded.x_rewrite__mutmut_50
+🎉 troupe.config.edit.folded.x_rewrite__mutmut_57
+🎉 troupe.config.edit.folded.x_rewrite__mutmut_82
+🙁 troupe.config.edit.folded.x_rewrite__mutmut_91
+🎉 troupe.config.edit.folded.x_split_new__mutmut_27
+🎉 troupe.config.edit.folded.x_split_new__mutmut_30
+🎉 troupe.config.edit.folded.x_wrap__mutmut_21
+🙁 troupe.config.edit.layout.x__inside__mutmut_3
+🎉 troupe.config.edit.layout.x_find_comment__mutmut_4
+🎉 troupe.config.edit.layout.x_inline_replace__mutmut_2
+🎉 troupe.config.edit.layout.x_inline_replace__mutmut_21
+🙁 troupe.config.edit.layout.xǁLinesǁ__init____mutmut_18
+🙁 troupe.config.edit.layout.xǁLinesǁ__init____mutmut_27
+🎉 troupe.config.edit.layout.xǁLinesǁindex_of__mutmut_1
+🫥 troupe.config.edit.layout.xǁLinesǁlast_line_of__mutmut_5
+🫥 troupe.config.edit.planner.x__after_indicator__mutmut_11
+🫥 troupe.config.edit.planner.x__after_indicator__mutmut_19
+🫥 troupe.config.edit.planner.x__append__mutmut_32
+🫥 troupe.config.edit.planner.x__append__mutmut_55
+🫥 troupe.config.edit.planner.x__append__mutmut_7
+🫥 troupe.config.edit.planner.x__append__mutmut_70
+🫥 troupe.config.edit.planner.x__append__mutmut_76
+🫥 troupe.config.edit.planner.x__block_scalar__mutmut_56
+🫥 troupe.config.edit.planner.x__column_before__mutmut_1
+🎉 troupe.config.edit.planner.x__context__mutmut_10
+🎉 troupe.config.edit.planner.x__context__mutmut_18
+🎉 troupe.config.edit.planner.x__context__mutmut_2
+🫥 troupe.config.edit.planner.x__last_line__mutmut_31
+🫥 troupe.config.edit.planner.x__last_line__mutmut_4
+🫥 troupe.config.edit.planner.x__new_key__mutmut_139
+🫥 troupe.config.edit.planner.x__new_key__mutmut_42
+🫥 troupe.config.edit.planner.x__new_key__mutmut_48
+🫥 troupe.config.edit.planner.x__new_key__mutmut_61
+🫥 troupe.config.edit.planner.x__new_key__mutmut_71
+🫥 troupe.config.edit.planner.x__new_key__mutmut_72
+🫥 troupe.config.edit.planner.x__new_key__mutmut_73
+🫥 troupe.config.edit.planner.x__new_key__mutmut_79
+🫥 troupe.config.edit.planner.x__new_key__mutmut_80
+🫥 troupe.config.edit.planner.x__new_key__mutmut_87
+🫥 troupe.config.edit.planner.x__new_key__mutmut_93
+🫥 troupe.config.edit.planner.x__new_key__mutmut_94
+🫥 troupe.config.edit.planner.x__new_key__mutmut_95
+🫥 troupe.config.edit.planner.x__new_key__mutmut_97
+🙁 troupe.config.edit.planner.x__owner_column__mutmut_3
+🙁 troupe.config.edit.planner.x__replace__mutmut_2
+🎉 troupe.config.edit.planner.x__replace__mutmut_41
+🫥 troupe.config.edit.planner.x__replace_block_scalar__mutmut_105
+🫥 troupe.config.edit.planner.x__replace_block_scalar__mutmut_140
+🫥 troupe.config.edit.planner.x__replace_block_scalar__mutmut_161
+🫥 troupe.config.edit.planner.x__replace_block_scalar__mutmut_32
+🫥 troupe.config.edit.planner.x__replace_block_scalar__mutmut_51
+🫥 troupe.config.edit.planner.x__replace_block_scalar__mutmut_9
+🫥 troupe.config.edit.planner.x__replace_block_scalar__mutmut_99
+🫥 troupe.config.edit.planner.x__replace_collection__mutmut_121
+🫥 troupe.config.edit.planner.x__replace_collection__mutmut_124
+🫥 troupe.config.edit.planner.x__replace_collection__mutmut_20
+🫥 troupe.config.edit.planner.x__replace_collection__mutmut_37
+🫥 troupe.config.edit.planner.x__replace_collection__mutmut_49
+🫥 troupe.config.edit.planner.x__replace_collection__mutmut_80
+🫥 troupe.config.edit.planner.x__replace_collection__mutmut_85
+🫥 troupe.config.edit.planner.x__replace_content__mutmut_10
+🫥 troupe.config.edit.planner.x__replace_content__mutmut_7
+🙁 troupe.config.edit.planner.x__replace_scalar__mutmut_109
+🙁 troupe.config.edit.planner.x__replace_scalar__mutmut_20
+🙁 troupe.config.edit.planner.x__replace_scalar__mutmut_22
+🙁 troupe.config.edit.planner.x__replace_scalar__mutmut_24
+🙁 troupe.config.edit.planner.x__replace_scalar__mutmut_40
+🫥 troupe.config.edit.planner.x__replace_text_include__mutmut_9
+🙁 troupe.config.edit.planner.x__same__mutmut_2
+🫥 troupe.config.edit.planner.x__scalar_to_block_collection__mutmut_14
+🫥 troupe.config.edit.planner.x__scalar_to_block_collection__mutmut_2
+🫥 troupe.config.edit.planner.x__scalar_to_block_collection__mutmut_25
+🫥 troupe.config.edit.planner.x__scalar_to_block_collection__mutmut_3
+🫥 troupe.config.edit.planner.x__scalar_to_block_collection__mutmut_31
+🫥 troupe.config.edit.planner.x__scalar_to_block_collection__mutmut_41
+🫥 troupe.config.edit.planner.x_content_end__mutmut_20
+🫥 troupe.config.edit.planner.x_content_end__mutmut_21
+🫥 troupe.config.edit.planner.x_content_end__mutmut_7
+🫥 troupe.config.edit.planner.xǁ_Contextǁinsert_after_line__mutmut_3
+🫥 troupe.config.edit.planner.xǁ_Contextǁinsert_after_line__mutmut_8
+🙁 troupe.config.edit.planner.xǁ_Contextǁresult__mutmut_11
+🎉 troupe.config.edit.render.x_can_plain__mutmut_45
+🙁 troupe.config.edit.render.x_can_plain__mutmut_55
+🎉 troupe.config.edit.render.x_can_style__mutmut_6
+🎉 troupe.config.edit.render.x_can_style__mutmut_9
+🎉 troupe.config.edit.render.x_canonical_plain__mutmut_11
+🎉 troupe.config.edit.render.x_literal_representable__mutmut_5
+🎉 troupe.config.edit.render.x_render_block__mutmut_22
+🎉 troupe.config.edit.render.x_render_inline__mutmut_12
+🎉 troupe.config.edit.render.x_render_inline__mutmut_17
+🎉 troupe.config.edit.render.x_render_inline__mutmut_4
+🎉 troupe.config.edit.render.x_render_list_item__mutmut_10
+🎉 troupe.config.edit.render.x_render_list_item__mutmut_31
+🎉 troupe.config.edit.render.x_render_single__mutmut_2
+🎉 troupe.config.edit.render.x_render_single__mutmut_4
+🎉 troupe.config.edit.render.x_render_value_lines__mutmut_20
+🎉 troupe.config.files.x__replace__mutmut_2
+🙁 troupe.config.files.x__replace__mutmut_28
+🎉 troupe.config.files.x_check_writable__mutmut_3
+🫥 troupe.config.files.x_detect_newline__mutmut_10
+🫥 troupe.config.files.x_detect_newline__mutmut_2
+🫥 troupe.config.files.x_detect_newline__mutmut_4
+🎉 troupe.config.leaves.x_diff_events__mutmut_19
+🎉 troupe.config.leaves.x_diff_events__mutmut_27
+🙁 troupe.config.leaves.x_to_value__mutmut_3
+🎉 troupe.config.leaves.x_written_value__mutmut_1
+🎉 troupe.config.lineage.xǁLineageǁbegin__mutmut_5
+🎉 troupe.config.loader.x_load__mutmut_3
+🎉 troupe.config.loader.xǁ_Loaderǁbuild__mutmut_45
+🎉 troupe.config.loader.xǁ_Loaderǁbuild__mutmut_52
+🎉 troupe.config.loader.xǁ_Loaderǁbuild__mutmut_73
+🎉 troupe.config.loader.xǁ_Loaderǁinclude__mutmut_2
+🙁 troupe.config.loader.xǁ_Loaderǁinclude__mutmut_28
+🎉 troupe.config.loader.xǁ_Loaderǁinclude__mutmut_7
+🎉 troupe.config.loader.xǁ_Loaderǁinclude__mutmut_8
+🎉 troupe.config.loader.xǁ_Loaderǁload__mutmut_20
+🙁 troupe.config.loader.xǁ_Loaderǁsource__mutmut_15
+🎉 troupe.config.paths.xǁConfigPathǁparse__mutmut_4
+🎉 troupe.config.scalars.x__new_node__mutmut_11
+🎉 troupe.config.scalars.x__new_node__mutmut_25
+🎉 troupe.config.scalars.x_format_scalar__mutmut_1
+🎉 troupe.config.scalars.x_parse_value__mutmut_1
+🙁 troupe.config.scalars.x_resolve_node__mutmut_14
+🙁 troupe.config.scalars.x_resolve_node__mutmut_33
+🎉 troupe.config.scalars.x_resolve_node__mutmut_44
+🙁 troupe.config.scalars.x_resolve_node__mutmut_7
+🙁 troupe.config.scalars.x_resolve_node__mutmut_8
+🎉 troupe.config.scalars.x_resolve_plain__mutmut_27
+🎉 troupe.config.scalars.x_scalars_equal__mutmut_16
+🎉 troupe.config.scalars.x_scalars_equal__mutmut_19
+🎉 troupe.config.store.xǁConfigStoreǁ__init____mutmut_10
+🎉 troupe.config.store.xǁConfigStoreǁ__init____mutmut_3
+🎉 troupe.config.store.xǁConfigStoreǁ__init____mutmut_6
+🎉 troupe.config.store.xǁConfigStoreǁcheck_writable__mutmut_10
+🎉 troupe.config.store.xǁConfigStoreǁcheck_writable__mutmut_11
+🙁 troupe.config.store.xǁConfigStoreǁcheck_writable__mutmut_18
+🎉 troupe.config.store.xǁConfigStoreǁcheck_writable__mutmut_2
+🎉 troupe.config.store.xǁConfigStoreǁimport_leaves__mutmut_5
+🎉 troupe.config.store.xǁConfigStoreǁimport_leaves__mutmut_8
+🎉 troupe.config.store.xǁConfigStoreǁrecord__mutmut_2
+🎉 troupe.config.store.xǁTheatreConfigǁ__init____mutmut_1
+🎉 troupe.config.store.xǁTheatreConfigǁapply__mutmut_2
+🙁 troupe.config.store.xǁTheatreConfigǁapply__mutmut_6
+🎉 troupe.config.sync.x_reconcile__mutmut_13
+🎉 troupe.config.sync.x_reconcile__mutmut_14
+🎉 troupe.config.view.x__after__mutmut_11
+🎉 troupe.config.view.x__collection__mutmut_10
+🎉 troupe.config.view.x__collection__mutmut_19
+🎉 troupe.config.view.x__collection__mutmut_30
+🎉 troupe.config.view.x__collection__mutmut_5
+🎉 troupe.config.view.x__scalar__mutmut_8
+🎉 troupe.config.view.x_render__mutmut_4
+🙁 troupe.config.watch.x_run_watch__mutmut_27
+🙁 troupe.config.watch.x_run_watch__mutmut_8
+
+__run_rc=0
+
+$ .venv/bin/mutmut results --all true  (fresh container)
+: not checked
+    troupe.config.edit.layout.xǁLinesǁlast_line_of__mutmut_8: not checked
+    troupe.config.edit.layout.x_indent_of__mutmut_1: not checked
+    troupe.config.edit.layout.x_is_blank__mutmut_1: not checked
+    troupe.config.edit.layout.x_is_blank__mutmut_2: not checked
+    troupe.config.edit.layout.x_is_blank__mutmut_3: not checked
+    troupe.config.edit.layout.x_is_blank__mutmut_4: not checked
+    troupe.config.edit.layout.x_is_comment__mutmut_1: not checked
+    troupe.config.edit.layout.x_is_comment__mutmut_2: not checked
+    troupe.config.edit.layout.x_is_comment__mutmut_3: not checked
+    troupe.config.edit.layout.x_is_comment__mutmut_4: not checked
+    troupe.config.edit.layout.x_scalar_spans__mutmut_1: not checked
+    troupe.config.edit.layout.x_scalar_spans__mutmut_2: not checked
+    troupe.config.edit.layout.x_scalar_spans__mutmut_3: not checked
+    troupe.config.edit.layout.x_scalar_spans__mutmut_4: not checked
+    troupe.config.edit.layout.x_scalar_spans__mutmut_5: not checked
+    troupe.config.edit.layout.x_scalar_spans__mutmut_6: not checked
+    troupe.config.edit.layout.x_scalar_spans__mutmut_7: not checked
+    troupe.config.edit.layout.x_scalar_spans__mutmut_8: not checked
+    troupe.config.edit.layout.x_scalar_spans__mutmut_9: not checked
+    troupe.config.edit.layout.x__inside__mutmut_1: not checked
+    troupe.config.edit.layout.x__inside__mutmut_2: not checked
+    troupe.config.edit.layout.x__inside__mutmut_3: survived
+    troupe.config.edit.layout.x_find_comment__mutmut_1: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_2: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_3: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_4: killed
+    troupe.config.edit.layout.x_find_comment__mutmut_5: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_6: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_7: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_8: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_9: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_10: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_11: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_12: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_13: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_14: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_15: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_16: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_17: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_18: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_19: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_20: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_21: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_22: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_23: not checked
+    troupe.config.edit.layout.x_find_comment__mutmut_24: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_1: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_2: killed
+    troupe.config.edit.layout.x_inline_replace__mutmut_3: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_4: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_5: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_6: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_7: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_8: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_9: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_10: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_11: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_12: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_13: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_14: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_15: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_16: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_17: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_18: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_19: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_20: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_21: killed
+    troupe.config.edit.layout.x_inline_replace__mutmut_22: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_23: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_24: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_25: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_26: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_27: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_28: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_29: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_30: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_31: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_32: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_33: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_34: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_35: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_36: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_37: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_38: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_39: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_40: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_41: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_42: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_43: not checked
+    troupe.config.edit.layout.x_inline_replace__mutmut_44: not checked
+    troupe.config.edit.layout.x_last_content_line__mutmut_1: not checked
+    troupe.config.edit.layout.x_last_content_line__mutmut_2: not checked
+    troupe.config.edit.layout.x_last_content_line__mutmut_3: not checked
+    troupe.config.edit.layout.x_last_content_line__mutmut_4: not checked
+    troupe.config.edit.layout.x_last_content_line__mutmut_5: not checked
+    troupe.config.edit.layout.x_last_content_line__mutmut_6: not checked
+    troupe.config.edit.layout.x_last_content_line__mutmut_7: not checked
+    troupe.config.edit.layout.x_last_content_line__mutmut_8: not checked
+    troupe.config.edit.layout.x_last_content_line__mutmut_9: not checked
+    troupe.config.edit.layout.x_last_content_line__mutmut_10: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_1: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_2: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_3: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_4: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_5: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_6: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_7: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_8: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_9: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_10: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_11: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_12: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_13: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_14: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_15: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_16: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_17: not checked
+    troupe.config.edit.layout.x_insertion_line__mutmut_18: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_1: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_2: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_3: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_4: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_5: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_6: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_7: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_8: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_9: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_10: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_11: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_12: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_13: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_14: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_15: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_16: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_17: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_18: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_19: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_20: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_21: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_22: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_23: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_24: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_25: not checked
+    troupe.config.edit.layout.x_indent_step__mutmut_26: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_1: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_2: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_3: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_4: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_5: killed
+    troupe.config.edit.apply.x_apply_set__mutmut_6: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_7: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_8: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_9: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_10: killed
+    troupe.config.edit.apply.x_apply_set__mutmut_11: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_12: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_13: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_14: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_15: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_16: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_17: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_18: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_19: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_20: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_21: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_22: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_23: killed
+    troupe.config.edit.apply.x_apply_set__mutmut_24: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_25: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_26: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_27: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_28: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_29: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_30: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_31: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_32: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_33: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_34: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_35: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_36: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_37: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_38: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_39: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_40: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_41: not checked
+    troupe.config.edit.apply.x_apply_set__mutmut_42: not checked
+    troupe.config.edit.apply.x__reload__mutmut_1: killed
+    troupe.config.edit.apply.x__reload__mutmut_2: not checked
+    troupe.config.edit.apply.x__reload__mutmut_3: not checked
+    troupe.config.edit.apply.x__reload__mutmut_4: not checked
+    troupe.config.edit.apply.x__reload__mutmut_5: not checked
+    troupe.config.edit.apply.x__reload__mutmut_6: not checked
+    troupe.config.edit.apply.x__reload__mutmut_7: not checked
+    troupe.config.edit.apply.x__refuse__mutmut_1: not checked
+    troupe.config.edit.apply.x__verify__mutmut_1: not checked
+    troupe.config.edit.apply.x__verify__mutmut_2: not checked
+    troupe.config.edit.apply.x__verify__mutmut_3: not checked
+    troupe.config.edit.apply.x__verify__mutmut_4: not checked
+    troupe.config.edit.apply.x__verify__mutmut_5: not checked
+    troupe.config.edit.apply.x__verify__mutmut_6: not checked
+    troupe.config.edit.apply.x__verify__mutmut_7: not checked
+    troupe.config.edit.apply.x__verify__mutmut_8: not checked
+    troupe.config.edit.apply.x__verify__mutmut_9: not checked
+    troupe.config.edit.apply.x__verify__mutmut_10: not checked
+    troupe.config.edit.apply.x__verify__mutmut_11: not checked
+    troupe.config.edit.apply.x__verify__mutmut_12: not checked
+    troupe.config.edit.apply.x__verify__mutmut_13: not checked
+    troupe.config.edit.apply.x__verify__mutmut_14: not checked
+    troupe.config.edit.apply.x__verify__mutmut_15: not checked
+    troupe.config.edit.apply.x__verify__mutmut_16: not checked
+    troupe.config.edit.apply.x__verify__mutmut_17: not checked
+    troupe.config.edit.apply.x__verify__mutmut_18: not checked
+    troupe.config.edit.apply.x__verify__mutmut_19: not checked
+    troupe.config.edit.apply.x__verify__mutmut_20: not checked
+    troupe.config.edit.apply.x__verify__mutmut_21: not checked
+    troupe.config.edit.apply.x__verify__mutmut_22: not checked
+    troupe.config.edit.apply.x__verify__mutmut_23: not checked
+    troupe.config.edit.apply.x__verify__mutmut_24: not checked
+    troupe.config.edit.apply.x__verify__mutmut_25: not checked
+    troupe.config.edit.apply.x__verify__mutmut_26: not checked
+    troupe.config.edit.apply.x__verify__mutmut_27: not checked
+    troupe.config.edit.apply.x__verify__mutmut_28: not checked
+    troupe.config.edit.apply.x__verify__mutmut_29: not checked
+    troupe.config.edit.apply.x__verify__mutmut_30: not checked
+    troupe.config.edit.apply.x__verify__mutmut_31: not checked
+    troupe.config.edit.apply.x__verify__mutmut_32: not checked
+    troupe.config.edit.apply.x__verify__mutmut_33: not checked
+    troupe.config.edit.apply.x__verify__mutmut_34: not checked
+    troupe.config.edit.apply.x__verify__mutmut_35: not checked
+    troupe.config.edit.apply.x__verify__mutmut_36: not checked
+    troupe.config.edit.apply.x__verify__mutmut_37: not checked
+    troupe.config.edit.apply.x__verify__mutmut_38: not checked
+    troupe.config.edit.apply.x__verify__mutmut_39: not checked
+    troupe.config.edit.apply.x__verify__mutmut_40: not checked
+    troupe.config.edit.apply.x__verify__mutmut_41: not checked
+    troupe.config.edit.apply.x__verify__mutmut_42: not checked
+    troupe.config.edit.apply.x__verify__mutmut_43: not checked
+    troupe.config.edit.apply.x__verify__mutmut_44: not checked
+    troupe.config.edit.apply.x__verify__mutmut_45: not checked
+    troupe.config.edit.apply.x__verify__mutmut_46: not checked
+    troupe.config.edit.apply.x__verify__mutmut_47: not checked
+    troupe.config.edit.apply.x__verify__mutmut_48: not checked
+    troupe.config.edit.apply.x__verify__mutmut_49: not checked
+    troupe.config.edit.apply.x__verify__mutmut_50: not checked
+    troupe.config.edit.apply.x__verify__mutmut_51: survived
+    troupe.config.edit.apply.x__verify__mutmut_52: not checked
+    troupe.config.edit.apply.x__verify__mutmut_53: not checked
+    troupe.config.edit.apply.x__verify__mutmut_54: not checked
+    troupe.config.edit.apply.x__verify__mutmut_55: not checked
+    troupe.config.edit.apply.x__verify__mutmut_56: not checked
+    troupe.config.edit.apply.x__verify__mutmut_57: not checked
+    troupe.config.edit.apply.x__verify__mutmut_58: not checked
+    troupe.config.edit.apply.x__verify__mutmut_59: not checked
+    troupe.config.edit.apply.x__verify__mutmut_60: not checked
+    troupe.config.edit.apply.x__verify__mutmut_61: not checked
+    troupe.config.edit.apply.x__verify__mutmut_62: not checked
+    troupe.config.edit.apply.x__verify__mutmut_63: not checked
+    troupe.config.edit.apply.x__verify__mutmut_64: not checked
+    troupe.config.edit.apply.x__join__mutmut_1: not checked
+    troupe.config.edit.apply.x__join__mutmut_2: not checked
+    troupe.config.edit.apply.x__identity__mutmut_1: not checked
+    troupe.config.edit.apply.x__identity__mutmut_2: not checked
+    troupe.config.edit.apply.x__identity__mutmut_3: not checked
+    troupe.config.edit.apply.x__identity__mutmut_4: not checked
+    troupe.config.edit.apply.x__identity__mutmut_5: not checked
+    troupe.config.edit.apply.x__identity__mutmut_6: not checked
+    troupe.config.edit.apply.x__identity__mutmut_7: not checked
+    troupe.config.edit.apply.x__identity__mutmut_8: not checked
+    troupe.config.edit.apply.x__identity__mutmut_9: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_1: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_2: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_3: killed
+    troupe.config.edit.apply.x__aliases__mutmut_4: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_5: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_6: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_7: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_8: killed
+    troupe.config.edit.apply.x__aliases__mutmut_9: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_10: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_11: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_12: killed
+    troupe.config.edit.apply.x__aliases__mutmut_13: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_14: killed
+    troupe.config.edit.apply.x__aliases__mutmut_15: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_16: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_17: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_18: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_19: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_20: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_21: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_22: not checked
+    troupe.config.edit.apply.x__aliases__mutmut_23: not checked
+    troupe.config.edit.apply.x__resolve__mutmut_1: not checked
+    troupe.config.edit.apply.x__resolve__mutmut_2: not checked
+    troupe.config.edit.apply.x__resolve__mutmut_3: not checked
+    troupe.config.edit.apply.x__resolve__mutmut_4: not checked
+    troupe.config.edit.apply.x__resolve__mutmut_5: not checked
+    troupe.config.edit.apply.x__resolve__mutmut_6: not checked
+__results_rc=0
+/work/bakeoff-specs-speckit/.venv/lib/python3.12/site-packages/mutmut/configuration.py:143: UserWarning: The config paths_to_mutate is deprecated. Please rename it to source_paths
+  warnings.warn("The config paths_to_mutate is deprecated. Please rename it to source_paths")

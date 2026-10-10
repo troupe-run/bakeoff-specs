@@ -1,0 +1,36 @@
+{
+  "kind": "divergent",
+  "question": "Anchors, aliases, merge keys and tags at load before step 6",
+  "routes": [
+    {
+      "outcome": "Replaced at step 6 by full alias support",
+      "reasoning_given": "Out of contract until step 6; writes through an alias would change other paths",
+      "route": "Anchors, aliases, merge keys and tags exit 4",
+      "route_no": 1
+    },
+    {
+      "outcome": "Replaced at step 6",
+      "reasoning_given": "Conservative choice",
+      "route": "Honour explicit core tags; other tags, anchors and aliases exit 4",
+      "route_no": 2
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "None recorded",
+      "route": "Ignore tags: plain scalars always resolved, quoted or block scalars stay strings",
+      "route_no": 3
+    },
+    {
+      "outcome": "At step 6 this arm found silent writes through aliases (exit 0) and fixed them",
+      "reasoning_given": "Outside the contract",
+      "route": "Leave anchors/aliases/merge keys out of contract, undefined and untested; do not flag loss of explicit tags",
+      "route_no": 4
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 5
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "evidence": [
+    "/judge/repo/tests/integration/test_set_existing.py (diff.patch:10028-10078): the old 'value naming an existing text file becomes an include' test was rewritten to expect `!literal file:p.md`, and the old include behaviour moved to new `--include` tests",
+    "/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:63 and :191: the new spec defines an include-looking string as `file:`, `https://` or `http://`, and FR-001/FR-011 cover remote includes and literal writes",
+    "/judge/repo/spec/troupe-config-load-show-set-01M3XGPG/spec.md:20 and :116: the step-1 glossary and FR-007 still say an include is 'a string value beginning `file:`' as the whole rule, with no note retiring it",
+    "diff.patch:5096-6289: the code changed in set_value.py, watch.py, includes.py, loader.py, reconcile.py and remote.py. No README or docs exist, and CLAUDE.md has no include description"
+  ],
+  "notes": "Stale tests, set/loader/reconcile code and the current spec were all updated. However, the step-1 spec (load-show-set FR-007 and its glossary) still defines an include as any `file:` string with no retirement note, so a maintainer reading that spec would be misled.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/repo/tests/integration/test_set_existing.py (diff.patch:10028-10078): the old 'value naming an existing text file becomes an include' test was rewritten to expect `!literal file:p.md`, and the old include behaviour moved to new `--include` tests\", \"/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:63 and :191: the new spec defines an include-looking string as `file:`, `https://` or `http://`, and FR-001/FR-011 cover remote includes and literal writes\", \"/judge/repo/spec/troupe-config-load-show-set-01M3XGPG/spec.md:20 and :116: the step-1 glossary and FR-007 still say an include is 'a string value beginning `file:`' as the whole rule, with no note retiring it\", \"diff.patch:5096-6289: the code changed in set_value.py, watch.py, includes.py, loader.py, reconcile.py and remote.py. No README or docs exist, and CLAUDE.md has no include description\"], \"notes\": \"Stale tests, set/loader/reconcile code and the current spec were all updated. However, the step-1 spec (load-show-set FR-007 and its glossary) still defines an include as any `file:` string with no retirement note, so a maintainer reading that spec would be misled.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

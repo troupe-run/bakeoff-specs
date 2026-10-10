@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "tests/e2e/test_overrides_new_key.py:9 test_contract_conversion_example names a source rather than a behaviour, though its body checks the converted file byte for byte",
+    "tests/e2e/test_overrides_new_key.py:57 test_include_without_comment and :70 test_file_indentation_of_4 give the condition but not the expected result",
+    "tests/e2e/test_overrides_lists.py:32 test_key_inside_an_item_of_an_override_list does not say where the key is written; the body asserts troupe.yml",
+    "tests/e2e/test_overrides_existing.py:29 the name's claim (refused) is checked: exit 3, no files changed, and the stderr reason and path",
+    "tests/unit/test_merge.py:41 the name's claims (value replaced, position kept) are checked: key order, value and source file",
+    "tests/e2e/test_overrides_errors.py:19 the name's claim (exit 4 on every command) is checked: it loops over get, show, set and history and checks the snapshot is unchanged"
+  ],
+  "notes": "None of the checked names overclaims; each body would fail if its claim were false, and assert_set checks every file byte for byte. Several names (the contract example, include without comment, indentation of 4, override-list item key) state the condition but not the expected result, so they say less than their bodies check.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"tests/e2e/test_overrides_new_key.py:9 test_contract_conversion_example names a source rather than a behaviour, though its body checks the converted file byte for byte\", \"tests/e2e/test_overrides_new_key.py:57 test_include_without_comment and :70 test_file_indentation_of_4 give the condition but not the expected result\", \"tests/e2e/test_overrides_lists.py:32 test_key_inside_an_item_of_an_override_list does not say where the key is written; the body asserts troupe.yml\", \"tests/e2e/test_overrides_existing.py:29 the name's claim (refused) is checked: exit 3, no files changed, and the stderr reason and path\", \"tests/unit/test_merge.py:41 the name's claims (value replaced, position kept) are checked: key order, value and source file\", \"tests/e2e/test_overrides_errors.py:19 the name's claim (exit 4 on every command) is checked: it loops over get, show, set and history and checks the snapshot is unchanged\"], \"notes\": \"None of the checked names overclaims; each body would fail if its claim were false, and assert_set checks every file byte for byte. Several names (the contract example, include without comment, indentation of 4, override-list item key) state the condition but not the expected result, so they say less than their bodies check.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

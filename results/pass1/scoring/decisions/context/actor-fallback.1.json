@@ -1,0 +1,24 @@
+{
+  "context": {
+    "examples": [],
+    "in_practice": "Route 1: the action still goes ahead. It is recorded as done by a human, with the identity left empty instead of filled in with a guess or a placeholder name. Anyone reading the history later sees that a person did it but not which person. Nothing is wrongly credited to a made-up or default user. Anyone maintaining the software has to handle an empty identity wherever actors are shown or compared.",
+    "stakes": "When neither TROUPE_ACTOR is set nor a login name can be found, the software still has to record who did something. What it records decides whether the action is recorded as done by an unknown person, gets wrongly credited to someone, or fails.",
+    "tradeoff": "Route 1: nothing stops or fails, and no identity is invented, but the record can't say who acted, and every part of the software that reads actors must cope with an empty identity."
+  },
+  "plan_why": "The only route is what the actor becomes when TROUPE_ACTOR is unset and there is no login name. The sandbox always sets LOGNAME and USER and cannot unset them, so no command can reach the no-login-name case and none of its results can be seen.",
+  "routes": [
+    [
+      "{kind: human, id: null}",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

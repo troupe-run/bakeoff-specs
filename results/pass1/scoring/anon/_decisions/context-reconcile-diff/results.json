@@ -1,0 +1,875 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "cli.m",
+          "{x: 10, y: 2, z: 3}"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "cli.l",
+          "[a, true]"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "cli"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "hand.m.z"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "hand.l.1"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "hand"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "cli:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "cli.m",
+                "{x: 10, y: 2, z: 3}"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "cli.l",
+                "[a, true]"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "cli"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 17, \"op\": \"remove\", \"path\": \"cli.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:42.720404Z\", \"reason\": null, \"change\": \"f4dac4a2-ca7a-461c-821a-ba91064f750e\"}\n{\"seq\": 18, \"op\": \"remove\", \"path\": \"cli.m.tags.1\", \"old\": \"q\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:42.720404Z\", \"reason\": null, \"change\": \"f4dac4a2-ca7a-461c-821a-ba91064f750e\"}\n{\"seq\": 19, \"op\": \"remove\", \"path\": \"cli.m.tags.2\", \"old\": \"r\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:42.720404Z\", \"reason\": null, \"change\": \"f4dac4a2-ca7a-461c-821a-ba91064f750e\"}\n{\"seq\": 20, \"op\": \"set\", \"path\": \"cli.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:42.720404Z\", \"reason\": null, \"change\": \"f4dac4a2-ca7a-461c-821a-ba91064f750e\"}\n{\"seq\": 21, \"op\": \"set\", \"path\": \"cli.m.z\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:42.720404Z\", \"reason\": null, \"change\": \"f4dac4a2-ca7a-461c-821a-ba91064f750e\"}\n{\"seq\": 22, \"op\": \"remove\", \"path\": \"cli.l.2\", \"old\": \"c\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:43.310993Z\", \"reason\": null, \"change\": \"9b82648c-8a14-4ebe-958c-4d361a912ace\"}\n{\"seq\": 23, \"op\": \"set\", \"path\": \"cli.l.1\", \"old\": \"b\", \"new\": true, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:43.310993Z\", \"reason\": null, \"change\": \"9b82648c-8a14-4ebe-958c-4d361a912ace\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "hand.m.z"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "3\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "hand.l.1"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "true\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "hand"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 24, \"op\": \"remove\", \"path\": \"hand.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:44.494416Z\", \"reason\": null, \"change\": \"1373ad6e-9e0b-44c8-b483-5e047453ee9c\"}\n{\"seq\": 25, \"op\": \"remove\", \"path\": \"hand.m.tags.1\", \"old\": \"q\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:44.494416Z\", \"reason\": null, \"change\": \"1373ad6e-9e0b-44c8-b483-5e047453ee9c\"}\n{\"seq\": 26, \"op\": \"remove\", \"path\": \"hand.m.tags.2\", \"old\": \"r\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:44.494416Z\", \"reason\": null, \"change\": \"1373ad6e-9e0b-44c8-b483-5e047453ee9c\"}\n{\"seq\": 27, \"op\": \"set\", \"path\": \"hand.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:44.494416Z\", \"reason\": null, \"change\": \"1373ad6e-9e0b-44c8-b483-5e047453ee9c\"}\n{\"seq\": 28, \"op\": \"set\", \"path\": \"hand.m.z\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:44.494416Z\", \"reason\": null, \"change\": \"1373ad6e-9e0b-44c8-b483-5e047453ee9c\"}\n{\"seq\": 29, \"op\": \"remove\", \"path\": \"hand.l.2\", \"old\": \"c\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:45.086154Z\", \"reason\": null, \"change\": \"bf6db525-77f7-4f2d-8fdf-080ad03de6dd\"}\n{\"seq\": 30, \"op\": \"set\", \"path\": \"hand.l.1\", \"old\": \"b\", \"new\": true, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:45.086154Z\", \"reason\": null, \"change\": \"bf6db525-77f7-4f2d-8fdf-080ad03de6dd\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:42.131273Z\", \"reason\": null, \"change\": \"e10d605e-6a12-4826-9591-73705ce4514b\"}\n{\"seq\": 17, \"op\": \"remove\", \"path\": \"cli.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:42.720404Z\", \"reason\": null, \"change\": \"f4dac4a2-ca7a-461c-821a-ba91064f750e\"\n[harness: 3020 more bytes not shown]"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "cli.m",
+                "{x: 10, y: 2, z: 3}"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "cli.l",
+                "[a, true]"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "cli"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 17, \"op\": \"set\", \"path\": \"cli.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:48.048956Z\", \"reason\": null, \"change\": \"4a672621-962a-4ba4-91ae-bf91bdd89168\"}\n{\"seq\": 18, \"op\": \"set\", \"path\": \"cli.m.z\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:48.048956Z\", \"reason\": null, \"change\": \"4a672621-962a-4ba4-91ae-bf91bdd89168\"}\n{\"seq\": 19, \"op\": \"remove\", \"path\": \"cli.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:48.048956Z\", \"reason\": null, \"change\": \"4a672621-962a-4ba4-91ae-bf91bdd89168\"}\n{\"seq\": 20, \"op\": \"remove\", \"path\": \"cli.m.tags.1\", \"old\": \"q\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:48.048956Z\", \"reason\": null, \"change\": \"4a672621-962a-4ba4-91ae-bf91bdd89168\"}\n{\"seq\": 21, \"op\": \"remove\", \"path\": \"cli.m.tags.2\", \"old\": \"r\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:48.048956Z\", \"reason\": null, \"change\": \"4a672621-962a-4ba4-91ae-bf91bdd89168\"}\n{\"seq\": 22, \"op\": \"set\", \"path\": \"cli.l.1\", \"old\": \"b\", \"new\": true, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:48.666577Z\", \"reason\": null, \"change\": \"e0efc284-72f6-4b36-99e4-d1b0a272d0a8\"}\n{\"seq\": 23, \"op\": \"remove\", \"path\": \"cli.l.2\", \"old\": \"c\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:48.666577Z\", \"reason\": null, \"change\": \"e0efc284-72f6-4b36-99e4-d1b0a272d0a8\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "hand.m.z"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "3\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "hand.l.1"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "true\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "hand"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 24, \"op\": \"set\", \"path\": \"hand.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:49.826173Z\", \"reason\": null, \"change\": \"14b47e54-d33d-4025-9aec-e2059f2ef4c2\"}\n{\"seq\": 25, \"op\": \"set\", \"path\": \"hand.m.z\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:49.826173Z\", \"reason\": null, \"change\": \"14b47e54-d33d-4025-9aec-e2059f2ef4c2\"}\n{\"seq\": 26, \"op\": \"remove\", \"path\": \"hand.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:49.826173Z\", \"reason\": null, \"change\": \"14b47e54-d33d-4025-9aec-e2059f2ef4c2\"}\n{\"seq\": 27, \"op\": \"remove\", \"path\": \"hand.m.tags.1\", \"old\": \"q\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:49.826173Z\", \"reason\": null, \"change\": \"14b47e54-d33d-4025-9aec-e2059f2ef4c2\"}\n{\"seq\": 28, \"op\": \"remove\", \"path\": \"hand.m.tags.2\", \"old\": \"r\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:49.826173Z\", \"reason\": null, \"change\": \"14b47e54-d33d-4025-9aec-e2059f2ef4c2\"}\n{\"seq\": 29, \"op\": \"set\", \"path\": \"hand.l.1\", \"old\": \"b\", \"new\": true, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:50.407600Z\", \"reason\": null, \"change\": \"9ba34fce-1911-4d12-a92c-76243ccd9b62\"}\n{\"seq\": 30, \"op\": \"remove\", \"path\": \"hand.l.2\", \"old\": \"c\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:50.407600Z\", \"reason\": null, \"change\": \"9ba34fce-1911-4d12-a92c-76243ccd9b62\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:47.432373Z\", \"reason\": null, \"change\": \"0f465551-6262-40c5-bf87-6ab22fde2400\"}\n{\"seq\": 17, \"op\": \"set\", \"path\": \"cli.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:48.048956Z\", \"reason\": null, \"change\": \"4a672621-962a-4ba4-91ae-bf91bdd89168\"}\n{\"seq\": 18\n[harness: 3020 more bytes not shown]"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "cli.m",
+                "{x: 10, y: 2, z: 3}"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "cli.l",
+                "[a, true]"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "cli"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 17, \"op\": \"set\", \"path\": \"cli.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:53.246321Z\", \"reason\": null, \"change\": \"a6a93a2e-77d4-4981-8388-a71434bdf996\"}\n{\"seq\": 18, \"op\": \"set\", \"path\": \"cli.m.z\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:53.246321Z\", \"reason\": null, \"change\": \"a6a93a2e-77d4-4981-8388-a71434bdf996\"}\n{\"seq\": 19, \"op\": \"remove\", \"path\": \"cli.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:53.246321Z\", \"reason\": null, \"change\": \"a6a93a2e-77d4-4981-8388-a71434bdf996\"}\n{\"seq\": 20, \"op\": \"remove\", \"path\": \"cli.m.tags.1\", \"old\": \"q\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:53.246321Z\", \"reason\": null, \"change\": \"a6a93a2e-77d4-4981-8388-a71434bdf996\"}\n{\"seq\": 21, \"op\": \"remove\", \"path\": \"cli.m.tags.2\", \"old\": \"r\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:53.246321Z\", \"reason\": null, \"change\": \"a6a93a2e-77d4-4981-8388-a71434bdf996\"}\n{\"seq\": 22, \"op\": \"set\", \"path\": \"cli.l.1\", \"old\": \"b\", \"new\": true, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:53.759222Z\", \"reason\": null, \"change\": \"dd08eb0f-c0ad-4c12-9820-e049bd124c18\"}\n{\"seq\": 23, \"op\": \"remove\", \"path\": \"cli.l.2\", \"old\": \"c\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:53.759222Z\", \"reason\": null, \"change\": \"dd08eb0f-c0ad-4c12-9820-e049bd124c18\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "hand.m.z"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "3\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "hand.l.1"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "true\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "hand"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 24, \"op\": \"set\", \"path\": \"hand.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:54.771708Z\", \"reason\": null, \"change\": \"e01e5558-d7cf-4f11-8176-b1b95f4c98ee\"}\n{\"seq\": 25, \"op\": \"set\", \"path\": \"hand.m.z\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:54.771708Z\", \"reason\": null, \"change\": \"e01e5558-d7cf-4f11-8176-b1b95f4c98ee\"}\n{\"seq\": 26, \"op\": \"remove\", \"path\": \"hand.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:54.771708Z\", \"reason\": null, \"change\": \"e01e5558-d7cf-4f11-8176-b1b95f4c98ee\"}\n{\"seq\": 27, \"op\": \"remove\", \"path\": \"hand.m.tags.1\", \"old\": \"q\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:54.771708Z\", \"reason\": null, \"change\": \"e01e5558-d7cf-4f11-8176-b1b95f4c98ee\"}\n{\"seq\": 28, \"op\": \"remove\", \"path\": \"hand.m.tags.2\", \"old\": \"r\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:54.771708Z\", \"reason\": null, \"change\": \"e01e5558-d7cf-4f11-8176-b1b95f4c98ee\"}\n{\"seq\": 29, \"op\": \"set\", \"path\": \"hand.l.1\", \"old\": \"b\", \"new\": true, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:55.286383Z\", \"reason\": null, \"change\": \"19ee132c-f5e1-4750-b356-4c4ad0e407e5\"}\n{\"seq\": 30, \"op\": \"remove\", \"path\": \"hand.l.2\", \"old\": \"c\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:55.286383Z\", \"reason\": null, \"change\": \"19ee132c-f5e1-4750-b356-4c4ad0e407e5\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:52.743772Z\", \"reason\": null, \"change\": \"5e7a84cd-3f4a-4405-891c-87ed529980eb\"}\n{\"seq\": 17, \"op\": \"set\", \"path\": \"cli.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:53.246321Z\", \"reason\": null, \"change\": \"a6a93a2e-77d4-4981-8388-a71434bdf996\"}\n{\"seq\": 18\n[harness: 3020 more bytes not shown]"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "cli.m",
+                "{x: 10, y: 2, z: 3}"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "cli.l",
+                "[a, true]"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "cli"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 17, \"op\": \"set\", \"path\": \"cli.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:49:02.976272Z\", \"reason\": null, \"change\": \"ded9841d-cb0c-46ac-9973-fe0c9d989f98\"}\n{\"seq\": 18, \"op\": \"set\", \"path\": \"cli.m.z\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:49:02.976272Z\", \"reason\": null, \"change\": \"ded9841d-cb0c-46ac-9973-fe0c9d989f98\"}\n{\"seq\": 19, \"op\": \"remove\", \"path\": \"cli.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:49:02.976272Z\", \"reason\": null, \"change\": \"ded9841d-cb0c-46ac-9973-fe0c9d989f98\"}\n{\"seq\": 20, \"op\": \"remove\", \"path\": \"cli.m.tags.1\", \"old\": \"q\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:49:02.976272Z\", \"reason\": null, \"change\": \"ded9841d-cb0c-46ac-9973-fe0c9d989f98\"}\n{\"seq\": 21, \"op\": \"remove\", \"path\": \"cli.m.tags.2\", \"old\": \"r\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:49:02.976272Z\", \"reason\": null, \"change\": \"ded9841d-cb0c-46ac-9973-fe0c9d989f98\"}\n{\"seq\": 22, \"op\": \"set\", \"path\": \"cli.l.1\", \"old\": \"b\", \"new\": true, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:49:03.709873Z\", \"reason\": null, \"change\": \"67c2ac45-439b-445d-a4e8-759165f4b181\"}\n{\"seq\": 23, \"op\": \"remove\", \"path\": \"cli.l.2\", \"old\": \"c\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:49:03.709873Z\", \"reason\": null, \"change\": \"67c2ac45-439b-445d-a4e8-759165f4b181\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "hand.m.z"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "3\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "hand.l.1"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "true\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "hand"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 24, \"op\": \"set\", \"path\": \"hand.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:49:04.870351Z\", \"reason\": null, \"change\": \"6c76d848-a6a0-422b-b243-5622baf3d1e4\"}\n{\"seq\": 25, \"op\": \"set\", \"path\": \"hand.m.z\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:49:04.870351Z\", \"reason\": null, \"change\": \"6c76d848-a6a0-422b-b243-5622baf3d1e4\"}\n{\"seq\": 26, \"op\": \"remove\", \"path\": \"hand.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:49:04.870351Z\", \"reason\": null, \"change\": \"6c76d848-a6a0-422b-b243-5622baf3d1e4\"}\n{\"seq\": 27, \"op\": \"remove\", \"path\": \"hand.m.tags.1\", \"old\": \"q\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:49:04.870351Z\", \"reason\": null, \"change\": \"6c76d848-a6a0-422b-b243-5622baf3d1e4\"}\n{\"seq\": 28, \"op\": \"remove\", \"path\": \"hand.m.tags.2\", \"old\": \"r\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:49:04.870351Z\", \"reason\": null, \"change\": \"6c76d848-a6a0-422b-b243-5622baf3d1e4\"}\n{\"seq\": 29, \"op\": \"set\", \"path\": \"hand.l.1\", \"old\": \"b\", \"new\": true, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:49:05.452041Z\", \"reason\": null, \"change\": \"297aa7b8-7afb-43c8-ac3e-f4ea69dfe042\"}\n{\"seq\": 30, \"op\": \"remove\", \"path\": \"hand.l.2\", \"old\": \"c\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:49:05.452041Z\", \"reason\": null, \"change\": \"297aa7b8-7afb-43c8-ac3e-f4ea69dfe042\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:49:02.394823Z\", \"reason\": null, \"change\": \"0f96a53d-0550-4926-9a2a-51c0a9f91cf7\"}\n{\"seq\": 17, \"op\": \"set\", \"path\": \"cli.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:49:02.976272Z\", \"reason\": null, \"change\": \"ded9841d-cb0c-46ac-9973-fe0c9d989f98\"}\n{\"seq\": 18\n[harness: 3020 more bytes not shown]"
+            }
+          ]
+        }
+      ],
+      "route": "One shared diff function for set and reconcile",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "cli.m",
+                "{x: 10, y: 2, z: 3}"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "cli.l",
+                "[a, true]"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "cli"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 17, \"op\": \"set\", \"path\": \"cli.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:37.111143Z\", \"reason\": null, \"change\": \"5e3e30dd-f4d3-4739-a33f-b5189388e2a3\"}\n{\"seq\": 18, \"op\": \"set\", \"path\": \"cli.m.z\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:37.111143Z\", \"reason\": null, \"change\": \"5e3e30dd-f4d3-4739-a33f-b5189388e2a3\"}\n{\"seq\": 19, \"op\": \"remove\", \"path\": \"cli.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:37.111143Z\", \"reason\": null, \"change\": \"5e3e30dd-f4d3-4739-a33f-b5189388e2a3\"}\n{\"seq\": 20, \"op\": \"remove\", \"path\": \"cli.m.tags.1\", \"old\": \"q\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:37.111143Z\", \"reason\": null, \"change\": \"5e3e30dd-f4d3-4739-a33f-b5189388e2a3\"}\n{\"seq\": 21, \"op\": \"remove\", \"path\": \"cli.m.tags.2\", \"old\": \"r\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:37.111143Z\", \"reason\": null, \"change\": \"5e3e30dd-f4d3-4739-a33f-b5189388e2a3\"}\n{\"seq\": 22, \"op\": \"set\", \"path\": \"cli.l.1\", \"old\": \"b\", \"new\": true, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:37.758411Z\", \"reason\": null, \"change\": \"dc2b0c3b-6ee2-42f0-9d57-92775a4f2264\"}\n{\"seq\": 23, \"op\": \"remove\", \"path\": \"cli.l.2\", \"old\": \"c\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:37.758411Z\", \"reason\": null, \"change\": \"dc2b0c3b-6ee2-42f0-9d57-92775a4f2264\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "hand.m.z"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "3\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "hand.l.1"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "true\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "hand"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 24, \"op\": \"set\", \"path\": \"hand.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:39.067608Z\", \"reason\": null, \"change\": \"124feb95-f4c4-43c9-9509-eec83408b89f\"}\n{\"seq\": 25, \"op\": \"set\", \"path\": \"hand.m.z\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:39.067608Z\", \"reason\": null, \"change\": \"124feb95-f4c4-43c9-9509-eec83408b89f\"}\n{\"seq\": 26, \"op\": \"remove\", \"path\": \"hand.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:39.067608Z\", \"reason\": null, \"change\": \"124feb95-f4c4-43c9-9509-eec83408b89f\"}\n{\"seq\": 27, \"op\": \"remove\", \"path\": \"hand.m.tags.1\", \"old\": \"q\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:39.067608Z\", \"reason\": null, \"change\": \"124feb95-f4c4-43c9-9509-eec83408b89f\"}\n{\"seq\": 28, \"op\": \"remove\", \"path\": \"hand.m.tags.2\", \"old\": \"r\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:39.067608Z\", \"reason\": null, \"change\": \"124feb95-f4c4-43c9-9509-eec83408b89f\"}\n{\"seq\": 29, \"op\": \"set\", \"path\": \"hand.l.1\", \"old\": \"b\", \"new\": true, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:39.845782Z\", \"reason\": null, \"change\": \"a88cb70a-b6ad-4d86-8650-583894a68a06\"}\n{\"seq\": 30, \"op\": \"remove\", \"path\": \"hand.l.2\", \"old\": \"c\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:39.845782Z\", \"reason\": null, \"change\": \"a88cb70a-b6ad-4d86-8650-583894a68a06\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:36.460583Z\", \"reason\": null, \"change\": \"e79d1aaf-de31-40c3-a066-aab8da2b1b0d\"}\n{\"seq\": 17, \"op\": \"set\", \"path\": \"cli.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:37.111143Z\", \"reason\": null, \"change\": \"5e3e30dd-f4d3-4739-a33f-b5189388e2a3\"}\n{\"seq\": 18\n[harness: 3020 more bytes not shown]"
+            }
+          ]
+        }
+      ],
+      "route": "Separate small reconcile diff reusing the shared scalar comparison",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "cli.m",
+                "{x: 10, y: 2, z: 3}"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "cli.l",
+                "[a, true]"
+              ],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 1\n    tags:\n      - p\n      - q\n      - r\n    y: 2\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "cli"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 17, \"op\": \"set\", \"path\": \"cli.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:58.075857Z\", \"reason\": null, \"change\": \"184acb6c-437d-4ba2-a16c-20f99af8816b\"}\n{\"seq\": 18, \"op\": \"set\", \"path\": \"cli.m.z\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:58.075857Z\", \"reason\": null, \"change\": \"184acb6c-437d-4ba2-a16c-20f99af8816b\"}\n{\"seq\": 19, \"op\": \"remove\", \"path\": \"cli.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:58.075857Z\", \"reason\": null, \"change\": \"184acb6c-437d-4ba2-a16c-20f99af8816b\"}\n{\"seq\": 20, \"op\": \"remove\", \"path\": \"cli.m.tags.1\", \"old\": \"q\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:58.075857Z\", \"reason\": null, \"change\": \"184acb6c-437d-4ba2-a16c-20f99af8816b\"}\n{\"seq\": 21, \"op\": \"remove\", \"path\": \"cli.m.tags.2\", \"old\": \"r\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:58.075857Z\", \"reason\": null, \"change\": \"184acb6c-437d-4ba2-a16c-20f99af8816b\"}\n{\"seq\": 22, \"op\": \"set\", \"path\": \"cli.l.1\", \"old\": \"b\", \"new\": true, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:58.630835Z\", \"reason\": null, \"change\": \"5ccf3158-570a-4d98-bd28-84e9ddf812ed\"}\n{\"seq\": 23, \"op\": \"remove\", \"path\": \"cli.l.2\", \"old\": \"c\", \"new\": null, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:58.630835Z\", \"reason\": null, \"change\": \"5ccf3158-570a-4d98-bd28-84e9ddf812ed\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - b\n    - c\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "hand.m.z"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "3\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "cli:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\nhand:\n  m:\n    x: 10\n    y: 2\n    z: 3\n  l:\n    - a\n    - true\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "hand.l.1"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "true\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "hand"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 24, \"op\": \"set\", \"path\": \"hand.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:59.727825Z\", \"reason\": null, \"change\": \"2d8bd6ae-c909-4a87-91b6-73063ed3dcc6\"}\n{\"seq\": 25, \"op\": \"set\", \"path\": \"hand.m.z\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:59.727825Z\", \"reason\": null, \"change\": \"2d8bd6ae-c909-4a87-91b6-73063ed3dcc6\"}\n{\"seq\": 26, \"op\": \"remove\", \"path\": \"hand.m.tags.0\", \"old\": \"p\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:59.727825Z\", \"reason\": null, \"change\": \"2d8bd6ae-c909-4a87-91b6-73063ed3dcc6\"}\n{\"seq\": 27, \"op\": \"remove\", \"path\": \"hand.m.tags.1\", \"old\": \"q\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:59.727825Z\", \"reason\": null, \"change\": \"2d8bd6ae-c909-4a87-91b6-73063ed3dcc6\"}\n{\"seq\": 28, \"op\": \"remove\", \"path\": \"hand.m.tags.2\", \"old\": \"r\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:48:59.727825Z\", \"reason\": null, \"change\": \"2d8bd6ae-c909-4a87-91b6-73063ed3dcc6\"}\n{\"seq\": 29, \"op\": \"set\", \"path\": \"hand.l.1\", \"old\": \"b\", \"new\": true, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:49:00.284181Z\", \"reason\": null, \"change\": \"6af8a663-6180-4c7d-a110-221dfa251787\"}\n{\"seq\": 30, \"op\": \"remove\", \"path\": \"hand.l.2\", \"old\": \"c\", \"new\": null, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"file\", \"at\": \"2026-10-10T06:49:00.284181Z\", \"reason\": null, \"change\": \"6af8a663-6180-4c7d-a110-221dfa251787\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"cli.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"cli.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"cli.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"cli.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"cli.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 6, \"op\": \"import\", \"path\": \"cli.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 7, \"op\": \"import\", \"path\": \"cli.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 8, \"op\": \"import\", \"path\": \"cli.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 9, \"op\": \"import\", \"path\": \"hand.m.x\", \"old\": null, \"new\": 1, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 10, \"op\": \"import\", \"path\": \"hand.m.tags.0\", \"old\": null, \"new\": \"p\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 11, \"op\": \"import\", \"path\": \"hand.m.tags.1\", \"old\": null, \"new\": \"q\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 12, \"op\": \"import\", \"path\": \"hand.m.tags.2\", \"old\": null, \"new\": \"r\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 13, \"op\": \"import\", \"path\": \"hand.m.y\", \"old\": null, \"new\": 2, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 14, \"op\": \"import\", \"path\": \"hand.l.0\", \"old\": null, \"new\": \"a\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 15, \"op\": \"import\", \"path\": \"hand.l.1\", \"old\": null, \"new\": \"b\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 16, \"op\": \"import\", \"path\": \"hand.l.2\", \"old\": null, \"new\": \"c\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:48:57.506467Z\", \"reason\": null, \"change\": \"25ae18de-f346-48f9-b043-50a1ccc93604\"}\n{\"seq\": 17, \"op\": \"set\", \"path\": \"cli.m.x\", \"old\": 1, \"new\": 10, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:48:58.075857Z\", \"reason\": null, \"change\": \"184acb6c-437d-4ba2-a16c-20f99af8816b\"}\n{\"seq\": 18\n[harness: 3020 more bytes not shown]"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

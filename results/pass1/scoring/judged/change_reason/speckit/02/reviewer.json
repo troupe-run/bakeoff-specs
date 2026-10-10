@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/diff.patch:44-45 (spec/001 D-1 is marked superseded and points to spec/002 FR-110 – FR-122)",
+    "/judge/diff.patch:1568-1580 (tests/e2e/test_history.py: the renamed test changes its expected history, and a comment cites step 2 FR-120/FR-121 superseding D-1)",
+    "/judge/diff.patch:975 (tasks.md T018 explains removing type=Path from cli.py and adding the error_line refactor)",
+    "/judge/diff.patch:1191-1192 (set_value lock comment cites FR-130)",
+    "/judge/diff.patch:1263-1264 (src/troupe/config/lock.py: a missing .troupe/ falls back to find_config, which contradicts tasks.md T003 at diff.patch:925, which expects a LoadError naming the lock file; no record explains the change)",
+    "/judge/diff.patch:1369-1375 (run_watch takes a `sync` callable instead of the theatre/open_theatre signature in T016 at diff.patch:973; no record explains the change)",
+    "/judge/repo has no .git, so there are no commit messages to check"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/diff.patch:44-45 (spec/001 D-1 is marked superseded and points to spec/002 FR-110 – FR-122)\", \"/judge/diff.patch:1568-1580 (tests/e2e/test_history.py: the renamed test changes its expected history, and a comment cites step 2 FR-120/FR-121 superseding D-1)\", \"/judge/diff.patch:975 (tasks.md T018 explains removing type=Path from cli.py and adding the error_line refactor)\", \"/judge/diff.patch:1191-1192 (set_value lock comment cites FR-130)\", \"/judge/diff.patch:1263-1264 (src/troupe/config/lock.py: a missing .troupe/ falls back to find_config, which contradicts tasks.md T003 at diff.patch:925, which expects a LoadError naming the lock file; no record explains the change)\", \"/judge/diff.patch:1369-1375 (run_watch takes a `sync` callable instead of the theatre/open_theatre signature in T016 at diff.patch:973; no record explains the change)\", \"/judge/repo has no .git, so there are no commit messages to check\"]}\n```\n\nNotes: I checked the diff hunk by hunk. Nearly every hunk traces to a numbered task, FR or research entry in spec/002. The one changed test and the superseded D-1 decision both say what replaced them and why. Two hunks don't match the task records and nothing explains them: the lock's handling of a missing `.troupe/` directory, and the changed `run_watch` signature. I found no commit history, so these records are the only link between the changes and the request.",
+  "score": 3,
+  "status": "ok"
+}

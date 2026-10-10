@@ -1,0 +1,3707 @@
+{
+  "dropped": [],
+  "topics": [
+    {
+      "id": "actor-fallback",
+      "question": "TROUPE_ACTOR unset, no login name",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "1",
+          "proposed_why": "Breaks the owner's stated preference to fail",
+          "reason_given": "Say unknown",
+          "route": "{kind: human, id: null}"
+        }
+      ]
+    },
+    {
+      "id": "actor-validation",
+      "question": "Which commands check TROUPE_ACTOR",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Safe",
+          "reason_given": "Fail early",
+          "route": "Every command, first"
+        }
+      ]
+    },
+    {
+      "id": "atomic-write",
+      "question": "How changed files are written to disk",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Protects user data",
+          "reason_given": "A file is never half-written; a temp file in .troupe/ would not be atomic across filesystems",
+          "route": "Temp file in the same directory, fsync, copy permissions, os.replace; only changed files are touched"
+        },
+        {
+          "labels": [
+            "Arm B"
+          ],
+          "outcome": "Kept",
+          "proposed": "3",
+          "proposed_why": "A crash mid-write can leave a truncated config file",
+          "reason_given": "All texts are computed and verified first, so only an OS error during the write remains",
+          "route": "Write in place with newline='' only when the text changed, no temp files"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "A crash during an in-place write can truncate a user's config",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "bom-handling",
+      "question": "How a UTF-8 BOM is handled",
+      "routes": [
+        {
+          "labels": [
+            "Arm C"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Byte-exact",
+          "reason_given": "ruamel mark indices count a leading U+FEFF",
+          "route": "Decode as plain UTF-8 so the BOM stays in the text and is written back unchanged"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "utf-8-sig shifts offsets by one character",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "both-config-names",
+      "question": "Both troupe.yml and troupe.yaml exist (or neither)",
+      "routes": [
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Unambiguous",
+          "reason_given": "None recorded",
+          "route": "Exit 4 in both cases"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Silently picking one could edit the wrong file",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "change-detection",
+      "question": "How watch notices file changes",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Simple and meets the 2 s promise",
+          "reason_given": "No dependency; catches save-by-rename and same-size edits; mtime resolution misses fast writes",
+          "route": "Poll file bytes with the stdlib every 0.1-0.25 s; no watcher library, no mtime"
+        }
+      ]
+    },
+    {
+      "id": "chomping",
+      "question": "Block-scalar indicators when a block value changes",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Exact and minimal",
+          "reason_given": "Contract silent; the result must read back, and trailing lines must not silently join the value",
+          "route": "Keep the old indicator if it can represent the value, otherwise choose strip/clip/keep from trailing newlines; keep-chomped trailing blank lines count as part of the value"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Removes a needless refusal",
+          "reason_given": "Probes showed it round-trips in every position",
+          "route": "Render a lone newline value as |+ instead of refusing it"
+        }
+      ]
+    },
+    {
+      "id": "collection-set",
+      "question": "Setting a mapping or list onto an existing collection: merge entry-wise or replace the block",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Minimal diff",
+          "reason_given": "Never rewrite what the user did not ask to change",
+          "route": "Merge entry-wise (keep, change, append, delete); unchanged entries keep their bytes and comments"
+        },
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "3",
+          "proposed_why": "Loses comments and formatting on entries whose values did not change",
+          "reason_given": "Those comments described the old entries",
+          "route": "Replace the collection's whole span in the old style; comments inside it go with it"
+        },
+        {
+          "labels": [
+            "Arm C"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "A wholesale rewrite drops comments in unchanged entries",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "comment-column",
+      "question": "Where an end-of-line comment goes when a value's length changes",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Contract rule",
+          "reason_given": "Contract rule; test expectations were corrected to match in several steps",
+          "route": "Keep its column if possible, else one space before #; also when a flow collection grows"
+        },
+        {
+          "labels": [
+            "Arm C"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "The contract states the rule",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "comment-spacing",
+      "question": "Spacing of `# from` comments",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Fine",
+          "reason_given": "Predictable",
+          "route": "One space before #, no alignment"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Minor",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "compact-first-key-delete",
+      "question": "Deleting the first key of a compact `- key: v` item",
+      "routes": [
+        {
+          "labels": [
+            "Arm B"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Supports the edit safely",
+          "reason_given": "Removing up to the next entry's key keeps the column",
+          "route": "Pull the next entry up into the dash line"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Safe refusal",
+          "reason_given": "Conservative",
+          "route": "Exit 3"
+        },
+        {
+          "labels": [
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Edge case",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "complex-keys",
+      "question": "Complex (non-scalar) mapping keys",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Safe",
+          "reason_given": "Conservative",
+          "route": "Exit 4"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Rare; out of contract",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "concurrency-scope",
+      "question": "Which concurrency is in contract",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Reasonable",
+          "reason_given": "Carries over step 1",
+          "route": "One watch plus one other command; editor saves during a set and multiple watches/sets are out of contract"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Scope",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "crlf-text-include-show",
+      "question": "How show prints a text include a literal block cannot hold exactly",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "2",
+          "proposed_why": "The contract says text includes are literal blocks; one owner explicitly rejected this fallback",
+          "reason_given": "A literal block cannot keep CR; data must never be altered",
+          "route": "Double-quoted with escapes"
+        },
+        {
+          "labels": [
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Contract shape; line endings differ",
+          "reason_given": "The contract requires literal blocks; get stays exact",
+          "route": "Literal block with CRLF turned into LF; get keeps the bytes"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Reworked at step 3",
+          "proposed": "4",
+          "proposed_why": "Owner-aligned; read-back excused",
+          "reason_given": "The owner said there is no exception",
+          "route": "Double-quoted at first; reworked so every text include is a literal block of the exact text"
+        }
+      ]
+    },
+    {
+      "id": "dash-values",
+      "question": "Can a VALUE starting with '-' (e.g. -1e3) be passed without --",
+      "routes": [
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept; also governs --reason -x at step 4",
+          "proposed": "4",
+          "proposed_why": "Usable; relies on a private argparse API",
+          "reason_given": "Plain argparse exits 2 on -1e3/-.inf; long options stay options",
+          "route": "Override argparse's private _parse_optional (via a parser subclass) so single-dash VALUEs are positional"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Plain argparse exits 2 on negative numbers",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "digit-segments",
+      "question": "Missing digit-only PATH segments and list appends",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Conservative and contract-bounded",
+          "reason_given": "Digit-only keys are out of contract and the contract describes no new lists",
+          "route": "Missing segments are created only as mapping keys; a missing digit segment exits 5; index == length appends, larger indexes exit 5"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "3",
+          "proposed_why": "Invents list-creation behaviour the contract does not define",
+          "reason_given": "None recorded",
+          "route": "A `0` segment under a missing parent creates a new list; any other index exits 5"
+        }
+      ]
+    },
+    {
+      "id": "duplicate-keys",
+      "question": "Duplicate mapping keys at load",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm C"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Safe",
+          "reason_given": "Ambiguous meaning; the byte-surgical writer cannot handle them",
+          "route": "Exit 4 (load error)"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Last-wins hides which value is real and breaks splicing",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "empty-change",
+      "question": "Saving when nothing changed",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Clean",
+          "reason_given": "A command with no events records no change",
+          "route": "Save and stamp nothing when there are no events"
+        },
+        {
+          "labels": [
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "empty-collections-write",
+      "question": "Writing an empty collection",
+      "routes": [
+        {
+          "labels": [
+            "Arm C",
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Only option",
+          "reason_given": "Block style cannot represent an empty collection",
+          "route": "Write {} or [] in flow form"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Forced by YAML",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "empty-text-include-show",
+      "question": "An empty text include",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Exact",
+          "reason_given": "Literal rule",
+          "route": "`|-`"
+        },
+        {
+          "labels": [
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Edge",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "empty-value-position",
+      "question": "Where an empty value (`key:`) is filled in",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Fixes a real refusal bug",
+          "reason_given": "ruamel puts the empty value's mark on the next line, which made such sets refuse",
+          "route": "Right after the ':' indicator rather than at the parser's mark"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm C",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Implementation detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "entry-deletion",
+      "question": "What deleting entries removes",
+      "routes": [
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Careful",
+          "reason_given": "Avoids deleting comments in multi-line flow text",
+          "route": "Whole block lines (interior comments go, trailing ones stay); a flow deletion only on one line, otherwise exit 3"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "error-output",
+      "question": "How errors map to exit codes and stdout",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Clean",
+          "reason_given": "One place for the code-to-meaning mapping; unexpected exceptions are not caught",
+          "route": "Typed errors each carry an exit code and only the CLI converts them; stdout is buffered and empty on any failure"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Contract-defined",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "event-store",
+      "question": "How history is persisted",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept; event classes were versioned at step 4",
+          "proposed": "5",
+          "proposed_why": "Durable, atomic and inside the allowed state directory",
+          "reason_given": "Required library; one stream gives a total order and gapless numbering; SQLite saves are atomic",
+          "route": "eventsourcing with SQLite under .troupe/, one aggregate per theatre with a fixed id, each command's events saved in one save"
+        }
+      ]
+    },
+    {
+      "id": "file-value",
+      "question": "How a set VALUE that is a file: string is handled (before step 7)",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm F"
+          ],
+          "outcome": "Reworked at step 1 in two arms; superseded at step 7 by writing !literal unless --include",
+          "proposed": "5",
+          "proposed_why": "Contract-faithful and safe",
+          "reason_given": "Refusing narrows the contract; verification keeps it safe. One arm reworked from a blanket refusal, another from comparing against the literal string",
+          "route": "Write it as a string and let the read-back load decide; a missing, cyclic or unloadable target exits 3"
+        },
+        {
+          "labels": [
+            "Arm C"
+          ],
+          "outcome": "Superseded at step 7",
+          "proposed": "4",
+          "proposed_why": "Safe, but how it treats the include meaning is unclear",
+          "reason_given": "Contract silent",
+          "route": "Verify a file: string as the written text"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Writing an include that cannot load would break the configuration",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "flow-replacement-style",
+      "question": "Style of a collection that replaces a flow collection",
+      "routes": [
+        {
+          "labels": [
+            "Arm C"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Contract-faithful",
+          "reason_given": "Owner confirmed",
+          "route": "Block style (the 'new collection value' rule read literally; owner confirmed)"
+        },
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Reasonable",
+          "reason_given": "Block lines cannot appear inside flow",
+          "route": "Render in the old one's style; new collections inside a flow parent use flow"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Edge",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "fold-markers",
+      "question": "Handling ruamel's U+0007 fold markers in folded values",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Correct values",
+          "reason_given": "show was printing them; only folded style is stripped because \\a in double quotes is legitimate",
+          "route": "Strip them from folded values (also under !literal)"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "show could print control characters",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "folded-more-indented",
+      "question": "Editing folded scalars with more-indented lines",
+      "routes": [
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Reworked at step 1 from refusing any edit, then kept",
+          "proposed": "5",
+          "proposed_why": "Refuses exactly what the contract refuses",
+          "reason_given": "Final validation: the contract refuses only adding such a line",
+          "route": "Edit allowed; existing indented runs are kept as opaque units; only adding a new more-indented line exits 3"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Contract-aligned; handling of existing runs left unstated",
+          "reason_given": "None recorded",
+          "route": "Refuse (exit 3) a change that would introduce a more-indented line"
+        },
+        {
+          "labels": [
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "3",
+          "proposed_why": "Refuses legitimate edits the contract permits",
+          "reason_given": "Its paragraphs cannot be split reliably; the owner confirmed",
+          "route": "Refuse any change to a folded value that already has more-indented lines"
+        }
+      ]
+    },
+    {
+      "id": "folded-rewrap",
+      "question": "How a folded scalar is re-wrapped after a change",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Minimal byte change",
+          "reason_given": "Inserting or removing a paragraph leaves the others byte-identical; the contract requires re-wrapping. One arm made re-wrapping reordered paragraphs a required fix; another never breaks next to a TAB",
+          "route": "Align paragraphs with difflib; unchanged paragraphs keep their bytes; changed ones re-wrap at the old width (default 80)"
+        }
+      ]
+    },
+    {
+      "id": "fuzz-testing",
+      "question": "Randomised testing of write-back",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Strong evidence",
+          "reason_given": "Check that each set reads back and CRLF files never gain a bare LF",
+          "route": "Random set sequences or seeded property tests over LF/CRLF, flow, block and includes, with no new dependency"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Write-back has many corners that example tests miss",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "get-reconcile",
+      "question": "Does get reconcile first",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Consistent",
+          "reason_given": "Reads see hand edits the same way",
+          "route": "Yes, like show"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Rule covers it",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "get-show-split",
+      "question": "How get and show divide the work",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Contract",
+          "reason_given": "Scripts keep working through get",
+          "route": "get keeps step-1 scalar show; collections exit 5 with a message naming the path and `troupe config show`; show takes an optional PATH"
+        }
+      ]
+    },
+    {
+      "id": "history-filter",
+      "question": "How history's PATH filter matches",
+      "routes": [
+        {
+          "labels": [
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Correct",
+          "reason_given": "None recorded",
+          "route": "The path itself or a dotted-segment prefix"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Possibly matches `ab` for `a`",
+          "reason_given": "None recorded",
+          "route": "Path prefix (segment awareness not stated)"
+        },
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "2",
+          "proposed_why": "`history a` also returns `ab.*` events",
+          "reason_given": "None recorded",
+          "route": "Plain string prefix; an unknown path prints nothing and exits 0"
+        },
+        {
+          "labels": [
+            "Arm B"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Sensible; matching rule unstated",
+          "reason_given": "None recorded",
+          "route": "No matches print nothing and exit 0"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm C"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Segment-unaware matching returns unrelated paths",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "history-json-escaping",
+      "question": "ASCII escaping in history JSON",
+      "routes": [
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept",
+          "proposed": "n/a",
+          "proposed_why": "Valid either way",
+          "reason_given": "Deterministic",
+          "route": "ASCII escaping"
+        },
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "n/a",
+          "proposed_why": "Valid either way",
+          "reason_given": "None recorded",
+          "route": "ensure_ascii=False with keys in a fixed order"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Both forms are valid JSON",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "history-loads-files",
+      "question": "Does history load the files once a store exists",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm C"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Consistent; history unavailable while files are broken",
+          "reason_given": "It loads in order to import; one load path",
+          "route": "Yes; broken files make history exit 4; at step 7 schema and remote fetches apply to it too"
+        },
+        {
+          "labels": [
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "History stays available",
+          "reason_given": "It reports only what was recorded",
+          "route": "No; once state exists it reads recorded events without loading"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Minor",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "history-reconcile",
+      "question": "Does history reconcile",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Contract",
+          "reason_given": "Importing is not reconciling",
+          "route": "Never reconciles; still imports a never-imported theatre"
+        }
+      ]
+    },
+    {
+      "id": "history-source-field",
+      "question": "Add a source field to tell hand edits from sets",
+      "routes": [
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "Superseded at step 4 by via",
+          "proposed": "n/a",
+          "proposed_why": "Superseded",
+          "reason_given": "Not asked for",
+          "route": "No source field"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Superseded",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "import-timing",
+      "question": "When the first import happens, and whether it survives a later failure",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Clear rule with no state left behind on a load failure",
+          "reason_given": "The theatre was read successfully; conservative reading of 'the first command imports'",
+          "route": "The first command whose configuration loads imports it; the import stands even if that command then exits 2, 3 or 5; a load failure records nothing"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Same rule but the failure case is left unpinned",
+          "reason_given": "None recorded",
+          "route": "The first command against a theatre imports it (persistence after a later failure not stated)"
+        }
+      ]
+    },
+    {
+      "id": "include-resolution",
+      "question": "Include kind, relative paths and cycles",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Contract rules",
+          "reason_given": "Follows the contract; cycles detected through real paths",
+          "route": "YAML include by .yml/.yaml suffix (case-sensitive), else text; paths relative to the including file; cycles and missing or non-UTF-8 targets exit 4"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Contract-defined",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "include-root-replace",
+      "question": "What set does when PATH's whole value comes from an include",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm D"
+          ],
+          "outcome": "Kept; extended at step 5 to mapping-form includes",
+          "proposed": "4",
+          "proposed_why": "Safe; refusing a no-op is a little unfriendly",
+          "reason_given": "Follows rule 4 conservatively",
+          "route": "Exit 3 always, even when the new value is identical (including changes through an ancestor)"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Safe and idempotent",
+          "reason_given": "A no-op wins over a refusal",
+          "route": "Exit 3 only when the value would change; an identical value is a no-op"
+        },
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Reasonable scoping; the no-op case is left open",
+          "reason_given": "None recorded",
+          "route": "Rule 4 applies only to the root of a YAML include; a text include is edited in place"
+        },
+        {
+          "labels": [
+            "Arm C"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Contract rule 4 needs a definite answer",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "indent-detection",
+      "question": "How the indent step and sequence offset are chosen for new content",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept; one arm made detection anchor-aware at step 6",
+          "proposed": "5",
+          "proposed_why": "Follows the file",
+          "reason_given": "Follow the user's own layout; the contract does not say how to detect it",
+          "route": "Detect from the file's existing nesting, defaulting to 2"
+        }
+      ]
+    },
+    {
+      "id": "insert-position",
+      "question": "Where new entries go relative to trailing comments and blank lines",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Follows the contract",
+          "reason_given": "Keeps the next section's visual grouping; only a less-indented comment ends a collection",
+          "route": "After trailing comments indented at least to the entry column; blank lines stay below the new entry"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Contract rule",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "layout-refusals",
+      "question": "Refusing unusual layouts at load",
+      "routes": [
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Safe, slightly strict",
+          "reason_given": "None recorded",
+          "route": "Block sequences whose dash layout does not match the parsed items exit 4"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "leading-space-literal",
+      "question": "Leading spaces in literal blocks",
+      "routes": [
+        {
+          "labels": [
+            "Arm C",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Correct",
+          "reason_given": "YAML infers indentation",
+          "route": "Indicator only when needed"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Risk at root",
+          "reason_given": "Literal 4.4 broke compact items",
+          "route": "Always `2`"
+        },
+        {
+          "labels": [
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Loses readability",
+          "reason_given": "Literal block cannot hold it",
+          "route": "Double-quote instead"
+        },
+        {
+          "labels": [
+            "Arm B"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Edge",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "legacy-via",
+      "question": "via for old events",
+      "routes": [
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "In vocabulary",
+          "reason_given": "Owner ok",
+          "route": "cli"
+        },
+        {
+          "labels": [
+            "Arm B"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "In vocabulary",
+          "reason_given": "Pairs unknown",
+          "route": "file"
+        },
+        {
+          "labels": [
+            "Arm C",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "2",
+          "proposed_why": "Outside vocabulary",
+          "reason_given": "Unknown",
+          "route": "null"
+        },
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "2",
+          "proposed_why": "Undefined",
+          "reason_given": "Invent nothing",
+          "route": "No migration"
+        }
+      ]
+    },
+    {
+      "id": "line-endings",
+      "question": "Which line ending new or rewritten lines use",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Good; mixed-ending files get the first ending",
+          "reason_given": "Deterministic; the same rule decides whether a text include 'used CRLF'",
+          "route": "Taken from the file's first line break; LF for empty or LF-only files"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Also right for mixed files",
+          "reason_given": "Minimal change that follows the user's own layout",
+          "route": "Copy the preceding line's ending"
+        },
+        {
+          "labels": [
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Works; a single stray CRLF switches the whole file's insertions",
+          "reason_given": "None recorded",
+          "route": "CRLF if any CRLF appears in the file, else LF"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Mixed endings corrupt CRLF files",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "literal-comment",
+      "question": "Where a literal block's source comment goes",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Forced",
+          "reason_given": "Content lines would absorb it",
+          "route": "On the `|` header line"
+        }
+      ]
+    },
+    {
+      "id": "literal-line-diff",
+      "question": "How existing literal blocks are edited",
+      "routes": [
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Minimal diff",
+          "reason_given": "None recorded",
+          "route": "Line diff with difflib so unchanged lines keep their bytes"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "locate-and-lock",
+      "question": "Locating the config relative to taking the lock",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm D",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "No state",
+          "reason_given": "A missing config exits 4 with nothing created",
+          "route": "Locate the config first, then lock"
+        },
+        {
+          "labels": [
+            "Arm C"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Handles renames",
+          "reason_given": "Handles a root file renamed in between",
+          "route": "Lock, then re-locate under the lock"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "lock-failure",
+      "question": "Errors opening or locking",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Clear",
+          "reason_given": "Consistent with store errors",
+          "route": "Exit 4 naming .troupe or the lock file; keep step-1 missing-config errors"
+        },
+        {
+          "labels": [
+            "Arm C",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Network filesystems may not support flock",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "lock-mechanism",
+      "question": "How commands and watch are serialised",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Correct, no extra state",
+          "reason_given": "Creates no file; the kernel releases it on death; SQLite cannot cover the file writes",
+          "route": "Exclusive blocking fcntl.flock on the .troupe directory itself; no lock file"
+        },
+        {
+          "labels": [
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Works; leaves an extra file",
+          "reason_given": "Groups it with the store's files; falls back to read-only open",
+          "route": "fcntl.flock on a lock file in .troupe/"
+        }
+      ]
+    },
+    {
+      "id": "lock-scope",
+      "question": "What the lock covers",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Exactly-once holds",
+          "reason_given": "So watch never sees a write-back before its events exist; history may import",
+          "route": "Every command (history too) takes it; set holds it through load, reconcile, write and record; watch holds it only per reconcile"
+        }
+      ]
+    },
+    {
+      "id": "lock-wait",
+      "question": "Wait or fail when the lock is held",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Simple; hang risk accepted",
+          "reason_given": "A hung process blocking others is acceptable for small configs",
+          "route": "Block without timeout; a nested acquire in one process raises"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "login-lookup",
+      "question": "Login source",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Right",
+          "reason_given": "Works without tty",
+          "route": "getpass.getuser"
+        }
+      ]
+    },
+    {
+      "id": "long-keys",
+      "question": "Keys over 1024 chars",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm C"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Fine",
+          "reason_given": "Out of contract",
+          "route": "Leave unhandled"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Unrealistic",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "malformed-path",
+      "question": "Malformed PATH such as `a..b` or an empty PATH",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Right exit code, no side effects",
+          "reason_given": "The argument is malformed, not missing; no state is created",
+          "route": "Exit 2 before the theatre is opened (history too), with a clear message"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Could create empty-string keys",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "multi-file-set",
+      "question": "How a set that changes several files is applied",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Good, but a failure between file writes leaves a partial change",
+          "reason_given": "Only OS errors during the write itself remain",
+          "route": "Compute and verify every file first, then write each; nothing is written if any check fails"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Reworked at step 1, then kept",
+          "proposed": "5",
+          "proposed_why": "Closest to all-or-nothing",
+          "reason_given": "Refusing contradicted the contract rule that only required bytes change; rollback keeps the set all-or-nothing",
+          "route": "Refuse multi-file sets, reworked within step 1 to: verify all, write each atomically, roll back on failure, and name any file that could not be restored"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Partial multi-file writes are a real corruption path",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "multiline-show",
+      "question": "Other multi-line strings in show",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Good",
+          "reason_given": "Readable and exact",
+          "route": "Literal block when it can hold them exactly, else double-quoted"
+        }
+      ]
+    },
+    {
+      "id": "multiline-write",
+      "question": "How set writes a new multi-line string",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Readable and exact",
+          "reason_given": "YAML forbids block scalars in flow; the result must read back. One arm also double-quotes when a literal would swallow deeper-indented comments; another fixed a bug that sent all multi-line strings to double quotes",
+          "route": "Literal block in block context; double-quoted in flow context or when a literal block cannot hold it exactly"
+        }
+      ]
+    },
+    {
+      "id": "net-edits",
+      "question": "Quick successive edits",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Honest",
+          "reason_given": "A diff against recorded state is net",
+          "route": "May be recorded as their net difference"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Implicit",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "new-entry-style",
+      "question": "Which quoting style new keys and items copy",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Follows the user's style",
+          "reason_given": "Contract rule; 'preceding sibling' means an entry in the written file",
+          "route": "Copy the preceding sibling's style (after a merge deletes the last entry, the last remaining one), else the minimal style"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "The contract asks new entries to follow their siblings",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "no-state-on-load-failure",
+      "question": "Is the state store created when the configuration fails to load",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "No surprise state",
+          "reason_given": "A failing load must create no state; one arm reworked its step-2 sync design to keep this",
+          "route": "Open or create the store only after the configuration loads and arguments are valid"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "A broken config could leave a .troupe state file behind",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "nonfinite-history",
+      "question": "How non-finite floats appear in history JSON",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Valid and unambiguous",
+          "reason_given": "JSON Lines required; null would lose the value",
+          "route": "YAML-style strings .inf/-.inf/.nan (encoded with allow_nan=False)"
+        },
+        {
+          "labels": [
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Python's default emits Infinity/NaN, which is invalid JSON",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "nonstring-keys",
+      "question": "Quoting new keys that would read back as non-strings",
+      "routes": [
+        {
+          "labels": [
+            "Arm B"
+          ],
+          "outcome": "Kept; at step 6 a new key named << is also written quoted",
+          "proposed": "5",
+          "proposed_why": "General and correct",
+          "reason_given": "Unquoted, it would read back as a boolean or number",
+          "route": "Quote any new key whose plain form would not read back as a string"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept; the show renderer later applied the general rule",
+          "proposed": "4",
+          "proposed_why": "Fixes the known case only",
+          "reason_given": "The loader refuses a plain <<",
+          "route": "Quote keys spelled << (found in review)"
+        },
+        {
+          "labels": [
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "A plain key like `true` reads back as a boolean",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "pre-step6-anchors-tags",
+      "question": "Anchors, aliases, merge keys and tags at load before step 6",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm C"
+          ],
+          "outcome": "Replaced at step 6 by full alias support",
+          "proposed": "5",
+          "proposed_why": "Safe refusal",
+          "reason_given": "Out of contract until step 6; writes through an alias would change other paths",
+          "route": "Anchors, aliases, merge keys and tags exit 4"
+        },
+        {
+          "labels": [
+            "Arm B"
+          ],
+          "outcome": "Replaced at step 6",
+          "proposed": "5",
+          "proposed_why": "Safe and slightly more capable",
+          "reason_given": "Conservative choice",
+          "route": "Honour explicit core tags; other tags, anchors and aliases exit 4"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "3",
+          "proposed_why": "Silently drops explicit typing the user wrote",
+          "reason_given": "None recorded",
+          "route": "Ignore tags: plain scalars always resolved, quoted or block scalars stay strings"
+        },
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "At step 6 this arm found silent writes through aliases (exit 0) and fixed them",
+          "proposed": "2",
+          "proposed_why": "Allowed a silent shared-value corruption until step 6",
+          "reason_given": "Outside the contract",
+          "route": "Leave anchors/aliases/merge keys out of contract, undefined and untested; do not flag loss of explicit tags"
+        },
+        {
+          "labels": [
+            "Arm D"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Writing through an alias silently changes other paths",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "reconcile-baseline",
+      "question": "What the files are compared against to find hand edits",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Exactly-once with no self-write bookkeeping",
+          "reason_given": "Idempotent; catches offline edits; a set's own write-back then shows no difference",
+          "route": "The recorded configuration (projection of the events), diffed leaf by leaf against the loaded files"
+        }
+      ]
+    },
+    {
+      "id": "reconcile-diff",
+      "question": "Share set's leaf diff with reconcile",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "One definition",
+          "reason_given": "A set and a hand edit with the same effect record the same events",
+          "route": "One shared diff function for set and reconcile"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Two diff paths to maintain",
+          "reason_given": "Reconcile's 'before' is a path map with a different remove order",
+          "route": "Separate small reconcile diff reusing the shared scalar comparison"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "reconcile-persist",
+      "question": "Do reconcile events stand when the command then fails",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Truthful history",
+          "reason_given": "The hand edit really happened; matches import",
+          "route": "Yes; saved in their own save before the command body"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "4",
+          "proposed_why": "Likely the same behaviour, but unstated",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "reconcile-remove-order",
+      "question": "Order of remove events in a reconcile",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Stable",
+          "reason_given": "The old document is gone; reuse diff order",
+          "route": "Projection order (when leaves were first recorded)"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Stable",
+          "reason_given": "Closest stable equivalent of the old document order",
+          "route": "Order of the seq that created each leaf"
+        },
+        {
+          "labels": [
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Underspecified",
+          "reason_given": "Same order as set",
+          "route": "Sets in document order, then removes (order unstated)"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "reconcile-trigger",
+      "question": "Where the code decides which commands reconcile",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Safe default",
+          "reason_given": "A new command cannot forget to reconcile",
+          "route": "One session/open function decides for every command (default-on flag, a command list, or a required keyword)"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Works; easier to miss",
+          "reason_given": "None recorded",
+          "route": "A store reconcile method called before every command except history"
+        }
+      ]
+    },
+    {
+      "id": "replay-tolerance",
+      "question": "Replaying old remove events for unknown paths",
+      "routes": [
+        {
+          "labels": [
+            "Arm C"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Robust",
+          "reason_given": "Step-1 removes may name unrecorded paths",
+          "route": "pop(path, None)"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "root-shape",
+      "question": "Empty or non-mapping root files",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Sensible defaults",
+          "reason_given": "Conservative and deterministic",
+          "route": "An empty or comment-only file is an empty mapping and can be written into; a non-mapping root (including ~ or ---) exits 4"
+        },
+        {
+          "labels": [
+            "Arm C"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Every relevant arm decided this",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "scalar-print-format",
+      "question": "How get/show print scalars",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Simple and exact",
+          "reason_given": "One arm removed large-int digit-limit handling as needless",
+          "route": "null/true/false lower-case, floats via repr, ints via str, one trailing newline"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Contract-defined",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "scalar-quoting",
+      "question": "Which quoting style a changed or new string gets",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept; one arm fixed its printable check (NBSP, emoji) after review",
+          "proposed": "5",
+          "proposed_why": "Contract rule",
+          "reason_given": "The contract's fallback order",
+          "route": "Keep the existing style if it can hold the value; otherwise plain, then single, then double"
+        }
+      ]
+    },
+    {
+      "id": "scalar-resolver",
+      "question": "Use the library's resolver or an own YAML 1.2 core-schema resolver for plain scalars",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Typing exactly matches the contract",
+          "reason_given": "The library resolver reads dates as timestamps and 1_000 as an int, which departs from the 1.2 core schema; one place holds the typing rules",
+          "route": "Own YAML 1.2 core-schema resolver for both file values and VALUE"
+        }
+      ]
+    },
+    {
+      "id": "scalar-to-collection",
+      "question": "A scalar with an end-of-line comment replaced by a block collection",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept; at step 5 the include conversion follows the contract example instead",
+          "proposed": "5",
+          "proposed_why": "Contract rule",
+          "reason_given": "Matches the rule for keys",
+          "route": "Value removed; comment stays at its column on the key (or dash) line; the collection goes below; list items become compact"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Contract-defined",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "seq-numbering",
+      "question": "How a history line's seq is derived",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Simple and stable",
+          "reason_given": "Gapless and starting at 1 by construction, with no counter to maintain",
+          "route": "seq = originator_version - 1; the created/started event is not a history line"
+        },
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Correct, but the whole log is rebuilt in memory",
+          "reason_given": "None recorded",
+          "route": "Keep the history log in the aggregate's state and number seq by position in that log"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Any gapless scheme on one aggregate works",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "set-below-scalar",
+      "question": "Setting a path below a null or scalar parent",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "No silent data loss",
+          "reason_given": "Conservative; never turn a scalar into a mapping",
+          "route": "Exit 5; a scalar or null parent is not a mapping (a bare `key:` counts as null)"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Turning a scalar into a mapping silently loses data",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "set-event-order",
+      "question": "Which events a set records and in what order",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm D",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Deterministic and readable",
+          "reason_given": "Deterministic; the same order is reused by reconcile",
+          "route": "Leaf diff of before/after; set events in new document order, then remove events in old document order"
+        },
+        {
+          "labels": [
+            "Arm B"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Deterministic; the order is arbitrary but fine",
+          "reason_given": "None recorded",
+          "route": "Leaf diff; remove events in old document order before set events"
+        },
+        {
+          "labels": [
+            "Arm C",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Correct events; ordering left implicit",
+          "reason_given": "None recorded",
+          "route": "Leaf diff with one event per changed/new/removed leaf; order not pinned"
+        }
+      ]
+    },
+    {
+      "id": "settle-rule",
+      "question": "Wait for a changing file to settle before reconciling",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Cheap protection",
+          "reason_given": "Avoid recording a file an editor emptied mid-save",
+          "route": "Reconcile only after the bytes read the same on consecutive checks"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm C",
+            "Arm D",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "4",
+          "proposed_why": "Editors mostly save atomically; half-written files are rare",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "shared-include-writes",
+      "question": "Writes into a file included at more than one place",
+      "routes": [
+        {
+          "labels": [
+            "Arm C",
+            "Arm E"
+          ],
+          "outcome": "Kept; one arm also refuses --in-include in that case at step 5",
+          "proposed": "3",
+          "proposed_why": "No contract rule refuses such writes (as one owner ruled)",
+          "reason_given": "Cautious choice on a contract gap; the change alters every includer",
+          "route": "Refused with exit 3"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Reworked at step 5",
+          "proposed": "5",
+          "proposed_why": "Owner-confirmed reading",
+          "reason_given": "The owner said no contract rule refuses such a write",
+          "route": "Refused at step 1, reworked at step 5 to follow the placement rules (conflicting values exit 3)"
+        },
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Matches the contract",
+          "reason_given": "Step 1 and --in-include need such writes",
+          "route": "Allowed; only override writes are matched by reference so writes into a twice-included file keep working"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm D"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Such writes change every includer",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "show-collections-step1",
+      "question": "show on a mapping or list in step 1",
+      "routes": [
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Replaced at step 3 by get/show",
+          "proposed": "5",
+          "proposed_why": "Contract behaviour",
+          "reason_given": "None recorded",
+          "route": "Exit 5"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "The contract fixes it",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "show-emitter",
+      "question": "How show produces YAML",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Exact control",
+          "reason_given": "A dumper hides which line holds which scalar and decides quoting itself",
+          "route": "Own emitter over the source-mapped tree; lines tagged with sources; --sources only adds comments"
+        }
+      ]
+    },
+    {
+      "id": "show-file-strings",
+      "question": "Strings starting with file: in show",
+      "routes": [
+        {
+          "labels": [
+            "Arm B"
+          ],
+          "outcome": "Kept",
+          "proposed": "3",
+          "proposed_why": "Reads back wrong",
+          "reason_given": "Not in contract",
+          "route": "Print plain"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Step 7",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "show-floats",
+      "question": "Floats in YAML output",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm C",
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Correct",
+          "reason_given": "Reads back as floats; one arm also adds .0",
+          "route": "repr when finite; .inf/-.inf/.nan otherwise"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "show-layout",
+      "question": "show's YAML layout",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Clear",
+          "reason_given": "Common style",
+          "route": "2-space indent, compact items, {} and []"
+        }
+      ]
+    },
+    {
+      "id": "show-quoting",
+      "question": "Quoting in show output",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Shared",
+          "reason_given": "One quoting rule",
+          "route": "set's plain/single/double chain; keys plain only when they read back as strings"
+        },
+        {
+          "labels": [
+            "Arm C"
+          ],
+          "outcome": "Reworked at step 3",
+          "proposed": "5",
+          "proposed_why": "Safe for any reader",
+          "reason_given": "Review found 1.1 misreads",
+          "route": "Plain only if both YAML 1.2 and 1.1 readers read it back unchanged"
+        }
+      ]
+    },
+    {
+      "id": "show-readback",
+      "question": "How show output is checked",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Good",
+          "reason_given": "Pure renderer",
+          "route": "Round-trip tests"
+        }
+      ]
+    },
+    {
+      "id": "show-scalar",
+      "question": "show of a scalar without --sources",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Contract",
+          "reason_given": "Holds by construction",
+          "route": "Printed exactly as get prints it through the same function"
+        }
+      ]
+    },
+    {
+      "id": "source-label",
+      "question": "How a source file is named",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Familiar",
+          "reason_given": "Users recognise what they wrote; matches watch",
+          "route": "Lexical path relative to the theatre with / separators; ../ outside; symlinks not resolved"
+        },
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "Reworked at step 3",
+          "proposed": "4",
+          "proposed_why": "Accurate; may surprise",
+          "reason_given": "Names the file set would write",
+          "route": "Real paths with symlinks resolved, relative to the resolved theatre (reworked from lexical during planning)"
+        }
+      ]
+    },
+    {
+      "id": "source-of-truth",
+      "question": "Are the files or the event store the source of current values",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept; the 'hand edits produce no events' part was superseded by reconcile at step 2 in every arm",
+          "proposed": "5",
+          "proposed_why": "Cannot hide or lose a user's edit",
+          "reason_given": "A projection would show stale values after a hand edit; matches 'importing is not reconciling'",
+          "route": "Files on disk are authoritative; show and set read the files; the store is change history only"
+        }
+      ]
+    },
+    {
+      "id": "sources-scalar",
+      "question": "show PATH --sources on a scalar",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Consistent",
+          "reason_given": "A bare value cannot carry a source",
+          "route": "One-scalar YAML with the comment; a text include becomes a literal block"
+        }
+      ]
+    },
+    {
+      "id": "sources-scope",
+      "question": "Which commands accept --sources",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Contract",
+          "reason_given": "Contract",
+          "route": "show only; get --sources exits 2"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Contract",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "store-environment",
+      "question": "Should the event store read eventsourcing settings from the process environment",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm C"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Deterministic storage location and behaviour",
+          "reason_given": "Keeps the process environment untouched; eventsourcing otherwise still reads user variables",
+          "route": "Configure the store through explicit constructor settings and ignore the process environment"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "eventsourcing honours environment variables, so a user's shell could move or change the store",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "store-errors",
+      "question": "How store failures and corrupt history are reported",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Clear errors",
+          "reason_given": "No tracebacks; a damaged row gives exit 4. One arm accepted a traceback for a step-4 row missing a field",
+          "route": "Exit 4 naming the store (sqlite, persistence and OS errors; corrupt or unknown lineage values)"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Tracebacks instead of exit codes",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "store-lifetime",
+      "question": "Should the history store be closed explicitly at the end of each command",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm C"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Clean end state at no cost",
+          "reason_given": "A deterministic, testable end state; dropping the last reference closes the pool unpredictably",
+          "route": "One store instance per command, closed explicitly at the end so no -wal/-shm files remain"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "4",
+          "proposed_why": "Leftover -wal/-shm files are a minor cost",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "tab-quoting",
+      "question": "How a string containing a TAB is quoted",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Follows the contract order",
+          "reason_given": "The contract puts single before double quotes; a single-quoted TAB is valid",
+          "route": "Single quotes (tests changed from the double-quoted expectation)"
+        },
+        {
+          "labels": [
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "The contract's fallback order decides it",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "test-strategy",
+      "question": "How the CLI is tested",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Appropriate",
+          "reason_given": "Prove the entry point; every scenario maps to a test",
+          "route": "Byte-exact CLI tests against temporary theatres (in-process or subprocess), plus a real `uv run troupe` smoke test"
+        }
+      ]
+    },
+    {
+      "id": "text-include-values",
+      "question": "What VALUE types may be written into a text include",
+      "routes": [
+        {
+          "labels": [
+            "Arm C"
+          ],
+          "outcome": "Reworked at step 1, then kept",
+          "proposed": "4",
+          "proposed_why": "Follows the owner's reading of the contract",
+          "reason_given": "The product owner ruled that the contract gives no such refusal",
+          "route": "Any VALUE on an LF target (non-strings written as typed); refuse only a non-string for a CRLF target. Reworked from an early draft that refused mappings and lists"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "3",
+          "proposed_why": "Refuses values that, by the owner's reading, the contract allows",
+          "reason_given": "None recorded",
+          "route": "Only strings (otherwise exit 3); CRLF endings of the target are preserved"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Non-string values into text files need a rule",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "text-include-verify",
+      "question": "How the read-back check compares text-include content in CRLF files",
+      "routes": [
+        {
+          "labels": [
+            "Arm B"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Exact check",
+          "reason_given": "Verification failed because the expected value was not CRLF-converted",
+          "route": "Compare against a CRLF-converted expectation"
+        },
+        {
+          "labels": [
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Exact check",
+          "reason_given": "None recorded",
+          "route": "Compare against the raw content written"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "3",
+          "proposed_why": "Hides a wrong line ending, which is exactly what it should catch",
+          "reason_given": "The check tripped on CRLF text includes",
+          "route": "Normalise line endings before comparing"
+        },
+        {
+          "labels": [
+            "Arm A",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Internal detail of the verifier",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "theatre-option",
+      "question": "Where --theatre is accepted and its default",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm D",
+            "Arm F"
+          ],
+          "outcome": "Kept (one arm reworked at step 1)",
+          "proposed": "5",
+          "proposed_why": "Contract form",
+          "reason_given": "Matches the contract form; requirements must not be invented",
+          "route": "Only after the subcommand, defaulting to the current directory. One arm added it before the subcommand, then removed it"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Harmless extra surface not in the contract",
+          "reason_given": "None recorded",
+          "route": "Both at the config level and the subcommand level, defaulting to `.`"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Contract-defined",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "typed-equality",
+      "question": "What counts as equal for no-op and change detection",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Precise",
+          "reason_given": "Same definition used by set and reconcile",
+          "route": "Type-strict: 1, 1.0, true and '1' differ; NaN equals NaN; a type change counts as a change"
+        },
+        {
+          "labels": [
+            "Arm B"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Most arms decided it",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "unicode-breaks",
+      "question": "Writing U+2028/U+2029/U+0085/U+FEFF",
+      "routes": [
+        {
+          "labels": [
+            "Arm C",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept; one arm left a read-back difference with ruamel for the owner",
+          "proposed": "5",
+          "proposed_why": "Safe and readable",
+          "reason_given": "ruamel's scanner treats them as line breaks; the contract asks for them literal",
+          "route": "Only inside double quotes (written literally there)"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept",
+          "proposed": "3",
+          "proposed_why": "Likely mis-reads",
+          "reason_given": "Pre-existing write-back behaviour; changing it would change set's bytes",
+          "route": "Leave strings with U+FEFF in plain or single quotes"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm D"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Rare",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "value-spelling",
+      "question": "How non-string scalars are spelled when written",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Writes what the user typed",
+          "reason_given": "Minimal surprise; one definition per style",
+          "route": "Keep VALUE's own spelling (floats fall back to repr; .inf/.nan for non-finite)"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Correct; may respell what the user typed",
+          "reason_given": "Quoting a non-string would change its type",
+          "route": "Canonical plain form (true/false, null, decimal int, repr(float), .inf/.nan)"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Either is valid YAML",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "value-syntax",
+      "question": "Which VALUE forms set accepts (empty, block collections, tags, anchors)",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm D",
+            "Arm F"
+          ],
+          "outcome": "Kept; anchors/aliases still exit 2 at step 6 and tags at step 7",
+          "proposed": "5",
+          "proposed_why": "Strict and predictable",
+          "reason_given": "The contract says a single flow node; accepting more invents behaviour. A bare `a: b` must be quoted",
+          "route": "Exactly one scalar or flow node; empty input, block collections, multi-document, tags and anchors exit 2"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "2",
+          "proposed_why": "An empty argument from a script bug silently writes null",
+          "reason_given": "None recorded",
+          "route": "Compose VALUE as a single flow-sequence item; empty or whitespace-only VALUE becomes null"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "Unclear VALUE parsing can silently write the wrong thing",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "verify-before-write",
+      "question": "How a set's edited text is checked before anything is written",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept; later widened with allowances for include conversion, aliases and schema checks",
+          "proposed": "5",
+          "proposed_why": "A general safety net that catches collateral damage",
+          "reason_given": "Turns any renderer bug into a refusal instead of a corrupted file; the loader is the single definition of meaning",
+          "route": "Reload the whole configuration from the edited in-memory texts; require PATH to read back as VALUE and nothing else to change; otherwise exit 3 with no write"
+        },
+        {
+          "labels": [
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "3",
+          "proposed_why": "Misses accidental changes to other values, the main way a splice goes wrong",
+          "reason_given": "A formatting bug then becomes a refused write, not a corrupted config",
+          "route": "Re-parse the edited text and compare only the value at PATH with VALUE"
+        }
+      ]
+    },
+    {
+      "id": "watch-baseline",
+      "question": "What watch compares new bytes against",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "No gap",
+          "reason_given": "No edit can slip between load and the watching line. One arm reworked from a pre-load snapshot after review",
+          "route": "The exact texts the last load read (all includes plus both root names, absent files as None), rebuilt after each sync"
+        }
+      ]
+    },
+    {
+      "id": "watch-dir",
+      "question": "What <dir> the watching line shows",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Matches the input",
+          "reason_given": "Resolving would turn /var into /private/var on macOS",
+          "route": "--theatre or TROUPE_THEATRE as given; the absolute cwd when neither is set"
+        },
+        {
+          "labels": [
+            "Arm D"
+          ],
+          "outcome": "Kept",
+          "proposed": "3",
+          "proposed_why": "`watching .` is uninformative",
+          "reason_given": "None recorded",
+          "route": "As given, falling back to '.'"
+        },
+        {
+          "labels": [
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "The contract line should match the user's input",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "watch-readiness",
+      "question": "When the watching line is printed",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "True promise",
+          "reason_given": "Every change after the line is seen",
+          "route": "After handlers are installed and the initial import or reconcile; skipped if a stop came during start"
+        },
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "watch-runtime-errors",
+      "question": "A config that breaks while watch runs",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept; at step 7 one arm retries failed fetches only after a local change",
+          "proposed": "5",
+          "proposed_why": "Robust",
+          "reason_given": "Editors save partial files; retrying catches new include targets. One arm did not state de-duplication",
+          "route": "Report on stderr (each distinct message once), record nothing, retry every tick, resume when it loads"
+        }
+      ]
+    },
+    {
+      "id": "watch-signals",
+      "question": "SIGINT/SIGTERM handling",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Clean",
+          "reason_given": "Never a partial transaction or traceback",
+          "route": "Handlers only set a flag/Event; an in-progress reconcile finishes; exit 0; previous handlers restored"
+        }
+      ]
+    },
+    {
+      "id": "watch-start-failure",
+      "question": "Unloadable config when watch starts",
+      "routes": [
+        {
+          "labels": [
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Consistent",
+          "reason_given": "Like every other command; the line is a promise",
+          "route": "Exit 4 without the line"
+        },
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Contract exit codes",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "watch-stdout",
+      "question": "What watch prints to stdout",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Contract",
+          "reason_given": "The contract promises one line",
+          "route": "Only the watching line; diagnostics on stderr; events visible through history"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Contract",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "watch-store-errors",
+      "question": "Store failures during watch",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Robust",
+          "reason_given": "So no hand edit is lost",
+          "route": "Report and retry like load errors"
+        },
+        {
+          "labels": [
+            "Arm B"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Conservative",
+          "reason_given": "Stop rather than run on silently",
+          "route": "Unexpected non-load exceptions end watch through the normal error path"
+        },
+        {
+          "labels": [
+            "Arm C",
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "A hand edit could be lost or watch could crash",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "watch-store-lifetime",
+      "question": "Keep the store open for watch's lifetime",
+      "routes": [
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Clean",
+          "reason_given": "No -wal/-shm files; no stale caches",
+          "route": "Open per sync inside the lock"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm E"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Works; relies on no cache",
+          "reason_given": "repository.get rebuilds from storage each time",
+          "route": "One store/app for the whole run"
+        },
+        {
+          "labels": [
+            "Arm C",
+            "Arm D",
+            "Arm F"
+          ],
+          "outcome": "",
+          "proposed": "n/a",
+          "proposed_why": "Detail",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "write-record-order",
+      "question": "Files first or events first, and what if one of them fails",
+      "routes": [
+        {
+          "labels": [
+            "Arm A"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "Keeps files and history consistent",
+          "reason_given": "Never leave a written change without its history",
+          "route": "Write files, then record; if recording fails, restore the files and exit 4 naming the store"
+        },
+        {
+          "labels": [
+            "Arm B",
+            "Arm C"
+          ],
+          "outcome": "Kept (reconcile at step 2 later records such missed changes as hand edits)",
+          "proposed": "4",
+          "proposed_why": "Sound order with a small crash window",
+          "reason_given": "The reverse order could record a change that never reached disk; losing an event on a crash is acceptable",
+          "route": "Write files, then record; a failed write records nothing; a crash between them can lose an event"
+        },
+        {
+          "labels": [
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "4",
+          "proposed_why": "Covers the common failure up front; the crash window remains",
+          "reason_given": "The atomic rename would replace read-only files; a change must never be written without its events",
+          "route": "Write then record, but refuse up front (exit 3) when the target, its directory or the store is not writable; other store failures exit 4"
+        },
+        {
+          "labels": [
+            "Arm D",
+            "Arm E"
+          ],
+          "outcome": "",
+          "proposed": "3",
+          "proposed_why": "The ordering decides whether history can claim a change that never happened",
+          "reason_given": "",
+          "route": "not considered"
+        }
+      ]
+    },
+    {
+      "id": "writeback-technique",
+      "question": "How set changes a file",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm D",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept",
+          "proposed": "5",
+          "proposed_why": "The only way to meet a byte-surgical contract",
+          "reason_given": "Re-dumping normalises indentation, quoting, comments and folded scalars; splicing leaves untouched bytes alone",
+          "route": "Splice replacement text into the original at the node's span; never re-serialise the file"
+        }
+      ]
+    },
+    {
+      "id": "yaml-parser",
+      "question": "Which YAML library provides the node positions for byte-surgical write-back",
+      "routes": [
+        {
+          "labels": [
+            "Arm A",
+            "Arm B",
+            "Arm C",
+            "Arm E",
+            "Arm F"
+          ],
+          "outcome": "Kept through step 7; later extended with composer hooks for aliases",
+          "proposed": "5",
+          "proposed_why": "Exact spans with a YAML 1.2 parser; the dumper risk is avoided",
+          "reason_given": "The round-trip dumper reformats untouched text, PyYAML is YAML 1.1 only, and a hand-written parser is too big a risk",
+          "route": "ruamel.yaml compose only (nodes and marks); never use its dumper"
+        },
+        {
+          "labels": [
+            "Arm D"
+          ],
+          "outcome": "Kept; a loader subclass was added at step 6 to locate aliases",
+          "proposed": "4",
+          "proposed_why": "Works, but the scanner is still YAML 1.1, so edge cases differ from the 1.2 contract",
+          "reason_given": "PyYAML follows YAML 1.1 rules, so scalar typing is replaced",
+          "route": "PyYAML compose for node positions, with custom YAML 1.2 core resolution"
+        }
+      ]
+    }
+  ]
+}

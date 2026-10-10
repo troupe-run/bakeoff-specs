@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["/judge/repo/tests/test_lineage.py:72", "/judge/repo/tests/test_lineage.py:93", "/judge/repo/tests/test_lineage.py:60", "/judge/repo/docs/decisions.md:52", "/judge/repo/docs/decisions.md:60", "/judge/repo/README.md:21"], "notes": "I sampled three lineage tests: test_bad_actor_is_usage_error, test_events_from_before_lineage_say_what_is_unknown and test_hand_edits_are_file_events_apart_from_the_set. By name and topic they match decisions 21, 23 and 22 and README line 21, but none of the tests cites a decision number or requirement ID. They also run everything through the CLI fixture, so finding the lineage code means searching src/."}
+```

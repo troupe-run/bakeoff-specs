@@ -1,0 +1,924 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      },
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "agents:\n  coder: [opus, sonnet]\n  reviewer: haiku\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": ".troupe"
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "watch",
+          "--theatre",
+          "sub"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 2
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "sub"
+      },
+      {
+        "args": [
+          "--theatre",
+          "sub",
+          "config",
+          "get",
+          "agents.reviewer"
+        ],
+        "env": {}
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "agents:\n  coder: [opus, sonnet\n  reviewer: haiku\n",
+      "sub/notes.txt": "this theatre has no .troupe directory\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe.yml  49 bytes\nsub/\nsub/notes.txt  38 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.yml: invalid YAML (line 3, column 11): expected ',' or ']', but got ':'\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: [opus, sonnet]\n  reviewer: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "signal": "SIGINT",
+              "stderr": "troupe: .troupe/troupe.yml: invalid YAML (line 3, column 11): expected ',' or ']', but got ':'\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/troupe.yml  50 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.0\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:35.983490Z\", \"reason\": null, \"change\": \"6fd3d7d1-cdb6-424d-a3a1-66a61f8bf096\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.1\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:35.983490Z\", \"reason\": null, \"change\": \"6fd3d7d1-cdb6-424d-a3a1-66a61f8bf096\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer\", \"old\": null, \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:35.983490Z\", \"reason\": null, \"change\": \"6fd3d7d1-cdb6-424d-a3a1-66a61f8bf096\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: sub/.troupe/troupe.yml: no configuration file (expected troupe.yml or troupe.yaml)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "signal": "SIGINT",
+              "stderr": "troupe: sub/.troupe/troupe.yml: no configuration file (expected troupe.yml or troupe.yaml)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": "sub",
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub/notes.txt  38 bytes\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                "sub",
+                "config",
+                "get",
+                "agents.reviewer"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: sub/.troupe/troupe.yml: no configuration file (expected troupe.yml or troupe.yaml)\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe.yml  49 bytes\nsub/\nsub/notes.txt  38 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: cannot parse /theatre/.troupe/troupe.yml: expected ',' or ']', but got ':' at line 3\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: [opus, sonnet]\n  reviewer: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "signal": "SIGINT",
+              "stderr": "troupe: cannot parse /theatre/.troupe/troupe.yml: expected ',' or ']', but got ':' at line 3\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/troupe.yml  50 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.0\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:43.623605Z\", \"reason\": null, \"change\": \"02f2c1d6-5728-4733-b3dc-70f2680aad0b\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.1\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:43.623605Z\", \"reason\": null, \"change\": \"02f2c1d6-5728-4733-b3dc-70f2680aad0b\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer\", \"old\": null, \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:43.623605Z\", \"reason\": null, \"change\": \"02f2c1d6-5728-4733-b3dc-70f2680aad0b\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: no configuration file: /theatre/sub/.troupe/troupe.yml (or troupe.yaml)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "signal": "SIGINT",
+              "stderr": "troupe: no configuration file: /theatre/sub/.troupe/troupe.yml (or troupe.yaml)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": "sub",
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub/notes.txt  38 bytes\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                "sub",
+                "config",
+                "get",
+                "agents.reviewer"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument {config}: invalid choice: 'sub' (choose from config) (see 'troupe --help')\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe.yml  49 bytes\nsub/\nsub/notes.txt  38 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: /theatre/.troupe/troupe.yml: invalid YAML: while parsing a flow sequence\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: [opus, sonnet]\n  reviewer: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "signal": "SIGINT",
+              "stderr": "troupe: /theatre/.troupe/troupe.yml: invalid YAML: while parsing a flow sequence\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/troupe.yml  50 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.0\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:50.653159Z\", \"reason\": null, \"change\": \"e21ea814-0c0a-477a-980d-ad49633dbf04\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.1\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:50.653159Z\", \"reason\": null, \"change\": \"e21ea814-0c0a-477a-980d-ad49633dbf04\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer\", \"old\": null, \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:50.653159Z\", \"reason\": null, \"change\": \"e21ea814-0c0a-477a-980d-ad49633dbf04\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: sub/.troupe/troupe.yml: no configuration file found\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "signal": "SIGINT",
+              "stderr": "troupe: sub/.troupe/troupe.yml: no configuration file found\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": "sub",
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub/notes.txt  38 bytes\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                "sub",
+                "config",
+                "get",
+                "agents.reviewer"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: argument group: invalid choice: 'sub' (choose from config)\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe.yml  49 bytes\nsub/\nsub/notes.txt  38 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: ./.troupe/troupe.yml: invalid YAML: while parsing a flow sequence\n  in \"<unicode string>\", line 2, column 10:\n      coder: [opus, sonnet\n             ^ (line: 2)\nexpected ',' or ']', but got ':'\n  in \"<unicode string>\", line 3, column 11:\n      reviewer: haiku\n              ^ (line: 3)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: [opus, sonnet]\n  reviewer: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "signal": "SIGINT",
+              "stderr": "troupe: ./.troupe/troupe.yml: invalid YAML: while parsing a flow sequence\n  in \"<unicode string>\", line 2, column 10:\n      coder: [opus, sonnet\n             ^ (line: 2)\nexpected ',' or ']', but got ':'\n  in \"<unicode string>\", line 3, column 11:\n      reviewer: haiku\n              ^ (line: 3)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  50 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.0\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:58.417306Z\", \"reason\": null, \"change\": \"c89c1eb0-c80d-48ae-84f5-89d53af5a89f\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.1\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:58.417306Z\", \"reason\": null, \"change\": \"c89c1eb0-c80d-48ae-84f5-89d53af5a89f\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer\", \"old\": null, \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:58.417306Z\", \"reason\": null, \"change\": \"c89c1eb0-c80d-48ae-84f5-89d53af5a89f\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: sub/.troupe/troupe.yml: no configuration file\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "signal": "SIGINT",
+              "stderr": "troupe: sub/.troupe/troupe.yml: no configuration file\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": "sub",
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub/notes.txt  38 bytes\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                "sub",
+                "config",
+                "get",
+                "agents.reviewer"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: argument command: invalid choice: 'sub' (choose from config)\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe.yml  49 bytes\nsub/\nsub/notes.txt  38 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: error: /theatre/.troupe/troupe.yml: invalid YAML: while parsing a flow sequence\n  in \"<unicode string>\", line 2, column 10:\n      coder: [opus, sonnet\n             ^ (line: 2)\nexpected ',' or ']', but got ':'\n  in \"<unicode string>\", line 3, column 11:\n      reviewer: haiku\n              ^ (line: 3)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: [opus, sonnet]\n  reviewer: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "signal": "SIGINT",
+              "stderr": "troupe: error: /theatre/.troupe/troupe.yml: invalid YAML: while parsing a flow sequence\n  in \"<unicode string>\", line 2, column 10:\n      coder: [opus, sonnet\n             ^ (line: 2)\nexpected ',' or ']', but got ':'\n  in \"<unicode string>\", line 3, column 11:\n      reviewer: haiku\n              ^ (line: 3)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  50 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.0\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:13:06.195253Z\", \"reason\": null, \"change\": \"63e27778-1bfb-4ab9-95b6-3352cf497567\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.1\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:13:06.195253Z\", \"reason\": null, \"change\": \"63e27778-1bfb-4ab9-95b6-3352cf497567\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer\", \"old\": null, \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:13:06.195253Z\", \"reason\": null, \"change\": \"63e27778-1bfb-4ab9-95b6-3352cf497567\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: error: no configuration file: expected sub/.troupe/troupe.yml or sub/.troupe/troupe.yaml\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "signal": "SIGINT",
+              "stderr": "troupe: error: no configuration file: expected sub/.troupe/troupe.yml or sub/.troupe/troupe.yaml\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": "sub",
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub/notes.txt  38 bytes\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                "sub",
+                "config",
+                "get",
+                "agents.reviewer"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: argument COMMAND: invalid choice: 'sub' (choose from config)\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Exit 4 without the line",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe.yml  49 bytes\nsub/\nsub/notes.txt  38 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.yml: invalid YAML: while parsing a flow sequence, expected ',' or ']', but got ':' (line 3, column 11)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: [opus, sonnet]\n  reviewer: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "signal": "SIGINT",
+              "stderr": "/theatre/.troupe/troupe.yml: invalid YAML: while parsing a flow sequence, expected ',' or ']', but got ':' (line 3, column 11)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".troupe",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/troupe.yml  50 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.0\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:28.149220Z\", \"reason\": null, \"change\": \"ca351512-e991-4511-95ed-3c8ce096db5b\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.1\", \"old\": null, \"new\": \"sonnet\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:28.149220Z\", \"reason\": null, \"change\": \"ca351512-e991-4511-95ed-3c8ce096db5b\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer\", \"old\": null, \"new\": \"haiku\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:12:28.149220Z\", \"reason\": null, \"change\": \"ca351512-e991-4511-95ed-3c8ce096db5b\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch",
+                "--theatre",
+                "sub"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "stderr": "sub/.troupe/troupe.yml: no configuration file (expected troupe.yml or troupe.yaml)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 2,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 4,
+              "signal": "SIGINT",
+              "stderr": "sub/.troupe/troupe.yml: no configuration file (expected troupe.yml or troupe.yaml)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": "sub",
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sub/notes.txt  38 bytes\n"
+            },
+            {
+              "args": [
+                "--theatre",
+                "sub",
+                "config",
+                "get",
+                "agents.reviewer"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument COMMAND: invalid choice: 'sub' (choose from config)\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

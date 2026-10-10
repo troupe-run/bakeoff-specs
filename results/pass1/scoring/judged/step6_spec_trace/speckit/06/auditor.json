@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "/judge/diff.patch:35-43 (spec/bugs/yaml-alias-set/assessment.md copies all four Aliases contract rules and cites troupe-run/repo#2)",
+    "/judge/diff.patch:211-223 (spec/bugs/yaml-alias-set/fix.md links tests/e2e/test_set_alias.py, including test_setting_through_an_alias_is_refused for the reported scenario)",
+    "/judge/diff.patch:1010-1013, 1021-1046, 1098-1102 (regression tests cover the refusal, a set at the anchor, --expand-alias making a copy, and merge keys)",
+    "/judge/diff.patch:338-342 (README documents the alias rules)",
+    "/judge/repo/spec/001-config-load-show-set/spec.md:288-289 (still lists 'YAML anchors, aliases and merge keys (until step 6)' as Out of contract; not changed)"
+  ],
+  "notes": "The spec docs were written together with the code: the assessment came first, and fix.md and test.md were written after the fix. Together they state all four alias rules (a set at the anchor changes every alias; a set through an alias is refused with a pointer to --expand-alias; --expand-alias makes a copy; merge keys are never written), cite issue #2 and link a regression test of the reported case, but the main spec's Out of contract line still lists aliases, so this cannot reach 4.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/diff.patch:35-43 (spec/bugs/yaml-alias-set/assessment.md copies all four Aliases contract rules and cites troupe-run/repo#2)\", \"/judge/diff.patch:211-223 (spec/bugs/yaml-alias-set/fix.md links tests/e2e/test_set_alias.py, including test_setting_through_an_alias_is_refused for the reported scenario)\", \"/judge/diff.patch:1010-1013, 1021-1046, 1098-1102 (regression tests cover the refusal, a set at the anchor, --expand-alias making a copy, and merge keys)\", \"/judge/diff.patch:338-342 (README documents the alias rules)\", \"/judge/repo/spec/001-config-load-show-set/spec.md:288-289 (still lists 'YAML anchors, aliases and merge keys (until step 6)' as Out of contract; not changed)\"], \"notes\": \"The spec docs were written together with the code: the assessment came first, and fix.md and test.md were written after the fix. Together they state all four alias rules (a set at the anchor changes every alias; a set through an alias is refused with a pointer to --expand-alias; --expand-alias makes a copy; merge keys are never written), cite issue #2 and link a regression test of the reported case, but the main spec's Out of contract line still lists aliases, so this cannot reach 4.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["/judge/transcript.md:3", "/judge/transcript.md:8", "/judge/questions.md:17-24", "/judge/questions.md:61", "/judge/questions.md:74"], "notes": "The transcript shows research before the questions: the arm read the specs and README at transcript lines 3, 8 and 14. Question 1 lists five open-contract choices, each with a reason, but presents them as already decided rather than as alternatives with their consequences. Questions 2 and 3 are status hand-offs. Only Question 3's spec-sync note offers an alternative and gives a reason for its choice."}
+```

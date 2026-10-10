@@ -1,0 +1,378 @@
+[
+  {
+    "decision": "Commit the leftover uncommitted step 6 wrap-up changes (spec notes, roadmap ticks) as a separate commit before starting step 7, after checking that the suite passed with them",
+    "options": [],
+    "reason": "They were sitting uncommitted in the working tree",
+    "recorded_at": "transcript.md:5; questions.md:29"
+  },
+  {
+    "decision": "Specify step 7 as a single spec, config-remote-schema, covering remote includes, the schema, !literal and set --include",
+    "options": [
+      "two specs, config-remote-includes then config-schema-literals (the discovery-run plan)"
+    ],
+    "reason": "",
+    "recorded_at": "diff.patch:1700 (spec/steering/roadmap.md); spec/spec/config-remote-schema/brief.md"
+  },
+  {
+    "decision": "The loader decides include recognition in one place while walking the tree. A pluggable fetcher and a schema-driven literal check feed that decision, and the writer treats remote sources as read-only",
+    "options": [
+      "httpx/requests for fetching",
+      "hand-written JSON Schema validator",
+      "caching remote content under .troupe/",
+      "decide literals after building the tree"
+    ],
+    "reason": "The literal decision must be made before anything is fetched. Remote sources as SourceFiles keep layers, --sources, leaves, reconcile and history unchanged",
+    "recorded_at": "diff.patch:225-260 (brief.md Approach); diff.patch:1730-1744 (roadmap.md)"
+  },
+  {
+    "decision": "Fetch remote content with stdlib urllib.request rather than adding an HTTP dependency",
+    "options": [
+      "httpx",
+      "requests",
+      "urllib"
+    ],
+    "reason": "A new dependency for a single GET is not justified; urllib covers TLS, redirects and timeouts",
+    "recorded_at": "diff.patch:254 (brief.md); research.md Synthesis (diff.patch:1224)"
+  },
+  {
+    "decision": "Adopt the jsonschema library (Draft202012Validator) as a runtime dependency (>=4.23,<5), with types-jsonschema as a dev dependency",
+    "options": [
+      "hand-written validator"
+    ],
+    "reason": "2020-12 is large; a partial validator would accept invalid configurations. jsonschema ships no py.typed",
+    "recorded_at": "diff.patch:1167-1185 (research.md); diff.patch:1768,1776 (pyproject.toml)"
+  },
+  {
+    "decision": "Build the schema validator with an explicit empty referencing.Registry() so remote $refs are never retrieved; an unresolvable $ref exits 4",
+    "options": [
+      "default jsonschema resolver (fetches remote $ref)"
+    ],
+    "reason": "Without a registry jsonschema 4.26 falls back to a deprecated resolver that fetches https $refs; found during task 1.3",
+    "recorded_at": "diff.patch:1178-1182 (research.md); src/troupe/config/schema.py validate()"
+  },
+  {
+    "decision": "Model a remote source as a SourceFile with url: str | None, identity via a key property and display via a shown property; path/real_path become a Path(url) stand-in that is never opened",
+    "options": [
+      "path: Path | None for remote sources",
+      "separate RemoteSource type in Origin.file",
+      "synthetic Path identity with no display rule"
+    ],
+    "reason": "The smallest change that keeps every reader working and makes identity explicit",
+    "recorded_at": "diff.patch:1232-1244 (research.md Decision 1)"
+  },
+  {
+    "decision": "Decide the literal question while walking, with one predicate (no !literal, an include string, and no format: uri at the path). _ref_value ignores the schema but refuses !literal",
+    "options": [
+      "decide literals after building"
+    ],
+    "reason": "The contract makes include-ness depend on the tag and on the path's schema",
+    "recorded_at": "diff.patch:1246-1252 (research.md Decision 2)"
+  },
+  {
+    "decision": "Values received through a merge key are decided at the path where they are written, not at the merged path",
+    "options": [],
+    "reason": "",
+    "recorded_at": "diff.patch:1251-1252 (research.md Decision 2 follow-up)"
+  },
+  {
+    "decision": "Record !literal as a property (ConfigScalar.literal span) kept out of the value span; a replacement removes the tag and the alias copier rewrites it",
+    "options": [
+      "keep the tag inside the scalar span"
+    ],
+    "reason": "Otherwise block-scalar header parsing and the alias copier would see !literal where they expect the value",
+    "recorded_at": "diff.patch:1254-1261 (research.md Decision 3)"
+  },
+  {
+    "decision": "The schema check of a set is done by the read-back load (verify_patch rewords SchemaViolationError as exit 3), not by validating plan.intended in the setter",
+    "options": [
+      "validate plan.intended in the setter"
+    ],
+    "reason": "A new include's content is not known in the intended tree, so that check would be incomplete or need a second loader",
+    "recorded_at": "diff.patch:1263-1269 (research.md Decision 4)"
+  },
+  {
+    "decision": "Put the remote write guard at _Planner._add and _replace_file instead of _layout as first designed; the alias/merge guards also use remote_refusal and writer messages use SourceFile.shown",
+    "options": [
+      "guard in _Planner._layout",
+      "guard before planning (predict from PATH)"
+    ],
+    "reason": "_merge_layered takes the layout of unchanged remote entries next to a changed override, so a guard in _layout would refuse 6.3 cases; every text edit passes _add",
+    "recorded_at": "diff.patch:1271-1283 (research.md Decision 5); diff.patch:1218"
+  },
+  {
+    "decision": "Keep write_atomically's refusal of remote sources as a backstop, pinned by a test, and fix the stale tasks.md sentence instead of acting on the validator's point",
+    "options": [],
+    "reason": "The backstop is already tested at tests/test_set_remote.py:167",
+    "recorded_at": "transcript.md:968-970"
+  },
+  {
+    "decision": "VALUE strings carry a mark (NONE/INCLUDE/LITERAL) decided once in the setter by mark_include_strings",
+    "options": [
+      "decide at render time from the path"
+    ],
+    "reason": "Deciding at render time would be repeated in the plain tree and the renderer, and the two would drift",
+    "recorded_at": "diff.patch:1285-1291 (research.md Decision 6)"
+  },
+  {
+    "decision": "The fetcher is one function, fetch_remote, tested over real HTTP via a ThreadingHTTPServer on 127.0.0.1 and never mocked",
+    "options": [
+      "fetcher abstraction/protocol",
+      "mocking"
+    ],
+    "reason": "testing.md says to mock only at real external boundaries",
+    "recorded_at": "diff.patch:1293-1297 (research.md Decision 7)"
+  },
+  {
+    "decision": "Test fixture sets NO_PROXY/no_proxy to 127.0.0.1,localhost for in-process and subprocess fetches (applying a reviewer's suggestion)",
+    "options": [],
+    "reason": "urllib honours *_proxy environment variables",
+    "recorded_at": "transcript.md:247; diff.patch:4891-4921 (tests/conftest.py, remote_support.py)"
+  },
+  {
+    "decision": "Take the brief's defaults 1–14 as decisions without asking the product owner, and add choices 15–22",
+    "options": [],
+    "reason": "The product owner was not available",
+    "recorded_at": "diff.patch:1299-1302 (research.md)"
+  },
+  {
+    "decision": "A file: include inside remote content exits 4; remote includes inside remote content are allowed",
+    "options": [
+      "resolve relative to the URL",
+      "resolve relative to the theatre"
+    ],
+    "reason": "There is no local directory to resolve against",
+    "recorded_at": "diff.patch:1303-1305 (research.md choice 1); questions.md:17"
+  },
+  {
+    "decision": "!literal on a scalar is the scalar's text as a string; on collections it exits 4, and every other tag stays exit 4",
+    "options": [
+      "type plain literals (!literal 5 → 5)"
+    ],
+    "reason": "YAML's rule for a tagged scalar",
+    "recorded_at": "diff.patch:1306-1307 (research.md choice 2)"
+  },
+  {
+    "decision": "The schema walker follows only properties, items (digit-only segments) and additionalProperties, in that order and without knowing the node's kind; $ref and combinators are not followed",
+    "options": [
+      "follow $ref and combinators"
+    ],
+    "reason": "The contract names exactly three keywords",
+    "recorded_at": "diff.patch:1308-1311 (research.md choice 3); src/troupe/config/schema.py _step"
+  },
+  {
+    "decision": "The validation input is the expanded configuration",
+    "options": [
+      "root file alone"
+    ],
+    "reason": "It is the configuration every command uses",
+    "recorded_at": "diff.patch:1312-1313 (research.md choice 4)"
+  },
+  {
+    "decision": "Overridden remote values are changed in the override; only physical edits to remote content are refused",
+    "options": [
+      "refuse every PATH below a remote include"
+    ],
+    "reason": "That would block the step 5 overrides the contract keeps",
+    "recorded_at": "diff.patch:1314-1315 (research.md choice 5)"
+  },
+  {
+    "decision": "--in-include below a remote include exits 3",
+    "options": [],
+    "reason": "It would write the remote file",
+    "recorded_at": "diff.patch:1316 (research.md choice 6)"
+  },
+  {
+    "decision": "The refusal reports the outermost local include directive, as written, with its line number",
+    "options": [
+      "the innermost directive"
+    ],
+    "reason": "The contract intro says to tell the user which include line to change; the innermost may be in remote content",
+    "recorded_at": "diff.patch:1317-1319 (research.md choice 7)"
+  },
+  {
+    "decision": "Include-like strings nested inside mapping or list VALUEs are also tagged !literal",
+    "options": [],
+    "reason": "The same accidental include can hide in a flow mapping",
+    "recorded_at": "diff.patch:1320 (research.md choice 8)"
+  },
+  {
+    "decision": "With --include, a remote VALUE is written plain and fetched on read-back; a failed fetch exits 3",
+    "options": [],
+    "reason": "Decision D's rule for unloadable targets",
+    "recorded_at": "diff.patch:1321-1322 (research.md choice 9)"
+  },
+  {
+    "decision": "Replacing an existing !literal value replaces its tag too",
+    "options": [
+      "keep the tag"
+    ],
+    "reason": "Keeping it would silently keep a literal the user may have meant to turn into an include",
+    "recorded_at": "diff.patch:1323-1324 (research.md choice 10)"
+  },
+  {
+    "decision": "watch polls local files and the schema file (present or absent), never URLs, and re-fetches remote content on each reload",
+    "options": [
+      "poll URLs"
+    ],
+    "reason": "",
+    "recorded_at": "diff.patch:1325-1326 (research.md choice 11); src/troupe/config/watch.py"
+  },
+  {
+    "decision": "--sources labels remote scalars with their URL",
+    "options": [],
+    "reason": "",
+    "recorded_at": "diff.patch:1327 (research.md choice 12)"
+  },
+  {
+    "decision": "Fetch details: 10 s timeout, redirects followed, YAML/text suffix taken from the URL path without query/fragment, case-sensitive suffixes and prefixes",
+    "options": [
+      "Content-Type rule"
+    ],
+    "reason": "Matches the file: include suffix check",
+    "recorded_at": "diff.patch:1328-1329 (research.md choice 13); src/troupe/config/constants.py"
+  },
+  {
+    "decision": "Every command, history included, fetches remote includes and checks the schema (differs from the brief)",
+    "options": [
+      "history checks the schema only when it imports (brief proposal)"
+    ],
+    "reason": "history already loads the configuration; a schema-free history would need a second, partial load path",
+    "recorded_at": "diff.patch:1330-1335 (research.md choice 14)"
+  },
+  {
+    "decision": "A $schema naming another dialect exits 4",
+    "options": [
+      "ignore $schema",
+      "pick the validator from $schema"
+    ],
+    "reason": "draft-07 items arrays mean something else in 2020-12, so silent validation could accept configurations",
+    "recorded_at": "diff.patch:1336-1338 (research.md choice 15)"
+  },
+  {
+    "decision": "A $ref mapping in VALUE without --include exits 3",
+    "options": [
+      "tag the $ref string",
+      "treat $ref as an implicit --include"
+    ],
+    "reason": "A clear, conservative refusal that names the flag",
+    "recorded_at": "diff.patch:1339-1341 (research.md choice 16)"
+  },
+  {
+    "decision": "Tags in VALUE stay exit 2, !literal included",
+    "options": [
+      "accept user tags"
+    ],
+    "reason": "troupe decides tagging; accepting tags would add a second way to say the same thing",
+    "recorded_at": "diff.patch:1342-1344 (research.md choice 17)"
+  },
+  {
+    "decision": "Tagged strings stay on one line and are never block scalars",
+    "options": [],
+    "reason": "Keeps the tag in one renderer; multi-line include-like strings are not realistic",
+    "recorded_at": "diff.patch:1345-1346 (research.md choice 18)"
+  },
+  {
+    "decision": "One fetch per command: read-back and expansion reloads reuse the fetched text, keyed by source identity",
+    "options": [],
+    "reason": "Verifying against a second, possibly different response would refuse correct writes at random",
+    "recorded_at": "diff.patch:1347-1348 (research.md choice 19)"
+  },
+  {
+    "decision": "Text include content is never tagged",
+    "options": [],
+    "reason": "The string is written to a text file, not to YAML",
+    "recorded_at": "diff.patch:1349 (research.md choice 20)"
+  },
+  {
+    "decision": "!literal &a x exits 4 while &a !literal x loads",
+    "options": [],
+    "reason": "A replacement must remove the tag but keep the anchor, which is only possible when the anchor comes first",
+    "recorded_at": "diff.patch:1350-1352 (research.md choice 21)"
+  },
+  {
+    "decision": "Report only one schema failure, chosen by best_match",
+    "options": [
+      "list every failure"
+    ],
+    "reason": "A full list would be long and unordered",
+    "recorded_at": "diff.patch:1353-1354 (research.md choice 22)"
+  },
+  {
+    "decision": "Accept that watch retries a failing fetch on every poll, each retry possibly waiting up to 10 s, with no backoff",
+    "options": [
+      "backoff"
+    ],
+    "reason": "watch stays responsive to stop requests between ticks",
+    "recorded_at": "diff.patch:1361-1363 (research.md Risks)"
+  },
+  {
+    "decision": "No size limit and no authentication for remote content",
+    "options": [],
+    "reason": "Out of contract",
+    "recorded_at": "diff.patch:1364-1365 (research.md Risks)"
+  },
+  {
+    "decision": "Change decision D: earlier file: VALUEs are now written !literal unless --include is given, and older tests are updated in the same change",
+    "options": [],
+    "reason": "An include-like VALUE should not become an include without being asked",
+    "recorded_at": "diff.patch:1750-1752,1757-1759 (roadmap.md); questions.md:23"
+  },
+  {
+    "decision": "Keep the older 'change the included file instead' refusal, with no local line number, when replacing a whole remote include (set team foo)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:27"
+  },
+  {
+    "decision": "Sort fetch failures into short reasons (HTTP status, timed out, connection refused, unknown host, bad HTTP answer, invalid URL), sending a plain GET with urllib's default headers and no credentials",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/config/fetch.py)"
+  },
+  {
+    "decision": "A schema path that exists but is not a regular file, is unreadable, is not UTF-8 or JSON, or is not an object/boolean exits 4 naming the schema file",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/config/schema.py read_schema)"
+  },
+  {
+    "decision": "Settle the 3.2 note on sweeping https://x test fixtures as not needed",
+    "options": [
+      "sweep fixtures to .invalid hosts or the local server"
+    ],
+    "reason": "The remaining VALUEs use single-label hosts that no resolver sends to the internet; e2e tests use the local server or .invalid",
+    "recorded_at": "diff.patch:1596 (tasks.md 5.1 note); transcript.md:930"
+  },
+  {
+    "decision": "Review task 3.4 directly rather than starting a separate reviewer",
+    "options": [
+      "separate reviewer"
+    ],
+    "reason": "It is a small change",
+    "recorded_at": "transcript.md:693-695"
+  },
+  {
+    "decision": "Send task 3.3 back to the implementer after the review rejected it",
+    "options": [],
+    "reason": "The review gave concrete fixes",
+    "recorded_at": "transcript.md:631"
+  },
+  {
+    "decision": "Check the new refusal tests by temporarily changing the source (turning off the remote guard, reporting the innermost include)",
+    "options": [],
+    "reason": "To confirm the tests can fail",
+    "recorded_at": "transcript.md:879-885"
+  },
+  {
+    "decision": "Run the contract scenarios by hand through the real CLI against a throwaway local HTTP server, alongside the full suite",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:901"
+  },
+  {
+    "decision": "Runner answered the step_done question with /method-command (proceed to validation)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:31"
+  }
+]

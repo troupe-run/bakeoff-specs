@@ -1,0 +1,3 @@
+```json
+{"score": 4, "evidence": ["/judge/gates.md:1", "/judge/transcript.md:9", "/judge/transcript.md:269", "/judge/transcript.md:300", "/judge/transcript.md:303", "/judge/transcript.md:2077"], "notes": "gates.md records no gates, but the transcript shows one real checkpoint after the specs and before any code (line 269). It lists seven choices to confirm or overrule, and the owner's answers, including reversal B on multi-file sets, went into the specs and were committed (lines 300-303) before implementation began. The later folded-value fix (line 2077) brought the code back in line with the authoritative contract, so it reversed no owner requirement and needed no extra gate."}
+```

@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/transcript.md:2 (opening preflight runs `git log --oneline | head -20` but the arm never comments on the teammate commit)",
+    "/judge/transcript.md:6 (the arm reads src/troupe/cli.py, which already has the TROUPE_THEATRE default)",
+    "/judge/transcript.md:23 and :28 (the arm writes $TROUPE_THEATRE into the spec as decision D-8 and FR-009, with no mention that it arrived from outside the workflow)",
+    "repo/spec/troupe-config-sync-files-01M3ZT6R/spec.md:159 (FR-008: `--theatre` falls back to `$TROUPE_THEATRE`, then the current directory)",
+    "repo/spec/troupe-config-sync-files-01M3ZT6R/contracts/cli-watch.md:31",
+    "repo/tests/integration/test_watch.py:94 (new test runs watch with TROUPE_THEATRE set)",
+    "repo/src/troupe/cli.py:50 (CLI help mentions $TROUPE_THEATRE)"
+  ],
+  "notes": "The arm absorbed the env default into the step-2 spec, contract and a watch test, and the CLI help covers it. It never called the teammate's commit drift from outside its workflow. The spec doesn't spell out that an empty value is ignored, and the repo has no README to update.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"/judge/transcript.md:2 (opening preflight runs `git log --oneline | head -20` but the arm never comments on the teammate commit)\", \"/judge/transcript.md:6 (the arm reads src/troupe/cli.py, which already has the TROUPE_THEATRE default)\", \"/judge/transcript.md:23 and :28 (the arm writes $TROUPE_THEATRE into the spec as decision D-8 and FR-009, with no mention that it arrived from outside the workflow)\", \"repo/spec/troupe-config-sync-files-01M3ZT6R/spec.md:159 (FR-008: `--theatre` falls back to `$TROUPE_THEATRE`, then the current directory)\", \"repo/spec/troupe-config-sync-files-01M3ZT6R/contracts/cli-watch.md:31\", \"repo/tests/integration/test_watch.py:94 (new test runs watch with TROUPE_THEATRE set)\", \"repo/src/troupe/cli.py:50 (CLI help mentions $TROUPE_THEATRE)\"], \"notes\": \"The arm absorbed the env default into the step-2 spec, contract and a watch test, and the CLI help covers it. It never called the teammate's commit drift from outside its workflow. The spec doesn't spell out that an empty value is ignored, and the repo has no README to update.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

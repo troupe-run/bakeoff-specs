@@ -1,0 +1,6 @@
+Mission acceptance now passes. I reran it with `--lenient` on `feat/troupe-config-load-show-set` (the branch it requires), and it accepted all 8 WPs and recorded acceptance as `de013b8`.
+
+- **Op routing:** the request (just the flags) matched no profile, so I opened the Op (`01M3XV5M`) under `reviewer-renata`, since acceptance is a review step. It's now closed as `done`, linked to the acceptance commit.
+- **What `--lenient` covered:** only the missing `docs/` folder, which this project doesn't have. It became a warning; no other check was relaxed.
+- **Op record committed:** acceptance first refused because the record the dispatch created (`kitty-ops/`) was uncommitted. I committed it, reran acceptance, and Spec Kitty committed the closing record itself (`d0fa8b6`).
+- **`main`:** fast-forwarded to `d0fa8b6`, so it carries the acceptance and Op records. These are bookkeeping-only commits: code and tests are byte-identical to the version that passed all four gates. The working tree is clean, the checkout is back on `main`, and nothing was pushed.

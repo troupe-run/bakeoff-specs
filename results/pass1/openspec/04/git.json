@@ -1,0 +1,41 @@
+{
+  "sha_before": "4ef5d766255fbb2a78d3e15a069e009b2e2da93a",
+  "sha_after": "a0556104a2ad7e385c2f8e74ee16ccb759452e9b",
+  "head": "a0556104a2ad7e385c2f8e74ee16ccb759452e9b",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "a0556104a2ad7e385c2f8e74ee16ccb759452e9b",
+      "author": "Developer",
+      "subject": "Archive config-lineage and sync its specs into openspec/specs"
+    },
+    {
+      "sha": "0dac4a559d04568fbef613598b4e8e0efb7a9bf6",
+      "author": "Developer",
+      "subject": "Document lineage in the README and mark config-lineage tasks complete"
+    },
+    {
+      "sha": "62ccfb75a8819300be841c42b24a53c8f82bf74a",
+      "author": "Developer",
+      "subject": "Test lineage end to end: actors, via, reasons, change grouping, watch"
+    },
+    {
+      "sha": "24291db815a0328d9771dec72143a283e2b5783d",
+      "author": "Developer",
+      "subject": "Record lineage on every event and print it in history"
+    },
+    {
+      "sha": "afedc8a1094f5cb5a98be94d71a6ccfec113cc63",
+      "author": "Developer",
+      "subject": "Add lineage values: actor from TROUPE_ACTOR, UTC timestamps, change ids"
+    },
+    {
+      "sha": "21a9bf95931d4ce25f94a6f2348e0335da38e7e5",
+      "author": "Developer",
+      "subject": "Plan lineage: who, how, when, why and change id on every history event (OpenSpec change config-lineage)"
+    }
+  ],
+  "diffstat": "README.md                                          |  65 ++++-\n .../2026-10-04-config-lineage/.openspec.yaml       |   2 +\n .../archive/2026-10-04-config-lineage/design.md    | 197 +++++++++++++++\n .../archive/2026-10-04-config-lineage/proposal.md  |  54 ++++\n .../specs/config-cli/spec.md                       |  32 +++\n .../specs/config-history/spec.md                   |  23 ++\n .../specs/config-lineage/spec.md                   | 147 +++++++++++\n .../archive/2026-10-04-config-lineage/tasks.md     |  29 +++\n openspec/specs/config-cli/spec.md                  |  10 +-\n openspec/specs/config-history/spec.md              |  11 +-\n openspec/specs/config-lineage/spec.md              | 147 +++++++++++\n src/troupe/cli.py                                  |   6 +-\n src/troupe/commands.py                             |  23 +-\n src/troupe/lineage.py                              |  91 +++++++\n src/troupe/store.py                                | 138 ++++++++--\n src/troupe/sync.py                                 |   6 +-\n tests/conftest.py                                  |  11 +\n tests/fixtures/step3/README.md                     |  17 ++\n tests/fixtures/step3/events.sqlite                 | Bin 0 -> 12288 bytes\n tests/fixtures/step3/troupe.yml                    |   1 +\n tests/test_cli.py                                  |  15 ++\n tests/test_history.py                              |  15 ++\n tests/test_lineage.py                              | 281 +++++++++++++++++++++\n tests/test_lineage_legacy.py                       |  66 +++++\n tests/test_lineage_values.py                       |  77 ++++++\n tests/test_reconcile.py                            |   3 +-\n tests/test_smoke.py                                |  28 +-\n tests/test_store.py                                |  34 ++-\n tests/test_watch.py                                |  18 ++\n 29 files changed, 1493 insertions(+), 54 deletions(-)"
+}

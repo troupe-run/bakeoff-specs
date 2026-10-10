@@ -1,0 +1,49 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "retry: 4",
+        "input": "`config watch`, hand-edit `.troupe/troupe.yml` to `retry: 5`, wait 3 s, send SIGTERM",
+        "observed": true,
+        "results": {
+          "1": "two arms: exit 0. Four arms: exit 143 (the usual code for a process ended by SIGTERM). In all six, stdout was only the `watching …` line and stderr was empty, so no traceback. The 4→5 change was recorded in every arm: a later `config history` shows `{\"seq\": 2, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, … \"via\": \"file\" …}`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config watch --theatre .`, then send SIGTERM right away (no edit)",
+        "observed": true,
+        "results": {
+          "1": "two arms: exit 0, and `.troupe` holds only the database and `troupe.yml` as before. Two arms: exit 143, files unchanged. Two arms: exit 137 (the code a process gets when it is force-killed, i.e. it did not stop on SIGTERM), and two extra files are left next to the database: `events.sqlite-shm  32768 bytes` and `events.sqlite-wal  0 bytes` in one arm, `troupe-state.sqlite-shm` / `troupe-state.sqlite-wal` in the other. All six: stderr empty"
+        }
+      },
+      {
+        "before": "retry: 5",
+        "input": "`config watch`, hand-edit to `retry: 6`, press Ctrl-C (SIGINT) immediately, then `config history`",
+        "observed": true,
+        "results": {
+          "1": "four arms: exit 0. One arm: exit 130. One arm: exit 137 (force-killed). All six: stderr empty. In every arm `config history` shows only two entries, `import` of 4 and `set` 4→5. The edit to 6 made just before Ctrl-C was not recorded by any arm, but `troupe.yml` still reads `retry: 6`"
+        }
+      }
+    ],
+    "in_practice": "Only one route was tested, but the six arms on it did not agree. Just two arms exited 0 on every signal. The others reported a signal-style exit code (143 or 130), so a service manager or script would see a failure. In some runs (two arms on SIGTERM, one on Ctrl-C) the watcher did not stop on the signal and was force-killed (137), and twice that left database side-files behind. Nothing in this test showed a partial or corrupted history entry. When the signal came right after an edit, every arm stopped without recording that edit.",
+    "stakes": "This route is about stopping `config watch` with Ctrl-C or a kill/stop signal. The user needs it to stop cleanly, report success to scripts or service managers, and leave the history database whole, without a traceback or a half-written change. The six implementations on this route did not behave alike: exit codes ranged over 0, 130, 143 and 137.",
+    "tradeoff": "Route 1: shutdown is clean and never prints a traceback, but a file edit made just before the signal is not recorded, and in practice the exit code was not reliably 0."
+  },
+  "plan_why": "Three watch runs in one theatre. Run A: `config watch` with no flag, a hand edit from retry 4 to 5, a 3 s wait, then SIGTERM; .troupe is listed so any leftover -wal/-shm files and their sizes show. Run B: `config watch --theatre .` stopped with SIGTERM right away, with no edit, then .troupe is listed again. Run C: a hand edit to 6 and SIGINT straight after, so the signal can arrive during a reconcile. The final `config history` shows whether the 5 and 6 changes were each recorded whole, with no partial events. Every stop reports the exit code (0 expected) and stderr (no traceback). Limits: the harness sends one signal per stop, so a double SIGINT cannot be sent and Run C sends one SIGINT just after the edit instead. To fit 12 steps, the history after Run A and the listing after Run C were dropped; the final history includes Run A's events.",
+  "routes": [
+    [
+      "Handlers only set a flag/Event; an in-progress reconcile finishes; exit 0; previous handlers restored",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\nretry: 3\nmodel: opus\ncoder: file:agents/coder.yml\n\n.troupe/agents/coder.yml:\ntemperature: 0.2\nrole: coder",
+        "input": "`config history` (first command ever run in this theatre)",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0. It creates a history store and prints four import entries: seq 1 retry → 3, seq 2 model → opus, seq 3 coder.temperature → 0.2, seq 4 coder.role → coder. Every entry has actor kind \"unknown\" and via \"import\", even though TROUPE_ACTOR=human:owner was set."
+        }
+      },
+      {
+        "before": "",
+        "input": "Edit by hand: retry 3 → 9 in troupe.yml and temperature 0.2 → 0.7 in coder.yml. Then run `config history`, then `config history retry`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0 both times. `config history` still prints only the four import entries. `config history retry` prints only seq 1 (retry → 3), even though the file now says 9. Neither edit is recorded."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get retry`, then `config history`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: `config get retry` prints `9`. The next `config history` now has two more entries, both with via \"file\" and actor kind \"unknown\": seq 5 retry 3 → 9 and seq 6 coder.temperature 0.2 → 0.7. So the hand edits were recorded during `get`, not during `history`."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set model sonnet`, then `config history`, then `config history coder`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: `set` exits 0 with no output, and troupe.yml now reads:\nretry: 9\nmodel: sonnet\ncoder: file:agents/coder.yml\nHistory adds seq 7 model opus → sonnet with actor human/owner and via \"cli\". `config history coder` prints seq 3, 4 and 6."
+        }
+      }
+    ],
+    "in_practice": "All six arms on route 1 produced the same results; only timestamps and change IDs differed. On a theatre that was never imported, `history` does import the starting values. After that it never picks up hand edits itself, and they show up only after a command like `get`. The arms named their history store differently: two used history.sqlite, one events.sqlite, one events.sqlite plus events.lock, one events.sqlite3 plus events.sqlite3.lock, and one troupe-state.sqlite.",
+    "stakes": "If you edit a config file by hand and then run `config history`, the log won't show your edit yet. It only gets recorded when some other command reads the config. Until then, history can show an old value as if it were still current.",
+    "tradeoff": "Route 1: `history` is a cheap read with no side effects on a theatre that already has history, but what it shows can be out of date until another command records the hand edits."
+  },
+  "plan_why": "Imports with `config history`, then hand-edits troupe.yml (retry 3→9) and an included file (temperature 0.2→0.7) with nothing running. It then checks whether `history` / `history retry` record those edits, whether `get retry` sees 9, and whether the edits show up in history after `get` and after `config set model sonnet`, and with which actor, via and change id.",
+  "routes": [
+    [
+      "Never reconciles; still imports a never-imported theatre",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

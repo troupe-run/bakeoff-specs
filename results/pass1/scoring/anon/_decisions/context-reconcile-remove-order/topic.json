@@ -1,0 +1,30 @@
+{
+  "kind": "divergent",
+  "question": "Order of remove events in a reconcile",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Closest stable equivalent of the old document order",
+      "route": "Order of the seq that created each leaf",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "The old document is gone; reuse diff order",
+      "route": "Projection order (when leaves were first recorded)",
+      "route_no": 2
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Same order as set",
+      "route": "Sets in document order, then removes (order unstated)",
+      "route_no": 3
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 4
+    }
+  ]
+}

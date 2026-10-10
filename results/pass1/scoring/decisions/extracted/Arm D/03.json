@@ -1,0 +1,165 @@
+[
+  {
+    "decision": "Strings and keys are quoted only when leaving them bare would change their meaning, trying plain style first, then single quotes, then double quotes. Comments and the source files' own quoting are not kept.",
+    "options": [],
+    "reason": "show writes YAML that reads back as the same configuration",
+    "recorded_at": "docs/decisions.md:40-43"
+  },
+  {
+    "decision": "Empty collections are written as {} and []. A list item that is itself a collection is written compactly (`- k: v`, `- - x`), with its first nested entry on the dash line.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:42-43"
+  },
+  {
+    "decision": "A multi-line string or text include is written as a literal block only if a literal block can hold it exactly. Otherwise (carriage returns, a first line starting with a space, a value of only line breaks) it is written double-quoted.",
+    "options": [],
+    "reason": "A value of only line breaks has no content line to carry them",
+    "recorded_at": "docs/decisions.md:44-46"
+  },
+  {
+    "decision": "With --sources, a literal block's comment goes on its header line (`key: | # from p.md`).",
+    "options": [
+      "header line",
+      "a content line"
+    ],
+    "reason": "a comment on a content line would become part of the value",
+    "recorded_at": "docs/decisions.md:47-48"
+  },
+  {
+    "decision": "`show PATH --sources` on a scalar prints it as YAML (quoted if needed) with the comment, rather than in the raw get form.",
+    "options": [
+      "YAML form with comment",
+      "raw get form"
+    ],
+    "reason": "the contract describes --sources output as YAML",
+    "recorded_at": "docs/decisions.md:49-50"
+  },
+  {
+    "decision": "Source files outside the theatre directory are named with .. segments, still relative to the theatre directory.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:51"
+  },
+  {
+    "decision": "Source paths are relative to the theatre directory (e.g. .troupe/agents/coder.yaml) rather than to .troupe, and use / separators.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "src/troupe/dump.py:215-223 (unrecorded rationale)"
+  },
+  {
+    "decision": "For a text include, --sources names the included file, not the YAML file that references it.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:22 (step-done message)"
+  },
+  {
+    "decision": "`get PATH` keeps the old `show` behaviour for scalars. On a mapping or list it exits 5, and the error points to `troupe config show <path>`.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "src/troupe/cli.py:130-138; transcript.md:22"
+  },
+  {
+    "decision": "show on a scalar without --sources prints it exactly as get does.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "src/troupe/cli.py:130-131; tests/test_show.py test_show_scalar_like_get"
+  },
+  {
+    "decision": "show takes an optional PATH. With no PATH it prints the whole configuration root.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "src/troupe/cli.py:104"
+  },
+  {
+    "decision": "--sources is added only to the show subcommand.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Collections and `--sources` empty collections get no source comment; only scalar lines are annotated.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Rendering is done by a new hand-written module, src/troupe/dump.py, that reuses the yamlcore helpers (render_str, render_double, literal_ok, chomp_for), not a YAML library dumper.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Non-string scalars are rendered as YAML 1.2 core-schema plain scalars (null, true/false, .nan, .inf/-.inf, repr for floats), and hex input is normalised to decimal.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Indentation is 2 spaces, and block sequences inside mappings are indented.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "An empty text include is rendered as `|-` with no content lines.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (tests/test_show.py test_show_text_include_not_representable_as_literal)"
+  },
+  {
+    "decision": "The existing tests and the conftest helper were renamed from show to get. One existing test (test_theatre_from_env) still calls main with 'show'.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "The test expectation for a value containing a tab was changed to single-quoted.",
+    "options": [
+      "double-quoted with \\t",
+      "single-quoted with literal tab"
+    ],
+    "reason": "Single-quoted tab is valid YAML",
+    "recorded_at": "transcript.md:17"
+  },
+  {
+    "decision": "Tests check round-trip fidelity by loading the printed YAML back with the project's own loader.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "A separate reloads_as helper was dropped in favour of load_text.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:16"
+  },
+  {
+    "decision": "Decision 2 was extended so that get and show both read the files, not the event store.",
+    "options": [],
+    "reason": "Files are the source of truth that people edit by hand",
+    "recorded_at": "docs/decisions.md:31-33"
+  },
+  {
+    "decision": "The README was updated for the new get and show commands.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "README.md diff; transcript.md:21"
+  },
+  {
+    "decision": "The work was committed directly on main as 363d949, with no push, pull request or merge.",
+    "options": [
+      "Merge back to base branch",
+      "Push and create PR",
+      "Keep as-is"
+    ],
+    "reason": "Not a separate worktree, the work is already on main, and the delivery rule forbids pushing and PRs",
+    "recorded_at": "questions.md:28-34; docs/decisions.md:6-8"
+  },
+  {
+    "decision": "The runner answered the step_done question with /method-command.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:22"
+  }
+]

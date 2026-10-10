@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["repo/spec/spec/config-set/spec.md:131", "repo/tests/test_set_scalars.py:43", "repo/tests/test_set_scalars.py:59", "repo/spec/changes/archive/2026-10-02-config-load-show-set/tasks.md:35", "repo/spec/changes/archive/2026-10-02-config-load-show-set/tasks.md:40"], "notes": "Test names and file docstrings match the spec's requirement titles (for example test_scalar_quoting and test_end_of_line_comment_alignment), so a newcomer can reach most tests by topic. However, no test cites a requirement or scenario ID, and tasks.md is the only bridge. It names modules but not the tests that cover them, and two of its links (tasks 6.3 and 7.1) point at edit/layout.py, which does not exist."}
+```

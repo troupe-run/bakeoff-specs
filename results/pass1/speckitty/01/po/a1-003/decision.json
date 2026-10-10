@@ -1,0 +1,16 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "Should write-back locate the target node and splice only its replacement text into the original file (A), use a ruamel.yaml round-trip dump (B), or something else (C)?",
+      "reply": "A. The contract requires byte-surgical write-back: after a successful `set`, the only bytes that differ in any file are the ones the `set` section requires to change. Users hand-edit these files and review the diffs, so byte-surgical write-back matters more than speed. You may pick any technique that guarantees this. A round-trip dump that normalises indentation, quoting, flow spacing, folded scalars or comment spacing would break that rule.",
+      "escalate": false,
+      "cited": "Contract: set PATH VALUE (byte-surgical write-back rule); Brief: Standing answers (users hand-edit and review diffs; byte-surgical matters more than speed)"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": false
+}

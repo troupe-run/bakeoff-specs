@@ -1,0 +1,16 @@
+{
+  "evidence": [
+    "repo/tests/e2e/test_show_sources.py:1",
+    "repo/tests/unit/test_view.py:1",
+    "repo/tests/e2e/test_get_errors.py:1",
+    "repo/tests/e2e/test_get_errors.py:36",
+    "repo/spec/003-config-get-show/tasks.md:58",
+    "repo/spec/003-config-get-show/tasks.md:122",
+    "repo/src/troupe/config/commands.py:91",
+    "repo/src/troupe/config/view.py:31"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"repo/tests/e2e/test_show_sources.py:1\", \"repo/tests/unit/test_view.py:1\", \"repo/tests/e2e/test_get_errors.py:1\", \"repo/tests/e2e/test_get_errors.py:36\", \"repo/spec/003-config-get-show/tasks.md:58\", \"repo/spec/003-config-get-show/tasks.md:122\", \"repo/src/troupe/config/commands.py:91\", \"repo/src/troupe/config/view.py:31\"]}\n```\n\nI sampled three tests: `test_get_errors.py::test_get_of_a_collection_mentions_config_show`, `test_show_sources.py::test_theatre_reached_through_a_symlink` and `test_view.py`. Most step-3 test files cite spec FR ranges in their module docstrings, for example `test_show_sources.py:1` (FR-230 to FR-234) and `test_view.py:1` (FR-213 to FR-225). The code cites the same IDs, so `commands.py:91` → FR-202 and `view.py:31` → FR-233/D-22 can be reached by ID. `tasks.md` also maps each test task to its FR or D-number.\n\nIt falls short of a 4 because the links are file-level ranges, not per-test, and some are missing. `test_get_errors.py:1` cites no FR at all, so its link to FR-202 exists only in `tasks.md:58`. The symlink test does not cite D-22 itself; that link is only in `tasks.md:122`.",
+  "score": 3,
+  "status": "ok"
+}

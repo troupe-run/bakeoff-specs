@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:33-54", "/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/decisions/DM-01M4BMKNXT8SSZTQ8ZX7H562MN.md:17-30", "/judge/repo/spec/troupe-config-remote-includes-01M4BMJ5/research.md:9", "/judge/gates.md:13-66"], "notes": "The PO said S-1 to S-12 were the agent's choice. Those, S-13 and the later S-14 to S-16 are all recorded in spec.md with project-specific reasons, and S-1 also has a decision record listing its options. Most of the S-2 to S-16 behaviour choices list no alternatives (only research.md's technical decisions do), so this falls short of 4."}
+```

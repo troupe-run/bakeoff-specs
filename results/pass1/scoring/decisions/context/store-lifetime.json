@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "model: opus\n",
+        "input": "`TROUPE_ACTOR=human:owner config set model sonnet`, then list `.troupe/`",
+        "observed": true,
+        "results": {
+          "1": "both arms: exit 0, no output. `.troupe/` holds only `history.sqlite` (12288 bytes) and `troupe.yml` (14 bytes).",
+          "2": "all four arms: exit 0, no output. Two arms leave only a database and `troupe.yml`; one names the database `events.sqlite`, the other `troupe-state.sqlite`. One arm also leaves an empty `events.lock` next to `events.sqlite`. One arm leaves `events.sqlite3` plus an empty `events.sqlite3.lock`."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history`, then `config get model`",
+        "observed": true,
+        "results": {
+          "1": "both arms: exit 0. Prints two JSON lines: an import of `opus` (actor unknown), then a set from `opus` to `sonnet` by human `owner` via cli. `get` prints `sonnet`. No new files appear.",
+          "2": "all four arms: the same two history lines and `sonnet`. No new files appear."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config watch`, edit `troupe.yml` by hand to `model: haiku`, wait 3s, send Ctrl-C (SIGINT)",
+        "observed": true,
+        "results": {
+          "1": "both arms: print `watching /theatre`, then exit 0 on Ctrl-C.",
+          "2": "three arms: print `watching /theatre` or `watching .`, then exit 0 on Ctrl-C. One arm: prints `watching .`, does not exit on Ctrl-C and ends with exit 137 (killed)."
+        }
+      },
+      {
+        "before": "",
+        "input": "`--theatre . config watch`, then SIGTERM",
+        "observed": true,
+        "results": {
+          "1": "both arms: refused at once with exit 2 and an `invalid choice: '.' (choose from config)` message. Nothing ran.",
+          "2": "three arms: refused the same way (exit 2, invalid choice '.'). One arm: accepts it, prints `watching .`, and ends with exit 137 on SIGTERM."
+        }
+      },
+      {
+        "before": "",
+        "input": "list `.troupe/` after all of the above",
+        "observed": true,
+        "results": {
+          "1": "both arms: only `history.sqlite` (12288 bytes) and `troupe.yml` (13 bytes). No `-wal` or `-shm` files.",
+          "2": "two arms (the two that ended with exit 137): leftover `-shm` (32768 bytes) and `-wal` files next to the database; one `-wal` is 0 bytes, the other 8272 bytes. Two arms: no `-wal`/`-shm`, but their empty lock file (`events.lock` or `events.sqlite3.lock`) remains."
+        }
+      }
+    ],
+    "in_practice": "Normal commands behave the same on both routes. The difference shows when a watch is stopped by a signal. On route 1 the folder ended with just the database and the config every time. On route 2, two of four arms ended with exit 137 instead of a clean exit and left `-wal`/`-shm` files beside the database; one of those was still holding 8 KB of history data in its `-wal` file. Route 2 arms also differ from each other in the database file name and in whether they leave a lock file.",
+    "stakes": "Whether running troupe leaves only the config and its history database in `.troupe/`, or also leaves stray `-wal`/`-shm` side files and lock files there. Stray files matter most when a watch process is stopped by a signal. Recording and reading history worked the same on both routes.",
+    "tradeoff": "Route 1 needs explicit closing code in every command, and it reliably left a clean folder in all runs. Route 2 skips that work, and its results varied: stray side files and lock files depending on the arm, plus two arms that only stopped with exit 137."
+  },
+  "plan_why": "Lists every file under the theatre with its size: after a set, after history+get, after a watch that picks up a hand edit and is stopped with SIGINT, and after a second watch stopped with SIGTERM. Leftover .db-wal/.db-shm files, and whether the wal is zero-size or not, show whether each implementation closes the history store explicitly, and whether the main db file alone holds the data after a set. Because of the 12-step limit, history and get share one listing, and the SIGTERM watch, which has no edit of its own, is listed once at the end.",
+  "routes": [
+    [
+      "One store instance per command, closed explicitly at the end so no -wal/-shm files remain",
+      [
+        "Arm A",
+        "Arm C"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

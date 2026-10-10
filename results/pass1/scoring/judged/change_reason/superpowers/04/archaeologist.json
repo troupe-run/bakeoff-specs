@@ -1,0 +1,12 @@
+{
+  "evidence": [
+    "docs/decisions.md:52-64 (decisions 21-23 explain why TROUPE_ACTOR is validated on every command, why a reconcile is a separate change, and how old events are upcast)",
+    "src/troupe/store.py:195-196 in the diff (a code comment says why the event classes went to version 2 and what version 1 events lack)",
+    "tests/test_config.py:319 in the diff (an inline comment says the lineage keys are stripped from test_history because test_lineage.py covers them)",
+    "diff.patch has no commit message or commit sha, and /judge/repo has no git history"
+  ],
+  "notes": "The decision log and inline comments explain both the additions and the changes to existing behaviour: the event schema upcast, the reconcile split, the test_history rewrite and the new record() signature. However, I found no commit message, and nothing ties the records to a specific request or step, so blame a year from now would land on a commit with no reason of its own. Some smaller hunks are also left unexplained, such as the conftest set() signature and the new `if changes` guard in reconcile.",
+  "raw": "{\"score\": 3, \"evidence\": [\"docs/decisions.md:52-64 (decisions 21-23 explain why TROUPE_ACTOR is validated on every command, why a reconcile is a separate change, and how old events are upcast)\", \"src/troupe/store.py:195-196 in the diff (a code comment says why the event classes went to version 2 and what version 1 events lack)\", \"tests/test_config.py:319 in the diff (an inline comment says the lineage keys are stripped from test_history because test_lineage.py covers them)\", \"diff.patch has no commit message or commit sha, and /judge/repo has no git history\"], \"notes\": \"The decision log and inline comments explain both the additions and the changes to existing behaviour: the event schema upcast, the reconcile split, the test_history rewrite and the new record() signature. However, I found no commit message, and nothing ties the records to a specific request or step, so blame a year from now would land on a commit with no reason of its own. Some smaller hunks are also left unexplained, such as the conftest set() signature and the new `if changes` guard in reconcile.\"}",
+  "score": 3,
+  "status": "ok"
+}

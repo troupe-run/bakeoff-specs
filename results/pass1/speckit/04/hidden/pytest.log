@@ -1,0 +1,94 @@
+........................F.........F............................F........ [ 53%]
+F..............................................................          [100%]
+=================================== FAILURES ===================================
+_________________ test_unknown_path_exits_5_and_names_the_path _________________
+
+cli = <tests.hidden.driver.Cli object at 0xffffba01a4e0>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_unknown_path_exits_5_and_0')
+
+    @pytest.mark.steps(1)
+    def test_unknown_path_exits_5_and_names_the_path(cli, tmp_theatre):
+        build(tmp_theatre, {CFG: "a: 1\n"})
+        r = show(cli, tmp_theatre, "nope.deeper")
+>       assert (r.code, r.out) == (5, "") and "nope.deeper" in r.err
+E       AssertionError: assert ((5, '') == (5, '')
+E         
+E         Use -v to get more diff and 'nope.deeper' in 'troupe: error: nope: path not found\n')
+E        +  where 'troupe: error: nope: path not found\n' = Result(code=5, out='', err='troupe: error: nope: path not found\n').err
+
+tests/hidden/test_step1_load_show.py:72: AssertionError
+_____________ test_writeback_is_byte_surgical[multi-line -> plain] _____________
+
+cli = <tests.hidden.driver.Cli object at 0xffffba01a4e0>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_writeback_is_byte_surgica9')
+c = Case(name='multi-line -> plain', group='block scalars', before='a: |\n  x\n  y\n\nb: 1\n', ops=[('a', 'single')], after='a: single\n\nb: 1\n', expect='splice', note='')
+
+    @pytest.mark.steps(1)
+    @pytest.mark.parametrize("c", CASES, ids=[c.name for c in CASES])
+    def test_writeback_is_byte_surgical(cli, tmp_theatre, c):
+        build(tmp_theatre, {CFG: c.before})
+        codes = [cli("set", path, arg(value), theatre=tmp_theatre).code for path, value in c.ops]
+        expected_code = {"error": 3, "path": 5}.get(c.expect, 0)
+        assert codes == [0] * (len(codes) - 1) + [expected_code], codes
+>       assert read(tmp_theatre, CFG) == c.after
+E       AssertionError: assert 'a: |-\n  single\n\nb: 1\n' == 'a: single\n\nb: 1\n'
+E         
+E         + a: |-
+E         - a: single
+E         ? ^^
+E         +   single
+E         ? ^
+E           
+E           b: 1
+
+tests/hidden/test_step1_writeback.py:21: AssertionError
+_ test_writeback_is_byte_surgical[scalar -> mapping keeps EOL comment on the key line] _
+
+cli = <tests.hidden.driver.Cli object at 0xffffba01a4e0>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_writeback_is_byte_surgica38')
+c = Case(name='scalar -> mapping keeps EOL comment on the key line', group='layout', before="model: 'opus'  # default\nnex...temperature': 0.2})], after='model:  # default\n  name: opus\n  temperature: 0.2\nnext: 1\n', expect='splice', note='')
+
+    @pytest.mark.steps(1)
+    @pytest.mark.parametrize("c", CASES, ids=[c.name for c in CASES])
+    def test_writeback_is_byte_surgical(cli, tmp_theatre, c):
+        build(tmp_theatre, {CFG: c.before})
+        codes = [cli("set", path, arg(value), theatre=tmp_theatre).code for path, value in c.ops]
+        expected_code = {"error": 3, "path": 5}.get(c.expect, 0)
+        assert codes == [0] * (len(codes) - 1) + [expected_code], codes
+>       assert read(tmp_theatre, CFG) == c.after
+E       AssertionError: assert 'model:      ....2\nnext: 1\n' == 'model:  # de....2\nnext: 1\n'
+E         
+E         - model:  # default
+E         + model:         # default
+E         ?         +++++++
+E             name: opus
+E             temperature: 0.2
+E           next: 1
+
+tests/hidden/test_step1_writeback.py:21: AssertionError
+___________ test_writeback_is_byte_surgical[null gains a child key] ____________
+
+cli = <tests.hidden.driver.Cli object at 0xffffba01a4e0>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_writeback_is_byte_surgica47')
+c = Case(name='null gains a child key', group='structural', before='a:\nb: 1\n', ops=[('a.c', 5)], after='a:\n  c: 5\nb: 1\n', expect='splice', note='')
+
+    @pytest.mark.steps(1)
+    @pytest.mark.parametrize("c", CASES, ids=[c.name for c in CASES])
+    def test_writeback_is_byte_surgical(cli, tmp_theatre, c):
+        build(tmp_theatre, {CFG: c.before})
+        codes = [cli("set", path, arg(value), theatre=tmp_theatre).code for path, value in c.ops]
+        expected_code = {"error": 3, "path": 5}.get(c.expect, 0)
+>       assert codes == [0] * (len(codes) - 1) + [expected_code], codes
+E       AssertionError: [5]
+E       assert [5] == [0]
+E         
+E         At index 0 diff: 5 != 0
+E         Use -v to get more diff
+
+tests/hidden/test_step1_writeback.py:20: AssertionError
+=========================== short test summary info ============================
+FAILED tests/hidden/test_step1_load_show.py::test_unknown_path_exits_5_and_names_the_path
+FAILED tests/hidden/test_step1_writeback.py::test_writeback_is_byte_surgical[multi-line -> plain]
+FAILED tests/hidden/test_step1_writeback.py::test_writeback_is_byte_surgical[scalar -> mapping keeps EOL comment on the key line]
+FAILED tests/hidden/test_step1_writeback.py::test_writeback_is_byte_surgical[null gains a child key]
+4 failed, 131 passed, 29 deselected in 125.46s (0:02:05)

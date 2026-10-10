@@ -1,0 +1,42 @@
+# scoring/stale/step-03.toml — step 3: `get` takes over `show`'s old behaviour; `show` now prints a value or a
+# subtree, `PATH` optional, `--sources` gives provenance. Drafted 2026-10-05 from scenario/steps/03-get-show.md,
+# contract.md "get and show (from step 3)" and po-brief.md only.
+[[stale]]
+id = "show-prints-scalar-only"
+kind = "requirement"
+what = "Any requirement or acceptance criterion saying `show PATH` prints only a scalar, or that `show` on a mapping or list exits 5"
+why = "Contract 'get and show (from step 3 — replaces \"show PATH (step 1 and 2)\")': `show` prints a mapping or list as YAML; `get` now has the scalar-only behaviour"
+
+[[stale]]
+id = "show-path-required"
+kind = "requirement"
+what = "Any requirement, usage line or acceptance criterion giving `show` a mandatory `PATH` argument"
+why = "Contract step 3: '`show [PATH]` … `PATH` omitted → the whole configuration'"
+
+[[stale]]
+id = "show-mapping-exit5-tests"
+kind = "test"
+what = "Tests asserting `show` on a mapping or list exits 5 (or prints an error); tests asserting `show` with no PATH is a usage error (exit 2)"
+why = "Step 1 contract 'show PATH': 'A mapping or list → exit 5' — replaced at step 3; that exit now belongs to `get`, whose stderr must mention `config show`"
+
+[[stale]]
+id = "show-command-handler"
+kind = "code"
+what = "The `show` subcommand's handler and argument parser: the non-scalar → exit 5 branch, and the required PATH argument"
+why = "Contract step 3: `show` renders mappings/lists as block YAML (includes resolved, text includes as literal blocks) and takes an optional PATH plus `--sources`"
+
+[[stale]]
+id = "get-error-points-at-show"
+kind = "code"
+what = "The error raised for a mapping/list at a value-printing command: if `get` reuses `show`'s step-1 error, its stderr must now mention `config show`"
+why = "Contract step 3: '`get PATH` … A mapping or list → exit 5, and stderr mentions `config show`'; po-brief standing answer: 'error pointing at `config show`'"
+
+[[stale]]
+id = "cli-docs-show"
+kind = "doc"
+what = "README / CLI help / usage docs describing `show` as the value-printing command, or omitting `get` and `--sources`"
+why = "Step 3 brief: '`troupe config get PATH` prints a single value — what `show` used to do'"
+
+[legitimate]
+paths = ["src/**", "troupe/**", "tests/**", "conftest.py", "README*", "docs/**", "CHANGELOG*", "CLAUDE.md", "AGENTS.md", "pyproject.toml", "uv.lock",
+         ".gitignore", ".python-version", "Makefile", "justfile", ".github/**", "pytest.ini"]

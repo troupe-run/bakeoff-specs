@@ -1,0 +1,12 @@
+{
+  "evidence": [
+    "/judge/setup/checklist.json:33-35 (control.no-method: found: none), so this is plain Claude Code with no method layered on top",
+    "/judge/setup/checklist.json:21-23 (no-foreign-plugins: installed: none) and :45-47 (0 model settings, all aliases), so no settings, hooks or memory are overridden",
+    "/judge/setup/installed-commands.json:1 ([]) and /judge/setup/setup-turns.json:1 ([]): no shims, no extra CLI and no setup turns were needed",
+    "/judge/setup/checklist.json:51-53 (github.issues-access ok) and /judge/06/transcript.md:2 (gh issue view 2 -R troupe-run/repo run inside the workflow)"
+  ],
+  "notes": "The arm runs stock Claude Code with nothing installed and nothing overridden, so nothing in it works against the tool. The GitHub Issues baseline tracker was reachable during setup and was used from inside the step workflow without any workaround.",
+  "raw": "```json\n{\"score\": 4, \"evidence\": [\"/judge/setup/checklist.json:33-35 (control.no-method: found: none), so this is plain Claude Code with no method layered on top\", \"/judge/setup/checklist.json:21-23 (no-foreign-plugins: installed: none) and :45-47 (0 model settings, all aliases), so no settings, hooks or memory are overridden\", \"/judge/setup/installed-commands.json:1 ([]) and /judge/setup/setup-turns.json:1 ([]): no shims, no extra CLI and no setup turns were needed\", \"/judge/setup/checklist.json:51-53 (github.issues-access ok) and /judge/06/transcript.md:2 (gh issue view 2 -R troupe-run/repo run inside the workflow)\"], \"notes\": \"The arm runs stock Claude Code with nothing installed and nothing overridden, so nothing in it works against the tool. The GitHub Issues baseline tracker was reachable during setup and was used from inside the step workflow without any workaround.\"}\n```",
+  "score": 4,
+  "status": "ok"
+}

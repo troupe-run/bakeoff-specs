@@ -1,0 +1,266 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "defaults.model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--expand-alias",
+          "reviewer.settings.temperature",
+          "0.5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "coder.agent.retries",
+          "3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tags.2",
+          "\"x: y\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "steps.1",
+          "\"line one\\nline two\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "name: coder\nmodel: opus\n",
+      ".troupe/troupe.yml": "# troupe config\ndefaults: &d\n  model: opus\n  temperature: 0.2\ncoder:\n  settings: *d\n  agent: file:agents/coder.yaml  # shared\nreviewer:\n  settings: *d\ntags: [a, b]\nsteps:\n  - lint\n  # trailing step comment\n# top-level comment\nnotes: plain\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/coder.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "defaults.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\ndefaults: &d\n  model: sonnet\n  temperature: 0.2\ncoder:\n  settings: *d\n  agent: file:agents/coder.yaml  # shared\nreviewer:\n  settings: *d\ntags: [a, b]\nsteps:\n  - lint\n  # trailing step comment\n# top-level comment\nnotes: plain\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--expand-alias",
+                "reviewer.settings.temperature",
+                "0.5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\ndefaults: &d\n  model: sonnet\n  temperature: 0.2\ncoder:\n  settings: *d\n  agent: file:agents/coder.yaml  # shared\nreviewer:\n  settings:  # expanded from *d by troupe\n    model: sonnet\n    temperature: 0.5\ntags: [a, b]\nsteps:\n  - lint\n  # trailing step comment\n# top-level comment\nnotes: plain\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.agent.retries",
+                "3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\ndefaults: &d\n  model: sonnet\n  temperature: 0.2\ncoder:\n  settings: *d\n  agent:  # shared\n    $ref: file:agents/coder.yaml\n    retries: 3\nreviewer:\n  settings:  # expanded from *d by troupe\n    model: sonnet\n    temperature: 0.5\ntags: [a, b]\nsteps:\n  - lint\n  # trailing step comment\n# top-level comment\nnotes: plain\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.2",
+                "\"x: y\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\ndefaults: &d\n  model: sonnet\n  temperature: 0.2\ncoder:\n  settings: *d\n  agent:  # shared\n    $ref: file:agents/coder.yaml\n    retries: 3\nreviewer:\n  settings:  # expanded from *d by troupe\n    model: sonnet\n    temperature: 0.5\ntags: [a, b, 'x: y']\nsteps:\n  - lint\n  # trailing step comment\n# top-level comment\nnotes: plain\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "steps.1",
+                "\"line one\\nline two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\ndefaults: &d\n  model: sonnet\n  temperature: 0.2\ncoder:\n  settings: *d\n  agent:  # shared\n    $ref: file:agents/coder.yaml\n    retries: 3\nreviewer:\n  settings:  # expanded from *d by troupe\n    model: sonnet\n    temperature: 0.5\ntags: [a, b, 'x: y']\nsteps:\n  - lint\n  # trailing step comment\n  - |\n    line one\n    line two\n# top-level comment\nnotes: plain\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Re-parse the edited text and compare only the value at PATH with VALUE",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 5,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "defaults.model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\ndefaults: &d\n  model: sonnet\n  temperature: 0.2\ncoder:\n  settings: *d\n  agent: file:agents/coder.yaml  # shared\nreviewer:\n  settings: *d\ntags: [a, b]\nsteps:\n  - lint\n  # trailing step comment\n# top-level comment\nnotes: plain\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--expand-alias",
+                "reviewer.settings.temperature",
+                "0.5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\ndefaults: &d\n  model: sonnet\n  temperature: 0.2\ncoder:\n  settings: *d\n  agent: file:agents/coder.yaml  # shared\nreviewer:\n  settings:  # expanded from *d by troupe\n    model: sonnet\n    temperature: 0.5\ntags: [a, b]\nsteps:\n  - lint\n  # trailing step comment\n# top-level comment\nnotes: plain\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.agent.retries",
+                "3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\ndefaults: &d\n  model: sonnet\n  temperature: 0.2\ncoder:\n  settings: *d\n  agent:  # shared\n    $ref: file:agents/coder.yaml\n    retries: 3\nreviewer:\n  settings:  # expanded from *d by troupe\n    model: sonnet\n    temperature: 0.5\ntags: [a, b]\nsteps:\n  - lint\n  # trailing step comment\n# top-level comment\nnotes: plain\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.2",
+                "\"x: y\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\ndefaults: &d\n  model: sonnet\n  temperature: 0.2\ncoder:\n  settings: *d\n  agent:  # shared\n    $ref: file:agents/coder.yaml\n    retries: 3\nreviewer:\n  settings:  # expanded from *d by troupe\n    model: sonnet\n    temperature: 0.5\ntags: [a, b, 'x: y']\nsteps:\n  - lint\n  # trailing step comment\n# top-level comment\nnotes: plain\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "steps.1",
+                "\"line one\\nline two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# troupe config\ndefaults: &d\n  model: sonnet\n  temperature: 0.2\ncoder:\n  settings: *d\n  agent:  # shared\n    $ref: file:agents/coder.yaml\n    retries: 3\nreviewer:\n  settings:  # expanded from *d by troupe\n    model: sonnet\n    temperature: 0.5\ntags: [a, b, 'x: y']\nsteps:\n  - lint\n  # trailing step comment\n  - |\n    line one\n    line two\n# top-level comment\nnotes: plain\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Reload the whole configuration from the edited in-memory texts; require PATH to read back as VALUE and nothing else to change; otherwise exit 3 with no write",
+      "route_no": 2
+    }
+  ]
+}

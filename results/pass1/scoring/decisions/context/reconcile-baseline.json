@@ -1,0 +1,49 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "model: opus\nretry: 3\nagents:\n  coder: file:agents/coder.yaml",
+        "input": "edit `.troupe/troupe.yml` by hand (model opus -> haiku) and `.troupe/agents/coder.yaml` by hand (temperature 0.2 -> 0.5), then `TROUPE_ACTOR=agent:bot config set retry 4`, then `config history`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0; troupe.yml now reads:\nmodel: haiku\nretry: 4\nagents:\n  coder: file:agents/coder.yaml\nThe history lists seq 5 `model` opus -> haiku and seq 6 `agents.coder.temperature` 0.2 -> 0.5. Both are marked \"via file\" with actor unknown and grouped as one change. Seq 7 is `retry` 3 -> 4 by agent bot via cli. The set's own write to the file creates no extra entry."
+        }
+      },
+      {
+        "before": "model: haiku\nretry: 4\nagents:\n  coder: file:agents/coder.yaml",
+        "input": "edit troupe.yml by hand to `retry: 7`, then edit it again to `retry: 4  # restored`, with no troupe command in between; then `config get retry` and `config history`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: `config get retry` prints 4. The history is unchanged and still ends at seq 7. The value 7 is never recorded, and adding the comment records nothing."
+        }
+      },
+      {
+        "before": "model: haiku\nretry: 4  # restored\nagents:\n  coder: file:agents/coder.yaml",
+        "input": "edit troupe.yml by hand to `model: sonnet`, then `TROUPE_ACTOR=agent:bot troupe --theatre . config set model sonnet`, then `config history`",
+        "observed": true,
+        "results": {
+          "1": "Five arms: exit 2 with a usage error like `invalid choice: '.' (choose from config)`. The wording differs between arms. Nothing is recorded, and the history still ends at seq 7, so the hand edit to sonnet does not appear. One arm: exit 0, and the history gains seq 8 `model` haiku -> sonnet, \"via file\" with actor unknown. The hand edit is credited to the file, not to the bot, and the bot's set adds no entry because the value already matched."
+        }
+      }
+    ],
+    "in_practice": "A hand edit is recorded as the difference between the files and the last recorded configuration, and only when a later command checks for it. Changes in between are lost: an edit that is undone before the next run never appears. Running `config history` alone after a hand edit did not show that edit.",
+    "stakes": "When someone edits the config files by hand, the edit is recorded only if it differs from the configuration troupe last recorded. The user relies on this to get history that shows who changed what, without fake entries and without missing edits.",
+    "tradeoff": "Route 1: there are no fake entries from troupe's own writes and edits made while troupe isn't running are still caught, but values changed and changed back between runs leave no trace."
+  },
+  "plan_why": "Shows what reconcile compares against: hand edits made between commands (in troupe.yml and in an include) are recorded as file events by the unknown actor before agent:bot's set; an edit that is reverted before the next command leaves no event; and when a hand edit is followed by a set of the same key to the same value, the history shows whether that value is credited to the file edit or to agent:bot",
+  "routes": [
+    [
+      "The recorded configuration (projection of the events), diffed leaf by leaf against the loaded files",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

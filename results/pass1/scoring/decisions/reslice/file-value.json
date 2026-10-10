@@ -1,0 +1,167 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "DROP",
+        "why": "config show prints 'note: file:notes.txt' without the !literal mark"
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "DROP",
+        "why": "config show prints 'note: file:notes.txt' without the !literal mark"
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "DROP",
+        "why": "config show prints 'note: file:notes.txt' without the !literal mark"
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "KEEP_EXIT3",
+        "why": "config show keeps '!literal file:notes.txt' and the bad include writes are refused with exit 3"
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "KEEP_EXIT4",
+        "why": "config show keeps '!literal' but the bad include writes fail with exit 4 and load-error messages"
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "DROP",
+        "why": "config show prints 'note: file:notes.txt' without the !literal mark"
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "note",
+          "file:notes.txt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--include",
+          "other",
+          "file:notes.txt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--include",
+          "name",
+          "file:missing.txt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--include",
+          "name",
+          "file:troupe.yml"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/notes.txt": "included text\n",
+      ".troupe/troupe.yml": "name: demo  # project\nnote: hello\nother: x\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/notes.txt"
+    ],
+    "why": "Shows what happens when a set VALUE is a file: string in the final code. By default it should be written tagged !literal. With --include and an existing target it becomes a real include. With --include and a missing or cyclic target, route 2 refuses with exit 3; other routes may write the file anyway or fail with exit 4."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "config show drops the mark",
+            "id": "DROP"
+          },
+          {
+            "description": "keeps the mark and refuses with exit 3",
+            "id": "KEEP_EXIT3"
+          },
+          {
+            "description": "keeps the mark but refuses with exit 4 (load error on a write)",
+            "id": "KEEP_EXIT4"
+          }
+        ],
+        "id": "Q1",
+        "text": "a file: value given to set"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Verify a file: string as the written text",
+      [
+        "Arm C"
+      ]
+    ],
+    [
+      "Write it as a string and let the read-back load decide; a missing, cyclic or unloadable target exits 3",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "sheet_id": "T26",
+  "status": "ok"
+}

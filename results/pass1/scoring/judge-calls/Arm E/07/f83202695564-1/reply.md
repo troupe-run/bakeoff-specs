@@ -1,0 +1,5 @@
+```json
+{"score": 4, "evidence": ["/judge/repo/README.md:8", "/judge/repo/README.md:25-32", "/judge/repo/src/troupe/yamldoc.py:95", "/judge/diff.patch:671-675", "/judge/diff.patch:806-818", "/judge/diff.patch:547-556", "/judge/repo/tests/test_config.py:531-540", "/judge/repo/DECISIONS.md:45"]}
+```
+
+{"score": 4, "evidence": ["/judge/repo/README.md:8", "/judge/repo/README.md:25-32", "/judge/repo/src/troupe/yamldoc.py:95", "/judge/diff.patch:671-675", "/judge/diff.patch:806-818", "/judge/diff.patch:547-556", "/judge/repo/tests/test_config.py:531-540", "/judge/repo/DECISIONS.md:45"], "notes": "Every stale item on the list was updated: the include rule, ref_of, the set planner (!literal, --include, schema refusal, remote read-only), reconcile validation, the tests and the README/DECISIONS docs now match the new behaviour, and no old test asserts plain `file:` writes. The only leftover is README.md:13, whose short summary still mentions just `file:` strings, but README.md:25-32 gives the full rule, so a maintainer would not be misled."}

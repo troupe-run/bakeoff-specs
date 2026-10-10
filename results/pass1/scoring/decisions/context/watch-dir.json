@@ -1,0 +1,85 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "",
+        "input": "`config watch` (no flag, no TROUPE_THEATRE, started in /theatre)",
+        "observed": true,
+        "results": {
+          "1": "prints `watching /theatre` and keeps running; Ctrl-C ends it with exit 0 (all four arms)",
+          "2": "prints `watching .` and keeps running; Ctrl-C ends it with exit 0",
+          "3": "prints `watching .` and keeps running; Ctrl-C ends it with exit 0"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config watch --theatre=sub`",
+        "observed": true,
+        "results": {
+          "1": "prints `watching sub`; Ctrl-C ends it cleanly with exit 0 (all four arms)",
+          "2": "prints `watching sub`; on Ctrl-C it exits 0 but prints a Python traceback ending in `KeyboardInterrupt` (\"Exception ignored in: <function Application.__del__ ...>\")",
+          "3": "prints `watching sub`; Ctrl-C ends it cleanly with exit 0"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config watch --theatre linked` (linked is a symlink to sub)",
+        "observed": true,
+        "results": {
+          "1": "all four arms print `watching linked`, not sub. On Ctrl-C, two arms: exit 0; one arm: exit 130; one arm: exit 137",
+          "2": "prints `watching linked`; Ctrl-C ends it with exit 0",
+          "3": "prints `watching linked`; Ctrl-C ends it with exit 0"
+        }
+      },
+      {
+        "before": "",
+        "input": "`--theatre . config watch` (flag before the command)",
+        "observed": true,
+        "results": {
+          "1": "three arms: exit 2, nothing watched, an error such as `troupe: argument COMMAND: invalid choice: '.' (choose from config)`; one arm: accepts it, prints `watching .` and runs until Ctrl-C (exit 0)",
+          "2": "exit 2, nothing watched: `troupe: usage error: argument group: invalid choice: '.' (choose from config)`",
+          "3": "exit 2, nothing watched: `usage: troupe [-h] {config} ...` then `troupe: error: argument command: invalid choice: '.' (choose from config)`"
+        }
+      },
+      {
+        "before": "model: opus  # main theatre\nretries: 2\n",
+        "input": "with `config watch` running, hand-edit .troupe/troupe.yml, wait 3 s, Ctrl-C, then `config history model`",
+        "observed": true,
+        "results": {
+          "1": "all arms the same: the history shows the import of `opus`, then `set` `opus` -> `sonnet` via `file`",
+          "2": "same: import `opus`, then `set` `opus` -> `sonnet` via `file`",
+          "3": "same: import `opus`, then `set` `opus` -> `sonnet` via `file`"
+        }
+      }
+    ],
+    "in_practice": "Only one case differs between routes: running with no directory given. Route 1 prints the full path of the current folder; routes 2 and 3 print `.`. If you pass a directory, every route prints it exactly as typed, so a symlink shows its own name rather than its target. The other differences belong to single arms and not to the route chosen: an arm on route 1 that accepts `--theatre` before the command, the varied Ctrl-C exit codes on route 1, and the traceback on route 2.",
+    "stakes": "When `config watch` starts, its first line tells you which directory it is watching. If you didn't pass a directory, that line either names the real folder or just says `.`, which only helps if you already know where you launched it. A directory you pass yourself is printed exactly as you typed it on every route, so that line never reveals where a symlink actually points.",
+    "tradeoff": "Route 1 tells you where it's watching when you didn't say, but prints the cwd path unresolved, so on macOS it may show /var where the real path is /private/var. Routes 2 and 3 print a bare `.`, which is simple but tells you nothing about the location."
+  },
+  "plan_why": "Starts `config watch` four times and captures the `watching <dir>` line each prints. The four starts are: no --theatre (route 1 should print the absolute cwd, route 2 '.'), `--theatre .` placed before `config`, `--theatre=sub`, and `--theatre linked` (a symlink to sub), which shows whether the path is printed as given or resolved. A hand edit made during the first watch, followed by `history`, checks that the watch really picked up changes.",
+  "routes": [
+    [
+      "--theatre or TROUPE_THEATRE as given; the absolute cwd when neither is set",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "As given, falling back to '.'",
+      [
+        "Arm D"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

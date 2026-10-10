@@ -1,0 +1,101 @@
+..............................F.....F............................F...... [ 71%]
+..F..........................                                            [100%]
+=================================== FAILURES ===================================
+______ test_writeback_is_byte_surgical[explicit indentation indicator |2] ______
+
+cli = <tests.hidden.driver.Cli object at 0xffffa9e27440>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_writeback_is_byte_surgica3')
+c = Case(name='explicit indentation indicator |2', group='block scalars', before='code: |2\n    indented first\n  normal\n... '  indented first\nchanged\n')], after='code: |2\n    indented first\n  changed\nnext: 1\n', expect='splice', note='')
+
+    @pytest.mark.steps(1)
+    @pytest.mark.parametrize("c", CASES, ids=[c.name for c in CASES])
+    def test_writeback_is_byte_surgical(cli, tmp_theatre, c):
+        build(tmp_theatre, {CFG: c.before})
+        codes = [cli("set", path, arg(value), theatre=tmp_theatre).code for path, value in c.ops]
+        expected_code = {"error": 3, "path": 5}.get(c.expect, 0)
+        assert codes == [0] * (len(codes) - 1) + [expected_code], codes
+>       assert read(tmp_theatre, CFG) == c.after
+E       assert 'code: "  ind...n"\nnext: 1\n' == 'code: |2\n  ...ed\nnext: 1\n'
+E         
+E         + code: "  indented first\nchanged\n"
+E         - code: |2
+E         -     indented first
+E         -   changed
+E           next: 1
+
+tests/hidden/test_step1_writeback.py:21: AssertionError
+_____________ test_writeback_is_byte_surgical[multi-line -> plain] _____________
+
+cli = <tests.hidden.driver.Cli object at 0xffffa9e27440>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_writeback_is_byte_surgica9')
+c = Case(name='multi-line -> plain', group='block scalars', before='a: |\n  x\n  y\n\nb: 1\n', ops=[('a', 'single')], after='a: single\n\nb: 1\n', expect='splice', note='')
+
+    @pytest.mark.steps(1)
+    @pytest.mark.parametrize("c", CASES, ids=[c.name for c in CASES])
+    def test_writeback_is_byte_surgical(cli, tmp_theatre, c):
+        build(tmp_theatre, {CFG: c.before})
+        codes = [cli("set", path, arg(value), theatre=tmp_theatre).code for path, value in c.ops]
+        expected_code = {"error": 3, "path": 5}.get(c.expect, 0)
+        assert codes == [0] * (len(codes) - 1) + [expected_code], codes
+>       assert read(tmp_theatre, CFG) == c.after
+E       AssertionError: assert 'a: |-\n  single\n\nb: 1\n' == 'a: single\n\nb: 1\n'
+E         
+E         + a: |-
+E         - a: single
+E         ? ^^
+E         +   single
+E         ? ^
+E           
+E           b: 1
+
+tests/hidden/test_step1_writeback.py:21: AssertionError
+_ test_writeback_is_byte_surgical[scalar -> mapping keeps EOL comment on the key line] _
+
+cli = <tests.hidden.driver.Cli object at 0xffffa9e27440>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_writeback_is_byte_surgica38')
+c = Case(name='scalar -> mapping keeps EOL comment on the key line', group='layout', before="model: 'opus'  # default\nnex...temperature': 0.2})], after='model:  # default\n  name: opus\n  temperature: 0.2\nnext: 1\n', expect='splice', note='')
+
+    @pytest.mark.steps(1)
+    @pytest.mark.parametrize("c", CASES, ids=[c.name for c in CASES])
+    def test_writeback_is_byte_surgical(cli, tmp_theatre, c):
+        build(tmp_theatre, {CFG: c.before})
+        codes = [cli("set", path, arg(value), theatre=tmp_theatre).code for path, value in c.ops]
+        expected_code = {"error": 3, "path": 5}.get(c.expect, 0)
+        assert codes == [0] * (len(codes) - 1) + [expected_code], codes
+>       assert read(tmp_theatre, CFG) == c.after
+E       AssertionError: assert 'model:      ....2\nnext: 1\n' == 'model:  # de....2\nnext: 1\n'
+E         
+E         - model:  # default
+E         + model:         # default
+E         ?         +++++++
+E             name: opus
+E             temperature: 0.2
+E           next: 1
+
+tests/hidden/test_step1_writeback.py:21: AssertionError
+___________ test_writeback_is_byte_surgical[null gains a child key] ____________
+
+cli = <tests.hidden.driver.Cli object at 0xffffa9e27440>
+tmp_theatre = PosixPath('/tmp/pytest-of-actor/pytest-0/test_writeback_is_byte_surgica47')
+c = Case(name='null gains a child key', group='structural', before='a:\nb: 1\n', ops=[('a.c', 5)], after='a:\n  c: 5\nb: 1\n', expect='splice', note='')
+
+    @pytest.mark.steps(1)
+    @pytest.mark.parametrize("c", CASES, ids=[c.name for c in CASES])
+    def test_writeback_is_byte_surgical(cli, tmp_theatre, c):
+        build(tmp_theatre, {CFG: c.before})
+        codes = [cli("set", path, arg(value), theatre=tmp_theatre).code for path, value in c.ops]
+        expected_code = {"error": 3, "path": 5}.get(c.expect, 0)
+>       assert codes == [0] * (len(codes) - 1) + [expected_code], codes
+E       AssertionError: [5]
+E       assert [5] == [0]
+E         
+E         At index 0 diff: 5 != 0
+E         Use -v to get more diff
+
+tests/hidden/test_step1_writeback.py:20: AssertionError
+=========================== short test summary info ============================
+FAILED tests/hidden/test_step1_writeback.py::test_writeback_is_byte_surgical[explicit indentation indicator |2]
+FAILED tests/hidden/test_step1_writeback.py::test_writeback_is_byte_surgical[multi-line -> plain]
+FAILED tests/hidden/test_step1_writeback.py::test_writeback_is_byte_surgical[scalar -> mapping keeps EOL comment on the key line]
+FAILED tests/hidden/test_step1_writeback.py::test_writeback_is_byte_surgical[null gains a child key]
+4 failed, 97 passed, 63 deselected in 55.09s

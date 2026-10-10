@@ -1,0 +1,52 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "Which mechanism should keep a `set`'s write-back out of `watch`'s events and record each edit exactly once: (A) a theatre lock plus comparing against the recorded configuration, (B) a fingerprint ignore list, or (C) something else?",
+      "reply": "The contract fixes the outcome, not the mechanism, so the mechanism is your engineering choice. The outcome it requires: a `set` while `watch` runs emits exactly the `set`'s own events and its write-back produces no further events; every hand edit made after `watching <dir>` is reconciled within 2 seconds; a formatting-only or comment-only edit emits nothing; and state lives only under `<dir>/.troupe/`. (A) is consistent with all of that, and a lock file under `.troupe/` is allowed state. (B) as you describe it would lose or suppress some hand edits, which contradicts 'Within 2 seconds of any change \u2026 it reconciles', so it is not acceptable as described. Proceed with (A).",
+      "escalate": false,
+      "cited": "Contract: Sync with files; General (State)"
+    },
+    {
+      "question": "Is it acceptable for `watch` to observe files by polling their bytes with the stdlib about every 250 ms, with no new dependency?",
+      "reply": "Yes. The contract only requires a reconcile within 2 seconds of any change made after the `watching <dir>` line, and that line may be printed only once `watch` can observe changes. Taking the baseline before printing meets that promise. The brief sets no performance targets (configurations are small), and only macOS and Linux need to be supported.",
+      "escalate": false,
+      "cited": "Contract: Sync with files; Brief: Standing answers (Performance, Platforms)"
+    },
+    {
+      "question": "Is it acceptable for the watched set to be the files the loader actually read, with `watch` retrying the load every tick while the configuration can't load, and printing one stderr line when it becomes unloadable and another only when the error changes?",
+      "reply": "Yes. Watching the config file plus every included file is what Sync with files requires, and that includes includes added by a hand edit. How often to write to stderr while the configuration can't load is your choice, because the contract doesn't specify it. Each message must name the path or file involved.",
+      "escalate": false,
+      "cited": "Contract: Sync with files; Brief: Standing answers (error wording), out-of-contract choices"
+    },
+    {
+      "question": "Is it acceptable for the history aggregate to keep a path\u2192value `leaves` map, rebuilt by replaying existing events, with no migration?",
+      "reply": "Yes. That is internal state under `.troupe/`, which the contract allows. Existing histories must keep being reported by `history` exactly as before.",
+      "escalate": false,
+      "cited": "Contract: General (State); history"
+    },
+    {
+      "question": "Is it acceptable for a single `reconcile(theatre)` to be called by `show`, `set` and `watch`, while `history` imports but never reconciles?",
+      "reply": "Yes. That matches the contract: every command other than `history` reconciles first, and `history` imports a theatre that has never been imported but never reconciles.",
+      "escalate": false,
+      "cited": "Contract: Sync with files; history"
+    },
+    {
+      "question": "Is it acceptable for SIGINT/SIGTERM to set a stop flag, so that the loop finishes any reconcile in progress and then exits 0?",
+      "reply": "Yes. The contract says `watch` runs until SIGINT or SIGTERM and then exits 0. Finishing an atomic reconcile before exiting is consistent with that.",
+      "escalate": false,
+      "cited": "Contract: Sync with files"
+    },
+    {
+      "question": "Should `watching <dir>` echo the theatre directory as given (from `--theatre`, `$TROUPE_THEATRE` or the current directory) instead of the resolved path, with FR-009 updated to say so?",
+      "reply": "Yes. The contract writes `--theatre <dir>` and then `watching <dir>`, so with `--theatre` the line must show the same `<dir>` that was given, not a resolved path. When the directory comes from the environment variable or defaults to the current directory, what to print is out of contract. Echoing it as given is acceptable; record that choice in FR-009.",
+      "escalate": false,
+      "cited": "Contract: Sync with files; General (Invocation); Brief: out-of-contract choices"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

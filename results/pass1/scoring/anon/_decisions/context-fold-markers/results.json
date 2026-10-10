@@ -1,0 +1,545 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "agents.coder.prompt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "agents.coder.motto"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.coder"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.prompt",
+          "\"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "agents.coder"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "agents:\n  coder:\n    prompt: >\n      You review code carefully and\n      explain every finding plainly.\n\n      Keep answers short and cite\n      the file and line.\n    motto: !literal >\n      file:notes.txt is not an include\n      here, it is just folded text.\n    bell: \"ding\\a\"\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You review code carefully and explain every finding plainly.\nKeep answers short and cite the file and line.\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.motto"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "file:notes.txt is not an include here, it is just folded text.\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "prompt: |\n  You review code carefully and explain every finding plainly.\n  Keep answers short and cite the file and line.\nmotto: |\n  file:notes.txt is not an include here, it is just folded text.\nbell: \"ding\\a\"\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.prompt",
+                "\"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    prompt: >\n      You review code carefully and\n      explain every finding plainly.\n\n      Keep answers brief, and\n      always cite the file and\n      the line number.\n    motto: !literal >\n      file:notes.txt is not an include\n      here, it is just folded text.\n    bell: \"ding\\a\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.prompt\", \"old\": null, \"new\": \"You review code carefully and explain every finding plainly.\\nKeep answers short and cite the file and line.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:25.292605Z\", \"reason\": null, \"change\": \"f54c73b6-ae43-4c8b-808a-6972741c7f50\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.motto\", \"old\": null, \"new\": \"file:notes.txt is not an include here, it is just folded text.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:25.292605Z\", \"reason\": null, \"change\": \"f54c73b6-ae43-4c8b-808a-6972741c7f50\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.bell\", \"old\": null, \"new\": \"ding\\u0007\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:25.292605Z\", \"reason\": null, \"change\": \"f54c73b6-ae43-4c8b-808a-6972741c7f50\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.prompt\", \"old\": \"You review code carefully and explain every finding plainly.\\nKeep answers short and cite the file and line.\\n\", \"new\": \"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:03:27.044110Z\", \"reason\": null, \"change\": \"308d7a4b-e761-469e-901c-d66832762b57\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You review code carefully and explain every finding plainly.\nKeep answers short and cite the file and line.\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.motto"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "file:notes.txt is not an include here, it is just folded text.\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "prompt: |\n  You review code carefully and explain every finding plainly.\n  Keep answers short and cite the file and line.\nmotto: |\n  file:notes.txt is not an include here, it is just folded text.\nbell: \"ding\\a\"\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.prompt",
+                "\"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    prompt: >\n      You review code carefully and\n      explain every finding plainly.\n\n      Keep answers brief, and\n      always cite the file and\n      the line number.\n    motto: !literal >\n      file:notes.txt is not an include\n      here, it is just folded text.\n    bell: \"ding\\a\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.prompt\", \"old\": null, \"new\": \"You review code carefully and explain every finding plainly.\\nKeep answers short and cite the file and line.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:40.691629Z\", \"reason\": null, \"change\": \"a354018a-4367-4009-9732-86120e099d3a\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.motto\", \"old\": null, \"new\": \"file:notes.txt is not an include here, it is just folded text.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:40.691629Z\", \"reason\": null, \"change\": \"a354018a-4367-4009-9732-86120e099d3a\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.bell\", \"old\": null, \"new\": \"ding\\u0007\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:40.691629Z\", \"reason\": null, \"change\": \"a354018a-4367-4009-9732-86120e099d3a\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.prompt\", \"old\": \"You review code carefully and explain every finding plainly.\\nKeep answers short and cite the file and line.\\n\", \"new\": \"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:03:42.307401Z\", \"reason\": null, \"change\": \"b1b6544e-1f9d-4dd4-9156-a571ae9ac555\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Strip them from folded values (also under !literal)",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You review code carefully and explain every finding plainly.\nKeep answers short and cite the file and line.\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.motto"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "file:notes.txt is not an include here, it is just folded text.\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "prompt: |\n  You review code carefully and explain every finding plainly.\n  Keep answers short and cite the file and line.\nmotto: |\n  file:notes.txt is not an include here, it is just folded text.\nbell: \"ding\\a\"\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.prompt",
+                "\"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    prompt: >\n      You review code carefully and\n      explain every finding plainly.\n\n      Keep answers brief, and\n      always cite the file and\n      the line number.\n    motto: !literal >\n      file:notes.txt is not an include\n      here, it is just folded text.\n    bell: \"ding\\a\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.prompt\", \"old\": null, \"new\": \"You review code carefully and explain every finding plainly.\\nKeep answers short and cite the file and line.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:28.564579Z\", \"reason\": null, \"change\": \"d961460c-9fec-4722-bd28-f3329c2e1f56\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.motto\", \"old\": null, \"new\": \"file:notes.txt is not an include here, it is just folded text.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:28.564579Z\", \"reason\": null, \"change\": \"d961460c-9fec-4722-bd28-f3329c2e1f56\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.bell\", \"old\": null, \"new\": \"ding\\u0007\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:28.564579Z\", \"reason\": null, \"change\": \"d961460c-9fec-4722-bd28-f3329c2e1f56\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.prompt\", \"old\": \"You review code carefully and explain every finding plainly.\\nKeep answers short and cite the file and line.\\n\", \"new\": \"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:03:30.401404Z\", \"reason\": null, \"change\": \"eb557fa0-b116-4e83-8210-913262cb9225\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You review code carefully and explain every finding plainly.\nKeep answers short and cite the file and line.\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.motto"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "file:notes.txt is not an include here, it is just folded text.\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "prompt: |\n  You review code carefully and explain every finding plainly.\n  Keep answers short and cite the file and line.\nmotto: |\n  file:notes.txt is not an include here, it is just folded text.\nbell: \"ding\\a\"\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.prompt",
+                "\"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    prompt: >\n      You review code carefully and\n      explain every finding plainly.\n\n      Keep answers brief, and\n      always cite the file and\n      the line number.\n    motto: !literal >\n      file:notes.txt is not an include\n      here, it is just folded text.\n    bell: \"ding\\a\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.prompt\", \"old\": null, \"new\": \"You review code carefully and explain every finding plainly.\\nKeep answers short and cite the file and line.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:31.851545Z\", \"reason\": null, \"change\": \"4ab23f43-0b57-44bc-9216-a8a469b33f46\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.motto\", \"old\": null, \"new\": \"file:notes.txt is not an include here, it is just folded text.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:31.851545Z\", \"reason\": null, \"change\": \"4ab23f43-0b57-44bc-9216-a8a469b33f46\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.bell\", \"old\": null, \"new\": \"ding\\u0007\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:31.851545Z\", \"reason\": null, \"change\": \"4ab23f43-0b57-44bc-9216-a8a469b33f46\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.prompt\", \"old\": \"You review code carefully and explain every finding plainly.\\nKeep answers short and cite the file and line.\\n\", \"new\": \"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:03:33.459029Z\", \"reason\": null, \"change\": \"8a8d9247-9732-42e3-9eee-6a9b8b35aaf4\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You review code carefully and explain every finding plainly.\nKeep answers short and cite the file and line.\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.motto"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "file:notes.txt is not an include here, it is just folded text.\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "prompt: |\n  You review code carefully and explain every finding plainly.\n  Keep answers short and cite the file and line.\nmotto: !literal |\n  file:notes.txt is not an include here, it is just folded text.\nbell: \"ding\\a\"\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.prompt",
+                "\"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    prompt: >\n      You review code carefully and\n      explain every finding plainly.\n\n      Keep answers brief, and\n      always cite the file and\n      the line number.\n    motto: !literal >\n      file:notes.txt is not an include\n      here, it is just folded text.\n    bell: \"ding\\a\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.prompt\", \"old\": null, \"new\": \"You review code carefully and explain every finding plainly.\\nKeep answers short and cite the file and line.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:34.805385Z\", \"reason\": null, \"change\": \"2d2dbfce-65d7-4063-b4f5-899019bc9b55\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.motto\", \"old\": null, \"new\": \"file:notes.txt is not an include here, it is just folded text.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:34.805385Z\", \"reason\": null, \"change\": \"2d2dbfce-65d7-4063-b4f5-899019bc9b55\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.bell\", \"old\": null, \"new\": \"ding\\u0007\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:34.805385Z\", \"reason\": null, \"change\": \"2d2dbfce-65d7-4063-b4f5-899019bc9b55\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.prompt\", \"old\": \"You review code carefully and explain every finding plainly.\\nKeep answers short and cite the file and line.\\n\", \"new\": \"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:03:36.175025Z\", \"reason\": null, \"change\": \"d2b058ce-33a6-41ba-834a-68f5ab3c7bf8\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "You review code carefully and explain every finding plainly.\nKeep answers short and cite the file and line.\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.motto"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "file:notes.txt is not an include here, it is just folded text.\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "prompt: |\n  You review code carefully and explain every finding plainly.\n  Keep answers short and cite the file and line.\nmotto: !literal |\n  file:notes.txt is not an include here, it is just folded text.\nbell: \"ding\\a\"\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.prompt",
+                "\"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    prompt: >\n      You review code carefully and\n      explain every finding plainly.\n\n      Keep answers brief, and\n      always cite the file and\n      the line number.\n    motto: !literal >\n      file:notes.txt is not an include\n      here, it is just folded text.\n    bell: \"ding\\a\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.prompt\", \"old\": null, \"new\": \"You review code carefully and explain every finding plainly.\\nKeep answers short and cite the file and line.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:37.568114Z\", \"reason\": null, \"change\": \"5c30a8d1-26e2-428f-ad43-b5d610f299f1\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.motto\", \"old\": null, \"new\": \"file:notes.txt is not an include here, it is just folded text.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:37.568114Z\", \"reason\": null, \"change\": \"5c30a8d1-26e2-428f-ad43-b5d610f299f1\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.coder.bell\", \"old\": null, \"new\": \"ding\\u0007\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:03:37.568114Z\", \"reason\": null, \"change\": \"5c30a8d1-26e2-428f-ad43-b5d610f299f1\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"agents.coder.prompt\", \"old\": \"You review code carefully and explain every finding plainly.\\nKeep answers short and cite the file and line.\\n\", \"new\": \"You review code carefully and explain every finding plainly.\\nKeep answers brief, and always cite the file and the line number.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:03:39.279938Z\", \"reason\": null, \"change\": \"deb46e52-4112-4563-82df-5f8f585e2976\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

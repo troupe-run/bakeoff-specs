@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# troupe configuration\n# (nothing configured yet)\n",
+        "input": "`config show`",
+        "observed": true,
+        "results": {
+          "1": "four arms: exit 0, prints `{}`; one arm: exit 0, prints `null`",
+          "2": "exit 0, prints `{}`"
+        }
+      },
+      {
+        "before": "# troupe configuration\n# (nothing configured yet)\n",
+        "input": "`config set agents.coder.model opus`",
+        "observed": true,
+        "results": {
+          "1": "all five arms: exit 0, no output; the file now reads:\n# troupe configuration\n# (nothing configured yet)\nagents:\n  coder:\n    model: opus\n",
+          "2": "exit 0, no output; the file now reads:\n# troupe configuration\n# (nothing configured yet)\nagents:\n  coder:\n    model: opus\n"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set retry 3`, then `config show`",
+        "observed": true,
+        "results": {
+          "1": "all five arms: both exit 0; the file now reads:\n# troupe configuration\n# (nothing configured yet)\nagents:\n  coder:\n    model: opus\nretry: 3\n`config show` prints:\nagents:\n  coder:\n    model: opus\nretry: 3",
+          "2": "both exit 0; the file now reads:\n# troupe configuration\n# (nothing configured yet)\nagents:\n  coder:\n    model: opus\nretry: 3\n`config show` prints:\nagents:\n  coder:\n    model: opus\nretry: 3"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history`",
+        "observed": true,
+        "results": {
+          "1": "all five arms: exit 0; two entries, seq 1 sets `agents.coder.model` from null to \"opus\" and seq 2 sets `retry` from null to 3, both by human:owner via cli",
+          "2": "exit 0; the same two entries"
+        }
+      }
+    ],
+    "in_practice": "On a file with only comments, both routes let you write right away. They keep the comments, add the keys below them, and record the history the same way. The only observed difference is on route 1: one of its five arms prints `null` instead of `{}` when you show the still-empty config. Route 1 says a file whose root is not a mapping (such as `~`, `---` or a list) exits with code 4. No test used such a file, so neither route's behavior there was observed.",
+    "stakes": "A freshly created config file that holds only comments is the normal starting state, so the first `config show` and the first `config set` on it decide whether a new user gets a working tool or a confusing result. A root that is a scalar or a list (e.g. `~` or `---`) was not tested, so this run shows nothing about how the routes treat it.",
+    "tradeoff": "Route 1 defines a rule for non-mapping roots (exit 4), but one of its arms shows an empty config as `null`. Route 2 never considered that case, so how it handles a non-mapping root is unknown."
+  },
+  "plan_why": "The config file holds only comments. The examples show whether it loads as an empty configuration that `show`, `history` and `set` can use (Route 1), or whether loading it or writing into it fails (Route 2 never planned for this case). A new key should be added below the comments, which stay untouched.",
+  "routes": [
+    [
+      "An empty or comment-only file is an empty mapping and can be written into; a non-mapping root (including ~ or ---) exits 4",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm C"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

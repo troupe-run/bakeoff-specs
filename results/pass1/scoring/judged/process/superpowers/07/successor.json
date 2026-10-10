@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "repo/docs/decisions.md:100-103 (34: urllib, fetched once per command, 30 s timeout, watch does not poll remote includes)",
+    "repo/docs/decisions.md:113-119 (38-39: jsonschema Draft 2020-12; format: uri resolved only through properties, items and additionalProperties, 'as the contract says')",
+    "repo/docs/decisions.md:120-129 (40-42: !literal semantics, set --include, show tagging)",
+    "transcript.md:33 (README + decisions appended in the same commit)",
+    "transcript.md:9 (uv add jsonschema with no alternative weighed)"
+  ],
+  "notes": "Nearly every open choice from step 7 is in docs/decisions.md (items 34-42), most with a reason, and no fallback or 'your choice' answers had to be recorded. The weakness is that most entries give no other options considered, so this sits at the low end of 3. Some are reasons only in outline, such as using jsonschema over a hand-written validator, the 30 s timeout and urllib. One choice appears only in the README with no reason: whether a remote include is read as YAML or text, decided by the URL path ending .yml/.yaml (I inferred this from the code and README).",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"repo/docs/decisions.md:100-103 (34: urllib, fetched once per command, 30 s timeout, watch does not poll remote includes)\", \"repo/docs/decisions.md:113-119 (38-39: jsonschema Draft 2020-12; format: uri resolved only through properties, items and additionalProperties, 'as the contract says')\", \"repo/docs/decisions.md:120-129 (40-42: !literal semantics, set --include, show tagging)\", \"transcript.md:33 (README + decisions appended in the same commit)\", \"transcript.md:9 (uv add jsonschema with no alternative weighed)\"], \"notes\": \"Nearly every open choice from step 7 is in docs/decisions.md (items 34-42), most with a reason, and no fallback or 'your choice' answers had to be recorded. The weakness is that most entries give no other options considered, so this sits at the low end of 3. Some are reasons only in outline, such as using jsonschema over a hand-written validator, the 30 s timeout and urllib. One choice appears only in the README with no reason: whether a remote include is read as YAML or text, decided by the URL path ending .yml/.yaml (I inferred this from the code and README).\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

@@ -1,0 +1,105 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "agent: solo\nagents:\n  coder:\n    model: opus\n  coderx:\n    model: sonnet\n  reviewer:\n    model: haiku\n",
+        "input": "`config history agents.coder`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints one entry, for `agents.coder.model` (new: \"opus\"). Nothing from `agents.coderx`",
+          "2": "exit 0; prints one entry, for `agents.coder.model` (new: \"opus\"). Nothing from `agents.coderx`",
+          "3": "exit 0; prints one entry, for `agents.coder.model` (new: \"opus\"). Nothing from `agents.coderx`",
+          "4": "exit 0; prints one entry, for `agents.coder.model` (new: \"opus\"). Nothing from `agents.coderx`",
+          "5": "both arms: exit 0; prints one entry, for `agents.coder.model` (new: \"opus\"). Nothing from `agents.coderx`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history agent`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints only the entry for `agent` (new: \"solo\"). None of the `agents.*` entries",
+          "2": "exit 0; prints only the entry for `agent` (new: \"solo\"). None of the `agents.*` entries",
+          "3": "exit 0; prints only the entry for `agent` (new: \"solo\"). None of the `agents.*` entries",
+          "4": "exit 0; prints only the entry for `agent` (new: \"solo\"). None of the `agents.*` entries",
+          "5": "both arms: exit 0; prints only the entry for `agent` (new: \"solo\"). None of the `agents.*` entries"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history agents.cod`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints nothing",
+          "2": "exit 0; prints nothing",
+          "3": "exit 0; prints nothing",
+          "4": "exit 0; prints nothing",
+          "5": "both arms: exit 0; prints nothing"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history nosuch.key`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints nothing, no error",
+          "2": "exit 0; prints nothing, no error",
+          "3": "exit 0; prints nothing, no error",
+          "4": "exit 0; prints nothing, no error",
+          "5": "both arms: exit 0; prints nothing, no error"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history agents.coder.`",
+        "observed": true,
+        "results": {
+          "1": "exit 2; stderr: `troupe: invalid path 'agents.coder.': empty segment`",
+          "2": "exit 2; stderr: `troupe: invalid path: 'agents.coder.'`",
+          "3": "exit 2; stderr: `troupe: error: invalid path 'agents.coder.': path segments must not be empty`",
+          "4": "exit 2; stderr: `troupe: usage error: invalid path: 'agents.coder.'`",
+          "5": "one arm: exit 2; stderr: `agents.coder.: malformed PATH 'agents.coder.': segments must not be empty (no leading, trailing or doubled '.')`; other arm: exit 2; stderr: `troupe: invalid path 'agents.coder.': empty segment`"
+        }
+      }
+    ],
+    "in_practice": "Even though the routes were worded differently, including route 3's \"plain string prefix\", every route matched whole dot-separated segments only. A key matches only itself or keys below it, so `agent` does not pull in `agents.*` and `agents.coder` does not pull in `agents.coderx`. A key with no history, or a partial name, prints nothing and exits 0. You get no hint that the key doesn't exist. A trailing dot is rejected with exit 2 everywhere; only the message text differs.",
+    "stakes": "When users ask for the history of a key such as `agents.coder`, they need its own changes and nothing from look-alike keys such as `agents.coderx`. A typo or unknown key also needs clear handling. In these runs every route behaved the same way. Only the wording of the error for a malformed path differed.",
+    "tradeoff": "In these runs the routes produced the same results, so the only cost that differs is how clear the error message for a malformed path is. Every route also has the same cost: a mistyped key silently returns empty output."
+  },
+  "plan_why": "Runs history PATH filters on a full segment, a partial segment, a shorter sibling key, an unknown path and a trailing dot, so you can see segment-aware vs plain-string prefix matching and whether no matches gives empty output with exit 0 or an error.",
+  "routes": [
+    [
+      "No matches print nothing and exit 0",
+      [
+        "Arm B"
+      ]
+    ],
+    [
+      "Path prefix (segment awareness not stated)",
+      [
+        "Arm E"
+      ]
+    ],
+    [
+      "Plain string prefix; an unknown path prints nothing and exits 0",
+      [
+        "Arm F"
+      ]
+    ],
+    [
+      "The path itself or a dotted-segment prefix",
+      [
+        "Arm D"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm C"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

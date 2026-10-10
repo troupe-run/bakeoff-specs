@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/setup/manifest.json:1 (empty manifest: nothing installed)",
+    "/judge/setup/installed-commands.json:1 (no slash commands or plugins)",
+    "/judge/setup/checklist.json:33-35 (control.no-method: found none)",
+    "/judge/setup/checklist.json:51-53 (github.issues-access ok)",
+    "/judge/setup/setup-turns.json:1 (no interactive setup turns)",
+    "/judge/06/transcript.md:2 (the only tracker interaction: a manual read-only `gh issue view 2`)",
+    "/judge/01/transcript.md:38 (work is recorded only as git commits, with no issue link or close)"
+  ],
+  "notes": "",
+  "raw": "I scored Arm X a 3 out of 4 for setup fit. The arm installs no method of its own and runs as plain Claude Code. Commands are deterministic and unattended, but issue tracking is used by hand and only to read.\n\n```json\n{\"score\": 3, \"evidence\": [\"/judge/setup/manifest.json:1 (empty manifest: nothing installed)\", \"/judge/setup/installed-commands.json:1 (no slash commands or plugins)\", \"/judge/setup/checklist.json:33-35 (control.no-method: found none)\", \"/judge/setup/checklist.json:51-53 (github.issues-access ok)\", \"/judge/setup/setup-turns.json:1 (no interactive setup turns)\", \"/judge/06/transcript.md:2 (the only tracker interaction: a manual read-only `gh issue view 2`)\", \"/judge/01/transcript.md:38 (work is recorded only as git commits, with no issue link or close)\"]}\n```\n\nThe arm needs no installs, no settings or hook overrides and no interactive setup. Every step uses non-interactive Bash, `uv` and `git`, so it would run unattended in an agent loop. The friction is tracking. The GitHub Issues baseline is only reached through an ad-hoc `gh issue view` in step 06. No step comments on, links to or closes an issue. For troupe.run, the agent loop would need deterministic issue pickup and closing steps (for example `gh issue close` or `Closes #N` in commit messages) so tracking works end to end.",
+  "score": 3,
+  "status": "ok"
+}

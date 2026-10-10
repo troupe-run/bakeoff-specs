@@ -1,0 +1,261 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.temperature",
+          "0.3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.reviewer.temperature",
+          "0.5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.tester",
+          "{model: haiku}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tools.2",
+          "make"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "zeta",
+          "1"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    # coder notes\n\n  reviewer:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n  # agents-level note\n# top-level comment\n\ntools:\n  - git\n  # more tools here\n\n  - shell\n    # deeper comment\n\nnotes: x\n# end of file comment\n\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 5,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.temperature",
+                "0.3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    # coder notes\n    temperature: 0.3\n\n  reviewer:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n  # agents-level note\n# top-level comment\n\ntools:\n  - git\n  # more tools here\n\n  - shell\n    # deeper comment\n\nnotes: x\n# end of file comment\n\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer.temperature",
+                "0.5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    # coder notes\n    temperature: 0.3\n\n  reviewer:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n    temperature: 0.5\n  # agents-level note\n# top-level comment\n\ntools:\n  - git\n  # more tools here\n\n  - shell\n    # deeper comment\n\nnotes: x\n# end of file comment\n\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.tester",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    # coder notes\n    temperature: 0.3\n\n  reviewer:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n    temperature: 0.5\n  # agents-level note\n  tester:\n    model: haiku\n# top-level comment\n\ntools:\n  - git\n  # more tools here\n\n  - shell\n    # deeper comment\n\nnotes: x\n# end of file comment\n\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools.2",
+                "make"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    # coder notes\n    temperature: 0.3\n\n  reviewer:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n    temperature: 0.5\n  # agents-level note\n  tester:\n    model: haiku\n# top-level comment\n\ntools:\n  - git\n  # more tools here\n\n  - shell\n    # deeper comment\n  - make\n\nnotes: x\n# end of file comment\n\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "zeta",
+                "1"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    # coder notes\n    temperature: 0.3\n\n  reviewer:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n    temperature: 0.5\n  # agents-level note\n  tester:\n    model: haiku\n# top-level comment\n\ntools:\n  - git\n  # more tools here\n\n  - shell\n    # deeper comment\n  - make\n\nnotes: x\n# end of file comment\nzeta: 1\n\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "After trailing comments indented at least to the entry column; blank lines stay below the new entry",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.temperature",
+                "0.3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    # coder notes\n    temperature: 0.3\n\n  reviewer:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n  # agents-level note\n# top-level comment\n\ntools:\n  - git\n  # more tools here\n\n  - shell\n    # deeper comment\n\nnotes: x\n# end of file comment\n\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.reviewer.temperature",
+                "0.5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    # coder notes\n    temperature: 0.3\n\n  reviewer:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n    temperature: 0.5\n  # agents-level note\n# top-level comment\n\ntools:\n  - git\n  # more tools here\n\n  - shell\n    # deeper comment\n\nnotes: x\n# end of file comment\n\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.tester",
+                "{model: haiku}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    # coder notes\n    temperature: 0.3\n\n  reviewer:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n    temperature: 0.5\n  # agents-level note\n  tester:\n    model: haiku\n# top-level comment\n\ntools:\n  - git\n  # more tools here\n\n  - shell\n    # deeper comment\n\nnotes: x\n# end of file comment\n\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tools.2",
+                "make"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    # coder notes\n    temperature: 0.3\n\n  reviewer:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n    temperature: 0.5\n  # agents-level note\n  tester:\n    model: haiku\n# top-level comment\n\ntools:\n  - git\n  # more tools here\n\n  - shell\n    # deeper comment\n  - make\n\nnotes: x\n# end of file comment\n\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "zeta",
+                "1"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    # coder notes\n    temperature: 0.3\n\n  reviewer:\n    model: sonnet\n      # deeper reviewer note\n    # end of reviewer\n    temperature: 0.5\n  # agents-level note\n  tester:\n    model: haiku\n# top-level comment\n\ntools:\n  - git\n  # more tools here\n\n  - shell\n    # deeper comment\n  - make\n\nnotes: x\n# end of file comment\nzeta: 1\n\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

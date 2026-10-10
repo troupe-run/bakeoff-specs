@@ -1,0 +1,566 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "model",
+          "sonnet-4"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "coder.temperature",
+          "0.55"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "﻿temperature: 0.2  # sampling\nname: coder\n",
+      ".troupe/troupe.yml": "﻿model: opus  # main model\nretry: 3\ncoder: file:agents/coder.yaml\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/coder.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet-4"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "﻿model: sonnet-4 # main model\nretry: 3\ncoder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.temperature",
+                "0.55"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/agents/coder.yaml": "﻿temperature: 0.55 # sampling\nname: coder\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: sonnet-4 # from .troupe/troupe.yml\nretry: 3 # from .troupe/troupe.yml\ncoder:\n  temperature: 0.55 # from .troupe/agents/coder.yaml\n  name: coder # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:03.455397Z\", \"reason\": null, \"change\": \"1698522e-8051-4a9d-82de-75cb60892d8e\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet-4\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:40:04.181440Z\", \"reason\": null, \"change\": \"1782d23b-1a6d-49d7-a58f-b356ca345342\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Decode as plain UTF-8 so the BOM stays in the text and is written back unchanged",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet-4"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "﻿model: sonnet-4 # main model\nretry: 3\ncoder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.temperature",
+                "0.55"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/agents/coder.yaml": "﻿temperature: 0.55 # sampling\nname: coder\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: sonnet-4 # from .troupe/troupe.yml\nretry: 3 # from .troupe/troupe.yml\ncoder:\n  temperature: 0.55 # from .troupe/agents/coder.yaml\n  name: coder # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:39:56.619338Z\", \"reason\": null, \"change\": \"acd1eb65-a43f-4ab9-a2eb-77834094d9dc\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet-4\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:39:57.227880Z\", \"reason\": null, \"change\": \"006db6dd-3f3e-45d7-8ba8-24459dea992d\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet-4"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "﻿model: sonnet-4 # main model\nretry: 3\ncoder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.temperature",
+                "0.55"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/agents/coder.yaml": "﻿temperature: 0.55 # sampling\nname: coder\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: sonnet-4 # from .troupe/troupe.yml\nretry: 3 # from .troupe/troupe.yml\ncoder:\n  temperature: 0.55 # from .troupe/agents/coder.yaml\n  name: coder # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:00.028389Z\", \"reason\": null, \"change\": \"cba7c72a-399e-439b-a15d-5bb395cc76ed\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet-4\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:40:00.842712Z\", \"reason\": null, \"change\": \"5238830c-66c8-452a-a866-c866642b57cf\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet-4"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "﻿model: sonnet-4 # main model\nretry: 3\ncoder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.temperature",
+                "0.55"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/agents/coder.yaml": "﻿temperature: 0.55 # sampling\nname: coder\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: sonnet-4 # from .troupe/troupe.yml\nretry: 3 # from .troupe/troupe.yml\ncoder:\n  temperature: 0.55 # from .troupe/agents/coder.yaml\n  name: coder # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:06.716688Z\", \"reason\": null, \"change\": \"1ba39aa5-2091-4287-87c3-62acaf5f4876\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet-4\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:40:07.175719Z\", \"reason\": null, \"change\": \"3e255225-b6da-4276-879b-ec208f110d72\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet-4"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "﻿model: sonnet-4 # main model\nretry: 3\ncoder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.temperature",
+                "0.55"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/agents/coder.yaml": "﻿temperature: 0.55 # sampling\nname: coder\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: sonnet-4 # from .troupe/troupe.yml\nretry: 3 # from .troupe/troupe.yml\ncoder:\n  temperature: 0.55 # from .troupe/agents/coder.yaml\n  name: coder # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:09.476579Z\", \"reason\": null, \"change\": \"3c8f11de-e869-49e0-ae1a-3628d5c2688a\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet-4\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:40:10.131234Z\", \"reason\": null, \"change\": \"f9105d77-14ba-45b1-9739-02c0792f8dd6\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet-4"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "﻿model: sonnet-4 # main model\nretry: 3\ncoder: file:agents/coder.yaml\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "coder.temperature",
+                "0.55"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/agents/coder.yaml": "﻿temperature: 0.55 # sampling\nname: coder\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: sonnet-4 # from .troupe/troupe.yml\nretry: 3 # from .troupe/troupe.yml\ncoder:\n  temperature: 0.55 # from .troupe/agents/coder.yaml\n  name: coder # from .troupe/agents/coder.yaml\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T11:40:12.756331Z\", \"reason\": null, \"change\": \"f0620e6b-bd32-4cc3-b56a-fe11f8e3e1f4\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet-4\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-09T11:40:13.297518Z\", \"reason\": null, \"change\": \"652bb283-1b71-40c7-8eb4-bbd41099d578\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

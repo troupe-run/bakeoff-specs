@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# team config\r\nmodel: opus  # main model\r\nlimits: {retries: 3, tags: [a, b]}\r\nagents:\r\n  coder: file:agents/coder.yaml  # shared\r\n  notes: file:notes.txt\r\n",
+        "input": "`config set limits.tags.2 c`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; .troupe/troupe.yml now reads (CRLF and comments kept):\r\nlimits: {retries: 3, tags: [a, b, c]}\r\n",
+          "2": "all three arms: same as route 1, exit 0; .troupe/troupe.yml now reads:\r\nlimits: {retries: 3, tags: [a, b, c]}\r\n"
+        }
+      },
+      {
+        "before": "temperature: 0.2\r\nprompt: |\r\n  line one\r\n  line two\r\n",
+        "input": "`config set agents.coder.prompt \"new one\\nnew two\\nnew three\\n\"`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; .troupe/agents/coder.yaml now reads (still CRLF, no bare LF):\r\ntemperature: 0.2\r\nprompt: |\r\n  new one\r\n  new two\r\n  new three\r\n",
+          "2": "all three arms: same as route 1, exit 0; .troupe/agents/coder.yaml now reads:\r\ntemperature: 0.2\r\nprompt: |\r\n  new one\r\n  new two\r\n  new three\r\n"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set agents.coder.max_tokens 4096` (coder is an included file)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; .troupe/troupe.yml now reads:\r\nagents:\r\n  coder:  # shared\r\n    $ref: file:agents/coder.yaml\r\n    max_tokens: 4096\r\n  notes: file:notes.txt\r\n",
+          "2": "all three arms: same as route 1, exit 0; .troupe/troupe.yml now reads:\r\nagents:\r\n  coder:  # shared\r\n    $ref: file:agents/coder.yaml\r\n    max_tokens: 4096\r\n  notes: file:notes.txt\r\n"
+        }
+      },
+      {
+        "before": "first note\r\nsecond note\r\n",
+        "input": "`config set agents.notes \"hello\\nworld\\n\"`, then `config show --sources`",
+        "observed": true,
+        "results": {
+          "1": "set: exit 0, notes.txt becomes \"hello\\r\\nworld\\r\\n\". show prints the value as a quoted string with escapes:\n  notes: \"hello\\r\\nworld\\r\\n\" # from .troupe/notes.txt",
+          "2": "set: all three arms exit 0, notes.txt becomes \"hello\\r\\nworld\\r\\n\". show differs between arms. Two arms print a clean block:\n  notes: | # from .troupe/notes.txt\n    hello\n    world\nOne arm prints a block with raw carriage-return characters left inside the output:\n  notes: | # from .troupe/notes.txt\n    hello\r\n    world\r\n"
+        }
+      }
+    ],
+    "in_practice": "On every route the files on disk came out byte-for-byte the same. CRLF was kept everywhere, comments survived, and the flow list stayed on one line. The only visible difference is how `config show --sources` displays a text value read from a CRLF file. Route 1 shows it as an escaped quoted string. On route 2, two arms show a clean block and one arm leaks stray carriage returns into the terminal output.",
+    "stakes": "Every `config set` must write back into the user's own CRLF files, flow lists, block text and included files without damaging them, and `config show --sources` must display the result readably. Here every route wrote the files the same way. The only difference is how a CRLF-backed text value is displayed.",
+    "tradeoff": "Route 1 costs writing and running randomised or seeded write-back tests (no new dependency). Route 2 skips that work but leaves the CRLF display behaviour unchecked, and on that route it differed between arms."
+  },
+  "plan_why": "Property tests leave no direct trace in behaviour, so these commands check the invariants they were meant to protect. Five steps run on CRLF files that mix flow, block scalars and YAML and text includes: four sets, then one `show --sources` to read the values back. Each file should keep pure CRLF line endings with no bare LF, and every value set should read back exactly.",
+  "routes": [
+    [
+      "Random set sequences or seeded property tests over LF/CRLF, flow, block and includes, with no new dependency",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

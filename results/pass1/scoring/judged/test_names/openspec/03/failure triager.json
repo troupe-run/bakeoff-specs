@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "repo/tests/test_get.py:63 test_get_of_a_collection_exits_5_naming_the_path_and_pointing_to_show: the name states the condition and the result, and the body asserts exit 5, empty stdout, the path and 'config show' in stderr",
+    "repo/tests/test_show.py:59 test_show_double_quotes_a_text_include_a_literal_block_cannot_hold: the expected output is checked byte for byte, as the name implies",
+    "repo/tests/test_reconcile.py:171 test_get_and_show_reconcile_a_hand_edit_once: the body asserts exactly one recorded set event",
+    "repo/tests/test_render.py:90-111 test_source_label_of_the_config_file / _of_a_nested_include / _with_a_relative_theatre: these names give only the condition, not the expected label",
+    "repo/tests/test_show_sources.py:45,64,68,90 test_sources_for_a_section / _for_a_quoted_string_scalar / _with_a_relative_theatre: the condition is named but not the result",
+    "repo/tests/test_show.py:111 test_show_of_a_missing_path_exits_5_naming_it: the body also checks --sources, which the name does not mention"
+  ],
+  "notes": "I found no name that overclaims, and the get, show and reconcile tests read as a spec. A few source_label and --sources names state the condition but not the expected result, so from the name alone a triager could not tell what failed.",
+  "raw": "{\"score\": 3, \"evidence\": [\"repo/tests/test_get.py:63 test_get_of_a_collection_exits_5_naming_the_path_and_pointing_to_show: the name states the condition and the result, and the body asserts exit 5, empty stdout, the path and 'config show' in stderr\", \"repo/tests/test_show.py:59 test_show_double_quotes_a_text_include_a_literal_block_cannot_hold: the expected output is checked byte for byte, as the name implies\", \"repo/tests/test_reconcile.py:171 test_get_and_show_reconcile_a_hand_edit_once: the body asserts exactly one recorded set event\", \"repo/tests/test_render.py:90-111 test_source_label_of_the_config_file / _of_a_nested_include / _with_a_relative_theatre: these names give only the condition, not the expected label\", \"repo/tests/test_show_sources.py:45,64,68,90 test_sources_for_a_section / _for_a_quoted_string_scalar / _with_a_relative_theatre: the condition is named but not the result\", \"repo/tests/test_show.py:111 test_show_of_a_missing_path_exits_5_naming_it: the body also checks --sources, which the name does not mention\"], \"notes\": \"I found no name that overclaims, and the get, show and reconcile tests read as a spec. A few source_label and --sources names state the condition but not the expected result, so from the name alone a triager could not tell what failed.\"}",
+  "score": 3,
+  "status": "ok"
+}

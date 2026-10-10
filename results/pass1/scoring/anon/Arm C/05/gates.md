@@ -1,0 +1,79 @@
+### Gate 4 (attempt 1, approval)
+
+Arm asked: ## Intent Summary: step 5 (CR-A and CR-B)
+
+**Who and when:** a theatre owner (or a harness acting for them) runs `troupe config set PATH VALUE` on a theatre whose sections come from YAML includes that are shared with other projects.
+
+**What happens:**
+
+1. **Loading mapping-form includes.** A mapping whose `$ref` value is an include string is the included content deep-merged with its other keys, the overrides. Mappings merge recursively; scalars and lists in the override replace the included value. `get`, `show` and `show --sources` all see the merged value. Under `--sources`, overridden scalars are attributed to the including file. History and reconcile treat the merged leaves like any others.
+2. **New key under an included section (CR-A).** The key is written as an override in the including file, meaning the file holding the include reference nearest the key's deepest existing ancestor (your answer to Question 1). A scalar-form include is first converted to mapping form, keeping its end-of-line comment on the key's line. Any missing intermediate mappings are created inside the override. The shared file's bytes don't change.
+3. **`set --in-include PATH VALUE` (CR-B).** A new key goes into the included file instead (the step-1 rule, so the innermost file). When no include is involved, the result is the same as without the flag.
+4. **Existing values.** An overridden value changes in its override. A value that isn't overridden changes in the file it comes from. `--in-include` has no effect on existing values.
+5. **List items.** Appending a list item, or adding a key inside a list item, is written in the file that holds the list.
+
+**Errors:**
+- A mapping-form include of a non-YAML file that has sibling keys exits 4 (contract).
+- A `$ref` whose value isn't an include string exits 4, naming the file and path (agent choice).
+- Replacing a whole include still exits 3, as in step 1.
+
+**Rule that must always hold:** without `--in-include`, adding a new key never changes a single byte of the included file that holds the key's ancestor. Every file changes only where the write-back rules require (step-1 byte preservation, TROUPE-001).
+
+**Agent choices I'll record (contract is silent):**
+- In mapping form, `$ref` is written first and overrides follow it.
+- If the include sits under a flow-style parent, conversion is written in flow style (`{$ref: file:…, k: v}`), matching the step-1 rule for new collections under a flow parent.
+- An include that is itself a list item (`- file:a.yaml`) is converted the same way, into `- $ref: file:a.yaml` with the override key on the next line at the item's indentation.
+
+Does this match what you want? Reply yes, or tell me what to correct. Once you confirm, I'll write and commit the spec.
+
+WAITING_FOR_DISCOVERY_INPUT
+
+PO verdict: Approved. The intent summary is consistent with the contract's Overrides and In-include sections and with the answers already given in this step. A new key goes into the including file nearest the key's deepest existing ancestor. Scalar-form includes are converted to mapping form and keep their end-of-line comment. Existing values change where they live, whether in the override or the source file. List appends and new keys inside list items go to the file that holds the list. A mapping-form include of a non-YAML file with sibling keys exits 4. `--in-include` applies the step-1 rule. The agent choices you listed fall outside the contract's text, so record them in the spec as your choices.
+
+Owner action: accept; approved: True
+
+Final reply: Approved. The intent summary is consistent with the contract's Overrides and In-include sections and with the answers already given in this step. A new key goes into the including file nearest the key's deepest existing ancestor. Scalar-form includes are converted to mapping form and keep their end-of-line comment. Existing values change where they live, whether in the override or the source file. List appends and new keys inside list items go to the file that holds the list. A mapping-form include of a non-YAML file with sibling keys exits 4. `--in-include` applies the step-1 rule. The agent choices you listed fall outside the contract's text, so record them in the spec as your choices.
+
+### Gate 6 (attempt 1, approval)
+
+Arm asked: I've read the loader, the tree model, path walking, placement, the write-back verifier, reconcile and the CLI. The code already has a single place that decides where a `set` writes: `writeback/placement.py`, whose docstring says the new-key rule "is expected to change at step 5". So this step fits the existing structure. Here's what I propose.
+
+## Engineering Alignment (for your approval)
+
+**1. Loading.** The loader treats a mapping with a `$ref` key as an include.
+- **No other keys:** it loads exactly like the scalar form. The include remembers it was written as a mapping, so later overrides are added to that mapping instead of converting it again.
+- **With other keys:** the include's target must be a YAML file whose content is a mapping, otherwise the load exits 4 (D-1, D-7, plus the non-YAML case from the contract).
+  - The result is a *merged mapping*: a read-only combined view that keeps both sides, the included mapping and the override mapping.
+  - Nested mappings merge the same way; anything else in the override replaces the included value.
+  - Keys appear included-first, then override-only keys.
+- **Why this shape:** the merged mapping behaves like an ordinary mapping to the rest of the code. So `get`, `show`, `show --sources` (every scalar keeps its own file), history and reconcile need almost no change. Reconcile also watches every file read on both sides.
+
+**2. Where a `set` writes.** This stays decided in `placement.py`, the one place that already decides it.
+- **Existing scalar:** written in the file that holds it. That's the override when one exists, so this needs no change.
+- **List append:** written in the list's file.
+- **New key (CR-A):** find the include reference nearest the key's deepest existing ancestor.
+  - If a list lies between that reference and the ancestor, the key is inside a list item, so it goes to the file holding the list (step-1 rule).
+  - Otherwise it's an override at that reference. If part of the path already exists as an override, the key is added there. If the include is still in scalar form, it is converted first (block, flow or list item; D-2…D-5).
+- **`--in-include` (CR-B):** uses the step-1 rule, preferring the included side of a merged mapping.
+- **Refusals:** a `$ref` segment in PATH exits 3 (D-6), and replacing a whole include of either form exits 3, as before.
+
+**3. Safety net.** The existing check that re-loads the result in memory before writing stays in place, so a write that doesn't read back exactly as intended is refused with exit 3. It gets one allowance: along the path being set, a scalar-form include may turn into mapping form, as long as it still points at the same target.
+
+**4. CLI.** `set` gains `--in-include`; other subcommands reject it with exit 2 (argparse already does this). History and lineage don't change.
+
+**5. Three behaviours the code exposed that the spec doesn't cover.** All are out of contract, so they're my choices; I'll add them to the spec with reasons:
+- **D-7 correction:** an empty included file stays an empty mapping, as in step 1. My spec wrongly said it exits 4, and that would break the existing step-1 test `test_new_key_into_empty_included_file`.
+- **D-10:** replacing a whole mapping that is partly overridden (`set coder.tools '{x: 1}'` when `tools` comes from both files) exits 3 with no file changed. There's no way to write it without either editing the shared file or the old included keys coming back through the merge.
+- **D-11:** converting an include whose `file:` string spans several lines (a block scalar or a wrapped quoted string) exits 3. It can't be moved verbatim to a `$ref:` line.
+
+**6. Tests.** All tests run against real files, the real CLI and the real event store, with every file's bytes snapshotted. Two step-1 tests change their expected output because the contract changed: `test_new_key_goes_into_included_files_mapping` and `test_new_key_into_empty_included_file`. Under the new rule those keys become overrides. No new dependencies.
+
+Do you approve this alignment, including the three spec additions?
+
+WAITING_FOR_PLANNING_INPUT
+
+PO verdict: Approved. The alignment matches the contract's Overrides and In-include sections and the answers already given in this step. New keys under an included section become overrides in the including file nearest the key's deepest existing ancestor, and scalar-form includes are converted to mapping form first, keeping their end-of-line comment. List appends and new keys inside list items go to the file that holds the list. Existing values change in the override when they are overridden, and otherwise in the file they come from. A mapping-form include of a non-YAML file with sibling keys exits 4. `--in-include` applies the step-1 rule. Replacing a whole include still exits 3, and refused writes leave every file unchanged. The three additions (the D-7 correction for an empty included file, D-10 for replacing a partly overridden mapping, and D-11 for multi-line include strings) cover cases the contract does not define. They are your choices (brief, Standing answers: out of contract), so record each one in the spec with its reason, as you proposed. The two step-1 tests whose expected output changes do so because Overrides replaces rule 2 under `set`.
+
+Owner action: accept; approved: True
+
+Final reply: Approved. The alignment matches the contract's Overrides and In-include sections and the answers already given in this step. New keys under an included section become overrides in the including file nearest the key's deepest existing ancestor, and scalar-form includes are converted to mapping form first, keeping their end-of-line comment. List appends and new keys inside list items go to the file that holds the list. Existing values change in the override when they are overridden, and otherwise in the file they come from. A mapping-form include of a non-YAML file with sibling keys exits 4. `--in-include` applies the step-1 rule. Replacing a whole include still exits 3, and refused writes leave every file unchanged. The three additions (the D-7 correction for an empty included file, D-10 for replacing a partly overridden mapping, and D-11 for multi-line include strings) cover cases the contract does not define. They are your choices (brief, Standing answers: out of contract), so record each one in the spec with its reason, as you proposed. The two step-1 tests whose expected output changes do so because Overrides replaces rule 2 under `set`.

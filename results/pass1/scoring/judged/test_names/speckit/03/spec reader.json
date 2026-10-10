@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/repo/tests/e2e/test_get.py:100 (test_crlf_config_file: names an input but not the expected result)",
+    "/judge/repo/tests/e2e/test_show.py:56-66 (test_show_of_the_whole_configuration, test_show_of_a_section, test_show_of_a_list: no expected outcome named, although the bodies check exact block-YAML bytes)",
+    "/judge/repo/tests/e2e/test_show_sources.py:48-52 (test_whole_configuration, test_section: the names don't say that --sources annotations are being checked)",
+    "/judge/repo/tests/e2e/test_show_sources.py:106,119 (test_text_include_scalar, test_list_of_mappings: vague)",
+    "/judge/repo/tests/e2e/test_get_errors.py:36 (test_get_of_a_collection_mentions_config_show: a specific name, by contrast)",
+    "/judge/repo/tests/e2e/test_show.py:89 (test_show_reconciles_first: accurate)"
+  ],
+  "notes": "None of the checked names overclaim, and many state a specific rule (for example get_of_a_collection_mentions_config_show and two_level_include_names_the_innermost_file). However, more than two names give only the input (test_section, test_whole_configuration, test_crlf_config_file, test_show_of_a_list, test_list_of_mappings), so you can't tell from the name which rule failed, such as block YAML layout or the source annotations.",
+  "raw": "{\"score\": 2, \"evidence\": [\"/judge/repo/tests/e2e/test_get.py:100 (test_crlf_config_file: names an input but not the expected result)\", \"/judge/repo/tests/e2e/test_show.py:56-66 (test_show_of_the_whole_configuration, test_show_of_a_section, test_show_of_a_list: no expected outcome named, although the bodies check exact block-YAML bytes)\", \"/judge/repo/tests/e2e/test_show_sources.py:48-52 (test_whole_configuration, test_section: the names don't say that --sources annotations are being checked)\", \"/judge/repo/tests/e2e/test_show_sources.py:106,119 (test_text_include_scalar, test_list_of_mappings: vague)\", \"/judge/repo/tests/e2e/test_get_errors.py:36 (test_get_of_a_collection_mentions_config_show: a specific name, by contrast)\", \"/judge/repo/tests/e2e/test_show.py:89 (test_show_reconciles_first: accurate)\"], \"notes\": \"None of the checked names overclaim, and many state a specific rule (for example get_of_a_collection_mentions_config_show and two_level_include_names_the_innermost_file). However, more than two names give only the input (test_section, test_whole_configuration, test_crlf_config_file, test_show_of_a_list, test_list_of_mappings), so you can't tell from the name which rule failed, such as block YAML layout or the source annotations.\"}",
+  "score": 2,
+  "status": "ok"
+}

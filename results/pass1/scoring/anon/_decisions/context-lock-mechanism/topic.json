@@ -1,0 +1,18 @@
+{
+  "kind": "divergent",
+  "question": "How commands and watch are serialised",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Creates no file; the kernel releases it on death; SQLite cannot cover the file writes",
+      "route": "Exclusive blocking fcntl.flock on the .troupe directory itself; no lock file",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Groups it with the store's files; falls back to read-only open",
+      "route": "fcntl.flock on a lock file in .troupe/",
+      "route_no": 2
+    }
+  ]
+}

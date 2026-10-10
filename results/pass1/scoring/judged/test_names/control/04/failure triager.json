@@ -1,0 +1,12 @@
+{
+  "evidence": [
+    "/judge/repo/tests/test_config.py:286",
+    "/judge/repo/tests/test_config.py:312",
+    "/judge/repo/tests/test_config.py:294-307",
+    "/judge/repo/tests/test_config.py:318-320"
+  ],
+  "notes": "There is no git history, so I took the tests added in this step to be the lineage tests, `test_lineage` and `test_bad_actor`. Neither name overclaims, but both are too vague to triage from the name alone: `test_lineage` only names the feature, yet its body checks actor parsing, via/reason fields, change grouping, distinct change IDs and timestamp format and order. `test_bad_actor` gives the condition but not the expected result (exit code 2, no stdout, config left unchanged, no events database created).",
+  "raw": "{\"score\": 2, \"evidence\": [\"/judge/repo/tests/test_config.py:286\", \"/judge/repo/tests/test_config.py:312\", \"/judge/repo/tests/test_config.py:294-307\", \"/judge/repo/tests/test_config.py:318-320\"], \"notes\": \"There is no git history, so I took the tests added in this step to be the lineage tests, `test_lineage` and `test_bad_actor`. Neither name overclaims, but both are too vague to triage from the name alone: `test_lineage` only names the feature, yet its body checks actor parsing, via/reason fields, change grouping, distinct change IDs and timestamp format and order. `test_bad_actor` gives the condition but not the expected result (exit code 2, no stdout, config left unchanged, no events database created).\"}",
+  "score": 2,
+  "status": "ok"
+}

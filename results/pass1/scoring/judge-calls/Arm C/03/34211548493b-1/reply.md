@@ -1,0 +1,11 @@
+I scored Arm X 3 out of 4 for traceability. I sampled three tests added at this step, in `test_get.py`, `test_show_sources.py` and `test_yamlout.py`. Each one names the requirement it protects, and that requirement exists in the spec. Small gaps stopped it reaching 4.
+
+- **Requirement to test:** Most tests sit under a comment naming the user story, scenario and requirement ID (for example "US1 scenario 4" in `test_get.py`). Each test file's opening comment lists its requirement IDs. The acceptance matrix maps every requirement, FR-001 to FR-015, to named tests.
+- **Test to code:** Unit tests import the code module directly, such as `troupe.yamlout`. Command-line tests run a command like `config get` and name it in the file's opening comment, which leads to `commands/get.py` by naming convention.
+- **Why not 4:**
+  - In the acceptance matrix, every entry's description is a generic placeholder ("Verify FR-001 is satisfied"). Every note still reads "TODO: replace with a real acceptance criterion".
+  - The spec still marks every requirement "Open" after delivery.
+  - Many individual tests rely on the file-level comment rather than their own requirement tag.
+  - Command-line tests never name the code module they exercise.
+
+{"score": 3, "evidence": ["repo/tests/integration/test_get.py:1", "repo/tests/integration/test_get.py:138", "repo/tests/integration/test_show_sources.py:133", "repo/tests/unit/test_yamlout.py:1", "repo/spec/troupe-config-get-show-01M411XB/acceptance-matrix.json:11", "repo/spec/troupe-config-get-show-01M411XB/acceptance-matrix.json:15", "repo/spec/troupe-config-get-show-01M411XB/spec.md:119"], "notes": "Sampled step-3 tests carry explicit FR/US/DM tags matching spec.md, and the acceptance matrix maps every FR to named tests; unit tests import their module (troupe.yamlout) directly. Gaps: the matrix descriptions are placeholders and every note still says 'TODO: replace with a real acceptance criterion', the spec still marks all FRs 'Open', many tests are linked only by a file- or section-level comment, and CLI tests reach the code only through the command name."}

@@ -1,0 +1,154 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "FILE",
+        "why": "Error gives the path /theatre/.troupe/troupe.yml but no line number."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "FILE_LINE",
+        "why": "Error gives .troupe/troupe.yml with line 3, column 3."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "FILE_LINE",
+        "why": "Error gives /theatre/.troupe/troupe.yml and says the mapping key is at line 3."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "FILE",
+        "why": "Error gives the file path but no line number."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "NEITHER",
+        "why": "Error only says 'complex mapping keys are not supported', with no file or line."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "FILE",
+        "why": "Error gives the file path but no line number."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "name"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "matrix.extra",
+          "on"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "name: demo\nretry: 3  # attempts\n? [a, b]\n: pair\nmatrix:\n  ? {os: linux}\n  : fast\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Loads a config with a list used as a mapping key (`? [a, b]`), then shows what get, show, set and history do with it: refuse to load (exit 4), crash, or quietly turn the key into a string."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "error names the file and the line",
+            "id": "FILE_LINE"
+          },
+          {
+            "description": "error names the file but not the line",
+            "id": "FILE"
+          },
+          {
+            "description": "error names neither file nor line",
+            "id": "NEITHER"
+          }
+        ],
+        "id": "Q1",
+        "text": "error for complex (non-scalar) keys; every arm refuses with exit 4"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Exit 4",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T16",
+  "status": "ok"
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 4, "evidence": ["/judge/transcript.md:11", "/judge/gates.md:3-28", "/judge/gates.md:46-75", "/judge/transcript.md:145"], "notes": "The costly points in this step were how events recorded before step 4 are reported, `via: null` falling outside the contract, the `TROUPE_ACTOR` rule that exits 2, and old events being upgraded when read without rewriting the database. Each one was raised before the spec (transcript:11), confirmed at the spec gate, and confirmed again at the approach gate before any code was committed. Each gate says concisely what is being approved, the choices to confirm are labelled, and none is trivial or after the fact."}
+```

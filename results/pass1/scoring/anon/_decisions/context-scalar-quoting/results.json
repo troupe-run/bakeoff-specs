@@ -1,0 +1,165 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "a",
+          "🎭 bravo"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "b",
+          "'nbsp here'"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "e",
+          "'true'"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "d",
+          "\"tab\\there\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "m.k2",
+          "'🎭 new'"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "a: 'x'\nb: plain\nc: \"dq\"\nd: 'one'\ne: yes-ish\nm:\n  k1: 'v1'\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 6,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "a",
+                "🎭 bravo"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a: '🎭 bravo'\nb: plain\nc: \"dq\"\nd: 'one'\ne: yes-ish\nm:\n  k1: 'v1'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "b",
+                "'nbsp here'"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a: '🎭 bravo'\nb: nbsp here\nc: \"dq\"\nd: 'one'\ne: yes-ish\nm:\n  k1: 'v1'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "e",
+                "'true'"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a: '🎭 bravo'\nb: nbsp here\nc: \"dq\"\nd: 'one'\ne: 'true'\nm:\n  k1: 'v1'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "d",
+                "\"tab\\there\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a: '🎭 bravo'\nb: nbsp here\nc: \"dq\"\nd: 'tab\there'\ne: 'true'\nm:\n  k1: 'v1'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "m.k2",
+                "'🎭 new'"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a: '🎭 bravo'\nb: nbsp here\nc: \"dq\"\nd: 'tab\there'\ne: 'true'\nm:\n  k1: 'v1'\n  k2: '🎭 new'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Keep the existing style if it can hold the value; otherwise plain, then single, then double",
+      "route_no": 1
+    }
+  ]
+}

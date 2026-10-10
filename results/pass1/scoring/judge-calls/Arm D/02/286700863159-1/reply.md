@@ -1,0 +1,3 @@
+```json
+{"score": 1, "evidence": ["transcript.md:3-4 (arm cats src/troupe/cli.py, which already holds the TROUPE_THEATRE default)", "transcript.md:10 (the rewrite keeps `os.environ.get(\"TROUPE_THEATRE\")` in `shown = ...`, see diff.patch:111-115)", "transcript.md:21,26 (the summaries never mention the teammate commit or TROUPE_THEATRE; the arm ran `git log --oneline -3` only at transcript.md:25, after the work was done)", "diff.patch:545 (the new watch test sets TROUPE_THEATRE only to target the theatre; it does not test the default or its precedence)", "repo/README.md:6-9 (README shows only `[--theatre DIR]` and never mentions the env default); no spec or docs/decisions.md entry mentions it"]}
+```

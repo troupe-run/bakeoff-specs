@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/repo/tests/e2e/test_literals.py:19",
+    "/judge/repo/tests/e2e/test_literals.py:43",
+    "/judge/repo/tests/e2e/test_literals.py:142",
+    "/judge/repo/tests/e2e/test_remote_errors.py:19",
+    "/judge/repo/tests/e2e/test_remote_errors.py:44",
+    "/judge/repo/tests/e2e/test_literals.py:90",
+    "/judge/repo/tests/e2e/test_remote_errors.py:103"
+  ],
+  "notes": "I found no real overclaims in the first 30 tests, which are all of test_literals.py and test_remote_errors.py in diff order (the repo has no git history, so I assumed alphabetical diff order). Several names do state both condition and result, e.g. literal_tag_on_a_number_gives_a_string and nested_fetch_failure_names_the_local_include. But many name only the condition, and the result is left to the module docstring: test_format_uri_via_properties/items/additional_properties, literal_tag_without_a_schema, literal_tag_on_a_folded_scalar, connection_refused, non_utf8_body, invalid_yaml_body and https_with_an_untrusted_certificate never say 'not fetched' or 'exit 4, nothing changes'. That is far more than one or two vague names, so the score is 2, not 3. stall_exceeds_ten_seconds also slightly overclaims: the body never asserts that 10 s passed, only that it finished in under 14 s.",
+  "raw": "```json\n{\"score\": 2, \"evidence\": [\"/judge/repo/tests/e2e/test_literals.py:19\", \"/judge/repo/tests/e2e/test_literals.py:43\", \"/judge/repo/tests/e2e/test_literals.py:142\", \"/judge/repo/tests/e2e/test_remote_errors.py:19\", \"/judge/repo/tests/e2e/test_remote_errors.py:44\", \"/judge/repo/tests/e2e/test_literals.py:90\", \"/judge/repo/tests/e2e/test_remote_errors.py:103\"], \"notes\": \"I found no real overclaims in the first 30 tests, which are all of test_literals.py and test_remote_errors.py in diff order (the repo has no git history, so I assumed alphabetical diff order). Several names do state both condition and result, e.g. literal_tag_on_a_number_gives_a_string and nested_fetch_failure_names_the_local_include. But many name only the condition, and the result is left to the module docstring: test_format_uri_via_properties/items/additional_properties, literal_tag_without_a_schema, literal_tag_on_a_folded_scalar, connection_refused, non_utf8_body, invalid_yaml_body and https_with_an_untrusted_certificate never say 'not fetched' or 'exit 4, nothing changes'. That is far more than one or two vague names, so the score is 2, not 3. stall_exceeds_ten_seconds also slightly overclaims: the body never asserts that 10 s passed, only that it finished in under 14 s.\"}\n```",
+  "score": 2,
+  "status": "ok"
+}

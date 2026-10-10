@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "spec/spec/config-aliases/design.md:148-155 lists every modified existing file (test_loader.py REFUSALS, test_loader_includes.py, test_e2e_includes.py, test_e2e_locate_load.py, earlier specs, roadmap) and says what replaces each removed refusal case",
+    "spec/spec/config-aliases/tasks.md:53,63 say which existing test rows (anchor-then-alias, the e2e alias row) are deleted and which new test file now holds them as accepted cases",
+    "diff.patch:5784-5785 the removed 3.9 test block in tests/test_e2e_locate_load.py is replaced by a comment naming config-aliases and tests/test_e2e_aliases.py as the replacement",
+    "spec/steering/roadmap.md:1698-1730 (diff) ties step 6 to tracker issue #2, records the approach decision and rejected alternatives, and lists the existing-spec updates",
+    "diff.patch:1739-1742,1751-1756 src/troupe/cli/set_command.py docstring cites config-aliases 6.1-6.4 for the --expand-alias change",
+    "spec/spec/config-aliases/tasks.md:205 explains why the merge-key constant moved into constants.py (MERGE_KEY, diff.patch:1937)"
+  ],
+  "notes": "",
+  "raw": "```json\n{\"score\": 4, \"evidence\": [\"spec/spec/config-aliases/design.md:148-155 lists every modified existing file (test_loader.py REFUSALS, test_loader_includes.py, test_e2e_includes.py, test_e2e_locate_load.py, earlier specs, roadmap) and says what replaces each removed refusal case\", \"spec/spec/config-aliases/tasks.md:53,63 say which existing test rows (anchor-then-alias, the e2e alias row) are deleted and which new test file now holds them as accepted cases\", \"diff.patch:5784-5785 the removed 3.9 test block in tests/test_e2e_locate_load.py is replaced by a comment naming config-aliases and tests/test_e2e_aliases.py as the replacement\", \"spec/steering/roadmap.md:1698-1730 (diff) ties step 6 to tracker issue #2, records the approach decision and rejected alternatives, and lists the existing-spec updates\", \"diff.patch:1739-1742,1751-1756 src/troupe/cli/set_command.py docstring cites config-aliases 6.1-6.4 for the --expand-alias change\", \"spec/spec/config-aliases/tasks.md:205 explains why the merge-key constant moved into constants.py (MERGE_KEY, diff.patch:1937)\"]}\n```\n\nThe repo has no git history, so the traceability runs through the spec records, not commit messages. I could find a reason for every substantive hunk I reviewed in design.md \"Modified Files\", tasks.md, the roadmap's step-6 entry, or a docstring that cites requirement IDs. That includes the changed and removed refusal tests, and each record says what replaced them. The one open gap is task 5.2 (`tasks.md:198`), which is still unchecked. That means the step-6 notes for the earlier specs (config-foundation and config-set-writeback) are not in this diff yet. This is about how complete the step is, not a hunk without a reason, so it doesn't lower the score.",
+  "score": 4,
+  "status": "ok"
+}

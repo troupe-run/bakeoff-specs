@@ -1,0 +1,147 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show",
+          "temperature"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "temperature"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "prompt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "notes"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "fallback"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/prompt.txt": "Be terse.\nNo preamble.",
+      ".troupe/troupe.yml": "temperature: 1e3   # YAML 1.2 float\nprompt: file:prompt.txt\nnotes: |+\n  line one\n  line two\n\nfallback: ~\nretry: 3\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/prompt.txt"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 6,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "temperature"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "1000.0\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "temperature"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "1000.0\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "Be terse.\nNo preamble.\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "notes"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "line one\nline two\n\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "fallback"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "null\n"
+            }
+          ]
+        }
+      ],
+      "route": "Printed exactly as get prints it through the same function",
+      "route_no": 1
+    }
+  ]
+}

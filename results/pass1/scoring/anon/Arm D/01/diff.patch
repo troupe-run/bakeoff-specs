@@ -1,0 +1,1992 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..9e3d76b
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++__pycache__/
++*.pyc
++.venv/
++.pytest_cache/
+diff --git a/.python-version b/.python-version
+new file mode 100644
+index 0000000..e4fba21
+--- /dev/null
++++ b/.python-version
+@@ -0,0 +1 @@
++3.12
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..98fa87e
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,16 @@
++# troupe
++
++AI orchestration. This package currently provides the configuration subsystem:
++
++```
++uv run troupe config show PATH [--theatre DIR]
++uv run troupe config set PATH VALUE [--theatre DIR]
++uv run troupe config history [PATH] [--theatre DIR]
++```
++
++- Configuration lives in `DIR/.troupe/troupe.yml` (or `.yaml`); `file:` strings include other files.
++- `set` writes changes back byte-surgically: only the bytes of the changed value change.
++- The configuration is held as an event-sourced projection (`eventsourcing`, SQLite at
++  `.troupe/troupe-state.sqlite`); `history` lists per-leaf `import`/`set`/`remove` events.
++
++Run the tests with `uv run pytest`.
+diff --git a/docs/decisions.md b/docs/decisions.md
+new file mode 100644
+index 0000000..c95f9b7
+--- /dev/null
++++ b/docs/decisions.md
+@@ -0,0 +1,26 @@
++# Decisions
++
++Assumptions made where the brief/contract was silent. Each picks the option least likely to lose or
++corrupt user data or to contradict the contract.
++
++1. **Integration: keep the work on `main`; no push, no pull request.** The delivery rule says the work is
++   done when committed on `main` and forbids pushing and opening PRs. The work was committed directly to
++   `main`, so there is nothing to merge and nothing to clean up.
++2. **`show` reads the files, not the event store.** Files are the source of truth that people edit by
++   hand; "importing is not reconciling", so hand edits are not turned into events.
++3. **Every write is verified before any file is touched.** The edited texts are re-parsed and the value at
++   `PATH` is compared with `VALUE`; on mismatch the command exits 3 and changes nothing.
++4. **A mapping/list set onto a node of the same kind is merged key-by-key** (index-by-index for lists),
++   so unchanged entries and their comments keep their bytes.
++5. **Replacing a value that comes wholly from a YAML include always exits 3**, even if the new value is
++   identical; setting keys inside the include writes into the included file.
++6. **A `VALUE` that parses as a block collection (e.g. bare `a: b`) is a usage error (exit 2)**: it is
++   not a single flow node. Quote it (`'"a: b"'`) to set the string.
++7. **Setting a collection to empty writes `{}` / `[]`**, since block style cannot represent an empty
++   collection.
++8. **A list item replaced by a collection is written compactly (`- k: v`)**; if the item's line carries
++   an end-of-line comment, the comment stays on the dash line and the collection goes below it.
++9. **A multi-line string that would be written as a literal block, where that block would swallow
++   following deeper-indented comment lines, is written double-quoted instead**, so the comments do not
++   silently become part of the value.
++10. **Event state lives in `.troupe/troupe-state.sqlite`** (the only place the contract allows state).
+diff --git a/pyproject.toml b/pyproject.toml
+new file mode 100644
+index 0000000..a7a0773
+--- /dev/null
++++ b/pyproject.toml
+@@ -0,0 +1,25 @@
++[project]
++name = "troupe"
++version = "0.1.0"
++description = "AI orchestration: theatre configuration"
++readme = "README.md"
++authors = [
++    { name = "Developer", email = "developer@troupe.run" }
++]
++requires-python = ">=3.12"
++dependencies = [
++    "eventsourcing>=9.5.5",
++    "pyyaml>=6.0.3",
++]
++
++[project.scripts]
++troupe = "troupe.cli:main"
++
++[build-system]
++requires = ["uv_build>=0.12.19,<0.13.0"]
++build-backend = "uv_build"
++
++[dependency-groups]
++dev = [
++    "pytest>=9.1.1",
++]
+diff --git a/src/troupe/__init__.py b/src/troupe/__init__.py
+new file mode 100644
+index 0000000..251a719
+--- /dev/null
++++ b/src/troupe/__init__.py
+@@ -0,0 +1,7 @@
++"""troupe: AI orchestration."""
++
++
++def main() -> int:
++    from .cli import main as cli_main
++
++    return cli_main()
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+new file mode 100644
+index 0000000..d773642
+--- /dev/null
++++ b/src/troupe/cli.py
+@@ -0,0 +1,135 @@
++"""`troupe config show|set|history`."""
++
++from __future__ import annotations
++
++import argparse
++import json
++import sys
++from pathlib import Path
++from typing import Any
++
++from .config import ConfigError, PathNotFound, WriteRefused, flatten, load, lookup, split_path
++from .store import ConfigStore
++from .writer import Writer
++from .yamlcore import ValueError_, format_scalar, parse_value, same
++
++
++class UsageError(Exception):
++    pass
++
++
++class _Parser(argparse.ArgumentParser):
++    def error(self, message: str) -> None:  # exit 2 with an empty stdout
++        raise UsageError(message)
++
++
++def _parser() -> argparse.ArgumentParser:
++    parser = _Parser(prog="troupe")
++    sub = parser.add_subparsers(dest="group", required=True)
++    config = sub.add_parser("config", help="show and change the theatre configuration")
++    cmds = config.add_subparsers(dest="cmd", required=True)
++    for name, extra in (("show", ["path"]), ("set", ["path", "value"]), ("history", ["path?"])):
++        p = cmds.add_parser(name)
++        p.add_argument("--theatre", default=".", help="theatre directory (default: current directory)")
++        for arg in extra:
++            if arg.endswith("?"):
++                p.add_argument(arg[:-1], nargs="?")
++            else:
++                p.add_argument(arg)
++    return parser
++
++
++def _out(text: str) -> None:
++    sys.stdout.buffer.write(text.encode("utf-8"))
++    sys.stdout.flush()
++
++
++def main(argv: list[str] | None = None) -> int:
++    try:
++        return run(sys.argv[1:] if argv is None else argv)
++    except UsageError as exc:
++        print(f"troupe: usage error: {exc}", file=sys.stderr)
++        return 2
++    except ConfigError as exc:
++        print(f"troupe: {exc}", file=sys.stderr)
++        return 4
++    except WriteRefused as exc:
++        print(f"troupe: write refused: {exc}", file=sys.stderr)
++        return 3
++    except PathNotFound as exc:
++        print(f"troupe: {exc}", file=sys.stderr)
++        return 5
++
++
++def run(argv: list[str]) -> int:
++    args = _parser().parse_args(argv)
++    segs: list[str] | None = None
++    if args.path is not None:
++        try:
++            segs = split_path(args.path)
++        except ValueError as exc:
++            raise UsageError(str(exc)) from exc
++    value = None
++    if args.cmd == "set":
++        try:
++            value = parse_value(args.value)
++        except ValueError_ as exc:
++            raise UsageError(f"invalid VALUE {args.value!r}: {exc}") from exc
++
++    theatre = Path(args.theatre)
++    cfg = load(theatre)
++    store = ConfigStore(cfg.config_path.parent)
++    store.ensure_imported(flatten(cfg.root))
++
++    if args.cmd == "show":
++        item = lookup(cfg.root, segs, args.path)
++        if item.kind not in ("scalar", "text"):
++            raise PathNotFound(f"{args.path}: is a {'mapping' if item.kind == 'map' else 'list'}, not a scalar")
++        text = format_scalar(item.value)
++        _out(text if text.endswith("\n") else text + "\n")
++        return 0
++
++    if args.cmd == "set":
++        return _set(theatre, cfg, store, segs, args.path, value)
++
++    for entry in store.history():
++        p = entry["path"]
++        if args.path is None or p == args.path or p.startswith(args.path + "."):
++            _out(json.dumps(entry, ensure_ascii=False) + "\n")
++    return 0
++
++
++def _set(theatre: Path, cfg, store: ConfigStore, segs: list[str], path: str, value) -> int:
++    writer = Writer()
++    writer.set_path(cfg.root, segs, value, path)
++    results = {p: t for p, t in writer.results().items() if p not in writer.docs or t != writer.docs[p].text}
++    if not results:
++        return 0
++    # Check the planned write before touching any file.
++    try:
++        new_cfg = load(theatre, overrides=results)
++        written = lookup(new_cfg.root, segs, path)
++    except (ConfigError, PathNotFound) as exc:
++        raise WriteRefused(f"{path}: cannot write this change faithfully ({exc})") from exc
++    expected = writer.raw.get(written.include, value.value) if written.kind == "text" else value.py()
++    if not same(written.py(), expected):
++        raise WriteRefused(f"{path}: cannot write this change faithfully")
++    for p, text in results.items():
++        p.write_bytes(text.encode("utf-8"))
++
++    before, after = flatten(cfg.root), flatten(new_cfg.root)
++    changes: list[tuple[str, str, Any, Any]] = []
++    for p, v in after.items():
++        if p not in before:
++            changes.append(("set", p, None, v))
++        elif not same(before[p], v):
++            changes.append(("set", p, before[p], v))
++    for p, v in before.items():
++        if p not in after:
++            changes.append(("remove", p, v, None))
++    store.record(changes)
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/src/troupe/config.py b/src/troupe/config.py
+new file mode 100644
+index 0000000..117dde1
+--- /dev/null
++++ b/src/troupe/config.py
+@@ -0,0 +1,256 @@
++"""Loading a theatre's configuration, following includes, into a tree of located items."""
++
++from __future__ import annotations
++
++import bisect
++import re
++from dataclasses import dataclass, field
++from pathlib import Path
++from typing import Any
++
++import yaml
++
++from .yamlcore import scalar_value
++
++
++class ConfigError(Exception):
++    """Exit 4: the configuration cannot be loaded."""
++
++
++class PathNotFound(Exception):
++    """Exit 5: path not found, or the wrong kind of node."""
++
++
++class WriteRefused(Exception):
++    """Exit 3: the write is refused."""
++
++
++_BREAK = re.compile(r"\r\n|\r|\n")
++
++
++class Doc:
++    """A YAML file: its text, composed node tree, line index, and pending edits."""
++
++    def __init__(self, path: Path, text: str):
++        self.path = path
++        self.text = text
++        try:
++            self.root: yaml.Node | None = yaml.compose(text, Loader=yaml.SafeLoader)
++        except yaml.YAMLError as exc:
++            raise ConfigError(f"{path}: invalid YAML: {str(exc).splitlines()[0]}") from exc
++        self.line_starts = [0] + [m.end() for m in _BREAK.finditer(text)]
++        self.newline = "\r\n" if "\r\n" in text else "\n"
++        self.indent = _detect_indent(self.root)
++        self.edits: list[tuple[int, int, int, str]] = []
++
++    # line helpers -----------------------------------------------------------
++    def line_of(self, idx: int) -> int:
++        return bisect.bisect_right(self.line_starts, idx) - 1
++
++    def line_start(self, ln: int) -> int:
++        return self.line_starts[ln]
++
++    def line_end(self, ln: int) -> int:
++        """Index of the end of line `ln`, excluding its line break."""
++        if ln + 1 < len(self.line_starts):
++            end = self.line_starts[ln + 1]
++            while end > self.line_starts[ln] and self.text[end - 1] in "\r\n":
++                end -= 1
++            return end
++        return len(self.text)
++
++    def has_break(self, ln: int) -> bool:
++        return ln + 1 < len(self.line_starts)
++
++    def line_count(self) -> int:
++        n = len(self.line_starts)
++        if self.line_starts[-1] == len(self.text):
++            n -= 1  # text ends with a line break: no partial last line
++        return n
++
++    def line_text(self, ln: int) -> str:
++        return self.text[self.line_start(ln) : self.line_end(ln)]
++
++    def col(self, idx: int) -> int:
++        return idx - self.line_start(self.line_of(idx))
++
++    # edits ------------------------------------------------------------------
++    def edit(self, start: int, end: int, new: str) -> None:
++        if self.text[start:end] == new:
++            return
++        self.edits.append((start, end, len(self.edits), new))
++
++    def edited_text(self) -> str:
++        text = self.text
++        last_start = len(text) + 1
++        for start, end, _, new in sorted(self.edits, key=lambda e: (e[0], e[1], e[2]), reverse=True):
++            if end > last_start:
++                raise WriteRefused(f"{self.path}: overlapping edits")
++            text = text[:start] + new + text[end:]
++            last_start = start
++        return text
++
++
++def _detect_indent(root: yaml.Node | None) -> int:
++    stack = [root]
++    while stack:
++        node = stack.pop()
++        if isinstance(node, yaml.MappingNode):
++            for k, v in node.value:
++                if (
++                    isinstance(v, (yaml.MappingNode, yaml.SequenceNode))
++                    and not v.flow_style
++                    and v.value
++                    and v.start_mark.line > k.start_mark.line
++                    and v.start_mark.column > k.start_mark.column
++                ):
++                    return v.start_mark.column - k.start_mark.column
++                stack.append(v)
++        elif isinstance(node, yaml.SequenceNode):
++            stack.extend(node.value)
++    return 2
++
++
++def read_text(path: Path) -> str:
++    try:
++        return path.read_bytes().decode("utf-8")
++    except FileNotFoundError as exc:
++        raise ConfigError(f"{path}: include target not found") from exc
++    except (OSError, UnicodeDecodeError) as exc:
++        raise ConfigError(f"{path}: cannot read: {exc}") from exc
++
++
++@dataclass(eq=False)
++class Item:
++    """A configuration value located in a file.
++
++    kind: map | seq | scalar | text (a text include).
++    node: the YAML node in `doc` (for `text`, the `file:` string node).
++    include: the include target when this value came from an include.
++    parent/key: position in the containing collection (None for a document root).
++    """
++
++    kind: str
++    doc: Doc
++    node: yaml.Node | None
++    value: Any = None
++    include: Path | None = None
++    parent: "Item | None" = None
++    key: Any = None  # str for mapping entries, int for sequence items
++    key_node: yaml.Node | None = None
++    flow: bool = False  # inside a flow collection
++
++    @property
++    def yaml_include(self) -> bool:
++        return self.include is not None and self.kind != "text"
++
++    def py(self) -> Any:
++        if self.kind == "map":
++            return {k: v.py() for k, v in self.value.items()}
++        if self.kind == "seq":
++            return [v.py() for v in self.value]
++        return self.value
++
++
++@dataclass
++class Config:
++    config_path: Path
++    root: Item
++    docs: dict[Path, Doc] = field(default_factory=dict)
++
++
++def find_config(theatre: Path) -> Path:
++    base = theatre / ".troupe"
++    found = [p for p in (base / "troupe.yml", base / "troupe.yaml") if p.is_file()]
++    if not found:
++        raise ConfigError(f"{base}/troupe.yml: no configuration file found")
++    if len(found) > 1:
++        raise ConfigError(f"{base}: both troupe.yml and troupe.yaml exist")
++    return found[0]
++
++
++def load(theatre: Path, overrides: dict[Path, str] | None = None) -> Config:
++    """Load the configuration; `overrides` substitutes file contents (to check a planned write)."""
++    path = find_config(theatre).resolve()
++    docs: dict[Path, Doc] = {}
++    overrides = overrides or {}
++
++    def text_of(p: Path) -> str:
++        return overrides[p] if p in overrides else read_text(p)
++
++    def get_doc(p: Path) -> Doc:
++        if p not in docs:
++            docs[p] = Doc(p, text_of(p))
++        return docs[p]
++
++    def build(doc: Doc, node: yaml.Node | None, stack: tuple[Path, ...], flow: bool) -> Item:
++        if node is None:
++            return Item("scalar", doc, None, None)
++        if isinstance(node, yaml.MappingNode):
++            item = Item("map", doc, node, {}, flow=flow)
++            for k, v in node.value:
++                if not isinstance(k, yaml.ScalarNode):
++                    raise ConfigError(f"{doc.path}: complex mapping keys are not supported")
++                child = build(doc, v, stack, bool(node.flow_style))
++                child.parent, child.key, child.key_node = item, k.value, k
++                item.value[k.value] = child
++            return item
++        if isinstance(node, yaml.SequenceNode):
++            item = Item("seq", doc, node, [], flow=flow)
++            for i, v in enumerate(node.value):
++                child = build(doc, v, stack, bool(node.flow_style))
++                child.parent, child.key = item, i
++                item.value.append(child)
++            return item
++        value = scalar_value(node)
++        if isinstance(value, str) and value.startswith("file:"):
++            target = (doc.path.parent / value[5:]).resolve()
++            if target in stack:
++                raise ConfigError(f"{doc.path}: include cycle through {target}")
++            if not target.is_file():
++                raise ConfigError(f"{doc.path}: include target {target} not found")
++            if target.suffix in (".yml", ".yaml"):
++                tdoc = get_doc(target)
++                item = build(tdoc, tdoc.root, stack + (target,), False)
++                item.include = target
++                item.flow = flow
++                return item
++            return Item("text", doc, node, text_of(target), include=target, flow=flow)
++        return Item("scalar", doc, node, value, flow=flow)
++
++    root_doc = get_doc(path)
++    root = build(root_doc, root_doc.root, (path,), False)
++    return Config(path, root, docs)
++
++
++def flatten(item: Item, prefix: str = "") -> dict[str, Any]:
++    """Leaves of the configuration, by dotted path, in document order."""
++    out: dict[str, Any] = {}
++    if item.kind == "map":
++        for k, v in item.value.items():
++            out.update(flatten(v, f"{prefix}{k}."))
++    elif item.kind == "seq":
++        for i, v in enumerate(item.value):
++            out.update(flatten(v, f"{prefix}{i}."))
++    elif prefix:
++        out[prefix[:-1]] = item.value
++    return out
++
++
++def split_path(path: str) -> list[str]:
++    segs = path.split(".")
++    if not path or any(s == "" for s in segs):
++        raise ValueError(f"invalid path: {path!r}")
++    return segs
++
++
++def lookup(root: Item, segs: list[str], path: str) -> Item:
++    item = root
++    for seg in segs:
++        if item.kind == "map" and seg in item.value:
++            item = item.value[seg]
++        elif item.kind == "seq" and seg.isdigit() and int(seg) < len(item.value):
++            item = item.value[int(seg)]
++        else:
++            raise PathNotFound(f"path not found: {path}")
++    return item
+diff --git a/src/troupe/store.py b/src/troupe/store.py
+new file mode 100644
+index 0000000..c7c7acd
+--- /dev/null
++++ b/src/troupe/store.py
+@@ -0,0 +1,84 @@
++"""The configuration as an event-sourced projection, persisted in SQLite under `.troupe/`."""
++
++from __future__ import annotations
++
++from pathlib import Path
++from typing import Any
++from uuid import NAMESPACE_URL, UUID, uuid5
++
++from eventsourcing.application import AggregateNotFoundError, Application
++from eventsourcing.domain import Aggregate, event
++
++STATE_FILE = "troupe-state.sqlite"
++
++
++class TheatreConfig(Aggregate):
++    """Projection of a theatre's configuration: current leaf values and the log of leaf changes."""
++
++    @staticmethod
++    def create_id() -> UUID:
++        return uuid5(NAMESPACE_URL, "troupe:theatre-config")
++
++    @event("Created")
++    def __init__(self) -> None:
++        self.leaves: dict[str, Any] = {}
++        self.log: list[dict[str, Any]] = []
++
++    @event("LeafImported")
++    def leaf_imported(self, path: str, new: Any) -> None:
++        self._record("import", path, None, new)
++
++    @event("LeafSet")
++    def leaf_set(self, path: str, old: Any, new: Any) -> None:
++        self._record("set", path, old, new)
++
++    @event("LeafRemoved")
++    def leaf_removed(self, path: str, old: Any) -> None:
++        self._record("remove", path, old, None)
++
++    def _record(self, op: str, path: str, old: Any, new: Any) -> None:
++        if op == "remove":
++            self.leaves.pop(path, None)
++        else:
++            self.leaves[path] = new
++        self.log.append({"seq": len(self.log) + 1, "op": op, "path": path, "old": old, "new": new})
++
++
++class ConfigStore(Application):
++    def __init__(self, troupe_dir: Path) -> None:
++        super().__init__(
++            env={
++                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
++                "SQLITE_DBNAME": str(troupe_dir / STATE_FILE),
++            }
++        )
++
++    def _get(self) -> TheatreConfig | None:
++        try:
++            return self.repository.get(TheatreConfig.create_id())
++        except AggregateNotFoundError:
++            return None
++
++    def ensure_imported(self, leaves: dict[str, Any]) -> None:
++        if self._get() is not None:
++            return
++        agg = TheatreConfig()
++        for path, value in leaves.items():
++            agg.leaf_imported(path, value)
++        self.save(agg)
++
++    def record(self, changes: list[tuple[str, str, Any, Any]]) -> None:
++        if not changes:
++            return
++        agg = self._get()
++        assert agg is not None
++        for op, path, old, new in changes:
++            if op == "remove":
++                agg.leaf_removed(path, old)
++            else:
++                agg.leaf_set(path, old, new)
++        self.save(agg)
++
++    def history(self) -> list[dict[str, Any]]:
++        agg = self._get()
++        return list(agg.log) if agg else []
+diff --git a/src/troupe/writer.py b/src/troupe/writer.py
+new file mode 100644
+index 0000000..83c17cf
+--- /dev/null
++++ b/src/troupe/writer.py
+@@ -0,0 +1,523 @@
++"""Byte-surgical write-back of configuration changes.
++
++Edits are planned against the original text of each file (see `Doc.edit`) and applied together, so a
++refused write never touches a file.
++"""
++
++from __future__ import annotations
++
++import difflib
++import re
++from pathlib import Path
++
++import yaml
++
++from .config import Doc, Item, PathNotFound, WriteRefused
++from .yamlcore import (
++    Val,
++    chomp_for,
++    chomp_ok,
++    literal_lines,
++    literal_ok,
++    render_double,
++    render_flow,
++    render_inline_scalar,
++    render_str,
++    same,
++    style_name,
++)
++
++_HEADER = re.compile(r"([|>])([-+]?)([1-9]?)([-+]?)")
++_COMMENT_GAP = re.compile(r"[ \t]+(?=#)")
++
++
++class Writer:
++    def __init__(self) -> None:
++        self.docs: dict[Path, Doc] = {}
++        self.raw: dict[Path, str] = {}  # whole-file writes (text includes)
++
++    def _edit(self, doc: Doc, start: int, end: int, new: str) -> None:
++        self.docs[doc.path] = doc
++        doc.edit(start, end, new)
++
++    def results(self) -> dict[Path, str]:
++        out = {path: doc.edited_text() for path, doc in self.docs.items() if doc.edits}
++        out.update(self.raw)
++        return out
++
++    # ------------------------------------------------------------------ entry points
++
++    def set_path(self, root: Item, segs: list[str], value: Val, path: str) -> None:
++        item = root
++        for i, seg in enumerate(segs):
++            last = i == len(segs) - 1
++            if item.kind == "map":
++                if seg in item.value:
++                    item = item.value[seg]
++                    continue
++                rest = segs[i + 1 :]
++                if any(s.isdigit() for s in rest):
++                    raise PathNotFound(f"path not found: {path}")
++                v = value
++                for s in reversed(rest):
++                    v = Val("map", {s: v})
++                self.add_entries(item, [(seg, v)])
++                return
++            if item.kind == "seq":
++                if not seg.isdigit():
++                    raise PathNotFound(f"path not found: {path} (not a list index: {seg})")
++                idx = int(seg)
++                if idx < len(item.value):
++                    item = item.value[idx]
++                    continue
++                if idx == len(item.value) and last:
++                    self.append_items(item, [value])
++                    return
++                raise PathNotFound(f"path not found: {path} (index {idx} out of range)")
++            if item is root and item.kind == "scalar" and _empty_doc(item.doc):
++                rest = segs[i + 1 :]
++                if any(s.isdigit() for s in [seg, *rest]):
++                    raise PathNotFound(f"path not found: {path}")
++                v = value
++                for s in reversed(rest):
++                    v = Val("map", {s: v})
++                self._append_to_empty_doc(item.doc, [(seg, v)])
++                return
++            raise PathNotFound(f"path not found: {path} ({'.'.join(segs[:i])} is not a mapping or list)")
++        if item.yaml_include:
++            raise WriteRefused(f"{path}: value comes from include {item.include}; refusing to replace it")
++        self.assign(item, value)
++
++    def assign(self, item: Item, v: Val) -> None:
++        if same(item.py(), v.py()):
++            return
++        if item.yaml_include:
++            raise WriteRefused(f"value comes from include {item.include}; refusing to replace it")
++        if item.kind == "text":
++            self.write_text_include(item, v)
++            return
++        if item.kind == "map" and v.kind == "map" and v.value:
++            kept = [k for k in item.value if k in v.value]
++            if kept or not item.value:
++                gone = [k for k in item.value if k not in v.value]
++                if gone:
++                    self.delete_keys(item, gone)
++                for k in kept:
++                    self.assign(item.value[k], v.value[k])
++                new = [(k, x) for k, x in v.value.items() if k not in item.value]
++                if new:
++                    self.add_entries(item, new)
++                return
++        if item.kind == "seq" and v.kind == "seq" and v.value:
++            n = min(len(item.value), len(v.value))
++            if len(v.value) < len(item.value):
++                self.truncate(item, len(v.value))
++            for i in range(n):
++                self.assign(item.value[i], v.value[i])
++            if len(v.value) > n:
++                self.append_items(item, v.value[n:])
++            return
++        self.replace(item, v)
++
++    def write_text_include(self, item: Item, v: Val) -> None:
++        if v.kind != "str":
++            raise WriteRefused(f"{item.include}: a text include can only be set to a string")
++        content = v.value
++        if "\r\n" in item.value:
++            content = content.replace("\r\n", "\n").replace("\n", "\r\n")
++        self.raw[item.include] = content
++
++    # ------------------------------------------------------------------ replacing a value
++
++    def replace(self, item: Item, v: Val) -> None:
++        doc, node = item.doc, item.node
++        if node is None or item.parent is None:
++            raise WriteRefused(f"{doc.path}: cannot replace the document root")
++        style = style_name(node)
++        if item.flow:
++            text = render_flow(v, style if style in ("plain", "single", "double") else None)
++            self._replace_inline(doc, node.start_mark.index, node_end(doc, node), text, needs_space=False)
++            return
++
++        anchor = anchor_of(item)
++        # column of the parent key, or of the item's dash
++        pcol = item.key_node.start_mark.column if item.parent.kind == "map" else doc.col(anchor - 1)
++        indent = doc.indent
++        s = node.start_mark.index
++        end = node_end(doc, node)
++
++        # old regions: inline part (on the anchor line) and body (following lines)
++        if style in ("literal", "folded"):
++            header = _HEADER.match(doc.text, s)
++            is_, ie = s, header.end()
++            line_end = doc.line_end(doc.line_of(s))
++            bs, be = line_end, max(end, line_end)
++        elif isinstance(node, (yaml.MappingNode, yaml.SequenceNode)) and not node.flow_style and node.value:
++            if doc.line_of(s) == doc.line_of(anchor):
++                is_, ie = s, end
++                bs = be = None
++            else:
++                is_ = ie = anchor
++                bs, be = doc.line_end(doc.line_of(anchor)), end
++        else:
++            is_, ie = s, end
++            bs = be = None
++        needs_space = is_ == anchor
++
++        # new rendering
++        new_inline, body, keep = "", [], False
++        if v.is_collection and v.value:
++            has_comment = _COMMENT_GAP.match(doc.text, ie, doc.line_end(doc.line_of(ie))) is not None
++            if item.parent.kind == "seq" and not (has_comment and doc.line_of(is_) == doc.line_of(ie)):
++                # compact form: "- key: value" with the rest aligned under the first entry
++                w = max(2, indent)
++                sub = block_lines(v, pcol + w, indent)
++                is_, needs_space = anchor, False
++                new_inline = " " * (w - 1) + doc.newline.join([sub[0][pcol + w :], *sub[1:]])
++            else:
++                body = block_lines(v, pcol + indent, indent)
++        elif v.kind == "str" and style in ("literal", "folded") and literal_ok(v.value):
++            hm = _HEADER.match(doc.text, s)
++            chomp = hm.group(2) or hm.group(4)
++            want, k = chomp_for(v.value)
++            if not chomp_ok(chomp, k):
++                chomp = want
++            ind = hm.group(1)
++            new_inline = ind + (chomp + hm.group(3) if hm.group(2) or not hm.group(4) else hm.group(3) + chomp)
++            cindent = _content_indent(doc, node, end) or pcol + indent
++            if style == "literal":
++                body = literal_lines(v.value, cindent)
++            else:
++                body = folded_lines(doc, node, end, v.value, cindent)
++            keep = chomp == "+"
++        elif v.multiline and literal_ok(v.value) and not _absorbs_comments(doc, end, pcol + indent):
++            chomp, k = chomp_for(v.value)
++            new_inline = "|" + chomp
++            body = literal_lines(v.value, pcol + indent)
++            keep = chomp == "+"
++        elif v.is_collection:
++            new_inline = "{}" if v.kind == "map" else "[]"
++        elif v.multiline:
++            new_inline = render_double(v.value)
++        else:
++            keep_style = style if style in ("plain", "single", "double") else None
++            new_inline = render_inline_scalar(v, keep_style, False)
++
++        if bs is None:
++            bs = be = doc.line_end(doc.line_of(ie))
++        if keep:
++            ln = doc.line_of(be)
++            while ln + 1 < doc.line_count() and doc.line_text(ln + 1).strip() == "":
++                ln += 1
++            be = doc.line_end(ln)
++        self._replace_inline(doc, is_, ie, new_inline, needs_space, anchor)
++        if body or bs != be:
++            self._edit(doc, bs, be, "".join(doc.newline + ln for ln in body))
++
++    def _replace_inline(
++        self, doc: Doc, is_: int, ie: int, new: str, needs_space: bool, anchor: int | None = None
++    ) -> None:
++        text = (" " + new) if (new and needs_space) else new
++        rest = doc.text[ie : doc.line_end(doc.line_of(ie))]
++        m = _COMMENT_GAP.match(rest)
++        single_line = doc.line_of(is_) == doc.line_of(ie) and "\n" not in text
++        if m and single_line:
++            comment_col = doc.col(ie + m.end())
++            gap = max(1, comment_col - (doc.col(is_) + len(text)))
++            self._edit(doc, is_, ie + m.end(), text + " " * gap)
++        elif not text and anchor is not None and not m:
++            self._edit(doc, anchor, ie, "")
++        else:
++            self._edit(doc, is_, ie, text)
++
++    # ------------------------------------------------------------------ adding entries
++
++    def add_entries(self, item: Item, entries: list[tuple[str, Val]]) -> None:
++        doc, node = item.doc, item.node
++        if node is None:
++            self._append_to_empty_doc(doc, entries)
++            return
++        pairs = node.value
++        key_style = style_name(pairs[-1][0]) if pairs else None
++        val_style = style_name(pairs[-1][1]) if pairs else None
++        if node.flow_style:
++            parts = [f"{render_str(k, key_style, True)}: {render_flow(v, val_style)}" for k, v in entries]
++            self._flow_insert(doc, node, [v for _, v in pairs], parts)
++            return
++        col = pairs[0][0].start_mark.column
++        lines: list[str] = []
++        for k, v in entries:
++            head = " " * col + render_str(k, key_style, False) + ":"
++            lines += entry_lines(head, v, col, doc.indent, val_style, seq=False)
++        self._block_insert(doc, node, col, lines)
++
++    def append_items(self, item: Item, values: list[Val]) -> None:
++        doc, node = item.doc, item.node
++        val_style = style_name(node.value[-1]) if node.value else None
++        if node.flow_style:
++            self._flow_insert(doc, node, node.value, [render_flow(v, val_style) for v in values])
++            return
++        col = doc.col(_dash_of(doc, node.value[0]))
++        lines: list[str] = []
++        for v in values:
++            lines += entry_lines(" " * col + "-", v, col, doc.indent, val_style, seq=True)
++        self._block_insert(doc, node, col, lines)
++
++    def _append_to_empty_doc(self, doc: Doc, entries: list[tuple[str, Val]]) -> None:
++        lines: list[str] = []
++        for k, v in entries:
++            lines += entry_lines(render_str(k, None, False) + ":", v, 0, doc.indent, None, seq=False)
++        prefix = doc.newline if doc.text and not doc.text.endswith(("\n", "\r")) else ""
++        self._edit(doc, len(doc.text), len(doc.text), prefix + "".join(ln + doc.newline for ln in lines))
++
++    def _flow_insert(self, doc: Doc, node: yaml.Node, existing: list[yaml.Node], parts: list[str]) -> None:
++        if existing:
++            pos = node_end(doc, existing[-1])
++            self._edit(doc, pos, pos, "".join(", " + p for p in parts))
++        else:
++            pos = node.start_mark.index + 1
++            self._edit(doc, pos, pos, ", ".join(parts))
++
++    def _block_insert(self, doc: Doc, node: yaml.Node, col: int, lines: list[str]) -> None:
++        last = doc.line_of(node_end(doc, node))
++        accepted = last
++        ln = last + 1
++        while ln < doc.line_count():
++            t = doc.line_text(ln)
++            stripped = t.lstrip(" ")
++            if stripped.strip() == "":
++                ln += 1
++                continue
++            if stripped.startswith("#") and len(t) - len(stripped) >= col:
++                accepted = ln
++                ln += 1
++                continue
++            break
++        nl = doc.newline
++        if doc.has_break(accepted):
++            pos = doc.line_start(accepted + 1)
++            text = "".join(ln + nl for ln in lines)
++        else:
++            pos = len(doc.text)
++            text = "".join(nl + ln for ln in lines)
++        self._edit(doc, pos, pos, text)
++
++    # ------------------------------------------------------------------ removing entries
++
++    def delete_keys(self, item: Item, keys: list[str]) -> None:
++        node = item.node
++        names = [k.value for k, _ in node.value]
++        entries = [(k.start_mark.index, node_end(item.doc, v)) for k, v in node.value]
++        self._delete_runs(item.doc, node, entries, [n in keys for n in names])
++
++    def truncate(self, item: Item, n: int) -> None:
++        doc, node = item.doc, item.node
++        if node.flow_style:
++            entries = [(v.start_mark.index, node_end(doc, v)) for v in node.value]
++        else:
++            entries = [(_dash_of(doc, v), node_end(doc, v)) for v in node.value]
++        self._delete_runs(doc, node, entries, [i >= n for i in range(len(node.value))])
++
++    def _delete_runs(self, doc: Doc, node: yaml.Node, entries: list[tuple[int, int]], gone: list[bool]) -> None:
++        i = 0
++        while i < len(entries):
++            if not gone[i]:
++                i += 1
++                continue
++            j = i
++            while j + 1 < len(entries) and gone[j + 1]:
++                j += 1
++            start, end = entries[i][0], entries[j][1]
++            if node.flow_style:
++                if i > 0:
++                    self._edit(doc, entries[i - 1][1], end, "")
++                else:
++                    self._edit(doc, start, entries[j + 1][0], "")
++            else:
++                ls = doc.line_start(doc.line_of(start))
++                if doc.text[ls:start].strip(" ") and j + 1 < len(entries):
++                    self._edit(doc, start, entries[j + 1][0], "")  # compact entry after "- "
++                else:
++                    le = doc.line_of(end)
++                    stop = doc.line_start(le + 1) if doc.has_break(le) else len(doc.text)
++                    if not doc.has_break(le) and ls > 0:
++                        ls = doc.line_end(doc.line_of(ls) - 1)
++                    self._edit(doc, ls, stop, "")
++            i = j + 1
++
++
++# ---------------------------------------------------------------------- rendering new block content
++
++
++def block_lines(v: Val, col: int, indent: int) -> list[str]:
++    lines: list[str] = []
++    if v.kind == "map":
++        for k, x in v.value.items():
++            lines += entry_lines(" " * col + render_str(k, None, False) + ":", x, col, indent, None, seq=False)
++    else:
++        for x in v.value:
++            lines += entry_lines(" " * col + "-", x, col, indent, None, seq=True)
++    return lines
++
++
++def entry_lines(head: str, v: Val, col: int, indent: int, val_style: str | None, seq: bool) -> list[str]:
++    if v.multiline and literal_ok(v.value):
++        chomp, _ = chomp_for(v.value)
++        return [head + " |" + chomp] + literal_lines(v.value, col + indent)
++    if v.is_collection and v.value:
++        if seq:
++            w = max(2, indent)
++            sub = block_lines(v, col + w, indent)
++            return [head + " " * (w - 1) + sub[0][col + w :]] + sub[1:]
++        return [head] + block_lines(v, col + indent, indent)
++    if v.is_collection:
++        return [head + (" {}" if v.kind == "map" else " []")]
++    return [head + " " + render_inline_scalar(v, val_style, False)]
++
++
++def folded_lines(doc: Doc, node: yaml.ScalarNode, end: int, value: str, cindent: int) -> list[str]:
++    """Content lines of a folded block scalar for `value`, keeping unchanged paragraphs' bytes."""
++    first = doc.line_of(node.start_mark.index) + 1
++    last = doc.line_of(end)
++    raw = [doc.line_text(ln) for ln in range(first, last + 1)] if end > doc.line_end(first - 1) else []
++    # old paragraphs: groups of non-blank lines
++    old: list[tuple[str, list[str]]] = []
++    group: list[str] = []
++    for line in raw + [""]:
++        if line.strip() == "":
++            if group:
++                old.append((" ".join(ln.strip(" ") for ln in group), group))
++                group = []
++        else:
++            group.append(line)
++    widths = [len(ln) - min(cindent, len(ln) - len(ln.lstrip(" "))) for _, g in old for ln in g]
++    default_width = max(widths, default=80)
++
++    body = value.rstrip("\n")
++    k = len(value) - len(body)
++    vlines = body.split("\n") if body else []
++    # new paragraphs with the number of newlines preceding each
++    paras: list[tuple[int, str]] = []
++    pending = 0
++    for i, vl in enumerate(vlines):
++        if vl == "":
++            pending += 1
++            continue
++        if vl[0] in " \t":
++            raise WriteRefused(f"{doc.path}: value would put a more-indented line into a folded scalar")
++        # k newlines between paragraphs (or before the first) are written as k blank lines
++        paras.append((pending + (1 if paras else 0), vl))
++        pending = 0
++
++    old_texts = [t for t, _ in old]
++    new_texts = [t for _, t in paras]
++    plan: list[tuple[str, int | None]] = [("new", None)] * len(new_texts)
++    sm = difflib.SequenceMatcher(None, old_texts, new_texts, autojunk=False)
++    for tag, i1, i2, j1, j2 in sm.get_opcodes():
++        for off, j in enumerate(range(j1, j2)):
++            if tag == "equal":
++                plan[j] = ("keep", i1 + off)
++            elif tag == "replace" and i1 + off < i2:
++                plan[j] = ("changed", i1 + off)
++
++    pad = " " * cindent
++    out: list[str] = []
++    for (sep, text), (how, oi) in zip(paras, plan):
++        out += [""] * sep
++        if how == "keep":
++            out += old[oi][1]
++            continue
++        if how == "changed":
++            width = max(len(ln) - min(cindent, len(ln) - len(ln.lstrip(" "))) for ln in old[oi][1])
++        else:
++            width = default_width
++        out += [pad + ln for ln in _wrap(text, width)]
++    out += [""] * max(0, k - 1)
++    return out
++
++
++def _wrap(text: str, width: int) -> list[str]:
++    words = re.split(r"(?<=[^ \t]) (?=[^ \t])", text)
++    lines: list[str] = []
++    cur = words[0]
++    for w in words[1:]:
++        if len(cur) + 1 + len(w) <= width:
++            cur += " " + w
++        else:
++            lines.append(cur)
++            cur = w
++    lines.append(cur)
++    return lines
++
++
++# ---------------------------------------------------------------------- positions
++
++
++def _empty_doc(doc: Doc) -> bool:
++    return doc.root is None
++
++
++def node_end(doc: Doc, node: yaml.Node) -> int:
++    """End index of a node's content (block scalars: last content line, without its line break)."""
++    if isinstance(node, yaml.ScalarNode):
++        s, e = node.start_mark.index, node.end_mark.index
++        if node.style in ("|", ">"):
++            hm = _HEADER.match(doc.text, s)
++            if "+" in hm.group(0):
++                if doc.text[e - 2 : e] == "\r\n":
++                    e -= 2
++                elif e > s and doc.text[e - 1] in "\r\n":
++                    e -= 1
++                return max(e, doc.line_end(doc.line_of(s)))
++            region = doc.text[s:e].rstrip()
++            return doc.line_end(doc.line_of(s + len(region) - 1))
++        return e
++    if node.flow_style or not node.value:
++        return node.end_mark.index
++    last = node.value[-1]
++    return node_end(doc, last[1] if isinstance(node, yaml.MappingNode) else last)
++
++
++def _dash_of(doc: Doc, item_node: yaml.Node) -> int:
++    i = item_node.start_mark.index - 1
++    while i >= 0 and doc.text[i] in " \t\r\n":
++        i -= 1
++    if i < 0 or doc.text[i] != "-":
++        raise PathNotFound(f"{doc.path}: cannot locate list item")
++    return i
++
++
++def anchor_of(item: Item) -> int:
++    """Index just after the ':' of a mapping entry or the '-' of a block sequence item."""
++    doc = item.doc
++    if item.parent.kind == "map":
++        i = item.key_node.end_mark.index
++        while i < len(doc.text) and doc.text[i] in " \t\r\n":
++            i += 1
++        if i >= len(doc.text) or doc.text[i] != ":":
++            raise PathNotFound(f"{doc.path}: cannot locate value of {item.key}")
++        return i + 1
++    return _dash_of(doc, item.node) + 1
++
++
++def _absorbs_comments(doc: Doc, end: int, cindent: int) -> bool:
++    """Whether comment lines after `end` would become content of a block scalar indented `cindent`."""
++    ln = doc.line_of(end) + 1
++    while ln < doc.line_count():
++        t = doc.line_text(ln)
++        if t.strip() == "":
++            ln += 1
++            continue
++        return t.lstrip(" ").startswith("#") and len(t) - len(t.lstrip(" ")) >= cindent
++    return False
++
++
++def _content_indent(doc: Doc, node: yaml.ScalarNode, end: int) -> int | None:
++    first = doc.line_of(node.start_mark.index) + 1
++    last = doc.line_of(end)
++    for ln in range(first, last + 1):
++        t = doc.line_text(ln)
++        if t.strip() != "" and end > doc.line_start(ln):
++            return len(t) - len(t.lstrip(" "))
++    return None
++
+diff --git a/src/troupe/yamlcore.py b/src/troupe/yamlcore.py
+new file mode 100644
+index 0000000..e582e89
+--- /dev/null
++++ b/src/troupe/yamlcore.py
+@@ -0,0 +1,283 @@
++"""YAML 1.2 core-schema helpers: scalar resolution, value parsing and scalar rendering."""
++
++from __future__ import annotations
++
++import math
++import re
++from dataclasses import dataclass
++from typing import Any
++
++import yaml
++
++_NULL = re.compile(r"^(?:~|null|Null|NULL|)$")
++_TRUE = re.compile(r"^(?:true|True|TRUE)$")
++_FALSE = re.compile(r"^(?:false|False|FALSE)$")
++_INT10 = re.compile(r"^[-+]?[0-9]+$")
++_INT8 = re.compile(r"^0o[0-7]+$")
++_INT16 = re.compile(r"^0x[0-9a-fA-F]+$")
++_FLOAT = re.compile(r"^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$")
++_INF = re.compile(r"^[-+]?(?:\.inf|\.Inf|\.INF)$")
++_NAN = re.compile(r"^(?:\.nan|\.NaN|\.NAN)$")
++
++
++def resolve_plain(text: str) -> Any:
++    """Resolve a plain scalar using the YAML 1.2 core schema."""
++    if _NULL.match(text):
++        return None
++    if _TRUE.match(text):
++        return True
++    if _FALSE.match(text):
++        return False
++    if _INT10.match(text):
++        return int(text)
++    if _INT8.match(text):
++        return int(text[2:], 8)
++    if _INT16.match(text):
++        return int(text[2:], 16)
++    if _FLOAT.match(text):
++        return float(text)
++    if _INF.match(text):
++        return -math.inf if text.startswith("-") else math.inf
++    if _NAN.match(text):
++        return math.nan
++    return text
++
++
++def scalar_value(node: yaml.ScalarNode) -> Any:
++    if node.style is None:
++        return resolve_plain(node.value)
++    return node.value
++
++
++def same(a: Any, b: Any) -> bool:
++    """Typed structural equality (1 != 1.0 != True)."""
++    if type(a) is not type(b):
++        return False
++    if isinstance(a, dict):
++        return a.keys() == b.keys() and all(same(a[k], b[k]) for k in a)
++    if isinstance(a, list):
++        return len(a) == len(b) and all(same(x, y) for x, y in zip(a, b))
++    if isinstance(a, float) and math.isnan(a):
++        return math.isnan(b)
++    return a == b
++
++
++def format_scalar(value: Any) -> str:
++    """Format a scalar for printing by `show`."""
++    if value is None:
++        return "null"
++    if value is True:
++        return "true"
++    if value is False:
++        return "false"
++    if isinstance(value, int):
++        return str(value)
++    if isinstance(value, float):
++        return repr(value)
++    return value
++
++
++# --------------------------------------------------------------------------- values from the command line
++
++
++@dataclass
++class Val:
++    """A value given on the command line. `kind` is map, seq, str or other (non-string scalar)."""
++
++    kind: str
++    value: Any = None  # dict[str, Val] | list[Val] | str | scalar
++    src: str = ""  # source text of a non-string scalar
++
++    def py(self) -> Any:
++        if self.kind == "map":
++            return {k: v.py() for k, v in self.value.items()}
++        if self.kind == "seq":
++            return [v.py() for v in self.value]
++        return self.value
++
++    @property
++    def is_collection(self) -> bool:
++        return self.kind in ("map", "seq")
++
++    @property
++    def multiline(self) -> bool:
++        return self.kind == "str" and "\n" in self.value
++
++
++class ValueError_(Exception):
++    pass
++
++
++def _to_val(node: yaml.Node) -> Val:
++    if isinstance(node, yaml.MappingNode):
++        out: dict[str, Val] = {}
++        for k, v in node.value:
++            if not isinstance(k, yaml.ScalarNode):
++                raise ValueError_("mapping keys must be scalars")
++            out[k.value] = _to_val(v)
++        return Val("map", out)
++    if isinstance(node, yaml.SequenceNode):
++        return Val("seq", [_to_val(v) for v in node.value])
++    value = scalar_value(node)
++    if isinstance(value, str):
++        return Val("str", value)
++    return Val("other", value, src=node.value if node.value != "" else "null")
++
++
++def parse_value(text: str) -> Val:
++    """Parse a command-line VALUE as a single YAML flow node."""
++    try:
++        node = yaml.compose(text, Loader=yaml.SafeLoader)
++    except yaml.YAMLError as exc:
++        raise ValueError_(str(exc).splitlines()[0]) from exc
++    if node is None:
++        return Val("other", None, src="null")
++    if isinstance(node, (yaml.MappingNode, yaml.SequenceNode)) and not node.flow_style:
++        raise ValueError_("value must be a single flow node")
++    return _to_val(node)
++
++
++# --------------------------------------------------------------------------- rendering scalars
++
++_PLAIN_FIRST_BAD = set("-?:,[]{}#&*!|>'\"%@`")
++_FLOW_IND = set(",[]{}")
++
++
++def _has_ctrl(s: str) -> bool:
++    return any(
++        (ord(c) < 0x20 and c != "\t") or 0x7F <= ord(c) <= 0x9F or c in "\u2028\u2029\ufeff"
++        for c in s
++    )
++
++
++def plain_ok(s: str, flow: bool = False) -> bool:
++    if not s or s != s.strip(" \t") or "\n" in s or "\t" in s or _has_ctrl(s):
++        return False
++    if not isinstance(resolve_plain(s), str):
++        return False
++    if s.startswith(("---", "...")):
++        return False
++    first = s[0]
++    if first in _PLAIN_FIRST_BAD:
++        if first not in "-?:" or len(s) < 2 or s[1] == " " or (flow and s[1] in _FLOW_IND):
++            return False
++    if ": " in s or s.endswith(":") or " #" in s:
++        return False
++    if flow:
++        if any(c in _FLOW_IND for c in s):
++            return False
++    return True
++
++
++def single_ok(s: str) -> bool:
++    return "\n" not in s and not _has_ctrl(s)
++
++
++def render_single(s: str) -> str:
++    return "'" + s.replace("'", "''") + "'"
++
++
++_ESCAPES = {
++    "\\": "\\\\",
++    '"': '\\"',
++    "\0": "\\0",
++    "\a": "\\a",
++    "\b": "\\b",
++    "\t": "\\t",
++    "\n": "\\n",
++    "\v": "\\v",
++    "\f": "\\f",
++    "\r": "\\r",
++    "\x1b": "\\e",
++    "\x85": "\\N",
++    "\u2028": "\\L",
++    "\u2029": "\\P",
++    "\ufeff": "\\uFEFF",
++}
++
++
++def render_double(s: str) -> str:
++    out = []
++    for c in s:
++        if c in _ESCAPES:
++            out.append(_ESCAPES[c])
++        elif ord(c) < 0x20 or 0x7F <= ord(c) <= 0x9F:
++            out.append(f"\\x{ord(c):02X}")
++        else:
++            out.append(c)
++    return '"' + "".join(out) + '"'
++
++
++def style_name(node: yaml.Node | None) -> str | None:
++    """Quoting style of a scalar node: plain, single, double, literal, folded."""
++    if not isinstance(node, yaml.ScalarNode):
++        return None
++    return {None: "plain", "'": "single", '"': "double", "|": "literal", ">": "folded"}.get(node.style)
++
++
++def render_str(s: str, style: str | None, flow: bool) -> str:
++    """Render a single-line string in `style` if it can represent it, else the minimal style."""
++    if style == "plain" and plain_ok(s, flow):
++        return s
++    if style == "single" and single_ok(s):
++        return render_single(s)
++    if style == "double":
++        return render_double(s)
++    if plain_ok(s, flow):
++        return s
++    if single_ok(s):
++        return render_single(s)
++    return render_double(s)
++
++
++def render_inline_scalar(v: Val, style: str | None, flow: bool) -> str:
++    if v.kind == "str":
++        if "\n" in v.value:
++            return render_double(v.value)
++        return render_str(v.value, style, flow)
++    return v.src
++
++
++def render_flow(v: Val, style: str | None = None) -> str:
++    if v.kind == "map":
++        return "{" + ", ".join(f"{render_str(k, None, True)}: {render_flow(x)}" for k, x in v.value.items()) + "}"
++    if v.kind == "seq":
++        return "[" + ", ".join(render_flow(x) for x in v.value) + "]"
++    return render_inline_scalar(v, style, True)
++
++
++def chomp_for(value: str) -> tuple[str, int]:
++    """Minimal chomping indicator for a block scalar value, and the count of trailing newlines."""
++    body = value.rstrip("\n")
++    k = len(value) - len(body)
++    return ("-" if k == 0 else "" if k == 1 else "+"), k
++
++
++def chomp_ok(chomp: str, k: int) -> bool:
++    return (chomp == "-" and k == 0) or (chomp == "" and k == 1) or (chomp == "+" and k >= 1)
++
++
++def literal_ok(s: str) -> bool:
++    if any(c in s for c in "\r\u2028\u2029\ufeff") or _has_ctrl(s.replace("\n", "")):
++        return False
++    body = s.rstrip("\n")
++    first = next((ln for ln in body.split("\n") if ln.strip(" ") != ""), "")
++    if first[:1] in (" ", "\t"):
++        return False
++    # Leading blank lines longer than the content indentation are not representable.
++    for ln in body.split("\n"):
++        if ln.strip(" ") != "":
++            break
++        if ln:
++            return False
++    return True
++
++
++def literal_lines(s: str, indent: int) -> list[str]:
++    """Content lines of a literal block scalar for value `s` (header chosen separately)."""
++    body = s.rstrip("\n")
++    k = len(s) - len(body)
++    lines = body.split("\n") if body else []
++    lines += [""] * max(0, k - 1)
++    pad = " " * indent
++    return [pad + ln if ln else "" for ln in lines]
+diff --git a/tests/conftest.py b/tests/conftest.py
+new file mode 100644
+index 0000000..90813ee
+--- /dev/null
++++ b/tests/conftest.py
+@@ -0,0 +1,51 @@
++import json
++from pathlib import Path
++
++import pytest
++
++from troupe.cli import main
++
++
++class Theatre:
++    def __init__(self, root: Path, capsys):
++        self.root = root
++        self.dir = root / ".troupe"
++        self.dir.mkdir()
++        self.capsys = capsys
++
++    def write(self, rel: str, text: str) -> Path:
++        p = self.dir / rel
++        p.parent.mkdir(parents=True, exist_ok=True)
++        p.write_bytes(text.encode("utf-8"))
++        return p
++
++    def read(self, rel: str = "troupe.yml") -> str:
++        return (self.dir / rel).read_bytes().decode("utf-8")
++
++    def run(self, *args: str) -> tuple[int, str, str]:
++        self.capsys.readouterr()
++        code = main(["config", args[0], "--theatre", str(self.root), *args[1:]])
++        out, err = self.capsys.readouterr()
++        if code:
++            assert out == ""
++            assert err
++        return code, out, err
++
++    def show(self, path: str) -> str:
++        code, out, err = self.run("show", path)
++        assert code == 0, err
++        return out
++
++    def set(self, path: str, value: str, expect: int = 0) -> None:
++        code, _, err = self.run("set", path, value)
++        assert code == expect, err
++
++    def history(self, path: str | None = None) -> list[dict]:
++        code, out, err = self.run("history", *([path] if path else []))
++        assert code == 0, err
++        return [json.loads(line) for line in out.splitlines()]
++
++
++@pytest.fixture
++def theatre(tmp_path, capsys):
++    return Theatre(tmp_path, capsys)
+diff --git a/tests/test_config.py b/tests/test_config.py
+new file mode 100644
+index 0000000..4cb4027
+--- /dev/null
++++ b/tests/test_config.py
+@@ -0,0 +1,343 @@
++import pytest
++
++
++def check_set(theatre, before: str, path: str, value: str, after: str, rel: str = "troupe.yml"):
++    theatre.write(rel, before)
++    theatre.set(path, value)
++    assert theatre.read(rel) == after
++
++
++# ---------------------------------------------------------------- loading & show
++
++
++def test_show_scalars(theatre):
++    theatre.write(
++        "troupe.yml",
++        "s: abc\nf: 0.2\nb: true\nn: null\ni: 0x1F\nq: \"0.2\"\nl:\n  - x\n  - y\ne: 1e3\nm: {a: 1}\nt: ~\n",
++    )
++    assert theatre.show("s") == "abc\n"
++    assert theatre.show("f") == "0.2\n"
++    assert theatre.show("b") == "true\n"
++    assert theatre.show("n") == "null\n"
++    assert theatre.show("t") == "null\n"
++    assert theatre.show("i") == "31\n"
++    assert theatre.show("q") == "0.2\n"
++    assert theatre.show("l.1") == "y\n"
++    assert theatre.show("e") == "1000.0\n"
++    assert theatre.show("m.a") == "1\n"
++    assert theatre.run("show", "l")[0] == 5
++    assert theatre.run("show", "m")[0] == 5
++    assert theatre.run("show", "nope")[0] == 5
++    assert theatre.run("show", "l.5")[0] == 5
++    assert theatre.run("show", "s.x")[0] == 5
++
++
++def test_show_block_string(theatre):
++    theatre.write("troupe.yml", "a: |\n  one\n  two\nb: |-\n  x\n")
++    assert theatre.show("a") == "one\ntwo\n"
++    assert theatre.show("b") == "x\n"
++
++
++def test_missing_or_both_config(theatre):
++    assert theatre.run("show", "a")[0] == 4
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.write("troupe.yaml", "a: 1\n")
++    assert theatre.run("show", "a")[0] == 4
++
++
++def test_yaml_config_name(theatre):
++    theatre.write("troupe.yaml", "a: 1\n")
++    assert theatre.show("a") == "1\n"
++
++
++def test_includes(theatre):
++    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml\nprompt: file:p/sys.md\n")
++    theatre.write("agents/coder.yaml", "model: x\nprompt: file:../p/c.txt\n")
++    theatre.write("p/sys.md", "hello\r\nworld")
++    theatre.write("p/c.txt", "code\n")
++    assert theatre.show("agents.coder.model") == "x\n"
++    assert theatre.show("agents.coder.prompt") == "code\n"
++    assert theatre.show("prompt") == "hello\r\nworld\n"
++    assert theatre.run("show", "agents.coder")[0] == 5
++
++
++def test_include_missing_and_cycle(theatre):
++    theatre.write("troupe.yml", "a: file:x.yml\n")
++    assert theatre.run("show", "a")[0] == 4
++    theatre.write("x.yml", "b: file:troupe.yml\n")
++    assert theatre.run("show", "a")[0] == 4
++    assert not (theatre.dir / "troupe-state.sqlite").exists()
++
++
++def test_invalid_yaml(theatre):
++    theatre.write("troupe.yml", "a: [1\n")
++    assert theatre.run("show", "a")[0] == 4
++
++
++# ---------------------------------------------------------------- set: scalars
++
++
++def test_set_keeps_everything_else(theatre):
++    check_set(
++        theatre,
++        "# head\na:   1   # c1\nb: 'x'  # c2\nc: \"y\"\n",
++        "a",
++        "12345",
++        "# head\na:   12345 # c1\nb: 'x'  # c2\nc: \"y\"\n",
++    )
++
++
++def test_comment_moves_back(theatre):
++    check_set(theatre, "a: longvalue  # c\n", "a", "x", "a: x          # c\n")
++
++
++def test_quoting_kept_or_fallback(theatre):
++    theatre.write("troupe.yml", "a: 'x'\nb: \"y\"\nc: z\nd: 5\n")
++    theatre.set("a", "it's")
++    theatre.set("b", "q\"uote")
++    theatre.set("c", '"0.2"')
++    theatre.set("d", "hello")
++    assert theatre.read() == "a: 'it''s'\nb: \"q\\\"uote\"\nc: '0.2'\nd: hello\n"
++    theatre.set("c", '"a: b"')
++    assert "c: 'a: b'\n" in theatre.read()
++    theatre.set("a", "7")
++    assert "a: 7\n" in theatre.read()
++    assert theatre.show("a") == "7\n"
++
++
++def test_double_quoted_escapes_only_required(theatre):
++    check_set(theatre, 'a: "x"\n', "a", '"tab\\there é ü"', 'a: "tab\\there é ü"\n')
++
++
++def test_multiline_replaces_plain_with_literal(theatre):
++    check_set(theatre, "a: x  # c\nb: 1\n", "a", '"one\\ntwo\\n"', "a: |  # c\n  one\n  two\nb: 1\n")
++    check_set(theatre, "a: x\n", "a", '"one\\ntwo"', "a: |-\n  one\n  two\n")
++    check_set(theatre, "l:\n  - x\n", "l.0", '"one\\ntwo\\n"', "l:\n  - |\n    one\n    two\n")
++
++
++def test_literal_keeps_indicator_and_adjusts_chomping(theatre):
++    check_set(theatre, "a: |\n    one\n    two\nb: 1\n", "a", '"three\\n"', "a: |\n    three\nb: 1\n")
++    check_set(theatre, "a: |\n  one\nb: 1\n", "a", '"x\\ny"', "a: |-\n  x\n  y\nb: 1\n")
++    check_set(theatre, "a: |-\n  one\n\nb: 1\n", "a", '"x\\n\\n"', "a: |+\n  x\n\nb: 1\n")
++    check_set(theatre, "a: |+\n  one\n\n\nb: 1\n", "a", '"x\\n"', "a: |+\n  x\nb: 1\n")
++
++
++def test_block_scalar_to_plain(theatre):
++    check_set(theatre, "a: |\n  one\n  two\nb: 1\n", "a", "5", "a: 5\nb: 1\n")
++
++
++def test_folded_rewrap(theatre):
++    before = (
++        "notes: >\n"
++        "  The quick brown fox\n"
++        "  jumps over the lazy dog.\n"
++        "\n"
++        "  Second paragraph stays.\n"
++        "next: 1\n"
++    )
++    theatre.write("troupe.yml", before)
++    theatre.set("notes", '"The quick brown fox jumps over the very lazy dog.\\nSecond paragraph stays.\\n"')
++    assert theatre.read() == (
++        "notes: >\n"
++        "  The quick brown fox\n"
++        "  jumps over the very lazy\n"
++        "  dog.\n"
++        "\n"
++        "  Second paragraph stays.\n"
++        "next: 1\n"
++    )
++    assert theatre.show("notes") == "The quick brown fox jumps over the very lazy dog.\nSecond paragraph stays.\n"
++
++
++def test_folded_keeps_unchanged_paragraph_bytes(theatre):
++    before = "n: >-\n  aaa bbb\n  ccc\n\n  dd\n"
++    theatre.write("troupe.yml", before)
++    theatre.set("n", '"aaa bbb ccc\\ndd ee ff gg"')
++    assert theatre.read() == "n: >-\n  aaa bbb\n  ccc\n\n  dd\n  ee\n  ff\n  gg\n"
++
++
++def test_folded_new_paragraph_uses_longest_line(theatre):
++    theatre.write("troupe.yml", "n: >\n  aaaa bbbb\n  cc\n")
++    theatre.set("n", '"aaaa bbbb cc\\nxx yy zz ww vv\\n"')
++    assert theatre.read() == "n: >\n  aaaa bbbb\n  cc\n\n  xx yy zz\n  ww vv\n"
++
++
++def test_folded_more_indented_refused(theatre):
++    theatre.write("troupe.yml", "n: >\n  aaa\n")
++    theatre.set("n", '"aaa\\n  indented\\n"', expect=3)
++    assert theatre.read() == "n: >\n  aaa\n"
++
++
++def test_crlf_file(theatre):
++    check_set(theatre, "a: 1\r\nb:\r\n  c: 2\r\n", "b.d", "3", "a: 1\r\nb:\r\n  c: 2\r\n  d: 3\r\n")
++    check_set(theatre, "a: x\r\n", "a", '"p\\nq\\n"', "a: |\r\n  p\r\n  q\r\n")
++
++
++def test_unicode_columns(theatre):
++    check_set(theatre, "a: é   # c\n", "a", "éé", "a: éé  # c\n")
++
++
++# ---------------------------------------------------------------- set: new keys and items
++
++
++def test_new_key_after_trailing_comments(theatre):
++    check_set(
++        theatre,
++        "a:\n  b: 1\n  # trailing b comment\n\n# top comment\nz: 2\n",
++        "a.c",
++        "3",
++        "a:\n  b: 1\n  # trailing b comment\n  c: 3\n\n# top comment\nz: 2\n",
++    )
++
++
++def test_new_key_copies_sibling_style(theatre):
++    check_set(theatre, 'a:\n  "b": "x"\n', "a.c", "y", 'a:\n  "b": "x"\n  "c": "y"\n')
++    check_set(theatre, "a:\n  b: 1\n", "a.c", '"true"', "a:\n  b: 1\n  c: 'true'\n")
++
++
++def test_new_nested_keys(theatre):
++    check_set(theatre, "a:\n    b: 1\nz: 0\n", "a.c.d.e", "v", "a:\n    b: 1\n    c:\n        d:\n            e: v\nz: 0\n")
++    check_set(theatre, "a: 1\n", "b.c", "v", "a: 1\nb:\n  c: v\n")
++
++
++def test_new_key_no_trailing_newline(theatre):
++    check_set(theatre, "a: 1", "b", "2", "a: 1\nb: 2")
++
++
++def test_new_key_collection_value(theatre):
++    check_set(theatre, "a: 1\n", "m", "{x: 1, y: [p, q]}", "a: 1\nm:\n  x: 1\n  y:\n    - p\n    - q\n")
++    check_set(theatre, "a: 1\n", "e", "{}", "a: 1\ne: {}\n")
++
++
++def test_new_key_multiline(theatre):
++    check_set(theatre, "a: 1\n", "t", '"x\\ny\\n"', "a: 1\nt: |\n  x\n  y\n")
++    check_set(theatre, "a: {b: 1}\n", "a.t", '"x\\ny\\n"', 'a: {b: 1, t: "x\\ny\\n"}\n')
++
++
++def test_flow_collections(theatre):
++    check_set(theatre, "a: {b: 1}  # c\n", "a.c", "2", "a: {b: 1, c: 2}  # c\n")
++    check_set(theatre, "a: [x, y]\n", "a.2", "z", "a: [x, y, z]\n")
++    check_set(theatre, "a: []\n", "a.0", "z", "a: [z]\n")
++    check_set(theatre, "a: {}\n", "a.b", "{c: 1}", "a: {b: {c: 1}}\n")
++    check_set(theatre, "a: [x, 'y']\n", "a.2", "z", "a: [x, 'y', 'z']\n")
++    check_set(theatre, "a: {b: 1}\n", "a.b", "[1, 2]", "a: {b: [1, 2]}\n")
++
++
++def test_append_block_list(theatre):
++    check_set(theatre, "l:\n- a\n- b\n# end\nx: 1\n", "l.2", "c", "l:\n- a\n- b\n# end\n- c\nx: 1\n")
++    check_set(theatre, "l:\n  - a\n", "l.1", "{k: v, w: 2}", "l:\n  - a\n  - k: v\n    w: 2\n")
++    theatre.set("l.5", "x", expect=5)
++    theatre.set("l.x", "x", expect=5)
++
++
++def test_set_through_scalar_is_5(theatre):
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.set("a.b", "2", expect=5)
++    assert theatre.read() == "a: 1\n"
++
++
++# ---------------------------------------------------------------- set: collections
++
++
++def test_scalar_to_block_collection(theatre):
++    check_set(theatre, "a: 1  # keep\nb: 2\n", "a", "{x: 1}", "a:    # keep\n  x: 1\nb: 2\n")
++    check_set(theatre, "a: 1\nb: 2\n", "a", "[p, q]", "a:\n  - p\n  - q\nb: 2\n")
++
++
++def test_collection_to_scalar(theatre):
++    check_set(theatre, "a:\n  x: 1\n  y: 2\nb: 2\n", "a", "5", "a: 5\nb: 2\n")
++
++
++def test_collection_merge(theatre):
++    check_set(
++        theatre,
++        "a:\n  x: 1  # c\n  y: 2\n  z: 3\nb: 2\n",
++        "a",
++        "{x: 1, z: 4, w: 5}",
++        "a:\n  x: 1  # c\n  z: 4\n  w: 5\nb: 2\n",
++    )
++    check_set(theatre, "l:\n  - a\n  - b\n  - c\n", "l", "[a, x]", "l:\n  - a\n  - x\n")
++    check_set(theatre, "l: [a, b, c]\n", "l", "[a]", "l: [a]\n")
++
++
++def test_include_refused(theatre):
++    theatre.write("troupe.yml", "agents:\n  coder: file:coder.yaml\n")
++    theatre.write("coder.yaml", "model: x\n")
++    theatre.set("agents.coder", "{model: y}", expect=3)
++    theatre.set("agents.coder.model", "y")
++    theatre.set("agents.coder.temp", "0.5")
++    assert theatre.read("coder.yaml") == "model: y\ntemp: 0.5\n"
++    assert theatre.read() == "agents:\n  coder: file:coder.yaml\n"
++
++
++def test_text_include_write(theatre):
++    theatre.write("troupe.yml", "p: file:p.md\nq: file:q.md\n")
++    theatre.write("p.md", "old\r\ntext\r\n")
++    theatre.write("q.md", "old\n")
++    theatre.set("p", '"new\\nlines\\n"')
++    theatre.set("q", "brand new")
++    assert theatre.read("p.md") == "new\r\nlines\r\n"
++    assert theatre.read("q.md") == "brand new"
++    theatre.set("q", "5", expect=3)
++    assert theatre.read("q.md") == "brand new"
++
++
++def test_usage_errors(theatre):
++    theatre.write("troupe.yml", "a: 1\n")
++    assert theatre.run("set", "a")[0] == 2
++    assert theatre.run("set", "a..b", "1")[0] == 2
++    assert theatre.run("set", "a", "[1")[0] == 2
++
++
++def test_noop_set(theatre):
++    theatre.write("troupe.yml", "a: 1.00\n")
++    theatre.set("a", "1.0")
++    assert theatre.read() == "a: 1.00\n"
++    assert [e["op"] for e in theatre.history()] == ["import"]
++
++
++# ---------------------------------------------------------------- history
++
++
++def test_history(theatre):
++    theatre.write("troupe.yml", "a: 1\nm:\n  x: 1\n  y: [p, q]\nt: file:t.txt\n")
++    theatre.write("t.txt", "hi\n")
++    assert theatre.history() == [
++        {"seq": 1, "op": "import", "path": "a", "old": None, "new": 1},
++        {"seq": 2, "op": "import", "path": "m.x", "old": None, "new": 1},
++        {"seq": 3, "op": "import", "path": "m.y.0", "old": None, "new": "p"},
++        {"seq": 4, "op": "import", "path": "m.y.1", "old": None, "new": "q"},
++        {"seq": 5, "op": "import", "path": "t", "old": None, "new": "hi\n"},
++    ]
++    theatre.set("m", "{x: 2}")
++    h = theatre.history("m")
++    assert h[-3:] == [
++        {"seq": 6, "op": "set", "path": "m.x", "old": 1, "new": 2},
++        {"seq": 7, "op": "remove", "path": "m.y.0", "old": "p", "new": None},
++        {"seq": 8, "op": "remove", "path": "m.y.1", "old": "q", "new": None},
++    ]
++    assert theatre.history("m.x") == [h[0], h[3]]
++    assert theatre.history("a") == [{"seq": 1, "op": "import", "path": "a", "old": None, "new": 1}]
++    assert theatre.history("m.y.0") == [h[1], h[4]]
++
++
++def test_import_is_not_reconciling(theatre):
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.show("a")
++    theatre.write("troupe.yml", "a: 2\n")
++    assert theatre.show("a") == "2\n"
++    assert len(theatre.history()) == 1
++
++
++def test_cli_entrypoint(tmp_path):
++    import subprocess
++    import sys
++
++    (tmp_path / ".troupe").mkdir()
++    (tmp_path / ".troupe" / "troupe.yml").write_text("a: 1\n")
++    r = subprocess.run(
++        [sys.executable, "-m", "troupe.cli", "config", "show", "a", "--theatre", str(tmp_path)],
++        capture_output=True,
++        text=True,
++    )
++    assert r.returncode == 0 and r.stdout == "1\n"
+diff --git a/uv.lock b/uv.lock
+new file mode 100644
+index 0000000..1a8c0ad
+--- /dev/null
++++ b/uv.lock
+@@ -0,0 +1,154 @@
++version = 1
++revision = 3
++requires-python = ">=3.12"
++
++[[package]]
++name = "colorama"
++version = "0.4.6"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44", size = 27697, upload-time = "2022-10-25T02:36:22.414Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
++]
++
++[[package]]
++name = "eventsourcing"
++version = "9.5.5"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "typing-extensions" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/23/ec/d562180c63b0948958700748f90f0b2eef2946570ec5b7736f84a5658b9b/eventsourcing-9.5.5.tar.gz", hash = "sha256:8f749b7ff1bd74bb72da98eac0663f0d0f879a40e7211aacbf60d4a4b87d7743", size = 109370, upload-time = "2026-08-19T14:28:43.508Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/7e/d8/3d835f2723e26837f02af564452073dacfae4bc993a01a86c95be6dc6d2c/eventsourcing-9.5.5-py3-none-any.whl", hash = "sha256:35fee11fb6f56ca680b6212559db87c471c85d321b96900f8d11bbd7c41badc3", size = 121121, upload-time = "2026-08-19T14:28:42.107Z" },
++]
++
++[[package]]
++name = "iniconfig"
++version = "2.3.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc35312d08ba8bf51fdd999c576889fc2c24cb97f4f10/iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730", size = 20503, upload-time = "2025-10-18T21:55:43.219Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
++]
++
++[[package]]
++name = "packaging"
++version = "26.3"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/7d/fa/3944b40b07da9ce895c0e6303a5ab7d53da063554f534556b134a54d6093/packaging-26.3.tar.gz", hash = "sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79", size = 313412, upload-time = "2026-08-04T18:15:28.737Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl", hash = "sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c", size = 129956, upload-time = "2026-08-04T18:15:27.159Z" },
++]
++
++[[package]]
++name = "pluggy"
++version = "1.6.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
++]
++
++[[package]]
++name = "pygments"
++version = "2.21.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/49/2e/ced460408999b33da6b31b0021b0f37d329e202d4169aeb164493778f25b/pygments-2.21.0.tar.gz", hash = "sha256:610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c", size = 5005329, upload-time = "2026-08-17T08:02:48.824Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/71/46/17f022dd3e953bf20a04a028a21ec746d942f8d2af30fa0f124fa0e6a684/pygments-2.21.0-py3-none-any.whl", hash = "sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9", size = 1250147, upload-time = "2026-08-17T08:02:44.912Z" },
++]
++
++[[package]]
++name = "pytest"
++version = "9.1.1"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "colorama", marker = "sys_platform == 'win32'" },
++    { name = "iniconfig" },
++    { name = "packaging" },
++    { name = "pluggy" },
++    { name = "pygments" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/e4/47/b9efed96c114afcfa3c9d3fe98a76a1d14c74a9e266d397cf6eb64be5e01/pytest-9.1.1.tar.gz", hash = "sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313", size = 1636369, upload-time = "2026-06-19T10:58:32.857Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/24/25/1de2678b631f5a49215c6c96fff41ba892b0a34df68d6d80292b1b48aa7f/pytest-9.1.1-py3-none-any.whl", hash = "sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c", size = 386536, upload-time = "2026-06-19T10:58:31.347Z" },
++]
++
++[[package]]
++name = "pyyaml"
++version = "6.0.3"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/05/8e/961c0007c59b8dd7729d542c61a4d537767a59645b82a0b521206e1e25c2/pyyaml-6.0.3.tar.gz", hash = "sha256:d76623373421df22fb4cf8817020cbb7ef15c725b9d5e45f17e189bfc384190f", size = 130960, upload-time = "2025-09-25T21:33:16.546Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/d1/33/422b98d2195232ca1826284a76852ad5a86fe23e31b009c9886b2d0fb8b2/pyyaml-6.0.3-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:7f047e29dcae44602496db43be01ad42fc6f1cc0d8cd6c83d342306c32270196", size = 182063, upload-time = "2025-09-25T21:32:11.445Z" },
++    { url = "https://files.pythonhosted.org/packages/89/a0/6cf41a19a1f2f3feab0e9c0b74134aa2ce6849093d5517a0c550fe37a648/pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:fc09d0aa354569bc501d4e787133afc08552722d3ab34836a80547331bb5d4a0", size = 173973, upload-time = "2025-09-25T21:32:12.492Z" },
++    { url = "https://files.pythonhosted.org/packages/ed/23/7a778b6bd0b9a8039df8b1b1d80e2e2ad78aa04171592c8a5c43a56a6af4/pyyaml-6.0.3-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9149cad251584d5fb4981be1ecde53a1ca46c891a79788c0df828d2f166bda28", size = 775116, upload-time = "2025-09-25T21:32:13.652Z" },
++    { url = "https://files.pythonhosted.org/packages/65/30/d7353c338e12baef4ecc1b09e877c1970bd3382789c159b4f89d6a70dc09/pyyaml-6.0.3-cp312-cp312-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:5fdec68f91a0c6739b380c83b951e2c72ac0197ace422360e6d5a959d8d97b2c", size = 844011, upload-time = "2025-09-25T21:32:15.21Z" },
++    { url = "https://files.pythonhosted.org/packages/8b/9d/b3589d3877982d4f2329302ef98a8026e7f4443c765c46cfecc8858c6b4b/pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ba1cc08a7ccde2d2ec775841541641e4548226580ab850948cbfda66a1befcdc", size = 807870, upload-time = "2025-09-25T21:32:16.431Z" },
++    { url = "https://files.pythonhosted.org/packages/05/c0/b3be26a015601b822b97d9149ff8cb5ead58c66f981e04fedf4e762f4bd4/pyyaml-6.0.3-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:8dc52c23056b9ddd46818a57b78404882310fb473d63f17b07d5c40421e47f8e", size = 761089, upload-time = "2025-09-25T21:32:17.56Z" },
++    { url = "https://files.pythonhosted.org/packages/be/8e/98435a21d1d4b46590d5459a22d88128103f8da4c2d4cb8f14f2a96504e1/pyyaml-6.0.3-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:41715c910c881bc081f1e8872880d3c650acf13dfa8214bad49ed4cede7c34ea", size = 790181, upload-time = "2025-09-25T21:32:18.834Z" },
++    { url = "https://files.pythonhosted.org/packages/74/93/7baea19427dcfbe1e5a372d81473250b379f04b1bd3c4c5ff825e2327202/pyyaml-6.0.3-cp312-cp312-win32.whl", hash = "sha256:96b533f0e99f6579b3d4d4995707cf36df9100d67e0c8303a0c55b27b5f99bc5", size = 137658, upload-time = "2025-09-25T21:32:20.209Z" },
++    { url = "https://files.pythonhosted.org/packages/86/bf/899e81e4cce32febab4fb42bb97dcdf66bc135272882d1987881a4b519e9/pyyaml-6.0.3-cp312-cp312-win_amd64.whl", hash = "sha256:5fcd34e47f6e0b794d17de1b4ff496c00986e1c83f7ab2fb8fcfe9616ff7477b", size = 154003, upload-time = "2025-09-25T21:32:21.167Z" },
++    { url = "https://files.pythonhosted.org/packages/1a/08/67bd04656199bbb51dbed1439b7f27601dfb576fb864099c7ef0c3e55531/pyyaml-6.0.3-cp312-cp312-win_arm64.whl", hash = "sha256:64386e5e707d03a7e172c0701abfb7e10f0fb753ee1d773128192742712a98fd", size = 140344, upload-time = "2025-09-25T21:32:22.617Z" },
++    { url = "https://files.pythonhosted.org/packages/d1/11/0fd08f8192109f7169db964b5707a2f1e8b745d4e239b784a5a1dd80d1db/pyyaml-6.0.3-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:8da9669d359f02c0b91ccc01cac4a67f16afec0dac22c2ad09f46bee0697eba8", size = 181669, upload-time = "2025-09-25T21:32:23.673Z" },
++    { url = "https://files.pythonhosted.org/packages/b1/16/95309993f1d3748cd644e02e38b75d50cbc0d9561d21f390a76242ce073f/pyyaml-6.0.3-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:2283a07e2c21a2aa78d9c4442724ec1eb15f5e42a723b99cb3d822d48f5f7ad1", size = 173252, upload-time = "2025-09-25T21:32:25.149Z" },
++    { url = "https://files.pythonhosted.org/packages/50/31/b20f376d3f810b9b2371e72ef5adb33879b25edb7a6d072cb7ca0c486398/pyyaml-6.0.3-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ee2922902c45ae8ccada2c5b501ab86c36525b883eff4255313a253a3160861c", size = 767081, upload-time = "2025-09-25T21:32:26.575Z" },
++    { url = "https://files.pythonhosted.org/packages/49/1e/a55ca81e949270d5d4432fbbd19dfea5321eda7c41a849d443dc92fd1ff7/pyyaml-6.0.3-cp313-cp313-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:a33284e20b78bd4a18c8c2282d549d10bc8408a2a7ff57653c0cf0b9be0afce5", size = 841159, upload-time = "2025-09-25T21:32:27.727Z" },
++    { url = "https://files.pythonhosted.org/packages/74/27/e5b8f34d02d9995b80abcef563ea1f8b56d20134d8f4e5e81733b1feceb2/pyyaml-6.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:0f29edc409a6392443abf94b9cf89ce99889a1dd5376d94316ae5145dfedd5d6", size = 801626, upload-time = "2025-09-25T21:32:28.878Z" },
++    { url = "https://files.pythonhosted.org/packages/f9/11/ba845c23988798f40e52ba45f34849aa8a1f2d4af4b798588010792ebad6/pyyaml-6.0.3-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:f7057c9a337546edc7973c0d3ba84ddcdf0daa14533c2065749c9075001090e6", size = 753613, upload-time = "2025-09-25T21:32:30.178Z" },
++    { url = "https://files.pythonhosted.org/packages/3d/e0/7966e1a7bfc0a45bf0a7fb6b98ea03fc9b8d84fa7f2229e9659680b69ee3/pyyaml-6.0.3-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:eda16858a3cab07b80edaf74336ece1f986ba330fdb8ee0d6c0d68fe82bc96be", size = 794115, upload-time = "2025-09-25T21:32:31.353Z" },
++    { url = "https://files.pythonhosted.org/packages/de/94/980b50a6531b3019e45ddeada0626d45fa85cbe22300844a7983285bed3b/pyyaml-6.0.3-cp313-cp313-win32.whl", hash = "sha256:d0eae10f8159e8fdad514efdc92d74fd8d682c933a6dd088030f3834bc8e6b26", size = 137427, upload-time = "2025-09-25T21:32:32.58Z" },
++    { url = "https://files.pythonhosted.org/packages/97/c9/39d5b874e8b28845e4ec2202b5da735d0199dbe5b8fb85f91398814a9a46/pyyaml-6.0.3-cp313-cp313-win_amd64.whl", hash = "sha256:79005a0d97d5ddabfeeea4cf676af11e647e41d81c9a7722a193022accdb6b7c", size = 154090, upload-time = "2025-09-25T21:32:33.659Z" },
++    { url = "https://files.pythonhosted.org/packages/73/e8/2bdf3ca2090f68bb3d75b44da7bbc71843b19c9f2b9cb9b0f4ab7a5a4329/pyyaml-6.0.3-cp313-cp313-win_arm64.whl", hash = "sha256:5498cd1645aa724a7c71c8f378eb29ebe23da2fc0d7a08071d89469bf1d2defb", size = 140246, upload-time = "2025-09-25T21:32:34.663Z" },
++    { url = "https://files.pythonhosted.org/packages/9d/8c/f4bd7f6465179953d3ac9bc44ac1a8a3e6122cf8ada906b4f96c60172d43/pyyaml-6.0.3-cp314-cp314-macosx_10_13_x86_64.whl", hash = "sha256:8d1fab6bb153a416f9aeb4b8763bc0f22a5586065f86f7664fc23339fc1c1fac", size = 181814, upload-time = "2025-09-25T21:32:35.712Z" },
++    { url = "https://files.pythonhosted.org/packages/tracker-cli/9c/4d95bb87eb2063d20db7b60faa3840c1b18025517ae857371c4dd55a6b3a/pyyaml-6.0.3-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:34d5fcd24b8445fadc33f9cf348c1047101756fd760b4dacb5c3e99755703310", size = 173809, upload-time = "2025-09-25T21:32:36.789Z" },
++    { url = "https://files.pythonhosted.org/packages/92/b5/47e807c2623074914e29dabd16cbbdd4bf5e9b2db9f8090fa64411fc5382/pyyaml-6.0.3-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:501a031947e3a9025ed4405a168e6ef5ae3126c59f90ce0cd6f2bfc477be31b7", size = 766454, upload-time = "2025-09-25T21:32:37.966Z" },
++    { url = "https://files.pythonhosted.org/packages/02/9e/e5e9b168be58564121efb3de6859c452fccde0ab093d8438905899a3a483/pyyaml-6.0.3-cp314-cp314-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:b3bc83488de33889877a0f2543ade9f70c67d66d9ebb4ac959502e12de895788", size = 836355, upload-time = "2025-09-25T21:32:39.178Z" },
++    { url = "https://files.pythonhosted.org/packages/88/f9/16491d7ed2a919954993e48aa941b200f38040928474c9e85ea9e64222c3/pyyaml-6.0.3-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:c458b6d084f9b935061bc36216e8a69a7e293a2f1e68bf956dcd9e6cbcd143f5", size = 794175, upload-time = "2025-09-25T21:32:40.865Z" },
++    { url = "https://files.pythonhosted.org/packages/dd/3f/5989debef34dc6397317802b527dbbafb2b4760878a53d4166579111411e/pyyaml-6.0.3-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:7c6610def4f163542a622a73fb39f534f8c101d690126992300bf3207eab9764", size = 755228, upload-time = "2025-09-25T21:32:42.084Z" },
++    { url = "https://files.pythonhosted.org/packages/d7/ce/af88a49043cd2e265be63d083fc75b27b6ed062f5f9fd6cdc223ad62f03e/pyyaml-6.0.3-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:5190d403f121660ce8d1d2c1bb2ef1bd05b5f68533fc5c2ea899bd15f4399b35", size = 789194, upload-time = "2025-09-25T21:32:43.362Z" },
++    { url = "https://files.pythonhosted.org/packages/23/20/bb6982b26a40bb43951265ba29d4c246ef0ff59c9fdcdf0ed04e0687de4d/pyyaml-6.0.3-cp314-cp314-win_amd64.whl", hash = "sha256:4a2e8cebe2ff6ab7d1050ecd59c25d4c8bd7e6f400f5f82b96557ac0abafd0ac", size = 156429, upload-time = "2025-09-25T21:32:57.844Z" },
++    { url = "https://files.pythonhosted.org/packages/f4/f4/a4541072bb9422c8a883ab55255f918fa378ecf083f5b85e87fc2b4eda1b/pyyaml-6.0.3-cp314-cp314-win_arm64.whl", hash = "sha256:93dda82c9c22deb0a405ea4dc5f2d0cda384168e466364dec6255b293923b2f3", size = 143912, upload-time = "2025-09-25T21:32:59.247Z" },
++    { url = "https://files.pythonhosted.org/packages/7c/f9/07dd09ae774e4616edf6cda684ee78f97777bdd15847253637a6f052a62f/pyyaml-6.0.3-cp314-cp314t-macosx_10_13_x86_64.whl", hash = "sha256:02893d100e99e03eda1c8fd5c441d8c60103fd175728e23e431db1b589cf5ab3", size = 189108, upload-time = "2025-09-25T21:32:44.377Z" },
++    { url = "https://files.pythonhosted.org/packages/4e/78/8d08c9fb7ce09ad8c38ad533c1191cf27f7ae1effe5bb9400a46d9437fcf/pyyaml-6.0.3-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:c1ff362665ae507275af2853520967820d9124984e0f7466736aea23d8611fba", size = 183641, upload-time = "2025-09-25T21:32:45.407Z" },
++    { url = "https://files.pythonhosted.org/packages/7b/5b/3babb19104a46945cf816d047db2788bcaf8c94527a805610b0289a01c6b/pyyaml-6.0.3-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:6adc77889b628398debc7b65c073bcb99c4a0237b248cacaf3fe8a557563ef6c", size = 831901, upload-time = "2025-09-25T21:32:48.83Z" },
++    { url = "https://files.pythonhosted.org/packages/8b/cc/dff0684d8dc44da4d22a13f35f073d558c268780ce3c6ba1b87055bb0b87/pyyaml-6.0.3-cp314-cp314t-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:a80cb027f6b349846a3bf6d73b5e95e782175e52f22108cfa17876aaeff93702", size = 861132, upload-time = "2025-09-25T21:32:50.149Z" },
++    { url = "https://files.pythonhosted.org/packages/b1/5e/f77dc6b9036943e285ba76b49e118d9ea929885becb0a29ba8a7c75e29fe/pyyaml-6.0.3-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:00c4bdeba853cc34e7dd471f16b4114f4162dc03e6b7afcc2128711f0eca823c", size = 839261, upload-time = "2025-09-25T21:32:51.808Z" },
++    { url = "https://files.pythonhosted.org/packages/ce/88/a9db1376aa2a228197c58b37302f284b5617f56a5d959fd1763fb1675ce6/pyyaml-6.0.3-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:66e1674c3ef6f541c35191caae2d429b967b99e02040f5ba928632d9a7f0f065", size = 805272, upload-time = "2025-09-25T21:32:52.941Z" },
++    { url = "https://files.pythonhosted.org/packages/da/92/1446574745d74df0c92e6aa4a7b0b3130706a4142b2d1a5869f2eaa423c6/pyyaml-6.0.3-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:16249ee61e95f858e83976573de0f5b2893b3677ba71c9dd36b9cf8be9ac6d65", size = 829923, upload-time = "2025-09-25T21:32:54.537Z" },
++    { url = "https://files.pythonhosted.org/packages/f0/7a/1c7270340330e575b92f397352af856a8c06f230aa3e76f86b39d01b416a/pyyaml-6.0.3-cp314-cp314t-win_amd64.whl", hash = "sha256:4ad1906908f2f5ae4e5a8ddfce73c320c2a1429ec52eafd27138b7f1cbe341c9", size = 174062, upload-time = "2025-09-25T21:32:55.767Z" },
++    { url = "https://files.pythonhosted.org/packages/f1/12/de94a39c2ef588c7e6455cfbe7343d3b2dc9d6b6b2f40c4c6565744c873d/pyyaml-6.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:ebc55a14a21cb14062aa4162f906cd962b28e2e9ea38f9b4391244cd8de4ae0b", size = 149341, upload-time = "2025-09-25T21:32:56.828Z" },
++]
++
++[[package]]
++name = "troupe"
++version = "0.1.0"
++source = { editable = "." }
++dependencies = [
++    { name = "eventsourcing" },
++    { name = "pyyaml" },
++]
++
++[package.dev-dependencies]
++dev = [
++    { name = "pytest" },
++]
++
++[package.metadata]
++requires-dist = [
++    { name = "eventsourcing", specifier = ">=9.5.5" },
++    { name = "pyyaml", specifier = ">=6.0.3" },
++]
++
++[package.metadata.requires-dev]
++dev = [{ name = "pytest", specifier = ">=9.1.1" }]
++
++[[package]]
++name = "typing-extensions"
++version = "4.16.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5", size = 113555, upload-time = "2026-07-02T08:40:05.92Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8", size = 45571, upload-time = "2026-07-02T08:40:04.659Z" },
++]

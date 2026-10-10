@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/setup/shell/01.log:1 (`method --here --force --integration claude` exit 0, 'Project ready.')",
+    "/judge/setup/shell/02.log:1-22 (`method add bug` installed successfully, exit 0)",
+    "/judge/setup/setup-turns.json:1-11 (one documented constitution agent turn, outcome ok, 57s)",
+    "/judge/setup/checklist.json:1-92 (all 15 checklist items ok, including method.skills, bug-skills, constitution, entry-commands)",
+    "/judge/setup/egress.log:8-20 (only api.anthropic.com and api.github.com, so no extra network allowances)",
+    "/judge/setup/turns/setup-a1-001.stderr (empty)"
+  ],
+  "notes": "Setup took the documented route: the init command, the bug-extension add, and one constitution agent turn. Each step exited cleanly and every checklist item passed, with no re-runs, workarounds or extra configuration for this arm. The model-pin environment in /judge/setup/model-overrides.json:1-12 is a harness-wide setting, not a change for this arm, and the method declares no model choices of its own.",
+  "raw": "{\"score\": 4, \"evidence\": [\"/judge/setup/shell/01.log:1 (`method --here --force --integration claude` exit 0, 'Project ready.')\", \"/judge/setup/shell/02.log:1-22 (`method add bug` installed successfully, exit 0)\", \"/judge/setup/setup-turns.json:1-11 (one documented constitution agent turn, outcome ok, 57s)\", \"/judge/setup/checklist.json:1-92 (all 15 checklist items ok, including method.skills, bug-skills, constitution, entry-commands)\", \"/judge/setup/egress.log:8-20 (only api.anthropic.com and api.github.com, so no extra network allowances)\", \"/judge/setup/turns/setup-a1-001.stderr (empty)\"], \"notes\": \"Setup took the documented route: the init command, the bug-extension add, and one constitution agent turn. Each step exited cleanly and every checklist item passed, with no re-runs, workarounds or extra configuration for this arm. The model-pin environment in /judge/setup/model-overrides.json:1-12 is a harness-wide setting, not a change for this arm, and the method declares no model choices of its own.\"}",
+  "score": 4,
+  "status": "ok"
+}

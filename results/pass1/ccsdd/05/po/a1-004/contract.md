@@ -1,0 +1,139 @@
+## General (from step 1)
+
+- **Invocation:** `troupe config <subcommand> --theatre <dir> [arguments]`, run as `uv run troupe …` from the
+  repository root. `--theatre` defaults to the current directory.
+- **Config file:** `<dir>/.troupe/troupe.yml` or `<dir>/.troupe/troupe.yaml`. Neither, or both → exit 4.
+- **State:** the implementation may keep state only under `<dir>/.troupe/`, and must not create or modify any
+  file other than as this contract's write-back rules require.
+- **Paths:** keys separated by `.`; a segment of digits indexes a list (0-based). Keys that contain `.`, and
+  mappings with digit-only keys, are out of contract.
+- **Values on the command line:** `VALUE` is parsed as a single YAML 1.2 (core schema) flow node: `0.2` is a
+  float, `true` a boolean, `null` null, `abc` and `"0.2"` strings, `{a: 1}` a mapping, `[a, b]` a list, and
+  `"line one\nline two\n"` a multi-line string.
+- **Printing a scalar:** a string is printed exactly, followed by `\n` unless it already ends with `\n`;
+  booleans as `true`/`false`; null as `null`; integers in decimal; floats as Python's `repr()` (e.g. `0.2`).
+- **Exit codes:** `0` success · `2` usage error · `3` write refused (no file changed) · `4` configuration cannot
+  be loaded · `5` path not found, or the path is the wrong kind of node for the command. On any non-zero exit,
+  stdout is empty and stderr has a message naming the offending path or file.
+- **Out of contract** (behaviour undefined, never tested): files with a TAB before an end-of-line comment,
+  multi-document files, YAML anchors/aliases/merge keys (until step 6), concurrent writers.
+
+## Includes (from step 1)
+
+- A string value that starts with `file:` is an **include** of the path after `file:`, relative to the
+  directory of the file containing it.
+- Target ending `.yml` or `.yaml`: its content is embedded as if written in place of the string.
+  Any other target: the value is the target file's exact text.
+- Includes are recursive. A missing target, or a cycle, → exit 4.
+
+## `set PATH VALUE` (from step 1)
+
+Updates the configuration and writes the change back to the files, **byte-surgically**: after a successful
+`set`, the only bytes that differ in any file are those this section requires to change.
+
+Where the change is written:
+1. An existing value is changed in the file that contains it. For a text include, the target file's
+   content becomes `VALUE` exactly, except that if the target file used CRLF line endings, the new content
+   uses CRLF line endings too (`VALUE` must then be a string, else exit 3).
+2. A new key is written into the file containing the deepest existing ancestor mapping of `PATH`; missing
+   intermediate mappings are created there. *(Changed at step 5.)*
+3. `PATH` ending in the index equal to a list's length appends to that list. A larger index → exit 5.
+4. Replacing the value at a path whose whole value comes from an include (e.g. `agents.coder` when it is
+   `file:agents/coder.yaml`) → exit 3.
+
+How it is written:
+- A changed scalar keeps its quoting style if that style can represent the new value; otherwise plain if
+  possible, else single-quoted, else double-quoted.
+- A new key, and a new string value, copy the quoting style of the preceding sibling key or value; with no
+  sibling, plain (or the minimal quoting the text needs).
+- A double-quoted scalar escapes only what YAML requires (`\\`, `\"` and control characters, as `\t`, `\n`, …);
+  every other character is written literally.
+- A new collection value is written in block style at the file's indentation (default 2), unless its parent
+  is a flow collection, in which case it is written in flow style.
+- A multi-line string replacing a plain or quoted scalar is written as a literal block (`|`, with `|-` when
+  the value has no trailing newline). A block scalar keeps its indicator and chomping unless the value's
+  trailing newlines require a different chomping.
+- A new key whose value is a multi-line string is written as a literal block in the same way, unless its
+  parent is a flow collection, where it is written as a double-quoted flow scalar.
+- **Folded (`>`) values:** paragraphs whose text is unchanged keep their bytes. A changed paragraph is
+  re-wrapped, greedily by word, at the width of the longest content line of that paragraph before the
+  change (a single word longer than the width takes a line of its own). A paragraph with no counterpart in
+  the old value is wrapped at the width of the value's longest old content line. A change that would put a
+  more-indented line into a folded value → exit 3.
+- **New entries and trailing comments:** a new list item or mapping key goes after the collection's last
+  entry *and below any comment lines that follow it* before the next less-indented line. A comment line
+  indented less than a collection's entries ends that collection.
+- In a flow collection, a new entry is appended after the last entry, on that entry's line.
+- When a scalar is replaced by a block collection, the key's line keeps its bytes up to and including its
+  end-of-line comment.
+- **End-of-line comments:** when a changed value's length changes, the comment on that line is moved back to
+  its previous column; if the new value reaches that column, exactly one space separates value and comment.
+  No other line changes. Columns count Unicode code points.
+
+## `history [PATH]` (from step 1)
+
+Prints the configuration's events as JSON Lines, oldest first; with `PATH`, only events whose path equals
+`PATH` or starts with `PATH.`. Each line is an object with at least:
+`{"seq": <int from 1>, "op": "import" | "set" | "remove", "path": "<dotted>", "old": <json>, "new": <json>}`.
+- Events are per **leaf** (a scalar, including a text-include string; list items are `list.0`, `list.1`, …).
+- The first command run against a theatre imports it: one `import` event per leaf, `old` null. `history`
+  also imports a theatre that has never been imported; importing is not reconciling.
+- A `set` emits one `set` event per leaf whose value it changes or creates, and one `remove` event (`new`
+  null) per leaf that no longer exists. A `set` that changes nothing emits nothing.
+
+## Sync with files (from step 2)
+
+- `troupe config watch --theatre <dir>` runs in the foreground until SIGINT or SIGTERM (then exits 0). Once it
+  is watching, it prints one line `watching <dir>` to stdout and flushes. The line is a promise: it is printed
+  only after `watch` is able to observe changes. Within 2 seconds of any change to the config file or an
+  included file made after that line appears, it reconciles.
+- **Reconcile:** compare the files with the configuration and emit a `set`/`remove` event for each leaf that
+  differs. A formatting-only or comment-only edit emits nothing.
+- Every other command except `history` reconciles first, so edits made while nothing was running are picked
+  up. `history` never reconciles: it reports what has been recorded.
+- A `set` while `watch` runs emits exactly the `set`'s own events; its write-back produces no further events.
+- An include added by a hand edit is followed; its leaves appear as `set` events.
+
+## `get` and `show` (from step 3 — replaces "show PATH (step 1 and 2)")
+
+- `get PATH` prints a scalar as `show` did in step 1. A mapping or list → exit 5, and stderr mentions
+  `config show`.
+- `show [PATH]` prints a scalar like `get`; a mapping or list is printed as YAML (block style, includes
+  resolved, text includes as literal blocks). `PATH` omitted → the whole configuration.
+- `show [PATH] --sources` prints the same YAML with an end-of-line comment `# from <file>` on every line that
+  holds a scalar, where `<file>` is the file the scalar comes from, relative to the theatre directory, with
+  `/` separators. A text include's value comes from the included file.
+
+## Lineage (from step 4)
+
+Every `history` event also has:
+- `"actor"`: `{"kind": "human" | "agent" | "unknown", "id": <string or null>}`
+- `"via"`: `"import"` | `"cli"` | `"file"`
+- `"at"`: RFC 3339 UTC timestamp ending in `Z`
+- `"reason"`: the text given with `set --reason TEXT`, else `null`
+- `"change"`: a string identifying the command (or file reconcile, or import) that produced the event; every
+  event one command produces has the same `change`, and no two commands share one
+
+A CLI command's actor comes from the `TROUPE_ACTOR` environment variable, `human:<id>` or `agent:<id>`
+(anything else → exit 2); unset → `{"kind": "human", "id": <login name>}`. Imports and file-originated events
+have actor `{"kind": "unknown", "id": null}`.
+
+## Overrides (from step 5 — replaces rule 2 under `set`)
+
+- An include may be written in **mapping form**: a mapping with a `$ref` key whose value is the include
+  string. Its other keys are **overrides**: the value is the included content deep-merged with the overrides
+  (mappings merge recursively; scalars and lists in the override replace).
+- A new key whose deepest existing ancestor comes from an included file is written as an override in the
+  file that contains the include reference (the *including* file). A scalar-form include is first converted
+  to mapping form, indented at the file's indentation, keeping any end-of-line comment on the key's line:
+  `coder: file:agents/coder.yaml  # c` → `coder:  # c` / `  $ref: file:agents/coder.yaml` / `  temperature: 0.3`
+- Appending a list item is not a new key: the item is appended in the file that holds the list. Likewise, a
+  new key inside a list item is written in the file that holds the list, since overrides cannot address list
+  items.
+- Overrides apply only to YAML includes; a mapping-form include of any other file with sibling keys → exit 4.
+- Setting an existing value that is overridden changes the override; one that is not overridden is still
+  changed in the file it comes from.
+
+## In-include (from step 5, change request B)
+
+- `set --in-include PATH VALUE` writes a new key into the included file instead (the step 1 rule).

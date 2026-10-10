@@ -1,0 +1,5 @@
+I've kept the work on `main` as it is: nothing merged, pushed or turned into a pull request. That's option 3, and it matches the brief, which says to deliver on `main` and not push or open PRs. It also can't lose any data. Since the commit was made straight onto `main`, there's no separate branch or worktree to clean up.
+
+The reason is now written down as decision 1 in `docs/decisions.md`. I added that file to keep the assumptions I made where the contract says nothing. The other nine entries are the implementation choices I described earlier, such as checking every write before touching any file, and refusing (exit 3) to replace a value that comes entirely from an included YAML file.
+
+That file is committed as `fd0e235`, on top of the implementation commit `10edbac`. All 39 tests pass and there are no uncommitted changes.

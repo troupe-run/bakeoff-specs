@@ -1,0 +1,66 @@
+{
+  "sha_before": "83f5964fc4e51e5cfea6a36511d8b423955010bb",
+  "sha_after": "aacd93a0ac0851fcfef9057f3d5cccc8f05a4910",
+  "head": "aacd93a0ac0851fcfef9057f3d5cccc8f05a4910",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "aacd93a0ac0851fcfef9057f3d5cccc8f05a4910",
+      "author": "Developer",
+      "subject": "Test the step 2 edge cases convergence found untested"
+    },
+    {
+      "sha": "71138fb37e862a1cc39b27b1c9afea76d9806e8f",
+      "author": "Developer",
+      "subject": "Append convergence tasks for step 2"
+    },
+    {
+      "sha": "1ffdd0191c3c44b9ce35d724a7ca90efc02d985a",
+      "author": "Developer",
+      "subject": "Document watch and reconcile; mark step 1 D-1 superseded"
+    },
+    {
+      "sha": "ac3a198b8ee8a841d4dcd56c94d18bffcff47d64",
+      "author": "Developer",
+      "subject": "Prove a set under watch is recorded exactly once"
+    },
+    {
+      "sha": "a5891dba0014eadafca6111cad4e1dbd9f6ba8e5",
+      "author": "Developer",
+      "subject": "Add troupe config watch"
+    },
+    {
+      "sha": "32a6eec9ed1588af18967d505f659129d0d9093a",
+      "author": "Developer",
+      "subject": "Reconcile hand edits before show and set"
+    },
+    {
+      "sha": "a9a46ba77fa5502e383f3adb37a421c59f3a4c0c",
+      "author": "Developer",
+      "subject": "Satisfy ruff in the reconcile change"
+    },
+    {
+      "sha": "39823b7daf1dfd1ec62f9bdd66375618f709ffa1",
+      "author": "Developer",
+      "subject": "Add reconcile and the theatre lock"
+    },
+    {
+      "sha": "34b26677121991c9c618a1241272a8fa8b200489",
+      "author": "Developer",
+      "subject": "Add step 2 task list"
+    },
+    {
+      "sha": "ebf44e225c8b5989fd0cbe30c6432c8f0493f848",
+      "author": "Developer",
+      "subject": "Add step 2 plan and design artifacts"
+    },
+    {
+      "sha": "cd9b7dcdefe14f00a6684fd339af7e81ad559ff6",
+      "author": "Developer",
+      "subject": "Add step 2 spec: keep files and configuration in sync"
+    }
+  ],
+  "diffstat": "README.md                                          |  12 +-\n specs/001-config-load-show-set/spec.md             |   3 +-\n .../checklists/requirements.md                     |  41 +++\n specs/002-config-file-sync/contracts/cli.md        |  47 +++\n specs/002-config-file-sync/data-model.md           |  61 ++++\n specs/002-config-file-sync/plan.md                 | 127 +++++++++\n specs/002-config-file-sync/quickstart.md           |  46 +++\n specs/002-config-file-sync/research.md             | 144 ++++++++++\n specs/002-config-file-sync/spec.md                 | 314 +++++++++++++++++++++\n specs/002-config-file-sync/tasks.md                | 191 +++++++++++++\n src/troupe/cli.py                                  |  27 +-\n src/troupe/config/commands.py                      |  53 +++-\n src/troupe/config/lock.py                          |  41 +++\n src/troupe/config/store.py                         |   5 +\n src/troupe/config/sync.py                          |  17 ++\n src/troupe/config/watch.py                         |  76 +++++\n tests/conftest.py                                  | 137 ++++++++-\n tests/e2e/test_history.py                          |   9 +-\n tests/e2e/test_reconcile.py                        | 184 ++++++++++++\n tests/e2e/test_watch.py                            | 140 +++++++++\n tests/e2e/test_watch_exactly_once.py               | 127 +++++++++\n tests/e2e/test_watch_lifecycle.py                  | 138 +++++++++\n tests/unit/test_lock.py                            |  90 ++++++\n tests/unit/test_reconcile.py                       | 117 ++++++++\n tests/unit/test_watch_snapshot.py                  |  49 ++++\n 25 files changed, 2176 insertions(+), 20 deletions(-)"
+}

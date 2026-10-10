@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/diff.patch:49-56 (README adds remote includes, the schema, `!literal` and `--include`)",
+    "/judge/repo/README.md:8 (the set synopsis now lists `--include`)",
+    "/judge/repo/README.md:13 (still says \"`file:` strings include other files\" as the whole rule, and was not edited)",
+    "/judge/repo/src/troupe/yamldoc.py:94-99 (include_spec covers `file:` and http(s)); /judge/diff.patch:671-675 (the loader skips `!literal` strings and schema `format: uri` strings)",
+    "/judge/diff.patch:137-144 (the set planner writes `editor.literals` unless `--include`, and refuses with exit 3 when schema validation would fail); /judge/diff.patch:299-307 (remote values are refused with exit 3, naming the include string)",
+    "/judge/diff.patch:555 (reconcile/watch now validates and loads through the same literal-aware Loader)",
+    "/judge/repo/tests/test_config.py:530-541 (new tests assert `!literal` writes and `--include`); no older test sets a `file:` string and expects an include"
+  ],
+  "notes": "All code and test stale items were updated, and the README/DECISIONS gained step-7 sections. However, README.md:13 still gives the old `file:`-only include rule unqualified, and README.md:15 still says `--sources` paths are relative to the theatre, though remote sources are printed as URLs.",
+  "raw": "{\"score\": 3, \"evidence\": [\"/judge/diff.patch:49-56 (README adds remote includes, the schema, `!literal` and `--include`)\", \"/judge/repo/README.md:8 (the set synopsis now lists `--include`)\", \"/judge/repo/README.md:13 (still says \\\"`file:` strings include other files\\\" as the whole rule, and was not edited)\", \"/judge/repo/src/troupe/yamldoc.py:94-99 (include_spec covers `file:` and http(s)); /judge/diff.patch:671-675 (the loader skips `!literal` strings and schema `format: uri` strings)\", \"/judge/diff.patch:137-144 (the set planner writes `editor.literals` unless `--include`, and refuses with exit 3 when schema validation would fail); /judge/diff.patch:299-307 (remote values are refused with exit 3, naming the include string)\", \"/judge/diff.patch:555 (reconcile/watch now validates and loads through the same literal-aware Loader)\", \"/judge/repo/tests/test_config.py:530-541 (new tests assert `!literal` writes and `--include`); no older test sets a `file:` string and expects an include\"], \"notes\": \"All code and test stale items were updated, and the README/DECISIONS gained step-7 sections. However, README.md:13 still gives the old `file:`-only include rule unqualified, and README.md:15 still says `--sources` paths are relative to the theatre, though remote sources are printed as URLs.\"}",
+  "score": 3,
+  "status": "ok"
+}

@@ -1,0 +1,58 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "What should `history` show for events recorded before lineage existed: (A) the known fields filled in and the rest marked unknown, with `via: null` for old set/remove events and a stable per-event `change`, (B) refuse with an error naming the database file, or (C) something else?",
+      "reply": "The contract says every `history` event has the Lineage fields. It says nothing about events recorded before step 4, or about upgrading stored history. Treat this as out of contract: it's your choice. State which option you chose and why. Note that the contract itself doesn't change, so record your choice in your own spec or documentation, not as a contract amendment.",
+      "escalate": false,
+      "cited": "Brief, Escalated answers (pre-step-4 history events without lineage); Brief, Standing answers (out of contract: engineer chooses and says what they chose); Contract, Lineage"
+    },
+    {
+      "question": "When `set` first reconciles hand edits, are those reconcile events a separate change (via \"file\", actor unknown) from the set's own change (via \"cli\")?",
+      "reply": "Confirmed. Lineage names a file reconcile as its own producer of a `change`, separate from a command. File-originated events have actor {\"kind\": \"unknown\", \"id\": null}. The set's own events have via \"cli\" and the actor from TROUPE_ACTOR. So the reconcile events get one change id and the set's own events get a different one.",
+      "escalate": false,
+      "cited": "Contract, Lineage (change; actor for file-originated events); Contract, Sync with files"
+    },
+    {
+      "question": "Does an empty TROUPE_ACTOR, an empty id such as `human:`, or any other form exit 2 with a message naming the variable, for every `troupe config` command?",
+      "reply": "Yes. Lineage gives the only valid forms as `human:<id>` or `agent:<id>`, and anything else exits 2. A variable that is set but empty is not unset, so it exits 2. `human:` carries no id, so it is not `human:<id>` and also exits 2. This applies to every CLI command. A message that names TROUPE_ACTOR is fine.",
+      "escalate": false,
+      "cited": "Contract, Lineage (TROUPE_ACTOR); Contract, General (Exit codes); Brief, Standing answers (error wording)"
+    },
+    {
+      "question": "Should every `troupe config` command check TROUPE_ACTOR before loading anything, so that a bad TROUPE_ACTOR exits 2 even when the configuration also cannot be loaded (exit 4)?",
+      "reply": null,
+      "escalate": true,
+      "cited": ""
+    },
+    {
+      "question": "If TROUPE_ACTOR is unset and the login name cannot be determined, should the actor be {\"kind\": \"human\", \"id\": null}?",
+      "reply": null,
+      "escalate": true,
+      "cited": ""
+    },
+    {
+      "question": "Is `--reason` accepted only on `set`, stored exactly as given, and dropped when a `set` changes nothing?",
+      "reply": "Confirmed. The contract defines `--reason` only as `set --reason TEXT`, and `reason` is the text given. A `set` that changes nothing emits no events, so there is nothing to carry its reason.",
+      "escalate": false,
+      "cited": "Contract, Lineage (reason); Contract, history [PATH] (a set that changes nothing emits nothing)"
+    },
+    {
+      "question": "Is each `watch` reconcile its own change?",
+      "reply": "Confirmed. `change` identifies the command, file reconcile or import that produced the event, and no two share one. Each reconcile that `watch` performs is a separate file reconcile, so each gets its own change id.",
+      "escalate": false,
+      "cited": "Contract, Lineage (change)"
+    },
+    {
+      "question": "Is the key order `seq, op, path, old, new, actor, via, at, reason, change` acceptable for history lines?",
+      "reply": "Yes. The contract requires each line to be an object with at least those keys. It does not fix their order, so your order is acceptable.",
+      "escalate": false,
+      "cited": "Contract, history [PATH]; Contract, Lineage"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

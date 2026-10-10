@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "How show prints a text include a literal block cannot hold exactly",
+  "routes": [
+    {
+      "outcome": "Reworked at step 3",
+      "reasoning_given": "The owner said there is no exception",
+      "route": "Double-quoted at first; reworked so every text include is a literal block of the exact text",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "A literal block cannot keep CR; data must never be altered",
+      "route": "Double-quoted with escapes",
+      "route_no": 2
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "The contract requires literal blocks; get stays exact",
+      "route": "Literal block with CRLF turned into LF; get keeps the bytes",
+      "route_no": 3
+    }
+  ]
+}

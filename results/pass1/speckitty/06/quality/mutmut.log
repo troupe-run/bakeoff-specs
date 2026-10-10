@@ -1,0 +1,573 @@
+$ .venv/bin/python -m pytest -q -p no:cacheprovider -x  (baseline)
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [ 10%]
+........................................................................ [ 13%]
+........................................................................ [ 16%]
+........................................................................ [ 20%]
+........................................................................ [ 23%]
+........................................................................ [ 26%]
+........................................................................ [ 30%]
+........................................................................ [ 33%]
+........................................................................ [ 37%]
+........................................................................ [ 40%]
+........................................................................ [ 43%]
+........................................................................ [ 47%]
+........................................................................ [ 50%]
+........................................................................ [ 53%]
+........................................................................ [ 57%]
+........................................................................ [ 60%]
+........................................................................ [ 64%]
+........................................................................ [ 67%]
+........................................................................ [ 70%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 80%]
+........................................................................ [ 84%]
+........................................................................ [ 87%]
+........................................................................ [ 91%]
+........................................................................ [ 94%]
+........................................................................ [ 97%]
+...............................................                          [100%]
+2135 passed in 668.48s (0:11:08)
+
+# listing, run and results containers: UV_PROJECT_ENVIRONMENT=/work/bakeoff-specs-speckitty/.venv  (so `uv run` from inside mutants/ uses the prepared venv; the baseline above ran without it)
+$ .venv/bin/mutmut run --max-children 4 troupe.cli.x_build_parser__mutmut_5 troupe.cli.x_build_parser__mutmut_50 ... <198 more>  (sampled 200; under timeout 3600s)
+ 0  🙁 6  🔇 0  🧙 0⠋ 69/7593  🎉 30 🫥 33  ⏰ 0  🤔 0  🙁 6  🔇 0  🧙 0⠙ 70/7593  🎉 30 🫥 33  ⏰ 0  🤔 0  🙁 7  🔇 0  🧙 0⠹ 71/7593  🎉 30 🫥 33  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠸ 72/7593  🎉 31 🫥 33  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠼ 73/7593  🎉 32 🫥 33  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠴ 74/7593  🎉 33 🫥 33  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠦ 75/7593  🎉 34 🫥 33  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠧ 76/7593  🎉 35 🫥 33  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠇ 77/7593  🎉 36 🫥 33  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠏ 78/7593  🎉 37 🫥 33  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠋ 79/7593  🎉 38 🫥 33  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠙ 80/7593  🎉 39 🫥 33  ⏰ 0  🤔 0  🙁 8  🔇 0  🧙 0⠹ 81/7593  🎉 39 🫥 33  ⏰ 0  🤔 0  🙁 9  🔇 0  🧙 0⠸ 82/7593  🎉 40 🫥 33  ⏰ 0  🤔 0  🙁 9  🔇 0  🧙 0⠼ 83/7593  🎉 41 🫥 33  ⏰ 0  🤔 0  🙁 9  🔇 0  🧙 0⠴ 84/7593  🎉 42 🫥 33  ⏰ 0  🤔 0  🙁 9  🔇 0  🧙 0⠦ 85/7593  🎉 42 🫥 33  ⏰ 0  🤔 0  🙁 10  🔇 0  🧙 0⠧ 86/7593  🎉 43 🫥 33  ⏰ 0  🤔 0  🙁 10  🔇 0  🧙 0⠇ 87/7593  🎉 44 🫥 33  ⏰ 0  🤔 0  🙁 10  🔇 0  🧙 0⠏ 88/7593  🎉 45 🫥 33  ⏰ 0  🤔 0  🙁 10  🔇 0  🧙 0⠋ 89/7593  🎉 46 🫥 33  ⏰ 0  🤔 0  🙁 10  🔇 0  🧙 0⠙ 90/7593  🎉 47 🫥 33  ⏰ 0  🤔 0  🙁 10  🔇 0  🧙 0⠹ 91/7593  🎉 48 🫥 33  ⏰ 0  🤔 0  🙁 10  🔇 0  🧙 0⠸ 92/7593  🎉 49 🫥 33  ⏰ 0  🤔 0  🙁 10  🔇 0  🧙 0⠼ 93/7593  🎉 50 🫥 33  ⏰ 0  🤔 0  🙁 10  🔇 0  🧙 0⠴ 94/7593  🎉 50 🫥 33  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠦ 95/7593  🎉 51 🫥 33  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠧ 96/7593  🎉 52 🫥 33  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠇ 97/7593  🎉 53 🫥 33  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠏ 98/7593  🎉 54 🫥 33  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠋ 99/7593  🎉 55 🫥 33  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠙ 100/7593  🎉 56 🫥 33  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠹ 101/7593  🎉 57 🫥 33  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠸ 102/7593  🎉 58 🫥 33  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠼ 103/7593  🎉 59 🫥 33  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠴ 104/7593  🎉 60 🫥 33  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠦ 105/7593  🎉 61 🫥 33  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0⠧ 106/7593  🎉 61 🫥 33  ⏰ 0  🤔 0  🙁 12  🔇 0  🧙 0⠇ 107/7593  🎉 62 🫥 33  ⏰ 0  🤔 0  🙁 12  🔇 0  🧙 0⠏ 108/7593  🎉 63 🫥 33  ⏰ 0  🤔 0  🙁 12  🔇 0  🧙 0⠋ 109/7593  🎉 64 🫥 33  ⏰ 0  🤔 0  🙁 12  🔇 0  🧙 0⠙ 110/7593  🎉 65 🫥 33  ⏰ 0  🤔 0  🙁 12  🔇 0  🧙 0⠹ 111/7593  🎉 66 🫥 33  ⏰ 0  🤔 0  🙁 12  🔇 0  🧙 0⠸ 112/7593  🎉 66 🫥 33  ⏰ 0  🤔 0  🙁 13  🔇 0  🧙 0⠼ 113/7593  🎉 67 🫥 33  ⏰ 0  🤔 0  🙁 13  🔇 0  🧙 0⠴ 114/7593  🎉 68 🫥 33  ⏰ 0  🤔 0  🙁 13  🔇 0  🧙 0⠦ 115/7593  🎉 69 🫥 33  ⏰ 0  🤔 0  🙁 13  🔇 0  🧙 0⠧ 116/7593  🎉 70 🫥 33  ⏰ 0  🤔 0  🙁 13  🔇 0  🧙 0⠇ 117/7593  🎉 71 🫥 33  ⏰ 0  🤔 0  🙁 13  🔇 0  🧙 0⠏ 118/7593  🎉 71 🫥 33  ⏰ 0  🤔 0  🙁 14  🔇 0  🧙 0⠋ 119/7593  🎉 72 🫥 33  ⏰ 0  🤔 0  🙁 14  🔇 0  🧙 0⠙ 120/7593  🎉 73 🫥 33  ⏰ 0  🤔 0  🙁 14  🔇 0  🧙 0⠹ 121/7593  🎉 74 🫥 33  ⏰ 0  🤔 0  🙁 14  🔇 0  🧙 0⠸ 122/7593  🎉 74 🫥 33  ⏰ 0  🤔 0  🙁 15  🔇 0  🧙 0⠼ 123/7593  🎉 74 🫥 33  ⏰ 0  🤔 0  🙁 16  🔇 0  🧙 0⠴ 124/7593  🎉 75 🫥 33  ⏰ 0  🤔 0  🙁 16  🔇 0  🧙 0⠦ 125/7593  🎉 76 🫥 33  ⏰ 0  🤔 0  🙁 16  🔇 0  🧙 0⠧ 126/7593  🎉 77 🫥 33  ⏰ 0  🤔 0  🙁 16  🔇 0  🧙 0⠇ 127/7593  🎉 78 🫥 33  ⏰ 0  🤔 0  🙁 16  🔇 0  🧙 0⠏ 128/7593  🎉 79 🫥 33  ⏰ 0  🤔 0  🙁 16  🔇 0  🧙 0⠋ 129/7593  🎉 79 🫥 33  ⏰ 0  🤔 0  🙁 17  🔇 0  🧙 0⠙ 130/7593  🎉 80 🫥 33  ⏰ 0  🤔 0  🙁 17  🔇 0  🧙 0⠹ 131/7593  🎉 81 🫥 33  ⏰ 0  🤔 0  🙁 17  🔇 0  🧙 0⠸ 132/7593  🎉 82 🫥 33  ⏰ 0  🤔 0  🙁 17  🔇 0  🧙 0⠼ 133/7593  🎉 83 🫥 33  ⏰ 0  🤔 0  🙁 17  🔇 0  🧙 0⠴ 134/7593  🎉 84 🫥 33  ⏰ 0  🤔 0  🙁 17  🔇 0  🧙 0⠦ 135/7593  🎉 84 🫥 33  ⏰ 0  🤔 0  🙁 18  🔇 0  🧙 0⠧ 136/7593  🎉 85 🫥 33  ⏰ 0  🤔 0  🙁 18  🔇 0  🧙 0⠇ 137/7593  🎉 86 🫥 33  ⏰ 0  🤔 0  🙁 18  🔇 0  🧙 0⠏ 138/7593  🎉 87 🫥 33  ⏰ 0  🤔 0  🙁 18  🔇 0  🧙 0⠋ 139/7593  🎉 88 🫥 33  ⏰ 0  🤔 0  🙁 18  🔇 0  🧙 0⠙ 140/7593  🎉 88 🫥 33  ⏰ 0  🤔 0  🙁 19  🔇 0  🧙 0⠹ 141/7593  🎉 89 🫥 33  ⏰ 0  🤔 0  🙁 19  🔇 0  🧙 0⠸ 142/7593  🎉 90 🫥 33  ⏰ 0  🤔 0  🙁 19  🔇 0  🧙 0⠼ 143/7593  🎉 91 🫥 33  ⏰ 0  🤔 0  🙁 19  🔇 0  🧙 0⠴ 144/7593  🎉 91 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠦ 145/7593  🎉 92 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠧ 146/7593  🎉 93 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠇ 147/7593  🎉 94 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠏ 148/7593  🎉 95 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠋ 149/7593  🎉 96 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠙ 150/7593  🎉 97 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠹ 151/7593  🎉 98 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠸ 152/7593  🎉 99 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠼ 153/7593  🎉 100 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠴ 154/7593  🎉 101 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠦ 155/7593  🎉 102 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠧ 156/7593  🎉 103 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠇ 157/7593  🎉 104 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠏ 158/7593  🎉 105 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠋ 159/7593  🎉 106 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠙ 160/7593  🎉 107 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠹ 161/7593  🎉 108 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠸ 162/7593  🎉 109 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠼ 163/7593  🎉 110 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠴ 164/7593  🎉 111 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠦ 165/7593  🎉 112 🫥 33  ⏰ 0  🤔 0  🙁 20  🔇 0  🧙 0⠧ 166/7593  🎉 112 🫥 33  ⏰ 0  🤔 0  🙁 21  🔇 0  🧙 0⠇ 167/7593  🎉 113 🫥 33  ⏰ 0  🤔 0  🙁 21  🔇 0  🧙 0⠏ 168/7593  🎉 114 🫥 33  ⏰ 0  🤔 0  🙁 21  🔇 0  🧙 0⠋ 169/7593  🎉 115 🫥 33  ⏰ 0  🤔 0  🙁 21  🔇 0  🧙 0⠙ 170/7593  🎉 115 🫥 33  ⏰ 0  🤔 0  🙁 22  🔇 0  🧙 0⠹ 171/7593  🎉 115 🫥 33  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠸ 172/7593  🎉 116 🫥 33  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠼ 173/7593  🎉 117 🫥 33  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠴ 174/7593  🎉 118 🫥 33  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠦ 175/7593  🎉 119 🫥 33  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠧ 176/7593  🎉 120 🫥 33  ⏰ 0  🤔 0  🙁 23  🔇 0  🧙 0⠇ 177/7593  🎉 120 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠏ 178/7593  🎉 121 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠋ 179/7593  🎉 122 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠙ 180/7593  🎉 123 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠹ 181/7593  🎉 124 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠸ 182/7593  🎉 125 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠼ 183/7593  🎉 126 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠴ 184/7593  🎉 127 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠦ 185/7593  🎉 128 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠧ 186/7593  🎉 129 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠇ 187/7593  🎉 130 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠏ 188/7593  🎉 131 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠋ 189/7593  🎉 132 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠙ 190/7593  🎉 133 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠹ 191/7593  🎉 134 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠸ 192/7593  🎉 135 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠼ 193/7593  🎉 136 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠴ 194/7593  🎉 137 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠦ 195/7593  🎉 138 🫥 33  ⏰ 0  🤔 0  🙁 24  🔇 0  🧙 0⠧ 200/7593  🎉 142 🫥 33  ⏰ 0  🤔 0  🙁 25  🔇 0  🧙 0
+14.18 mutations/second
+
+Mutant results
+--------------
+🫥 troupe.cli.x_build_parser__mutmut_5
+🫥 troupe.cli.x_build_parser__mutmut_50
+🫥 troupe.cli.x_build_parser__mutmut_65
+🫥 troupe.cli.x_build_parser__mutmut_99
+🫥 troupe.cli.x_main__mutmut_29
+🫥 troupe.cli.x_main__mutmut_38
+🫥 troupe.commands.set_value.x_run__mutmut_12
+🫥 troupe.commands.set_value.x_run__mutmut_27
+🫥 troupe.commands.set_value.x_run__mutmut_35
+🫥 troupe.commands.set_value.x_run__mutmut_49
+🫥 troupe.commands.set_value.x_run__mutmut_50
+🫥 troupe.commands.show.x_run__mutmut_32
+🫥 troupe.commands.watch.x__reconcile_and_snapshot__mutmut_11
+🫥 troupe.commands.watch.x_watch__mutmut_2
+🎉 troupe.history.xǁHistoryStoreǁrecorded_leaves__mutmut_2
+🎉 troupe.history.xǁHistoryStoreǁrecords__mutmut_11
+🎉 troupe.history.xǁ_HistoryApplicationǁconstruct_env__mutmut_4
+🎉 troupe.leaves.x__collect__mutmut_35
+🎉 troupe.leaves.x_diff__mutmut_29
+🎉 troupe.leaves.x_same__mutmut_11
+🎉 troupe.lineage.x_resolve_actor__mutmut_7
+🎉 troupe.loader.x__line__mutmut_5
+🎉 troupe.loader.x__line__mutmut_6
+🎉 troupe.loader.xǁ_Loaderǁ_entries__mutmut_29
+🎉 troupe.loader.xǁ_Loaderǁ_entries__mutmut_34
+🎉 troupe.loader.xǁ_Loaderǁ_entries__mutmut_43
+🎉 troupe.loader.xǁ_Loaderǁ_load_yaml__mutmut_10
+🎉 troupe.loader.xǁ_Loaderǁ_load_yaml__mutmut_38
+🎉 troupe.loader.xǁ_Loaderǁ_mapping__mutmut_22
+🎉 troupe.loader.xǁ_Loaderǁ_mapping__mutmut_41
+🎉 troupe.loader.xǁ_Loaderǁ_mapping__mutmut_57
+🎉 troupe.loader.xǁ_Loaderǁ_merge_mapping__mutmut_46
+🎉 troupe.loader.xǁ_Loaderǁload_root__mutmut_3
+🎉 troupe.merge.x_is_merge_entry__mutmut_5
+🎉 troupe.merge.x_merge_keys__mutmut_24
+🎉 troupe.merge.x_merge_keys__mutmut_43
+🎉 troupe.merge.x_merge_keys__mutmut_5
+🎉 troupe.reconcile.x_reconcile__mutmut_2
+🎉 troupe.reconcile.x_watched_files__mutmut_1
+🎉 troupe.values.x_format_scalar__mutmut_15
+🎉 troupe.values.x_parse_value__mutmut_11
+🙁 troupe.writeback.aliases.x__content_line_end__mutmut_9
+🙁 troupe.writeback.aliases.x__dash_before__mutmut_38
+🎉 troupe.writeback.aliases.x__head__mutmut_104
+🎉 troupe.writeback.aliases.x__head__mutmut_65
+🎉 troupe.writeback.aliases.x__insert_below__mutmut_12
+🎉 troupe.writeback.aliases.x__insert_below__mutmut_9
+🎉 troupe.writeback.aliases.x_expand_edits__mutmut_105
+🙁 troupe.writeback.aliases.x_expand_edits__mutmut_107
+🎉 troupe.writeback.aliases.x_expand_edits__mutmut_54
+🎉 troupe.writeback.aliases.x_expand_edits__mutmut_87
+🎉 troupe.writeback.aliases.xǁ_Copyǁattach__mutmut_46
+🎉 troupe.writeback.aliases.xǁ_Copyǁitem__mutmut_21
+🎉 troupe.writeback.aliases.xǁ_Copyǁitem__mutmut_32
+🎉 troupe.writeback.aliases.xǁ_Copyǁitem__mutmut_49
+🎉 troupe.writeback.aliases.xǁ_Copyǁscalar__mutmut_20
+🫥 troupe.writeback.apply.x__edits__mutmut_12
+🙁 troupe.writeback.apply.x__matches__mutmut_18
+🙁 troupe.writeback.apply.x__matches__mutmut_26
+🫥 troupe.writeback.apply.x__plan_expansion__mutmut_40
+🫥 troupe.writeback.apply.x__plan_expansion__mutmut_41
+🫥 troupe.writeback.apply.x__plan_expansion__mutmut_50
+🫥 troupe.writeback.apply.x__plan_expansion__mutmut_60
+🫥 troupe.writeback.apply.x__plan_text__mutmut_2
+🫥 troupe.writeback.apply.x__plan_text__mutmut_21
+🫥 troupe.writeback.apply.x__plan_text__mutmut_8
+🫥 troupe.writeback.apply.x__replace_span__mutmut_11
+🫥 troupe.writeback.apply.x__replace_span__mutmut_22
+🫥 troupe.writeback.apply.x__replace_span__mutmut_27
+🫥 troupe.writeback.apply.x__replace_span__mutmut_35
+🫥 troupe.writeback.apply.x__replace_span__mutmut_4
+🫥 troupe.writeback.apply.x__replace_span__mutmut_49
+🫥 troupe.writeback.apply.x__respace_comment__mutmut_17
+🫥 troupe.writeback.apply.x__respace_comment__mutmut_28
+🎉 troupe.writeback.apply.x__same_outside__mutmut_12
+🙁 troupe.writeback.apply.x__same_outside__mutmut_146
+🎉 troupe.writeback.apply.x__same_outside__mutmut_24
+🎉 troupe.writeback.apply.x__same_outside__mutmut_40
+🙁 troupe.writeback.apply.x__same_outside__mutmut_46
+🫥 troupe.writeback.apply.x__scalar_edits__mutmut_35
+🫥 troupe.writeback.apply.x__scalar_edits__mutmut_70
+🫥 troupe.writeback.apply.x__scalar_edits__mutmut_8
+🎉 troupe.writeback.apply.x_apply_set__mutmut_59
+🎉 troupe.writeback.blocks.x__modified_header__mutmut_11
+🙁 troupe.writeback.blocks.x__modified_header__mutmut_7
+🎉 troupe.writeback.blocks.x__preferred_chomp__mutmut_4
+🎉 troupe.writeback.blocks.x__rewrite_block__mutmut_56
+🙁 troupe.writeback.blocks.x__split_folded__mutmut_21
+🎉 troupe.writeback.blocks.x__split_folded__mutmut_26
+🎉 troupe.writeback.blocks.x__split_folded__mutmut_30
+🎉 troupe.writeback.blocks.x__split_folded__mutmut_57
+🎉 troupe.writeback.blocks.x__split_folded__mutmut_7
+🎉 troupe.writeback.blocks.x__split_folded__mutmut_70
+🙁 troupe.writeback.blocks.x__split_folded__mutmut_88
+🎉 troupe.writeback.blocks.x__verbatim__mutmut_5
+🎉 troupe.writeback.blocks.x__words__mutmut_23
+🎉 troupe.writeback.blocks.x__words__mutmut_9
+🎉 troupe.writeback.blocks.x_folded_paragraphs__mutmut_1
+🎉 troupe.writeback.blocks.x_folded_paragraphs__mutmut_9
+🎉 troupe.writeback.blocks.x_greedy_wrap__mutmut_4
+🎉 troupe.writeback.blocks.x_parse_block__mutmut_124
+🎉 troupe.writeback.blocks.x_parse_block__mutmut_132
+🙁 troupe.writeback.blocks.x_parse_block__mutmut_96
+🎉 troupe.writeback.blocks.x_render_new_multiline__mutmut_13
+🎉 troupe.writeback.blocks.x_render_new_multiline__mutmut_20
+🎉 troupe.writeback.blocks.x_replace_folded__mutmut_73
+🎉 troupe.writeback.blocks.x_replace_folded__mutmut_94
+🎉 troupe.writeback.blocks.x_replace_folded__mutmut_95
+🙁 troupe.writeback.blocks.x_replace_with_multiline__mutmut_28
+🙁 troupe.writeback.blocks.x_replace_with_multiline__mutmut_29
+🎉 troupe.writeback.blocks.x_replace_with_multiline__mutmut_57
+🎉 troupe.writeback.blocks.x_replace_with_multiline__mutmut_81
+🎉 troupe.writeback.blocks.x_required_chomps__mutmut_10
+🎉 troupe.writeback.blocks.x_required_chomps__mutmut_19
+🎉 troupe.writeback.collections.x__add_new_keys__mutmut_12
+🎉 troupe.writeback.collections.x__anchor_line_edits__mutmut_18
+🎉 troupe.writeback.collections.x__below_edits__mutmut_10
+🎉 troupe.writeback.collections.x__below_edits__mutmut_22
+🙁 troupe.writeback.collections.x__below_edits__mutmut_57
+🎉 troupe.writeback.collections.x__check_open_end__mutmut_10
+🎉 troupe.writeback.collections.x__check_open_end__mutmut_11
+🙁 troupe.writeback.collections.x__check_open_end__mutmut_20
+🎉 troupe.writeback.collections.x__content_after__mutmut_5
+🎉 troupe.writeback.collections.x__content_after__mutmut_58
+🙁 troupe.writeback.collections.x__content_after__mutmut_65
+🙁 troupe.writeback.collections.x__content_after__mutmut_70
+🎉 troupe.writeback.collections.x__dash_pos__mutmut_2
+🙁 troupe.writeback.collections.x__dash_pos__mutmut_53
+🎉 troupe.writeback.collections.x__dash_pos__mutmut_9
+🎉 troupe.writeback.collections.x__insert_in_line__mutmut_21
+🎉 troupe.writeback.collections.x__insert_lines__mutmut_31
+🎉 troupe.writeback.collections.x__next_line__mutmut_8
+🎉 troupe.writeback.collections.x__old_value__mutmut_24
+🙁 troupe.writeback.collections.x__old_value__mutmut_36
+🎉 troupe.writeback.collections.x__old_value__mutmut_73
+🎉 troupe.writeback.collections.x__old_value__mutmut_81
+🙁 troupe.writeback.collections.x__past_node_anchor__mutmut_13
+🎉 troupe.writeback.collections.x__raw_entry_start__mutmut_8
+🎉 troupe.writeback.collections.x__replace_compact_item__mutmut_12
+🎉 troupe.writeback.collections.x__replace_compact_item__mutmut_27
+🎉 troupe.writeback.collections.x__replace_compact_item__mutmut_29
+🙁 troupe.writeback.collections.x__replace_in_flow__mutmut_22
+🎉 troupe.writeback.collections.x__rewrite_span__mutmut_9
+🎉 troupe.writeback.collections.x__sequence_offset__mutmut_1
+🎉 troupe.writeback.collections.x__sequence_offset__mutmut_12
+🎉 troupe.writeback.collections.x_convert_include_edits__mutmut_45
+🎉 troupe.writeback.collections.x_flow_append_edits__mutmut_26
+🎉 troupe.writeback.collections.x_flow_append_edits__mutmut_28
+🙁 troupe.writeback.collections.x_flow_append_edits__mutmut_65
+🎉 troupe.writeback.collections.x_new_item_edits__mutmut_3
+🎉 troupe.writeback.collections.x_new_item_edits__mutmut_7
+🎉 troupe.writeback.collections.x_new_key_edits__mutmut_17
+🎉 troupe.writeback.collections.x_new_key_edits__mutmut_52
+🎉 troupe.writeback.collections.x_render_block_value__mutmut_10
+🙁 troupe.writeback.collections.x_render_block_value__mutmut_18
+🎉 troupe.writeback.collections.x_render_block_value__mutmut_4
+🎉 troupe.writeback.collections.x_render_flow_value__mutmut_12
+🎉 troupe.writeback.collections.x_replace_value_edits__mutmut_40
+🎉 troupe.writeback.collections.x_replace_value_edits__mutmut_52
+🎉 troupe.writeback.collections.xǁ_Rendererǁattach__mutmut_68
+🎉 troupe.writeback.comments.x_find_comment_start__mutmut_14
+🙁 troupe.writeback.comments.x_find_comment_start__mutmut_28
+🎉 troupe.writeback.comments.x_find_comment_start__mutmut_9
+🎉 troupe.writeback.fileio.x_atomic_write__mutmut_1
+🎉 troupe.writeback.fileio.x_detect_newline__mutmut_3
+🎉 troupe.writeback.placement.x__aliases_to__mutmut_1
+🎉 troupe.writeback.placement.x__aliases_to__mutmut_36
+🎉 troupe.writeback.placement.x__existing__mutmut_11
+🎉 troupe.writeback.placement.x__existing__mutmut_15
+🎉 troupe.writeback.placement.x__existing__mutmut_30
+🎉 troupe.writeback.placement.x__include_ref__mutmut_4
+🎉 troupe.writeback.placement.x__include_ref__mutmut_8
+🎉 troupe.writeback.placement.x__on_side__mutmut_49
+🙁 troupe.writeback.placement.x__route_aliases__mutmut_18
+🎉 troupe.writeback.placement.x__route_aliases__mutmut_3
+🎉 troupe.writeback.placement.x_place__mutmut_11
+🎉 troupe.writeback.placement.x_place__mutmut_138
+🎉 troupe.writeback.scalars.x_choose_style__mutmut_6
+🎉 troupe.writeback.scalars.x_render_nonstring__mutmut_16
+🎉 troupe.writeback.scalars.x_render_string__mutmut_7
+🎉 troupe.writeback.x_apply_edits__mutmut_2
+🎉 troupe.yamlcore.x__anchor_token__mutmut_18
+🎉 troupe.yamlcore.x__from_content_start__mutmut_16
+🎉 troupe.yamlcore.x__from_content_start__mutmut_7
+🎉 troupe.yamlcore.x_compose__mutmut_14
+🎉 troupe.yamlcore.x_compose__mutmut_17
+🎉 troupe.yamlcore.x_resolve_plain__mutmut_7
+🎉 troupe.yamlcore.xǁ_Composerǁ_alias__mutmut_36
+🎉 troupe.yamlcore.xǁ_Composerǁ_node__mutmut_26
+🎉 troupe.yamlcore.xǁ_Composerǁ_take__mutmut_1
+🎉 troupe.yamlout.x__quote_style__mutmut_4
+🎉 troupe.yamlout.x__quote_style__mutmut_6
+🎉 troupe.yamlout.x__render_key__mutmut_4
+🎉 troupe.yamlout.x__render_key__mutmut_9
+🎉 troupe.yamlout.x__scalar_lines__mutmut_23
+🎉 troupe.yamlout.x__scalar_lines__mutmut_37
+🎉 troupe.yamlout.x__scalar_lines__mutmut_45
+🎉 troupe.yamlout.x__value_lines__mutmut_31
+🎉 troupe.yamlout.x__value_lines__mutmut_32
+🎉 troupe.yamlout.x_to_text__mutmut_8
+
+__run_rc=0
+
+$ .venv/bin/mutmut results --all true  (fresh container)
+e.writeback.apply.x__same_outside__mutmut_121: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_122: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_123: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_124: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_125: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_126: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_127: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_128: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_129: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_130: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_131: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_132: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_133: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_134: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_135: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_136: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_137: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_138: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_139: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_140: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_141: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_142: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_143: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_144: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_145: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_146: survived
+    troupe.writeback.apply.x__same_outside__mutmut_147: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_148: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_149: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_150: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_151: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_152: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_153: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_154: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_155: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_156: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_157: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_158: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_159: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_160: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_161: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_162: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_163: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_164: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_165: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_166: not checked
+    troupe.writeback.apply.x__same_outside__mutmut_167: not checked
+    troupe.writeback.apply.x__orders__mutmut_1: not checked
+    troupe.writeback.apply.x__orders__mutmut_2: not checked
+    troupe.writeback.apply.x__orders__mutmut_3: not checked
+    troupe.writeback.apply.x__orders__mutmut_4: not checked
+    troupe.writeback.apply.x__orders__mutmut_5: not checked
+    troupe.writeback.apply.x__orders__mutmut_6: not checked
+    troupe.writeback.apply.x__orders__mutmut_7: not checked
+    troupe.writeback.apply.x__orders__mutmut_8: not checked
+    troupe.writeback.apply.x__orders__mutmut_9: not checked
+    troupe.writeback.apply.x__orders__mutmut_10: not checked
+    troupe.writeback.apply.x__orders__mutmut_11: not checked
+    troupe.writeback.apply.x__orders__mutmut_12: not checked
+    troupe.writeback.apply.x__orders__mutmut_13: not checked
+    troupe.writeback.apply.x__orders__mutmut_14: not checked
+    troupe.writeback.apply.x__orders__mutmut_15: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_1: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_2: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_3: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_4: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_5: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_6: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_7: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_8: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_9: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_10: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_11: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_12: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_13: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_14: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_15: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_16: not checked
+    troupe.writeback.apply.x__gains_override__mutmut_17: not checked
+    troupe.writeback.apply.x__ref_path__mutmut_1: not checked
+    troupe.writeback.apply.x__ref_path__mutmut_2: not checked
+    troupe.writeback.apply.x__ref_path__mutmut_3: not checked
+    troupe.commands.show.x_run__mutmut_1: not checked
+    troupe.commands.show.x_run__mutmut_2: not checked
+    troupe.commands.show.x_run__mutmut_3: not checked
+    troupe.commands.show.x_run__mutmut_4: not checked
+    troupe.commands.show.x_run__mutmut_5: not checked
+    troupe.commands.show.x_run__mutmut_6: not checked
+    troupe.commands.show.x_run__mutmut_7: not checked
+    troupe.commands.show.x_run__mutmut_8: not checked
+    troupe.commands.show.x_run__mutmut_9: not checked
+    troupe.commands.show.x_run__mutmut_10: not checked
+    troupe.commands.show.x_run__mutmut_11: not checked
+    troupe.commands.show.x_run__mutmut_12: not checked
+    troupe.commands.show.x_run__mutmut_13: not checked
+    troupe.commands.show.x_run__mutmut_14: not checked
+    troupe.commands.show.x_run__mutmut_15: not checked
+    troupe.commands.show.x_run__mutmut_16: not checked
+    troupe.commands.show.x_run__mutmut_17: not checked
+    troupe.commands.show.x_run__mutmut_18: not checked
+    troupe.commands.show.x_run__mutmut_19: not checked
+    troupe.commands.show.x_run__mutmut_20: not checked
+    troupe.commands.show.x_run__mutmut_21: not checked
+    troupe.commands.show.x_run__mutmut_22: not checked
+    troupe.commands.show.x_run__mutmut_23: not checked
+    troupe.commands.show.x_run__mutmut_24: not checked
+    troupe.commands.show.x_run__mutmut_25: not checked
+    troupe.commands.show.x_run__mutmut_26: not checked
+    troupe.commands.show.x_run__mutmut_27: not checked
+    troupe.commands.show.x_run__mutmut_28: not checked
+    troupe.commands.show.x_run__mutmut_29: not checked
+    troupe.commands.show.x_run__mutmut_30: not checked
+    troupe.commands.show.x_run__mutmut_31: not checked
+    troupe.commands.show.x_run__mutmut_32: no tests
+    troupe.commands.show.x_run__mutmut_33: not checked
+    troupe.commands.show.x_run__mutmut_34: not checked
+    troupe.commands.show.x_run__mutmut_35: not checked
+    troupe.commands.show.x_run__mutmut_36: not checked
+    troupe.commands.show.x_run__mutmut_37: not checked
+    troupe.commands.set_value.x_run__mutmut_1: not checked
+    troupe.commands.set_value.x_run__mutmut_2: not checked
+    troupe.commands.set_value.x_run__mutmut_3: not checked
+    troupe.commands.set_value.x_run__mutmut_4: not checked
+    troupe.commands.set_value.x_run__mutmut_5: not checked
+    troupe.commands.set_value.x_run__mutmut_6: not checked
+    troupe.commands.set_value.x_run__mutmut_7: not checked
+    troupe.commands.set_value.x_run__mutmut_8: not checked
+    troupe.commands.set_value.x_run__mutmut_9: not checked
+    troupe.commands.set_value.x_run__mutmut_10: not checked
+    troupe.commands.set_value.x_run__mutmut_11: not checked
+    troupe.commands.set_value.x_run__mutmut_12: no tests
+    troupe.commands.set_value.x_run__mutmut_13: not checked
+    troupe.commands.set_value.x_run__mutmut_14: not checked
+    troupe.commands.set_value.x_run__mutmut_15: not checked
+    troupe.commands.set_value.x_run__mutmut_16: not checked
+    troupe.commands.set_value.x_run__mutmut_17: not checked
+    troupe.commands.set_value.x_run__mutmut_18: not checked
+    troupe.commands.set_value.x_run__mutmut_19: not checked
+    troupe.commands.set_value.x_run__mutmut_20: not checked
+    troupe.commands.set_value.x_run__mutmut_21: not checked
+    troupe.commands.set_value.x_run__mutmut_22: not checked
+    troupe.commands.set_value.x_run__mutmut_23: not checked
+    troupe.commands.set_value.x_run__mutmut_24: not checked
+    troupe.commands.set_value.x_run__mutmut_25: not checked
+    troupe.commands.set_value.x_run__mutmut_26: not checked
+    troupe.commands.set_value.x_run__mutmut_27: no tests
+    troupe.commands.set_value.x_run__mutmut_28: not checked
+    troupe.commands.set_value.x_run__mutmut_29: not checked
+    troupe.commands.set_value.x_run__mutmut_30: not checked
+    troupe.commands.set_value.x_run__mutmut_31: not checked
+    troupe.commands.set_value.x_run__mutmut_32: not checked
+    troupe.commands.set_value.x_run__mutmut_33: not checked
+    troupe.commands.set_value.x_run__mutmut_34: not checked
+    troupe.commands.set_value.x_run__mutmut_35: no tests
+    troupe.commands.set_value.x_run__mutmut_36: not checked
+    troupe.commands.set_value.x_run__mutmut_37: not checked
+    troupe.commands.set_value.x_run__mutmut_38: not checked
+    troupe.commands.set_value.x_run__mutmut_39: not checked
+    troupe.commands.set_value.x_run__mutmut_40: not checked
+    troupe.commands.set_value.x_run__mutmut_41: not checked
+    troupe.commands.set_value.x_run__mutmut_42: not checked
+    troupe.commands.set_value.x_run__mutmut_43: not checked
+    troupe.commands.set_value.x_run__mutmut_44: not checked
+    troupe.commands.set_value.x_run__mutmut_45: not checked
+    troupe.commands.set_value.x_run__mutmut_46: not checked
+    troupe.commands.set_value.x_run__mutmut_47: not checked
+    troupe.commands.set_value.x_run__mutmut_48: not checked
+    troupe.commands.set_value.x_run__mutmut_49: no tests
+    troupe.commands.set_value.x_run__mutmut_50: no tests
+    troupe.commands.set_value.x_run__mutmut_51: not checked
+    troupe.commands.set_value.x_run__mutmut_52: not checked
+    troupe.commands.set_value.x_run__mutmut_53: not checked
+    troupe.commands.set_value.x_run__mutmut_54: not checked
+    troupe.commands.watch.x_watch__mutmut_1: not checked
+    troupe.commands.watch.x_watch__mutmut_2: no tests
+    troupe.commands.watch.x_watch__mutmut_3: not checked
+    troupe.commands.watch.x_watch__mutmut_4: not checked
+    troupe.commands.watch.x_watch__mutmut_5: not checked
+    troupe.commands.watch.x_watch__mutmut_6: not checked
+    troupe.commands.watch.x_watch__mutmut_7: not checked
+    troupe.commands.watch.x_watch__mutmut_8: not checked
+    troupe.commands.watch.x_watch__mutmut_9: not checked
+    troupe.commands.watch.x_watch__mutmut_10: not checked
+    troupe.commands.watch.x_watch__mutmut_11: not checked
+    troupe.commands.watch.x_watch__mutmut_12: not checked
+    troupe.commands.watch.x_watch__mutmut_13: not checked
+    troupe.commands.watch.x_watch__mutmut_14: not checked
+    troupe.commands.watch.x_watch__mutmut_15: not checked
+    troupe.commands.watch.x_watch__mutmut_16: not checked
+    troupe.commands.watch.x_watch__mutmut_17: not checked
+    troupe.commands.watch.x_watch__mutmut_18: not checked
+    troupe.commands.watch.x_watch__mutmut_19: not checked
+    troupe.commands.watch.x_watch__mutmut_20: not checked
+    troupe.commands.watch.x_watch__mutmut_21: not checked
+    troupe.commands.watch.x_watch__mutmut_22: not checked
+    troupe.commands.watch.x_watch__mutmut_23: not checked
+    troupe.commands.watch.x_watch__mutmut_24: not checked
+    troupe.commands.watch.x_watch__mutmut_25: not checked
+    troupe.commands.watch.x_watch__mutmut_26: not checked
+    troupe.commands.watch.x_watch__mutmut_27: not checked
+    troupe.commands.watch.x_watch__mutmut_28: not checked
+    troupe.commands.watch.x_watch__mutmut_29: not checked
+    troupe.commands.watch.x_watch__mutmut_30: not checked
+    troupe.commands.watch.x_watch__mutmut_31: not checked
+    troupe.commands.watch.x_watch__mutmut_32: not checked
+    troupe.commands.watch.x__run__mutmut_1: not checked
+    troupe.commands.watch.x__run__mutmut_2: not checked
+    troupe.commands.watch.x__run__mutmut_3: not checked
+    troupe.commands.watch.x__run__mutmut_4: not checked
+    troupe.commands.watch.x__run__mutmut_5: not checked
+    troupe.commands.watch.x__run__mutmut_6: not checked
+    troupe.commands.watch.x__run__mutmut_7: not checked
+    troupe.commands.watch.x__run__mutmut_8: not checked
+    troupe.commands.watch.x__run__mutmut_9: not checked
+    troupe.commands.watch.x__run__mutmut_10: not checked
+    troupe.commands.watch.x__run__mutmut_11: not checked
+    troupe.commands.watch.x__run__mutmut_12: not checked
+    troupe.commands.watch.x__run__mutmut_13: not checked
+    troupe.commands.watch.x__run__mutmut_14: not checked
+    troupe.commands.watch.x__run__mutmut_15: not checked
+    troupe.commands.watch.x__run__mutmut_16: not checked
+    troupe.commands.watch.x__run__mutmut_17: not checked
+    troupe.commands.watch.x__run__mutmut_18: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_1: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_2: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_3: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_4: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_5: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_6: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_7: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_8: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_9: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_10: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_11: no tests
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_12: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_13: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_14: not checked
+    troupe.commands.watch.x__reconcile_and_snapshot__mutmut_15: not checked
+    troupe.commands.watch.x__current__mutmut_1: not checked
+    troupe.commands.get.x_run__mutmut_1: not checked
+    troupe.commands.get.x_run__mutmut_2: not checked
+    troupe.commands.get.x_run__mutmut_3: not checked
+    troupe.commands.get.x_run__mutmut_4: not checked
+    troupe.commands.get.x_run__mutmut_5: not checked
+    troupe.commands.get.x_run__mutmut_6: not checked
+    troupe.commands.get.x_run__mutmut_7: not checked
+    troupe.commands.get.x_run__mutmut_8: not checked
+    troupe.commands.get.x_run__mutmut_9: not checked
+    troupe.commands.get.x_run__mutmut_10: not checked
+    troupe.commands.get.x_run__mutmut_11: not checked
+    troupe.commands.get.x_run__mutmut_12: not checked
+    troupe.commands.get.x_run__mutmut_13: not checked
+    troupe.commands.get.x_run__mutmut_14: not checked
+    troupe.commands.get.x_run__mutmut_15: not checked
+    troupe.commands.get.x_run__mutmut_16: not checked
+    troupe.commands.get.x_run__mutmut_17: not checked
+    troupe.commands.get.x_run__mutmut_18: not checked
+    troupe.commands.get.x_run__mutmut_19: not checked
+    troupe.commands.get.x_run__mutmut_20: not checked
+    troupe.commands.get.x_run__mutmut_21: not checked
+    troupe.commands.get.x_run__mutmut_22: not checked
+    troupe.commands.get.x_run__mutmut_23: not checked
+    troupe.commands.get.x_run__mutmut_24: not checked
+    troupe.commands.get.x_run__mutmut_25: not checked
+    troupe.commands.get.x_run__mutmut_26: not checked
+    troupe.commands.get.x_run__mutmut_27: not checked
+    troupe.commands.get.x_run__mutmut_28: not checked
+    troupe.commands.get.x_run__mutmut_29: not checked
+    troupe.commands.get.x_run__mutmut_30: not checked
+    troupe.commands.get.x_run__mutmut_31: not checked
+    troupe.commands.history.x__matches__mutmut_1: not checked
+    troupe.commands.history.x__matches__mutmut_2: not checked
+    troupe.commands.history.x__matches__mutmut_3: not checked
+    troupe.commands.history.x__matches__mutmut_4: not checked
+    troupe.commands.history.x__matches__mutmut_5: not checked
+    troupe.commands.history.x__line__mutmut_1: not checked
+    troupe.commands.history.x__line__mutmut_2: not checked
+    troupe.commands.history.x__line__mutmut_3: not checked
+    troupe.commands.history.x__line__mutmut_4: not checked
+    troupe.commands.history.x__line__mutmut_5: not checked
+    troupe.commands.history.x__line__mutmut_6: not checked
+    troupe.commands.history.x__line__mutmut_7: not checked
+    troupe.commands.history.x__line__mutmut_8: not checked
+    troupe.commands.history.x__line__mutmut_9: not checked
+    troupe.commands.history.x__line__mutmut_10: not checked
+    troupe.commands.history.x__line__mutmut_11: not checked
+    troupe.commands.history.x__line__mutmut_12: not checked
+    troupe.commands.history.x__line__mutmut_13: not checked
+    troupe.commands.history.x__line__mutmut_14: not checked
+    troupe.commands.history.x__line__mutmut_15: not checked
+    troupe.commands.history.x__line__mutmut_16: not checked
+    troupe.commands.history.x__line__mutmut_17: not checked
+    troupe.commands.history.x__line__mutmut_18: not checked
+    troupe.commands.history.x__line__mutmut_19: not checked
+    troupe.commands.history.x__line__mutmut_20: not checked
+    troupe.commands.history.x__line__mutmut_21: not checked
+    troupe.commands.history.x__line__mutmut_22: not checked
+    troupe.commands.history.x__line__mutmut_23: not checked
+    troupe.commands.history.x__line__mutmut_24: not checked
+    troupe.commands.history.x__line__mutmut_25: not checked
+    troupe.commands.history.x__line__mutmut_26: not checked
+    troupe.commands.history.x__line__mutmut_27: not checked
+    troupe.commands.history.x__line__mutmut_28: not checked
+    troupe.commands.history.x__line__mutmut_29: not checked
+    troupe.commands.history.x__line__mutmut_30: not checked
+    troupe.commands.history.x__line__mutmut_31: not checked
+    troupe.commands.history.x__line__mutmut_32: not checked
+    troupe.commands.history.x__line__mutmut_33: not checked
+    troupe.commands.history.x_run__mutmut_1: not checked
+    troupe.commands.history.x_run__mutmut_2: not checked
+    troupe.commands.history.x_run__mutmut_3: not checked
+    troupe.commands.history.x_run__mutmut_4: not checked
+    troupe.commands.history.x_run__mutmut_5: not checked
+    troupe.commands.history.x_run__mutmut_6: not checked
+    troupe.commands.history.x_run__mutmut_7: not checked
+    troupe.commands.history.x_run__mutmut_8: not checked
+    troupe.commands.history.x_run__mutmut_9: not checked
+    troupe.commands.history.x_run__mutmut_10: not checked
+    troupe.commands.history.x_run__mutmut_11: not checked
+    troupe.commands.history.x_run__mutmut_12: not checked
+    troupe.commands.history.x_run__mutmut_13: not checked
+    troupe.commands.history.x_run__mutmut_14: not checked
+    troupe.commands.history.x_run__mutmut_15: not checked
+    troupe.commands.history.x_run__mutmut_16: not checked
+    troupe.commands.history.x_run__mutmut_17: not checked
+    troupe.commands.history.x_run__mutmut_18: not checked
+__results_rc=0
+/work/bakeoff-specs-speckitty/.venv/lib/python3.12/site-packages/mutmut/configuration.py:143: UserWarning: The config paths_to_mutate is deprecated. Please rename it to source_paths
+  warnings.warn("The config paths_to_mutate is deprecated. Please rename it to source_paths")

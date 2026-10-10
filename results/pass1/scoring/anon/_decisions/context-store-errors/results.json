@@ -1,0 +1,538 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--include",
+          "agent",
+          "file:sub"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "agent:coder"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/events.db": "this is not a sqlite database, it is corrupt history\n",
+      ".troupe/events.sqlite": "this is not a sqlite database, it is corrupt history\n",
+      ".troupe/eventstore.db": "this is not a sqlite database, it is corrupt history\n",
+      ".troupe/sub/keep.txt": "placeholder so .troupe/sub is a directory\n",
+      ".troupe/troupe.db": "this is not a sqlite database, it is corrupt history\n",
+      ".troupe/troupe.yml": "model: opus  # main model\nretry: 3\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:44:21.772218Z\", \"reason\": null, \"change\": \"a43ffb40-2826-49f6-96e9-856a5eeef7ef\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:44:21.772218Z\", \"reason\": null, \"change\": \"a43ffb40-2826-49f6-96e9-856a5eeef7ef\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--include",
+                "agent",
+                "file:sub"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:coder"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "/theatre/.troupe/troupe.yml: agent: written value cannot be read back: /theatre/.troupe/troupe.yml: agent: include target /theatre/.troupe/sub does not exist or is not a regular file\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:44:21.772218Z\", \"reason\": null, \"change\": \"a43ffb40-2826-49f6-96e9-856a5eeef7ef\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:44:28.704546Z\", \"reason\": null, \"change\": \"eb881518-ed4d-4903-8798-ed5967a004b2\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:44:28.704546Z\", \"reason\": null, \"change\": \"eb881518-ed4d-4903-8798-ed5967a004b2\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--include",
+                "agent",
+                "file:sub"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:coder"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: agent: include target is a directory: /theatre/.troupe/sub (included from /theatre/.troupe/troupe.yml, at agent); no file changed\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:44:28.704546Z\", \"reason\": null, \"change\": \"eb881518-ed4d-4903-8798-ed5967a004b2\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:44:37.574053Z\", \"reason\": null, \"change\": \"225679c0-c610-4dde-adb4-2f70c379a782\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:44:37.574053Z\", \"reason\": null, \"change\": \"225679c0-c610-4dde-adb4-2f70c379a782\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--include",
+                "agent",
+                "file:sub"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:coder"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: error: agent: the change to /theatre/.troupe/troupe.yml would not load back (/theatre/.troupe/sub: is a directory, not a file); no file was changed\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:44:37.574053Z\", \"reason\": null, \"change\": \"225679c0-c610-4dde-adb4-2f70c379a782\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Exit 4 naming the store (sqlite, persistence and OS errors; corrupt or unknown lineage values)",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 1,
+              "stderr": "Traceback (most recent call last):\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1310, in _get_connection\n    conn = self._pool.popleft()\n           ^^^^^^^^^^^^^^^^^^^^\nIndexError: pop from an empty deque\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/work/project/.venv/bin/troupe\", line 10, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 100, in main\n    output = run(sys.argv[1:] if argv is None else argv)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 95, in run\n    return commands.history(theatre, prefix)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/commands.py\", line 161, in history\n    with theatre_session(theatre, \"history\") as (_, store):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/commands.py\", line 67, in theatre_session\n    store = ConfigStore(state_dir(theatre))\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/store.py\", line 148, in __init__\n    self.app: Application[UUID] = Application(\n                                  ^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 643, in __init__\n    self.recorder = self.construct_recorder()\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 716, in construct_recorder\n    return self.factory.application_recorder()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 768, in application_recorder\n    recorder.create_table()\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 266, in create_table\n    with self.datastore.transaction(commit=True) as c:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 233, in transaction\n    with connection as conn, conn.transaction(commit=commit) as curs:\n         ^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 240, in get_connection\n    conn = self.pool.get_connection(is_writer=commit)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1279, in get_connection\n    conn = self._get_connection(\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1326, in _get_connection\n    conn = self._create_connection()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 188, in _create_connection\n    cursor.execute(\"PRAGMA journal_mode;\")\nsqlite3.DatabaseError: file is not a database\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 1,
+              "stderr": "Traceback (most recent call last):\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1310, in _get_connection\n    conn = self._pool.popleft()\n           ^^^^^^^^^^^^^^^^^^^^\nIndexError: pop from an empty deque\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/work/project/.venv/bin/troupe\", line 10, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 100, in main\n    output = run(sys.argv[1:] if argv is None else argv)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 73, in run\n    return commands.get(theatre, parse_path(args.path))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/commands.py\", line 97, in get\n    with theatre_session(theatre, \"get\") as (config, _):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/commands.py\", line 67, in theatre_session\n    store = ConfigStore(state_dir(theatre))\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/store.py\", line 148, in __init__\n    self.app: Application[UUID] = Application(\n                                  ^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 643, in __init__\n    self.recorder = self.construct_recorder()\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 716, in construct_recorder\n    return self.factory.application_recorder()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 768, in application_recorder\n    recorder.create_table()\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 266, in create_table\n    with self.datastore.transaction(commit=True) as c:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 233, in transaction\n    with connection as conn, conn.transaction(commit=commit) as curs:\n         ^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 240, in get_connection\n    conn = self.pool.get_connection(is_writer=commit)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1279, in get_connection\n    conn = self._get_connection(\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1326, in _get_connection\n    conn = self._create_connection()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 188, in _create_connection\n    cursor.execute(\"PRAGMA journal_mode;\")\nsqlite3.DatabaseError: file is not a database\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--include",
+                "agent",
+                "file:sub"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:coder"
+              },
+              "files": {},
+              "rc": 1,
+              "stderr": "Traceback (most recent call last):\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1310, in _get_connection\n    conn = self._pool.popleft()\n           ^^^^^^^^^^^^^^^^^^^^\nIndexError: pop from an empty deque\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/work/project/.venv/bin/troupe\", line 10, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 100, in main\n    output = run(sys.argv[1:] if argv is None else argv)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 79, in run\n    commands.set_value(\n  File \"/work/project/src/troupe/commands.py\", line 133, in set_value\n    with theatre_session(theatre, \"set\") as (config, store):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/commands.py\", line 67, in theatre_session\n    store = ConfigStore(state_dir(theatre))\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/store.py\", line 148, in __init__\n    self.app: Application[UUID] = Application(\n                                  ^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 643, in __init__\n    self.recorder = self.construct_recorder()\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 716, in construct_recorder\n    return self.factory.application_recorder()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 768, in application_recorder\n    recorder.create_table()\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 266, in create_table\n    with self.datastore.transaction(commit=True) as c:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 233, in transaction\n    with connection as conn, conn.transaction(commit=commit) as curs:\n         ^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 240, in get_connection\n    conn = self.pool.get_connection(is_writer=commit)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1279, in get_connection\n    conn = self._get_connection(\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1326, in _get_connection\n    conn = self._create_connection()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 188, in _create_connection\n    cursor.execute(\"PRAGMA journal_mode;\")\nsqlite3.DatabaseError: file is not a database\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 1,
+              "stderr": "Traceback (most recent call last):\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1310, in _get_connection\n    conn = self._pool.popleft()\n           ^^^^^^^^^^^^^^^^^^^^\nIndexError: pop from an empty deque\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/work/project/.venv/bin/troupe\", line 10, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 100, in main\n    output = run(sys.argv[1:] if argv is None else argv)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 73, in run\n    return commands.get(theatre, parse_path(args.path))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/commands.py\", line 97, in get\n    with theatre_session(theatre, \"get\") as (config, _):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/commands.py\", line 67, in theatre_session\n    store = ConfigStore(state_dir(theatre))\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/store.py\", line 148, in __init__\n    self.app: Application[UUID] = Application(\n                                  ^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 643, in __init__\n    self.recorder = self.construct_recorder()\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 716, in construct_recorder\n    return self.factory.application_recorder()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 768, in application_recorder\n    recorder.create_table()\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 266, in create_table\n    with self.datastore.transaction(commit=True) as c:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 233, in transaction\n    with connection as conn, conn.transaction(commit=commit) as curs:\n         ^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 240, in get_connection\n    conn = self.pool.get_connection(is_writer=commit)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1279, in get_connection\n    conn = self._get_connection(\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1326, in _get_connection\n    conn = self._create_connection()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 188, in _create_connection\n    cursor.execute(\"PRAGMA journal_mode;\")\nsqlite3.DatabaseError: file is not a database\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 1,
+              "stderr": "Traceback (most recent call last):\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1310, in _get_connection\n    conn = self._pool.popleft()\n           ^^^^^^^^^^^^^^^^^^^^\nIndexError: pop from an empty deque\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/work/project/.venv/bin/troupe\", line 10, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 100, in main\n    output = run(sys.argv[1:] if argv is None else argv)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 95, in run\n    return commands.history(theatre, prefix)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/commands.py\", line 161, in history\n    with theatre_session(theatre, \"history\") as (_, store):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/commands.py\", line 67, in theatre_session\n    store = ConfigStore(state_dir(theatre))\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/store.py\", line 148, in __init__\n    self.app: Application[UUID] = Application(\n                                  ^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 643, in __init__\n    self.recorder = self.construct_recorder()\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 716, in construct_recorder\n    return self.factory.application_recorder()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 768, in application_recorder\n    recorder.create_table()\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 266, in create_table\n    with self.datastore.transaction(commit=True) as c:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 233, in transaction\n    with connection as conn, conn.transaction(commit=commit) as curs:\n         ^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 240, in get_connection\n    conn = self.pool.get_connection(is_writer=commit)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1279, in get_connection\n    conn = self._get_connection(\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1326, in _get_connection\n    conn = self._create_connection()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 188, in _create_connection\n    cursor.execute(\"PRAGMA journal_mode;\")\nsqlite3.DatabaseError: file is not a database\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:44:31.655647Z\", \"reason\": null, \"change\": \"a592de4e-2703-41b9-9d1e-078d32babe09\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:44:31.655647Z\", \"reason\": null, \"change\": \"a592de4e-2703-41b9-9d1e-078d32babe09\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--include",
+                "agent",
+                "file:sub"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:coder"
+              },
+              "files": {},
+              "rc": 3,
+              "stderr": "troupe: write refused: agent: cannot write this change faithfully (/theatre/.troupe/troupe.yml: include target /theatre/.troupe/sub not found)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "opus\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:44:31.655647Z\", \"reason\": null, \"change\": \"a592de4e-2703-41b9-9d1e-078d32babe09\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 1,
+              "stderr": "Traceback (most recent call last):\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1310, in _get_connection\n    conn = self._pool.popleft()\n           ^^^^^^^^^^^^^^^^^^^^\nIndexError: pop from an empty deque\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/work/project/.venv/bin/troupe\", line 10, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 216, in main\n    code = run(args)\n           ^^^^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 129, in run\n    app = Troupe(state_dir)\n          ^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/store.py\", line 60, in __init__\n    super().__init__(\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 643, in __init__\n    self.recorder = self.construct_recorder()\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 716, in construct_recorder\n    return self.factory.application_recorder()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 768, in application_recorder\n    recorder.create_table()\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 266, in create_table\n    with self.datastore.transaction(commit=True) as c:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 233, in transaction\n    with connection as conn, conn.transaction(commit=commit) as curs:\n         ^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 240, in get_connection\n    conn = self.pool.get_connection(is_writer=commit)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1279, in get_connection\n    conn = self._get_connection(\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1326, in _get_connection\n    conn = self._create_connection()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 188, in _create_connection\n    cursor.execute(\"PRAGMA journal_mode;\")\nsqlite3.DatabaseError: file is not a database\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 1,
+              "stderr": "Traceback (most recent call last):\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1310, in _get_connection\n    conn = self._pool.popleft()\n           ^^^^^^^^^^^^^^^^^^^^\nIndexError: pop from an empty deque\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/work/project/.venv/bin/troupe\", line 10, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 216, in main\n    code = run(args)\n           ^^^^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 129, in run\n    app = Troupe(state_dir)\n          ^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/store.py\", line 60, in __init__\n    super().__init__(\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 643, in __init__\n    self.recorder = self.construct_recorder()\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 716, in construct_recorder\n    return self.factory.application_recorder()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 768, in application_recorder\n    recorder.create_table()\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 266, in create_table\n    with self.datastore.transaction(commit=True) as c:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 233, in transaction\n    with connection as conn, conn.transaction(commit=commit) as curs:\n         ^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 240, in get_connection\n    conn = self.pool.get_connection(is_writer=commit)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1279, in get_connection\n    conn = self._get_connection(\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1326, in _get_connection\n    conn = self._create_connection()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 188, in _create_connection\n    cursor.execute(\"PRAGMA journal_mode;\")\nsqlite3.DatabaseError: file is not a database\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "--include",
+                "agent",
+                "file:sub"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:coder"
+              },
+              "files": {},
+              "rc": 1,
+              "stderr": "Traceback (most recent call last):\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1310, in _get_connection\n    conn = self._pool.popleft()\n           ^^^^^^^^^^^^^^^^^^^^\nIndexError: pop from an empty deque\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/work/project/.venv/bin/troupe\", line 10, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 216, in main\n    code = run(args)\n           ^^^^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 129, in run\n    app = Troupe(state_dir)\n          ^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/store.py\", line 60, in __init__\n    super().__init__(\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 643, in __init__\n    self.recorder = self.construct_recorder()\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 716, in construct_recorder\n    return self.factory.application_recorder()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 768, in application_recorder\n    recorder.create_table()\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 266, in create_table\n    with self.datastore.transaction(commit=True) as c:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 233, in transaction\n    with connection as conn, conn.transaction(commit=commit) as curs:\n         ^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 240, in get_connection\n    conn = self.pool.get_connection(is_writer=commit)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1279, in get_connection\n    conn = self._get_connection(\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1326, in _get_connection\n    conn = self._create_connection()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 188, in _create_connection\n    cursor.execute(\"PRAGMA journal_mode;\")\nsqlite3.DatabaseError: file is not a database\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 1,
+              "stderr": "Traceback (most recent call last):\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1310, in _get_connection\n    conn = self._pool.popleft()\n           ^^^^^^^^^^^^^^^^^^^^\nIndexError: pop from an empty deque\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/work/project/.venv/bin/troupe\", line 10, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 216, in main\n    code = run(args)\n           ^^^^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 129, in run\n    app = Troupe(state_dir)\n          ^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/store.py\", line 60, in __init__\n    super().__init__(\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 643, in __init__\n    self.recorder = self.construct_recorder()\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 716, in construct_recorder\n    return self.factory.application_recorder()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 768, in application_recorder\n    recorder.create_table()\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 266, in create_table\n    with self.datastore.transaction(commit=True) as c:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 233, in transaction\n    with connection as conn, conn.transaction(commit=commit) as curs:\n         ^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 240, in get_connection\n    conn = self.pool.get_connection(is_writer=commit)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1279, in get_connection\n    conn = self._get_connection(\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1326, in _get_connection\n    conn = self._create_connection()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 188, in _create_connection\n    cursor.execute(\"PRAGMA journal_mode;\")\nsqlite3.DatabaseError: file is not a database\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 1,
+              "stderr": "Traceback (most recent call last):\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1310, in _get_connection\n    conn = self._pool.popleft()\n           ^^^^^^^^^^^^^^^^^^^^\nIndexError: pop from an empty deque\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/work/project/.venv/bin/troupe\", line 10, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 216, in main\n    code = run(args)\n           ^^^^^^^^^\n  File \"/work/project/src/troupe/cli.py\", line 129, in run\n    app = Troupe(state_dir)\n          ^^^^^^^^^^^^^^^^^\n  File \"/work/project/src/troupe/store.py\", line 60, in __init__\n    super().__init__(\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 643, in __init__\n    self.recorder = self.construct_recorder()\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/application.py\", line 716, in construct_recorder\n    return self.factory.application_recorder()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 768, in application_recorder\n    recorder.create_table()\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 266, in create_table\n    with self.datastore.transaction(commit=True) as c:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 233, in transaction\n    with connection as conn, conn.transaction(commit=commit) as curs:\n         ^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.14-linux-aarch64-gnu/lib/python3.12/contextlib.py\", line 137, in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 240, in get_connection\n    conn = self.pool.get_connection(is_writer=commit)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1279, in get_connection\n    conn = self._get_connection(\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/persistence.py\", line 1326, in _get_connection\n    conn = self._create_connection()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/project/.venv/lib/python3.12/site-packages/eventsourcing/sqlite.py\", line 188, in _create_connection\n    cursor.execute(\"PRAGMA journal_mode;\")\nsqlite3.DatabaseError: file is not a database\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

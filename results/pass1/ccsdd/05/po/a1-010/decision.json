@@ -1,0 +1,16 @@
+{
+  "kind": "question",
+  "reply": null,
+  "answers": [
+    {
+      "question": "Should the four shared-file cases that still keep the step-1 refusal (changing an existing value in a shared file, `--in-include` into a shared file, a new key inside a list item of a shared file, and one VALUE that adds keys at two places of the same shared file) follow choice 17 instead?",
+      "reply": "Yes for the first three. Follow the contract's placement rules. No contract rule refuses a write because the target file is included in more than one place. (a) An existing value is changed in the file that contains it (rule 1 under `set`, and the last bullet of Overrides). (b) `set --in-include` writes the new key into the included file (In-include, using the step 1 rule). (c) A new key inside a list item is written in the file that holds the list (Overrides, third bullet). In each case, write to the shared file. The change then appears at every place that file is included, like any other content of that file, and history records the resulting leaf changes. The fourth case is different. Suppose one VALUE asks for keys at two places that the placement rules map to the same location in one shared file. If the values agree, write the key once in the shared file. If they conflict, no single write can produce the requested configuration. The contract does not cover that conflict, so it is out of contract and the choice is yours. Exit 3 is a valid choice. Record which you chose and why.",
+      "escalate": false,
+      "cited": "set PATH VALUE (rule 1); Overrides; In-include"
+    }
+  ],
+  "approved": null,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

@@ -1,0 +1,554 @@
+diff --git a/README.md b/README.md
+index a53a512..2f1cbc9 100644
+--- a/README.md
++++ b/README.md
+@@ -5,15 +5,21 @@ AI orchestration. This package currently provides the configuration subsystem:
+ ```
+ uv run troupe config get PATH [--theatre DIR]
+ uv run troupe config show [PATH] [--sources] [--theatre DIR]
+-uv run troupe config set PATH VALUE [--reason TEXT] [--theatre DIR]
++uv run troupe config set PATH VALUE [--in-include] [--reason TEXT] [--theatre DIR]
+ uv run troupe config history [PATH] [--theatre DIR]
+ uv run troupe config watch [--theatre DIR]
+ ```
+ 
+ - Configuration lives in `DIR/.troupe/troupe.yml` (or `.yaml`); `file:` strings include other files.
++- An include may also be written as a mapping, `{$ref: file:..., key: value}`: the other keys override
++  the included YAML (deep-merged: mappings merge, anything else replaces).
+ - `get` prints one value; `show` prints a value or a whole section as YAML (includes resolved), and with
+   `--sources` marks every scalar with the file it comes from.
+ - `set` writes changes back byte-surgically: only the bytes of the changed value change.
++  Existing values change where they are set (an override, else the file they come from); a new key under
++  an included section is added as an override in the including file, which never touches the shared
++  include. List items and keys inside list items stay in the file that holds the list.
++  With `--in-include`, a new key is written into the included file instead.
+ - The configuration is held as an event-sourced projection (`eventsourcing`, SQLite at
+   `.troupe/troupe-state.sqlite`); `history` lists per-leaf `import`/`set`/`remove` events.
+ - Every command except `history` first reconciles the projection with the files (hand edits become
+diff --git a/docs/decisions.md b/docs/decisions.md
+index 3cd22ef..7f8e3fa 100644
+--- a/docs/decisions.md
++++ b/docs/decisions.md
+@@ -13,7 +13,8 @@ corrupt user data or to contradict the contract.
+ 4. **A mapping/list set onto a node of the same kind is merged key-by-key** (index-by-index for lists),
+    so unchanged entries and their comments keep their bytes.
+ 5. **Replacing a value that comes wholly from a YAML include always exits 3**, even if the new value is
+-   identical; setting keys inside the include writes into the included file.
++   identical; setting existing keys inside the include writes into the included file (new keys: see 24).
++   This includes a mapping-form include: replacing the whole include, overrides and all, exits 3.
+ 6. **A `VALUE` that parses as a block collection (e.g. bare `a: b`) is a usage error (exit 2)**: it is
+    not a single flow node. Quote it (`'"a: b"'`) to set the string.
+ 7. **Setting a collection to empty writes `{}` / `[]`**, since block style cannot represent an empty
+@@ -62,3 +63,22 @@ corrupt user data or to contradict the contract.
+     gets `change: "import"` (there is only ever one import, recorded as a unit). A legacy `set`/`remove`
+     may have come from the CLI or a hand edit, which cannot be told apart, so its `via` and `change`
+     are `null`.
++24. **"The file that contains the include reference" is one hop up.** A new key whose deepest existing
++    ancestor comes from `c.yml` is written in the file that includes `c.yml`, even if that file is itself
++    included. A mapping merged from a mapping-form include takes new keys in its overrides, where they
++    already are. A file whose whole content is another include (`file:b.yml`) is converted to
++    `$ref: file:b.yml` plus the new keys at the top level.
++25. **A scalar-form include in a flow collection is converted to a flow mapping**
++    (`{coder: {$ref: file:c.yml, t: 1}}`); one that is a block list item becomes `- $ref: file:c.yml`
++    with the overrides aligned below, keeping the end-of-line comment on the dash line. One whose
++    `file:` string is not on its key's (or dash's) line is refused (exit 3) rather than reflowed.
++26. **A `$ref` whose value is not a `file:` string is an error (exit 4)**, as is a mapping-form text
++    include with sibling keys. A mapping-form include with only `$ref` is exactly the include.
++27. **If the included YAML is not a mapping, overrides (a mapping) replace it**, following the merge rule
++    that anything but two mappings is replaced; with no overrides it is the included value unchanged.
++28. **Removing a key from a merged mapping (by setting the mapping) removes it everywhere it is set**:
++    from the include and from the overrides, so the merged value is what was asked for.
++29. **`--in-include` only decides where new keys go.** A new key goes into the file the deepest existing
++    ancestor comes from; under a merged mapping, that is the included file (never the overrides, even if
++    they already hold part of the path). Existing values still change where they are set, and without
++    any include the flag changes nothing.
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index 22d943f..8125958 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -66,6 +66,11 @@ def _parser() -> argparse.ArgumentParser:
+             p.add_argument("--sources", action="store_true", help="say which file each value comes from")
+         if name == "set":
+             p.add_argument("--reason", default=None, help="why the change is made (recorded in history)")
++            p.add_argument(
++                "--in-include",
++                action="store_true",
++                help="write a new key into the included file instead of as an override in the including file",
++            )
+     return parser
+ 
+ 
+@@ -145,7 +150,7 @@ def run(argv: list[str]) -> int:
+             _reconcile(store, cfg)
+             if args.cmd == "set":
+                 how = lineage("cli", actor, args.reason)
+-                return _set(theatre, cfg, store, segs, args.path, value, how)
++                return _set(theatre, cfg, store, segs, args.path, value, how, args.in_include)
+ 
+     if args.cmd in ("get", "show"):
+         item = lookup(cfg.root, segs, args.path) if segs is not None else cfg.root
+@@ -192,8 +197,10 @@ def _reconcile(store: ConfigStore, cfg: Config) -> None:
+         store.ensure_imported(leaves)
+ 
+ 
+-def _set(theatre: Path, cfg, store: ConfigStore, segs: list[str], path: str, value, how: dict) -> int:
+-    writer = Writer()
++def _set(
++    theatre: Path, cfg, store: ConfigStore, segs: list[str], path: str, value, how: dict, in_include: bool = False
++) -> int:
++    writer = Writer(in_include)
+     writer.set_path(cfg.root, segs, value, path)
+     results = {p: t for p, t in writer.results().items() if p not in writer.docs or t != writer.docs[p].text}
+     if not results:
+diff --git a/src/troupe/config.py b/src/troupe/config.py
+index 117dde1..aa12daa 100644
+--- a/src/troupe/config.py
++++ b/src/troupe/config.py
+@@ -128,6 +128,10 @@ class Item:
+     node: the YAML node in `doc` (for `text`, the `file:` string node).
+     include: the include target when this value came from an include.
+     parent/key: position in the containing collection (None for a document root).
++    ref: for the root of a YAML include, the including file and the `file:` string (scalar form) or
++        `$ref` mapping (mapping form) that includes it.
++    parts: for a mapping merged from an include and its overrides, the merged mappings (included part
++        first); `doc`/`node` are then the overrides' mapping, where new keys go.
+     """
+ 
+     kind: str
+@@ -139,6 +143,8 @@ class Item:
+     key: Any = None  # str for mapping entries, int for sequence items
+     key_node: yaml.Node | None = None
+     flow: bool = False  # inside a flow collection
++    ref: "tuple[Doc, yaml.Node] | None" = None
++    parts: "list[Item] | None" = None
+ 
+     @property
+     def yaml_include(self) -> bool:
+@@ -187,14 +193,33 @@ def load(theatre: Path, overrides: dict[Path, str] | None = None) -> Config:
+         if node is None:
+             return Item("scalar", doc, None, None)
+         if isinstance(node, yaml.MappingNode):
++            ref = None
+             item = Item("map", doc, node, {}, flow=flow)
+             for k, v in node.value:
+                 if not isinstance(k, yaml.ScalarNode):
+                     raise ConfigError(f"{doc.path}: complex mapping keys are not supported")
++                if k.value == "$ref":
++                    ref = v
++                    continue
+                 child = build(doc, v, stack, bool(node.flow_style))
+                 child.parent, child.key, child.key_node = item, k.value, k
+                 item.value[k.value] = child
+-            return item
++            if ref is None:
++                return item
++            # Mapping form: the included content, deep-merged with the other keys as overrides.
++            value = scalar_value(ref) if isinstance(ref, yaml.ScalarNode) else None
++            if not (isinstance(value, str) and value.startswith("file:")):
++                raise ConfigError(f"{doc.path}: $ref must be a file: include")
++            included = include(doc, ref, value, stack, flow)
++            if included.kind == "text":
++                if item.value:
++                    raise ConfigError(f"{doc.path}: overrides apply only to YAML includes, not {included.include}")
++                return included
++            if included.kind != "map" and not item.value:
++                return included
++            merged = merge(included, item)
++            merged.include = included.include
++            return merged
+         if isinstance(node, yaml.SequenceNode):
+             item = Item("seq", doc, node, [], flow=flow)
+             for i, v in enumerate(node.value):
+@@ -204,25 +229,52 @@ def load(theatre: Path, overrides: dict[Path, str] | None = None) -> Config:
+             return item
+         value = scalar_value(node)
+         if isinstance(value, str) and value.startswith("file:"):
+-            target = (doc.path.parent / value[5:]).resolve()
+-            if target in stack:
+-                raise ConfigError(f"{doc.path}: include cycle through {target}")
+-            if not target.is_file():
+-                raise ConfigError(f"{doc.path}: include target {target} not found")
+-            if target.suffix in (".yml", ".yaml"):
+-                tdoc = get_doc(target)
+-                item = build(tdoc, tdoc.root, stack + (target,), False)
+-                item.include = target
+-                item.flow = flow
+-                return item
+-            return Item("text", doc, node, text_of(target), include=target, flow=flow)
++            item = include(doc, node, value, stack, flow)
++            if item.kind != "text" and item.ref is None:  # a whole-file include keeps the innermost
++                item.ref = (doc, node)
++            return item
+         return Item("scalar", doc, node, value, flow=flow)
+ 
++    def include(doc: Doc, node: yaml.Node, value: str, stack: tuple[Path, ...], flow: bool) -> Item:
++        target = (doc.path.parent / value[5:]).resolve()
++        if target in stack:
++            raise ConfigError(f"{doc.path}: include cycle through {target}")
++        if not target.is_file():
++            raise ConfigError(f"{doc.path}: include target {target} not found")
++        if target.suffix in (".yml", ".yaml"):
++            tdoc = get_doc(target)
++            item = build(tdoc, tdoc.root, stack + (target,), False)
++            item.include = target
++            item.flow = flow
++            return item
++        return Item("text", doc, node, text_of(target), include=target, flow=flow)
++
+     root_doc = get_doc(path)
+     root = build(root_doc, root_doc.root, (path,), False)
+     return Config(path, root, docs)
+ 
+ 
++def merge(base: Item, over: Item) -> Item:
++    """`base` deep-merged with `over`: mappings merge recursively, anything else in `over` replaces.
++
++    The result takes `over`'s position (parent, key).
++    """
++    if base.kind != "map" or over.kind != "map":
++        return over
++    item = Item("map", over.doc, over.node, {}, flow=over.flow, parts=[base, over])
++    item.parent, item.key, item.key_node = over.parent, over.key, over.key_node
++    for k, child in base.value.items():
++        if k in over.value:
++            child = merge(child, over.value[k])
++        child.parent = item
++        item.value[k] = child
++    for k, child in over.value.items():
++        if k not in base.value:
++            child.parent = item
++            item.value[k] = child
++    return item
++
++
+ def flatten(item: Item, prefix: str = "") -> dict[str, Any]:
+     """Leaves of the configuration, by dotted path, in document order."""
+     out: dict[str, Any] = {}
+diff --git a/src/troupe/writer.py b/src/troupe/writer.py
+index 83c17cf..3a788ee 100644
+--- a/src/troupe/writer.py
++++ b/src/troupe/writer.py
+@@ -32,7 +32,8 @@ _COMMENT_GAP = re.compile(r"[ \t]+(?=#)")
+ 
+ 
+ class Writer:
+-    def __init__(self) -> None:
++    def __init__(self, in_include: bool = False) -> None:
++        self.in_include = in_include  # new keys go into the included file, not into overrides
+         self.docs: dict[Path, Doc] = {}
+         self.raw: dict[Path, str] = {}  # whole-file writes (text includes)
+ 
+@@ -233,6 +234,19 @@ class Writer:
+     # ------------------------------------------------------------------ adding entries
+ 
+     def add_entries(self, item: Item, entries: list[tuple[str, Val]]) -> None:
++        if self.in_include:
++            while item.parts is not None and item.parts[0].kind == "map":
++                item = item.parts[0]  # the included part of a merged mapping
++            site = None
++        else:
++            site = override_site(item)
++        if site is not None:
++            item, keys = site
++            for k in reversed(keys):
++                entries = [(k, Val("map", dict(entries)))]
++            if item.ref is not None:
++                self._add_to_scalar_include(item, entries)
++                return
+         doc, node = item.doc, item.node
+         if node is None:
+             self._append_to_empty_doc(doc, entries)
+@@ -251,6 +265,39 @@ class Writer:
+             lines += entry_lines(head, v, col, doc.indent, val_style, seq=False)
+         self._block_insert(doc, node, col, lines)
+ 
++    def _add_to_scalar_include(self, item: Item, entries: list[tuple[str, Val]]) -> None:
++        """Add overrides to a scalar-form include, converting it to mapping form."""
++        doc, node = item.ref
++        start, end = node.start_mark.index, node.end_mark.index
++        ref = "$ref: " + doc.text[start:end]
++        new = Val("map", dict(entries))
++        if item.flow:
++            self._edit(doc, start, end, "{" + ref + ", " + render_flow(new)[1:])
++            return
++        lines: list[str] = []
++        if node is doc.root:
++            col = 0
++            self._edit(doc, start, end, ref)
++        elif item.parent.kind == "map":
++            # "key: file:x  # c" -> "key:  # c", with the mapping below it
++            colon = _colon_end(doc, item.key_node, item.key)
++            if doc.line_of(start) != doc.line_of(colon):
++                raise WriteRefused(f"{doc.path}: cannot convert the include of {item.include} to mapping form")
++            col = item.key_node.start_mark.column + doc.indent
++            self._edit(doc, colon, end, "")
++            lines.append(" " * col + ref)
++        else:
++            # "- file:x  # c" -> "- $ref: file:x  # c", the rest aligned under it
++            dash = _dash_of(doc, node)
++            if doc.line_of(start) != doc.line_of(dash):
++                raise WriteRefused(f"{doc.path}: cannot convert the include of {item.include} to mapping form")
++            w = max(2, doc.indent)
++            col = doc.col(dash) + w
++            self._edit(doc, dash + 1, start, " " * (w - 1) + "$ref: ")
++        lines += block_lines(new, col, doc.indent)
++        pos = doc.line_end(doc.line_of(end))
++        self._edit(doc, pos, pos, "".join(doc.newline + ln for ln in lines))
++
+     def append_items(self, item: Item, values: list[Val]) -> None:
+         doc, node = item.doc, item.node
+         val_style = style_name(node.value[-1]) if node.value else None
+@@ -305,6 +352,13 @@ class Writer:
+     # ------------------------------------------------------------------ removing entries
+ 
+     def delete_keys(self, item: Item, keys: list[str]) -> None:
++        if item.parts is not None:
++            # A merged mapping: delete each key wherever it is set, in the include and in the overrides.
++            for part in item.parts:
++                here = [k for k in keys if k in part.value]
++                if here:
++                    self.delete_keys(part, here)
++            return
+         node = item.node
+         names = [k.value for k, _ in node.value]
+         entries = [(k.start_mark.index, node_end(item.doc, v)) for k, v in node.value]
+@@ -453,6 +507,27 @@ def _wrap(text: str, width: int) -> list[str]:
+ # ---------------------------------------------------------------------- positions
+ 
+ 
++def override_site(item: Item) -> tuple[Item, list[str]] | None:
++    """Where new keys of mapping `item` go when it comes from an included file, and their key path there.
++
++    New keys go into the file that includes it, as overrides: under a merged mapping there, or into the
++    scalar-form include (returned with `ref` set). A mapping inside a list item, a mapping in the
++    configuration file itself and a merged mapping (whose overrides are already there) take them in place.
++    """
++    if item.parts is not None:
++        return None
++    x, keys = item, []
++    while x.ref is None:
++        parent = x.parent
++        if parent is None or parent.kind == "seq":
++            return None
++        keys.insert(0, x.key)
++        if parent.doc is not x.doc:
++            return parent, keys
++        x = parent
++    return x, keys
++
++
+ def _empty_doc(doc: Doc) -> bool:
+     return doc.root is None
+ 
+@@ -489,15 +564,18 @@ def _dash_of(doc: Doc, item_node: yaml.Node) -> int:
+ 
+ def anchor_of(item: Item) -> int:
+     """Index just after the ':' of a mapping entry or the '-' of a block sequence item."""
+-    doc = item.doc
+     if item.parent.kind == "map":
+-        i = item.key_node.end_mark.index
+-        while i < len(doc.text) and doc.text[i] in " \t\r\n":
+-            i += 1
+-        if i >= len(doc.text) or doc.text[i] != ":":
+-            raise PathNotFound(f"{doc.path}: cannot locate value of {item.key}")
+-        return i + 1
+-    return _dash_of(doc, item.node) + 1
++        return _colon_end(item.doc, item.key_node, item.key)
++    return _dash_of(item.doc, item.node) + 1
++
++
++def _colon_end(doc: Doc, key_node: yaml.Node, key: str) -> int:
++    i = key_node.end_mark.index
++    while i < len(doc.text) and doc.text[i] in " \t\r\n":
++        i += 1
++    if i >= len(doc.text) or doc.text[i] != ":":
++        raise PathNotFound(f"{doc.path}: cannot locate value of {key}")
++    return i + 1
+ 
+ 
+ def _absorbs_comments(doc: Doc, end: int, cindent: int) -> bool:
+diff --git a/tests/test_config.py b/tests/test_config.py
+index e539a74..4f87702 100644
+--- a/tests/test_config.py
++++ b/tests/test_config.py
+@@ -265,8 +265,7 @@ def test_include_refused(theatre):
+     theatre.write("coder.yaml", "model: x\n")
+     theatre.set("agents.coder", "{model: y}", expect=3)
+     theatre.set("agents.coder.model", "y")
+-    theatre.set("agents.coder.temp", "0.5")
+-    assert theatre.read("coder.yaml") == "model: y\ntemp: 0.5\n"
++    assert theatre.read("coder.yaml") == "model: y\n"
+     assert theatre.read() == "agents:\n  coder: file:coder.yaml\n"
+ 
+ 
+diff --git a/tests/test_overrides.py b/tests/test_overrides.py
+new file mode 100644
+index 0000000..9814c1f
+--- /dev/null
++++ b/tests/test_overrides.py
+@@ -0,0 +1,165 @@
++import pytest
++
++
++def test_new_key_becomes_override_in_including_file(theatre):
++    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml  # c\n  other: 1\n")
++    theatre.write("agents/coder.yaml", "model: x\n")
++    theatre.set("agents.coder.temperature", "0.3")
++    assert theatre.read("agents/coder.yaml") == "model: x\n"
++    assert theatre.read() == (
++        "agents:\n  coder:  # c\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n  other: 1\n"
++    )
++    assert theatre.get("agents.coder.temperature") == "0.3\n"
++    assert theatre.get("agents.coder.model") == "x\n"
++    # A second new key joins the existing overrides.
++    theatre.set("agents.coder.top_p", "0.9")
++    assert theatre.read() == (
++        "agents:\n  coder:  # c\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n    top_p: 0.9\n"
++        "  other: 1\n"
++    )
++    assert [e["path"] for e in theatre.history() if e["op"] == "set"] == [
++        "agents.coder.temperature",
++        "agents.coder.top_p",
++    ]
++
++
++def test_conversion_uses_file_indentation_and_quoting(theatre):
++    theatre.write("troupe.yml", "agents:\n    coder: 'file:c.yml'\n")
++    theatre.write("c.yml", "model: x\n")
++    theatre.set("agents.coder.t", "1")
++    assert theatre.read() == "agents:\n    coder:\n        $ref: 'file:c.yml'\n        t: 1\n"
++
++
++def test_new_nested_key_under_included_section(theatre):
++    theatre.write("troupe.yml", "coder: file:c.yml\n")
++    theatre.write("c.yml", "params:\n  a: 1\n  inner:\n    b: 2\n")
++    theatre.set("coder.params.inner.c", "3")
++    assert theatre.read("c.yml") == "params:\n  a: 1\n  inner:\n    b: 2\n"
++    assert theatre.read() == "coder:\n  $ref: file:c.yml\n  params:\n    inner:\n      c: 3\n"
++    assert theatre.get("coder.params.a") == "1\n"
++    assert theatre.get("coder.params.inner.b") == "2\n"
++    # The overrides now hold `params`: the next new key goes beside it.
++    theatre.set("coder.params.d", "4")
++    assert theatre.read() == "coder:\n  $ref: file:c.yml\n  params:\n    inner:\n      c: 3\n    d: 4\n"
++    # A new key several levels deep is written as nested mappings.
++    theatre.set("coder.x.y", "z")
++    assert theatre.read().endswith("    d: 4\n  x:\n    y: z\n")
++    assert theatre.read("c.yml") == "params:\n  a: 1\n  inner:\n    b: 2\n"
++
++
++def test_mapping_form_include_is_deep_merged(theatre):
++    theatre.write(
++        "troupe.yml",
++        "coder:\n  $ref: file:c.yml\n  model: y\n  params:\n    a: 10\n  tools: [z]\n",
++    )
++    theatre.write("c.yml", "model: x\nparams:\n  a: 1\n  b: 2\ntools: [p, q]\nkeep: k\n")
++    assert theatre.get("coder.model") == "y\n"
++    assert theatre.get("coder.params.a") == "10\n"
++    assert theatre.get("coder.params.b") == "2\n"
++    assert theatre.get("coder.keep") == "k\n"
++    code, out, _ = theatre.run("show", "coder.tools")
++    assert out == "- z\n"
++
++
++def test_set_existing_values_where_they_live(theatre):
++    theatre.write("troupe.yml", "coder:\n  $ref: file:c.yml\n  model: y\n")
++    theatre.write("c.yml", "model: x\ntemp: 1\n")
++    theatre.set("coder.model", "w")  # overridden: the override changes
++    theatre.set("coder.temp", "2")  # not overridden: changed in the included file
++    assert theatre.read() == "coder:\n  $ref: file:c.yml\n  model: w\n"
++    assert theatre.read("c.yml") == "model: x\ntemp: 2\n"
++    theatre.set("coder.new", "n")
++    assert theatre.read() == "coder:\n  $ref: file:c.yml\n  model: w\n  new: n\n"
++
++
++def test_list_items_stay_in_the_file_holding_the_list(theatre):
++    theatre.write("troupe.yml", "coder: file:c.yml\n")
++    theatre.write("c.yml", "tools:\n  - name: a\n")
++    theatre.set("coder.tools.1", "b")
++    theatre.set("coder.tools.0.mode", "fast")
++    assert theatre.read() == "coder: file:c.yml\n"
++    assert theatre.read("c.yml") == "tools:\n  - name: a\n    mode: fast\n  - b\n"
++
++
++def test_include_as_list_item_is_converted(theatre):
++    theatre.write("troupe.yml", "agents:\n  - file:c.yml  # c\n  - other\n")
++    theatre.write("c.yml", "model: x\n")
++    theatre.set("agents.0.t", "1")
++    assert theatre.read("c.yml") == "model: x\n"
++    assert theatre.read() == "agents:\n  - $ref: file:c.yml  # c\n    t: 1\n  - other\n"
++    assert theatre.get("agents.0.model") == "x\n"
++
++
++def test_include_in_flow_collection_is_converted(theatre):
++    theatre.write("troupe.yml", "agents: {coder: file:c.yml, n: 1}\n")
++    theatre.write("c.yml", "model: x\n")
++    theatre.set("agents.coder.t", "1")
++    assert theatre.read() == "agents: {coder: {$ref: file:c.yml, t: 1}, n: 1}\n"
++    assert theatre.get("agents.coder.model") == "x\n"
++
++
++def test_nested_include_writes_in_its_including_file(theatre):
++    theatre.write("troupe.yml", "team: file:team.yml\n")
++    theatre.write("team.yml", "coder: file:c.yml\n")
++    theatre.write("c.yml", "model: x\n")
++    theatre.set("team.coder.t", "1")
++    assert theatre.read("c.yml") == "model: x\n"
++    assert theatre.read("team.yml") == "coder:\n  $ref: file:c.yml\n  t: 1\n"
++    assert theatre.read() == "team: file:team.yml\n"
++
++
++def test_whole_file_include_document(theatre):
++    theatre.write("troupe.yml", "a: file:a.yml\n")
++    theatre.write("a.yml", "file:b.yml\n")
++    theatre.write("b.yml", "x: 1\n")
++    theatre.set("a.y", "2")
++    assert theatre.read("b.yml") == "x: 1\n"
++    assert theatre.read("a.yml") == "$ref: file:b.yml\ny: 2\n"
++    assert theatre.get("a.x") == "1\n"
++
++
++def test_overrides_only_for_yaml_includes(theatre):
++    theatre.write("troupe.yml", "p:\n  $ref: file:p.md\n")
++    theatre.write("p.md", "hello\n")
++    assert theatre.get("p") == "hello\n"
++    theatre.write("troupe.yml", "p:\n  $ref: file:p.md\n  x: 1\n")
++    assert theatre.run("get", "p")[0] == 4
++    theatre.write("troupe.yml", "p:\n  $ref: 5\n")
++    assert theatre.run("get", "p")[0] == 4
++
++
++def test_replacing_a_merged_section_writes_each_key_where_it_lives(theatre):
++    theatre.write("troupe.yml", "coder:\n  $ref: file:c.yml\n  params:\n    a: 10\n")
++    theatre.write("c.yml", "params:\n  a: 1\n  b: 2\n  c: 3\n")
++    theatre.set("coder.params", "{a: 11, b: 2, d: 4}")
++    assert theatre.read("c.yml") == "params:\n  a: 1\n  b: 2\n"
++    assert theatre.read() == "coder:\n  $ref: file:c.yml\n  params:\n    a: 11\n    d: 4\n"
++    theatre.set("coder", "{params: {a: 1}}", expect=3)
++
++
++# ---------------------------------------------------------------- --in-include
++
++
++def test_in_include_writes_new_key_into_included_file(theatre):
++    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml  # c\n")
++    theatre.write("agents/coder.yaml", "model: x\nparams:\n  a: 1\n")
++    theatre.set("--in-include", "agents.coder.temperature", "0.3")
++    theatre.set("agents.coder.params.b", "2", "--in-include")
++    assert theatre.read() == "agents:\n  coder: file:agents/coder.yaml  # c\n"
++    assert theatre.read("agents/coder.yaml") == "model: x\nparams:\n  a: 1\n  b: 2\ntemperature: 0.3\n"
++
++
++def test_in_include_through_mapping_form(theatre):
++    theatre.write("troupe.yml", "coder:\n  $ref: file:c.yml\n  model: y\n  params:\n    a: 10\n")
++    theatre.write("c.yml", "model: x\nparams:\n  a: 1\n")
++    theatre.set("--in-include", "coder.t", "1")
++    theatre.set("--in-include", "coder.params.b", "2")
++    theatre.set("--in-include", "coder.model", "z")  # existing: still changes where it is set
++    assert theatre.read() == "coder:\n  $ref: file:c.yml\n  model: z\n  params:\n    a: 10\n"
++    assert theatre.read("c.yml") == "model: x\nparams:\n  a: 1\n  b: 2\nt: 1\n"
++
++
++def test_in_include_without_include_is_ordinary_set(theatre):
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.set("--in-include", "b", "2")
++    assert theatre.read() == "a: 1\nb: 2\n"

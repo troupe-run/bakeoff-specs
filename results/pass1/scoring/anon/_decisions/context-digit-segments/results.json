@@ -1,0 +1,563 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "newlist.0",
+          "alpha"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "other.1",
+          "beta"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "deep.inner.0",
+          "x"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "items.2",
+          "c"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "name: demo\nitems:\n  - a\n  - b\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "newlist.0",
+                "alpha"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo\nitems:\n  - a\n  - b\nnewlist:\n  - alpha\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "other.1",
+                "beta"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: other.1: index 1 out of range\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "deep.inner.0",
+                "x"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo\nitems:\n  - a\n  - b\nnewlist:\n  - alpha\ndeep:\n  inner:\n    - x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "items.2",
+                "c"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo\nitems:\n  - a\n  - b\n  - c\nnewlist:\n  - alpha\ndeep:\n  inner:\n    - x\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nitems:\n  - a\n  - b\n  - c\nnewlist:\n  - alpha\ndeep:\n  inner:\n    - x\n"
+            }
+          ]
+        }
+      ],
+      "route": "A `0` segment under a missing parent creates a new list; any other index exits 5",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "newlist.0",
+                "alpha"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "/theatre/.troupe/troupe.yml: newlist.0: not found: key '0' would have to be created, but a key of digits only cannot be created (it reads as a list index)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "other.1",
+                "beta"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "/theatre/.troupe/troupe.yml: other.1: not found: key '1' would have to be created, but a key of digits only cannot be created (it reads as a list index)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "deep.inner.0",
+                "x"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "/theatre/.troupe/troupe.yml: deep.inner.0: not found: key '0' would have to be created, but a key of digits only cannot be created (it reads as a list index)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "items.2",
+                "c"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo\nitems:\n  - a\n  - b\n  - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nitems:\n  - a\n  - b\n  - c\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "newlist.0",
+                "alpha"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: newlist.0: not found (newlist does not exist)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "other.1",
+                "beta"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: other.1: not found (other does not exist)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "deep.inner.0",
+                "x"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: deep.inner.0: not found (deep does not exist)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "items.2",
+                "c"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo\nitems:\n  - a\n  - b\n  - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nitems:\n  - a\n  - b\n  - c\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "newlist.0",
+                "alpha"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: path not found: newlist.0 (no (root).newlist; a missing list index '0' cannot be created)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "other.1",
+                "beta"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: path not found: other.1 (no (root).other; a missing list index '1' cannot be created)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "deep.inner.0",
+                "x"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: path not found: deep.inner.0 (no (root).deep; a missing list index '0' cannot be created)\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "items.2",
+                "c"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo\nitems:\n  - a\n  - b\n  - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nitems:\n  - a\n  - b\n  - c\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "newlist.0",
+                "alpha"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: path not found: newlist.0\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "other.1",
+                "beta"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: path not found: other.1\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "deep.inner.0",
+                "x"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: path not found: deep.inner.0\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "items.2",
+                "c"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo\nitems:\n  - a\n  - b\n  - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nitems:\n  - a\n  - b\n  - c\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "newlist.0",
+                "alpha"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: error: newlist.0: path not found\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "other.1",
+                "beta"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: error: other.1: path not found\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "deep.inner.0",
+                "x"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 5,
+              "stderr": "troupe: error: deep.inner.0: path not found\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "items.2",
+                "c"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: demo\nitems:\n  - a\n  - b\n  - c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: demo\nitems:\n  - a\n  - b\n  - c\n"
+            }
+          ]
+        }
+      ],
+      "route": "Missing segments are created only as mapping keys; a missing digit segment exits 5; index == length appends, larger indexes exit 5",
+      "route_no": 2
+    }
+  ]
+}

@@ -1,0 +1,505 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "a.note",
+          "\"line one\\nline two\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "a.code",
+          "\"  indented\\nnext\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "items.0.name",
+          "\"  x\\ny\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "a.code"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "a:\n  note: hello\n  code: plain  # keep\nitems:\n  - name: a\n    cmd: run\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "a.note",
+                "\"line one\\nline two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: plain  # keep\nitems:\n  - name: a\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a.code",
+                "\"  indented\\nnext\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: \"  indented\\nnext\\n\" # keep\nitems:\n  - name: a\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "items.0.name",
+                "\"  x\\ny\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: \"  indented\\nnext\\n\" # keep\nitems:\n  - name: \"  x\\ny\"\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "a.code"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "  indented\nnext\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a:\n  note: |\n    line one\n    line two\n  code: |2\n      indented\n    next\nitems:\n  - name: |2-\n        x\n      y\n    cmd: run\n"
+            }
+          ]
+        }
+      ],
+      "route": "Always `2`",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "a.note",
+                "\"line one\\nline two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: plain  # keep\nitems:\n  - name: a\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a.code",
+                "\"  indented\\nnext\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: \"  indented\\nnext\\n\" # keep\nitems:\n  - name: a\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "items.0.name",
+                "\"  x\\ny\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: \"  indented\\nnext\\n\" # keep\nitems:\n  - name: \"  x\\ny\"\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "a.code"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "  indented\nnext\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a:\n  note: |\n    line one\n    line two\n  code: \"  indented\\nnext\\n\"\nitems:\n  - name: \"  x\\ny\"\n    cmd: run\n"
+            }
+          ]
+        }
+      ],
+      "route": "Double-quote instead",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "a.note",
+                "\"line one\\nline two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: plain  # keep\nitems:\n  - name: a\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a.code",
+                "\"  indented\\nnext\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: |2     # keep\n      indented\n    next\nitems:\n  - name: a\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "items.0.name",
+                "\"  x\\ny\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: |2     # keep\n      indented\n    next\nitems:\n  - name: |2-\n        x\n      y\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "a.code"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "  indented\nnext\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a:\n  note: |\n    line one\n    line two\n  code: |2\n      indented\n    next\nitems:\n  - name: |2-\n        x\n      y\n    cmd: run\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "a.note",
+                "\"line one\\nline two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: plain  # keep\nitems:\n  - name: a\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a.code",
+                "\"  indented\\nnext\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: \"  indented\\nnext\\n\" # keep\nitems:\n  - name: a\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "items.0.name",
+                "\"  x\\ny\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: \"  indented\\nnext\\n\" # keep\nitems:\n  - name: \"  x\\ny\"\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "a.code"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "  indented\nnext\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a:\n  note: |\n    line one\n    line two\n  code: |2\n      indented\n    next\nitems:\n  - name: |2-\n        x\n      y\n    cmd: run\n"
+            }
+          ]
+        }
+      ],
+      "route": "Indicator only when needed",
+      "route_no": 3
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "a.note",
+                "\"line one\\nline two\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: plain  # keep\nitems:\n  - name: a\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "a.code",
+                "\"  indented\\nnext\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: |2     # keep\n      indented\n    next\nitems:\n  - name: a\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "items.0.name",
+                "\"  x\\ny\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "a:\n  note: |\n    line one\n    line two\n  code: |2     # keep\n      indented\n    next\nitems:\n  - name: |2-\n        x\n      y\n    cmd: run\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "a.code"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "  indented\nnext\n"
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "a:\n  note: |\n    line one\n    line two\n  code: |2\n      indented\n    next\nitems:\n  - name: |2-\n        x\n      y\n    cmd: run\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 4
+    }
+  ]
+}

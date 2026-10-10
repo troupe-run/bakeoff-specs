@@ -1,0 +1,19 @@
+I'd score Arm X a **3** on traceability. Every requirement I sampled has an explicit ID link to a test that asserts it, but one unit test still cites the old rule 2 that step 5 replaced.
+
+I took step 5 to be the `config-include-overrides` spec, the newest of the six by creation date. Per-requirement tally:
+
+| Requirement | Result |
+|---|---|
+| Step 5, Req 5.2 (the contract's scalar-to-mapping-form example) | Linked and correct |
+| Step 5, Req 10.6 (`--in-include=TEXT` exits 2) | Linked and correct |
+| Step 5, Req 11.5 (conflicting values for one shared file location exit 3) | Linked and correct |
+| config-foundation Req 4.6 (include cycles) | Linked and correct, through a section comment rather than a per-test docstring |
+| config-set-writeback Req 3.1 (old rule 2, which step 5 replaced) | Linked but stale in one place |
+
+On the stale link: the main test for the old rule was rewritten and marked as superseded. But `tests/writeback/test_target.py:141` still says "Req 3.1, 2.6: a new key below an included mapping is added in the included file", which is the old wording.
+
+Getting from a test to the code mostly means searching the repo. The task notes and design name the main functions, which helps.
+
+```json
+{"score": 3, "evidence": ["spec/spec/config-include-overrides/tasks.md:3", "tests/test_set_overrides.py:155", "tests/test_set_in_include.py:445", "tests/test_set_overrides.py:1447", "tests/writeback/test_shared_placement.py:544", "tests/test_e2e_includes.py:244", "tests/test_set_targets.py:90", "tests/writeback/test_target.py:141"], "notes": "Of the 5 requirements sampled, 4 are explicitly linked by ID to tests that assert them (step 5's 5.2, 10.6 and 11.5, and config-foundation 4.6), and the superseded old rule is relabelled in tests/test_set_targets.py:90. One stale link remains: tests/writeback/test_target.py:141 still cites the replaced Req 3.1 wording ('added in the included file'), and finding the code from e2e tests mostly takes a search."}
+```

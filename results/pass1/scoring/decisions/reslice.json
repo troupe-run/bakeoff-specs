@@ -1,0 +1,872 @@
+{
+ "T7": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "history order when one block replaces another",
+    "groups": [
+     {
+      "id": "SET_FIRST",
+      "rating": 5,
+      "description": "the new value's set event is logged before the remove of the old key (or no swapped order); unknown removes replay as no effect"
+     },
+     {
+      "id": "SWAP",
+      "rating": 2,
+      "description": "the remove of the old key is logged BEFORE the new value's set (swapped order)"
+     }
+    ]
+   }
+  ]
+ },
+ "T8": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "does config show keep the !literal mark",
+    "groups": [
+     {
+      "id": "KEEP",
+      "rating": 5,
+      "description": "config show keeps the !literal mark on the value"
+     },
+     {
+      "id": "DROP",
+      "rating": 2,
+      "description": "config show drops the !literal mark"
+     }
+    ]
+   }
+  ]
+ },
+ "T10": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "error when both troupe.yml and troupe.yaml exist (all exit 4)",
+    "groups": [
+     {
+      "id": "FIX",
+      "rating": 5,
+      "description": "the error says what to do, e.g. 'keep only one' / 'remove one'"
+     },
+     {
+      "id": "PROBLEM",
+      "rating": 4,
+      "description": "the error states the problem only, with no instruction"
+     }
+    ]
+   }
+  ]
+ },
+ "T11": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "single-newline value config set e \"\\n\"",
+    "groups": [
+     {
+      "id": "BLOCK",
+      "rating": 4.5,
+      "description": "written as a |+ block that round-trips"
+     },
+     {
+      "id": "QUOTED",
+      "rating": 4,
+      "description": "written as quoted \"\\n\" and show agrees with the file"
+     },
+     {
+      "id": "QUOTED_MISMATCH",
+      "rating": 2,
+      "description": "written quoted, but config show disagrees with the file"
+     },
+     {
+      "id": "REFUSE",
+      "rating": 3,
+      "description": "refuses the value"
+     }
+    ]
+   }
+  ]
+ },
+ "T13": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "comment column when a value's length changes",
+    "groups": [
+     {
+      "id": "KEEP",
+      "rating": 5,
+      "description": "the comment column is kept in every case"
+     },
+     {
+      "id": "DRIFT",
+      "rating": 1,
+      "description": "the comment column drifts when a flow list grows"
+     }
+    ]
+   }
+  ]
+ },
+ "T15": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "replacing a list entry whose first key is on the dash line",
+    "groups": [
+     {
+      "id": "REFUSE",
+      "rating": 4,
+      "description": "refuses the edit"
+     },
+     {
+      "id": "WRITE_KEEP",
+      "rating": 5,
+      "description": "writes it and keeps the remaining comments"
+     },
+     {
+      "id": "WRITE_STRIP",
+      "rating": null,
+      "description": "writes it but strips the comments"
+     }
+    ]
+   }
+  ]
+ },
+ "T16": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "error for complex (non-scalar) keys; every arm refuses with exit 4",
+    "groups": [
+     {
+      "id": "FILE_LINE",
+      "rating": 5,
+      "description": "error names the file and the line"
+     },
+     {
+      "id": "FILE",
+      "rating": 4,
+      "description": "error names the file but not the line"
+     },
+     {
+      "id": "NEITHER",
+      "rating": 3,
+      "description": "error names neither file nor line"
+     }
+    ]
+   }
+  ]
+ },
+ "T20": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "duplicate key in the file",
+    "groups": [
+     {
+      "id": "RAISE",
+      "rating": 5,
+      "description": "reports the duplicate key as an error"
+     },
+     {
+      "id": "LAST",
+      "rating": 2,
+      "description": "silently takes the last value"
+     },
+     {
+      "id": "FIRST_DISAGREE",
+      "rating": 1,
+      "description": "silently takes the first value, with get/show/history disagreeing"
+     }
+    ]
+   }
+  ]
+ },
+ "T25": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "wording of the out-of-range list index error (exit codes identical)",
+    "groups": [
+     {
+      "id": "FIX",
+      "rating": 4,
+      "description": "tells you the fix (e.g. use index N to append)"
+     },
+     {
+      "id": "FACTS",
+      "rating": 3,
+      "description": "gives the facts (index and length) without the fix"
+     },
+     {
+      "id": "BARE",
+      "rating": 3,
+      "description": "bare message"
+     }
+    ]
+   }
+  ]
+ },
+ "T26": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "a file: value given to set",
+    "groups": [
+     {
+      "id": "DROP",
+      "rating": 2,
+      "description": "config show drops the mark"
+     },
+     {
+      "id": "KEEP_EXIT3",
+      "rating": 4,
+      "description": "keeps the mark and refuses with exit 3"
+     },
+     {
+      "id": "KEEP_EXIT4",
+      "rating": 3,
+      "description": "keeps the mark but refuses with exit 4 (load error on a write)"
+     }
+    ]
+   }
+  ]
+ },
+ "T27": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "replacing an inline collection",
+    "groups": [
+     {
+      "id": "BLOCK",
+      "rating": 3,
+      "description": "the replaced value becomes block style"
+     },
+     {
+      "id": "INLINE_GAP",
+      "rating": 3,
+      "description": "stays inline but the gap before the comment shrinks"
+     },
+     {
+      "id": "INLINE_KEPT",
+      "rating": 4,
+      "description": "stays inline with comment spacing kept"
+     }
+    ]
+   }
+  ]
+ },
+ "T33": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "escaping in history output",
+    "groups": [
+     {
+      "id": "ASCII",
+      "rating": 1,
+      "description": "history output ASCII-escapes all non-ASCII characters"
+     },
+     {
+      "id": "READABLE",
+      "rating": 4,
+      "description": "history output keeps characters readable"
+     }
+    ]
+   },
+   {
+    "id": "Q2",
+    "text": "U+2028 written to the config file",
+    "groups": [
+     {
+      "id": "ESCAPED",
+      "rating": 4,
+      "description": "written escaped as \\L inside double quotes"
+     },
+     {
+      "id": "RAW_QUOTED",
+      "rating": 2,
+      "description": "written raw inside quotes"
+     },
+     {
+      "id": "RAW_UNQUOTED",
+      "rating": 2,
+      "description": "written raw, unquoted"
+     }
+    ]
+   }
+  ]
+ },
+ "T34": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "history after the config breaks its schema",
+    "groups": [
+     {
+      "id": "WORKS",
+      "rating": 5,
+      "description": "config history keeps working"
+     },
+     {
+      "id": "FAILS",
+      "rating": 4,
+      "description": "config history fails"
+     }
+    ]
+   }
+  ]
+ },
+ "T36": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "include cycle refused on write",
+    "groups": [
+     {
+      "id": "EXIT3",
+      "rating": 5,
+      "description": "refused with exit 3"
+     },
+     {
+      "id": "EXIT4",
+      "rating": 4,
+      "description": "refused with exit 4 (load error on a write)"
+     }
+    ]
+   }
+  ]
+ },
+ "T46": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "refusing a key longer than 1024 characters",
+    "groups": [
+     {
+      "id": "A",
+      "rating": 4,
+      "description": "exit 3 with a clear refusal saying nothing was written"
+     },
+     {
+      "id": "B",
+      "rating": 3,
+      "description": "exit 3 but worded as if it wrote ('written value cannot be read back')"
+     },
+     {
+      "id": "C",
+      "rating": 2,
+      "description": "exit 4 with only the raw multi-line YAML parser trace"
+     }
+    ]
+   }
+  ]
+ },
+ "T47": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "malformed PATH error wording (all exit 2)",
+    "groups": [
+     {
+      "id": "RULE",
+      "rating": 5,
+      "description": "states the rule: segments must not be empty (no leading, trailing or doubled '.')"
+     },
+     {
+      "id": "PROBLEM",
+      "rating": 4,
+      "description": "states the problem, e.g. 'empty segment' / 'path segments must not be empty'"
+     },
+     {
+      "id": "BARE",
+      "rating": 3,
+      "description": "bare 'invalid path'"
+     }
+    ]
+   }
+  ]
+ },
+ "T48": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "a set that changes troupe.yml and a file: prompt",
+    "groups": [
+     {
+      "id": "A",
+      "rating": 5,
+      "description": "writes both files, keeps the file: link and comment, refuses a non-string prompt (exit 3)"
+     },
+     {
+      "id": "B",
+      "rating": 2,
+      "description": "copies the prompt into troupe.yml (link and comment lost) and accepts prompt: 42 over the link"
+     }
+    ]
+   }
+  ]
+ },
+ "T50": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "quoting when config set replaces a section and drops its last entry",
+    "groups": [
+     {
+      "id": "A",
+      "rating": 4,
+      "description": "the new key copies the quoting of the last REMAINING entry; other entries untouched"
+     },
+     {
+      "id": "B",
+      "rating": 4,
+      "description": "the new key copies the quoting of an entry this same command deleted; other entries untouched"
+     },
+     {
+      "id": "C",
+      "rating": 5,
+      "description": "the section is rewritten as given (unquoted), existing entries lose their quotes"
+     }
+    ]
+   }
+  ]
+ },
+ "T51": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "state left behind after a failed config load",
+    "groups": [
+     {
+      "id": "A",
+      "rating": 5,
+      "description": "nothing new left in .troupe"
+     },
+     {
+      "id": "B",
+      "rating": 4,
+      "description": "only an empty lock file left"
+     },
+     {
+      "id": "C",
+      "rating": 2,
+      "description": "a lock file plus a new event database left"
+     }
+    ]
+   }
+  ]
+ },
+ "T57": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "where the replacing set goes among remove events",
+    "groups": [
+     {
+      "id": "A",
+      "rating": 4,
+      "description": "set m = 0 logged first, then the removes"
+     },
+     {
+      "id": "B",
+      "rating": 3,
+      "description": "removes logged first, then set m = 0"
+     }
+    ]
+   }
+  ]
+ },
+ "T59": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "a non-mapping root file (~, ---, a scalar, a list)",
+    "groups": [
+     {
+      "id": "A",
+      "rating": 5,
+      "description": "every command exits 4 saying the top level must be a mapping"
+     },
+     {
+      "id": "B",
+      "rating": 3,
+      "description": "show prints the root and set exits 5 with a not-found style message"
+     }
+    ]
+   }
+  ]
+ },
+ "T61": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "a commented list item replaced by a map or list",
+    "groups": [
+     {
+      "id": "A",
+      "rating": 4,
+      "description": "bare dash keeps the comment, the collection goes below"
+     },
+     {
+      "id": "B",
+      "rating": 3,
+      "description": "compact: first key/item on the dash line, comment lands after it"
+     }
+    ]
+   }
+  ]
+ },
+ "T66": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "writing into a file that two agents include",
+    "groups": [
+     {
+      "id": "W",
+      "rating": 4,
+      "description": "writes the shared file (the other agent changes too), no warning"
+     },
+     {
+      "id": "R1",
+      "rating": 3,
+      "description": "refuses naming the conflict (e.g. 'would disturb reviewer.model'), even with --in-include"
+     },
+     {
+      "id": "R2",
+      "rating": 2,
+      "description": "refuses with a vague message ('byte-surgically' / 'would not read back as intended')"
+     }
+    ]
+   }
+  ]
+ },
+ "T68": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "how exponent floats are written to the file",
+    "groups": [
+     {
+      "id": "P",
+      "rating": 5,
+      "description": "keeps the typed spelling (1e20, 1e-7)"
+     },
+     {
+      "id": "N",
+      "rating": 4,
+      "description": "rewrites to 1e+20 / 1e-07"
+     }
+    ]
+   }
+  ]
+ },
+ "T70": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "source naming with show --sources when a file is reached through a symlink",
+    "groups": [
+     {
+      "id": "R",
+      "rating": 5,
+      "description": "real path everywhere: one file, one name"
+     },
+     {
+      "id": "L",
+      "rating": 4,
+      "description": "each key's path as written, so one file appears under two names"
+     },
+     {
+      "id": "S",
+      "rating": 2,
+      "description": "the symlinked name even for a key written with the real path"
+     }
+    ]
+   },
+   {
+    "id": "Q2",
+    "text": "config set through a symlinked theatre",
+    "groups": [
+     {
+      "id": "G",
+      "rating": 5,
+      "description": "writes and logs one change by the actor"
+     },
+     {
+      "id": "H",
+      "rating": 2,
+      "description": "writes but logs the shared side as a separate unknown-actor hand edit"
+     },
+     {
+      "id": "F",
+      "rating": 2,
+      "description": "refuses with a vague message"
+     }
+    ]
+   }
+  ]
+ },
+ "T73": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "a corrupt history store",
+    "groups": [
+     {
+      "id": "T",
+      "rating": 1,
+      "description": "commands (reads included) exit 1 with a Python traceback"
+     },
+     {
+      "id": "U",
+      "rating": null,
+      "description": "the planted junk file was not its store; behaved normally (untested)"
+     }
+    ]
+   }
+  ]
+ },
+ "T74": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "what is left in .troupe",
+    "groups": [
+     {
+      "id": "A",
+      "rating": 5,
+      "description": "only the database and config"
+     },
+     {
+      "id": "B",
+      "rating": 5,
+      "description": "database, config and an empty lock file"
+     },
+     {
+      "id": "C",
+      "rating": 4,
+      "description": "-wal/-shm side files left after watch was force-killed (exit 137)"
+     }
+    ]
+   }
+  ]
+ },
+ "T78": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "where --theatre is accepted",
+    "groups": [
+     {
+      "id": "ANYWHERE",
+      "rating": 5,
+      "description": "accepted before config, between config and the subcommand, and after the subcommand"
+     },
+     {
+      "id": "TWO",
+      "rating": 4,
+      "description": "accepted between config and the subcommand and after it, not before config"
+     },
+     {
+      "id": "SUB_ONLY",
+      "rating": 3,
+      "description": "accepted only after the subcommand"
+     }
+    ]
+   }
+  ]
+ },
+ "T81": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "how non-string scalars are spelled when written",
+    "groups": [
+     {
+      "id": "K",
+      "rating": 5,
+      "description": "keeps the typed spelling (0x1A, TRUE, ~, 1E3)"
+     },
+     {
+      "id": "C",
+      "rating": 4,
+      "description": "canonical spelling (26, true, null, 1000.0)"
+     }
+    ]
+   }
+  ]
+ },
+ "T82": {
+  "questions": [
+   {
+    "id": "EMPTY",
+    "text": "set empty \"\"",
+    "groups": [
+     {
+      "id": "REFUSE",
+      "rating": 5,
+      "description": "refused (exit 2)"
+     },
+     {
+      "id": "NULL",
+      "rating": 3,
+      "description": "writes null"
+     }
+    ]
+   },
+   {
+    "id": "BLOCK",
+    "text": "set block \"a: b\"",
+    "groups": [
+     {
+      "id": "REFUSE",
+      "rating": 5,
+      "description": "refused, and the message gives the fix (quote it to make a string, or use flow style such as {a: 1})"
+     },
+     {
+      "id": "REFUSE_NOFIX",
+      "rating": 4,
+      "description": "refused (exit 2), but the message gives no fix"
+     },
+     {
+      "id": "MAP",
+      "rating": 3,
+      "description": "writes a nested map"
+     }
+    ]
+   },
+   {
+    "id": "TAG",
+    "text": "set tagged \"!!str 5\"",
+    "groups": [
+     {
+      "id": "HONOUR",
+      "rating": 5,
+      "description": "writes the string '5'"
+     },
+     {
+      "id": "REFUSE",
+      "rating": 4,
+      "description": "refused (exit 2)"
+     },
+     {
+      "id": "NUMBER",
+      "rating": 1,
+      "description": "drops the tag and writes the number 5"
+     }
+    ]
+   },
+   {
+    "id": "ANCHOR",
+    "text": "set anchored \"&n 1\"",
+    "groups": [
+     {
+      "id": "REFUSE",
+      "rating": 5,
+      "description": "refused (exit 2)"
+     },
+     {
+      "id": "DROP",
+      "rating": 3,
+      "description": "drops the anchor and writes 1"
+     }
+    ]
+   }
+  ]
+ },
+ "T87": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "watch's stderr report of a broken hand edit",
+    "groups": [
+     {
+      "id": "A",
+      "rating": 5,
+      "description": "one line with location (line/column) and reason"
+     },
+     {
+      "id": "D",
+      "rating": 4,
+      "description": "multi-line parser dump with carets"
+     },
+     {
+      "id": "X",
+      "rating": 2,
+      "description": "no location and no reason"
+     }
+    ]
+   }
+  ]
+ },
+ "T96": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "re-wrapping when unchanged paragraphs are only reordered",
+    "groups": [
+     {
+      "id": "K",
+      "rating": 5,
+      "description": "a moved unchanged paragraph keeps its original bytes"
+     },
+     {
+      "id": "W",
+      "rating": 4,
+      "description": "a moved unchanged paragraph is re-wrapped"
+     }
+    ]
+   }
+  ]
+ },
+ "T99": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "indentation of new list items in a file with flush lists",
+    "groups": [
+     {
+      "id": "F",
+      "rating": 5,
+      "description": "follows the file's flush list style"
+     },
+     {
+      "id": "I",
+      "rating": 3,
+      "description": "indents the new items, mixing styles"
+     }
+    ]
+   }
+  ]
+ },
+ "T117": {
+  "questions": [
+   {
+    "id": "Q1",
+    "text": "stopping watch with SIGINT/SIGTERM",
+    "groups": [
+     {
+      "id": "C",
+      "rating": 5,
+      "description": "always exits 0 cleanly"
+     },
+     {
+      "id": "S",
+      "rating": 4,
+      "description": "stops promptly but exits 143 or 130 (or prints a traceback)"
+     },
+     {
+      "id": "K",
+      "rating": 2,
+      "description": "sometimes doesn't stop and is force-killed (137), leaving -wal/-shm"
+     }
+    ]
+   }
+  ]
+ }
+}

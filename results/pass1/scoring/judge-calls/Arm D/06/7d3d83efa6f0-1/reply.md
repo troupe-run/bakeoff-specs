@@ -1,0 +1,5 @@
+```json
+{"score": 3, "evidence": ["README.md:23-26 (diff.patch:18-22) states that a set at the anchor changes every *name, a set through an alias or merge key exits 3, --expand-alias makes a block-style copy, and merge keys are never written", "docs/decisions.md:85-99 (decisions 30-33) cover alias detection, merge-key resolution, how the expanded copy is made, and the recursive-alias error", "tests/test_aliases.py was added in the diff (diff.patch:552), but neither spec file names it", "No *.md file in the repo mentions a bug report, issue or test"]}
+```
+
+The spec states every alias rule, so a future implementer reading only the spec would learn them, though it does not say the refusal message points to --expand-alias. It falls short of 4 because it does not reference the bug report or link the regression test that reproduces the reported scenario.

@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/setup/marketplace-check.json:2-11 (marketplace add exited 0 in 8.6s; plugin install exited 0 in 3.4s)",
+    "/judge/setup/checklist.json:33-78 (plugin-version, skills, session-hook, entry-commands, smoke, issues-access and origin-push all pass)",
+    "/judge/setup/setup-turns.json:1 (empty: no extra setup turns)",
+    "/judge/setup/manifest.json:1 (empty: no harness changes for this arm)",
+    "/judge/setup/smoke/turns/setup-a1-099.stream.jsonl:13 (smoke turn ended subtype success, is_error false)",
+    "/judge/setup/smoke/turns/setup-a1-099.stderr (empty)",
+    "/judge/setup/egress.log:6-29 (only github.com, api.anthropic.com and api.github.com contacted)"
+  ],
+  "notes": "A new adopter needs two documented commands (marketplace add, plugin install), and both succeeded quickly. Every checklist item passes with no workaround, no extra setup turn and no change to the harness for this arm. One small point: the smoke check expected the brainstorming skill but the run invoked method-command, though the check still recorded the outcome as ok.",
+  "raw": "{\"score\": 4, \"evidence\": [\"/judge/setup/marketplace-check.json:2-11 (marketplace add exited 0 in 8.6s; plugin install exited 0 in 3.4s)\", \"/judge/setup/checklist.json:33-78 (plugin-version, skills, session-hook, entry-commands, smoke, issues-access and origin-push all pass)\", \"/judge/setup/setup-turns.json:1 (empty: no extra setup turns)\", \"/judge/setup/manifest.json:1 (empty: no harness changes for this arm)\", \"/judge/setup/smoke/turns/setup-a1-099.stream.jsonl:13 (smoke turn ended subtype success, is_error false)\", \"/judge/setup/smoke/turns/setup-a1-099.stderr (empty)\", \"/judge/setup/egress.log:6-29 (only github.com, api.anthropic.com and api.github.com contacted)\"], \"notes\": \"A new adopter needs two documented commands (marketplace add, plugin install), and both succeeded quickly. Every checklist item passes with no workaround, no extra setup turn and no change to the harness for this arm. One small point: the smoke check expected the brainstorming skill but the run invoked method-command, though the check still recorded the outcome as ok.\"}",
+  "score": 4,
+  "status": "ok"
+}

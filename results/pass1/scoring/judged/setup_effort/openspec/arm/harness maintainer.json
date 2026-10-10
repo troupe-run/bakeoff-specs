@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "/judge/setup/shell/01.log:1-25 (`method init --tools claude` exit 0, 6 skills and 6 commands created)",
+    "/judge/setup/shell/02.log:1-6 (extra step: `method config set telemetry.enabled false`, a documented config command)",
+    "/judge/setup/shell/03.log:1 (harness python one-liner appends project-principles.md as the `context:` block in spec/config.yaml)",
+    "/judge/setup/checklist.json:2-97 (all 16 checklist items ok)",
+    "/judge/setup/setup-turns.json:1 (no agent setup turns, no re-runs)",
+    "/judge/setup/egress.log:6-11 (only api.github.com traffic, no extra network allowances)"
+  ],
+  "notes": "The documented init worked first time and every checklist item passed. Beyond it, the harness ran two small steps: it turned telemetry off with a documented config command, and its own script injected the project principles into the method's documented `context:` field in config.yaml. That makes this a 3 rather than a clean 4; there were no workarounds, re-runs or extra network allowances.",
+  "raw": "{\"score\": 3, \"evidence\": [\"/judge/setup/shell/01.log:1-25 (`method init --tools claude` exit 0, 6 skills and 6 commands created)\", \"/judge/setup/shell/02.log:1-6 (extra step: `method config set telemetry.enabled false`, a documented config command)\", \"/judge/setup/shell/03.log:1 (harness python one-liner appends project-principles.md as the `context:` block in spec/config.yaml)\", \"/judge/setup/checklist.json:2-97 (all 16 checklist items ok)\", \"/judge/setup/setup-turns.json:1 (no agent setup turns, no re-runs)\", \"/judge/setup/egress.log:6-11 (only api.github.com traffic, no extra network allowances)\"], \"notes\": \"The documented init worked first time and every checklist item passed. Beyond it, the harness ran two small steps: it turned telemetry off with a documented config command, and its own script injected the project principles into the method's documented `context:` field in config.yaml. That makes this a 3 rather than a clean 4; there were no workarounds, re-runs or extra network allowances.\"}",
+  "score": 3,
+  "status": "ok"
+}

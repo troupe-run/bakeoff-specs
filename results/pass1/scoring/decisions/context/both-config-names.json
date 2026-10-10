@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\nmodel: from-yml  # yml file\nretry: 1\n\n.troupe/troupe.yaml:\nmodel: from-yaml  # yaml file\nretry: 2",
+        "input": "`config get model` (with `.troupe/troupe.yml` and `.troupe/troupe.yaml` both present)",
+        "observed": true,
+        "results": {
+          "1": "exit 4, prints nothing. The two arms' error messages differ only in wording. One arm: `troupe: .troupe: both troupe.yml and troupe.yaml exist`. One arm: `troupe: ./.troupe/troupe.yml: both troupe.yml and troupe.yaml exist`",
+          "2": "exit 4, prints nothing. Each of the four arms words the error differently. One arm: `/theatre/.troupe/troupe.yml: both troupe.yml and /theatre/.troupe/troupe.yaml exist` (no `troupe:` prefix). One arm: `troupe: .troupe/troupe.yml and .troupe/troupe.yaml: both exist; keep only one`. One arm: `troupe: both /theatre/.troupe/troupe.yml and /theatre/.troupe/troupe.yaml exist; remove one`. One arm: `troupe: error: ambiguous configuration: both .troupe/troupe.yml and .troupe/troupe.yaml exist`"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set retry 5` (same two files)",
+        "observed": true,
+        "results": {
+          "1": "exit 4, same error as above. Neither file is changed (retry stays 1 in .yml and 2 in .yaml)",
+          "2": "exit 4, same error as above in all four arms. Neither file is changed"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show`, `config history`, `config show --sources` (same two files)",
+        "observed": true,
+        "results": {
+          "1": "each gives exit 4 with the same error and no output, in both arms",
+          "2": "each gives exit 4 with the same error and no output, in all four arms"
+        }
+      }
+    ],
+    "in_practice": "In practice the two routes behave the same: any config command, even just reading a value, fails with exit 4 and changes nothing. The only difference is the error text. Only two arms on route 2 tell the user what to do next (\"keep only one\" / \"remove one\"). The case where neither file exists was not tested.",
+    "stakes": "If a project ends up with both `.troupe/troupe.yml` and `.troupe/troupe.yaml`, the user either gets a clear refusal or has one file silently override the other. In the run, every implementation on both routes refused every config command, including read-only ones, until one of the files is removed.",
+    "tradeoff": "Both routes cost the same: config is unusable until the user deletes one file. Route 1 reached this as a deliberate choice; route 2 reached the same behavior without considering the question, and its error messages vary more from arm to arm."
+  },
+  "plan_why": "Both .troupe/troupe.yml and .troupe/troupe.yaml exist with different values; shows whether get/show/set/history refuse with exit 4 or silently pick one file (and which one), and whether set rewrites a file. The 'neither' case can't be shown because the files are created before every command and can't be removed.",
+  "routes": [
+    [
+      "Exit 4 in both cases",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

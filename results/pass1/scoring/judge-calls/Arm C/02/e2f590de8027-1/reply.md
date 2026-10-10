@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["/judge/gates.md:1", "/judge/transcript.md:10", "/judge/transcript.md:23", "/judge/transcript.md:57", "/judge/transcript.md:338"], "notes": "gates.md records no gates, but the transcript shows the questions were asked at sensible points: one before the spec was written (line 10), one before the plan (line 23), one before implementation started (line 57) and one before the acceptance re-run (line 338). None of them asks approval for work already done. The planning gate is hard to approve, though: it puts six engineering-alignment items next to the main design question, and item 6 quietly includes a change to the spec's FR-009."}
+```

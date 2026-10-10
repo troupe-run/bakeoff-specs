@@ -1,0 +1,84 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "retry: 3  # attempts\nnotes: file:notes.txt\nagents:\n  coder: file:agents/coder.yaml",
+        "input": "`config set retry 5 --reason succeeds` (as human:owner), then `config history retry`",
+        "observed": true,
+        "results": {
+          "1": "Both arms: exit 0; the file now reads:\nretry: 5  # attempts\nThe comment is kept. History shows the import (3), then seq 4: set 3 -> 5 by human owner via cli, reason \"succeeds\".",
+          "2": "Exit 0; the file now reads:\nretry: 5  # attempts\nThe comment is kept. History shows the import (3), then seq 4: set 3 -> 5 by human owner via cli, reason \"succeeds\".",
+          "3": "Exit 0; the file now reads:\nretry: 5  # attempts\nThe comment is kept. History shows the import (3), then seq 4: set 3 -> 5 by human owner via cli, reason \"succeeds\".",
+          "4": "Both arms: exit 0; the file now reads:\nretry: 5  # attempts\nThe comment is kept. History shows the import (3), then seq 4: set 3 -> 5 by human owner via cli, reason \"succeeds\"."
+        }
+      },
+      {
+        "before": "agents:\n  coder: file:agents/coder.yaml",
+        "input": "`config set agents.coder \"{model: sonnet}\"` (a value that comes entirely from an included file), then `config history agents`",
+        "observed": true,
+        "results": {
+          "1": "Both arms: exit 3, no file changed, no event recorded (history still shows only the import of model: opus). The messages differ. One arm: \"troupe: agents.coder: its whole value comes from .troupe/agents/coder.yaml; not replacing it\". The other: \"troupe: agents.coder: value comes from include /theatre/.troupe/agents/coder.yaml; refusing to replace it (change a path inside it instead); no file changed\".",
+          "2": "Exit 3, no file changed, no event recorded. Message: \"/theatre/.troupe/agents/coder.yaml: agents.coder: the whole value comes from the include file:agents/coder.yaml; change the included file instead\".",
+          "3": "Exit 3, no file changed, no event recorded. Message: \"troupe: error: agents.coder: its whole value comes from include 'file:agents/coder.yaml' in /theatre/.troupe/troupe.yml; change the included file instead\".",
+          "4": "Both arms: exit 3, no file changed, no event recorded. The messages differ. One arm: \"troupe: write refused: agents.coder: value comes from include /theatre/.troupe/agents/coder.yaml; refusing to replace it\". The other: \"troupe: agents.coder: value comes from include .troupe/agents/coder.yaml\"."
+        }
+      },
+      {
+        "before": "old text",
+        "input": "`config set notes '\"new text\\n\"'` (as agent:bot), where notes.txt is a symlink to shared/notes.txt; then `config history notes`",
+        "observed": true,
+        "results": {
+          "1": "Both arms: exit 0. shared/notes.txt now reads \"new text\" and notes.txt is still a symlink to it. History shows seq 5: old text -> new text by agent bot via cli.",
+          "2": "Exit 0. shared/notes.txt now reads \"new text\" and notes.txt is still a symlink to it. History shows seq 5: old text -> new text by agent bot via cli.",
+          "3": "Exit 0. shared/notes.txt now reads \"new text\" and notes.txt is still a symlink to it. History shows seq 5: old text -> new text by agent bot via cli.",
+          "4": "Both arms: exit 0. shared/notes.txt now reads \"new text\" and notes.txt is still a symlink to it. History shows seq 5: old text -> new text by agent bot via cli."
+        }
+      },
+      {
+        "before": "retry: 5  # attempts",
+        "input": "Edit troupe.yml by hand to `retry: 7  # attempts`, then `config get retry` and `config history retry`",
+        "observed": true,
+        "results": {
+          "1": "Both arms: `get` prints 7. History adds seq 6: set 5 -> 7, actor unknown, via file.",
+          "2": "`get` prints 7. History adds seq 6: set 5 -> 7, actor unknown, via file.",
+          "3": "`get` prints 7. History adds seq 6: set 5 -> 7, actor unknown, via file.",
+          "4": "Both arms: `get` prints 7. History adds seq 6: set 5 -> 7, actor unknown, via file."
+        }
+      }
+    ],
+    "in_practice": "On normal use you can't tell the routes apart. Every route wrote the file, recorded the event and caught the hand edit the same way. The only visible differences were the wording of the refusal message and the name of the history file in .troupe (events.sqlite, history.sqlite, events.sqlite3 plus a lock file, troupe-state.sqlite, or events.sqlite plus events.lock). The cases where the routes are meant to differ were not run: a history store that can't be written, a read-only target or directory, or a crash between the write and the record. So none of the behaviour that sets them apart was observed.",
+    "stakes": "This decides whether a config file can end up changed with no history entry for the change, and what a user sees when the history store can't be written. None of the runs tested a failure, though. Every route was only exercised on normal changes, and on those they all did the same thing.",
+    "tradeoff": "Route 1 is simplest, but a crash or store failure can leave a change on disk with no event (it is later recorded only as an anonymous hand edit). Route 2 undoes the file write and exits 4 if recording fails. Route 3 also refuses up front with exit 3 when anything isn't writable, which means extra checks and a stricter tool. Route 4 never considered the question."
+  },
+  "plan_why": "The sandbox cannot make a file read-only (no chmod) or reliably break the history store, so these examples cannot force a real I/O failure or show route 2's restore or route 3's not-writable check. They show what can be checked: a successful set (file and history agree), a refused set (exit 3, does the file stay unchanged and does history stay empty for it), a set through a symlinked include (does the link survive the rewrite, the atomic-rename risk route 3 names), and a hand edit made while nothing was running (history shows it only after a reconciling command, as a 'file' event; this is how route 1 says a lost event shows up later)",
+  "routes": [
+    [
+      "Write files, then record; a failed write records nothing; a crash between them can lose an event",
+      [
+        "Arm B",
+        "Arm C"
+      ]
+    ],
+    [
+      "Write files, then record; if recording fails, restore the files and exit 4 naming the store",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "Write then record, but refuse up front (exit 3) when the target, its directory or the store is not writable; other store failures exit 4",
+      [
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

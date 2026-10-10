@@ -1,0 +1,11 @@
+{
+  "evidence": [
+    "tests/test_config.py:199",
+    "tests/test_config.py:160",
+    "tests/test_config.py:230"
+  ],
+  "notes": "No test name claims more than its body checks, but the names are too vague to triage from. `test_watch` (line 199) covers six behaviours: propagating config and include edits, ignoring the CLI's own set, ignoring formatting-only edits, following new includes, surviving broken YAML, and exiting cleanly on SIGTERM. Its name says none of them. `test_reconcile_on_command` (line 160) and `test_watch_sigint` (line 230) also say less than their bodies check: neither the 'history does not reconcile' rule nor the 'exits 0' result is in the name.",
+  "raw": "{\"score\": 2, \"evidence\": [\"tests/test_config.py:199\", \"tests/test_config.py:160\", \"tests/test_config.py:230\"], \"notes\": \"No test name claims more than its body checks, but the names are too vague to triage from. `test_watch` (line 199) covers six behaviours: propagating config and include edits, ignoring the CLI's own set, ignoring formatting-only edits, following new includes, surviving broken YAML, and exiting cleanly on SIGTERM. Its name says none of them. `test_reconcile_on_command` (line 160) and `test_watch_sigint` (line 230) also say less than their bodies check: neither the 'history does not reconcile' rule nor the 'exits 0' result is in the name.\"}",
+  "score": 2,
+  "status": "ok"
+}

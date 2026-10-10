@@ -1,0 +1,96 @@
+{
+  "sha_before": "69eca9f1f1174ad2b5a8fe8d7892a34627c764d9",
+  "sha_after": "2ad9e807af2f15bb64be95136892fe474be79d99",
+  "head": "2ad9e807af2f15bb64be95136892fe474be79d99",
+  "branch": "main",
+  "head_in_main": true,
+  "dirty_at_end": false,
+  "log": [
+    {
+      "sha": "2ad9e807af2f15bb64be95136892fe474be79d99",
+      "author": "Developer",
+      "subject": "feat(config-lineage): align the earlier specs and docstrings with step 4 and check traceability"
+    },
+    {
+      "sha": "656434645c6c6f44f571dc15aa35942f5637252b",
+      "author": "Developer",
+      "subject": "feat(config-lineage): validate set --reason end to end"
+    },
+    {
+      "sha": "9ab02a7d31aa481c15203e170f3d927b402b46f9",
+      "author": "Developer",
+      "subject": "feat(config-lineage): validate TROUPE_ACTOR end to end"
+    },
+    {
+      "sha": "5746c8295c223717d87c63732ed651c36df13985",
+      "author": "Developer",
+      "subject": "feat(config-lineage): validate lineage of each origin, change grouping and time end to end"
+    },
+    {
+      "sha": "3e4cd374fd6b0df3cbf1c004994487859c3006b1",
+      "author": "Developer",
+      "subject": "feat(config-lineage): accept --reason TEXT on set"
+    },
+    {
+      "sha": "0fab38f5e6f4ed933befa3fee0c237d434eadbe7",
+      "author": "Developer",
+      "subject": "feat(config-lineage): print the five lineage members on every history line"
+    },
+    {
+      "sha": "e47b082fab415fa3118e96342db3f15059aee6e7",
+      "author": "Developer",
+      "subject": "feat(config-lineage): read histories recorded before step 4"
+    },
+    {
+      "sha": "7d1bc83a43f74777cfd02078d47c3c83041bd792",
+      "author": "Developer",
+      "subject": "feat(config-lineage): store lineage with every history event and stamp each batch once"
+    },
+    {
+      "sha": "b567ba3251547140398016696573b9b48ab27bbf",
+      "author": "Developer",
+      "subject": "feat(config-lineage): read the actor from TROUPE_ACTOR and refuse invalid values in every subcommand"
+    },
+    {
+      "sha": "2e5fad2ba5854e46fc1ba8f0521131179c360143",
+      "author": "Developer",
+      "subject": "feat(config-lineage): provide the lineage values, the batch stamp and the timestamp format"
+    },
+    {
+      "sha": "8d5486753de77949a6ba58ca0119b1fd8a847542",
+      "author": "Developer",
+      "subject": "spec(config-lineage): record that pre-step-4 history display is our choice"
+    },
+    {
+      "sha": "051ac11ac4ccfabdcb59b850b59daedd92c8f551",
+      "author": "Developer",
+      "subject": "spec(config-lineage): generate and approve the implementation plan"
+    },
+    {
+      "sha": "da167bc7dc8025d8aa5bcd1f4963a90fe0315777",
+      "author": "Developer",
+      "subject": "spec(config-lineage): design lineage stamping per batch, TROUPE_ACTOR and --reason"
+    },
+    {
+      "sha": "a4dc3425be45432a4d0b66457b98bc5c3ec83392",
+      "author": "Developer",
+      "subject": "spec(config-lineage): generate requirements for actor, via, time, reason and change id"
+    },
+    {
+      "sha": "90a11363afb717cf9ee90ea4bbd19ba30545423f",
+      "author": "Developer",
+      "subject": "spec(config-lineage): initialise the step 4 lineage spec from the discovery brief"
+    },
+    {
+      "sha": "c1e47c8583759afa0d56eb81b611e09b037c27e2",
+      "author": "Developer",
+      "subject": "discovery(config-lineage): list the step 4 spec with the other specs in dependency order"
+    },
+    {
+      "sha": "23254c7b52661e351a3de7a2a22e5419cf13ea03",
+      "author": "Developer",
+      "subject": "discovery(config-lineage): plan step 4 lineage of configuration changes"
+    }
+  ],
+  "diffstat": ".kiro/specs/config-file-sync/requirements.md     |   2 +\n .kiro/specs/config-foundation/requirements.md    |   8 +\n .kiro/specs/config-lineage/brief.md              | 134 +++++++\n .kiro/specs/config-lineage/design.md             | 372 +++++++++++++++++\n .kiro/specs/config-lineage/requirements.md       | 180 +++++++++\n .kiro/specs/config-lineage/research.md           | 169 ++++++++\n .kiro/specs/config-lineage/spec.json             |  22 ++\n .kiro/specs/config-lineage/tasks.md              |  82 ++++\n .kiro/specs/config-set-writeback/requirements.md |   2 +\n .kiro/steering/roadmap.md                        |  33 ++\n src/troupe/cli/actor.py                          |  49 +++\n src/troupe/cli/main.py                           |   9 +\n src/troupe/cli/render.py                         |  15 +-\n src/troupe/cli/set_command.py                    |  31 +-\n src/troupe/config/history.py                     | 157 +++++++-\n src/troupe/config/lineage.py                     |  84 ++++\n src/troupe/config/reconcile.py                   |   7 +-\n src/troupe/config/store.py                       |  71 +++-\n src/troupe/config/theatre.py                     |   7 +-\n src/troupe/config/writeback/setter.py            |  14 +-\n tests/conftest.py                                |  10 +\n tests/support.py                                 | 120 +++++-\n tests/test_cli_actor.py                          | 184 +++++++++\n tests/test_cli_set_reason.py                     | 267 +++++++++++++\n tests/test_cli_usage.py                          |   6 +-\n tests/test_core_boundary.py                      |  22 ++\n tests/test_e2e_actor.py                          | 270 +++++++++++++\n tests/test_e2e_history.py                        |  37 +-\n tests/test_e2e_includes.py                       |   5 +-\n tests/test_e2e_lineage.py                        | 482 +++++++++++++++++++++++\n tests/test_e2e_reason.py                         | 292 ++++++++++++++\n tests/test_e2e_reconcile.py                      |  17 +-\n tests/test_e2e_show.py                           |   7 +-\n tests/test_e2e_show_yaml.py                      |   8 +-\n tests/test_e2e_watch_concurrency.py              |   8 +-\n tests/test_history_aggregate.py                  |  41 +-\n tests/test_lineage.py                            | 118 ++++++\n tests/test_reconcile.py                          |  11 +-\n tests/test_record_changes.py                     |  66 ++--\n tests/test_recorded.py                           |   9 +-\n tests/test_render.py                             |  92 ++++-\n tests/test_set_history.py                        |   9 +-\n tests/test_set_replacements.py                   |   5 +-\n tests/test_store.py                              |  66 ++--\n tests/test_store_legacy.py                       | 270 +++++++++++++\n tests/test_store_lineage.py                      | 319 +++++++++++++++\n tests/test_theatre.py                            |  47 ++-\n tests/test_theatre_sync.py                       |  28 +-\n tests/watch_support.py                           |  11 +-\n tests/writeback/test_setter.py                   |  62 +--\n 50 files changed, 4098 insertions(+), 239 deletions(-)"
+}

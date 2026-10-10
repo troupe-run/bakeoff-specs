@@ -1,0 +1,353 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "name",
+          "{a: 1, b: x}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "limits",
+          "[x, y]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tags.0",
+          "{k: v, m: w}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tags.1",
+          "[p, q]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.temperature",
+          "0.3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "model: opus\n",
+      ".troupe/troupe.yml": "name: alpha    # project name\nlimits: 5  # max\ntags:\n  - one   # first\n  - two  # second\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/coder.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "{a: 1, b: x}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits: 5  # max\ntags:\n  - one   # first\n  - two  # second\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "[x, y]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits:    # max\n  - x\n  - y\ntags:\n  - one   # first\n  - two  # second\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.0",
+                "{k: v, m: w}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits:    # max\n  - x\n  - y\ntags:\n  -       # first\n    k: v\n    m: w\n  - two  # second\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.1",
+                "[p, q]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits:    # max\n  - x\n  - y\ntags:\n  -       # first\n    k: v\n    m: w\n  -      # second\n    - p\n    - q\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.temperature",
+                "0.3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits:    # max\n  - x\n  - y\ntags:\n  -       # first\n    k: v\n    m: w\n  -      # second\n    - p\n    - q\nagents:\n  coder:  # c\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "{a: 1, b: x}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits: 5  # max\ntags:\n  - one   # first\n  - two  # second\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "[x, y]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits:    # max\n  - x\n  - y\ntags:\n  - one   # first\n  - two  # second\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.0",
+                "{k: v, m: w}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits:    # max\n  - x\n  - y\ntags:\n  - k: v  # first\n    m: w\n  - two  # second\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.1",
+                "[p, q]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits:    # max\n  - x\n  - y\ntags:\n  - k: v  # first\n    m: w\n  - - p  # second\n    - q\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.temperature",
+                "0.3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits:    # max\n  - x\n  - y\ntags:\n  - k: v  # first\n    m: w\n  - - p  # second\n    - q\nagents:\n  coder:  # c\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Value removed; comment stays at its column on the key (or dash) line; the collection goes below; list items become compact",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "{a: 1, b: x}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits: 5  # max\ntags:\n  - one   # first\n  - two  # second\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "limits",
+                "[x, y]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits:    # max\n  - x\n  - y\ntags:\n  - one   # first\n  - two  # second\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.0",
+                "{k: v, m: w}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits:    # max\n  - x\n  - y\ntags:\n  -       # first\n    k: v\n    m: w\n  - two  # second\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.1",
+                "[p, q]"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits:    # max\n  - x\n  - y\ntags:\n  -       # first\n    k: v\n    m: w\n  -      # second\n    - p\n    - q\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.temperature",
+                "0.3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name:          # project name\n  a: 1\n  b: x\nlimits:    # max\n  - x\n  - y\ntags:\n  -       # first\n    k: v\n    m: w\n  -      # second\n    - p\n    - q\nagents:\n  coder:  # c\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

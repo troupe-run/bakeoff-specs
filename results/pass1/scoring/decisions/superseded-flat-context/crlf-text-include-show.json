@@ -1,0 +1,85 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "crlf.txt: \"You are the coder.\\r\\nWrite tests first.\\r\\n\"",
+        "input": "`config show agents` (prompt comes from a CRLF file)",
+        "observed": true,
+        "results": {
+          "1": "`prompt: |` literal block with raw CR bytes left at the end of each line (`You are the coder.\\r`), which a terminal doesn't show",
+          "2": "`prompt: \"You are the coder.\\r\\nWrite tests first.\\r\\n\"`: one double-quoted line with visible escapes",
+          "3": "`prompt: |` literal block showing `You are the coder.` / `Write tests first.`; the CRs are dropped and the display looks like plain LF text"
+        }
+      },
+      {
+        "before": "odd.txt: \"    indented first line\\nmid\\rline carriage return\\nno final newline\"",
+        "input": "`config show agents` (notes come from a file with an indented first line, a mid-line CR and no final newline)",
+        "observed": true,
+        "results": {
+          "1": "`notes: |2-` literal block with an explicit indent marker and a raw CR inside the line `mid\\rline carriage return`",
+          "2": "`notes: \"    indented first line\\nmid\\rline carriage return\\nno final newline\"`: double-quoted with escapes",
+          "3": "Same as route 2: double-quoted with escapes. This route keeps literal blocks only for CRLF text"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show agents.coder --sources`",
+        "observed": true,
+        "results": {
+          "1": "Same blocks as above, each followed by its source comment, e.g. `prompt: | # from .troupe/prompts/crlf.txt`; the raw CRs are still inside",
+          "2": "`prompt: \"You are the coder.\\r\\n...\" # from .troupe/prompts/crlf.txt`; notes are quoted the same way",
+          "3": "`prompt: | # from .troupe/prompts/crlf.txt` with the CRs dropped; notes are double-quoted with the comment after them"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get agents.coder.prompt`",
+        "observed": true,
+        "results": {
+          "1": "Prints `You are the coder.\\r\\nWrite tests first.\\r\\n`, the exact bytes",
+          "2": "Exact bytes, same as route 1",
+          "3": "Exact bytes, same as route 1. Only `show` drops the CRs"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show agents.coder.notes` and `config get agents.coder.notes`",
+        "observed": true,
+        "results": {
+          "1": "Both print the raw text, including the CR and a trailing newline the file doesn't have",
+          "2": "Same as route 1",
+          "3": "Same as route 1"
+        }
+      }
+    ],
+    "in_practice": "The routes differ only when `show` prints a whole map. In route 1 the output contains invisible raw carriage returns: on screen it looks like an ordinary block, but if the output is copied or re-read as YAML, those CRs count as line breaks, so the text comes back changed. Route 2 is exact and unambiguous but hard to read: long prompts appear as one escaped line. Route 3 is readable for CRLF prompts but shows text that differs from the file (no CRs), and it still falls back to quoting for a bare mid-line CR. A file with blank lines at the end prints as a `|+` block on all three routes.",
+    "stakes": "When an included prompt file has Windows line endings (CRLF), a stray carriage return or a leading-space first line, `config show` must still print something. The question is whether that output shows the exact text, stays clean readable YAML, or quietly normalizes it. `config get` returns the exact bytes on every route.",
+    "tradeoff": "Route 1 always prints a block, but the hidden CRs are not true to the file once the output is re-read; route 2 is exact but turns odd files into hard-to-read escaped lines; route 3 is readable but its `show` drops the CRs, and it mixes blocks and quoted strings."
+  },
+  "plan_why": "show of a mapping holding text includes that a plain literal block cannot hold exactly (CRLF endings, a bare CR, leading indentation, no final newline, extra trailing blank lines) shows whether each route always prints a literal block, prints a double-quoted escaped string, or prints a literal block with CRLF turned into LF; get shows whether the raw bytes stay exact",
+  "routes": [
+    [
+      "Double-quoted at first; reworked so every text include is a literal block of the exact text",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "Double-quoted with escapes",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D"
+      ]
+    ],
+    [
+      "Literal block with CRLF turned into LF; get keeps the bytes",
+      [
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

@@ -1,0 +1,158 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "EXIT3",
+        "why": "The include-cycle write was refused with exit code 3 and no file changed."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "EXIT3",
+        "why": "The include-cycle write was refused with exit code 3 ('not writing')."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "EXIT3",
+        "why": "The include-cycle write was refused with exit code 3 ('no file changed')."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "EXIT3",
+        "why": "The include-cycle write was refused with exit code 3 ('write refused')."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "EXIT4",
+        "why": "The include-cycle write was refused with exit code 4 and a load-style include cycle error."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "EXIT3",
+        "why": "The include-cycle write was refused with exit code 3 ('no file was changed')."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "a.inner"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "up"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--include",
+          "loop",
+          "file:loop.yaml"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "a.inner"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/b.txt": "text from .troupe/b.txt (wrong directory)\n",
+      ".troupe/loop.yaml": "again: file:sub/../loop.yaml\n",
+      ".troupe/sub/a.yaml": "inner: file:b.txt\n",
+      ".troupe/sub/b.txt": "text from .troupe/sub/b.txt\n",
+      ".troupe/sub/upper.YML": "k: v\n",
+      ".troupe/troupe.yml": "a: file:sub/a.yaml\nup: file:sub/upper.YML  # upper-case suffix\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/loop.yaml",
+      ".troupe/sub/a.yaml"
+    ],
+    "why": "Shows three include behaviours: a nested include inside .troupe/sub/a.yaml is resolved relative to that file (two b.txt files with different text), a target ending in upper-case .YML is read as text or as YAML, and adding an include that loops back through sub/../ is either rejected with exit 4 or not, plus what happens to the config afterwards."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "refused with exit 3",
+            "id": "EXIT3"
+          },
+          {
+            "description": "refused with exit 4 (load error on a write)",
+            "id": "EXIT4"
+          }
+        ],
+        "id": "Q1",
+        "text": "include cycle refused on write"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "YAML include by .yml/.yaml suffix (case-sensitive), else text; paths relative to the including file; cycles and missing or non-UTF-8 targets exit 4",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T36",
+  "status": "ok"
+}

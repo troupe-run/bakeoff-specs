@@ -1,0 +1,9 @@
+{
+  "kind": "approval",
+  "reply": "Approved. The intent summary matches the Lineage section and the step 4 brief. Every history event gains actor, via, at, reason and change. Actor comes from TROUPE_ACTOR (`human:<id>` or `agent:<id>`, anything else exits 2), and when it is unset the actor is human with the login name. Imports and file-originated events have actor unknown/null. `at` is RFC 3339 UTC ending in Z. reason is the `--reason` text, otherwise null. Each command, file reconcile or import has its own change, and no two share one. The contract lists file reconcile and import as producers of a change in their own right, so it is consistent to give the hand edits that a `set` picks up first (via file, actor unknown) a change separate from the set's own cli events. Where the contract is silent, your choices are yours to make, as long as the spec records them: where TROUPE_ACTOR is checked, a null id when there is no login name, whole-second timestamps, `--reason` only on set, an opaque change id, and option A for pre-step-4 history. Please go ahead and write the spec.",
+  "answers": [],
+  "approved": true,
+  "command": null,
+  "arguments": "",
+  "significant": true
+}

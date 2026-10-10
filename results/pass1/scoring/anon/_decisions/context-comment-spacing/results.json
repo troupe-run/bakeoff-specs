@@ -1,0 +1,197 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.reviewer.tags",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.coder.temperature",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "temperature: 0.2\nmodel: sonnet\n",
+      ".troupe/prompt.txt": "line one\nline two is longer\n",
+      ".troupe/troupe.yml": "model: opus\nmax_retries: 3\nagents:\n  coder: file:agents/coder.yaml\n  reviewer:\n    name: rev\n    a_much_longer_setting_name: \"a fairly long string value here\"\n    tags:\n      - a\n      - bbbbbbbbbbbb\nprompt: file:prompt.txt\nempty: \"\"\n"
+    },
+    "show": []
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 4,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus # from .troupe/troupe.yml\nmax_retries: 3 # from .troupe/troupe.yml\nagents:\n  coder:\n    temperature: 0.2 # from .troupe/agents/coder.yaml\n    model: sonnet # from .troupe/agents/coder.yaml\n  reviewer:\n    name: rev # from .troupe/troupe.yml\n    a_much_longer_setting_name: a fairly long string value here # from .troupe/troupe.yml\n    tags:\n      - a # from .troupe/troupe.yml\n      - bbbbbbbbbbbb # from .troupe/troupe.yml\nprompt: | # from .troupe/prompt.txt\n  line one\n  line two is longer\nempty: '' # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  temperature: 0.2 # from .troupe/agents/coder.yaml\n  model: sonnet # from .troupe/agents/coder.yaml\nreviewer:\n  name: rev # from .troupe/troupe.yml\n  a_much_longer_setting_name: a fairly long string value here # from .troupe/troupe.yml\n  tags:\n    - a # from .troupe/troupe.yml\n    - bbbbbbbbbbbb # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.reviewer.tags",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- a # from .troupe/troupe.yml\n- bbbbbbbbbbbb # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.temperature",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2 # from .troupe/agents/coder.yaml\n"
+            }
+          ]
+        }
+      ],
+      "route": "One space before #, no alignment",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "model: opus # from .troupe/troupe.yml\nmax_retries: 3 # from .troupe/troupe.yml\nagents:\n  coder:\n    temperature: 0.2 # from .troupe/agents/coder.yaml\n    model: sonnet # from .troupe/agents/coder.yaml\n  reviewer:\n    name: rev # from .troupe/troupe.yml\n    a_much_longer_setting_name: a fairly long string value here # from .troupe/troupe.yml\n    tags:\n      - a # from .troupe/troupe.yml\n      - bbbbbbbbbbbb # from .troupe/troupe.yml\nprompt: | # from .troupe/prompt.txt\n  line one\n  line two is longer\nempty: '' # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  temperature: 0.2 # from .troupe/agents/coder.yaml\n  model: sonnet # from .troupe/agents/coder.yaml\nreviewer:\n  name: rev # from .troupe/troupe.yml\n  a_much_longer_setting_name: a fairly long string value here # from .troupe/troupe.yml\n  tags:\n    - a # from .troupe/troupe.yml\n    - bbbbbbbbbbbb # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.reviewer.tags",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "- a # from .troupe/troupe.yml\n- bbbbbbbbbbbb # from .troupe/troupe.yml\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.temperature",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "0.2 # from .troupe/agents/coder.yaml\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

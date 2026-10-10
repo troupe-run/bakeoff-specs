@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "model: opus  # main model\nretry: 3\nagents:\n  coder:\n    temperature: 0.2",
+        "input": "With `config watch` running, hand-edit `.troupe/troupe.yml` into broken YAML, wait 3 s",
+        "observed": true,
+        "results": {
+          "1": "All six arms: watch keeps running and prints nothing at the moment of the break. The file now reads:\nmodel: opus  # main model\nretry: [3\nagents:\n  coder:\n    temperature: 0.2\nThe broken state never shows up in `config history` later."
+        }
+      },
+      {
+        "before": "model: opus  # main model\nretry: [3\nagents:\n  coder:\n    temperature: 0.2",
+        "input": "Still watching, fix the file to `retry: 5`, wait 3 s, then `config history`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: watch picks the fixed file up. History gains exactly one new entry: `{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 5, ... \"via\": \"file\" ...}`. There is nothing for the broken state."
+        }
+      },
+      {
+        "before": "",
+        "input": "Ctrl-C (SIGINT) on `config watch`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0. The parse error appears once on stderr over the whole run, not once per tick. The wording differs by arm. Three arms give one line with the location, e.g.:\ntroupe: .troupe/troupe.yml: invalid YAML (line 3, column 7): expected ',' or ']', but got ':'\nOne arm gives one line with no location:\ntroupe: /theatre/.troupe/troupe.yml: invalid YAML: while parsing a flow sequence\nTwo arms give a multi-line message with a caret:\ntroupe: ./.troupe/troupe.yml: invalid YAML: while parsing a flow sequence\n  in \"<unicode string>\", line 2, column 8:\n    retry: [3\n           ^ (line: 2)\nexpected ',' or ']', but got ':'\n  in \"<unicode string>\", line 3, column 7:\n    agents:\n          ^ (line: 3)"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get retry` after watch stopped",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0, prints `5`."
+        }
+      }
+    ],
+    "in_practice": "On this route, a broken save is reported once on stderr and otherwise ignored. Watch keeps going and resumes on its own as soon as the file parses again. This run has no include files, so the noted difference in retrying failed include fetches (one arm retries only after a local change) is not exercised. Side details that differ by arm: four arms print `watching /theatre` and two print `watching .`; two arms leave an empty lock file next to the history database.",
+    "stakes": "If a hand edit leaves the config broken for a moment, as a half-saved file can, a running `config watch` has to survive it. It must not record garbage in the history, and it must pick the file up again once it is fixed. Otherwise the user's later valid edits are lost or the history is polluted.",
+    "tradeoff": "Route 1: a broken config is never recorded and recovery is automatic. The cost is that the error shows up only once on stderr, and how much location detail it gives depends on the arm."
+  },
+  "plan_why": "While `config watch` runs, troupe.yml is hand-edited into invalid YAML and left broken for about 3 seconds (several polling ticks), then fixed by hand with a changed value. The plan captures what watch prints (whether each error appears once or repeats, and whether it says anything on recovery), whether it is still running and picks up the fix, its exit code after SIGINT, whether the broken state recorded any history events, and what ends up on disk.",
+  "routes": [
+    [
+      "Report on stderr (each distinct message once), record nothing, retry every tick, resume when it loads",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

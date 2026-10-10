@@ -1,0 +1,3 @@
+```json
+{"score": 4, "evidence": ["/judge/gates.md:3-19", "/judge/gates.md:29-45", "/judge/gates.md:55-75", "/judge/transcript.md:111"], "notes": "All three gates came before any code was written: one after requirements, one after design, one after tasks. Each said in a few bullets what was being approved and which choices to confirm, including the open decisions 5.3/5.4/2.6 and the change that replaces config-foundation 6.9 and 7.3, so the reversal was stated openly before the design step. The task gate is the least focused because it mostly summarises the plan, but it is not after the fact and none of the gates is trivial."}
+```

@@ -1,0 +1,1 @@
+{"runnable": false, "why": "The only route is what the actor becomes when TROUPE_ACTOR is unset and there is no login name. The sandbox always sets LOGNAME and USER and cannot unset them, so no command can reach the no-login-name case and none of its results can be seen.", "files": {}, "commands": [], "show": []}

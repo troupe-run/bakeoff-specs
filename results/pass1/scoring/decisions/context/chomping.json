@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "a: |\n  one\n  two",
+        "input": "`config set a \"x\\ny\"` (no trailing newline)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; all five arms gave the same result; the file now reads:\na: |-\n  x\n  y",
+          "2": "exit 0; the file now reads:\na: |-\n  x\n  y"
+        }
+      },
+      {
+        "before": "b: |-\n  one\nc: |+",
+        "input": "`config set b \"p\\nq\\n\\n\"` (two trailing newlines)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; all five arms gave the same result; the file now reads (the blank line belongs to b):\nb: |+\n  p\n  q\n\nc: |+",
+          "2": "exit 0; the file now reads (the blank line belongs to b):\nb: |+\n  p\n  q\n\nc: |+"
+        }
+      },
+      {
+        "before": "c: |+\n  one\n\ne: |",
+        "input": "`config set c \"z\\n\"` (one trailing newline, old marker `|+`)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; all five arms gave the same result; `|+` is kept and the old blank line is gone:\nc: |+\n  z\ne: |\n`config show` then prints it as `c: |`",
+          "2": "exit 0; `|+` is kept and the old blank line is gone:\nc: |+\n  z\ne: |\n`config show` then prints it as `c: |`"
+        }
+      },
+      {
+        "before": "e: |\n  last\nf: plain  # end",
+        "input": "`config set e \"\\n\"` (the value is a single newline), then `config show`",
+        "observed": true,
+        "results": {
+          "1": "The arms on this route did different things. Two arms: exit 0; the file now reads:\ne: |+\n\nf: plain  # end\n`config show` prints the same `e: |+` and a blank line. One arm: exit 0; the file now reads:\ne: \"\\n\"\nf: plain  # end\n`config show` prints `e: \"\\n\"`. One arm: also exit 0 and writes the same quoted `e: \"\\n\"` to the file, but `config show` prints `e: |+` and a blank line, so the file and show disagree. One arm: exit 3, stderr `troupe: write refused: e: cannot write this change faithfully`; the file is unchanged and show still prints `e: |` and `last`.",
+          "2": "exit 0; the file now reads:\ne: |+\n\nf: plain  # end\n`config show` prints the same `e: |+` and a blank line."
+        }
+      }
+    ],
+    "in_practice": "Both routes did the same for ordinary values. When the old marker couldn't fit the new value, both switched it: `|` became `|-`, and `|-` became `|+`. When it could fit, they kept it (`|+` stayed for c). They differ only on a value that is a single newline. Route 2 always writes it as `|+`. Route 1's arms split between `|+`, a quoted \"\\n\", and refusing the write.",
+    "stakes": "When a multi-line value is replaced, the `|`, `|-` or `|+` marker in front of it decides whether trailing newlines survive the next read. If the marker is wrong, the value quietly gains or loses newlines. A value that is just a single newline is the hard case: it can be written as `|+`, written in quotes, or refused.",
+    "tradeoff": "Route 1 doesn't settle the single-newline case, so its arms ranged from a quoted value to a refusal (and in one arm the file and `config show` disagreed); route 2 always writes that value as `|+` plus a bare blank line, which is easy to misread or break when editing by hand."
+  },
+  "plan_why": "Changes block scalars so the chomping must change (| to |-, |- to |+), keeps |+ while its trailing blank line is replaced as part of the value, then sets a block value to a lone newline (|+ or refused); the final show checks every value reads back.",
+  "routes": [
+    [
+      "Keep the old indicator if it can represent the value, otherwise choose strip/clip/keep from trailing newlines; keep-chomped trailing blank lines count as part of the value",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "Render a lone newline value as |+ instead of refusing it",
+      [
+        "Arm A"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

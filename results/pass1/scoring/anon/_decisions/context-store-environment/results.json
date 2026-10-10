@@ -1,0 +1,1165 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "4"
+        ],
+        "env": {
+          "PERSISTENCE_MODULE": "eventsourcing.popo"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "PERSISTENCE_MODULE": "eventsourcing.popo"
+        }
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "IS_SNAPSHOTTING_ENABLED": null,
+          "PERSISTENCE_MODULE": null,
+          "SQLITE_DBNAME": null
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "5"
+        ],
+        "env": {
+          "IS_SNAPSHOTTING_ENABLED": "y",
+          "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+          "SQLITE_DBNAME": "elsewhere.db"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "IS_SNAPSHOTTING_ENABLED": "y",
+          "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+          "SQLITE_DBNAME": "elsewhere.db"
+        }
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "IS_SNAPSHOTTING_ENABLED": null,
+          "PERSISTENCE_MODULE": null,
+          "SQLITE_DBNAME": null
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "6"
+        ],
+        "env": {
+          "PERSISTENCE_MODULE": "nonexistent"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "PERSISTENCE_MODULE": "nonexistent"
+        }
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "IS_SNAPSHOTTING_ENABLED": null,
+          "PERSISTENCE_MODULE": null,
+          "SQLITE_DBNAME": null
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "model: opus\nretry: 3\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "eventsourcing.popo"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 4\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "eventsourcing.popo"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:41.226008Z\", \"reason\": null, \"change\": \"f3114073-6f31-4ce4-aa06-14c8f7b6ba3e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:41.226008Z\", \"reason\": null, \"change\": \"f3114073-6f31-4ce4-aa06-14c8f7b6ba3e\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:41.228198Z\", \"reason\": null, \"change\": \"2fa0e387-3fe2-42d8-8ca1-0e0c77703a70\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:41.226008Z\", \"reason\": null, \"change\": \"f3114073-6f31-4ce4-aa06-14c8f7b6ba3e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:41.226008Z\", \"reason\": null, \"change\": \"f3114073-6f31-4ce4-aa06-14c8f7b6ba3e\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:41.228198Z\", \"reason\": null, \"change\": \"2fa0e387-3fe2-42d8-8ca1-0e0c77703a70\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": "y",
+                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+                "SQLITE_DBNAME": "elsewhere.db"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 5\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": "y",
+                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+                "SQLITE_DBNAME": "elsewhere.db"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:41.226008Z\", \"reason\": null, \"change\": \"f3114073-6f31-4ce4-aa06-14c8f7b6ba3e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:41.226008Z\", \"reason\": null, \"change\": \"f3114073-6f31-4ce4-aa06-14c8f7b6ba3e\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:41.228198Z\", \"reason\": null, \"change\": \"2fa0e387-3fe2-42d8-8ca1-0e0c77703a70\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:42.885117Z\", \"reason\": null, \"change\": \"303f1d77-001b-4702-a259-261f618fb791\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite  16384 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:41.226008Z\", \"reason\": null, \"change\": \"f3114073-6f31-4ce4-aa06-14c8f7b6ba3e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:41.226008Z\", \"reason\": null, \"change\": \"f3114073-6f31-4ce4-aa06-14c8f7b6ba3e\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:41.228198Z\", \"reason\": null, \"change\": \"2fa0e387-3fe2-42d8-8ca1-0e0c77703a70\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:42.885117Z\", \"reason\": null, \"change\": \"303f1d77-001b-4702-a259-261f618fb791\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "6"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "nonexistent"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 6\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "nonexistent"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:41.226008Z\", \"reason\": null, \"change\": \"f3114073-6f31-4ce4-aa06-14c8f7b6ba3e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:41.226008Z\", \"reason\": null, \"change\": \"f3114073-6f31-4ce4-aa06-14c8f7b6ba3e\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:41.228198Z\", \"reason\": null, \"change\": \"2fa0e387-3fe2-42d8-8ca1-0e0c77703a70\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:42.885117Z\", \"reason\": null, \"change\": \"303f1d77-001b-4702-a259-261f618fb791\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 6, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:44.536585Z\", \"reason\": null, \"change\": \"7a408528-fdd8-4e68-b564-1a122526cf01\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite  16384 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:41.226008Z\", \"reason\": null, \"change\": \"f3114073-6f31-4ce4-aa06-14c8f7b6ba3e\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:41.226008Z\", \"reason\": null, \"change\": \"f3114073-6f31-4ce4-aa06-14c8f7b6ba3e\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:41.228198Z\", \"reason\": null, \"change\": \"2fa0e387-3fe2-42d8-8ca1-0e0c77703a70\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:42.885117Z\", \"reason\": null, \"change\": \"303f1d77-001b-4702-a259-261f618fb791\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 6, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:44.536585Z\", \"reason\": null, \"change\": \"7a408528-fdd8-4e68-b564-1a122526cf01\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "eventsourcing.popo"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 4\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "eventsourcing.popo"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:46.778527Z\", \"reason\": null, \"change\": \"7ab63df2-c5fe-4d48-9625-14740e934a45\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:46.778527Z\", \"reason\": null, \"change\": \"7ab63df2-c5fe-4d48-9625-14740e934a45\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:46.781185Z\", \"reason\": null, \"change\": \"12a21e76-3846-4d88-acac-d7a619f2a813\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:46.778527Z\", \"reason\": null, \"change\": \"7ab63df2-c5fe-4d48-9625-14740e934a45\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:46.778527Z\", \"reason\": null, \"change\": \"7ab63df2-c5fe-4d48-9625-14740e934a45\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:46.781185Z\", \"reason\": null, \"change\": \"12a21e76-3846-4d88-acac-d7a619f2a813\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": "y",
+                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+                "SQLITE_DBNAME": "elsewhere.db"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 5\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": "y",
+                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+                "SQLITE_DBNAME": "elsewhere.db"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:46.778527Z\", \"reason\": null, \"change\": \"7ab63df2-c5fe-4d48-9625-14740e934a45\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:46.778527Z\", \"reason\": null, \"change\": \"7ab63df2-c5fe-4d48-9625-14740e934a45\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:46.781185Z\", \"reason\": null, \"change\": \"12a21e76-3846-4d88-acac-d7a619f2a813\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:48.446253Z\", \"reason\": null, \"change\": \"56984a4f-813f-4aa5-a75f-c4ad4041d781\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:46.778527Z\", \"reason\": null, \"change\": \"7ab63df2-c5fe-4d48-9625-14740e934a45\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:46.778527Z\", \"reason\": null, \"change\": \"7ab63df2-c5fe-4d48-9625-14740e934a45\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:46.781185Z\", \"reason\": null, \"change\": \"12a21e76-3846-4d88-acac-d7a619f2a813\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:48.446253Z\", \"reason\": null, \"change\": \"56984a4f-813f-4aa5-a75f-c4ad4041d781\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "6"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "nonexistent"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 6\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "nonexistent"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:46.778527Z\", \"reason\": null, \"change\": \"7ab63df2-c5fe-4d48-9625-14740e934a45\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:46.778527Z\", \"reason\": null, \"change\": \"7ab63df2-c5fe-4d48-9625-14740e934a45\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:46.781185Z\", \"reason\": null, \"change\": \"12a21e76-3846-4d88-acac-d7a619f2a813\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:48.446253Z\", \"reason\": null, \"change\": \"56984a4f-813f-4aa5-a75f-c4ad4041d781\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 6, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:50.178369Z\", \"reason\": null, \"change\": \"7b3be69e-0cf6-4371-9499-7c203e15c0f4\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:46.778527Z\", \"reason\": null, \"change\": \"7ab63df2-c5fe-4d48-9625-14740e934a45\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:46.778527Z\", \"reason\": null, \"change\": \"7ab63df2-c5fe-4d48-9625-14740e934a45\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:46.781185Z\", \"reason\": null, \"change\": \"12a21e76-3846-4d88-acac-d7a619f2a813\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:48.446253Z\", \"reason\": null, \"change\": \"56984a4f-813f-4aa5-a75f-c4ad4041d781\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 6, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:50.178369Z\", \"reason\": null, \"change\": \"7b3be69e-0cf6-4371-9499-7c203e15c0f4\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "Configure the store through explicit constructor settings and ignore the process environment",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "eventsourcing.popo"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 4\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "eventsourcing.popo"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:35.228181Z\", \"reason\": null, \"change\": \"829d4ce5-eca5-4609-a9b6-dce993479dc5\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:35.228181Z\", \"reason\": null, \"change\": \"829d4ce5-eca5-4609-a9b6-dce993479dc5\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:35.229971Z\", \"reason\": null, \"change\": \"37663d4a-5663-40d4-a350-064aa81daea6\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:35.228181Z\", \"reason\": null, \"change\": \"829d4ce5-eca5-4609-a9b6-dce993479dc5\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:35.228181Z\", \"reason\": null, \"change\": \"829d4ce5-eca5-4609-a9b6-dce993479dc5\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:35.229971Z\", \"reason\": null, \"change\": \"37663d4a-5663-40d4-a350-064aa81daea6\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": "y",
+                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+                "SQLITE_DBNAME": "elsewhere.db"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 5\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": "y",
+                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+                "SQLITE_DBNAME": "elsewhere.db"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:35.228181Z\", \"reason\": null, \"change\": \"829d4ce5-eca5-4609-a9b6-dce993479dc5\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:35.228181Z\", \"reason\": null, \"change\": \"829d4ce5-eca5-4609-a9b6-dce993479dc5\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:35.229971Z\", \"reason\": null, \"change\": \"37663d4a-5663-40d4-a350-064aa81daea6\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:37.248607Z\", \"reason\": null, \"change\": \"066f0c9a-edc9-4b00-975a-1f53078edd85\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:35.228181Z\", \"reason\": null, \"change\": \"829d4ce5-eca5-4609-a9b6-dce993479dc5\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:35.228181Z\", \"reason\": null, \"change\": \"829d4ce5-eca5-4609-a9b6-dce993479dc5\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:35.229971Z\", \"reason\": null, \"change\": \"37663d4a-5663-40d4-a350-064aa81daea6\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:37.248607Z\", \"reason\": null, \"change\": \"066f0c9a-edc9-4b00-975a-1f53078edd85\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "6"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "nonexistent"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 6\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "nonexistent"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:35.228181Z\", \"reason\": null, \"change\": \"829d4ce5-eca5-4609-a9b6-dce993479dc5\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:35.228181Z\", \"reason\": null, \"change\": \"829d4ce5-eca5-4609-a9b6-dce993479dc5\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:35.229971Z\", \"reason\": null, \"change\": \"37663d4a-5663-40d4-a350-064aa81daea6\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:37.248607Z\", \"reason\": null, \"change\": \"066f0c9a-edc9-4b00-975a-1f53078edd85\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 6, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:39.033529Z\", \"reason\": null, \"change\": \"a955488d-8b7f-4c46-8896-5e56c21a90ee\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:35.228181Z\", \"reason\": null, \"change\": \"829d4ce5-eca5-4609-a9b6-dce993479dc5\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:35.228181Z\", \"reason\": null, \"change\": \"829d4ce5-eca5-4609-a9b6-dce993479dc5\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:35.229971Z\", \"reason\": null, \"change\": \"37663d4a-5663-40d4-a350-064aa81daea6\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:37.248607Z\", \"reason\": null, \"change\": \"066f0c9a-edc9-4b00-975a-1f53078edd85\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 6, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:39.033529Z\", \"reason\": null, \"change\": \"a955488d-8b7f-4c46-8896-5e56c21a90ee\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "eventsourcing.popo"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 4\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "eventsourcing.popo"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:52.171296Z\", \"reason\": null, \"change\": \"084410cb-68e9-4dbc-9488-3eb93daeefcc\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:52.171296Z\", \"reason\": null, \"change\": \"084410cb-68e9-4dbc-9488-3eb93daeefcc\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:52.171508Z\", \"reason\": null, \"change\": \"c5a66868-66ae-4583-9ec8-758f08bac317\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe-state.sqlite  12288 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:52.171296Z\", \"reason\": null, \"change\": \"084410cb-68e9-4dbc-9488-3eb93daeefcc\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:52.171296Z\", \"reason\": null, \"change\": \"084410cb-68e9-4dbc-9488-3eb93daeefcc\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:52.171508Z\", \"reason\": null, \"change\": \"c5a66868-66ae-4583-9ec8-758f08bac317\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": "y",
+                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+                "SQLITE_DBNAME": "elsewhere.db"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 5\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": "y",
+                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+                "SQLITE_DBNAME": "elsewhere.db"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:52.171296Z\", \"reason\": null, \"change\": \"084410cb-68e9-4dbc-9488-3eb93daeefcc\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:52.171296Z\", \"reason\": null, \"change\": \"084410cb-68e9-4dbc-9488-3eb93daeefcc\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:52.171508Z\", \"reason\": null, \"change\": \"c5a66868-66ae-4583-9ec8-758f08bac317\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:53.603721Z\", \"reason\": null, \"change\": \"039c9f1a-5773-4cdb-b73f-0e7f191c520f\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe-state.sqlite  16384 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:52.171296Z\", \"reason\": null, \"change\": \"084410cb-68e9-4dbc-9488-3eb93daeefcc\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:52.171296Z\", \"reason\": null, \"change\": \"084410cb-68e9-4dbc-9488-3eb93daeefcc\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:52.171508Z\", \"reason\": null, \"change\": \"c5a66868-66ae-4583-9ec8-758f08bac317\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:53.603721Z\", \"reason\": null, \"change\": \"039c9f1a-5773-4cdb-b73f-0e7f191c520f\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "6"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "nonexistent"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 6\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "nonexistent"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:52.171296Z\", \"reason\": null, \"change\": \"084410cb-68e9-4dbc-9488-3eb93daeefcc\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:52.171296Z\", \"reason\": null, \"change\": \"084410cb-68e9-4dbc-9488-3eb93daeefcc\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:52.171508Z\", \"reason\": null, \"change\": \"c5a66868-66ae-4583-9ec8-758f08bac317\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:53.603721Z\", \"reason\": null, \"change\": \"039c9f1a-5773-4cdb-b73f-0e7f191c520f\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 6, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:55.227763Z\", \"reason\": null, \"change\": \"68035484-89a7-43ac-b261-67a5f10c2525\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe-state.sqlite  16384 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:52.171296Z\", \"reason\": null, \"change\": \"084410cb-68e9-4dbc-9488-3eb93daeefcc\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:52.171296Z\", \"reason\": null, \"change\": \"084410cb-68e9-4dbc-9488-3eb93daeefcc\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:52.171508Z\", \"reason\": null, \"change\": \"c5a66868-66ae-4583-9ec8-758f08bac317\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:53.603721Z\", \"reason\": null, \"change\": \"039c9f1a-5773-4cdb-b73f-0e7f191c520f\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 6, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:55.227763Z\", \"reason\": null, \"change\": \"68035484-89a7-43ac-b261-67a5f10c2525\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "eventsourcing.popo"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 4\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "eventsourcing.popo"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:57.115972Z\", \"reason\": null, \"change\": \"047f2df3-93fa-4de9-886c-83aa6e6fa6e5\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:57.115972Z\", \"reason\": null, \"change\": \"047f2df3-93fa-4de9-886c-83aa6e6fa6e5\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:57.116569Z\", \"reason\": null, \"change\": \"c69fccbb-6591-49f7-baec-ffbe459ca7dd\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:57.115972Z\", \"reason\": null, \"change\": \"047f2df3-93fa-4de9-886c-83aa6e6fa6e5\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:57.115972Z\", \"reason\": null, \"change\": \"047f2df3-93fa-4de9-886c-83aa6e6fa6e5\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:57.116569Z\", \"reason\": null, \"change\": \"c69fccbb-6591-49f7-baec-ffbe459ca7dd\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": "y",
+                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+                "SQLITE_DBNAME": "elsewhere.db"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 5\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": "y",
+                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+                "SQLITE_DBNAME": "elsewhere.db"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:57.115972Z\", \"reason\": null, \"change\": \"047f2df3-93fa-4de9-886c-83aa6e6fa6e5\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:57.115972Z\", \"reason\": null, \"change\": \"047f2df3-93fa-4de9-886c-83aa6e6fa6e5\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:57.116569Z\", \"reason\": null, \"change\": \"c69fccbb-6591-49f7-baec-ffbe459ca7dd\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:58.899700Z\", \"reason\": null, \"change\": \"637d6693-b16d-4b2d-b223-4c26fe7e24ee\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.lock  0 bytes\n.troupe/events.sqlite  16384 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:57.115972Z\", \"reason\": null, \"change\": \"047f2df3-93fa-4de9-886c-83aa6e6fa6e5\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:57.115972Z\", \"reason\": null, \"change\": \"047f2df3-93fa-4de9-886c-83aa6e6fa6e5\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:57.116569Z\", \"reason\": null, \"change\": \"c69fccbb-6591-49f7-baec-ffbe459ca7dd\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:58.899700Z\", \"reason\": null, \"change\": \"637d6693-b16d-4b2d-b223-4c26fe7e24ee\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "6"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "nonexistent"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 6\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "nonexistent"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:57.115972Z\", \"reason\": null, \"change\": \"047f2df3-93fa-4de9-886c-83aa6e6fa6e5\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:57.115972Z\", \"reason\": null, \"change\": \"047f2df3-93fa-4de9-886c-83aa6e6fa6e5\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:57.116569Z\", \"reason\": null, \"change\": \"c69fccbb-6591-49f7-baec-ffbe459ca7dd\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:58.899700Z\", \"reason\": null, \"change\": \"637d6693-b16d-4b2d-b223-4c26fe7e24ee\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 6, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:00.477109Z\", \"reason\": null, \"change\": \"a4bf7053-92cd-4177-b84a-8e12a6a33bec\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.lock  0 bytes\n.troupe/events.sqlite  16384 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:57.115972Z\", \"reason\": null, \"change\": \"047f2df3-93fa-4de9-886c-83aa6e6fa6e5\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:55:57.115972Z\", \"reason\": null, \"change\": \"047f2df3-93fa-4de9-886c-83aa6e6fa6e5\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:57.116569Z\", \"reason\": null, \"change\": \"c69fccbb-6591-49f7-baec-ffbe459ca7dd\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:55:58.899700Z\", \"reason\": null, \"change\": \"637d6693-b16d-4b2d-b223-4c26fe7e24ee\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 6, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:00.477109Z\", \"reason\": null, \"change\": \"a4bf7053-92cd-4177-b84a-8e12a6a33bec\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "4"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "eventsourcing.popo"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 4\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "eventsourcing.popo"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:56:02.703179Z\", \"reason\": null, \"change\": \"02bc2cac-04bc-4e58-ae8b-add2572ab31d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:56:02.703179Z\", \"reason\": null, \"change\": \"02bc2cac-04bc-4e58-ae8b-add2572ab31d\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:02.707973Z\", \"reason\": null, \"change\": \"555ba904-d7b2-46d6-858b-14a9e9d85875\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:56:02.703179Z\", \"reason\": null, \"change\": \"02bc2cac-04bc-4e58-ae8b-add2572ab31d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:56:02.703179Z\", \"reason\": null, \"change\": \"02bc2cac-04bc-4e58-ae8b-add2572ab31d\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:02.707973Z\", \"reason\": null, \"change\": \"555ba904-d7b2-46d6-858b-14a9e9d85875\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": "y",
+                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+                "SQLITE_DBNAME": "elsewhere.db"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 5\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": "y",
+                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
+                "SQLITE_DBNAME": "elsewhere.db"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:56:02.703179Z\", \"reason\": null, \"change\": \"02bc2cac-04bc-4e58-ae8b-add2572ab31d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:56:02.703179Z\", \"reason\": null, \"change\": \"02bc2cac-04bc-4e58-ae8b-add2572ab31d\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:02.707973Z\", \"reason\": null, \"change\": \"555ba904-d7b2-46d6-858b-14a9e9d85875\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:04.352435Z\", \"reason\": null, \"change\": \"92655460-24e4-4d07-8ce9-fd04f62030a3\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite3  16384 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:56:02.703179Z\", \"reason\": null, \"change\": \"02bc2cac-04bc-4e58-ae8b-add2572ab31d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:56:02.703179Z\", \"reason\": null, \"change\": \"02bc2cac-04bc-4e58-ae8b-add2572ab31d\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:02.707973Z\", \"reason\": null, \"change\": \"555ba904-d7b2-46d6-858b-14a9e9d85875\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:04.352435Z\", \"reason\": null, \"change\": \"92655460-24e4-4d07-8ce9-fd04f62030a3\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "6"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "nonexistent"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: opus\nretry: 6\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "PERSISTENCE_MODULE": "nonexistent"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:56:02.703179Z\", \"reason\": null, \"change\": \"02bc2cac-04bc-4e58-ae8b-add2572ab31d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:56:02.703179Z\", \"reason\": null, \"change\": \"02bc2cac-04bc-4e58-ae8b-add2572ab31d\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:02.707973Z\", \"reason\": null, \"change\": \"555ba904-d7b2-46d6-858b-14a9e9d85875\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:04.352435Z\", \"reason\": null, \"change\": \"92655460-24e4-4d07-8ce9-fd04f62030a3\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 6, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:05.982574Z\", \"reason\": null, \"change\": \"d6ee0bf6-a494-470e-9cdc-51b7617452c5\"}\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite3  16384 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  21 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "IS_SNAPSHOTTING_ENABLED": null,
+                "PERSISTENCE_MODULE": null,
+                "SQLITE_DBNAME": null
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:56:02.703179Z\", \"reason\": null, \"change\": \"02bc2cac-04bc-4e58-ae8b-add2572ab31d\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"retry\", \"old\": null, \"new\": 3, \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T06:56:02.703179Z\", \"reason\": null, \"change\": \"02bc2cac-04bc-4e58-ae8b-add2572ab31d\"}\n{\"seq\": 3, \"op\": \"set\", \"path\": \"retry\", \"old\": 3, \"new\": 4, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:02.707973Z\", \"reason\": null, \"change\": \"555ba904-d7b2-46d6-858b-14a9e9d85875\"}\n{\"seq\": 4, \"op\": \"set\", \"path\": \"retry\", \"old\": 4, \"new\": 5, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:04.352435Z\", \"reason\": null, \"change\": \"92655460-24e4-4d07-8ce9-fd04f62030a3\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"retry\", \"old\": 5, \"new\": 6, \"actor\": {\"kind\": \"human\", \"id\": \"actor\"}, \"via\": \"cli\", \"at\": \"2026-10-10T06:56:05.982574Z\", \"reason\": null, \"change\": \"d6ee0bf6-a494-470e-9cdc-51b7617452c5\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

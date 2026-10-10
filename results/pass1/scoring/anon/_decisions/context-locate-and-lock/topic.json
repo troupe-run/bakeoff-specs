@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "Locating the config relative to taking the lock",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "A missing config exits 4 with nothing created",
+      "route": "Locate the config first, then lock",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept",
+      "reasoning_given": "Handles a root file renamed in between",
+      "route": "Lock, then re-locate under the lock",
+      "route_no": 2
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

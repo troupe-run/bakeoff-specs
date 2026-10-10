@@ -1,0 +1,4 @@
+```json
+{"score": 1, "evidence": ["/judge/repo/README.md:18-23 (new lineage paragraph describes the feature but cites no request, step or decision)", "/judge/repo/README.md:1 (header still reads 'Step 1: the configuration subsystem', so nothing records step 4)", "/judge/diff.patch:224-225 (signature of `Troupe.record` changed to require `meta`, with no recorded reason)", "/judge/diff.patch:153-159 (the fallback for old, pre-lineage events changes existing behaviour; only an inline code comment explains it)", "No .git directory, commit messages, spec or change record under /judge/repo"]}
+{"notes": "The only reason on record is the new README paragraph describing lineage. Nothing ties the diff to a request or step: there are no commits or change records, and the modifications to existing APIs and behaviour (`record`/`act` signatures, how old events are reported) are unexplained apart from one inline comment."}
+```

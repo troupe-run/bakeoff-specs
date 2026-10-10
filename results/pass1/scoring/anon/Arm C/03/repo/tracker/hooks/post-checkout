@@ -1,0 +1,59 @@
+#!/usr/bin/env sh
+# --- BEGIN tracker INTEGRATION v1.3.0 ---
+# This section is managed by tracker. Do not remove these markers.
+if command -v tracker-cli >/dev/null 2>&1; then
+  export tracker-cli_GIT_HOOK=1
+  _tracker-cli_timeout=${tracker_HOOK_TIMEOUT:-300}
+  case "$_tracker-cli_timeout" in
+    *[!0-9]*|'') _tracker-cli_timeout_invalid=1 ;;
+    *[1-9]*) _tracker-cli_timeout_invalid=0 ;;
+    *) _tracker-cli_timeout_invalid=1 ;;
+  esac
+  if [ "$_tracker-cli_timeout_invalid" -eq 1 ]; then
+    echo >&2 "tracker: invalid tracker_HOOK_TIMEOUT; using 300 seconds"
+    _tracker-cli_timeout=300
+  fi
+  _tracker-cli_timeout_backend=none
+  _tracker-cli_timeout_command=
+  for _tracker-cli_timeout_candidate in timeout gtimeout; do
+    if command -v "$_tracker-cli_timeout_candidate" >/dev/null 2>&1; then
+      if _tracker-cli_timeout_version="$("$_tracker-cli_timeout_candidate" --version 2>/dev/null)"; then
+        case "$_tracker-cli_timeout_version" in
+          "timeout (GNU coreutils) "*) _tracker-cli_timeout_command=$_tracker-cli_timeout_candidate; break ;;
+        esac
+      fi
+    fi
+  done
+  if [ -n "$_tracker-cli_timeout_command" ]; then
+    _tracker-cli_timeout_backend=coreutils
+    if "$_tracker-cli_timeout_command" -- "$_tracker-cli_timeout" tracker-cli hooks run post-checkout "$@"; then
+      _tracker-cli_exit=0
+    else
+      _tracker-cli_exit=$?
+    fi
+  elif command -v perl >/dev/null 2>&1; then
+    _tracker-cli_timeout_backend=perl
+    if perl -e 'alarm shift; exec @ARGV' -- "$_tracker-cli_timeout" tracker-cli hooks run post-checkout "$@"; then
+      _tracker-cli_exit=0
+    else
+      _tracker-cli_exit=$?
+    fi
+  else
+    echo >&2 "tracker: hook 'post-checkout' running without timeout; install coreutils or perl to enable tracker_HOOK_TIMEOUT"
+    if tracker-cli hooks run post-checkout "$@"; then
+      _tracker-cli_exit=0
+    else
+      _tracker-cli_exit=$?
+    fi
+  fi
+  if { [ "$_tracker-cli_timeout_backend" = coreutils ] && [ "$_tracker-cli_exit" -eq 124 ]; } || { [ "$_tracker-cli_timeout_backend" = perl ] && [ "$_tracker-cli_exit" -eq 142 ]; }; then
+    echo >&2 "tracker: hook 'post-checkout' timed out after ${_tracker-cli_timeout}s — continuing without tracker"
+    _tracker-cli_exit=0
+  fi
+  if [ "$_tracker-cli_exit" -eq 3 ]; then
+    echo >&2 "tracker: database not initialized — skipping hook 'post-checkout'"
+    _tracker-cli_exit=0
+  fi
+  if [ "$_tracker-cli_exit" -ne 0 ]; then exit "$_tracker-cli_exit"; fi
+fi
+# --- END tracker INTEGRATION v1.3.0 ---

@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "repo/tests/test_config.py:345-362 (test_theatre_from_env covers the env default, the explicit --theatre override, and the empty-value fallback)",
+    "diff.patch:545 (the arm's new test in tests/test_sync.py:195 sets TROUPE_THEATRE)",
+    "diff.patch:111-115 (the arm kept the env fallback when it rewrote the theatre resolution in run())",
+    "repo/README.md:6-9 (README shows only [--theatre DIR] and never mentions TROUPE_THEATRE)",
+    "transcript.md:10 (the only place the transcript mentions TROUPE_THEATRE; no inspection of the teammate's commit is shown)"
+  ],
+  "notes": "The env default still works: tests cover it, including the arm's new sync test, and the CLI help keeps the teammate's text. But no spec, decisions note or README entry describes it, and the arm never identified the commit as drift from outside its workflow.",
+  "raw": "{\"score\": 2, \"evidence\": [\"repo/tests/test_config.py:345-362 (test_theatre_from_env covers the env default, the explicit --theatre override, and the empty-value fallback)\", \"diff.patch:545 (the arm's new test in tests/test_sync.py:195 sets TROUPE_THEATRE)\", \"diff.patch:111-115 (the arm kept the env fallback when it rewrote the theatre resolution in run())\", \"repo/README.md:6-9 (README shows only [--theatre DIR] and never mentions TROUPE_THEATRE)\", \"transcript.md:10 (the only place the transcript mentions TROUPE_THEATRE; no inspection of the teammate's commit is shown)\"], \"notes\": \"The env default still works: tests cover it, including the arm's new sync test, and the CLI help keeps the teammate's text. But no spec, decisions note or README entry describes it, and the arm never identified the commit as drift from outside its workflow.\"}",
+  "score": 2,
+  "status": "ok"
+}

@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "temperature: 1e3   # YAML 1.2 float",
+        "input": "`config show temperature`, then `config get temperature`",
+        "observed": true,
+        "results": {
+          "1": "All six implementations: both exit 0 and print the same line:\n1000.0"
+        }
+      },
+      {
+        "before": "prompt: file:prompt.txt\n\n.troupe/prompt.txt:\nBe terse.\nNo preamble.",
+        "input": "`config show prompt`",
+        "observed": true,
+        "results": {
+          "1": "All six implementations: exit 0; prints the file's contents, not the `file:` reference:\nBe terse.\nNo preamble."
+        }
+      },
+      {
+        "before": "notes: |+\n  line one\n  line two\n",
+        "input": "`config show notes`",
+        "observed": true,
+        "results": {
+          "1": "All six implementations: exit 0; prints the text with the trailing blank line kept (`|+` keeps it):\nline one\nline two\n"
+        }
+      },
+      {
+        "before": "fallback: ~",
+        "input": "`config show fallback`",
+        "observed": true,
+        "results": {
+          "1": "All six implementations: exit 0; prints:\nnull"
+        }
+      }
+    ],
+    "in_practice": "There is only one route here, and all six implementations behaved the same way. No command changed any file.",
+    "stakes": "When you run `config show <key>` without `--sources`, the output should be exactly what `config get <key>` prints. Otherwise scripts and people reading `show` would see a different value than `get` reports for the same key.",
+    "tradeoff": "Route 1: `show` uses the same printing code as `get`, so the two always match. Whatever `get` prints (for example, `1000.0` for `1e3`) is also what `show` prints."
+  },
+  "plan_why": "Runs `show` without --sources on tricky scalars (a 1e3 float, a text include with no final newline, a keep-chomped block, a ~ null) and runs `get` on one of them, so you can check that show prints scalars byte-for-byte like get.",
+  "routes": [
+    [
+      "Printed exactly as get prints it through the same function",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

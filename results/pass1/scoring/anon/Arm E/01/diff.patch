@@ -1,0 +1,1804 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..17cd2fc
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++.venv/
++__pycache__/
++*.pyc
++.pytest_cache/
+diff --git a/.python-version b/.python-version
+new file mode 100644
+index 0000000..e4fba21
+--- /dev/null
++++ b/.python-version
+@@ -0,0 +1 @@
++3.12
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..91efc7f
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,18 @@
++# troupe
++
++AI orchestration tool. Step 1: the configuration subsystem.
++
++```
++uv run troupe config show PATH [--theatre DIR]
++uv run troupe config set PATH VALUE [--theatre DIR]
++uv run troupe config history [PATH] [--theatre DIR]
++```
++
++Configuration lives in `<theatre>/.troupe/troupe.yml` (or `.yaml`); `file:` strings include other files.
++`set` writes changes back byte-surgically into whichever file holds the value. Every change is recorded
++as events (via `eventsourcing`, SQLite at `.troupe/events.sqlite`).
++
++Layout: `yamldoc.py` (position-aware parse + include view), `render.py` (scalar/collection rendering),
++`editor.py` (write-back), `store.py` (event-sourced projection), `cli.py`.
++
++Tests: `uv run pytest`.
+diff --git a/pyproject.toml b/pyproject.toml
+new file mode 100644
+index 0000000..3380b53
+--- /dev/null
++++ b/pyproject.toml
+@@ -0,0 +1,25 @@
++[project]
++name = "troupe"
++version = "0.1.0"
++description = "Add your description here"
++readme = "README.md"
++authors = [
++    { name = "Developer", email = "developer@troupe.run" }
++]
++requires-python = ">=3.12"
++dependencies = [
++    "eventsourcing>=9.5.5",
++    "ruamel-yaml>=0.19.1",
++]
++
++[project.scripts]
++troupe = "troupe:main"
++
++[build-system]
++requires = ["uv_build>=0.12.19,<0.13.0"]
++build-backend = "uv_build"
++
++[dependency-groups]
++dev = [
++    "pytest>=9.1.1",
++]
+diff --git a/src/troupe/__init__.py b/src/troupe/__init__.py
+new file mode 100644
+index 0000000..ed32c05
+--- /dev/null
++++ b/src/troupe/__init__.py
+@@ -0,0 +1,3 @@
++from .cli import main
++
++__all__ = ["main"]
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+new file mode 100644
+index 0000000..55d6f93
+--- /dev/null
++++ b/src/troupe/cli.py
+@@ -0,0 +1,158 @@
++"""`troupe config …` command line."""
++
++from __future__ import annotations
++
++import argparse
++import json
++import os
++import sys
++from typing import Any
++
++from ruamel.yaml.nodes import SequenceNode
++
++from .editor import Editor
++from .errors import LoadError, PathError, TroupeError, UsageError, WriteRefused
++from .yamldoc import VNode, compose, construct, leaves, values_equal
++
++
++class _Parser(argparse.ArgumentParser):
++    def error(self, message: str) -> None:  # exit code 2 per contract
++        self.print_usage(sys.stderr)
++        self.exit(2, f"{self.prog}: error: {message}\n")
++
++
++def build_parser() -> argparse.ArgumentParser:
++    theatre = argparse.ArgumentParser(add_help=False)
++    theatre.add_argument("--theatre", default=argparse.SUPPRESS, help="theatre directory (default: .)")
++    p = _Parser(prog="troupe")
++    sub = p.add_subparsers(dest="command", required=True, parser_class=_Parser)
++    config = sub.add_parser("config", parents=[theatre], help="inspect and change configuration")
++    csub = config.add_subparsers(dest="action", required=True, parser_class=_Parser)
++    show = csub.add_parser("show", parents=[theatre], help="print a setting")
++    show.add_argument("path")
++    st = csub.add_parser("set", parents=[theatre], help="change a setting")
++    st.add_argument("path")
++    st.add_argument("value")
++    hist = csub.add_parser("history", parents=[theatre], help="list changes")
++    hist.add_argument("path", nargs="?")
++    return p
++
++
++def parse_path(path: str) -> list[str]:
++    segs = path.split(".")
++    if not path or any(s == "" for s in segs):
++        raise UsageError(f"invalid path: {path!r}")
++    return segs
++
++
++def parse_value(text: str) -> Any:
++    if text.strip() == "":
++        return None
++    try:
++        node = compose(f"[{text}]")
++    except LoadError:
++        raise UsageError(f"invalid value: {text!r}") from None
++    if not isinstance(node, SequenceNode) or len(node.value) != 1:
++        raise UsageError(f"invalid value: {text!r}")
++    return construct(node.value[0])
++
++
++def config_file(theatre: str) -> str:
++    d = os.path.join(theatre, ".troupe")
++    found = [p for p in (os.path.join(d, "troupe.yml"), os.path.join(d, "troupe.yaml")) if os.path.isfile(p)]
++    if not found:
++        raise LoadError(f"{os.path.join(d, 'troupe.yml')}: no configuration file")
++    if len(found) > 1:
++        raise LoadError(f"{found[0]}: both troupe.yml and troupe.yaml exist")
++    return found[0]
++
++
++def format_scalar(value: Any) -> str:
++    if isinstance(value, str):
++        return value if value.endswith("\n") else value + "\n"
++    if value is None:
++        return "null\n"
++    if isinstance(value, bool):
++        return ("true" if value else "false") + "\n"
++    if isinstance(value, float):
++        return repr(value) + "\n"
++    return f"{value}\n"
++
++
++def lookup(root: VNode, segs: list[str]) -> VNode:
++    node = root
++    for i, s in enumerate(segs):
++        c = node.child(s)
++        if c is None:
++            raise PathError(f"{'.'.join(segs)}: path not found")
++        node = c
++    return node
++
++
++def out(text: str) -> None:
++    sys.stdout.buffer.write(text.encode("utf-8"))
++
++
++def run(args: argparse.Namespace) -> int:
++    from .store import Troupe
++
++    theatre = getattr(args, "theatre", ".")
++    path_segs = parse_path(args.path) if getattr(args, "path", None) is not None else None
++    value = parse_value(args.value) if args.action == "set" else None
++    cfg = config_file(theatre)
++    editor = Editor(cfg)
++    root = editor.load()
++    app = Troupe(os.path.dirname(cfg))
++    config = app.ensure_imported(leaves(root))
++
++    if args.action == "show":
++        node = lookup(root, path_segs)
++        if node.kind != "scalar":
++            raise PathError(f"{args.path}: is a {'mapping' if node.kind == 'map' else 'list'}, not a scalar")
++        out(format_scalar(node.value))
++        return 0
++
++    if args.action == "history":
++        for change in config.changes:
++            p = change["path"]
++            if args.path is None or p == args.path or p.startswith(args.path + "."):
++                out(json.dumps(change, ensure_ascii=False) + "\n")
++        return 0
++
++    # set
++    old = leaves(root)
++    editor.set(path_segs, value)
++    new_root = editor.load()
++    try:
++        target = lookup(new_root, path_segs)
++        result = target.py()
++        if target.include == "text" and isinstance(result, str):
++            result = result.replace("\r\n", "\n") if "\r\n" not in value else result
++            value = value.replace("\r\n", "\n") if "\r\n" not in result else value
++    except PathError:
++        result = object()
++    if not values_equal(result, value):
++        raise WriteRefused(f"{args.path}: value cannot be written back faithfully")
++    new = leaves(new_root)
++    prefix = args.path + "."
++    for p in set(old) | set(new):
++        if p == args.path or p.startswith(prefix):
++            continue
++        if p not in old or p not in new or not values_equal(old[p], new[p]):
++            raise WriteRefused(f"{args.path}: write-back would disturb {p}")
++    for fpath, text in editor.changed().items():
++        with open(fpath, "w", encoding="utf-8", newline="") as f:
++            f.write(text)
++    app.record(config, old, new)
++    return 0
++
++
++def main(argv: list[str] | None = None) -> int:
++    args = build_parser().parse_args(argv)
++    try:
++        code = run(args)
++    except TroupeError as e:
++        sys.stderr.write(f"troupe: {e.message}\n")
++        code = e.code
++    sys.stdout.flush()
++    return code
+diff --git a/src/troupe/cli_main.py b/src/troupe/cli_main.py
+new file mode 100644
+index 0000000..dd8a8c9
+--- /dev/null
++++ b/src/troupe/cli_main.py
+@@ -0,0 +1,5 @@
++import sys
++
++from .cli import main
++
++sys.exit(main())
+diff --git a/src/troupe/editor.py b/src/troupe/editor.py
+new file mode 100644
+index 0000000..bed7b7a
+--- /dev/null
++++ b/src/troupe/editor.py
+@@ -0,0 +1,522 @@
++"""Byte-surgical write-back of configuration changes."""
++
++from __future__ import annotations
++
++import difflib
++import re
++from typing import Any
++
++from ruamel.yaml.nodes import MappingNode, Node, ScalarNode, SequenceNode
++
++from .errors import PathError, WriteRefused
++from .render import (
++    Renderer,
++    chomp_for,
++    double,
++    is_multiline,
++    literal_ok,
++    scalar,
++    style_of,
++)
++from .yamldoc import (
++    Doc,
++    Loader,
++    VNode,
++    indent_of,
++    is_block_scalar,
++    is_empty_null,
++    is_flow,
++    value_start,
++    values_equal,
++)
++
++Edit = tuple[int, int, str, bool]
++
++
++# --------------------------------------------------------------------------
++# text helpers
++
++
++def _line_start(text: str, pos: int) -> int:
++    return text.rfind("\n", 0, pos) + 1
++
++
++def _eol(text: str, pos: int) -> int:
++    i = text.find("\n", pos)
++    if i < 0:
++        return len(text)
++    return i - 1 if i > 0 and text[i - 1] == "\r" else i
++
++
++def find_comment(text: str, pos: int) -> int | None:
++    """Offset of a comment starting at or after pos on pos's line."""
++    end = _eol(text, pos)
++    i = pos
++    while i < end:
++        c = text[i]
++        prev = text[i - 1] if i > 0 else "\n"
++        if c == "#" and prev in " \t\n":
++            return i
++        if c in "'\"" and prev in " \t[{,:\n":
++            j = i + 1
++            while j < end:
++                if c == "'" and text[j] == "'":
++                    if text[j + 1 : j + 2] == "'":
++                        j += 2
++                        continue
++                    break
++                if c == '"' and text[j] == "\\":
++                    j += 2
++                    continue
++                if c == '"' and text[j] == '"':
++                    break
++                j += 1
++            i = j + 1
++            continue
++        i += 1
++    return None
++
++
++def splice(text: str, start: int, end: int, new: str, fix_comment: bool) -> str:
++    """Replace text[start:end] by new, keeping an end-of-line comment's column."""
++    if fix_comment and "\n" not in new:
++        cpos = find_comment(text, end)
++        if cpos is not None:
++            ls = _line_start(text, start)
++            old_col = cpos - _line_start(text, end)
++            head = text[ls:start] + new + text[end:cpos].rstrip(" \t")
++            pad = old_col - len(head) if len(head) + 1 <= old_col else 1
++            return text[:ls] + head + " " * pad + text[cpos:]
++    return text[:start] + new + text[end:]
++
++
++def header_end(text: str, s: int) -> int:
++    i = s + 1
++    while i < len(text) and text[i] in "0123456789+-":
++        i += 1
++    return i
++
++
++def wrap(text: str, width: int) -> list[str]:
++    words = text.split(" ")
++    lines = [words[0]]
++    for w in words[1:]:
++        if len(lines[-1]) + 1 + len(w) <= width:
++            lines[-1] += " " + w
++        else:
++            lines.append(w)
++    return lines
++
++
++def layout(doc: Doc) -> Renderer:
++    found: dict[str, int] = {}
++
++    def walk(node: Node | None, parent_col: int | None) -> None:
++        if isinstance(node, MappingNode) and not node.flow_style and node.value:
++            c = doc.col(node.value[0][0].start_mark.index)
++            if parent_col is not None and c > parent_col:
++                found.setdefault("step", c - parent_col)
++            for k, v in node.value:
++                walk(v, doc.col(k.start_mark.index))
++        elif isinstance(node, SequenceNode) and not node.flow_style and node.value:
++            c = doc.col(node.start_mark.index)
++            if parent_col is not None and c >= parent_col:
++                found.setdefault("seq", c - parent_col)
++            for v in node.value:
++                walk(v, None)
++
++    walk(doc.root, None)
++    step = found.get("step", 2)
++    return Renderer(step, found.get("seq", step))
++
++
++def _split_lines(chunk: str) -> list[str]:
++    if not chunk:
++        return []
++    lines = chunk.split("\n")
++    if lines[-1] == "":
++        lines.pop()
++    return [ln[:-1] if ln.endswith("\r") else ln for ln in lines]
++
++
++def _join(lines: list[str], nl: str, final: bool = True) -> str:
++    if not lines:
++        return ""
++    return nl.join(lines) + (nl if final else "")
++
++
++# --------------------------------------------------------------------------
++
++
++class Editor:
++    def __init__(self, config_path: str):
++        self.config_path = config_path
++        self.overlay: dict[str, str] = {}
++        self.disk: dict[str, str] = {}
++
++    # files -------------------------------------------------------------
++    def read(self, path: str) -> str:
++        if path in self.overlay:
++            return self.overlay[path]
++        if path not in self.disk:
++            with open(path, "rb") as f:
++                self.disk[path] = f.read().decode("utf-8")
++        return self.disk[path]
++
++    def load(self) -> VNode:
++        return Loader(self.read).load(self.config_path)
++
++    def changed(self) -> dict[str, str]:
++        return {p: t for p, t in self.overlay.items() if self.disk.get(p) != t}
++
++    def apply(self, doc: Doc, edits: list[Edit]) -> None:
++        text = doc.text
++        for s, e, new, fix in sorted(edits, key=lambda x: (x[0], x[1]), reverse=True):
++            text = splice(text, s, e, new, fix)
++        self.overlay[doc.path] = text
++
++    # operations ----------------------------------------------------------
++    def set(self, segs: list[str], value: Any) -> None:
++        node = self.load()
++        i = 0
++        while i < len(segs):
++            c = node.child(segs[i])
++            if c is None:
++                break
++            node = c
++            i += 1
++        if i == len(segs):
++            self.assign(segs, node, value)
++        else:
++            self.create(segs, node, i, value)
++
++    def assign(self, segs: list[str], vn: VNode, value: Any) -> None:
++        path = ".".join(segs)
++        if vn.include == "text":
++            if not isinstance(value, str):
++                raise WriteRefused(f"{path}: text include {vn.include_path} can only be set to a string")
++            if value == vn.value:
++                return
++            new = value
++            if "\r\n" in vn.value:
++                new = re.sub(r"(?<!\r)\n", "\r\n", value)
++            self.overlay[vn.include_path] = new
++            return
++        if values_equal(vn.py(), value):
++            return
++        if vn.include == "yaml":
++            raise WriteRefused(f"{path}: value comes from include {vn.include_path}")
++        if vn.kind == "map" and isinstance(value, dict) and value and vn.children:
++            old_keys = list(vn.children)
++            for k, v in value.items():
++                self.set(segs + [k], v)
++            for k in old_keys:
++                if k not in value:
++                    self.remove(segs + [k])
++            return
++        if vn.kind == "seq" and isinstance(value, list) and value and vn.children:
++            n = len(vn.children)
++            for i, v in enumerate(value):
++                self.set(segs + [str(i)], v)
++            for i in reversed(range(len(value), n)):
++                self.remove(segs + [str(i)])
++            return
++        self.replace(vn, value)
++
++    def create(self, segs: list[str], parent: VNode, i: int, value: Any) -> None:
++        path = ".".join(segs)
++        new = value
++        for seg in reversed(segs[i + 1 :]):
++            if seg.isdigit():
++                if seg != "0":
++                    raise PathError(f"{path}: index {seg} out of range")
++                new = [new]
++            else:
++                new = {seg: new}
++        seg = segs[i]
++        if parent.kind == "map":
++            self.insert(parent, seg, new)
++        elif parent.kind == "seq":
++            if not seg.isdigit():
++                raise PathError(f"{path}: {'.'.join(segs[:i]) or 'root'} is a list")
++            if int(seg) != len(parent.children):
++                raise PathError(f"{path}: index {seg} out of range")
++            self.insert(parent, None, new)
++        else:
++            raise PathError(f"{path}: {'.'.join(segs[:i])} is not a mapping or list")
++
++    def remove(self, segs: list[str]) -> None:
++        vn = self.load()
++        for s in segs:
++            vn = vn.child(s)
++        parent = vn.parent
++        assert parent is not None
++        doc = vn.src_doc
++        text = doc.text
++        entries = parent.entries()
++        idx = entries.index(vn)
++        st, en = vn.start, vn.end
++        if parent.node is not None and is_flow(parent.node):
++            if idx < len(entries) - 1:
++                edit = (st, entries[idx + 1].start, "", True)
++            elif idx > 0:
++                edit = (entries[idx - 1].end, en, "", True)
++            else:
++                edit = (st, en, "", True)
++        else:
++            ls = doc.line_start(st)
++            if text[ls:st].strip() == "":
++                edit = (ls, doc.next_line(en), "", False)
++            elif idx < len(entries) - 1:
++                edit = (st, entries[idx + 1].start, "", False)
++            else:
++                edit = (st, en, "", True)
++        self.apply(doc, [edit])
++
++    # insertion -------------------------------------------------------------
++    def insert(self, parent: VNode, key: str | None, value: Any) -> None:
++        doc = parent.doc
++        node = parent.node
++        r = layout(doc)
++        entries = parent.entries()
++        last = entries[-1] if entries else None
++        kstyle = style_of(last.key_node) if last is not None and last.key_node is not None else None
++        vstyle = style_of(last.src_node) if last is not None else None
++        if node is not None and is_flow(node):
++            entry = r.flow(value, vstyle)
++            if key is not None:
++                entry = f"{scalar(key, kstyle, True)}: {entry}"
++            if last is not None:
++                self.apply(doc, [(last.end, last.end, ", " + entry, True)])
++            else:
++                p = node.start_mark.index + 1
++                self.apply(doc, [(p, p, entry, True)])
++            return
++        text = doc.text
++        nl = doc.newline
++        if last is None:
++            lines = r.entry(key, value, 0) if key is not None else r.item(value, 0)
++            pre = nl if text and not text.endswith("\n") else ""
++            self.apply(doc, [(len(text), len(text), pre + _join(lines, nl), False)])
++            return
++        col = doc.col(last.start)
++        n = doc.line_of(last.end)
++        k = n + 1
++        while k < doc.nlines:
++            line = doc.line_text(k)
++            if not line.strip():
++                k += 1
++                continue
++            if line.lstrip().startswith("#") and indent_of(line) >= col:
++                n = k
++                k += 1
++                continue
++            break
++        if key is not None:
++            lines = r.entry(key, value, col, kstyle, vstyle)
++        else:
++            lines = r.item(value, col, vstyle)
++        pos = doc.next_line(doc.line_starts[n])
++        pre = nl if pos == len(text) and text and not text.endswith("\n") else ""
++        self.apply(doc, [(pos, pos, pre + _join(lines, nl), False)])
++
++    # replacement -------------------------------------------------------------
++    def replace(self, vn: VNode, value: Any) -> None:
++        doc = vn.src_doc
++        node = vn.src_node
++        text = doc.text
++        r = layout(doc)
++        nl = doc.newline
++        a = vn.anchor
++        if vn.flow_parent:
++            if is_empty_null(node) and a is not None:
++                self.apply(doc, [(a, a, " " + r.flow(value), True)])
++            else:
++                self.apply(doc, [(value_start(vn), vn.end, r.flow(value, style_of(node)), True)])
++            return
++        if is_block_scalar(node) and isinstance(value, str):
++            self.replace_block_scalar(vn, value, r)
++            return
++        assert a is not None
++        compact = vn.key_node is None
++        head, lines = r.value_after_indicator(value, vn.anchor_indent, style_of(node), compact)
++        inline_old: tuple[int, int] | None = None
++        region: tuple[int, int] | None = None
++        if is_empty_null(node):
++            pass
++        elif isinstance(node, ScalarNode) and not is_block_scalar(node) or is_flow(node):
++            s = node.start_mark.index
++            if not lines and head:
++                self.apply(doc, [(s, vn.end, head, True)])
++                return
++            if doc.line_of(s) == doc.line_of(a):
++                inline_old = (s, vn.end)
++            else:
++                region = (doc.line_start(s), doc.next_line(vn.end))
++        elif is_block_scalar(node):
++            s = node.start_mark.index
++            inline_old = (s, header_end(text, s))
++            if vn.end > doc.eol(s):
++                region = (doc.next_line(s), doc.next_line(vn.end))
++        else:  # block collection
++            s = node.start_mark.index
++            if doc.line_of(s) == doc.line_of(a):
++                inline_old = (s, doc.eol(s))
++                if vn.end > doc.eol(s):
++                    region = (doc.next_line(s), doc.next_line(vn.end))
++            else:
++                region = (doc.line_start(s), doc.next_line(vn.end))
++        edits: list[Edit] = []
++        if region is not None:
++            final = text[region[1] - 1 : region[1]] == "\n"
++            edits.append((region[0], region[1], _join(lines, nl, final), False))
++        elif lines:
++            after = inline_old[1] if inline_old else a
++            pos = doc.next_line(after)
++            pre = nl if pos == len(text) and not text.endswith("\n") else ""
++            edits.append((pos, pos, pre + _join(lines, nl, True), False))
++        if inline_old is not None and head:
++            edits.append((inline_old[0], inline_old[1], head, True))
++        elif inline_old is not None:
++            edits.append((a, inline_old[1], "", True))
++        elif head:
++            edits.append((a, a, " " + head, True))
++        self.apply(doc, edits)
++
++    def replace_block_scalar(self, vn: VNode, value: str, r: Renderer) -> None:
++        doc = vn.src_doc
++        node = vn.src_node
++        text = doc.text
++        nl = doc.newline
++        s = node.start_mark.index
++        he = header_end(text, s)
++        indicator, mods = text[s], text[s + 1 : he]
++        old_chomp = "+" if "+" in mods else "-" if "-" in mods else ""
++        digits = "".join(c for c in mods if c.isdigit())
++        cstart = doc.next_line(s)
++        if vn.end > doc.eol(s):
++            rend = doc.next_line(vn.end)
++        else:
++            rend = cstart
++        old_lines = _split_lines(text[cstart:rend])
++        new_chomp = chomp_for(value, old_chomp)
++        trailing: list[str] = []
++        if old_chomp == "+" or new_chomp == "+":
++            while rend < len(text) and not text[rend : doc.eol(rend)].strip():
++                trailing.append(text[rend : doc.eol(rend)])
++                rend = doc.next_line(rend)
++        first = next((ln for ln in old_lines if ln.strip()), None)
++        if first is not None:
++            ci = indent_of(first)
++        elif digits:
++            ci = vn.anchor_indent + int(digits)
++        else:
++            ci = vn.anchor_indent + r.step
++        body = value.rstrip("\n")
++        t = len(value) - len(body)
++
++        if indicator == "|":
++            ok = literal_ok(value) or (digits and literal_ok(value.lstrip(" ")))
++            if not ok:
++                self.replace_with_inline(vn, double(value))
++                return
++            new_texts = body.split("\n")
++            old_texts = [ln[ci:] if len(ln) > ci else "" for ln in old_lines]
++            out: list[str] = []
++            sm = difflib.SequenceMatcher(None, old_texts, new_texts, autojunk=False)
++            for op, i1, i2, j1, j2 in sm.get_opcodes():
++                if op == "equal":
++                    out += old_lines[i1:i2]
++                else:
++                    out += [(" " * ci + x) if x else "" for x in new_texts[j1:j2]]
++        else:
++            out = self.folded_lines(value, body, old_lines, ci)
++
++        if new_chomp == "+":
++            out += trailing if len(trailing) == t - 1 else [""] * (t - 1)
++        elif trailing:
++            # old keep-chomped blank lines that are no longer content
++            out += trailing
++
++        if old_chomp:
++            new_mods = mods.replace(old_chomp, new_chomp)
++        else:
++            new_mods = mods + new_chomp
++        if cstart == len(text) and not text.endswith("\n"):
++            chunk = nl + _join(out, nl, False) if out else ""
++        else:
++            chunk = _join(out, nl, rend < len(text) or text.endswith("\n"))
++        edits: list[Edit] = [(cstart, rend, chunk, False)]
++        edits.append((s, he, indicator + new_mods, True))
++        self.apply(doc, edits)
++
++    def replace_with_inline(self, vn: VNode, head: str) -> None:
++        doc = vn.src_doc
++        node = vn.src_node
++        s = node.start_mark.index
++        edits: list[Edit] = []
++        if vn.end > doc.eol(s):
++            edits.append((doc.next_line(s), doc.next_line(vn.end), "", False))
++        edits.append((s, header_end(doc.text, s), head, True))
++        self.apply(doc, edits)
++
++    @staticmethod
++    def folded_lines(value: str, body: str, old_lines: list[str], ci: int) -> list[str]:
++        # old structure
++        lead: list[str] = []
++        paras: list[list[str]] = []
++        seps: list[list[str]] = []
++        blanks: list[str] = []
++        for ln in old_lines:
++            if not ln.strip():
++                blanks.append(ln)
++                continue
++            if paras and not blanks:
++                paras[-1].append(ln)
++            else:
++                if paras:
++                    seps.append(blanks)
++                else:
++                    lead = blanks
++                paras.append([ln])
++            blanks = []
++        old_texts = [" ".join(ln[ci:] for ln in p) for p in paras]
++        widths = [max(len(ln) - ci for ln in p) for p in paras]
++        width_all = max(widths) if widths else 80
++
++        stripped = body.lstrip("\n")
++        n_lead = len(body) - len(stripped)
++        new_paras = re.split(r"\n+", stripped) if stripped else []
++        new_seps = [len(m) for m in re.findall(r"\n+", stripped)]
++        for p in new_paras:
++            if p[:1] in (" ", "\t"):
++                raise WriteRefused("value would put a more-indented line into a folded scalar")
++
++        cp: list[int | None] = [None] * len(new_paras)
++        same: list[bool] = [False] * len(new_paras)
++        sm = difflib.SequenceMatcher(None, old_texts, new_paras, autojunk=False)
++        for op, i1, i2, j1, j2 in sm.get_opcodes():
++            if op == "equal":
++                for k in range(i2 - i1):
++                    cp[j1 + k] = i1 + k
++                    same[j1 + k] = True
++            elif op == "replace":
++                for k in range(min(i2 - i1, j2 - j1)):
++                    cp[j1 + k] = i1 + k
++
++        out: list[str] = list(lead) if len(lead) == n_lead else [""] * n_lead
++        for j, p in enumerate(new_paras):
++            i = cp[j]
++            if same[j]:
++                out += paras[i]
++            else:
++                w = widths[i] if i is not None else width_all
++                out += [" " * ci + ln for ln in wrap(p, w)]
++            if j < len(new_seps):
++                k = new_seps[j]
++                nxt = cp[j + 1]
++                if i is not None and nxt == i + 1 and len(seps[i]) == k:
++                    out += seps[i]
++                else:
++                    out += [""] * k
++        return out
+diff --git a/src/troupe/errors.py b/src/troupe/errors.py
+new file mode 100644
+index 0000000..0159457
+--- /dev/null
++++ b/src/troupe/errors.py
+@@ -0,0 +1,25 @@
++"""Errors carrying the CLI exit code defined by the contract."""
++
++
++class TroupeError(Exception):
++    code = 1
++
++    def __init__(self, message: str):
++        super().__init__(message)
++        self.message = message
++
++
++class UsageError(TroupeError):
++    code = 2
++
++
++class WriteRefused(TroupeError):
++    code = 3
++
++
++class LoadError(TroupeError):
++    code = 4
++
++
++class PathError(TroupeError):
++    code = 5
+diff --git a/src/troupe/render.py b/src/troupe/render.py
+new file mode 100644
+index 0000000..71db24d
+--- /dev/null
++++ b/src/troupe/render.py
+@@ -0,0 +1,223 @@
++"""Rendering Python values as YAML text."""
++
++from __future__ import annotations
++
++import math
++import unicodedata
++from typing import Any
++
++from ruamel.yaml.error import YAMLError
++from ruamel.yaml.nodes import MappingNode, ScalarNode, SequenceNode
++
++from .yamldoc import _yaml, resolve_plain
++
++PLAIN, SINGLE, DOUBLE = "plain", "'", '"'
++
++_ESCAPES = {
++    "\\": "\\\\",
++    '"': '\\"',
++    "\0": "\\0",
++    "\a": "\\a",
++    "\b": "\\b",
++    "\t": "\\t",
++    "\n": "\\n",
++    "\v": "\\v",
++    "\f": "\\f",
++    "\r": "\\r",
++    "\x1b": "\\e",
++    "\x85": "\\N",
++}
++
++
++def is_control(ch: str) -> bool:
++    return unicodedata.category(ch) == "Cc"
++
++
++def style_of(node: Any) -> str | None:
++    """Quoting style of an existing scalar node, or None if not a flow scalar."""
++    if isinstance(node, ScalarNode):
++        if node.style is None:
++            return PLAIN
++        if node.style in (SINGLE, DOUBLE):
++            return node.style
++    return None
++
++
++def render_non_string(value: Any) -> str:
++    if value is None:
++        return "null"
++    if value is True:
++        return "true"
++    if value is False:
++        return "false"
++    if isinstance(value, int):
++        return str(value)
++    if isinstance(value, float):
++        if math.isnan(value):
++            return ".nan"
++        if math.isinf(value):
++            return ".inf" if value > 0 else "-.inf"
++        return repr(value)
++    raise TypeError(value)
++
++
++def _parses_to(text: str, value: str, style: str | None, flow: bool) -> bool:
++    try:
++        node = _yaml.compose(f"[{text}]" if flow else f"k: {text}")
++    except YAMLError:
++        return False
++    if flow:
++        if not isinstance(node, SequenceNode) or len(node.value) != 1:
++            return False
++        n = node.value[0]
++    else:
++        if not isinstance(node, MappingNode) or len(node.value) != 1:
++            return False
++        n = node.value[0][1]
++    return isinstance(n, ScalarNode) and n.style == style and n.value == value
++
++
++def plain(s: str, flow: bool) -> str | None:
++    if not s or s != s.strip(" \t") or any(is_control(c) or c in "\u2028\u2029\ufeff" for c in s):
++        return None
++    if not isinstance(resolve_plain(s), str):
++        return None
++    if s[0] in ",[]{}#&*!|>'\"%@`":
++        return None
++    if s[0] in "-?:" and (len(s) == 1 or s[1] in " \t" or (flow and s[1] in ",[]{}")):
++        return None
++    if ": " in s or " #" in s or s.endswith(":"):
++        return None
++    if flow and any(c in s for c in ",[]{}"):
++        return None
++    return s if _parses_to(s, s, None, flow) else None
++
++
++def single(s: str, flow: bool) -> str | None:
++    if "\n" in s or any(is_control(c) and c != "\t" for c in s) or any(c in "\u2028\u2029\ufeff" for c in s):
++        return None
++    out = "'" + s.replace("'", "''") + "'"
++    return out if _parses_to(out, s, SINGLE, flow) else None
++
++
++def double(s: str) -> str:
++    out = []
++    for c in s:
++        if c in _ESCAPES:
++            out.append(_ESCAPES[c])
++        elif is_control(c):
++            out.append(f"\\x{ord(c):02x}" if ord(c) < 0x100 else f"\\u{ord(c):04x}")
++        else:
++            out.append(c)
++    return '"' + "".join(out) + '"'
++
++
++def scalar(value: Any, style: str | None, flow: bool) -> str:
++    """Render a scalar on one line, preferring `style`, else the minimal one."""
++    if not isinstance(value, str):
++        return render_non_string(value)
++    order = [PLAIN, SINGLE, DOUBLE]
++    if style in order:
++        order.remove(style)
++        order.insert(0, style)
++    for st in order:
++        if st == PLAIN:
++            r = plain(value, flow)
++        elif st == SINGLE:
++            r = single(value, flow)
++        else:
++            r = double(value)
++        if r is not None:
++            return r
++    raise AssertionError
++
++
++def is_multiline(value: Any) -> bool:
++    return isinstance(value, str) and "\n" in value
++
++
++def literal_ok(value: str) -> bool:
++    if any((is_control(c) and c not in "\t\n") or c in "\u2028\u2029\ufeff" for c in value):
++        return False
++    body = value.rstrip("\n")
++    lines = body.split("\n")
++    first = next((ln for ln in lines if ln), None)
++    if first is None:
++        return False
++    if first[0] in " \t":
++        return False
++    # leading empty lines must stay empty: fine since we write them bare
++    return True
++
++
++def chomp_for(value: str, old: str = "") -> str:
++    t = len(value) - len(value.rstrip("\n"))
++    if t == 0:
++        return "-"
++    if t == 1:
++        return old if old in ("", "+") else ""
++    return "+"
++
++
++def literal_lines(value: str, indent: int) -> list[str]:
++    body = value.rstrip("\n")
++    t = len(value) - len(body)
++    lines = [(" " * indent + ln) if ln else "" for ln in body.split("\n")]
++    lines += [""] * max(0, t - 1)
++    return lines
++
++
++class Renderer:
++    """Renders new values using a document's layout conventions."""
++
++    def __init__(self, step: int = 2, seq_offset: int | None = None):
++        self.step = step
++        self.seq_offset = step if seq_offset is None else seq_offset
++
++    def flow(self, value: Any, style: str | None = None) -> str:
++        if isinstance(value, dict):
++            return "{" + ", ".join(f"{scalar(k, None, True)}: {self.flow(v)}" for k, v in value.items()) + "}"
++        if isinstance(value, list):
++            return "[" + ", ".join(self.flow(v) for v in value) + "]"
++        if is_multiline(value):
++            return double(value)
++        return scalar(value, style, True)
++
++    def value_after_indicator(self, value: Any, indent: int, style: str | None, compact: bool) -> tuple[str, list[str]]:
++        """Render a value following `key:` or `-` whose line is indented `indent`.
++
++        Returns the text for the indicator's line (without leading space) and
++        the following lines.
++        """
++        if isinstance(value, (dict, list)) and value:
++            if compact:
++                lines = self.block(value, indent + 2)
++                return lines[0][indent + 2 :], lines[1:]
++            sub = indent + (self.step if isinstance(value, dict) else self.seq_offset)
++            return "", self.block(value, sub)
++        if isinstance(value, (dict, list)):
++            return ("{}" if isinstance(value, dict) else "[]"), []
++        if is_multiline(value) and literal_ok(value):
++            return "|" + chomp_for(value), literal_lines(value, indent + self.step)
++        if is_multiline(value):
++            return double(value), []
++        return scalar(value, style, False), []
++
++    def entry(self, key: str, value: Any, indent: int, kstyle: str | None = None, vstyle: str | None = None) -> list[str]:
++        head, rest = self.value_after_indicator(value, indent, vstyle, False)
++        k = scalar(key, kstyle, False)
++        return [" " * indent + k + ":" + (" " + head if head else "")] + rest
++
++    def item(self, value: Any, indent: int, vstyle: str | None = None) -> list[str]:
++        head, rest = self.value_after_indicator(value, indent, vstyle, True)
++        return [" " * indent + "-" + (" " + head if head else "")] + rest
++
++    def block(self, value: Any, indent: int) -> list[str]:
++        lines: list[str] = []
++        if isinstance(value, dict):
++            for k, v in value.items():
++                lines += self.entry(k, v, indent)
++        else:
++            for v in value:
++                lines += self.item(v, indent)
++        return lines
+diff --git a/src/troupe/store.py b/src/troupe/store.py
+new file mode 100644
+index 0000000..76a65b3
+--- /dev/null
++++ b/src/troupe/store.py
+@@ -0,0 +1,84 @@
++"""Event-sourced configuration history, persisted under .troupe/."""
++
++from __future__ import annotations
++
++import os
++from typing import Any
++from uuid import NAMESPACE_URL, UUID, uuid5
++
++from eventsourcing.application import AggregateNotFoundError, Application
++from eventsourcing.domain import Aggregate, event
++
++from .yamldoc import values_equal
++
++CONFIG_ID = uuid5(NAMESPACE_URL, "troupe:configuration")
++
++
++class Configuration(Aggregate):
++    """Projection of the theatre configuration: its leaves and their history."""
++
++    @staticmethod
++    def create_id(*_: Any, **__: Any) -> UUID:
++        return CONFIG_ID
++
++    @event("Created")
++    def __init__(self) -> None:
++        self.leaves: dict[str, Any] = {}
++        self.changes: list[dict[str, Any]] = []
++
++    def _apply(self, op: str, path: str, old: Any, new: Any) -> None:
++        self.changes.append(
++            {"seq": len(self.changes) + 1, "op": op, "path": path, "old": old, "new": new}
++        )
++        if op == "remove":
++            self.leaves.pop(path, None)
++        else:
++            self.leaves[path] = new
++
++    @event("Imported")
++    def imported(self, path: str, new: Any) -> None:
++        self._apply("import", path, None, new)
++
++    @event("ValueSet")
++    def value_set(self, path: str, old: Any, new: Any) -> None:
++        self._apply("set", path, old, new)
++
++    @event("ValueRemoved")
++    def value_removed(self, path: str, old: Any) -> None:
++        self._apply("remove", path, old, None)
++
++
++class Troupe(Application[UUID]):
++    def __init__(self, state_dir: str):
++        super().__init__(
++            env={
++                "PERSISTENCE_MODULE": "eventsourcing.sqlite",
++                "SQLITE_DBNAME": os.path.join(state_dir, "events.sqlite"),
++            }
++        )
++
++    def configuration(self) -> Configuration | None:
++        try:
++            return self.repository.get(CONFIG_ID)
++        except AggregateNotFoundError:
++            return None
++
++    def ensure_imported(self, leaves: dict[str, Any]) -> Configuration:
++        config = self.configuration()
++        if config is None:
++            config = Configuration()
++            for path, value in leaves.items():
++                config.imported(path, value)
++            self.save(config)
++        return config
++
++    def record(self, config: Configuration, old: dict[str, Any], new: dict[str, Any]) -> None:
++        for path, value in new.items():
++            if path not in old:
++                config.value_set(path, None, value)
++            elif not values_equal(old[path], value):
++                config.value_set(path, old[path], value)
++        for path, value in old.items():
++            if path not in new:
++                config.value_removed(path, value)
++        self.save(config)
+diff --git a/src/troupe/yamldoc.py b/src/troupe/yamldoc.py
+new file mode 100644
+index 0000000..19fe4c5
+--- /dev/null
++++ b/src/troupe/yamldoc.py
+@@ -0,0 +1,399 @@
++"""Position-aware YAML model.
++
++ruamel.yaml is used only as a parser: it gives us the node tree with source
++offsets.  Values are resolved with the YAML 1.2 core schema, and includes are
++followed to build a merged *view* of the configuration whose nodes remember
++which file (and which bytes) they come from.
++"""
++
++from __future__ import annotations
++
++import bisect
++import math
++import os
++import re
++from dataclasses import dataclass, field
++from typing import Any, Callable
++
++from ruamel.yaml import YAML
++from ruamel.yaml.error import YAMLError
++from ruamel.yaml.nodes import MappingNode, Node, ScalarNode, SequenceNode
++
++from .errors import LoadError
++
++_yaml = YAML(typ="safe", pure=True)
++
++# --------------------------------------------------------------------------
++# Core schema
++
++_NULL = re.compile(r"null|Null|NULL|~|")
++_TRUE = re.compile(r"true|True|TRUE")
++_FALSE = re.compile(r"false|False|FALSE")
++_INT10 = re.compile(r"[-+]?[0-9]+")
++_INT8 = re.compile(r"0o[0-7]+")
++_INT16 = re.compile(r"0x[0-9a-fA-F]+")
++_FLOAT = re.compile(r"[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?")
++_INF = re.compile(r"[-+]?\.(inf|Inf|INF)")
++_NAN = re.compile(r"\.(nan|NaN|NAN)")
++
++
++def resolve_plain(s: str) -> Any:
++    if _NULL.fullmatch(s):
++        return None
++    if _TRUE.fullmatch(s):
++        return True
++    if _FALSE.fullmatch(s):
++        return False
++    if _INT10.fullmatch(s):
++        return int(s)
++    if _INT8.fullmatch(s):
++        return int(s[2:], 8)
++    if _INT16.fullmatch(s):
++        return int(s[2:], 16)
++    if _FLOAT.fullmatch(s):
++        return float(s)
++    if _INF.fullmatch(s):
++        return -math.inf if s.startswith("-") else math.inf
++    if _NAN.fullmatch(s):
++        return math.nan
++    return s
++
++
++def construct(node: Node | None) -> Any:
++    if node is None:
++        return None
++    if isinstance(node, ScalarNode):
++        return resolve_plain(node.value) if node.style is None else node.value
++    if isinstance(node, MappingNode):
++        return {key_text(k): construct(v) for k, v in node.value}
++    if isinstance(node, SequenceNode):
++        return [construct(v) for v in node.value]
++    raise TypeError(node)
++
++
++def key_text(node: Node) -> str:
++    if isinstance(node, ScalarNode):
++        return node.value
++    raise LoadError("complex mapping keys are not supported")
++
++
++def compose(text: str, name: str = "<value>") -> Node | None:
++    try:
++        return _yaml.compose(text)
++    except YAMLError as e:
++        raise LoadError(f"{name}: invalid YAML: {e}") from None
++
++
++def values_equal(a: Any, b: Any) -> bool:
++    if type(a) is not type(b):
++        return False
++    if isinstance(a, dict):
++        return a.keys() == b.keys() and all(values_equal(a[k], b[k]) for k in a)
++    if isinstance(a, list):
++        return len(a) == len(b) and all(values_equal(x, y) for x, y in zip(a, b))
++    if isinstance(a, float) and math.isnan(a) and math.isnan(b):
++        return True
++    return a == b
++
++
++# --------------------------------------------------------------------------
++# Documents
++
++
++class Doc:
++    """One YAML file's text plus line bookkeeping."""
++
++    def __init__(self, path: str, text: str):
++        self.path = path
++        self.text = text
++        m = re.search(r"\r?\n", text)
++        self.newline = m.group(0) if m else "\n"
++        self.line_starts = [0] + [m.end() for m in re.finditer(r"\n", text)]
++        self.root = compose(text, path)
++
++    # line helpers -------------------------------------------------------
++    def line_of(self, pos: int) -> int:
++        return bisect.bisect_right(self.line_starts, pos) - 1
++
++    def line_start(self, pos: int) -> int:
++        return self.line_starts[self.line_of(pos)]
++
++    def col(self, pos: int) -> int:
++        return pos - self.line_start(pos)
++
++    def eol(self, pos: int) -> int:
++        """Offset of the line break ending the line containing pos."""
++        i = self.text.find("\n", pos)
++        if i < 0:
++            return len(self.text)
++        if i > 0 and self.text[i - 1] == "\r":
++            return i - 1
++        return i
++
++    def next_line(self, pos: int) -> int:
++        """Offset of the start of the line after the one containing pos."""
++        i = self.text.find("\n", pos)
++        return len(self.text) if i < 0 else i + 1
++
++    def line_text(self, n: int) -> str:
++        s = self.line_starts[n]
++        return self.text[s : self.eol(s)]
++
++    @property
++    def nlines(self) -> int:
++        return len(self.line_starts)
++
++
++def indent_of(line: str) -> int:
++    return len(line) - len(line.lstrip(" "))
++
++
++def is_block_scalar(node: Node | None) -> bool:
++    return isinstance(node, ScalarNode) and node.style in ("|", ">")
++
++
++def is_empty_null(node: Node | None) -> bool:
++    return (
++        isinstance(node, ScalarNode)
++        and node.style is None
++        and node.value == ""
++        and node.start_mark.index == node.end_mark.index
++    )
++
++
++def is_flow(node: Node | None) -> bool:
++    return isinstance(node, (MappingNode, SequenceNode)) and bool(node.flow_style)
++
++
++# --------------------------------------------------------------------------
++# View
++
++
++@dataclass(eq=False)
++class VNode:
++    kind: str  # "map", "seq", "scalar"
++    doc: Doc  # document holding this node's content
++    node: Node | None  # ruamel node in `doc` (None: empty document)
++    src_doc: Doc  # document holding the node's position in its parent
++    src_node: Node | None  # ruamel node in `src_doc`
++    parent: "VNode | None" = None
++    key_node: Node | None = None  # for mapping entries
++    anchor: int | None = None  # offset just after ':' or '-' in src_doc
++    anchor_indent: int = 0  # column of the key / dash in src_doc
++    flow_parent: bool = False
++    include: str | None = None  # None, "yaml" or "text"
++    include_path: str | None = None
++    value: Any = None  # scalar value
++    children: dict[str, "VNode"] | list["VNode"] = field(default_factory=dict)
++    end: int = 0  # end of content in src_doc
++
++    def py(self) -> Any:
++        if self.kind == "map":
++            return {k: v.py() for k, v in self.children.items()}
++        if self.kind == "seq":
++            return [v.py() for v in self.children]
++        return self.value
++
++    def child(self, seg: str) -> "VNode | None":
++        if self.kind == "map":
++            return self.children.get(seg)
++        if self.kind == "seq" and seg.isdigit():
++            i = int(seg)
++            return self.children[i] if i < len(self.children) else None
++        return None
++
++    def entries(self) -> list["VNode"]:
++        if self.kind == "map":
++            return list(self.children.values())
++        if self.kind == "seq":
++            return list(self.children)
++        return []
++
++    @property
++    def start(self) -> int:
++        """Start of this entry in src_doc (key or dash)."""
++        if self.key_node is not None:
++            return self.key_node.start_mark.index
++        if self.anchor is not None and not self.flow_parent:
++            return self.anchor - 1
++        return value_start(self)
++
++
++def value_start(v: VNode) -> int:
++    if v.src_node is None or is_empty_null(v.src_node):
++        return v.anchor if v.anchor is not None else 0
++    return v.src_node.start_mark.index
++
++
++def content_end(doc: Doc, node: Node | None, anchor: int | None, children_end: int | None) -> int:
++    if node is None:
++        return len(doc.text.rstrip())
++    if is_empty_null(node):
++        return anchor if anchor is not None else node.start_mark.index
++    if is_block_scalar(node):
++        p = node.end_mark.index
++        s = node.start_mark.index
++        while p > s and doc.text[p - 1] in " \t\r\n":
++            p -= 1
++        return p
++    if isinstance(node, ScalarNode) or is_flow(node):
++        return node.end_mark.index
++    assert children_end is not None
++    return children_end
++
++
++def find_colon(doc: Doc, pos: int) -> int:
++    """Offset just after the ':' following a key ending at pos."""
++    t = doc.text
++    i = pos
++    while i < len(t) and t[i] in " \t":
++        i += 1
++    if i < len(t) and t[i] == ":":
++        return i + 1
++    return pos
++
++
++def dash_positions(doc: Doc, node: SequenceNode) -> list[int]:
++    start = node.start_mark.index
++    end = node.end_mark.index
++    col = doc.col(start)
++    out = [start]
++    for n in range(doc.line_of(start) + 1, doc.line_of(end) + 1):
++        line = doc.line_text(n)
++        if indent_of(line) == col and line[col : col + 1] == "-" and line[col + 1 : col + 2] in ("", " ", "\t"):
++            out.append(doc.line_starts[n] + col)
++    return out
++
++
++Reader = Callable[[str], str]
++
++
++class Loader:
++    def __init__(self, read: Reader):
++        self.read = read
++        self.docs: dict[str, Doc] = {}
++
++    def doc(self, path: str) -> Doc:
++        if path not in self.docs:
++            self.docs[path] = Doc(path, self.read(path))
++        return self.docs[path]
++
++    def load(self, path: str) -> VNode:
++        doc = self.doc(path)
++        if doc.root is None:
++            v = VNode("map", doc, None, doc, None)
++            v.end = content_end(doc, None, None, None)
++            return v
++        return self.build(doc, doc.root, doc, doc.root, None, None, None, 0, False, (os.path.realpath(path),))
++
++    def build(
++        self,
++        doc: Doc,
++        node: Node,
++        src_doc: Doc,
++        src_node: Node,
++        parent: VNode | None,
++        key_node: Node | None,
++        anchor: int | None,
++        anchor_indent: int,
++        flow_parent: bool,
++        stack: tuple[str, ...],
++    ) -> VNode:
++        v = VNode("scalar", doc, node, src_doc, src_node, parent, key_node, anchor, anchor_indent, flow_parent)
++        if isinstance(node, ScalarNode):
++            value = construct(node)
++            if isinstance(value, str) and value.startswith("file:"):
++                return self.include(v, value[5:], stack)
++            v.value = value
++        elif isinstance(node, MappingNode):
++            v.kind = "map"
++            children: dict[str, VNode] = {}
++            last_end = None
++            for k, cn in node.value:
++                a = find_colon(doc, k.end_mark.index)
++                c = self.build(doc, cn, doc, cn, v, k, a, doc.col(k.start_mark.index), bool(node.flow_style), stack)
++                children[key_text(k)] = c
++                last_end = c.end
++            v.children = children
++            v.end = content_end(doc, node, anchor, last_end)
++            if doc is not src_doc:
++                v.end = content_end(src_doc, src_node, anchor, None)
++            return v
++        elif isinstance(node, SequenceNode):
++            v.kind = "seq"
++            items: list[VNode] = []
++            last_end = None
++            if node.flow_style:
++                for cn in node.value:
++                    c = self.build(doc, cn, doc, cn, v, None, None, 0, True, stack)
++                    items.append(c)
++                    last_end = c.end
++            else:
++                dashes = dash_positions(doc, node)
++                if len(dashes) != len(node.value):
++                    raise LoadError(f"{doc.path}: unsupported sequence layout")
++                for d, cn in zip(dashes, node.value):
++                    c = self.build(doc, cn, doc, cn, v, None, d + 1, doc.col(d), False, stack)
++                    items.append(c)
++                    last_end = c.end
++            v.children = items
++            v.end = content_end(doc, node, anchor, last_end)
++            if doc is not src_doc:
++                v.end = content_end(src_doc, src_node, anchor, None)
++            return v
++        v.end = content_end(src_doc, src_node, anchor, None)
++        return v
++
++    def include(self, v: VNode, rel: str, stack: tuple[str, ...]) -> VNode:
++        base = os.path.dirname(v.doc.path)
++        target = os.path.normpath(os.path.join(base, rel))
++        real = os.path.realpath(target)
++        if real in stack:
++            raise LoadError(f"{target}: include cycle (from {v.doc.path})")
++        try:
++            if target.endswith((".yml", ".yaml")):
++                tdoc = self.doc(target)
++            else:
++                text = self.read(target)
++        except (FileNotFoundError, IsADirectoryError, NotADirectoryError):
++            raise LoadError(f"{target}: included file not found (from {v.doc.path})") from None
++        except UnicodeDecodeError:
++            raise LoadError(f"{target}: included file is not UTF-8 (from {v.doc.path})") from None
++        if not target.endswith((".yml", ".yaml")):
++            v.include = "text"
++            v.include_path = target
++            v.value = text
++            v.end = content_end(v.src_doc, v.src_node, v.anchor, None)
++            return v
++        if tdoc.root is None:
++            v.include = "yaml"
++            v.include_path = target
++            v.value = None
++            v.end = content_end(v.src_doc, v.src_node, v.anchor, None)
++            return v
++        inner = self.build(
++            tdoc, tdoc.root, v.src_doc, v.src_node, v.parent, v.key_node, v.anchor, v.anchor_indent,
++            v.flow_parent, stack + (real,),
++        )
++        inner.include = "yaml"
++        inner.include_path = target
++        if inner.kind == "scalar":
++            inner.end = content_end(v.src_doc, v.src_node, v.anchor, None)
++        return inner
++
++
++def leaves(v: VNode, prefix: str = "") -> dict[str, Any]:
++    out: dict[str, Any] = {}
++
++    def walk(n: VNode, p: str) -> None:
++        if n.kind == "map":
++            for k, c in n.children.items():
++                walk(c, f"{p}.{k}" if p else k)
++        elif n.kind == "seq":
++            for i, c in enumerate(n.children):
++                walk(c, f"{p}.{i}" if p else str(i))
++        else:
++            out[p] = n.value
++
++    walk(v, prefix)
++    return out
+diff --git a/tests/test_config.py b/tests/test_config.py
+new file mode 100644
+index 0000000..28e132c
+--- /dev/null
++++ b/tests/test_config.py
+@@ -0,0 +1,136 @@
++import json
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++CONFIG = """\
++# Troupe config
++name: demo   # the name
++quoted: 'single'
++agents:
++  coder: file:agents/coder.yaml
++  reviewer:
++    model: "opus"
++    prompt: file:agents/prompt.md
++tags:
++  - a
++  - "b"
++  # trailing comment
++desc: >
++  This is a folded
++  paragraph of text.
++
++  Second para.
++lit: |
++  line one
++  line two
++flow: {x: 1, y: [1, 2]}  # c
++"""
++
++
++def troupe(theatre, *args):
++    return subprocess.run(
++        [sys.executable, "-m", "troupe.cli_main", "config", *args, "--theatre", str(theatre)],
++        capture_output=True,
++    )
++
++
++@pytest.fixture
++def theatre(tmp_path):
++    d = tmp_path / ".troupe"
++    (d / "agents").mkdir(parents=True)
++    (d / "troupe.yml").write_text(CONFIG)
++    (d / "agents" / "coder.yaml").write_text("model: sonnet\ntools: [read, write]\n")
++    (d / "agents" / "prompt.md").write_bytes(b"Review.\r\nBe nice.\r\n")
++    return tmp_path
++
++
++def cfg(theatre):
++    return (theatre / ".troupe" / "troupe.yml").read_text()
++
++
++def set_ok(theatre, path, value):
++    r = troupe(theatre, "set", path, value)
++    assert r.returncode == 0, r.stderr
++    assert r.stdout == b""
++
++
++@pytest.mark.parametrize(
++    "path,out",
++    [
++        ("name", b"demo\n"),
++        ("agents.coder.model", b"sonnet\n"),
++        ("agents.reviewer.prompt", b"Review.\r\nBe nice.\r\n"),
++        ("tags.1", b"b\n"),
++        ("desc", b"This is a folded paragraph of text.\nSecond para.\n"),
++        ("flow.y.1", b"2\n"),
++    ],
++)
++def test_show(theatre, path, out):
++    r = troupe(theatre, "show", path)
++    assert (r.returncode, r.stdout) == (0, out)
++
++
++@pytest.mark.parametrize("path,code", [("agents", 5), ("tags", 5), ("nope", 5), ("name.x", 5)])
++def test_show_errors(theatre, path, code):
++    r = troupe(theatre, "show", path)
++    assert r.returncode == code and r.stdout == b"" and path.encode() in r.stderr
++
++
++def test_set_keeps_comment_column(theatre):
++    set_ok(theatre, "name", "x")
++    assert "name: x      # the name\n" in cfg(theatre)
++    set_ok(theatre, "name", "a-much-longer-value")
++    assert "name: a-much-longer-value # the name\n" in cfg(theatre)
++
++
++def test_set_quoting(theatre):
++    set_ok(theatre, "quoted", "it's")
++    assert "quoted: 'it''s'\n" in cfg(theatre)
++    set_ok(theatre, "tags.2", "c")
++    assert '  - "b"\n  # trailing comment\n  - "c"\n' in cfg(theatre)
++
++
++def test_set_include_targets(theatre):
++    set_ok(theatre, "agents.coder.model", "haiku")
++    assert (theatre / ".troupe/agents/coder.yaml").read_text() == "model: haiku\ntools: [read, write]\n"
++    set_ok(theatre, "agents.reviewer.prompt", '"Hi\\nthere\\n"')
++    assert (theatre / ".troupe/agents/prompt.md").read_bytes() == b"Hi\r\nthere\r\n"
++    assert troupe(theatre, "set", "agents.reviewer.prompt", "5").returncode == 3
++    before = cfg(theatre)
++    assert troupe(theatre, "set", "agents.coder", "x").returncode == 3
++    assert cfg(theatre) == before
++
++
++def test_block_scalars(theatre):
++    set_ok(theatre, "lit", '"line one\\nline 2"')
++    assert "lit: |-\n  line one\n  line 2\nflow" in cfg(theatre)
++    set_ok(theatre, "desc", '"This is a folded paragraph of text.\\nSecond para now longer.\\n"')
++    assert "  This is a folded\n  paragraph of text.\n\n  Second para\n  now longer.\n" in cfg(theatre)
++
++
++def test_new_keys_and_collections(theatre):
++    set_ok(theatre, "agents.reviewer.limits.tokens", "100")
++    assert '    prompt: file:agents/prompt.md\n    limits:\n      tokens: 100\ntags' in cfg(theatre)
++    set_ok(theatre, "flow.z", "3")
++    assert "flow: {x: 1, y: [1, 2], z: 3} # c\n" in cfg(theatre)
++    assert troupe(theatre, "set", "tags.5", "x").returncode == 5
++
++
++def test_history(theatre):
++    set_ok(theatre, "tags", "[a]")
++    r = troupe(theatre, "history", "tags")
++    events = [json.loads(line) for line in r.stdout.decode().splitlines()]
++    assert [(e["op"], e["path"], e["old"], e["new"]) for e in events] == [
++        ("import", "tags.0", None, "a"),
++        ("import", "tags.1", None, "b"),
++        ("remove", "tags.1", "b", None),
++    ]
++    set_ok(theatre, "tags", "[a]")  # no change, no events
++    assert len(troupe(theatre, "history", "tags").stdout.splitlines()) == 3
++
++
++def test_missing_config(tmp_path):
++    assert troupe(tmp_path, "show", "x").returncode == 4
+diff --git a/uv.lock b/uv.lock
+new file mode 100644
+index 0000000..8638933
+--- /dev/null
++++ b/uv.lock
+@@ -0,0 +1,117 @@
++version = 1
++revision = 3
++requires-python = ">=3.12"
++
++[[package]]
++name = "colorama"
++version = "0.4.6"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44", size = 27697, upload-time = "2022-10-25T02:36:22.414Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
++]
++
++[[package]]
++name = "eventsourcing"
++version = "9.5.5"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "typing-extensions" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/23/ec/d562180c63b0948958700748f90f0b2eef2946570ec5b7736f84a5658b9b/eventsourcing-9.5.5.tar.gz", hash = "sha256:8f749b7ff1bd74bb72da98eac0663f0d0f879a40e7211aacbf60d4a4b87d7743", size = 109370, upload-time = "2026-08-19T14:28:43.508Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/7e/d8/3d835f2723e26837f02af564452073dacfae4bc993a01a86c95be6dc6d2c/eventsourcing-9.5.5-py3-none-any.whl", hash = "sha256:35fee11fb6f56ca680b6212559db87c471c85d321b96900f8d11bbd7c41badc3", size = 121121, upload-time = "2026-08-19T14:28:42.107Z" },
++]
++
++[[package]]
++name = "iniconfig"
++version = "2.3.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc35312d08ba8bf51fdd999c576889fc2c24cb97f4f10/iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730", size = 20503, upload-time = "2025-10-18T21:55:43.219Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
++]
++
++[[package]]
++name = "packaging"
++version = "26.3"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/7d/fa/3944b40b07da9ce895c0e6303a5ab7d53da063554f534556b134a54d6093/packaging-26.3.tar.gz", hash = "sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79", size = 313412, upload-time = "2026-08-04T18:15:28.737Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl", hash = "sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c", size = 129956, upload-time = "2026-08-04T18:15:27.159Z" },
++]
++
++[[package]]
++name = "pluggy"
++version = "1.6.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
++]
++
++[[package]]
++name = "pygments"
++version = "2.21.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/49/2e/ced460408999b33da6b31b0021b0f37d329e202d4169aeb164493778f25b/pygments-2.21.0.tar.gz", hash = "sha256:610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c", size = 5005329, upload-time = "2026-08-17T08:02:48.824Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/71/46/17f022dd3e953bf20a04a028a21ec746d942f8d2af30fa0f124fa0e6a684/pygments-2.21.0-py3-none-any.whl", hash = "sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9", size = 1250147, upload-time = "2026-08-17T08:02:44.912Z" },
++]
++
++[[package]]
++name = "pytest"
++version = "9.1.1"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "colorama", marker = "sys_platform == 'win32'" },
++    { name = "iniconfig" },
++    { name = "packaging" },
++    { name = "pluggy" },
++    { name = "pygments" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/e4/47/b9efed96c114afcfa3c9d3fe98a76a1d14c74a9e266d397cf6eb64be5e01/pytest-9.1.1.tar.gz", hash = "sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313", size = 1636369, upload-time = "2026-06-19T10:58:32.857Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/24/25/1de2678b631f5a49215c6c96fff41ba892b0a34df68d6d80292b1b48aa7f/pytest-9.1.1-py3-none-any.whl", hash = "sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c", size = 386536, upload-time = "2026-06-19T10:58:31.347Z" },
++]
++
++[[package]]
++name = "ruamel-yaml"
++version = "0.19.1"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/c7/3b/ebda527b56beb90cb7652cb1c7e4f91f48649fbcd8d2eb2fb6e77cd3329b/ruamel_yaml-0.19.1.tar.gz", hash = "sha256:53eb66cd27849eff968ebf8f0bf61f46cdac2da1d1f3576dd4ccee9b25c31993", size = 142709, upload-time = "2026-01-02T16:50:31.84Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/b8/0c/51f6841f1d84f404f92463fc2b1ba0da357ca1e3db6b7fbda26956c3b82a/ruamel_yaml-0.19.1-py3-none-any.whl", hash = "sha256:27592957fedf6e0b62f281e96effd28043345e0e66001f97683aa9a40c667c93", size = 118102, upload-time = "2026-01-02T16:50:29.201Z" },
++]
++
++[[package]]
++name = "troupe"
++version = "0.1.0"
++source = { editable = "." }
++dependencies = [
++    { name = "eventsourcing" },
++    { name = "ruamel-yaml" },
++]
++
++[package.dev-dependencies]
++dev = [
++    { name = "pytest" },
++]
++
++[package.metadata]
++requires-dist = [
++    { name = "eventsourcing", specifier = ">=9.5.5" },
++    { name = "ruamel-yaml", specifier = ">=0.19.1" },
++]
++
++[package.metadata.requires-dev]
++dev = [{ name = "pytest", specifier = ">=9.1.1" }]
++
++[[package]]
++name = "typing-extensions"
++version = "4.16.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5", size = 113555, upload-time = "2026-07-02T08:40:05.92Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8", size = 45571, upload-time = "2026-07-02T08:40:04.659Z" },
++]

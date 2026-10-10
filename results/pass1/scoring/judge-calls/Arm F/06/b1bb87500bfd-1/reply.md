@@ -1,0 +1,5 @@
+```json
+{"score": 3, "evidence": ["/judge/repo/spec/bugs/yaml-alias-set/assessment.md:89-116", "/judge/repo/spec/bugs/yaml-alias-set/assessment.md:151-152", "/judge/repo/spec/bugs/yaml-alias-set/fix.md:70-77", "/judge/repo/spec/bugs/yaml-alias-set/fix.md:82-83", "/judge/transcript.md:68"]}
+```
+
+{"score": 3, "evidence": ["/judge/repo/spec/bugs/yaml-alias-set/assessment.md:89-116", "/judge/repo/spec/bugs/yaml-alias-set/assessment.md:151-152", "/judge/repo/spec/bugs/yaml-alias-set/fix.md:70-77", "/judge/repo/spec/bugs/yaml-alias-set/fix.md:82-83", "/judge/transcript.md:68"], "notes": "The repo records the main design (a composer stand-in node) against two real alternatives, scanning text for `*name` and counting node encounters, with reasons specific to this codebase. It also records the gap the contract left open (replacing the alias itself) with a proposed answer and a reason. The later choices (refusing any `<<` path, refusing inside flow collections, refusing a cross-file expansion) give reasons but no options, and putting the expansion comment before an existing one is recorded with no reason at all."}

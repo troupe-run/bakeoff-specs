@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "troupe.yml: `system: |   # main prompt` / `You are a coder.` / a blank line holding 4 spaces / `Be terse.` / `Use tests.` / `# end of prompts`",
+        "input": "`config set prompts.system \"You are a coder.\\n\\nBe terse.\\nUse more tests.\\n\"` (only the last line changes, from `Use tests.`)",
+        "observed": true,
+        "results": {
+          "1": "Only `Use tests.` becomes `Use more tests.`. The 4-space blank line, the `# main prompt` comment and `# end of prompts` are unchanged.",
+          "2": "All five arms: `Use tests.` becomes `Use more tests.`, and the 4-space blank line is also emptied to a bare blank line. Both comments are kept."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set prompts.system \"You are a senior coder.\\n\\nBe terse.\\nUse more tests.\\nExplain briefly.\\n\"`",
+        "observed": true,
+        "results": {
+          "1": "The first line is rewritten and `Explain briefly.` is added inside the block. The 4-space blank line is still there, and comments and `model: opus` are unchanged.",
+          "2": "All five arms: the same edits, and the blank line stays empty. Comments and `model: opus` are unchanged."
+        }
+      },
+      {
+        "before": "agents.yml: `prompt: |` / `  Review diffs.` / `  Check tests.` / `level: 2`, all with CRLF",
+        "input": "`config set reviewer.prompt \"Review diffs carefully.\\nCheck tests.\\nBe kind.\\n\"` (the value lives in agents.yml, which uses CRLF line endings)",
+        "observed": true,
+        "results": {
+          "1": "Line 1 is edited and `Be kind.` is added. Every line keeps its CRLF ending, and `level: 2` is unchanged.",
+          "2": "All five arms: identical to route 1, with CRLF kept on every line."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config get prompts.system` and `config get reviewer.prompt`",
+        "observed": true,
+        "results": {
+          "1": "Prints `You are a senior coder.\\n\\nBe terse.\\nUse more tests.\\nExplain briefly.\\n` and `Review diffs carefully.\\nCheck tests.\\nBe kind.\\n`.",
+          "2": "All five arms: the same output as route 1."
+        }
+      }
+    ],
+    "in_practice": "Both routes store and return the same values, and both keep comments, neighbouring keys and CRLF line endings. The only difference seen: route 1 left an untouched whitespace-only line inside the block exactly as it was, while route 2 stripped it to an empty line. The value read back is the same either way, but a diff of the file shows a change you did not make.",
+    "stakes": "When you edit a multi-line prompt with `config set`, the question is whether lines you did not change stay byte-for-byte as they were. Comments, line endings and stray whitespace in a hand-written file could otherwise be rewritten without warning.",
+    "tradeoff": "Route 1 keeps unchanged lines byte-for-byte but needs extra line-matching logic. Route 2 is simpler but can quietly normalise whitespace on lines you never edited."
+  },
+  "plan_why": "Edits existing literal blocks (one with extra 6-space indentation, a whitespace-only blank line, a trailing blank line and a header comment; one in a CRLF include). A line diff leaves the unchanged lines and the surrounding layout byte-identical; a whole-block rewrite would re-indent or normalise them.",
+  "routes": [
+    [
+      "Line diff with difflib so unchanged lines keep their bytes",
+      [
+        "Arm E"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

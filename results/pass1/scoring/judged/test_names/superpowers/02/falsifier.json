@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "repo/tests/test_sync.py:36",
+    "repo/tests/test_sync.py:40",
+    "repo/tests/test_sync.py:16",
+    "repo/tests/test_sync.py:21",
+    "repo/tests/test_sync.py:192",
+    "repo/tests/test_sync.py:60"
+  ],
+  "notes": "There was no git history, so I treated the step-2 reconcile/watch tests in test_sync.py as the checked set. Most names describe what their bodies assert (e.g. test_type_change_is_a_change, test_watch_survives_broken_edit). Two overclaim: test_reconcile_failure_shows_error checks only exit code 4 and history length, never any error output, and test_commands_reconcile_hand_edits shows only `show` reconciling while asserting that `history` does not. Two more are vague: test_set_in_subprocess_while_watching names no expected result, and test_special_values_round_trip only counts events.",
+  "raw": "```json\n{\"score\": 2, \"evidence\": [\"repo/tests/test_sync.py:36\", \"repo/tests/test_sync.py:40\", \"repo/tests/test_sync.py:16\", \"repo/tests/test_sync.py:21\", \"repo/tests/test_sync.py:192\", \"repo/tests/test_sync.py:60\"], \"notes\": \"There was no git history, so I treated the step-2 reconcile/watch tests in test_sync.py as the checked set. Most names describe what their bodies assert (e.g. test_type_change_is_a_change, test_watch_survives_broken_edit). Two overclaim: test_reconcile_failure_shows_error checks only exit code 4 and history length, never any error output, and test_commands_reconcile_hand_edits shows only `show` reconciling while asserting that `history` does not. Two more are vague: test_set_in_subprocess_while_watching names no expected result, and test_special_values_round_trip only counts events.\"}\n```",
+  "score": 2,
+  "status": "ok"
+}

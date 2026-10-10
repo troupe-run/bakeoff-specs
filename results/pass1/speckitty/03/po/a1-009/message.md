@@ -1,0 +1,3 @@
+The merge command failed and changed nothing: it reports `✗ lane-a: Lane branch kitty/mission-troupe-config-get-show-01M411XB-lane-a does not exist`. Its earlier checks passed (all three WPs have review approval, dependencies complete).
+
+The lane branch is missing because the mission was already merged. The earlier `spec-kitty merge` merged lanes a–c into the mission branch and that into `feat/troupe-config-get-show` (`b51d09f`). It recorded all three WPs as done and deleted the lane branches. `feat/troupe-config-get-show` was then merged into `main` as `a589041`, which is still the tip of `main`. There's nothing left to merge, so this needs no action.

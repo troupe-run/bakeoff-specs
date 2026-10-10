@@ -1,0 +1,133 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "1",
+    "Arm C": "1",
+    "Arm D": "1",
+    "Arm E": "2",
+    "Arm F": "2"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "A",
+        "why": "tags.0 and tags.1 become a bare '-' line that keeps '# first' / '# second', with the map or list indented on the lines below"
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "B",
+        "why": "tags.0 becomes '- k: v  # first' and tags.1 becomes '- - p  # second', so the first key or item sits on the dash line with the comment after it"
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "name",
+          "{a: 1, b: x}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "limits",
+          "[x, y]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tags.0",
+          "{k: v, m: w}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tags.1",
+          "[p, q]"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.temperature",
+          "0.3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/agents/coder.yaml": "model: opus\n",
+      ".troupe/troupe.yml": "name: alpha    # project name\nlimits: 5  # max\ntags:\n  - one   # first\n  - two  # second\nagents:\n  coder: file:agents/coder.yaml  # c\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/agents/coder.yaml"
+    ],
+    "why": "Replaces commented scalars (a mapping value, a list item, and a value with extra spaces before its comment) with block mappings and lists, plus the step-5 include conversion, to show where each version puts the comment, the new collection and the list-item layout."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "bare dash keeps the comment, the collection goes below",
+            "id": "A"
+          },
+          {
+            "description": "compact: first key/item on the dash line, comment lands after it",
+            "id": "B"
+          }
+        ],
+        "id": "Q1",
+        "text": "a commented list item replaced by a map or list"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Value removed; comment stays at its column on the key (or dash) line; the collection goes below; list items become compact",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C"
+      ]
+    ]
+  ],
+  "sheet_id": "T61",
+  "status": "ok"
+}

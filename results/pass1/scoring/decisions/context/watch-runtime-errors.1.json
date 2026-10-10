@@ -1,0 +1,49 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "",
+        "input": "With watch running, save the config halfway through an edit so it no longer parses",
+        "observed": false,
+        "results": {
+          "1": "An error describing the problem appears on stderr once. Watch keeps running and records nothing for the broken version."
+        }
+      },
+      {
+        "before": "",
+        "input": "Leave the broken config alone for several ticks",
+        "observed": false,
+        "results": {
+          "1": "Watch retries on every tick. The same error is not printed again, so the terminal does not fill up with repeats."
+        }
+      },
+      {
+        "before": "",
+        "input": "Finish the edit and save a valid config",
+        "observed": false,
+        "results": {
+          "1": "On the next tick the config loads and watch resumes normally. Nothing from the broken period is kept."
+        }
+      }
+    ],
+    "in_practice": "Only one route was on the table. Watch treats a broken config as temporary: it reports each distinct error once, writes nothing, and keeps trying until the file loads. This covers editors that save partial files, and it also picks up an include file that didn't exist yet but appears later. In one variant, a fetch that failed (for example a remote include) is retried only after a local file changes, not on every tick. That variant also didn't say whether it prints each message only once.",
+    "stakes": "If someone saves a half-written or broken config while watch is running, they need to know whether watch stops, floods the terminal with errors, quietly keeps stale settings, or recovers by itself once the file is fixed.",
+    "tradeoff": "Route 1 recovers by itself and keeps stderr quiet. The cost is a reload attempt on every tick while the config is broken. In the variant, a failed remote fetch stays failed until you touch a local file."
+  },
+  "plan_why": "This route is about what a running `troupe config watch` does when a file breaks mid-session: stderr de-duplication, retrying every tick, recording nothing, and resuming once the config loads again. Showing that means running `watch` and hand-editing files while it runs. The sandbox forbids `watch` and only runs separate troupe commands, with no file edits between them. One-shot commands on a broken config just exit 4 under the shared contract, so they cannot show any of this.",
+  "routes": [
+    [
+      "Report on stderr (each distinct message once), record nothing, retry every tick, resume when it loads",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

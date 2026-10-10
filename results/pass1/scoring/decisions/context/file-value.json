@@ -1,0 +1,85 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\nname: demo  # project\nnote: hello\nother: x\n\n.troupe/notes.txt:\nincluded text\n",
+        "input": "`config set note file:notes.txt`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; the file now reads:\nname: demo  # project\nnote: !literal file:notes.txt\nother: x",
+          "2": "all three arms: exit 0, no output; the file now reads:\nname: demo  # project\nnote: !literal file:notes.txt\nother: x",
+          "3": "both arms: exit 0, no output; the file now reads:\nname: demo  # project\nnote: !literal file:notes.txt\nother: x"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set --include other file:notes.txt`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; the file now reads:\nname: demo  # project\nnote: !literal file:notes.txt\nother: file:notes.txt",
+          "2": "all three arms: exit 0, no output; the file now reads:\nname: demo  # project\nnote: !literal file:notes.txt\nother: file:notes.txt",
+          "3": "both arms: exit 0, no output; the file now reads:\nname: demo  # project\nnote: !literal file:notes.txt\nother: file:notes.txt"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show` (after the two sets above)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints:\nname: demo\nnote: file:notes.txt\nother: |\n  included text",
+          "2": "all three arms: exit 0; prints:\nname: demo\nnote: file:notes.txt\nother: |\n  included text",
+          "3": "both arms: exit 0; prints the literal with its tag:\nname: demo\nnote: !literal file:notes.txt\nother: |\n  included text"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set --include name file:missing.txt`",
+        "observed": true,
+        "results": {
+          "1": "exit 3, nothing written: \"troupe: name: include target not found: /theatre/.troupe/missing.txt (included from /theatre/.troupe/troupe.yml, at name); no file changed\"",
+          "2": "all three arms: exit 3, nothing written; the messages are worded differently but all say the written value would not load back, e.g. \"troupe: name: the result would not load (.troupe/missing.txt: included file not found (from .troupe/troupe.yml)); not writing\"",
+          "3": "one arm: exit 3, nothing written: \"troupe: write refused: name: cannot write this change faithfully (/theatre/.troupe/troupe.yml: include target /theatre/.troupe/missing.txt not found)\"; one arm: exit 4, nothing written: \"troupe: .troupe/missing.txt: included file not found (from ./.troupe/troupe.yml)\""
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set --include name file:troupe.yml` (the file includes itself)",
+        "observed": true,
+        "results": {
+          "1": "exit 3, nothing written: \"troupe: name: include cycle at name: /theatre/.troupe/troupe.yml -> /theatre/.troupe/troupe.yml; no file changed\"",
+          "2": "all three arms: exit 3, nothing written; each reports an include cycle that would not load back, e.g. \"troupe: error: name: the change to /theatre/.troupe/troupe.yml would not load back (/theatre/.troupe/troupe.yml: include cycle through /theatre/.troupe/troupe.yml); no file was changed\"",
+          "3": "one arm: exit 3, nothing written: \"troupe: write refused: name: cannot write this change faithfully (/theatre/.troupe/troupe.yml: include cycle through /theatre/.troupe/troupe.yml)\"; one arm: exit 4, nothing written: \"troupe: .troupe/troupe.yml: include cycle (from ./.troupe/troupe.yml)\""
+        }
+      }
+    ],
+    "in_practice": "Without `--include`, every route stores `file:...` as plain text (tagged `!literal` in the file). With `--include`, every route refuses a missing or self-referencing target and leaves the file untouched. On routes 1 and 2, `config show` prints the stored value as plain `file:notes.txt`. On route 3 it prints the `!literal` tag. On route 3, one arm also uses exit 4 instead of 3 for a bad include target.",
+    "stakes": "When the value given to `config set` starts with `file:`, it matters whether you get the literal text you typed or the contents of that file, and whether a typo'd or self-referencing file name is caught before anything is written. The routes behave the same on every write tested here. They differ in how `config show` prints a literal `file:` value and in which exit code a broken include target gets.",
+    "tradeoff": "Route 1 reports a bad target as an include problem at the key. Route 2's errors say the written value would not load back, worded differently across its three arms. Route 3 shows `!literal` in `config show`, and its arms disagree on the exit code (3 vs 4)."
+  },
+  "plan_why": "Shows what happens when a set VALUE is a file: string in the final code. By default it should be written tagged !literal. With --include and an existing target it becomes a real include. With --include and a missing or cyclic target, route 2 refuses with exit 3; other routes may write the file anyway or fail with exit 4.",
+  "routes": [
+    [
+      "Verify a file: string as the written text",
+      [
+        "Arm C"
+      ]
+    ],
+    [
+      "Write it as a string and let the read-back load decide; a missing, cyclic or unloadable target exits 3",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

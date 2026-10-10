@@ -1,0 +1,151 @@
+[
+  {
+    "decision": "Treat `<<` merge keys as ordinary keys and do not resolve them as merges, because the config is read with the YAML 1.2 core schema",
+    "options": [
+      "resolve merge keys",
+      "treat as ordinary key"
+    ],
+    "reason": "leaving them unresolved keeps get and show consistent with the schema the rest of the configuration uses; the contract says merge keys are never written",
+    "recorded_at": "/judge/repo/DECISIONS.md:24"
+  },
+  {
+    "decision": "Refuse with exit 3 any set whose path contains `<<`, including when --expand-alias is used",
+    "options": [],
+    "reason": "the contract says merge keys are never written",
+    "recorded_at": "/judge/repo/DECISIONS.md:24"
+  },
+  {
+    "decision": "Render the expanded copy from the anchored value instead of copying the text, so the copy never repeats an &anchor",
+    "options": [
+      "copy as text",
+      "render from value"
+    ],
+    "reason": "a repeated anchor would redirect later aliases",
+    "recorded_at": "/judge/repo/DECISIONS.md:33"
+  },
+  {
+    "decision": "Also expand aliases nested inside the anchored value in the copy; only the outer alias gets the `# expanded from *name by troupe` comment",
+    "options": [],
+    "reason": "",
+    "recorded_at": "/judge/repo/DECISIONS.md:33"
+  },
+  {
+    "decision": "When the alias itself is the path being set, the copy is the new value and the comment keeps its two spaces",
+    "options": [],
+    "reason": "",
+    "recorded_at": "/judge/repo/DECISIONS.md:36"
+  },
+  {
+    "decision": "For an alias that is a list item, put the comment on the dash line and the copy below it",
+    "options": [],
+    "reason": "",
+    "recorded_at": "/judge/repo/DECISIONS.md:37"
+  },
+  {
+    "decision": "Keep a comment the user already had after the alias, placed after troupe's comment",
+    "options": [],
+    "reason": "",
+    "recorded_at": "/judge/repo/DECISIONS.md:38"
+  },
+  {
+    "decision": "Refuse with exit 3 when --expand-alias targets an alias inside a flow collection",
+    "options": [
+      "rewrite the flow collection",
+      "refuse"
+    ],
+    "reason": "a block-style copy and an end-of-line comment don't fit without rewriting the collection",
+    "recorded_at": "/judge/repo/DECISIONS.md:39"
+  },
+  {
+    "decision": "With nested aliases, --expand-alias expands the outermost alias on the path and then retries the set recursively",
+    "options": [],
+    "reason": "",
+    "recorded_at": "/judge/repo/DECISIONS.md:41"
+  },
+  {
+    "decision": "Setting a path at an anchor writes the value there and keeps `&name`, so every alias sees the change",
+    "options": [],
+    "reason": "changing the value at the anchor is supposed to change it everywhere",
+    "recorded_at": "/judge/repo/README.md (anchors paragraph); questions.md:12"
+  },
+  {
+    "decision": "Setting a path reached through an alias (including adding a new key under one) is refused with exit 3, and the message names the alias and suggests --expand-alias; the file is not touched",
+    "options": [
+      "set the anchored value",
+      "use --expand-alias"
+    ],
+    "reason": "it would change every use of the anchor",
+    "recorded_at": "questions.md:13; diff src/troupe/editor.py set()"
+  },
+  {
+    "decision": "Add a new `--expand-alias` store_true flag to `config set`",
+    "options": [],
+    "reason": "",
+    "recorded_at": "diff src/troupe/cli.py:73; README usage line"
+  },
+  {
+    "decision": "The expanded copy is block-style and marked `# expanded from *name by troupe` on the key's line",
+    "options": [],
+    "reason": "",
+    "recorded_at": "/judge/repo/README.md anchors paragraph"
+  },
+  {
+    "decision": "Exempt alias twins of the set path from the 'write-back would disturb' check, and record history changes for each path that uses the anchor",
+    "options": [],
+    "reason": "set at an anchor: every alias of it changes too",
+    "recorded_at": "diff src/troupe/cli.py:82"
+  },
+  {
+    "decision": "Shift the start marks of anchored nodes past the `&anchor` token, so writing a value keeps the anchor; an empty scalar anchor (`key: &a`) is handled as an empty value right after the anchor",
+    "options": [],
+    "reason": "so that writing a value keeps the `&anchor`",
+    "recorded_at": "diff src/troupe/yamldoc.py:_skip_anchors"
+  },
+  {
+    "decision": "Detect aliases by comparing positions (the composed node's start mark comes before its key/dash/previous position) and raise LoadError 'unsupported alias layout' when the `*name` token can't be found",
+    "options": [],
+    "reason": "an alias points back at its anchor",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Add a `dash` field to VNode for block list items and use it as the entry start, replacing the old `anchor - 1` heuristic",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "alias_twins returns an empty set when the path itself goes through an alias, and identifies twins by a signature of (doc path, node id, kind, include chain)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Propagate expand_alias through recursive set calls in assign when setting map and list values",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "Change the test helper set_ok to accept extra flags after path and value",
+    "options": [
+      "pass flag before path"
+    ],
+    "reason": "",
+    "recorded_at": "transcript.md:23"
+  },
+  {
+    "decision": "In the anchor test, filter history for 'set' ops instead of taking the last 8 lines",
+    "options": [
+      "last 8 lines",
+      "filter by op == set"
+    ],
+    "reason": "my test's history window was too small",
+    "recorded_at": "transcript.md:24-25"
+  },
+  {
+    "decision": "Commit on main without pushing or opening a PR",
+    "options": [],
+    "reason": "",
+    "recorded_at": "questions.md:5"
+  }
+]

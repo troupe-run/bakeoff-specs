@@ -1,0 +1,75 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "agents:\n  coder:\n    model: opus  # main model\n",
+        "input": "`config set agents.coder.true on`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads:\n    model: opus  # main model\n    'true': on",
+          "2": "exit 0; the file now reads:\n    model: opus  # main model\n    true: on",
+          "3": "all four arms: exit 0; the file now reads:\n    model: opus  # main model\n    'true': on"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set agents.coder.null x`, then `config set agents.coder.1e3 y`",
+        "observed": true,
+        "results": {
+          "1": "both exit 0; the file now reads:\n    'true': on\n    'null': x\n    '1e3': y",
+          "2": "both exit 0; the file now reads:\n    true: on\n    null: x\n    1e3: y",
+          "3": "all four arms: both exit 0; the file now reads:\n    'true': on\n    'null': x\n    '1e3': y"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set agents.coder.<< z`",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file gains the line:\n    '<<': z",
+          "2": "exit 0; the file gains the line:\n    '<<': z",
+          "3": "all four arms: exit 3, no file change. The wording differs by arm, e.g. \"troupe: agents.coder.<<: '<<' is the merge key; troupe never writes merge keys; no file changed\" and \"troupe: error: agents.coder.<<: troupe never writes a merge key (<<)\""
+        }
+      },
+      {
+        "before": "",
+        "input": "`config show agents.coder` (after the commands above)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; prints:\nmodel: opus\n'true': on\n'null': x\n'1e3': y\n'<<': z",
+          "2": "exit 0; prints the same quoted keys even though the file has them unquoted:\nmodel: opus\n'true': on\n'null': x\n'1e3': y\n'<<': z",
+          "3": "three arms: exit 0; prints:\nmodel: opus\n'true': on\n'null': x\n'1e3': y\none arm: exit 0; also quotes the values:\nmodel: opus\n'true': 'on'\n'null': x\n'1e3': 'y'"
+        }
+      }
+    ],
+    "in_practice": "On route 2, `config show` displays the keys quoted, but the file itself contains plain `true:`, `null:` and `1e3:`. Any other tool or person reading the file will see those as a boolean, a null and a number, not as names. Routes 1 and 3 write the quotes into the file. Route 3 also refuses to create a `<<` key at all, while routes 1 and 2 store it quoted.",
+    "stakes": "When someone sets a config key named like `true`, `null`, `1e3` or `<<`, the question is whether the YAML file on disk still holds that key as plain text. Unquoted, other YAML readers will load such a key as a boolean, null, number or merge key instead of a name.",
+    "tradeoff": "Route 1 quotes every ambiguous key and allows a quoted `<<`. Route 2 only guards `<<`, so the file is left with keys that other readers take as non-strings. Route 3 quotes ambiguous keys too but rejects `<<` with exit 3, and one arm also quotes some values in `show`."
+  },
+  "plan_why": "Adds new keys spelled true, null, 1e3 and << under a mapping whose existing key is plain. The file diffs show which keys each route quotes: all four, only <<, or none. The final show reveals whether unquoted keys come back as booleans, nulls or floats, or stop the config from loading.",
+  "routes": [
+    [
+      "Quote any new key whose plain form would not read back as a string",
+      [
+        "Arm B"
+      ]
+    ],
+    [
+      "Quote keys spelled << (found in review)",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

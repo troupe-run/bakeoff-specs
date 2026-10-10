@@ -1,0 +1,963 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "model",
+          "sonnet"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      },
+      {
+        "args": [
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "model: haiku\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "sleep": 3
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGINT",
+        "watch": "stop"
+      },
+      {
+        "args": [
+          "--theatre",
+          ".",
+          "config",
+          "watch"
+        ],
+        "env": {},
+        "watch": "start"
+      },
+      {
+        "args": [],
+        "env": {},
+        "signal": "SIGTERM",
+        "watch": "stop"
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "model: opus\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  14 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:03:14.030268Z\", \"reason\": null, \"change\": \"34325cd2-acb1-417f-b742-e42d4ec17514\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:03:14.033335Z\", \"reason\": null, \"change\": \"d270312a-5159-4b97-9b46-781eeaf35c28\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sonnet\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  14 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "signal": "SIGTERM",
+              "stderr": "troupe: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  13 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  14 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:03:30.087177Z\", \"reason\": null, \"change\": \"541a4c22-dc1f-45dd-ad85-577dfd4f712f\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:03:30.090705Z\", \"reason\": null, \"change\": \"3e3b96ce-40b0-4cc2-9c12-bf282069d590\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sonnet\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  14 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: argument {config}: invalid choice: '.' (choose from config) (see 'troupe --help')\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "signal": "SIGTERM",
+              "stderr": "troupe: argument {config}: invalid choice: '.' (choose from config) (see 'troupe --help')\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/history.sqlite  12288 bytes\n.troupe/troupe.yml  13 bytes\n"
+            }
+          ]
+        }
+      ],
+      "route": "One store instance per command, closed explicitly at the end so no -wal/-shm files remain",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  14 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:03:21.228665Z\", \"reason\": null, \"change\": \"7534e424-3258-46d4-a187-ce10a7ab3c0e\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:03:21.230726Z\", \"reason\": null, \"change\": \"e7f0fec7-defe-4370-bd04-2ba15d14cc93\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sonnet\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  14 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 137,
+              "signal": "SIGTERM",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite  12288 bytes\n.troupe/events.sqlite-shm  32768 bytes\n.troupe/events.sqlite-wal  0 bytes\n.troupe/troupe.yml  13 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe-state.sqlite  12288 bytes\n.troupe/troupe.yml  14 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:03:37.664997Z\", \"reason\": null, \"change\": \"8ff8281e-81d5-402a-802d-1f862667d2e5\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:03:37.665226Z\", \"reason\": null, \"change\": \"8f930480-a3c2-426d-8118-b8520fae018a\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sonnet\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe-state.sqlite  12288 bytes\n.troupe/troupe.yml  14 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 137,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "troupe: usage error: argument group: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "signal": "SIGTERM",
+              "stderr": "troupe: usage error: argument group: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/troupe-state.sqlite  12288 bytes\n.troupe/troupe-state.sqlite-shm  32768 bytes\n.troupe/troupe-state.sqlite-wal  8272 bytes\n.troupe/troupe.yml  13 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  14 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:03:46.488162Z\", \"reason\": null, \"change\": \"c1049622-b772-49b4-872a-8e0c093bef25\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:03:46.488780Z\", \"reason\": null, \"change\": \"014bdbcc-503c-4a46-8734-a3f180dd168e\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sonnet\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  14 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching .\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: argument command: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "signal": "SIGTERM",
+              "stderr": "usage: troupe [-h] {config} ...\ntroupe: error: argument command: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.lock  0 bytes\n.troupe/events.sqlite  12288 bytes\n.troupe/troupe.yml  13 bytes\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "model",
+                "sonnet"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "model: sonnet\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  14 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T07:03:53.587303Z\", \"reason\": null, \"change\": \"6b0da634-6dc9-4b61-83d0-6eeeccf5d355\"}\n{\"seq\": 2, \"op\": \"set\", \"path\": \"model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T07:03:53.591840Z\", \"reason\": null, \"change\": \"e5fb52de-610f-4391-9107-862996ed1702\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "sonnet\n"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  14 bytes\n"
+            },
+            {
+              "args": [
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": null,
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "start",
+              "watch_state": "printed its watching line and is running"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {
+                ".troupe/troupe.yml": "model: haiku\n"
+              },
+              "hand_edit": ".troupe/troupe.yml",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "sleep": 3,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 0,
+              "signal": "SIGINT",
+              "stderr": "",
+              "stdout": "watching /theatre\n",
+              "watch": "stop",
+              "watch_state": "exited after the signal"
+            },
+            {
+              "args": [
+                "--theatre",
+                ".",
+                "config",
+                "watch"
+              ],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "start",
+              "watch_state": "exited before printing a watching line"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "rc": 2,
+              "signal": "SIGTERM",
+              "stderr": "usage: troupe [-h] COMMAND ...\ntroupe: error: argument COMMAND: invalid choice: '.' (choose from config)\n",
+              "stdout": "",
+              "watch": "stop",
+              "watch_state": "had already exited before the signal"
+            },
+            {
+              "args": [],
+              "env": {},
+              "files": {},
+              "list": ".",
+              "rc": 0,
+              "stderr": "",
+              "stdout": ".troupe/\n.troupe/events.sqlite3  12288 bytes\n.troupe/events.sqlite3.lock  0 bytes\n.troupe/troupe.yml  13 bytes\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

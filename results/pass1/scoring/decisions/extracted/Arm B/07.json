@@ -1,0 +1,356 @@
+[
+  {
+    "decision": "Plan step 7 as a single method change, `config-remote-includes-and-schema`, with a proposal, delta specs (a new `config-schema` capability and changes to config-loading, set, show, cli and sync), a design and 7 task groups. Commit it to main without pushing.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:42; questions.md:5-11 (commit e55580c)"
+  },
+  {
+    "decision": "Breaking change: `set X file:…` (and any include-looking string) is written as `!literal` by default. The new `--include` flag restores the old behaviour. Three existing tests are updated to pass `--include`.",
+    "options": [
+      "keep set creating includes",
+      "write literal unless --include"
+    ],
+    "reason": "The contract says include-looking VALUE strings are literal; `--include` restores the old behaviour and no data is lost",
+    "recorded_at": "questions.md:13; design.md:213-214; README decision 4 (diff.patch:97)"
+  },
+  {
+    "decision": "Create a new module, `includes.py`, as the one place that decides what is an include (prefixes, tag, schema-literal flag), and move `include_target`, `INCLUDE_PREFIX` and `is_yaml_target` into it",
+    "options": [
+      "includes.py module",
+      "loader passes a predicate everywhere"
+    ],
+    "reason": "`ref_entry` is called by apply.py long after loading, so the decision must be readable from the node itself",
+    "recorded_at": "spec/changes/archive/2026-10-08-config-remote-includes-and-schema/design.md:44-58"
+  },
+  {
+    "decision": "Rename `include_target` to `include_string`, which returns the whole include string rather than just the target",
+    "options": [],
+    "reason": "It now returns the whole include string, not just its target",
+    "recorded_at": "questions.md:54; design.md:55; transcript.md:57"
+  },
+  {
+    "decision": "In the first refactor commit, temporarily keep `https://` and `http://` out of `INCLUDE_PREFIXES` so behaviour stays unchanged",
+    "options": [],
+    "reason": "So behaviour is unchanged in that commit",
+    "recorded_at": "tasks.md 1.2; transcript.md:54"
+  },
+  {
+    "decision": "Keep remote sources out of `Config.files` and hold them in a separate `Config.remote` dict. `SourceFile` gains `url` and `included_by`.",
+    "options": [
+      "separate Config.remote",
+      "put remote sources in Config.files under a synthetic key"
+    ],
+    "reason": "Otherwise the overlay, write-back and watch baseline would each need a 'but not remote' filter, and forgetting one would write a URL's bytes to disk",
+    "recorded_at": "design.md:60-79"
+  },
+  {
+    "decision": "Use a per-command `Fetcher` that caches by URL, and reuse it across `set` reloads so each URL is fetched at most once per command",
+    "options": [],
+    "reason": "Every reload in one `set` sees the same remote bytes, so the result is checked against the content the command started from",
+    "recorded_at": "design.md:71-74; README decision 53"
+  },
+  {
+    "decision": "Fetch rules: 30-second timeout, `User-Agent: troupe`, redirects followed only to http/https (custom redirect handler), 2xx required, strict UTF-8 decode with no newline translation, no cache between commands",
+    "options": [],
+    "reason": "urllib would otherwise also follow ftp redirects",
+    "recorded_at": "design.md:67-70,193-194; questions.md:29; src/troupe/remote.py (diff.patch:2515-2569)"
+  },
+  {
+    "decision": "Fetch with the standard library (urllib), not an HTTP library",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:170; questions.md:19"
+  },
+  {
+    "decision": "A `file:` include inside remote content resolves against the content's URL with urljoin, so it never reads a local file",
+    "options": [
+      "resolve against the URL",
+      "refuse it / read local files"
+    ],
+    "reason": "The step-1 rule is 'relative to the file containing it', and that file is remote. Reading local files named by shared content would let a shared config read the user's disk.",
+    "recorded_at": "design.md:177-179; README decision 48; questions.md:23"
+  },
+  {
+    "decision": "Decide YAML or text for a URL from its path alone, without query or fragment (.yml/.yaml suffix)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:53; spec config-loading 'The URL path decides YAML or text'"
+  },
+  {
+    "decision": "The loader's cycle detection uses keys of type `Path | str` (resolved path or URL)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:75"
+  },
+  {
+    "decision": "Refuse writes to remote content with one check, `refuse_remote`, in `apply._apply`, run before any text changes",
+    "options": [
+      "check in apply._apply where edits are made",
+      "check in the planner op by op"
+    ],
+    "reason": "The planner does not know which layer a delete or add will touch; checking where the edit is made cannot miss a case",
+    "recorded_at": "design.md:115-132"
+  },
+  {
+    "decision": "The refusal message names the outermost include written in a local file, quoted as written, with its file and line",
+    "options": [],
+    "reason": "That is the only line the user can change",
+    "recorded_at": "design.md:187; README decision 49; questions.md:28"
+  },
+  {
+    "decision": "Drop the 'through <include>' fragment from the RemoteWrite message",
+    "options": [
+      "include 'via' fragment",
+      "omit it"
+    ],
+    "reason": "",
+    "recorded_at": "transcript.md:107"
+  },
+  {
+    "decision": "New keys under nested remote includes become overrides of the nearest include written locally: `plan.new_key_target` skips includes whose reference is remote",
+    "options": [],
+    "reason": "The nearer include's reference is itself remote",
+    "recorded_at": "design.md:127-129,188-189; README decision 50"
+  },
+  {
+    "decision": "Deleting a key that remote content sets is refused (exit 3) even when an override also sets it",
+    "options": [],
+    "reason": "Removing only the override would bring the remote value back (decision 29)",
+    "recorded_at": "design.md:190-191; README decision 51"
+  },
+  {
+    "decision": "`--in-include` for a new key whose section lives in remote content is refused",
+    "options": [],
+    "reason": "It would put the key into the remote file",
+    "recorded_at": "proposal.md (diff.patch:456+); README Remote includes section"
+  },
+  {
+    "decision": "`show --sources` names a remote value's source by its URL (`source_label` returns `file.url`)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:162,192; README decision 52"
+  },
+  {
+    "decision": "Move `source_label` from render.py to source.py",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:106 (unrecorded rationale)"
+  },
+  {
+    "decision": "Accept the `!literal` tag on scalars as `!!str`. `!literal` on a mapping or list still fails to load, and so do other non-core tags.",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:109-113"
+  },
+  {
+    "decision": "Represent the `!literal` tag as a `literal_tag: Tag` span outside the scalar's span, like an anchor, so replacing the string keeps the tag",
+    "options": [
+      "ScalarNode.tag: str (as in the design)",
+      "literal_tag span field"
+    ],
+    "reason": "Replacing the string keeps the tag",
+    "recorded_at": "transcript.md:64,78 (commit message); design.md:110 describes `tag: str`"
+  },
+  {
+    "decision": "Keep a `!literal` tag when its scalar changes to another string, and drop it when the new value is not a string",
+    "options": [],
+    "reason": "Keeping it gives the smallest diff; for a non-string, the tag would otherwise turn the value into a string",
+    "recorded_at": "design.md:185-186; README decision 60; questions.md:27"
+  },
+  {
+    "decision": "`blocks.copy_value` copies a tagged single-line scalar from its source text, so an `--expand-alias` copy of `&x !literal file:y` stays literal",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:141-142"
+  },
+  {
+    "decision": "Put the `Literal(str)` marker subclass and `LITERAL_TAG` in `schema.py` rather than `edit/scalars.py` (departure from the plan)",
+    "options": [
+      "edit/scalars.py",
+      "schema.py"
+    ],
+    "reason": "schema.py is where scalar types are decided",
+    "recorded_at": "questions.md:53; design.md:135; transcript.md:162"
+  },
+  {
+    "decision": "`schema.same` treats `str` subclasses as `str`, so a `Literal` equals the plain string it reads back as",
+    "options": [],
+    "reason": "A one-line change in the one place equality is decided",
+    "recorded_at": "design.md:144-146"
+  },
+  {
+    "decision": "`overrides.is_bare` rejects a `Literal`. Without `--include`, setting an include to its own string is refused (exit 3); with `--include` it is a no-op.",
+    "options": [],
+    "reason": "Without `--include` it asks for a literal string in place of the include",
+    "recorded_at": "design.md:145-147,183-184; README decision 59; questions.md:26"
+  },
+  {
+    "decision": "Apply the literal rule to every include-looking string nested inside a mapping or list VALUE, at its own path (`mark_literals`)",
+    "options": [
+      "only a scalar VALUE, as the contract literally reads",
+      "every nested string"
+    ],
+    "reason": "Otherwise `set links \"[https://…]\"` would silently fetch",
+    "recorded_at": "design.md:149-158; README decision 4; questions.md:24"
+  },
+  {
+    "decision": "An include-looking string at a path the schema marks `format: uri` is written untagged (no `!literal`)",
+    "options": [],
+    "reason": "It is a literal there anyway",
+    "recorded_at": "spec config-set 'Values that are includes'; README decision 4"
+  },
+  {
+    "decision": "`--include` on a path the schema marks `format: uri` is refused with exit 3",
+    "options": [
+      "refuse",
+      "quietly write a literal"
+    ],
+    "reason": "Rather than silently writing a literal the user did not ask for",
+    "recorded_at": "design.md:181-182; README decision 58; questions.md:25"
+  },
+  {
+    "decision": "`--include` does not affect text written into a text include's file",
+    "options": [],
+    "reason": "That text is never read as an include",
+    "recorded_at": "README decision 61; design.md:153-154"
+  },
+  {
+    "decision": "`--include` is a store_true flag accepted anywhere on the `set` command line",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:161; tests/test_cli.py (diff.patch:3109-3122)"
+  },
+  {
+    "decision": "Add the `jsonschema>=4.18,<5` dependency for draft 2020-12 validation, rather than a hand-written validator",
+    "options": [
+      "jsonschema",
+      "write a validator by hand"
+    ],
+    "reason": "Draft 2020-12 is large, and 'validate against the schema' means the whole of it",
+    "recorded_at": "design.md:167-173"
+  },
+  {
+    "decision": "Add `types-jsonschema` to the dev group so mypy --strict stays clean (revised from the earlier assumption that jsonschema ships types)",
+    "options": [
+      "rely on jsonschema's own types",
+      "add types-jsonschema stubs"
+    ],
+    "reason": "So mypy --strict stays clean",
+    "recorded_at": "transcript.md:37; design.md:169-170"
+  },
+  {
+    "decision": "Always read the schema as draft 2020-12 (ignore `$schema`), do not assert `format`, and refuse any `$ref`/`$dynamicRef` outside the document with a Registry that never retrieves",
+    "options": [],
+    "reason": "The contract names 2020-12, the draft makes `format` an annotation by default, and fetching a schema would add a second, unannounced network dependency",
+    "recorded_at": "design.md:197-199; README decision 55; questions.md:31"
+  },
+  {
+    "decision": "Find `format: uri` only through properties → additionalProperties (mapping keys) and items (list indexes); ignore $ref, allOf/anyOf/oneOf, prefixItems and patternProperties",
+    "options": [],
+    "reason": "The contract names only properties, items and additionalProperties",
+    "recorded_at": "design.md:38-39,87-89"
+  },
+  {
+    "decision": "Mark schema literals during expansion (before any fetch), not by walking the finished tree",
+    "options": [
+      "during expansion",
+      "after loading"
+    ],
+    "reason": "After loading, the string would already have been included or fetched, and a failed fetch of a literal URL would fail loading",
+    "recorded_at": "design.md:93-107"
+  },
+  {
+    "decision": "Judge a node reached through an alias at its anchor's path, and look up the `$ref` of a mapping-form include at `<path>.$ref`",
+    "options": [],
+    "reason": "That is where the string is written",
+    "recorded_at": "design.md:200-203; README decision 56"
+  },
+  {
+    "decision": "`set` validates against the schema only once, on its final result (reloads use validate=False). An invalid result is WriteRefused (exit 3); an invalid load is exit 4.",
+    "options": [],
+    "reason": "A multi-operation set may pass through invalid intermediate states",
+    "recorded_at": "design.md:101-103; README decision 57; transcript.md:143"
+  },
+  {
+    "decision": "Validation errors name the schema file and the dotted path from jsonschema's `best_match`",
+    "options": [],
+    "reason": "The spec asks for 'a value that fails', and naming the schema file lets the user run their own validator",
+    "recorded_at": "design.md:90-91,220-221"
+  },
+  {
+    "decision": "`watch` adds the schema file to its baseline. It records the loaded text when the schema exists, and None when absent.",
+    "options": [
+      "baseline None",
+      "baseline loaded schema text"
+    ],
+    "reason": "With None, an existing schema would look changed on every poll and trigger endless reconciles",
+    "recorded_at": "transcript.md:128; design.md:163-165"
+  },
+  {
+    "decision": "`watch` does not poll URLs. Remote changes are recorded at the next reconcile as hand edits (via file, actor unknown).",
+    "options": [],
+    "reason": "Accepted, since lineage already says troupe cannot know who edited a file",
+    "recorded_at": "design.md:195-196,218-219; README decision 54"
+  },
+  {
+    "decision": "Existing `https://` strings in configurations become includes on upgrade; handle this with a README compatibility note and the `!literal`/schema fix",
+    "options": [],
+    "reason": "A failed fetch shows up as exit 4 naming the URL, so it cannot go unnoticed",
+    "recorded_at": "design.md:210-212; README Upgrading note (diff.patch:70)"
+  },
+  {
+    "decision": "Non-goals: no caching between commands, no offline mode, no auth headers, no proxies beyond urllib's environment handling",
+    "options": [],
+    "reason": "",
+    "recorded_at": "design.md:34-40"
+  },
+  {
+    "decision": "Tests use a real ThreadingHTTPServer on 127.0.0.1 with a random port. 'Unreachable' uses a port that was bound and then released.",
+    "options": [],
+    "reason": "Avoids slow or flaky tests: connection refused fails fast",
+    "recorded_at": "design.md:215-217; tests/conftest.py (diff.patch:3030-3091)"
+  },
+  {
+    "decision": "Lower the test server's serve_forever poll interval to 0.02 s",
+    "options": [],
+    "reason": "The default 0.5 s shutdown poll made each test slow",
+    "recorded_at": "transcript.md:94-95"
+  },
+  {
+    "decision": "Rename the existing tests/test_schema.py to test_core_schema.py so the new schema tests can use test_schema.py",
+    "options": [],
+    "reason": "To make room",
+    "recorded_at": "transcript.md:131,143"
+  },
+  {
+    "decision": "Correct two spec/test expectations to follow the existing rule that end-of-line comments keep their column",
+    "options": [],
+    "reason": "The behaviour was right; the written expectations were wrong",
+    "recorded_at": "questions.md:55; transcript.md:71-73,155-156"
+  },
+  {
+    "decision": "Check each new test by mutation: confirm it fails when the guarded code is removed (tag check, refuse_remote, fetcher reuse, additionalProperties, schema baseline, mark_literals)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:73,93,113,133,137,156"
+  },
+  {
+    "decision": "Put the `<base>` note back by hand into the Purpose sections of the main config-loading and config-set specs after archiving dropped it",
+    "options": [],
+    "reason": "The archive dropped it because it sat outside the requirement blocks",
+    "recorded_at": "transcript.md:166-169; questions.md:77"
+  },
+  {
+    "decision": "Archive the change at the end of the apply run instead of waiting for a separate archive command",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:165; questions.md:63"
+  },
+  {
+    "decision": "Treat schema-file read failures (not UTF-8, invalid JSON, invalid schema, outside $ref) as exit-4 LoadErrors naming the schema file",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec config-schema 'The schema file'; src/troupe/schema_file.py (diff.patch:2719-2743)"
+  }
+]

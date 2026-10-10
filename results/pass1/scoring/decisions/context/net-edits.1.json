@@ -1,0 +1,48 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "",
+        "input": "Change a value from 3 to 5, then from 5 to 7 a moment later",
+        "observed": false,
+        "results": {
+          "1": "The history may hold a single entry, 3 -> 7. The step through 5 might not appear.",
+          "2": "Not addressed. The behavior for rapid edits isn't defined, so whether the 5 shows up is unknown."
+        }
+      },
+      {
+        "before": "",
+        "input": "Change a value from 3 to 5, then back to 3 a moment later",
+        "observed": false,
+        "results": {
+          "1": "The net difference may be nothing, so possibly no entry is recorded at all.",
+          "2": "Not addressed. It's unknown whether zero, one or two entries appear."
+        }
+      }
+    ],
+    "in_practice": "Route 1 deliberately compares the current state with the last recorded state. Whatever changed overall is what gets recorded, so bursts of edits can merge into one entry and an edit that is quickly undone can leave no trace. That is documented and predictable, but it is not a full log of every keystroke-level change. Route 2 never took up the question. Users and maintainers can't know in advance whether rapid edits are kept separately, merged or partly missed, and they would have to find out by testing.",
+    "stakes": "When someone makes several edits in quick succession, the question is whether the history shows each edit on its own or only the combined change. A user could lose sight of an intermediate state they relied on, or later expect a step-by-step history that isn't there.",
+    "tradeoff": "Route 1 gives up a record of intermediate states in exchange for a stated, consistent rule. Route 2 costs nothing up front but leaves rapid-edit behavior undefined."
+  },
+  "plan_why": "The question is how several quick hand edits to the config files get recorded: either as their net difference (route 1) or in a way the implementations never addressed (route 2). Showing that needs edits made to the files after the first import, either while `watch` runs or between commands. The sandbox can only create files before the first command, which imports them, and then run `troupe` commands. It cannot edit files between commands or while `watch` runs, and `watch` is not allowed. `set` changes the files, but those write-backs are the CLI's own events, not hand edits to reconcile. So no allowed command sequence can make the two routes behave differently.",
+  "routes": [
+    [
+      "May be recorded as their net difference",
+      [
+        "Arm A",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

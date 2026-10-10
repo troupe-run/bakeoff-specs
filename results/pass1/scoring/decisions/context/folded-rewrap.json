@@ -1,0 +1,65 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "team: alpha\nbrief: >\n  The quick brown fox jumps over the lazy dog and keeps\n  running until it reaches the river.\n\n  Short para\n  width.\n\n  Third paragraph is left exactly\n  as it was,   with odd spacing.\nnext: 1  # tail\n",
+        "input": "`config set brief \"The quick brown fox jumps over the lazy dog and keeps running until it reaches the river.\\nShort para width now grows much longer than before.\\nThird paragraph is left exactly as it was,   with odd spacing.\\n\"` (only the middle paragraph changes)",
+        "observed": true,
+        "results": {
+          "1": "All six arms gave the same result: exit 0, no output. The first and third paragraphs are untouched (the odd spacing is kept), and the changed paragraph is re-wrapped at its old, very narrow width. The file now reads:\nteam: alpha\nbrief: >\n  The quick brown fox jumps over the lazy dog and keeps\n  running until it reaches the river.\n\n  Short para\n  width now\n  grows much\n  longer\n  than\n  before.\n\n  Third paragraph is left exactly\n  as it was,   with odd spacing.\nnext: 1  # tail"
+        }
+      },
+      {
+        "before": "",
+        "input": "next: `config set brief` with the same text plus a new first paragraph \"A brand new opening paragraph that has no counterpart in the old value at all, so it wraps wide.\"",
+        "observed": true,
+        "results": {
+          "1": "All six arms gave the same result: exit 0. The new paragraph is wrapped at about 55 columns and the existing paragraphs keep their bytes. The block now reads:\nbrief: >\n  A brand new opening paragraph that has no counterpart\n  in the old value at all, so it wraps wide.\n\n  The quick brown fox jumps over the lazy dog and keeps\n  running until it reaches the river.\n\n  Short para\n  width now\n  grows much\n  longer\n  than\n  before.\n\n  Third paragraph is left exactly\n  as it was,   with odd spacing.\nnext: 1  # tail"
+        }
+      },
+      {
+        "before": "",
+        "input": "next: `config set brief` with the same four paragraphs reordered (Third, Quick fox, Brand new, Short para)",
+        "observed": true,
+        "results": {
+          "1": "The arms split on how the moved \"Third paragraph\" is wrapped; all exit 0. Five arms re-wrap it:\n  Third paragraph is left exactly as it was,   with odd\n  spacing.\n\n  The quick brown fox jumps over the lazy dog and keeps\n  running until it reaches the river.\n\nOne arm keeps its original bytes:\n  Third paragraph is left exactly\n  as it was,   with odd spacing.\n\n  The quick brown fox jumps over the lazy dog and keeps\n  running until it reaches the river.\n\nIn all six arms, the other paragraphs are as before."
+        }
+      },
+      {
+        "before": "",
+        "input": "next: the same, but the fox paragraph becomes \"...lazy dog and keeps<TAB>running until it reaches the river today.\"",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0. The fox paragraph is re-wrapped so that the line does not break at the TAB, and the TAB stays inside the line:\n  The quick brown fox jumps over the lazy dog and\n  keeps\trunning until it reaches the river today.\nThe \"Third paragraph\" lines stay as they were after the previous step (five arms re-wrapped, one arm original)."
+        }
+      },
+      {
+        "before": "",
+        "input": "next: `config set brief \"Third paragraph is left exactly as it was,   with odd spacing.\\n  this line is more indented\\n\"`",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 3, and the file is not changed. Only the error wording differs, e.g. `troupe: value would put a more-indented line into a folded scalar`. Some messages name the file path, the offending line or line 2."
+        }
+      }
+    ],
+    "in_practice": "Paragraphs you don't touch are kept exactly, odd spacing included. A paragraph you edit is re-wrapped at the width its old lines had, so a paragraph that used to be short ends up as a tall column of one- or two-word lines. New paragraphs wrap at about 55 columns. If you only reorder paragraphs, five arms re-wrap a moved paragraph and one arm keeps its old line breaks.",
+    "stakes": "When you change one paragraph of a folded `brief: >` text, you want the paragraphs you did not touch to stay byte-for-byte as they were and only the changed text re-wrapped. Otherwise every edit produces a noisy diff, or the wrapping ends up oddly narrow.",
+    "tradeoff": "Route 1: small diffs that keep your existing wrapping, at the cost of very narrow re-wrapping wherever the old paragraph was short."
+  },
+  "plan_why": "Edits a folded (>) value step by step to show what the shared route does: an unchanged paragraph keeps its odd line breaks and spacing byte for byte; a changed paragraph is re-wrapped at that paragraph's old width; a new paragraph is wrapped at the value's widest old line; reordering paragraphs; a TAB at a likely break point; and a more-indented line, which is refused with exit 3.",
+  "routes": [
+    [
+      "Align paragraphs with difflib; unchanged paragraphs keep their bytes; changed ones re-wrap at the old width (default 80)",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

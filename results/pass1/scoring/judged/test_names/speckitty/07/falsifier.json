@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "tests/integration/test_literals.py:117",
+    "tests/integration/test_remote_read.py:164",
+    "tests/integration/test_remote_acceptance.py:87",
+    "tests/integration/test_remote_acceptance.py:220",
+    "tests/unit/test_remote_fetch.py:291"
+  ],
+  "notes": "Nearly every checked name states a condition and expected result that the body asserts exactly, for example nfr003 compares bytes and the nfr001 refusal sequence checks snapshot, events and GET-only. One name mildly overclaims: test_literal_string_is_validated_as_a_string (test_literals.py:117) would still pass if no validation ran, since a string-typed schema accepts the value either way. test_url_cycle_exits_4 (test_remote_read.py:164) says less than its exact cycle-message assertion. A further overclaim, '...without_reading_the_file' (test_remote_fetch.py:291), may fall outside the first 30 tests in diff order.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"tests/integration/test_literals.py:117\", \"tests/integration/test_remote_read.py:164\", \"tests/integration/test_remote_acceptance.py:87\", \"tests/integration/test_remote_acceptance.py:220\", \"tests/unit/test_remote_fetch.py:291\"], \"notes\": \"Nearly every checked name states a condition and expected result that the body asserts exactly, for example nfr003 compares bytes and the nfr001 refusal sequence checks snapshot, events and GET-only. One name mildly overclaims: test_literal_string_is_validated_as_a_string (test_literals.py:117) would still pass if no validation ran, since a string-typed schema accepts the value either way. test_url_cycle_exits_4 (test_remote_read.py:164) says less than its exact cycle-message assertion. A further overclaim, '...without_reading_the_file' (test_remote_fetch.py:291), may fall outside the first 30 tests in diff order.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

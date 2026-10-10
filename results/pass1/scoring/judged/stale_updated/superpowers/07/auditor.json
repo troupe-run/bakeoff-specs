@@ -1,0 +1,16 @@
+{
+  "evidence": [
+    "/judge/repo/src/troupe/config.py:48",
+    "/judge/repo/src/troupe/config.py:386-388",
+    "/judge/repo/src/troupe/cli.py:209-215 (diff.patch:196-215 _mark_includes writes !literal unless --include, refuses --include on format: uri)",
+    "/judge/diff.patch:236-244 (_loaded_texts skips remote includes, watches the schema file)",
+    "/judge/diff.patch:10-24 (README adds --include, remote includes, schema, !literal)",
+    "/judge/diff.patch:36-65 (docs/decisions.md 34-42)",
+    "/judge/repo/tests/test_remote.py:110-123",
+    "/judge/repo/tests/test_config.py:263-269"
+  ],
+  "notes": "Every stale item is updated. include_like now covers file:, https:// and http://. The loader treats format: uri strings and !literal-tagged strings as literals, and the reconcile/watch path uses the same rules because it goes through load. set tags include-like strings !literal unless --include is given. The README and decisions doc describe remote includes, the schema and --include, and no existing test still asserts that set writes include-like strings untagged.",
+  "raw": "```json\n{\"score\": 4, \"evidence\": [\"/judge/repo/src/troupe/config.py:48\", \"/judge/repo/src/troupe/config.py:386-388\", \"/judge/repo/src/troupe/cli.py:209-215 (diff.patch:196-215 _mark_includes writes !literal unless --include, refuses --include on format: uri)\", \"/judge/diff.patch:236-244 (_loaded_texts skips remote includes, watches the schema file)\", \"/judge/diff.patch:10-24 (README adds --include, remote includes, schema, !literal)\", \"/judge/diff.patch:36-65 (docs/decisions.md 34-42)\", \"/judge/repo/tests/test_remote.py:110-123\", \"/judge/repo/tests/test_config.py:263-269\"], \"notes\": \"Every stale item is updated. include_like now covers file:, https:// and http://. The loader treats format: uri strings and !literal-tagged strings as literals, and the reconcile/watch path uses the same rules because it goes through load. set tags include-like strings !literal unless --include is given. The README and decisions doc describe remote includes, the schema and --include, and no existing test still asserts that set writes include-like strings untagged.\"}\n```",
+  "score": 4,
+  "status": "ok"
+}

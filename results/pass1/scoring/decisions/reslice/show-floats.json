@@ -1,0 +1,154 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "P",
+        "why": "The file gets top_p: 1e20 and b: 1e-7, exactly as typed."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "N",
+        "why": "The file gets top_p: 1e+20 and b: 1e-07."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "N",
+        "why": "The file gets top_p: 1e+20 and b: 1e-07."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "P",
+        "why": "The file keeps top_p: 1e20 and b: 1e-7 as typed."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "N",
+        "why": "The file gets top_p: 1e+20 and b: 1e-07."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "P",
+        "why": "The file keeps top_p: 1e20 and b: 1e-7 as typed."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agent.temperature",
+          ".inf"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agent.top_p",
+          "1e20"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agent.weights.2",
+          "-.inf"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agent.extra",
+          "{a: .nan, b: 1e-7, c: 2.0, d: -0.0}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agent"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "agent:\n  temperature: 0.5  # sampling\n  weights: [0.1, 0.2]\n  name: coder\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Writes non-finite and exponent floats into the file (changed value, new key, list item, new mapping) and prints a section as YAML, showing whether floats come out as repr text, as .inf/-.inf/.nan, or with an added .0 (e.g. 1e+20 vs 1.0e+20), and whether they read back as floats."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "keeps the typed spelling (1e20, 1e-7)",
+            "id": "P"
+          },
+          {
+            "description": "rewrites to 1e+20 / 1e-07",
+            "id": "N"
+          }
+        ],
+        "id": "Q1",
+        "text": "how exponent floats are written to the file"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "repr when finite; .inf/-.inf/.nan otherwise",
+      [
+        "Arm A",
+        "Arm C",
+        "Arm D"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T68",
+  "status": "ok"
+}

@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["tests/test_cli_get.py:82", "tests/test_cli_get.py:118", "tests/test_cli_get.py:245", "tests/test_cli_show.py:118", "tests/test_cli_show.py:148", "tests/test_cli_show.py:170", "tests/test_yaml_output.py:580"], "notes": "Nearly every checked test name (test_cli_get.py, test_cli_show.py, then test_yaml_output.py/test_yaml_style.py) states a condition and result that its body asserts byte for byte. Two names say more or less than the body: test_sources_without_path_labels_the_whole_configuration (tests/test_cli_show.py:170) checks only one labelled line plus strip-equality, so it does not prove every scalar line is labelled. test_get_prints_a_scalar_like_step_1_show (tests/test_cli_get.py:82) is vague about what 'like' means."}
+```

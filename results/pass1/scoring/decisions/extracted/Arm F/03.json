@@ -1,0 +1,228 @@
+[
+  {
+    "decision": "get is step 1's show renamed with a single change: the error for a mapping or list now says `use \\`troupe config show PATH\\` to print it`. The new show branches on the kind of node it finds",
+    "options": [
+      "Rename show to get and add a new show",
+      "Keep show as the scalar printer and add a flag"
+    ],
+    "reason": "get keeps one code path with step 1 (SC-201). The flag alternative contradicts the contract",
+    "recorded_at": "spec/003-config-get-show/research.md:8"
+  },
+  {
+    "decision": "get and show both import the theatre and record pending hand edits (reconcile) before printing",
+    "options": [],
+    "reason": "Step 2 says every command except history reconciles first. get must answer from the files as they are, and the hand edit is then recorded once",
+    "recorded_at": "spec/003-config-get-show/spec.md:282"
+  },
+  {
+    "decision": "YAML layout: 2-space indentation, lists indented under their key, minimal quoting, keys in document order, compact form for collections inside list items. Empty collections are written {} / []",
+    "options": [],
+    "reason": "Matches the default indentation step 1 writes (FR-029), is the most common hand-written layout, and reads back as the same values. Block style cannot express empty collections",
+    "recorded_at": "spec/003-config-get-show/spec.md:285"
+  },
+  {
+    "decision": "D-22 revised during planning: <file> is computed from real paths (symlinks resolved, theatre resolved), with .. segments for files outside the theatre. Replaces the original choice of lexically normalised paths that did not follow links",
+    "options": [
+      "Lexically normalised include path as written, links not resolved",
+      "Real paths with symlinks resolved"
+    ],
+    "reason": "The loader already identifies every file by its real location (cycle detection), so this names the file a set would write. A theatre under a linked directory such as /tmp on macOS still gives .troupe/troupe.yml",
+    "recorded_at": "spec/003-config-get-show/spec.md:290; transcript.md:21; commit eadad43"
+  },
+  {
+    "decision": "source_label = os.path.relpath(file.path, theatre.resolve()) with os.sep replaced by /",
+    "options": [
+      "relpath against the resolved theatre",
+      "Keep the include path as written (needs a second path per file in the loader)"
+    ],
+    "reason": "relpath gives .. segments and never a leading ./. Keeping the as-written path would need the loader to carry a second path and would disagree with the file set writes to",
+    "recorded_at": "spec/003-config-get-show/research.md:61"
+  },
+  {
+    "decision": "show SCALAR --sources prints the scalar as one YAML node with the comment (e.g. `0.2 # from .troupe/troupe.yml`). A text include becomes a top-level literal block",
+    "options": [],
+    "reason": "The contract is silent here. The user asked where the value comes from, and YAML is the only form that can carry the comment and stay consistent with section output. Flagged to the owner as the least obvious choice",
+    "recorded_at": "spec/003-config-get-show/spec.md:298; questions.md:23"
+  },
+  {
+    "decision": "A CRLF text include is still shown as a literal block, with \\r\\n replaced by \\n, so it reads back with \\n. This is the only exception to read-back. get still prints the exact bytes",
+    "options": [],
+    "reason": "The contract explicitly says text includes are shown as literal blocks, and a literal block cannot hold CR. show's YAML is for reading; get remains the exact form",
+    "recorded_at": "spec/003-config-get-show/spec.md:305"
+  },
+  {
+    "decision": "One space before the # in the source comment",
+    "options": [],
+    "reason": "The minimum YAML requires. The contract gives no column, and one space is predictable",
+    "recorded_at": "spec/003-config-get-show/spec.md:312"
+  },
+  {
+    "decision": "--sources is an option of show only. It may come before or after PATH; on get it is a usage error (exit 2)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/003-config-get-show/spec.md:314"
+  },
+  {
+    "decision": "Control characters other than tab and line breaks in text includes, non-UTF-8 text and non-string keys are declared out of contract and not tested",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/003-config-get-show/spec.md:319"
+  },
+  {
+    "decision": "show's YAML is written by a new module config/view.py that walks the located tree directly. It reuses render.py's scalar spelling functions and does not reuse render_block",
+    "options": [
+      "Own renderer walking the located tree",
+      "Serialise with ruamel's emitter",
+      "Parametrise render_block with callbacks"
+    ],
+    "reason": "Only the located tree knows each value's source. ruamel's quoting and comment rules differ from ours (it cannot put a comment on a block-scalar header), and tests would pin library behaviour. Callbacks would couple set's delicate write-back code to a read-only view",
+    "recorded_at": "spec/003-config-get-show/research.md:21"
+  },
+  {
+    "decision": "A text include is always a literal block, even when it is a single line. If the text cannot be represented as a literal block it falls back to double quotes. Other strings containing \\n become literal blocks",
+    "options": [],
+    "reason": "The contract says text includes are shown as literal blocks; the fallback keeps the output valid YAML",
+    "recorded_at": "spec/003-config-get-show/research.md:47"
+  },
+  {
+    "decision": "An empty main file prints {}. An empty YAML include prints as `key: null`, sourced from the included file",
+    "options": [],
+    "reason": "Follows the loader's existing representation (step 1 D-5)",
+    "recorded_at": "spec/003-config-get-show/research.md:80"
+  },
+  {
+    "decision": "CLI uses argparse subparsers: get with a required PATH; show with an optional PATH (nargs='?') and --sources (store_true)",
+    "options": [],
+    "reason": "argparse accepts options on either side of the positional and rejects get --sources through the existing usage path",
+    "recorded_at": "spec/003-config-get-show/research.md:86"
+  },
+  {
+    "decision": "show without --sources on a scalar returns format_scalar directly, so view is never called for a bare scalar",
+    "options": [],
+    "reason": "Identical to get (FR-211)",
+    "recorded_at": "spec/003-config-get-show/research.md:73"
+  },
+  {
+    "decision": "The get hint wording lives in one function, use_show_hint, in commands.py",
+    "options": [],
+    "reason": "One place for the FR-202 wording (Principle IV)",
+    "recorded_at": "spec/003-config-get-show/tasks.md:64"
+  },
+  {
+    "decision": "No foundational phase: both commands reuse existing code",
+    "options": [],
+    "reason": "get reuses step 1's show code path; show adds only a new module",
+    "recorded_at": "spec/003-config-get-show/tasks.md:45"
+  },
+  {
+    "decision": "User stories run strictly in order (US1, then US2, then US3). Until US2 lands, show temporarily dispatches to commands.get",
+    "options": [],
+    "reason": "US1 frees the show name, and keeping this order means the full suite passes at every commit",
+    "recorded_at": "questions.md:73; spec/003-config-get-show/tasks.md:65"
+  },
+  {
+    "decision": "Step 1 show tests are moved to get with git mv. Most step 1/2 tests that call show on a scalar are left unchanged; only the collection-exits-5, bare `config show` usage and error-message cases change",
+    "options": [],
+    "reason": "show still prints scalars exactly like get, so those tests stay valid and guard FR-211",
+    "recorded_at": "spec/003-config-get-show/tasks.md:190; questions.md:82"
+  },
+  {
+    "decision": "The --theatre, cwd and TROUPE_THEATRE default tests in test_usage.py switched from show to get",
+    "options": [],
+    "reason": "They test the default, not the subcommand",
+    "recorded_at": "spec/003-config-get-show/tasks.md:60"
+  },
+  {
+    "decision": "Read-back is tested with ruamel's safe loader and type-exact scalars_equal against a plain tree built from the loaded configuration",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec/003-config-get-show/plan.md:28"
+  },
+  {
+    "decision": "Mark step 1 FR-015 replaced, and add notes to the step 1 and step 2 contracts and the README",
+    "options": [],
+    "reason": "Traceability, Principle VI",
+    "recorded_at": "commit adf65bb; spec/003-config-get-show/tasks.md:136"
+  },
+  {
+    "decision": "The wrong `show agents --sources` expectation was fixed in the test, not the code: show of a section prints only its contents, without the key",
+    "options": [
+      "Fix the test",
+      "Change the code to include the key"
+    ],
+    "reason": "The code was correct: show prints what is inside the section",
+    "recorded_at": "transcript.md:71"
+  },
+  {
+    "decision": "The deliberate-break check that first looked uncaught was re-run with an edit that actually changed the code, rather than changing the tests",
+    "options": [],
+    "reason": "The sed edit had not changed the code",
+    "recorded_at": "transcript.md:73"
+  },
+  {
+    "decision": "Convergence added T022 (HIGH): fix needs_indent_indicator in the shared render.py so text starting with a spaces-only line gets an indentation indicator. This also changes set's behaviour",
+    "options": [
+      "set writes a literal that reads back",
+      "set still refuses with exit 3"
+    ],
+    "reason": "show printed YAML that would not parse; YAML takes the indentation from the first non-blank line",
+    "recorded_at": "spec/003-config-get-show/tasks.md:195; commit 8cfe423"
+  },
+  {
+    "decision": "After the T022 fix, set writes `k: |2` for such a value instead of refusing it with exit 3",
+    "options": [],
+    "reason": "Asserting the actual outcome, as T022 required",
+    "recorded_at": "commit 9699529; questions.md:130"
+  },
+  {
+    "decision": "Convergence added T023 (LOW): a test for the same file included twice",
+    "options": [],
+    "reason": "The behaviour already worked but had no test",
+    "recorded_at": "spec/003-config-get-show/tasks.md:196"
+  },
+  {
+    "decision": "No deliberate break was done for T023, and T022's tests failing before the fix counted as its deliberate-break check",
+    "options": [],
+    "reason": "T023's behaviour was already correct; T022's tests failed before the fix",
+    "recorded_at": "questions.md:132"
+  },
+  {
+    "decision": "The U+2028 read-back mismatch with ruamel is not treated as a gap; it is left for the owner to decide",
+    "options": [
+      "Leave it per FR-028",
+      "Change FR-028"
+    ],
+    "reason": "YAML 1.2 treats U+2028 as ordinary text, so the output is valid. Writing it unescaped is what step 1's FR-028 requires; changing that is the owner's decision",
+    "recorded_at": "questions.md:154"
+  },
+  {
+    "decision": "In the compact list-item form, the item's first line keeps its source; the key line that opens a collection carries no source",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "view.py has a SOURCE_COMMENT constant and a Line type alias (text, SourceFile | None)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "An empty root list renders as []",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "The show help text reads 'print a setting, or a section as YAML' and --sources help reads 'say which file each value is in'",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  },
+  {
+    "decision": "The SC-203 comment count is tested by comparing the number of '# from' comments with the number of import events in history",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded"
+  }
+]

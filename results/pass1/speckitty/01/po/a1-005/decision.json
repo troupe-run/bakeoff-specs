@@ -1,0 +1,9 @@
+{
+  "kind": "approval",
+  "reply": "Approved. The plan is consistent with the contract sections in force for this step (General; Includes; show PATH; set PATH VALUE; history [PATH]) and with the step brief. The plan never re-serialises a file: it finds the node's span, splices in only the replacement text and writes atomically, which fits the byte-surgical rule in 'set PATH VALUE'. In `set`, the plan resolves first, then writes, then records events. So a refused `set` changes no file (exit 3), and a `set` that changes nothing emits no events. History in the eventsourcing library's SQLite storage at `.troupe/history.sqlite` meets the General 'State' rule and the step brief. The three choices you listed are yours to make and record in research.md: detecting encoding and CRLF from the existing bytes, taking indentation from the first indented block with a default of 2, and using merged-tree paths for events. They don't contradict the contract. For history, the contract asks for dotted configuration paths, per leaf.",
+  "answers": [],
+  "approved": true,
+  "command": null,
+  "arguments": "",
+  "significant": false
+}

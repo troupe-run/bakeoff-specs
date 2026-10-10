@@ -1,0 +1,15 @@
+{
+  "evidence": [
+    "/judge/repo/tests/unit/test_merge.py:61",
+    "/judge/repo/tests/unit/test_merge.py:127",
+    "/judge/repo/tests/integration/test_loading_ref.py:146",
+    "/judge/repo/tests/integration/test_loading_ref.py:155",
+    "/judge/repo/tests/integration/test_loading_ref.py:168",
+    "/judge/repo/tests/integration/test_reads_overrides.py:107",
+    "/judge/repo/tests/integration/test_reads_overrides.py:132"
+  ],
+  "notes": "Across test_merge.py, test_loading_ref.py and test_reads_overrides.py, no name overclaims, and most state a condition and its result that the body checks exactly (e.g. 'override_list_replaces_included_list_entirely', 'hand_edit_of_included_value_hidden_by_override_records_nothing'). A few say less than the body or are vague: 'missing_ref_target_exits_4' and 'cycle_through_ref_exits_4' also check the message text, 'quoted_ref_key_is_recognised' and 'watch_follows_ref_target' don't say the expected output, and 'ref_key_never_appears_in_merged_entries' also checks that the holder keeps the key.",
+  "raw": "I scored Arm X a **3**. All 27 test names I checked describe something their body actually asserts, and none overclaims. A few are vague or say less than the body checks, which keeps it off a 4.\n\n```json\n{\"score\": 3, \"evidence\": [\"/judge/repo/tests/unit/test_merge.py:61\", \"/judge/repo/tests/unit/test_merge.py:127\", \"/judge/repo/tests/integration/test_loading_ref.py:146\", \"/judge/repo/tests/integration/test_loading_ref.py:155\", \"/judge/repo/tests/integration/test_loading_ref.py:168\", \"/judge/repo/tests/integration/test_reads_overrides.py:107\", \"/judge/repo/tests/integration/test_reads_overrides.py:132\"], \"notes\": \"Across test_merge.py, test_loading_ref.py and test_reads_overrides.py, no name overclaims, and most state a condition and its result that the body checks exactly (e.g. 'override_list_replaces_included_list_entirely', 'hand_edit_of_included_value_hidden_by_override_records_nothing'). A few say less than the body or are vague: 'missing_ref_target_exits_4' and 'cycle_through_ref_exits_4' also check the message text, 'quoted_ref_key_is_recognised' and 'watch_follows_ref_target' don't say the expected output, and 'ref_key_never_appears_in_merged_entries' also checks that the holder keeps the key.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

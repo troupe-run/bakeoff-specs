@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "repo/tests/unit/test_reconcile.py:78 test_reconcile_orders_sets_in_document_order_then_removes_in_recorded_order: the name states the ordering rule, and the body asserts that exact event order",
+    "repo/tests/integration/test_reconcile_first.py:180 test_set_failing_after_reconcile_keeps_reconcile_events_and_records_no_set: specific, and the body asserts it",
+    "repo/tests/integration/test_watch.py:207 test_watch_on_unloadable_configuration_exits_4_without_the_line: specific, and the body asserts it",
+    "repo/tests/integration/test_watch.py:289 test_atomic_rename_save_is_detected: 'is detected' is vague; the body asserts one exact set event",
+    "repo/tests/integration/test_reconcile_first.py:266 test_history_built_by_step_one_commands_reconciles_on_show: says less than the body, which checks an exact five-event sequence",
+    "repo/tests/integration/test_watch_set.py:370 test_history_has_no_gaps_or_duplicate_seq_after_races: the body also checks that each difference is recorded exactly once"
+  ],
+  "notes": "Read as a list, the names work as a spec of reconcile-first, watch, lock and include following, and I found none that claims something its body does not assert. A few are vague or say less than the body checks (atomic_rename_save_is_detected, history_built_by_step_one_commands_reconciles_on_show), which keeps this from a 4.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"repo/tests/unit/test_reconcile.py:78 test_reconcile_orders_sets_in_document_order_then_removes_in_recorded_order: the name states the ordering rule, and the body asserts that exact event order\", \"repo/tests/integration/test_reconcile_first.py:180 test_set_failing_after_reconcile_keeps_reconcile_events_and_records_no_set: specific, and the body asserts it\", \"repo/tests/integration/test_watch.py:207 test_watch_on_unloadable_configuration_exits_4_without_the_line: specific, and the body asserts it\", \"repo/tests/integration/test_watch.py:289 test_atomic_rename_save_is_detected: 'is detected' is vague; the body asserts one exact set event\", \"repo/tests/integration/test_reconcile_first.py:266 test_history_built_by_step_one_commands_reconciles_on_show: says less than the body, which checks an exact five-event sequence\", \"repo/tests/integration/test_watch_set.py:370 test_history_has_no_gaps_or_duplicate_seq_after_races: the body also checks that each difference is recorded exactly once\"], \"notes\": \"Read as a list, the names work as a spec of reconcile-first, watch, lock and include following, and I found none that claims something its body does not assert. A few are vague or say less than the body checks (atomic_rename_save_is_detected, history_built_by_step_one_commands_reconciles_on_show), which keeps this from a 4.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

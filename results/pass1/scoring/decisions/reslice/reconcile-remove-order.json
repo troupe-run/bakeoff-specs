@@ -1,0 +1,211 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "A",
+        "why": "In both the m (hand edit) and n (cli set) histories, the set to 0 comes before the remove events in the same change."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "B",
+        "why": "In both histories the remove events for m.* and n.* are logged first, followed by the set to 0 in the same change."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "A",
+        "why": "In both histories the set to 0 (seq 11 and 16) comes before the removes."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "A",
+        "why": "In both histories the set to 0 (seq 11 and 16) comes before the removes."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "A",
+        "why": "In both histories the set to 0 (seq 11 and 16) comes before the removes."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "A",
+        "why": "In both histories the set to 0 (seq 11 and 16) comes before the removes."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "m.b",
+          "3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "n.b",
+          "3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "m:\n  b: 3\n  z: 9\n  a: 2\nn:\n  b: 3\n  z: 9\n  a: 2\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "m.c",
+          "4"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "n.c",
+          "4"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [],
+        "edit": {
+          "content": "m: 0\nn:\n  b: 3\n  z: 9\n  a: 2\n  c: 4\n",
+          "path": ".troupe/troupe.yml"
+        },
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "m"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "n",
+          "0"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "m"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "n"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "m:\n  z: 1\n  a: 2\nn:\n  z: 1\n  a: 2\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Shows the order of remove events when the m branch's leaves (created z, a, b, c; file order b, z, a, c; z last changed by hand) disappear, once by a hand edit that is then reconciled (m: 0) and once by `config set n 0` on an identical twin branch n. History for each branch shows where the removes sit relative to each other and to the set."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "set m = 0 logged first, then the removes",
+            "id": "A"
+          },
+          {
+            "description": "removes logged first, then set m = 0",
+            "id": "B"
+          }
+        ],
+        "id": "Q1",
+        "text": "where the replacing set goes among remove events"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Order of the seq that created each leaf",
+      [
+        "Arm A"
+      ]
+    ],
+    [
+      "Projection order (when leaves were first recorded)",
+      [
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "Sets in document order, then removes (order unstated)",
+      [
+        "Arm D"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm E"
+      ]
+    ]
+  ],
+  "sheet_id": "T57",
+  "status": "ok"
+}

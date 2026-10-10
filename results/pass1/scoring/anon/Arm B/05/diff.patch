@@ -1,0 +1,2886 @@
+diff --git a/README.md b/README.md
+index 3a0c281..106f6d2 100644
+--- a/README.md
++++ b/README.md
+@@ -22,7 +22,7 @@ Every command takes `--theatre DIR` (default: the current directory).
+ |---|---|
+ | `troupe config get PATH` | Print the scalar at `PATH` (a mapping or list exits 5: use `show`) |
+ | `troupe config show [PATH] [--sources]` | Print the value at `PATH`, or the whole configuration, as YAML with includes resolved; `--sources` says which file each value comes from |
+-| `troupe config set PATH VALUE [--reason TEXT]` | Change or create the value at `PATH` and write it back into the file that holds it; `--reason` is recorded in the history |
++| `troupe config set PATH VALUE [--reason TEXT] [--in-include]` | Change or create the value at `PATH` and write it back into the file that holds it; `--reason` is recorded in the history; `--in-include` puts new keys into the included (shared) file instead of an override |
+ | `troupe config history [PATH]` | Print the change events with their [lineage](#lineage) as JSON Lines, oldest first, optionally only for `PATH` and below |
+ | `troupe config watch` | Record hand edits to the files as they happen, until Ctrl-C (SIGINT) or SIGTERM |
+ 
+@@ -123,9 +123,68 @@ imports the files again, and the earlier history is lost.
+ ### Includes
+ 
+ A string starting with `file:` includes the named file, relative to the file containing it. A `.yml`/`.yaml` target is
+-embedded as YAML; any other target's exact text becomes a string value. `set` writes into the file that holds the
+-value. Setting a text include rewrites the target file (keeping CRLF line endings if it had them). Replacing a
+-whole YAML include is refused.
++embedded as YAML; any other target's exact text becomes a string value. Setting a text include rewrites the target
++file (keeping CRLF line endings if it had them). Replacing a whole YAML include is refused (exit 3).
++
++Included files are shared between theatres, so an include can also be written in **mapping form**, with
++**overrides** next to it:
++
++```yaml
++agents:
++  coder:
++    $ref: file:agents/coder.yaml   # the shared file
++    temperature: 0.3               # an override, for this theatre only
++```
++
++The value is the included content deep-merged with the overrides: where both sides hold a mapping, they merge key
++by key; anything else in the override (a scalar or a list) replaces the included value. Included keys keep their
++order and keys only the overrides have come after them. `get`, `show` and `history` see the merged value, and
++`show --sources` names the file each value is actually written in. A `$ref` whose value is not an include string
++is an ordinary key. Overrides on a text include, or on an included file that does not hold a mapping (a list, a
++scalar or an empty file), fail to load (exit 4).
++
++Where `set` writes:
++
++- **A new key under an included section** is written as an override in the file that holds the include reference,
++  and the shared file does not change. A one-line include is converted to mapping form first, keeping its comment:
++  `coder: file:agents/coder.yaml  # c` becomes `coder:  # c`, `  $ref: file:agents/coder.yaml`,
++  `  temperature: 0.3`. With nested includes, the override goes next to the nearest include reference.
++- **An existing value** is changed where it lives: in the override if one sets it, else in the included file.
++- **Lists** are not reached by overrides. Appending an item, or adding a key inside an item, writes into the file
++  that holds the list.
++- **Deleting a key** (by setting its parent to a mapping without it) removes it from the included file and from
++  every override that sets it. An override mapping left empty is removed too.
++
++```sh
++mkdir -p /tmp/demo/.troupe/agents
++printf 'model: big\n' > /tmp/demo/.troupe/agents/coder.yaml
++printf 'agents:\n  coder: file:agents/coder.yaml  # shared\n' > /tmp/demo/.troupe/troupe.yml
++uv run troupe config set agents.coder.temperature 0.3 --theatre /tmp/demo
++cat /tmp/demo/.troupe/troupe.yml
++# agents:
++#   coder:  # shared
++#     $ref: file:agents/coder.yaml
++#     temperature: 0.3
++cat /tmp/demo/.troupe/agents/coder.yaml                  # model: big   (unchanged)
++uv run troupe config show agents.coder --sources --theatre /tmp/demo
++# model: big # from .troupe/agents/coder.yaml
++# temperature: 0.3 # from .troupe/troupe.yml
++```
++
++When a new setting really belongs in the shared file, for every theatre that includes it, say so with
++`--in-include`. New keys then go into the file that holds their deepest existing section (the included file, or the
++innermost one with nested includes) and no override is written. Only new keys are affected: existing values,
++appends and deletes go where they would without the flag.
++
++```sh
++uv run troupe config set agents.coder.top_p 0.9 --in-include --theatre /tmp/demo
++cat /tmp/demo/.troupe/agents/coder.yaml
++# model: big
++# top_p: 0.9
++```
++
++Mapping-form includes need step 5 or later. Older code reads `$ref` as an ordinary key, so going back means
++rewriting them as one-line includes (and moving the overrides into the shared file) by hand.
+ 
+ ### Exit codes
+ 
+@@ -134,7 +193,7 @@ whole YAML include is refused.
+ | 0 | success |
+ | 2 | usage error (bad arguments, path syntax, VALUE or `TROUPE_ACTOR`) |
+ | 3 | write refused, so no file changed |
+-| 4 | the configuration cannot be loaded (missing or duplicate config file, invalid YAML, missing include, include cycle) |
++| 4 | the configuration cannot be loaded (missing or duplicate config file, invalid YAML, missing include, include cycle, overrides on a text include or on included content that is not a mapping) |
+ | 5 | path not found, or the wrong kind of node for the command |
+ 
+ On failure stdout is empty and stderr names the path or file involved.
+@@ -153,8 +212,9 @@ on the `.troupe/` directory), so troupe never records its own write-back a secon
+ ## Decisions on points the contract leaves open
+ 
+ These are recorded with their reasons in `spec/changes/archive/2026-10-02-config-load-show-set/design.md`,
+-`spec/changes/archive/2026-10-03-config-sync-with-files/design.md`, `spec/changes/archive/2026-10-03-config-get-and-show/design.md`
+-and `spec/changes/archive/2026-10-04-config-lineage/design.md`:
++`spec/changes/archive/2026-10-03-config-sync-with-files/design.md`, `spec/changes/archive/2026-10-03-config-get-and-show/design.md`,
++`spec/changes/archive/2026-10-04-config-lineage/design.md`, `spec/changes/archive/2026-10-05-config-include-overrides/design.md`
++and `spec/changes/archive/2026-10-05-config-set-in-include/design.md`:
+ 
+ 1. Setting a key under a null or scalar value (e.g. `agents:` with nothing after it) exits 5. Set the parent to a
+    mapping first: `set agents '{coder: {model: x}}'`.
+@@ -195,6 +255,33 @@ and `spec/changes/archive/2026-10-04-config-lineage/design.md`:
+ 24. `--reason` applies only to the `set`'s own events. An empty reason is stored as `""`.
+ 25. Events from before lineage: actor unknown, via `import` or `file`, `at` from when they were stored, change
+     `legacy-import` or `legacy-<seq>`.
++26. A mapping-form include with overrides whose included content is not a mapping (a list, a scalar or an empty
++    file) fails to load (exit 4). Deep-merge is only defined between mappings, and any other reading would show a
++    value nobody wrote.
++27. A `$ref` whose value is not an include string (e.g. `$ref: hello`) is an ordinary key, so every file that loaded
++    before step 5 loads the same.
++28. A new key under nested includes goes into the nearest including file: the one holding the reference to the include
++    that the key's deepest existing ancestor comes from (the contract's "including file").
++29. Deleting a key that both an included file and an override set removes it from both: overrides cannot delete, so
++    removing only the override would bring the included value back.
++30. An override mapping that a delete leaves empty is removed, since it changes nothing; the `$ref` mapping stays in
++    mapping form.
++31. A list item that is an include is converted as `- $ref: file:…` with its overrides below, at the include
++    string's column: the smallest edit, keeping the item's comment on its line.
++32. Setting a mapping-form include with overrides to its bare include string is refused (exit 3), so overrides are never
++    dropped silently.
++33. A converted one-line include keeps the include string's bytes and quotes as the `$ref` value. New overrides copy
++    the quoting of the preceding entry (at first, the `$ref` value's).
++34. `set --in-include` changes only where new keys go. Existing values keep the override rule, so the flag can never
++    leave an override hiding the value just written.
++35. `--in-include` is accepted where no include is involved and changes nothing there, since the step-1 rule picks
++    the same file; scripts need not check for includes first.
++36. With `--in-include`, a new key under a section merged from an included file and overrides goes into the included
++    file (where the shared content lives); under a section that exists only in an override, into the override's
++    file, the only file that holds it.
++37. With `--in-include` and nested includes, the key goes into the innermost included file: the file containing its
++    deepest existing ancestor.
++38. `--in-include` adds no exit codes and does not change the recorded events: history records values, not files.
+ 
+ ## Development
+ 
+@@ -204,8 +291,8 @@ uv run mypy              # strict typing
+ uv run ruff check && uv run ruff format --check
+ ```
+ 
+-Code map: `src/troupe/loader.py` (files and includes), `tree.py` (YAML nodes with source positions), `schema.py`
+-(core-schema types and printing), `lineage.py` (actors, timestamps and change ids), `store.py` (event store),
+-`edit/` (byte-surgical write-back: `plan.py` → `ops.py` → `apply.py`, with `scalars.py`, `blocks.py`, `folded.py`
+-and `text.py` holding the quoting, block-scalar, folding and layout rules), `sync.py` (reconcile), `commands.py`
+-(subcommands, the theatre lock and the `watch` loop) and `cli.py`.
++Code map: `src/troupe/loader.py` (files and includes), `overrides.py` (`$ref` and the deep merge), `tree.py` (YAML
++nodes with source positions), `schema.py` (core-schema types and printing), `lineage.py` (actors, timestamps and
++change ids), `store.py` (event store), `edit/` (byte-surgical write-back: `plan.py` → `ops.py` → `apply.py`, with
++`scalars.py`, `blocks.py`, `folded.py` and `text.py` holding the quoting, block-scalar, folding and layout rules),
++`sync.py` (reconcile), `commands.py` (subcommands, the theatre lock and the `watch` loop) and `cli.py`.
+diff --git a/spec/changes/archive/2026-10-05-config-include-overrides/.method.yaml b/spec/changes/archive/2026-10-05-config-include-overrides/.method.yaml
+new file mode 100644
+index 0000000..e3966d7
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-include-overrides/.method.yaml
+@@ -0,0 +1,2 @@
++schema: spec-driven
++created: 2026-10-05
+diff --git a/spec/changes/archive/2026-10-05-config-include-overrides/design.md b/spec/changes/archive/2026-10-05-config-include-overrides/design.md
+new file mode 100644
+index 0000000..751d288
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-include-overrides/design.md
+@@ -0,0 +1,180 @@
++# Design
++
++## Context
++
++See proposal.md for the motivation and `spec/` for the exact behaviour. What exists today (after step 4):
++
++- `loader._Loader.expand` walks the tree built from each file and replaces every include string with the included
++  root, in place. The included root gets `node.include = Include(string, target)`. A text include becomes a
++  `TextNode` that keeps the string's span. Every node keeps its own `SourceFile` and offsets, which is what makes
++  `show --sources` and byte-surgical write-back work across files.
++- `set` (`edit/apply.compute_set`) plans path-based operations (`edit/plan.py`: `Replace`, `AddKey`, `Append`,
++  `Delete`, `WriteText`). It applies them one at a time, reloading from the edited texts before each one, so every
++  operation finds its node by path in a fresh tree (`_node_at`, `_slot`). It then verifies that the result reads back
++  as the intended data (`_matches`). Primitives in `edit/ops.py` produce `Edit`s for one file. `apply_edits` accepts
++  several non-overlapping edits to one text.
++- `plan` sends `AddKey` to the deepest existing ancestor mapping, which today may sit in an included file. The plan
++  refuses to replace or delete an include root unless the data stays equal (`_diff`, `_check_no_includes`).
++- History, reconcile and `watch` work on data (`to_data`, `leaves`) and on `config.files` (every file the loader
++  read). `render` prints from nodes and takes each scalar's source from `node.file`.
++
++## Goals / Non-Goals
++
++**Goals:**
++- The merge rule, the `$ref` syntax and the "where does a new key go" rule each live in one named place.
++- The merged tree is still a tree of physical nodes wherever a value is physically written, so `--sources`, scalar
++  replacement, appends and the verifier keep working without special cases.
++- No change to the event store, history format or lineage.
++
++**Non-Goals:**
++- Deleting a key by override (a "tombstone"). Overrides can only add or replace. A deleted key is removed from every
++  file that sets it (spec "Setting a collection value").
++- Addressing list items through overrides, or merging lists.
++- Converting a mapping-form include back to scalar form when its last override is removed.
++- Replacing a whole include through `set` (still exit 3).
++
++## Decisions
++
++### D1. A new module `overrides.py` holds the override rules
++```python
++REF_KEY = "$ref"
++def ref_string(mapping: MappingNode) -> ScalarNode | None   # the $ref value if it is an include string
++def merge(base: MappingNode, override: MappingNode) -> MappingNode   # deep merge, new nodes, inputs untouched
++```
++`loader.py` calls them, and `edit/plan.py` and `edit/apply.py` use `REF_KEY`. The rules (what counts as mapping
++form, mapping-vs-mapping recursion, replacement otherwise, key order) live only here. Alternative: put them in
++`loader.py`. Rejected because the write side needs the same rules, and `loader.py` is about files and includes.
++
++### D2. Merged mappings remember their layers; included roots remember their overrides
++- `Include` gains `overrides: MappingNode | None`: the physical `$ref` mapping in the including file, as loaded
++  (its values expanded, never merged into). `include.string` is the `$ref` value for mapping form.
++- `MappingNode` gains `layers: list[MappingNode]`: for a node built by `merge`, the physical mappings it was built
++  from, the included one first and overrides after it in the order they apply. It is empty for a physical mapping.
++- A merged mapping's `entries` are the winning `Entry` objects of their layers (physical key and value nodes), except
++  that a key both layers hold as mappings gets a newly merged node. Its `file`/`start`/`end`/`owner_col` are those of
++  the included layer. They are never used for edits (D5).
++- A merged node's `include` is that of the include whose root it is. When an override value is itself an include
++  root that merges with base content, the merged node takes the override's include, since that is the nearest one.
++
++So every scalar, list and unmerged mapping in the tree is the physical node that the value is written in, and
++`render`, `Replace` on scalars, `Append` and `WriteText` stay unchanged. Alternative: keep the physical tree and
++compute merged data separately. Rejected: `get`/`show`/`--sources`/reconcile/verify would all need a second path.
++
++### D3. Loading a mapping-form include
++In `_Loader.expand`, a `MappingNode` whose `ref_string` is not `None` is an include. Its non-`$ref` entries are
++expanded first, in the including file's directory and with the including file's stack. Then the target is loaded by
++the existing `include(...)` path (cycle and missing-target checks unchanged). If there are no other entries, the
++result is exactly the scalar-form result (text includes included), with `include.overrides` set. Otherwise a
++`TextNode` result, or an included root that is not a `MappingNode` (a list, a scalar, or the null of an empty file),
++raises `LoadError` naming the `$ref` mapping's file and the target (exit 4). The spec leaves merging a mapping into a
++non-mapping undefined, so we refuse rather than guess. A `$ref` whose value is not an include string leaves the
++mapping ordinary. That is the literal reading of the contract and keeps existing files loading as before.
++
++### D4. One function decides where a new key goes: `plan.new_key_target`
++`plan` calls it wherever it would emit `AddKey`, including for new keys found by the mapping diff. Given the merged
++root and the path of the deepest existing ancestor mapping A, it walks down from the root and tracks an *anchor*:
++entering a node with `include` sets the anchor to (that include's path, relative path `()`), descending through a
++mapping key extends the relative path, and descending into a list item clears the anchor. Result:
++- no anchor at A → `AddKey(path, value)` as today; A is physical there (merged nodes only exist under includes);
++- anchor (Q, R) → `AddOverride(include_path=Q, rel=R + rest, value)`, a new `Op`.
++
++`_apply` resolves `AddOverride` on the fresh tree. If the include at Q has `overrides`, it walks `rel` through the
++physical override mapping as far as keys exist, then calls `prim.add_key` on that mapping with the remaining keys
++nested (`_nest`), so the placement, quoting and indentation rules are the existing ones. If not, it calls
++`prim.to_mapping_form(include.string, slot, entries)` (D6). The included file never receives an `AddOverride` edit.
++
++**Nested includes (confirmed by the product owner):** the anchor is the *nearest* include, so a key under
++`coder.limits`, where `agents/coder.yaml` includes `limits.yaml`, is written in `agents/coder.yaml`. The contract
++defines the including file as "the file that contains the include reference". With nested includes, that is the file
++holding the reference to the include that the key's deepest existing ancestor comes from. Always writing into the
++root config file was considered and rejected: it is not the contract's definition.
++
++### D5. Existing values and deletions go to physical layers
++- `_slot(parent, key)` takes the key's entry from the last layer of `parent.layers` that has it (or from `parent`
++  itself when it has no layers). `Replace` therefore edits the override that sets a value, and the included file when
++  none does. A merged mapping replaced by a non-mapping is replaced in its outermost override layer, because its
++  winning entry is the override's.
++- `Delete(path)` on a merged parent deletes the key from every layer that has it, applying the edits per file. If
++  that would leave an override sub-mapping empty, the delete moves up and deletes that mapping's entry from its
++  parent override instead, repeating while the parent would become empty. It stops at a mapping that holds `$ref`.
++- `_diff` treats a VALUE equal to the include string as "unchanged" only when `include.overrides` has no entries
++  besides `$ref`. With overrides, the existing rule "whole include differs → exit 3" applies. `_matches` uses the same
++  condition.
++
++### D6. Converting to mapping form: `ops.to_mapping_form`
++One primitive with four cases, by where the include string sits:
++- block mapping value: delete from the whitespace before the string through its end. The rest of the line is kept
++  (`coder:  # c`, as in the contract's example, not the column-keeping rule of "Scalar replaced by a block
++  collection"). Then insert `$ref: <string as written>` and the override entry lines at key column + `layout.unit`
++  of the including file;
++- block list item: insert `$ref: ` before the string and the entry lines at the string's column (compact
++  `- $ref: …` form). This is the smallest edit, and it keeps a comment on the item's line;
++- document root: insert `$ref: ` before the string, entries at column 0;
++- flow: replace the string with `{$ref: <string>, k: v}` via `flow_text`, with end-of-line comment alignment from
++  `inline_edit`.
++The include string's own bytes (and quotes) are copied, never re-rendered. Entry lines come from `entry_lines`, so
++nested intermediates, multi-line strings and collections follow the existing new-value rules.
++
++### D7. Verification stays the safety net
++The verifier (`_matches` against `_with_value`) already compares the reloaded merged tree with the intended data.
++Any case D4–D6 gets wrong (for example an override that would not merge as expected) is refused with exit 3 and
++nothing written, rather than written wrongly. Setting a key named `$ref` falls here as well: if its value is an
++include string, the mapping becomes an include and the data no longer matches.
++
++### D8. Reconcile, history and `watch` need no code change
++They see merged data and `config.files`, which includes every file reached through `$ref`. Tests prove it (spec
++config-sync scenarios) instead of new code.
++
++### D9. Points the contract leaves open, and what we chose
++The product owner confirmed which of these are out of contract. Each choice and its reason:
++- **Overrides on non-mapping YAML content (list, scalar, empty file) → exit 4.** "Deep-merge" is only defined
++  between mappings. Any other reading means guessing: drop the included content, ignore the overrides, or treat null
++  as `{}`. Each guess can show a value the user did not write. Refusing to load names both files, loses nothing and
++  can be relaxed later without breaking anyone. An empty file is treated the same, because it loads as null (spec
++  config-show "Empty included YAML file"), not as a mapping.
++- **`$ref` whose value is not an include string → ordinary key.** The contract defines mapping form only for "a
++  `$ref` key whose value is the include string". Treating other values as ordinary keys keeps every existing file
++  loading exactly as before, and `show` makes such a key visible. The alternative, exit 4, would turn a file that
++  loads today into one that fails, for a case the contract does not mention.
++- **Deleting a key that both the included file and an override set → removed from both.** The contract covers
++  changing a value, not deleting one that two files set. Overrides cannot delete (there is no tombstone syntax). So
++  removing only the override would let the included value reappear, and `set` would not do what was asked (the
++  verifier would refuse it with exit 3). Removing it everywhere does what the user asked. The included file still
++  changes only for a deletion of a key it holds, as it does today for keys that are not overridden.
++- **An override mapping left empty by a delete is removed; a `$ref` mapping is kept.** An empty override such as
++  `limits: {}` changes nothing in the merged value, so it would only be clutter the user did not write. The `$ref`
++  mapping is kept in mapping form, with no conversion back to scalar form, so that the delete changes only the lines
++  it must.
++- **A list item that is an include converts to `- $ref: STRING` with the overrides below, at the string's column.**
++  The contract fixes the layout only for a mapping entry. The compact form is the smallest edit: it inserts `$ref: `
++  and new lines, and leaves the item's line, including an end-of-line comment, otherwise intact. It is also the form
++  `show` uses for list items that are mappings. The alternative, a bare `-` followed by an indented mapping, rewrites
++  more of the line and leaves an unusual dangling dash.
++- **`set PATH STRING` on a mapping-form include that has overrides → exit 3** (covered by the contract: it replaces a
++  value whose whole value comes from an include).
++
++## Risks / Trade-offs
++
++- [Merged nodes carry the included layer's offsets; an edit computed from them would land in the wrong file] → D5
++  routes every edit through physical layers, `_apply` asserts that the target of `add_key`/`delete`/`replace` has
++  no `layers`, and D7 refuses anything that slips through.
++- [**BREAKING**: a theatre whose files contained a mapping with a `$ref: file:…` key as plain data now loads it as
++  an include] → This is unlikely in troupe configurations. It is noted in the README decisions. The data stays in
++  the files, unchanged.
++- [Deleting an overridden key also edits the shared file] → This is the only way to make the key absent, since
++  overrides cannot delete (Non-Goals). The spec states it, and it applies only to deletions the user asked for.
++- [Rolling back to step-4 code after overrides are written] → Step 4 reads a `$ref` mapping as an ordinary mapping,
++  so values differ and a reconcile would record that. The README notes that mapping-form includes need step 5.
++
++## Migration Plan
++
++Nothing to migrate: scalar-form includes load as before. Only new writes produce mapping form. Rolling back means
++removing `$ref` mappings by hand (see Risks).
++
++## Archive decision
++
++The change was archived with its delta specs **synced** into `spec/spec/`. The brief did not say whether to
++sync. Archiving without syncing would leave the main specs describing step-4 behaviour (new keys written into the
++shared file) while the code and tests do the opposite. That contradicts the contract and the rule that spec, code
++and tests agree. Syncing changes only spec files, keeps every existing scenario, and matches how every earlier change
++was archived.
+diff --git a/spec/changes/archive/2026-10-05-config-include-overrides/proposal.md b/spec/changes/archive/2026-10-05-config-include-overrides/proposal.md
+new file mode 100644
+index 0000000..795dd19
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-include-overrides/proposal.md
+@@ -0,0 +1,56 @@
++# Proposal
++
++## Why
++
++Included files are shared between projects (theatres). Today `set` writes a new key under an included section into
++the included file itself, so adding `agents.coder.temperature` in one theatre silently changes every other theatre that
++includes `agents/coder.yaml`. Step 5 (change request CR-A) keeps shared includes shared: new settings under an include
++are written as **overrides** in the including file. Existing settings still change where they live.
++
++## What Changes
++
++- **Mapping-form includes.** An include may be written as a mapping with a `$ref` key whose value is the include
++  string (`coder: {$ref: file:agents/coder.yaml, temperature: 0.3}`, usually in block style). Its other keys are
++  overrides: the value is the included content deep-merged with them (mappings merge recursively; a scalar or list in
++  the override replaces). `get`, `show`, `show --sources`, `history`, reconcile and `watch` all see the merged value,
++  and `--sources` names the file each scalar is actually written in.
++- A mapping-form include of a non-YAML file with sibling keys fails to load (exit 4). So does one with overrides
++  whose included content is not a mapping (design D3).
++- **BREAKING (write-back target):** a new key whose deepest existing ancestor comes from an included file is now
++  written as an override in the file that contains the include reference, not in the included file. A scalar-form
++  include is first converted to mapping form, keeping any end-of-line comment on the key's line:
++  `coder: file:agents/coder.yaml  # c` → `coder:  # c` / `  $ref: file:agents/coder.yaml` / `  temperature: 0.3`.
++- Appending a list item, and adding a key inside a list item, still write into the file that holds the list
++  (overrides cannot address list items).
++- Setting an existing value that is overridden changes the override. A value that is not overridden is still changed
++  in the file it comes from (unchanged behaviour).
++- Replacing a whole include is still refused (exit 3). A mapping-form include with overrides is "the same value"
++  only if the merged data is equal, not when VALUE is the bare include string (design D7).
++
++## Capabilities
++
++### New Capabilities
++None.
++
++### Modified Capabilities
++- `config-loading`: new requirement "Mapping-form includes and overrides": `$ref` syntax, deep-merge rules, key
++  order, and the load failures (non-YAML with overrides, overrides on non-mapping content).
++- `config-set`: "Creating new keys" no longer writes into included files; new requirement "New keys under includes
++  are written as overrides" (target file, scalar-to-mapping conversion, list rule); "Target file for an existing
++  value" covers overridden values; "Refusing to replace an include" covers mapping-form includes; "Setting a
++  collection value" says how deleting a key that has an override works.
++- `config-show`: "Show sources" names the overriding file for overridden scalars (new scenario).
++
++## Impact
++
++- Code:
++  - `loader.py`: recognise mapping-form includes and merge overrides; `tree.py`: an included node records its
++    override mapping, and a merged mapping records the physical mappings (layers) it was built from.
++  - `edit/plan.py`, `edit/apply.py`: one function decides where a new key is written; deletes and replacements of
++    overridden values go to the override layer.
++  - `edit/ops.py`: a new primitive converts a scalar-form include to mapping form.
++- Tests: the existing test "new key inside an included mapping goes into that file" is replaced by its opposite. New
++  tests cover loading, merging, show/sources, write-back targets, conversion (block, flow, list item, CRLF, comments),
++  exit 4 cases, reconcile and `watch` of files reached through `$ref`.
++- README: includes section, decisions list.
++- No new dependencies. The event store and history format are unchanged (history records merged leaf values).
+diff --git a/spec/changes/archive/2026-10-05-config-include-overrides/spec/config-loading/spec.md b/spec/changes/archive/2026-10-05-config-include-overrides/spec/config-loading/spec.md
+new file mode 100644
+index 0000000..2f53c4a
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-include-overrides/spec/config-loading/spec.md
+@@ -0,0 +1,65 @@
++# Spec Delta
++
++## ADDED Requirements
++
++### Requirement: Mapping-form includes and overrides
++A mapping that has a `$ref` key whose value is an include string (as defined in "Includes") SHALL be an include in
++**mapping form**. The include target SHALL be resolved as for a scalar-form include, relative to the directory of the
++file containing the mapping. The mapping's other keys are **overrides**. The value of a mapping-form include SHALL be
++the included content deep-merged with the overrides:
++- where both the included value and the override value at a key are mappings, they SHALL be merged recursively by
++  the same rule;
++- otherwise (a scalar or list on either side) the override value SHALL replace the included value;
++- a key that only the override has SHALL be added.
++
++Override values SHALL be loaded like any other value of the file that holds them, so an include string inside an
++override is resolved relative to that file, and includes inside the included content are resolved relative to the
++included file. In the merged mapping, the included content's keys SHALL keep their order (an overridden key keeps its
++position) and keys only the overrides have SHALL follow, in the order they are written. The `$ref` key itself SHALL NOT
++appear in the value. A mapping-form include with no other keys SHALL load exactly like the scalar-form include of the
++same string, including for text includes. A `$ref` key whose value is not an include string (not a string, or not
++starting with `file:`) SHALL be an ordinary key.
++
++Loading SHALL fail with exit 4, with a message naming the file that holds the `$ref` mapping and the target, when a
++mapping-form include has overrides and its target is not a YAML file (a text include), or its included content is not
++a mapping (a list, a scalar, or an empty file).
++
++#### Scenario: Overrides deep-merge with the included content
++- **WHEN** `agents/coder.yaml` is `model: m1\ntemperature: 0.2\nlimits:\n  tokens: 100\n  calls: 5\ntools: [read, write]\n` and `troupe.yml` is `agents:\n  coder:\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n    limits:\n      calls: 9\n    tools: [read]\n    extra: x\n`, and `show agents.coder` runs
++- **THEN** stdout is `model: m1\ntemperature: 0.3\nlimits:\n  tokens: 100\n  calls: 9\ntools:\n  - read\nextra: x\n`
++
++#### Scenario: Override replaces a mapping with a scalar
++- **WHEN** the included content has `limits: {tokens: 100}` and the override has `limits: none`
++- **THEN** `get agents.coder.limits` prints `none\n`
++
++#### Scenario: Mapping form without overrides
++- **WHEN** `troupe.yml` is `agents:\n  coder:\n    $ref: file:agents/coder.yaml\n` and `agents/coder.yaml` is `model: m1\n`
++- **THEN** `show agents` prints `coder:\n  model: m1\n`, the same as for `agents:\n  coder: file:agents/coder.yaml\n`
++
++#### Scenario: Text include in mapping form
++- **WHEN** `troupe.yml` is `prompt:\n  $ref: file:prompt.md\n` and `prompt.md` contains `Hello\n`
++- **THEN** `get prompt` prints `Hello\n` and `show --sources` prints `prompt: | # from .troupe/prompt.md\n  Hello\n`
++
++#### Scenario: Text include with overrides
++- **WHEN** `troupe.yml` is `prompt:\n  $ref: file:prompt.md\n  extra: 1\n`
++- **THEN** every subcommand exits 4 and stderr names `troupe.yml` and `prompt.md`
++
++#### Scenario: Overrides on content that is not a mapping
++- **WHEN** `tools.yaml` is `[a, b]\n` (or `5\n`, or empty) and `troupe.yml` is `tools:\n  $ref: file:tools.yaml\n  extra: 1\n`
++- **THEN** every subcommand exits 4 and stderr names `troupe.yml` and `tools.yaml`
++
++#### Scenario: Include inside an override resolves against the including file
++- **WHEN** `.troupe/troupe.yml` has `coder:\n  $ref: file:agents/coder.yaml\n  prompt: file:prompt.md\n` and both `.troupe/prompt.md` and `.troupe/agents/prompt.md` exist
++- **THEN** `coder.prompt` is the text of `.troupe/prompt.md`
++
++#### Scenario: Mapping-form include inside an included file
++- **WHEN** `agents/coder.yaml` has `limits:\n  $ref: file:limits.yaml\n  calls: 9\n` and `agents/limits.yaml` has `calls: 5\ntokens: 1\n`
++- **THEN** `show agents.coder.limits` (with `agents.coder` included from `agents/coder.yaml`) prints `calls: 9\ntokens: 1\n`
++
++#### Scenario: $ref that is not an include string
++- **WHEN** the config is `a:\n  $ref: hello\n  b: 1\n`
++- **THEN** `show a` prints `$ref: hello\nb: 1\n`
++
++#### Scenario: Missing target in mapping form
++- **WHEN** a mapping-form include names a file that does not exist
++- **THEN** every subcommand exits 4 and stderr names the missing target
+diff --git a/spec/changes/archive/2026-10-05-config-include-overrides/spec/config-set/spec.md b/spec/changes/archive/2026-10-05-config-include-overrides/spec/config-set/spec.md
+new file mode 100644
+index 0000000..a9d033a
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-include-overrides/spec/config-set/spec.md
+@@ -0,0 +1,224 @@
++# Spec Delta
++
++## ADDED Requirements
++
++### Requirement: New keys under includes are written as overrides
++Let A be the deepest existing ancestor mapping of a new key's `PATH`. Going up from A towards the root, if a YAML
++include is reached (A itself, or an ancestor of A, being an included value) before any list item is left, the new key
++SHALL be written as an override of the nearest such include, in the file that contains that include's reference (the
++*including* file), and the included file SHALL NOT change. The override SHALL be at the path of the new key relative
++to the include: it SHALL go into the deepest mapping of that path that the include's overrides already have, with any
++missing intermediate override mappings created there, under the placement and quoting rules for new entries. If a list
++item is left first (A is inside a list item), or the root is reached with no include, the key SHALL be written into
++the file that holds A, as in "Creating new keys".
++
++A scalar-form include that gets its first override SHALL first be converted to mapping form, in the including file:
++- for a block mapping entry `KEY: STRING`, the include string and the whitespace before it SHALL be removed from the
++  line, keeping the rest of the line (such as an end-of-line comment) unchanged, and the lines `$ref: STRING` and then
++  the override entries SHALL follow, indented one indentation unit of the including file deeper than `KEY`;
++- for a block list item `- STRING`, `$ref: ` SHALL be inserted before the include string, and the override entries
++  SHALL follow on the next lines at the column where the include string started;
++- for an include string that is the whole document, `$ref: ` SHALL be inserted before it, and the override entries
++  SHALL follow at column 0;
++- in a flow collection, the include string SHALL be replaced by `{$ref: STRING, <override entries>}`.
++`STRING` SHALL be the include string exactly as written, including its quotes. Lines are inserted with the including
++file's line ending, and a line whose value grows keeps its end-of-line comment under "End-of-line comment alignment".
++
++#### Scenario: Scalar-form include converted, comment kept
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml  # c\n`, `agents/coder.yaml` is `model: m\n`, and `set coder.temperature 0.3` runs
++- **THEN** `troupe.yml` becomes `coder:  # c\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n`, `agents/coder.yaml` is unchanged, and `get coder.temperature` prints `0.3\n`
++
++#### Scenario: Conversion at the including file's indentation
++- **WHEN** `troupe.yml` is `agents:\n    coder: file:agents/coder.yaml\n` and `set agents.coder.temperature 0.3` runs
++- **THEN** `troupe.yml` becomes `agents:\n    coder:\n        $ref: file:agents/coder.yaml\n        temperature: 0.3\n`
++
++#### Scenario: Existing mapping-form include gains an override
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n` and `set coder.top_p 0.9` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n  top_p: 0.9\n` and `agents/coder.yaml` is unchanged
++
++#### Scenario: Ancestor deeper inside the included file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `limits:\n  tokens: 100\n`, and `set coder.limits.calls 9` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n` and `show coder.limits` prints `tokens: 100\ncalls: 9\n`
++
++#### Scenario: Into an existing override mapping
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n`, `agents/coder.yaml` is `limits:\n  tokens: 100\n`, and `set coder.limits.burst 2` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n    burst: 2\n`
++
++#### Scenario: Missing intermediate mappings under an include
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n` and `set coder.a.b x` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  a:\n    b: x\n`
++
++#### Scenario: A file included twice stays shared
++- **WHEN** `troupe.yml` is `a: file:common.yaml\nb: file:common.yaml\n`, `common.yaml` is `x: 1\n`, and `set a.k 1` runs
++- **THEN** `troupe.yml` becomes `a:\n  $ref: file:common.yaml\n  k: 1\nb: file:common.yaml\n`, `common.yaml` is unchanged, and `get b.k` exits 5
++
++#### Scenario: Quoted include string
++- **WHEN** `troupe.yml` is `coder: 'file:agents/coder.yaml'\n` and `set coder.t 1` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: 'file:agents/coder.yaml'\n  t: 1\n`
++
++#### Scenario: Include in a flow mapping
++- **WHEN** `troupe.yml` is `agents: {coder: file:agents/coder.yaml}\n` and `set agents.coder.t 1` runs
++- **THEN** `troupe.yml` becomes `agents: {coder: {$ref: file:agents/coder.yaml, t: 1}}\n`
++
++#### Scenario: Include as a list item
++- **WHEN** `troupe.yml` is `steps:\n  - file:step.yaml\n`, `step.yaml` is `name: a\n`, and `set steps.0.k v` runs
++- **THEN** `troupe.yml` becomes `steps:\n  - $ref: file:step.yaml\n    k: v\n` and `step.yaml` is unchanged
++
++#### Scenario: Whole document is an include
++- **WHEN** `troupe.yml` is `file:base.yaml\n`, `base.yaml` is `a: 1\n`, and `set k v` runs
++- **THEN** `troupe.yml` becomes `$ref: file:base.yaml\nk: v\n` and `base.yaml` is unchanged
++
++#### Scenario: Nested include: the nearest including file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `limits: file:limits.yaml\n`, `agents/limits.yaml` is `calls: 5\n`, and `set coder.limits.burst 2` runs
++- **THEN** `agents/coder.yaml` becomes `limits:\n  $ref: file:limits.yaml\n  burst: 2\n`, and `troupe.yml` and `agents/limits.yaml` are unchanged
++
++#### Scenario: Key inside a list item of an included file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `steps:\n  - name: a\n`, and `set coder.steps.0.n 1` runs
++- **THEN** `agents/coder.yaml` becomes `steps:\n  - name: a\n    n: 1\n` and `troupe.yml` is unchanged
++
++#### Scenario: CRLF including file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\r\n` and `set coder.t 1` runs
++- **THEN** `troupe.yml` becomes `coder:\r\n  $ref: file:agents/coder.yaml\r\n  t: 1\r\n`
++
++## MODIFIED Requirements
++
++### Requirement: Target file for an existing value
++An existing value SHALL be changed in the file that holds it, including files reached through YAML includes: the file
++that `show --sources` names for it. For a value that an override sets, that is the file holding the override, and the
++included file SHALL NOT change; a value that no override sets is changed in the included file it comes from.
++When `PATH` names a text include, the target file's content SHALL become `VALUE` exactly, except that if the target
++file contains a CRLF line ending, every LF in `VALUE` not already preceded by CR SHALL be written as CRLF. A non-string
++`VALUE` for a text include SHALL be refused with exit 3.
++
++#### Scenario: Value inside an included file
++- **WHEN** `agents.coder` is `file:agents/coder.yaml` and `set agents.coder.model m2` runs
++- **THEN** only `agents/coder.yaml` changes, and only the model's value bytes change
++
++#### Scenario: Overridden value changes the override
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n`, `agents/coder.yaml` is `model: m\ntemperature: 0.2\n`, and `set coder.temperature 0.5` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.5\n` and `agents/coder.yaml` is unchanged
++
++#### Scenario: Value that is not overridden changes where it lives
++- **WHEN** the same theatre and `set coder.model m2` runs
++- **THEN** `agents/coder.yaml` becomes `model: m2\ntemperature: 0.2\n` and `troupe.yml` is unchanged
++
++#### Scenario: Text include
++- **WHEN** `prompt` is `file:prompt.md` and `set prompt "New\ntext\n"` runs
++- **THEN** `prompt.md` contains exactly `New\ntext\n` and `troupe.yml` is unchanged
++
++#### Scenario: Text include with CRLF
++- **WHEN** `prompt.md` contains `a\r\nb\r\n` and `set prompt "x\ny\n"` runs
++- **THEN** `prompt.md` contains exactly `x\r\ny\r\n`
++
++#### Scenario: Non-string into a text include
++- **WHEN** `prompt` is a text include and `set prompt 5` runs
++- **THEN** the exit code is 3, no file changes, and stderr names `prompt`
++
++### Requirement: Refusing to replace an include
++Replacing the value at a path whose whole value comes from a YAML include (the path names the include string itself,
++or the mapping that holds a `$ref`) SHALL be refused with exit 3, naming the path, and no file SHALL change. This
++applies whatever the new value is, and also when a `set` on an ancestor would change or delete such a value. A `set`
++on an ancestor that leaves the included value (with its overrides merged) equal is allowed and does not touch the
++included file. A `VALUE` equal to the include string counts as leaving the value equal only when the include has no
++overrides.
++
++#### Scenario: Replacing an included mapping
++- **WHEN** `agents.coder` is `file:agents/coder.yaml` and `set agents.coder "{model: x}"` runs
++- **THEN** the exit code is 3, stderr names `agents.coder`, and no file changes
++
++#### Scenario: Changing an include through its parent
++- **WHEN** `agents.coder` is `file:agents/coder.yaml` and `set agents VALUE` runs where VALUE's `coder` differs from the included content, or omits `coder`
++- **THEN** the exit code is 3 and no file changes
++
++#### Scenario: Replacing an included scalar
++- **WHEN** `limit` is `file:limit.yaml`, which contains `5`, and `set limit 6` runs
++- **THEN** the exit code is 3 and no file changes
++
++#### Scenario: Dropping overrides by setting the include string
++- **WHEN** `coder` is `{$ref: file:agents/coder.yaml, temperature: 0.3}` in block form and `set coder file:agents/coder.yaml` runs
++- **THEN** the exit code is 3, stderr names `coder`, and no file changes
++
++#### Scenario: Parent set that keeps the merged value
++- **WHEN** `troupe.yml` is `agents:\n  coder:\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n  other: 1\n`, `agents/coder.yaml` is `model: m\n`, and `set agents "{coder: {model: m, temperature: 0.3}, other: 2}"` runs
++- **THEN** the exit code is 0, only `other`'s value bytes in `troupe.yml` change, and `agents/coder.yaml` is unchanged
++
++### Requirement: Setting a collection value
++When both the existing value and `VALUE` are mappings, or both are lists, `set` SHALL apply the difference: keys
++(or indexes) present in both are set recursively, so unchanged leaves keep their bytes, including across YAML include
++boundaries that the include rules allow. New keys or items are added under the new-entry rules, and keys (or trailing
++items) missing from `VALUE` are deleted. Deleting a block entry SHALL remove the lines from the entry's first line
++through the end of its value, including that value's end-of-line comment, and SHALL keep comment lines before and
++after it. Deleting a flow entry SHALL remove the entry and one adjacent separator. A key that is deleted SHALL be
++removed from every file that sets it (the included content and each override that sets it), so that it is absent from
++the result; an override mapping that is left with no entries SHALL be deleted in turn (a mapping holding `$ref` is
++never deleted this way). In every other case the existing node SHALL be replaced as a whole: in the override that sets
++it when there is one, leaving the included content unchanged, and otherwise in the file that holds it.
++
++#### Scenario: Partial mapping update keeps unchanged bytes
++- **WHEN** the file is `a:\n  b: 1  # keep\n  c: 2\n` and `set a "{b: 1, c: 3}"` runs
++- **THEN** the file becomes `a:\n  b: 1  # keep\n  c: 3\n`
++
++#### Scenario: Key removed by a mapping value
++- **WHEN** the file is `a:\n  b: 1\n  c: 2\n` and `set a "{b: 1}"` runs
++- **THEN** the file becomes `a:\n  b: 1\n`
++
++#### Scenario: Deleting an overridden key
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n`, `agents/coder.yaml` is `limits:\n  tokens: 100\n  calls: 5\n`, and `set coder.limits "{tokens: 100}"` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n`, `agents/coder.yaml` becomes `limits:\n  tokens: 100\n`, and `show coder.limits` prints `tokens: 100\n`
++
++#### Scenario: Replacing an overridden mapping
++- **WHEN** the same theatre and `set coder.limits 5` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  limits: 5\n` and `agents/coder.yaml` is unchanged
++
++### Requirement: Creating new keys
++A `PATH` whose final key does not exist SHALL be written into the file containing the deepest existing ancestor
++mapping of `PATH`, with any missing intermediate mappings created there, except where "New keys under includes are
++written as overrides" sends it to an including file as an override. Descending into an existing scalar (including
++null) or a text include SHALL exit 5. A digit-only segment that would need a missing intermediate created, or that is
++applied to a mapping, SHALL exit 5. An empty (or comment-only) file SHALL be treated as an empty block mapping at
++column 0.
++
++#### Scenario: New key in an existing mapping
++- **WHEN** the file is `agents:\n  coder:\n    model: m\n` and `set agents.coder.temperature 0.2` runs
++- **THEN** the file becomes `agents:\n  coder:\n    model: m\n    temperature: 0.2\n`
++
++#### Scenario: Missing intermediate mappings
++- **WHEN** the file is `a: 1\n` and `set b.c.d x` runs
++- **THEN** the file becomes `a: 1\nb:\n  c:\n    d: x\n`
++
++#### Scenario: Digit segment for a missing intermediate
++- **WHEN** `a` is a mapping without `b` and `set a.b.0 x` runs
++- **THEN** the exit code is 5 and no file changes
++
++#### Scenario: New key inside an included mapping
++- **WHEN** `troupe.yml` is `agents:\n  coder: file:agents/coder.yaml\n` (`agents/coder.yaml` a mapping) and `set agents.coder.temperature 0.2` runs
++- **THEN** `agents/coder.yaml` is unchanged and `troupe.yml` becomes `agents:\n  coder:\n    $ref: file:agents/coder.yaml\n    temperature: 0.2\n`
++
++#### Scenario: Parent is a scalar
++- **WHEN** `model` is `m` and `set model.x 1` runs
++- **THEN** the exit code is 5 and no file changes
++
++#### Scenario: Parent is null
++- **WHEN** the file is `agents:\n` and `set agents.coder x` runs
++- **THEN** the exit code is 5 and no file changes
++
++### Requirement: Appending to lists
++A `PATH` whose final segment is an index equal to the list's length SHALL append `VALUE` to the list, in the file that
++holds the list (for a list that an override sets, the file holding the override). Appending is never written as an
++override. A larger index SHALL exit 5.
++
++#### Scenario: Append to a block list
++- **WHEN** the file is `tools:\n  - a\n  - b\n` and `set tools.2 c` runs
++- **THEN** the file becomes `tools:\n  - a\n  - b\n  - c\n`
++
++#### Scenario: Append to a list in an included file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `tools:\n  - read\n`, and `set coder.tools.1 write` runs
++- **THEN** `agents/coder.yaml` becomes `tools:\n  - read\n  - write\n` and `troupe.yml` is unchanged
++
++#### Scenario: Append to an overridden list
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  tools: [read]\n`, `agents/coder.yaml` is `tools: [read, write]\n`, and `set coder.tools.1 exec` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  tools: [read, exec]\n` and `agents/coder.yaml` is unchanged
++
++#### Scenario: Index past the end
++- **WHEN** `tools` has 2 items and `set tools.3 c` runs
++- **THEN** the exit code is 5 and no file changes
+diff --git a/spec/changes/archive/2026-10-05-config-include-overrides/spec/config-show/spec.md b/spec/changes/archive/2026-10-05-config-include-overrides/spec/config-show/spec.md
+new file mode 100644
+index 0000000..89a4f2a
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-include-overrides/spec/config-show/spec.md
+@@ -0,0 +1,42 @@
++# Spec Delta
++
++## MODIFIED Requirements
++
++### Requirement: Show sources
++`show [PATH] --sources` SHALL print the same YAML as `show [PATH]` would print for a mapping or list, and add an
++end-of-line comment ` # from <file>` (one space, `#`, one space) to every line that holds a scalar value. For a scalar
++written as a literal block, the comment goes on the line with the `|` indicator. Lines that hold only a key whose
++value starts on the next line, the content lines of a literal block, and lines whose value is `{}` or `[]` get no
++comment. `<file>` SHALL be the file the scalar is written in (for a value that an include override sets, the file holding
++the override), relative to the theatre directory, with `/` separators
++and no `.` segments. For a text include, `<file>` SHALL be the included file, not the file holding the `file:` string.
++When the value at `PATH` is a scalar, `--sources` SHALL print it as a one-scalar YAML document with the comment, not in
++the `get` form. With or without the comments, the output SHALL read back as the same data.
++
++#### Scenario: Sources across includes
++- **WHEN** the theatre from "Whole configuration with includes" and `show --sources` is run
++- **THEN** stdout is `model: claude-opus-5-5 # from .troupe/troupe.yml\nagents:\n  coder:\n    model: m1 # from .troupe/agents/coder.yaml\n    temperature: 0.2 # from .troupe/agents/coder.yaml\nprompt: | # from .troupe/prompt.md\n  Hello\n  World\ntools:\n  - read # from .troupe/troupe.yml\n  - write # from .troupe/troupe.yml\n`
++
++#### Scenario: Sources for a section
++- **WHEN** the same theatre and `show agents.coder --sources` is run
++- **THEN** stdout is `model: m1 # from .troupe/agents/coder.yaml\ntemperature: 0.2 # from .troupe/agents/coder.yaml\n`
++
++#### Scenario: Sources for a scalar
++- **WHEN** the same theatre and `show model --sources` is run, or `show prompt --sources`
++- **THEN** stdout is `claude-opus-5-5 # from .troupe/troupe.yml\n`, or `| # from .troupe/prompt.md\n  Hello\n  World\n` respectively
++
++#### Scenario: Empty included YAML file
++- **WHEN** `agents.coder` is `file:agents/coder.yaml`, that file is empty, and `show agents --sources` is run
++- **THEN** stdout is `coder: null # from .troupe/agents/coder.yaml\n`
++
++#### Scenario: Include through a parent directory
++- **WHEN** `troupe.yml` has `a: file:sub/a.yaml`, `sub/a.yaml` has `b: file:../b.yaml`, `b.yaml` has `c: 1`, and `show --sources` is run
++- **THEN** the line for `c` ends with `# from .troupe/b.yaml`
++
++#### Scenario: config.yaml name
++- **WHEN** the config file is `.troupe/troupe.yaml` containing `a: 1\n` and `show --sources` is run
++- **THEN** stdout is `a: 1 # from .troupe/troupe.yaml\n`
++
++#### Scenario: Sources with overrides
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n`, `agents/coder.yaml` is `model: m1\ntemperature: 0.2\n`, and `show --sources` is run
++- **THEN** stdout is `coder:\n  model: m1 # from .troupe/agents/coder.yaml\n  temperature: 0.3 # from .troupe/troupe.yml\n`
+diff --git a/spec/changes/archive/2026-10-05-config-include-overrides/spec/config-sync/spec.md b/spec/changes/archive/2026-10-05-config-include-overrides/spec/config-sync/spec.md
+new file mode 100644
+index 0000000..aba2a0b
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-include-overrides/spec/config-sync/spec.md
+@@ -0,0 +1,34 @@
++# Spec Delta
++
++## MODIFIED Requirements
++
++### Requirement: Includes added by hand are followed
++When a hand edit adds an include (in scalar or mapping form) or changes overrides, reconcile SHALL follow it like any other include: each leaf of the included content
++SHALL be recorded as a `set` event (and a leaf it replaces as a `remove` event). From then on `watch` SHALL also watch
++the newly included file. When an include is removed by hand, its leaves SHALL be recorded as `remove` events and
++`watch` SHALL stop treating the file as part of the configuration. Reconcile compares merged values, so converting an include
++between scalar and mapping form without overrides records nothing.
++
++#### Scenario: New YAML include
++- **WHEN** `watch` is running on `agents: {}\n`, `agents/tester.yaml` containing `model: t1\n` exists, and `troupe.yml` is edited to `agents:\n  tester: file:agents/tester.yaml\n`
++- **THEN** within 2 seconds `set agents.tester.model` (old null, new `"t1"`) is recorded
++
++#### Scenario: Newly included file is watched
++- **WHEN** after that, `agents/tester.yaml` is edited by hand to `model: t2\n`
++- **THEN** within 2 seconds `set agents.tester.model` (old `"t1"`, new `"t2"`) is recorded
++
++#### Scenario: New include added while nothing runs
++- **WHEN** no command is running, a hand edit adds `prompt: file:prompt.md`, and `show prompt` runs
++- **THEN** `history` lists `set prompt` whose new value is the text of `prompt.md`
++
++#### Scenario: Override added by hand
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n` (`agents/coder.yaml` is `temperature: 0.2\n`), a hand edit changes it to `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n`, and `get coder.temperature` runs
++- **THEN** `history` lists `set coder.temperature` (old 0.2, new 0.3) via `file`
++
++#### Scenario: Converting to mapping form records nothing
++- **WHEN** a hand edit changes `coder: file:agents/coder.yaml\n` to `coder:\n  $ref: file:agents/coder.yaml\n` and `show` runs
++- **THEN** no event is recorded
++
++#### Scenario: File included through $ref is watched
++- **WHEN** `watch` is running on `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n` and `agents/coder.yaml` is edited by hand from `model: m1\n` to `model: m2\n`
++- **THEN** within 2 seconds `set coder.model` (old `"m1"`, new `"m2"`) is recorded
+diff --git a/spec/changes/archive/2026-10-05-config-include-overrides/tasks.md b/spec/changes/archive/2026-10-05-config-include-overrides/tasks.md
+new file mode 100644
+index 0000000..7b4e1ef
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-include-overrides/tasks.md
+@@ -0,0 +1,33 @@
++# Tasks
++
++## 1. Loading mapping-form includes
++
++- [x] 1.1 Add `src/troupe/overrides.py` (D1): `REF_KEY`, `ref_string`, `merge` building new nodes with `layers` and the merged key order; add `Include.overrides` and `MappingNode.layers` to `tree.py` (D2); verify `uv run mypy` and `uv run ruff check` are clean
++- [x] 1.2 Load mapping-form includes in `loader._Loader.expand` (D3): expand overrides in the including file's context, reuse `include(...)`, set `include.overrides`, merge, and raise `LoadError` naming the `$ref` file and the target for overrides on a text include or on non-mapping content (list, scalar, empty file); verify the existing `uv run pytest tests/test_loading.py tests/test_show.py tests/test_show_sources.py` still pass
++- [x] 1.3 Add `tests/test_overrides_loading.py` through the real CLI for every config-loading "Mapping-form includes and overrides" scenario: deep merge with byte-exact `show` output (key order, nested merge, list replaces, extra key), override mapping replaced by a scalar, mapping form without overrides equals scalar form, text include in mapping form, exit 4 with stderr naming both files for text-with-overrides and for list / scalar / empty content, include inside an override resolved against the including file, mapping form inside an included file, `$ref: hello` as an ordinary key, missing target exits 4; verify they pass, and that making `merge` replace instead of recurse fails the deep-merge test
++- [x] 1.4 Add the "Sources with overrides" scenario to `tests/test_show_sources.py`; verify it passes, and fails if a merged entry takes the included layer's node
++
++## 2. Writing new keys as overrides
++
++- [x] 2.1 Add `AddOverride` and `plan.new_key_target` (D4), used for every `AddKey` that `plan` and `_diff` emit; verify `uv run mypy` is clean
++- [x] 2.2 Add `ops.to_mapping_form` with its four cases (block entry, block list item, document root, flow) (D6), and resolve `AddOverride` in `apply._apply` (walk the physical override mapping, then `add_key`; convert otherwise); assert that `add_key`/`delete`/`replace` targets have no `layers`; verify `uv run mypy` and `uv run ruff check` are clean
++- [x] 2.3 Replace `test_new_key_inside_an_included_mapping_goes_into_that_file` in `tests/test_set_targets.py` with the "New key inside an included mapping" override scenario, and add `tests/test_set_overrides.py` with byte-exact checks (every file in the theatre compared) for each scenario of "New keys under includes are written as overrides": contract example with comment, indentation 4, existing mapping form, ancestor deeper in the included file, into an existing override mapping, missing intermediates, file included twice (and `get b.k` exits 5), quoted include string, flow mapping, list item, whole-document include, nested include (nearest including file), key inside a list item of an included file, CRLF; verify they pass, and that each fails if `new_key_target` returns a plain `AddKey`
++- [x] 2.4 Add to `tests/test_set_overrides.py` the "Appending to lists" scenarios (append in an included file, append to an overridden flow list) and a test that `set` with a mapping VALUE adding a key under an included mapping (`set coder.limits "{tokens: 100, calls: 9}"`) writes the override; verify they pass
++
++## 3. Existing values, deletes and include equality
++
++- [x] 3.1 Make `_slot` pick the winning layer's entry and `Delete` remove a key from every layer, moving up past emptied override mappings and stopping at `$ref` mappings (D5); verify `uv run mypy` is clean
++- [x] 3.2 Make `_diff` and `_matches` treat the bare include string as equal only when the include has no overrides (D5); verify the existing `tests/test_set_targets.py` include tests still pass
++- [x] 3.3 Add tests for the modified config-set requirements: overridden value changes the override; non-overridden value changes in the included file; deleting an overridden key (both files byte-exact); replacing an overridden mapping by a scalar; `set coder file:agents/coder.yaml` with overrides exits 3 naming `coder` with no file changed; parent set that keeps the merged value changes only `other`; verify they pass, and that the delete test fails if only the override layer is deleted
++
++## 4. Reconcile, watch and documentation
++
++- [x] 4.1 Add to `tests/test_reconcile.py` the config-sync scenarios "Override added by hand" (event `set coder.temperature` 0.2 → 0.3, via `file`) and "Converting to mapping form records nothing", and to `tests/test_watch.py` "File included through $ref is watched"; add a `history` check that `set coder.temperature 0.3` on a scalar-form include whose file has no `temperature` records one `set` event for `coder.temperature` (old null) via `cli`; verify they pass
++- [x] 4.2 Add a smoke test through `uv run troupe config` that sets a new key under a scalar-form include and checks `troupe.yml`, the unchanged included file and `show --sources`; verify it passes
++- [x] 4.3 Update README: an "Includes" section describing mapping form, `$ref`, deep merge, where `set` writes (new keys as overrides, existing values where they live, lists, deletes), the exit 4 cases, the BREAKING note for existing `$ref: file:` data and step-4 rollback; a worked example; `overrides.py` in the code map; design decisions D3–D6 and each D9 choice with its reason appended to the decisions list, with this change's design.md added to the referenced files; verify each new README command runs as written against `/tmp/demo`
++
++## 5. Integration
++
++- [x] 5.1 Run `uv run pytest`, `uv run mypy`, `uv run ruff check` and `uv run ruff format --check`; verify all are clean and show the output
++- [x] 5.2 Run `method validate config-include-overrides --strict`; verify it reports the change as valid
++- [x] 5.3 Commit the work on `main` in small steps with messages that say why (no push, no PR); verify `git status` is clean and `git log` shows the commits
+diff --git a/spec/changes/archive/2026-10-05-config-set-in-include/.method.yaml b/spec/changes/archive/2026-10-05-config-set-in-include/.method.yaml
+new file mode 100644
+index 0000000..e3966d7
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-set-in-include/.method.yaml
+@@ -0,0 +1,2 @@
++schema: spec-driven
++created: 2026-10-05
+diff --git a/spec/changes/archive/2026-10-05-config-set-in-include/design.md b/spec/changes/archive/2026-10-05-config-set-in-include/design.md
+new file mode 100644
+index 0000000..21b6070
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-set-in-include/design.md
+@@ -0,0 +1,72 @@
++# Design
++
++## Context
++
++See proposal.md for the motivation and `spec/` for the behaviour. This change is built on `config-include-overrides`
++(its design.md is referred to as "A-D<n>" below), which must be implemented first:
++
++- `plan.new_key_target` (A-D4) is the one place that decides where a new key goes. It returns a plain
++  `AddKey(path, value)` when no include anchors the deepest existing ancestor A, and otherwise
++  `AddOverride(include_path, rel, value)`.
++- Merged mappings carry `layers`: the physical mappings they were built from, the included one first (A-D2).
++  `_apply` asserts that `add_key` targets a mapping without `layers`.
++- `cli.py` parses `set PATH VALUE [--reason TEXT]`, and `commands.set_value` calls `compute_set`, which calls `plan`.
++
++## Goals / Non-Goals
++
++**Goals:**
++- The flag changes one decision, in the one place that makes it (`new_key_target`), and nothing else.
++
++**Non-Goals:**
++- Making the flag the default, or a per-theatre setting.
++- Recording the flag in history. The events say what changed, and the files show where.
++- Moving an existing override into the included file, or the other way round.
++
++## Decisions
++
++### D1. The choice is a keyword argument passed down to `new_key_target`
++`cli.py` adds `--in-include` (`store_true`) to `set`. `commands.set_value(..., in_include: bool = False)` passes it to
++`compute_set`, then `plan`, then `_diff`, then `new_key_target(root, path, in_include=...)`. With `in_include=True`,
++`new_key_target` always returns `AddKey(path, value)`, so the anchor walk is skipped. Alternative: a separate planner
++mode or a post-pass that rewrites `AddOverride` into `AddKey`. Rejected: two places would know the rule.
++
++### D2. `AddKey` writes into the innermost physical layer
++`_apply` resolves an `AddKey` parent through `physical_mapping(node)`: `node.layers[0]` when the node is merged,
++otherwise `node`. This helper lives next to `_slot` in `apply.py`. `merge` flattens layers (a merged base contributes
++its own layers first), so `layers[0]` is always the innermost included file's mapping. That gives the spec's cases:
++- an included mapping with no overrides is physical already, so the key goes into the included file;
++- a mapping merged from included content and overrides goes into the included content's file;
++- a mapping that exists only in an override is physical in the overriding file, so the key goes there;
++- nested includes go to the innermost included file (`agents/limits.yaml`), which is the step-1 rule's "file
++  containing the deepest existing ancestor".
++Without the flag, `AddKey` only ever reaches physical mappings (A-D4), so the helper changes nothing there. The
++existing "no `layers`" assertion moves to the `physical_mapping` result.
++
++### D3. Points the contract leaves open, and what we chose
++The contract says only that `set --in-include PATH VALUE` "writes a new key into the included file instead (the step
++1 rule)". Each choice below follows the reading that changes least:
++- **Only new keys are affected.** The contract talks about new keys. Existing values keep CR-A's rule (an overridden
++  value changes the override), so the flag can never silently leave an override shadowing the value just written.
++- **Where no include is involved, the flag is accepted and changes nothing.** The step-1 rule is defined for every
++  path and gives the same file there. Refusing would make scripts check for includes before passing the flag.
++- **A merged ancestor goes into its included content's file, and an override-only ancestor into its override's
++  file.** "The included file" is where the ancestor's shared content lives. An ancestor that exists only in an
++  override has no included file, and the step-1 rule ("the file containing the deepest existing ancestor") names the
++  override's file.
++- **Nested includes go to the innermost included file.** That is the file containing the deepest existing ancestor.
++- **No new exit codes, and events are unchanged.** `--in-include` changes placement, not meaning, and history
++  records values, not files.
++
++## Risks / Trade-offs
++
++- [A key written into the shared file changes every theatre that includes it] → This is the purpose of the flag.
++  It is opt-in, and the default (CR-A) keeps shared files untouched.
++- [This change depends on unimplemented work in `config-include-overrides`] → tasks.md starts by checking that
++  change is implemented. The archive order is `config-include-overrides` first, then this change.
++
++## Archive decision
++
++The change was archived with its delta specs **synced** into `spec/spec/`, for the same reason as
++`config-include-overrides`. Archiving without syncing would leave the main specs without `--in-include` while the
++code, tests and README have it, contradicting the rule that spec, code and tests agree. Syncing changes only spec
++files and keeps every existing scenario.
+diff --git a/spec/changes/archive/2026-10-05-config-set-in-include/proposal.md b/spec/changes/archive/2026-10-05-config-set-in-include/proposal.md
+new file mode 100644
+index 0000000..03060b7
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-set-in-include/proposal.md
+@@ -0,0 +1,36 @@
++# Proposal
++
++## Why
++
++After `config-include-overrides` (CR-A), a new key under an included section is always written as an override in the
++including file. Sometimes the setting really belongs in the shared file, for every theatre that includes it. Change
++request CR-B gives `set` an explicit way to say so, without editing the shared file by hand.
++
++This change builds on `config-include-overrides`, which must be implemented first.
++
++## What Changes
++
++- `troupe config set PATH VALUE --in-include` (the flag may appear anywhere after `set`, like `--reason`) writes each
++  new key into the file that holds its deepest existing ancestor mapping, with missing intermediate mappings created
++  there. This is the step-1 rule, so a new key under an include goes into the included file and no override is
++  written.
++- The flag changes only where *new keys* go. Existing values (overridden or not), list appends, deletions and the
++  "refusing to replace an include" rule behave exactly as without it.
++- Without the flag, behaviour is unchanged from `config-include-overrides`.
++
++## Capabilities
++
++### New Capabilities
++None.
++
++### Modified Capabilities
++- `config-cli`: "Invocation and theatre selection" lists `set PATH VALUE [--reason TEXT] [--in-include]`.
++- `config-set`: new requirement "Writing new keys into the included file on request".
++
++## Impact
++
++- Code: `cli.py` (flag), `commands.set_value` and `edit/apply.compute_set` (pass the choice through), and
++  `edit/plan.py`, where `new_key_target` takes the choice. No loader, store or history changes.
++- Tests: CLI parsing of the flag, and write-back targets with the flag (included file, nested includes, merged
++  ancestors, no include at all, mapping VALUEs, existing values unaffected).
++- README: commands table, includes section, decisions list.
+diff --git a/spec/changes/archive/2026-10-05-config-set-in-include/spec/config-cli/spec.md b/spec/changes/archive/2026-10-05-config-set-in-include/spec/config-cli/spec.md
+new file mode 100644
+index 0000000..e72e911
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-set-in-include/spec/config-cli/spec.md
+@@ -0,0 +1,36 @@
++# Spec Delta
++
++## MODIFIED Requirements
++
++### Requirement: Invocation and theatre selection
++The CLI SHALL be invocable as `uv run troupe config <subcommand> [--theatre <dir>] [arguments]` from the repository
++root, with subcommands `get PATH`, `show [PATH] [--sources]`, `set PATH VALUE [--reason TEXT] [--in-include]`, `history [PATH]` and
++`watch`. `--theatre` SHALL default to the current working directory.
++
++#### Scenario: Explicit theatre
++- **WHEN** `uv run troupe config get model --theatre /tmp/t` is run and `/tmp/t/.troupe/troupe.yml` contains `model: x`
++- **THEN** stdout is `x\n` and the exit code is 0
++
++#### Scenario: Default theatre is the current directory
++- **WHEN** `troupe config get model` is run with the current directory set to a theatre whose config has `model: x`
++- **THEN** stdout is `x\n` and the exit code is 0
++
++#### Scenario: Unknown subcommand or missing argument
++- **WHEN** `troupe config frobnicate`, `troupe config get` (no PATH), `troupe config set model` (no VALUE), `troupe config set model b --reason` (no TEXT) or `troupe config set model b --in-include x` (an extra argument) is run
++- **THEN** the exit code is 2, stdout is empty and stderr has a usage message
++
++#### Scenario: show takes an optional PATH
++- **WHEN** `troupe config show` and `troupe config show --sources` are run against a theatre that loads
++- **THEN** each exits 0 and prints the whole configuration
++
++#### Scenario: set takes an optional reason
++- **WHEN** `troupe config set model b --reason "why"` and `troupe config set --reason "why" model c` are run against a theatre that loads
++- **THEN** each exits 0 and changes `model`
++
++#### Scenario: watch takes no positional argument
++- **WHEN** `troupe config watch extra` is run
++- **THEN** the exit code is 2, stdout is empty and stderr has a usage message
++
++#### Scenario: set takes an optional --in-include
++- **WHEN** `troupe config set a.x 1 --in-include` and `troupe config set --in-include a.y 2 --reason why` are run against a theatre that loads, with `a` a mapping
++- **THEN** each exits 0 and creates its key
+diff --git a/spec/changes/archive/2026-10-05-config-set-in-include/spec/config-set/spec.md b/spec/changes/archive/2026-10-05-config-set-in-include/spec/config-set/spec.md
+new file mode 100644
+index 0000000..4494d62
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-set-in-include/spec/config-set/spec.md
+@@ -0,0 +1,57 @@
++# Spec Delta
++
++## ADDED Requirements
++
++### Requirement: Writing new keys into the included file on request
++With `--in-include`, every new key that a `set` creates (whether `PATH` itself is new, or a mapping `VALUE` adds
++keys) SHALL be written into the file that holds its deepest existing ancestor mapping, with any missing intermediate
++mappings created there, and no override SHALL be written for it. When that ancestor mapping is merged from included
++content and overrides, the file SHALL be the one holding the included content. When the ancestor exists only in an
++override, the file SHALL be the one holding that override. With nested includes, the file SHALL be the innermost
++included file that holds the ancestor. The flag SHALL NOT change anything else: existing values (overridden or not),
++list appends, deletions, the placement, quoting and layout rules for new entries, the exit codes, and the events
++recorded are as without it. Where no include is involved, `--in-include` SHALL give the same result as without it.
++
++#### Scenario: New key into the included file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml  # c\n`, `agents/coder.yaml` is `model: m\n`, and `set coder.temperature 0.3 --in-include` runs
++- **THEN** `agents/coder.yaml` becomes `model: m\ntemperature: 0.3\n` and `troupe.yml` is unchanged
++
++#### Scenario: Mapping-form include with overrides
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n`, `agents/coder.yaml` is `model: m\n`, and `set --in-include coder.top_p 0.9` runs
++- **THEN** `agents/coder.yaml` becomes `model: m\ntop_p: 0.9\n` and `troupe.yml` is unchanged
++
++#### Scenario: Ancestor merged from included content and an override
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n`, `agents/coder.yaml` is `limits:\n  tokens: 100\n`, and `set coder.limits.burst 2 --in-include` runs
++- **THEN** `agents/coder.yaml` becomes `limits:\n  tokens: 100\n  burst: 2\n` and `troupe.yml` is unchanged
++
++#### Scenario: Ancestor only in an override
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  extra:\n    a: 1\n` and `set coder.extra.b 2 --in-include` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  extra:\n    a: 1\n    b: 2\n` and `agents/coder.yaml` is unchanged
++
++#### Scenario: Missing intermediates in the included file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `model: m\n`, and `set coder.a.b x --in-include` runs
++- **THEN** `agents/coder.yaml` becomes `model: m\na:\n  b: x\n` and `troupe.yml` is unchanged
++
++#### Scenario: Nested includes: the innermost file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `limits: file:limits.yaml\n`, `agents/limits.yaml` is `calls: 5\n`, and `set coder.limits.burst 2 --in-include` runs
++- **THEN** `agents/limits.yaml` becomes `calls: 5\nburst: 2\n`, and `troupe.yml` and `agents/coder.yaml` are unchanged
++
++#### Scenario: Mapping VALUE adds keys into the included file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `limits:\n  tokens: 100\n`, and `set coder.limits "{tokens: 100, calls: 9}" --in-include` runs
++- **THEN** `agents/coder.yaml` becomes `limits:\n  tokens: 100\n  calls: 9\n` and `troupe.yml` is unchanged
++
++#### Scenario: Existing overridden value still changes the override
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n`, `agents/coder.yaml` is `temperature: 0.2\n`, and `set coder.temperature 0.5 --in-include` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.5\n` and `agents/coder.yaml` is unchanged
++
++#### Scenario: No include involved
++- **WHEN** the file is `a:\n  b: 1\n` and `set a.c 2 --in-include` runs
++- **THEN** the file becomes `a:\n  b: 1\n  c: 2\n`, the same as without the flag
++
++#### Scenario: Errors are unchanged
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is empty, and `set coder.x 1 --in-include` runs
++- **THEN** the exit code is 5 and no file changes, as without the flag
++
++#### Scenario: Events are unchanged
++- **WHEN** `set coder.temperature 0.3 --in-include` runs on a scalar-form include whose file has no `temperature`
++- **THEN** `history` gains one event, `set coder.temperature` (old null, new 0.3) via `cli`, exactly as it would without the flag
+diff --git a/spec/changes/archive/2026-10-05-config-set-in-include/tasks.md b/spec/changes/archive/2026-10-05-config-set-in-include/tasks.md
+new file mode 100644
+index 0000000..04134b3
+--- /dev/null
++++ b/spec/changes/archive/2026-10-05-config-set-in-include/tasks.md
+@@ -0,0 +1,20 @@
++# Tasks
++
++## 1. Prerequisite
++
++- [x] 1.1 Confirm `config-include-overrides` is implemented and committed on `main` (all its tasks checked, `uv run pytest` passing); verify by running `method status --change config-include-overrides` and `uv run pytest`
++
++## 2. The flag and the target rule
++
++- [x] 2.1 Add `--in-include` (`store_true`) to `set` in `cli.py` and thread `in_include` through `commands.set_value`, `compute_set`, `plan` and `_diff` to `new_key_target`, which returns a plain `AddKey` when it is set (D1); verify `uv run mypy` and `uv run ruff check` are clean
++- [x] 2.2 Add `physical_mapping` in `edit/apply.py` and use it to resolve `AddKey` parents, with the "no `layers`" assertion on its result (D2), and make sure `merge` flattens layers so `layers[0]` is the innermost included mapping; verify the existing `uv run pytest` suite (including the override tests) still passes
++- [x] 2.3 Add `tests/test_set_in_include.py` through the real CLI with byte-exact checks on every file in the theatre for each "Writing new keys into the included file on request" scenario: into the included file (comment line kept), mapping form with overrides, merged ancestor, override-only ancestor, missing intermediates, nested includes (innermost file), mapping VALUE, existing overridden value still changes the override, no include involved (same bytes as without the flag), empty included file exits 5 with no change, one `cli` event identical in content to the flag-less run; verify they pass, and that the merged and nested-merged tests fail if `physical_mapping` returns `layers[-1]` (the plain nested case has no merged layers, so a nested case with a `$ref` mapping in the middle file was added)
++- [x] 2.4 Extend `tests/test_cli.py` with "set takes an optional --in-include" (both positions, with `--reason`) and `set model b --in-include x` exiting 2 with empty stdout; verify they pass
++- [x] 2.5 Add a smoke test through `uv run troupe config set … --in-include` that checks the included file gained the key and `troupe.yml` is unchanged; verify it passes
++- [x] 2.6 Update README: `set PATH VALUE [--reason TEXT] [--in-include]` in the commands table, a paragraph in the includes section on writing into the shared file on purpose (with an example), and the D3 choices with their reasons appended to the decisions list, with this change's design.md added to the referenced files; verify each new README command runs as written against `/tmp/demo`
++
++## 3. Integration
++
++- [x] 3.1 Run `uv run pytest`, `uv run mypy`, `uv run ruff check` and `uv run ruff format --check`; verify all are clean and show the output
++- [x] 3.2 Run `method validate config-set-in-include --strict`; verify it reports the change as valid
++- [x] 3.3 Commit the work on `main` in small steps with messages that say why (no push, no PR), archiving `config-include-overrides` before this change; verify `git status` is clean and `git log` shows the commits
+diff --git a/spec/spec/config-cli/spec.md b/spec/spec/config-cli/spec.md
+index 75c775a..6c3201e 100644
+--- a/spec/spec/config-cli/spec.md
++++ b/spec/spec/config-cli/spec.md
+@@ -9,7 +9,7 @@ scalars are printed, and how failures are reported through exit codes and messag
+ 
+ ### Requirement: Invocation and theatre selection
+ The CLI SHALL be invocable as `uv run troupe config <subcommand> [--theatre <dir>] [arguments]` from the repository
+-root, with subcommands `get PATH`, `show [PATH] [--sources]`, `set PATH VALUE [--reason TEXT]`, `history [PATH]` and
++root, with subcommands `get PATH`, `show [PATH] [--sources]`, `set PATH VALUE [--reason TEXT] [--in-include]`, `history [PATH]` and
+ `watch`. `--theatre` SHALL default to the current working directory.
+ 
+ #### Scenario: Explicit theatre
+@@ -21,7 +21,7 @@ root, with subcommands `get PATH`, `show [PATH] [--sources]`, `set PATH VALUE [-
+ - **THEN** stdout is `x\n` and the exit code is 0
+ 
+ #### Scenario: Unknown subcommand or missing argument
+-- **WHEN** `troupe config frobnicate`, `troupe config get` (no PATH), `troupe config set model` (no VALUE) or `troupe config set model b --reason` (no TEXT) is run
++- **WHEN** `troupe config frobnicate`, `troupe config get` (no PATH), `troupe config set model` (no VALUE), `troupe config set model b --reason` (no TEXT) or `troupe config set model b --in-include x` (an extra argument) is run
+ - **THEN** the exit code is 2, stdout is empty and stderr has a usage message
+ 
+ #### Scenario: show takes an optional PATH
+@@ -36,6 +36,10 @@ root, with subcommands `get PATH`, `show [PATH] [--sources]`, `set PATH VALUE [-
+ - **WHEN** `troupe config watch extra` is run
+ - **THEN** the exit code is 2, stdout is empty and stderr has a usage message
+ 
++#### Scenario: set takes an optional --in-include
++- **WHEN** `troupe config set a.x 1 --in-include` and `troupe config set --in-include a.y 2 --reason why` are run against a theatre that loads, with `a` a mapping
++- **THEN** each exits 0 and creates its key
++
+ ### Requirement: Path syntax
+ A `PATH` SHALL be a sequence of keys separated by `.`. A segment of only ASCII digits SHALL index a list (0-based)
+ when the node it applies to is a list. A `PATH` that is empty or has an empty segment (such as `a..b` or `a.`) SHALL be
+diff --git a/spec/spec/config-loading/spec.md b/spec/spec/config-loading/spec.md
+index 6676bf8..18ecda6 100644
+--- a/spec/spec/config-loading/spec.md
++++ b/spec/spec/config-loading/spec.md
+@@ -72,3 +72,65 @@ target.
+ #### Scenario: The same file included twice is not a cycle
+ - **WHEN** two sibling keys both include `common.yaml`
+ - **THEN** loading succeeds and both keys hold its content
++
++### Requirement: Mapping-form includes and overrides
++A mapping that has a `$ref` key whose value is an include string (as defined in "Includes") SHALL be an include in
++**mapping form**. The include target SHALL be resolved as for a scalar-form include, relative to the directory of the
++file containing the mapping. The mapping's other keys are **overrides**. The value of a mapping-form include SHALL be
++the included content deep-merged with the overrides:
++- where both the included value and the override value at a key are mappings, they SHALL be merged recursively by
++  the same rule;
++- otherwise (a scalar or list on either side) the override value SHALL replace the included value;
++- a key that only the override has SHALL be added.
++
++Override values SHALL be loaded like any other value of the file that holds them, so an include string inside an
++override is resolved relative to that file, and includes inside the included content are resolved relative to the
++included file. In the merged mapping, the included content's keys SHALL keep their order (an overridden key keeps its
++position) and keys only the overrides have SHALL follow, in the order they are written. The `$ref` key itself SHALL NOT
++appear in the value. A mapping-form include with no other keys SHALL load exactly like the scalar-form include of the
++same string, including for text includes. A `$ref` key whose value is not an include string (not a string, or not
++starting with `file:`) SHALL be an ordinary key.
++
++Loading SHALL fail with exit 4, with a message naming the file that holds the `$ref` mapping and the target, when a
++mapping-form include has overrides and its target is not a YAML file (a text include), or its included content is not
++a mapping (a list, a scalar, or an empty file).
++
++#### Scenario: Overrides deep-merge with the included content
++- **WHEN** `agents/coder.yaml` is `model: m1\ntemperature: 0.2\nlimits:\n  tokens: 100\n  calls: 5\ntools: [read, write]\n` and `troupe.yml` is `agents:\n  coder:\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n    limits:\n      calls: 9\n    tools: [read]\n    extra: x\n`, and `show agents.coder` runs
++- **THEN** stdout is `model: m1\ntemperature: 0.3\nlimits:\n  tokens: 100\n  calls: 9\ntools:\n  - read\nextra: x\n`
++
++#### Scenario: Override replaces a mapping with a scalar
++- **WHEN** the included content has `limits: {tokens: 100}` and the override has `limits: none`
++- **THEN** `get agents.coder.limits` prints `none\n`
++
++#### Scenario: Mapping form without overrides
++- **WHEN** `troupe.yml` is `agents:\n  coder:\n    $ref: file:agents/coder.yaml\n` and `agents/coder.yaml` is `model: m1\n`
++- **THEN** `show agents` prints `coder:\n  model: m1\n`, the same as for `agents:\n  coder: file:agents/coder.yaml\n`
++
++#### Scenario: Text include in mapping form
++- **WHEN** `troupe.yml` is `prompt:\n  $ref: file:prompt.md\n` and `prompt.md` contains `Hello\n`
++- **THEN** `get prompt` prints `Hello\n` and `show --sources` prints `prompt: | # from .troupe/prompt.md\n  Hello\n`
++
++#### Scenario: Text include with overrides
++- **WHEN** `troupe.yml` is `prompt:\n  $ref: file:prompt.md\n  extra: 1\n`
++- **THEN** every subcommand exits 4 and stderr names `troupe.yml` and `prompt.md`
++
++#### Scenario: Overrides on content that is not a mapping
++- **WHEN** `tools.yaml` is `[a, b]\n` (or `5\n`, or empty) and `troupe.yml` is `tools:\n  $ref: file:tools.yaml\n  extra: 1\n`
++- **THEN** every subcommand exits 4 and stderr names `troupe.yml` and `tools.yaml`
++
++#### Scenario: Include inside an override resolves against the including file
++- **WHEN** `.troupe/troupe.yml` has `coder:\n  $ref: file:agents/coder.yaml\n  prompt: file:prompt.md\n` and both `.troupe/prompt.md` and `.troupe/agents/prompt.md` exist
++- **THEN** `coder.prompt` is the text of `.troupe/prompt.md`
++
++#### Scenario: Mapping-form include inside an included file
++- **WHEN** `agents/coder.yaml` has `limits:\n  $ref: file:limits.yaml\n  calls: 9\n` and `agents/limits.yaml` has `calls: 5\ntokens: 1\n`
++- **THEN** `show agents.coder.limits` (with `agents.coder` included from `agents/coder.yaml`) prints `calls: 9\ntokens: 1\n`
++
++#### Scenario: $ref that is not an include string
++- **WHEN** the config is `a:\n  $ref: hello\n  b: 1\n`
++- **THEN** `show a` prints `$ref: hello\nb: 1\n`
++
++#### Scenario: Missing target in mapping form
++- **WHEN** a mapping-form include names a file that does not exist
++- **THEN** every subcommand exits 4 and stderr names the missing target
+diff --git a/spec/spec/config-set/spec.md b/spec/spec/config-set/spec.md
+index c040bca..64f9fca 100644
+--- a/spec/spec/config-set/spec.md
++++ b/spec/spec/config-set/spec.md
+@@ -30,7 +30,9 @@ lines. A `set` whose VALUE equals the current value SHALL change no file and exi
+ - **THEN** the file becomes `a: 1\r\nb:\r\n  c: 2\r\n  d: 3\r\n`
+ 
+ ### Requirement: Target file for an existing value
+-An existing value SHALL be changed in the file that contains it, including files reached through YAML includes.
++An existing value SHALL be changed in the file that holds it, including files reached through YAML includes: the file
++that `show --sources` names for it. For a value that an override sets, that is the file holding the override, and the
++included file SHALL NOT change; a value that no override sets is changed in the included file it comes from.
+ When `PATH` names a text include, the target file's content SHALL become `VALUE` exactly, except that if the target
+ file contains a CRLF line ending, every LF in `VALUE` not already preceded by CR SHALL be written as CRLF. A non-string
+ `VALUE` for a text include SHALL be refused with exit 3.
+@@ -39,6 +41,14 @@ file contains a CRLF line ending, every LF in `VALUE` not already preceded by CR
+ - **WHEN** `agents.coder` is `file:agents/coder.yaml` and `set agents.coder.model m2` runs
+ - **THEN** only `agents/coder.yaml` changes, and only the model's value bytes change
+ 
++#### Scenario: Overridden value changes the override
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n`, `agents/coder.yaml` is `model: m\ntemperature: 0.2\n`, and `set coder.temperature 0.5` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.5\n` and `agents/coder.yaml` is unchanged
++
++#### Scenario: Value that is not overridden changes where it lives
++- **WHEN** the same theatre and `set coder.model m2` runs
++- **THEN** `agents/coder.yaml` becomes `model: m2\ntemperature: 0.2\n` and `troupe.yml` is unchanged
++
+ #### Scenario: Text include
+ - **WHEN** `prompt` is `file:prompt.md` and `set prompt "New\ntext\n"` runs
+ - **THEN** `prompt.md` contains exactly `New\ntext\n` and `troupe.yml` is unchanged
+@@ -52,10 +62,12 @@ file contains a CRLF line ending, every LF in `VALUE` not already preceded by CR
+ - **THEN** the exit code is 3, no file changes, and stderr names `prompt`
+ 
+ ### Requirement: Refusing to replace an include
+-Replacing the value at a path whose whole value comes from a YAML include (the path names the include string
+-itself) SHALL be refused with exit 3, naming the path, and no file SHALL change. This applies whatever the new
+-value is, and also when a `set` on an ancestor would change or delete such a value. A `set` on an ancestor that
+-leaves the included value equal is allowed and does not touch the included file.
++Replacing the value at a path whose whole value comes from a YAML include (the path names the include string itself,
++or the mapping that holds a `$ref`) SHALL be refused with exit 3, naming the path, and no file SHALL change. This
++applies whatever the new value is, and also when a `set` on an ancestor would change or delete such a value. A `set`
++on an ancestor that leaves the included value (with its overrides merged) equal is allowed and does not touch the
++included file. A `VALUE` equal to the include string counts as leaving the value equal only when the include has no
++overrides.
+ 
+ #### Scenario: Replacing an included mapping
+ - **WHEN** `agents.coder` is `file:agents/coder.yaml` and `set agents.coder "{model: x}"` runs
+@@ -69,13 +81,25 @@ leaves the included value equal is allowed and does not touch the included file.
+ - **WHEN** `limit` is `file:limit.yaml`, which contains `5`, and `set limit 6` runs
+ - **THEN** the exit code is 3 and no file changes
+ 
++#### Scenario: Dropping overrides by setting the include string
++- **WHEN** `coder` is `{$ref: file:agents/coder.yaml, temperature: 0.3}` in block form and `set coder file:agents/coder.yaml` runs
++- **THEN** the exit code is 3, stderr names `coder`, and no file changes
++
++#### Scenario: Parent set that keeps the merged value
++- **WHEN** `troupe.yml` is `agents:\n  coder:\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n  other: 1\n`, `agents/coder.yaml` is `model: m\n`, and `set agents "{coder: {model: m, temperature: 0.3}, other: 2}"` runs
++- **THEN** the exit code is 0, only `other`'s value bytes in `troupe.yml` change, and `agents/coder.yaml` is unchanged
++
+ ### Requirement: Setting a collection value
+ When both the existing value and `VALUE` are mappings, or both are lists, `set` SHALL apply the difference: keys
+ (or indexes) present in both are set recursively, so unchanged leaves keep their bytes, including across YAML include
+-boundaries that the include rules allow. New keys or items are added under the new-entry rules, and keys (or trailing items) missing from `VALUE`
+-are deleted. Deleting a block entry SHALL remove the lines from the entry's first line through the end of its value,
+-including that value's end-of-line comment, and SHALL keep comment lines before and after it. Deleting a flow entry
+-SHALL remove the entry and one adjacent separator. In every other case the existing node SHALL be replaced as a whole.
++boundaries that the include rules allow. New keys or items are added under the new-entry rules, and keys (or trailing
++items) missing from `VALUE` are deleted. Deleting a block entry SHALL remove the lines from the entry's first line
++through the end of its value, including that value's end-of-line comment, and SHALL keep comment lines before and
++after it. Deleting a flow entry SHALL remove the entry and one adjacent separator. A key that is deleted SHALL be
++removed from every file that sets it (the included content and each override that sets it), so that it is absent from
++the result; an override mapping that is left with no entries SHALL be deleted in turn (a mapping holding `$ref` is
++never deleted this way). In every other case the existing node SHALL be replaced as a whole: in the override that sets
++it when there is one, leaving the included content unchanged, and otherwise in the file that holds it.
+ 
+ #### Scenario: Partial mapping update keeps unchanged bytes
+ - **WHEN** the file is `a:\n  b: 1  # keep\n  c: 2\n` and `set a "{b: 1, c: 3}"` runs
+@@ -85,12 +109,21 @@ SHALL remove the entry and one adjacent separator. In every other case the exist
+ - **WHEN** the file is `a:\n  b: 1\n  c: 2\n` and `set a "{b: 1}"` runs
+ - **THEN** the file becomes `a:\n  b: 1\n`
+ 
++#### Scenario: Deleting an overridden key
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n`, `agents/coder.yaml` is `limits:\n  tokens: 100\n  calls: 5\n`, and `set coder.limits "{tokens: 100}"` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n`, `agents/coder.yaml` becomes `limits:\n  tokens: 100\n`, and `show coder.limits` prints `tokens: 100\n`
++
++#### Scenario: Replacing an overridden mapping
++- **WHEN** the same theatre and `set coder.limits 5` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  limits: 5\n` and `agents/coder.yaml` is unchanged
++
+ ### Requirement: Creating new keys
+ A `PATH` whose final key does not exist SHALL be written into the file containing the deepest existing ancestor
+-mapping of `PATH`, with any missing intermediate mappings created there. Descending into an existing scalar
+-(including null) or a text include SHALL exit 5. A digit-only segment that would need a missing intermediate created,
+-or that is applied to a mapping, SHALL exit 5. An empty (or comment-only) file SHALL be treated as an empty block
+-mapping at column 0.
++mapping of `PATH`, with any missing intermediate mappings created there, except where "New keys under includes are
++written as overrides" sends it to an including file as an override. Descending into an existing scalar (including
++null) or a text include SHALL exit 5. A digit-only segment that would need a missing intermediate created, or that is
++applied to a mapping, SHALL exit 5. An empty (or comment-only) file SHALL be treated as an empty block mapping at
++column 0.
+ 
+ #### Scenario: New key in an existing mapping
+ - **WHEN** the file is `agents:\n  coder:\n    model: m\n` and `set agents.coder.temperature 0.2` runs
+@@ -105,8 +138,8 @@ mapping at column 0.
+ - **THEN** the exit code is 5 and no file changes
+ 
+ #### Scenario: New key inside an included mapping
+-- **WHEN** `agents.coder` is `file:agents/coder.yaml` (a mapping) and `set agents.coder.temperature 0.2` runs
+-- **THEN** only `agents/coder.yaml` changes, gaining `temperature: 0.2`
++- **WHEN** `troupe.yml` is `agents:\n  coder: file:agents/coder.yaml\n` (`agents/coder.yaml` a mapping) and `set agents.coder.temperature 0.2` runs
++- **THEN** `agents/coder.yaml` is unchanged and `troupe.yml` becomes `agents:\n  coder:\n    $ref: file:agents/coder.yaml\n    temperature: 0.2\n`
+ 
+ #### Scenario: Parent is a scalar
+ - **WHEN** `model` is `m` and `set model.x 1` runs
+@@ -117,13 +150,22 @@ mapping at column 0.
+ - **THEN** the exit code is 5 and no file changes
+ 
+ ### Requirement: Appending to lists
+-A `PATH` whose final segment is an index equal to the list's length SHALL append `VALUE` to the list. A larger
+-index SHALL exit 5.
++A `PATH` whose final segment is an index equal to the list's length SHALL append `VALUE` to the list, in the file that
++holds the list (for a list that an override sets, the file holding the override). Appending is never written as an
++override. A larger index SHALL exit 5.
+ 
+ #### Scenario: Append to a block list
+ - **WHEN** the file is `tools:\n  - a\n  - b\n` and `set tools.2 c` runs
+ - **THEN** the file becomes `tools:\n  - a\n  - b\n  - c\n`
+ 
++#### Scenario: Append to a list in an included file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `tools:\n  - read\n`, and `set coder.tools.1 write` runs
++- **THEN** `agents/coder.yaml` becomes `tools:\n  - read\n  - write\n` and `troupe.yml` is unchanged
++
++#### Scenario: Append to an overridden list
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  tools: [read]\n`, `agents/coder.yaml` is `tools: [read, write]\n`, and `set coder.tools.1 exec` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  tools: [read, exec]\n` and `agents/coder.yaml` is unchanged
++
+ #### Scenario: Index past the end
+ - **WHEN** `tools` has 2 items and `set tools.3 c` runs
+ - **THEN** the exit code is 5 and no file changes
+@@ -279,3 +321,135 @@ cannot be loaded before the change, `set` SHALL exit 4.
+ #### Scenario: Unrepresentable edit refused
+ - **WHEN** an edit would produce text that parses to a different configuration than intended
+ - **THEN** the exit code is 3, stderr names the path, and every file is byte-identical to before
++
++### Requirement: New keys under includes are written as overrides
++Let A be the deepest existing ancestor mapping of a new key's `PATH`. Going up from A towards the root, if a YAML
++include is reached (A itself, or an ancestor of A, being an included value) before any list item is left, the new key
++SHALL be written as an override of the nearest such include, in the file that contains that include's reference (the
++*including* file), and the included file SHALL NOT change. The override SHALL be at the path of the new key relative
++to the include: it SHALL go into the deepest mapping of that path that the include's overrides already have, with any
++missing intermediate override mappings created there, under the placement and quoting rules for new entries. If a list
++item is left first (A is inside a list item), or the root is reached with no include, the key SHALL be written into
++the file that holds A, as in "Creating new keys".
++
++A scalar-form include that gets its first override SHALL first be converted to mapping form, in the including file:
++- for a block mapping entry `KEY: STRING`, the include string and the whitespace before it SHALL be removed from the
++  line, keeping the rest of the line (such as an end-of-line comment) unchanged, and the lines `$ref: STRING` and then
++  the override entries SHALL follow, indented one indentation unit of the including file deeper than `KEY`;
++- for a block list item `- STRING`, `$ref: ` SHALL be inserted before the include string, and the override entries
++  SHALL follow on the next lines at the column where the include string started;
++- for an include string that is the whole document, `$ref: ` SHALL be inserted before it, and the override entries
++  SHALL follow at column 0;
++- in a flow collection, the include string SHALL be replaced by `{$ref: STRING, <override entries>}`.
++`STRING` SHALL be the include string exactly as written, including its quotes. Lines are inserted with the including
++file's line ending, and a line whose value grows keeps its end-of-line comment under "End-of-line comment alignment".
++
++#### Scenario: Scalar-form include converted, comment kept
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml  # c\n`, `agents/coder.yaml` is `model: m\n`, and `set coder.temperature 0.3` runs
++- **THEN** `troupe.yml` becomes `coder:  # c\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n`, `agents/coder.yaml` is unchanged, and `get coder.temperature` prints `0.3\n`
++
++#### Scenario: Conversion at the including file's indentation
++- **WHEN** `troupe.yml` is `agents:\n    coder: file:agents/coder.yaml\n` and `set agents.coder.temperature 0.3` runs
++- **THEN** `troupe.yml` becomes `agents:\n    coder:\n        $ref: file:agents/coder.yaml\n        temperature: 0.3\n`
++
++#### Scenario: Existing mapping-form include gains an override
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n` and `set coder.top_p 0.9` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n  top_p: 0.9\n` and `agents/coder.yaml` is unchanged
++
++#### Scenario: Ancestor deeper inside the included file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `limits:\n  tokens: 100\n`, and `set coder.limits.calls 9` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n` and `show coder.limits` prints `tokens: 100\ncalls: 9\n`
++
++#### Scenario: Into an existing override mapping
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n`, `agents/coder.yaml` is `limits:\n  tokens: 100\n`, and `set coder.limits.burst 2` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n    burst: 2\n`
++
++#### Scenario: Missing intermediate mappings under an include
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n` and `set coder.a.b x` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  a:\n    b: x\n`
++
++#### Scenario: A file included twice stays shared
++- **WHEN** `troupe.yml` is `a: file:common.yaml\nb: file:common.yaml\n`, `common.yaml` is `x: 1\n`, and `set a.k 1` runs
++- **THEN** `troupe.yml` becomes `a:\n  $ref: file:common.yaml\n  k: 1\nb: file:common.yaml\n`, `common.yaml` is unchanged, and `get b.k` exits 5
++
++#### Scenario: Quoted include string
++- **WHEN** `troupe.yml` is `coder: 'file:agents/coder.yaml'\n` and `set coder.t 1` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: 'file:agents/coder.yaml'\n  t: 1\n`
++
++#### Scenario: Include in a flow mapping
++- **WHEN** `troupe.yml` is `agents: {coder: file:agents/coder.yaml}\n` and `set agents.coder.t 1` runs
++- **THEN** `troupe.yml` becomes `agents: {coder: {$ref: file:agents/coder.yaml, t: 1}}\n`
++
++#### Scenario: Include as a list item
++- **WHEN** `troupe.yml` is `steps:\n  - file:step.yaml\n`, `step.yaml` is `name: a\n`, and `set steps.0.k v` runs
++- **THEN** `troupe.yml` becomes `steps:\n  - $ref: file:step.yaml\n    k: v\n` and `step.yaml` is unchanged
++
++#### Scenario: Whole document is an include
++- **WHEN** `troupe.yml` is `file:base.yaml\n`, `base.yaml` is `a: 1\n`, and `set k v` runs
++- **THEN** `troupe.yml` becomes `$ref: file:base.yaml\nk: v\n` and `base.yaml` is unchanged
++
++#### Scenario: Nested include: the nearest including file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `limits: file:limits.yaml\n`, `agents/limits.yaml` is `calls: 5\n`, and `set coder.limits.burst 2` runs
++- **THEN** `agents/coder.yaml` becomes `limits:\n  $ref: file:limits.yaml\n  burst: 2\n`, and `troupe.yml` and `agents/limits.yaml` are unchanged
++
++#### Scenario: Key inside a list item of an included file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `steps:\n  - name: a\n`, and `set coder.steps.0.n 1` runs
++- **THEN** `agents/coder.yaml` becomes `steps:\n  - name: a\n    n: 1\n` and `troupe.yml` is unchanged
++
++#### Scenario: CRLF including file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\r\n` and `set coder.t 1` runs
++- **THEN** `troupe.yml` becomes `coder:\r\n  $ref: file:agents/coder.yaml\r\n  t: 1\r\n`
++
++### Requirement: Writing new keys into the included file on request
++With `--in-include`, every new key that a `set` creates (whether `PATH` itself is new, or a mapping `VALUE` adds
++keys) SHALL be written into the file that holds its deepest existing ancestor mapping, with any missing intermediate
++mappings created there, and no override SHALL be written for it. When that ancestor mapping is merged from included
++content and overrides, the file SHALL be the one holding the included content. When the ancestor exists only in an
++override, the file SHALL be the one holding that override. With nested includes, the file SHALL be the innermost
++included file that holds the ancestor. The flag SHALL NOT change anything else: existing values (overridden or not),
++list appends, deletions, the placement, quoting and layout rules for new entries, the exit codes, and the events
++recorded are as without it. Where no include is involved, `--in-include` SHALL give the same result as without it.
++
++#### Scenario: New key into the included file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml  # c\n`, `agents/coder.yaml` is `model: m\n`, and `set coder.temperature 0.3 --in-include` runs
++- **THEN** `agents/coder.yaml` becomes `model: m\ntemperature: 0.3\n` and `troupe.yml` is unchanged
++
++#### Scenario: Mapping-form include with overrides
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n`, `agents/coder.yaml` is `model: m\n`, and `set --in-include coder.top_p 0.9` runs
++- **THEN** `agents/coder.yaml` becomes `model: m\ntop_p: 0.9\n` and `troupe.yml` is unchanged
++
++#### Scenario: Ancestor merged from included content and an override
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n`, `agents/coder.yaml` is `limits:\n  tokens: 100\n`, and `set coder.limits.burst 2 --in-include` runs
++- **THEN** `agents/coder.yaml` becomes `limits:\n  tokens: 100\n  burst: 2\n` and `troupe.yml` is unchanged
++
++#### Scenario: Ancestor only in an override
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  extra:\n    a: 1\n` and `set coder.extra.b 2 --in-include` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  extra:\n    a: 1\n    b: 2\n` and `agents/coder.yaml` is unchanged
++
++#### Scenario: Missing intermediates in the included file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `model: m\n`, and `set coder.a.b x --in-include` runs
++- **THEN** `agents/coder.yaml` becomes `model: m\na:\n  b: x\n` and `troupe.yml` is unchanged
++
++#### Scenario: Nested includes: the innermost file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `limits: file:limits.yaml\n`, `agents/limits.yaml` is `calls: 5\n`, and `set coder.limits.burst 2 --in-include` runs
++- **THEN** `agents/limits.yaml` becomes `calls: 5\nburst: 2\n`, and `troupe.yml` and `agents/coder.yaml` are unchanged
++
++#### Scenario: Mapping VALUE adds keys into the included file
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is `limits:\n  tokens: 100\n`, and `set coder.limits "{tokens: 100, calls: 9}" --in-include` runs
++- **THEN** `agents/coder.yaml` becomes `limits:\n  tokens: 100\n  calls: 9\n` and `troupe.yml` is unchanged
++
++#### Scenario: Existing overridden value still changes the override
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n`, `agents/coder.yaml` is `temperature: 0.2\n`, and `set coder.temperature 0.5 --in-include` runs
++- **THEN** `troupe.yml` becomes `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.5\n` and `agents/coder.yaml` is unchanged
++
++#### Scenario: No include involved
++- **WHEN** the file is `a:\n  b: 1\n` and `set a.c 2 --in-include` runs
++- **THEN** the file becomes `a:\n  b: 1\n  c: 2\n`, the same as without the flag
++
++#### Scenario: Errors are unchanged
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n`, `agents/coder.yaml` is empty, and `set coder.x 1 --in-include` runs
++- **THEN** the exit code is 5 and no file changes, as without the flag
++
++#### Scenario: Events are unchanged
++- **WHEN** `set coder.temperature 0.3 --in-include` runs on a scalar-form include whose file has no `temperature`
++- **THEN** `history` gains one event, `set coder.temperature` (old null, new 0.3) via `cli`, exactly as it would without the flag
+diff --git a/spec/spec/config-show/spec.md b/spec/spec/config-show/spec.md
+index cae06ee..95c40ef 100644
+--- a/spec/spec/config-show/spec.md
++++ b/spec/spec/config-show/spec.md
+@@ -98,7 +98,8 @@ The output SHALL end with a single line break, and nothing SHALL be written to s
+ end-of-line comment ` # from <file>` (one space, `#`, one space) to every line that holds a scalar value. For a scalar
+ written as a literal block, the comment goes on the line with the `|` indicator. Lines that hold only a key whose
+ value starts on the next line, the content lines of a literal block, and lines whose value is `{}` or `[]` get no
+-comment. `<file>` SHALL be the file the scalar is written in, relative to the theatre directory, with `/` separators
++comment. `<file>` SHALL be the file the scalar is written in (for a value that an include override sets, the file holding
++the override), relative to the theatre directory, with `/` separators
+ and no `.` segments. For a text include, `<file>` SHALL be the included file, not the file holding the `file:` string.
+ When the value at `PATH` is a scalar, `--sources` SHALL print it as a one-scalar YAML document with the comment, not in
+ the `get` form. With or without the comments, the output SHALL read back as the same data.
+@@ -126,3 +127,7 @@ the `get` form. With or without the comments, the output SHALL read back as the
+ #### Scenario: config.yaml name
+ - **WHEN** the config file is `.troupe/troupe.yaml` containing `a: 1\n` and `show --sources` is run
+ - **THEN** stdout is `a: 1 # from .troupe/troupe.yaml\n`
++
++#### Scenario: Sources with overrides
++- **WHEN** `troupe.yml` is `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n`, `agents/coder.yaml` is `model: m1\ntemperature: 0.2\n`, and `show --sources` is run
++- **THEN** stdout is `coder:\n  model: m1 # from .troupe/agents/coder.yaml\n  temperature: 0.3 # from .troupe/troupe.yml\n`
+diff --git a/spec/spec/config-sync/spec.md b/spec/spec/config-sync/spec.md
+index 086fac6..efabe68 100644
+--- a/spec/spec/config-sync/spec.md
++++ b/spec/spec/config-sync/spec.md
+@@ -132,10 +132,11 @@ running, and its write-back SHALL cause no further events, however soon `watch`
+ - **THEN** after more than 2 seconds exactly one event has been added, the `set`'s own
+ 
+ ### Requirement: Includes added by hand are followed
+-When a hand edit adds an include, reconcile SHALL follow it like any other include: each leaf of the included content
++When a hand edit adds an include (in scalar or mapping form) or changes overrides, reconcile SHALL follow it like any other include: each leaf of the included content
+ SHALL be recorded as a `set` event (and a leaf it replaces as a `remove` event). From then on `watch` SHALL also watch
+ the newly included file. When an include is removed by hand, its leaves SHALL be recorded as `remove` events and
+-`watch` SHALL stop treating the file as part of the configuration.
++`watch` SHALL stop treating the file as part of the configuration. Reconcile compares merged values, so converting an include
++between scalar and mapping form without overrides records nothing.
+ 
+ #### Scenario: New YAML include
+ - **WHEN** `watch` is running on `agents: {}\n`, `agents/tester.yaml` containing `model: t1\n` exists, and `troupe.yml` is edited to `agents:\n  tester: file:agents/tester.yaml\n`
+@@ -148,3 +149,15 @@ the newly included file. When an include is removed by hand, its leaves SHALL be
+ #### Scenario: New include added while nothing runs
+ - **WHEN** no command is running, a hand edit adds `prompt: file:prompt.md`, and `show prompt` runs
+ - **THEN** `history` lists `set prompt` whose new value is the text of `prompt.md`
++
++#### Scenario: Override added by hand
++- **WHEN** `troupe.yml` is `coder: file:agents/coder.yaml\n` (`agents/coder.yaml` is `temperature: 0.2\n`), a hand edit changes it to `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n`, and `get coder.temperature` runs
++- **THEN** `history` lists `set coder.temperature` (old 0.2, new 0.3) via `file`
++
++#### Scenario: Converting to mapping form records nothing
++- **WHEN** a hand edit changes `coder: file:agents/coder.yaml\n` to `coder:\n  $ref: file:agents/coder.yaml\n` and `show` runs
++- **THEN** no event is recorded
++
++#### Scenario: File included through $ref is watched
++- **WHEN** `watch` is running on `coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n` and `agents/coder.yaml` is edited by hand from `model: m1\n` to `model: m2\n`
++- **THEN** within 2 seconds `set coder.model` (old `"m1"`, new `"m2"`) is recorded
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index dcda952..7612f4f 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -41,6 +41,11 @@ def _parser() -> argparse.ArgumentParser:
+     set_.add_argument("path")
+     set_.add_argument("value")
+     set_.add_argument("--reason", metavar="TEXT", help="why the change is made (recorded in the history)")
++    set_.add_argument(
++        "--in-include",
++        action="store_true",
++        help="write new keys into the included file itself, not as overrides in the including file",
++    )
+     history = sub.add_parser("history", parents=[theatre], help="list configuration changes as JSON Lines")
+     history.add_argument("path", nargs="?")
+     sub.add_parser("watch", parents=[theatre], help="record hand edits to the files as they happen")
+@@ -61,7 +66,9 @@ def run(argv: Sequence[str]) -> str:
+         return commands.show(theatre, path, args.sources)
+     if args.command == "set":
+         path = parse_path(args.path)
+-        commands.set_value(theatre, path, parse_value(args.value), actor, args.reason)
++        commands.set_value(
++            theatre, path, parse_value(args.value), actor, args.reason, in_include=args.in_include
++        )
+         return ""
+     if args.command == "watch":
+         # Shown as given (not resolved, which would turn macOS /var/… into /private/var/…).
+diff --git a/src/troupe/commands.py b/src/troupe/commands.py
+index 3ca1776..26ec1e1 100644
+--- a/src/troupe/commands.py
++++ b/src/troupe/commands.py
+@@ -114,13 +114,21 @@ def show(theatre: FsPath, path: Path | None, sources: bool) -> str:
+     return render(node, theatre, sources=sources)
+ 
+ 
+-def set_value(theatre: FsPath, path: Path, value: Data, actor: lineage.Actor, reason: str | None) -> None:
++def set_value(
++    theatre: FsPath,
++    path: Path,
++    value: Data,
++    actor: lineage.Actor,
++    reason: str | None,
++    *,
++    in_include: bool = False,
++) -> None:
+     """Write `value` at `path` and record its events as one change by `actor`, through the CLI.
+ 
+     The lock is held until the events are recorded, so no reconcile can see the written files first.
+     """
+     with theatre_session(theatre, "set") as (config, store):
+-        result = compute_set(theatre, config, path, value)
++        result = compute_set(theatre, config, path, value, in_include=in_include)
+         for file, text in result.writes.items():
+             with file.open("w", encoding="utf-8", newline="") as f:
+                 f.write(text)
+diff --git a/src/troupe/edit/apply.py b/src/troupe/edit/apply.py
+index 1d688a2..e42a08e 100644
+--- a/src/troupe/edit/apply.py
++++ b/src/troupe/edit/apply.py
+@@ -10,15 +10,16 @@ from dataclasses import dataclass
+ from pathlib import Path as FsPath
+ 
+ from troupe.edit import ops as prim
+-from troupe.edit.plan import AddKey, Append, Delete, Op, Replace, WriteText, plan
++from troupe.edit.plan import AddKey, AddOverride, Append, Delete, Op, Replace, WriteText, nest, plan
+ from troupe.edit.text import apply_edits
+ from troupe.errors import LoadError, WriteRefused
+ from troupe.leaves import diff_leaves, leaves
+ from troupe.loader import Config, load
++from troupe.overrides import is_bare, ref_entry
+ from troupe.paths import Path, format_path
+ from troupe.schema import Data, same
+ from troupe.store import Change
+-from troupe.tree import Item, MappingNode, Node, ScalarNode, SequenceNode, TextNode, to_data
++from troupe.tree import Entry, Item, MappingNode, Node, ScalarNode, SequenceNode, TextNode, to_data
+ 
+ 
+ @dataclass
+@@ -27,8 +28,10 @@ class SetResult:
+     changes: list[Change]
+ 
+ 
+-def compute_set(theatre: FsPath, config: Config, path: Path, value: Data) -> SetResult:
+-    operations = plan(config.root, path, value)
++def compute_set(
++    theatre: FsPath, config: Config, path: Path, value: Data, *, in_include: bool = False
++) -> SetResult:
++    operations = plan(config.root, path, value, in_include=in_include)
+     original = {key: src.text for key, src in config.files.items()}
+     texts = dict(original)
+     current = config
+@@ -60,23 +63,99 @@ def _apply(config: Config, op: Op, texts: dict[FsPath, str]) -> None:
+         assert isinstance(node, TextNode)
+         texts[node.target.path.resolve()] = to_crlf(op.text) if "\r\n" in node.target.text else op.text
+         return
+-    parent = _node_at(config.root, op.path[:-1])
++    for src, edits in _edits(config.root, op, where):
++        file_key = src.path.resolve()
++        texts[file_key] = apply_edits(texts[file_key], edits)
++
++
++def _edits(root: Node, op: Op, where: str) -> list[prim.FileEdits]:
++    if isinstance(op, AddOverride):
++        return [_add_override(root, op)]
++    parent = _node_at(root, op.path[:-1])
+     key = op.path[-1]
+     if isinstance(op, AddKey):
+-        assert isinstance(parent, MappingNode)
+-        src, edits = prim.add_key(parent, key, op.value)
+-    elif isinstance(op, Append):
++        assert isinstance(parent, MappingNode), where
++        return [prim.add_key(physical_mapping(parent), key, op.value)]
++    if isinstance(op, Append):
+         assert isinstance(parent, SequenceNode)
+-        src, edits = prim.append_item(parent, op.value)
+-    elif isinstance(op, Delete):
+-        assert isinstance(parent, MappingNode | SequenceNode)
+-        index = [e.key for e in parent.entries].index(key) if isinstance(parent, MappingNode) else int(key)
+-        src, edits = prim.delete(parent, index, where)
+-    else:
+-        assert isinstance(op, Replace)
+-        src, edits = prim.replace(_slot(parent, key), op.value, where)
+-    file_key = src.path.resolve()
+-    texts[file_key] = apply_edits(texts[file_key], edits)
++        return [prim.append_item(parent, op.value)]
++    if isinstance(op, Delete):
++        if isinstance(parent, SequenceNode):
++            return [prim.delete(parent, int(key), where)]
++        assert isinstance(parent, MappingNode)
++        return _delete_key(root, op.path[:-1], parent, key, where)
++    assert isinstance(op, Replace)
++    return [prim.replace(_slot(parent, key), op.value, where)]
++
++
++def _delete_key(root: Node, path: Path, parent: MappingNode, key: str, where: str) -> list[prim.FileEdits]:
++    """Delete `key` from every mapping `parent` was merged from, so that no layer brings it back.
++
++    An override mapping that would be left empty is deleted from its own parent instead (an empty override
++    changes nothing), up to the mapping that holds `$ref`, which stays.
++    """
++    out: list[prim.FileEdits] = []
++    for depth, layer in enumerate(parent.layers or [parent]):
++        entry = layer.get(key)
++        if entry is None:
++            continue
++        if depth > 0 and len(layer.entries) == 1 and ref_entry(layer) is None:
++            out.extend(_delete_layer(root, path, layer, where))
++        else:
++            out.append(prim.delete(layer, layer.entries.index(entry), where))
++    return _by_file(out)
++
++
++def _delete_layer(root: Node, path: Path, layer: MappingNode, where: str) -> list[prim.FileEdits]:
++    """Delete the override mapping `layer` (the value at `path`) from the override that holds it."""
++    holder = _node_at(root, path[:-1])
++    assert isinstance(holder, MappingNode), where
++    for depth, outer in enumerate(holder.layers or [holder]):
++        entry = outer.get(path[-1])
++        if entry is not None and entry.value is layer:
++            if depth > 0 and len(outer.entries) == 1 and ref_entry(outer) is None:
++                return _delete_layer(root, path[:-1], outer, where)
++            return [prim.delete(outer, outer.entries.index(entry), where)]
++    raise AssertionError(f"{where}: no override holds the mapping at {format_path(path)}")
++
++
++def _by_file(file_edits: list[prim.FileEdits]) -> list[prim.FileEdits]:
++    """The same edits, one group per file, so edits to one file are applied to the same text."""
++    grouped: dict[FsPath, prim.FileEdits] = {}
++    for src, edits in file_edits:
++        key = src.path.resolve()
++        if key in grouped:
++            grouped[key][1].extend(edits)
++        else:
++            grouped[key] = (src, list(edits))
++    return list(grouped.values())
++
++
++def _add_override(root: Node, op: AddOverride) -> prim.FileEdits:
++    """Write the new key as an override of the include at `op.include_path`, where its reference is.
++
++    The key goes into the deepest mapping of its path that the overrides already have. A scalar-form
++    include is first turned into mapping form.
++    """
++    node = _node_at(root, op.include_path)
++    include = node.include
++    assert include is not None, op.include_path
++    rel = op.path[len(op.include_path) :]
++    if include.overrides is None:
++        key: Entry | None = None
++        if op.include_path:
++            parent = _node_at(root, op.include_path[:-1])
++            if isinstance(parent, MappingNode):
++                key = parent.get(op.include_path[-1])
++        return prim.to_mapping_form(include.string, key, {rel[0]: nest(rel[1:], op.value)})
++    mapping = include.overrides
++    while len(rel) > 1:
++        entry = mapping.get(rel[0])
++        if entry is None:
++            break
++        assert isinstance(entry.value, MappingNode) and entry.value.include is None, op.path
++        mapping, rel = entry.value, rel[1:]
++    return prim.add_key(mapping, rel[0], nest(rel[1:], op.value))
+ 
+ 
+ def to_crlf(text: str) -> str:
+@@ -84,11 +163,23 @@ def to_crlf(text: str) -> str:
+     return re.sub(r"(?<!\r)\n", "\r\n", text)
+ 
+ 
++def physical_mapping(node: MappingNode) -> MappingNode:
++    """The mapping as written that a new key of `node` goes into.
++
++    For a merged mapping that is the innermost included one (only `set --in-include` adds keys there).
++    """
++    mapping = node.layers[0] if node.layers else node
++    assert not mapping.layers
++    return mapping
++
++
+ def _slot(parent: Node, key: str) -> prim.Slot:
++    """Where the value at `key` is written: for a merged mapping, in the last layer that sets it."""
+     if isinstance(parent, MappingNode):
+-        entry = parent.get(key)
++        layer = next(m for m in reversed(parent.layers or [parent]) if m.get(key) is not None)
++        entry = layer.get(key)
+         assert entry is not None
+-        return prim.Slot(node=entry.value, parent=parent, entry=entry)
++        return prim.Slot(node=entry.value, parent=layer, entry=entry)
+     assert isinstance(parent, SequenceNode)
+     item: Item = parent.items[int(key)]
+     return prim.Slot(node=item.value, parent=parent, item=item)
+@@ -127,7 +218,7 @@ def _with_value(data: Data, path: Path, value: Data) -> Data:
+ 
+ def _matches(node: Node, expected: Data) -> bool:
+     """Whether the re-loaded tree spells `expected`; an include string in `expected` matches its include."""
+-    if node.include is not None and isinstance(expected, str) and expected == node.include.string.value:
++    if node.include is not None and is_bare(node.include, expected):
+         return True
+     if isinstance(node, MappingNode):
+         return (
+diff --git a/src/troupe/edit/ops.py b/src/troupe/edit/ops.py
+index 20e207f..4c56988 100644
+--- a/src/troupe/edit/ops.py
++++ b/src/troupe/edit/ops.py
+@@ -30,6 +30,7 @@ from troupe.edit.text import (
+     owned_end,
+ )
+ from troupe.errors import WriteRefused
++from troupe.overrides import REF_KEY
+ from troupe.schema import Data
+ from troupe.source import SourceFile
+ from troupe.tree import Entry, Item, MappingNode, Node, ScalarNode, SequenceNode
+@@ -222,6 +223,39 @@ def add_key(mapping: MappingNode, key: str, value: Data) -> FileEdits:
+     return src, [insert_lines(src, pos, lines)]
+ 
+ 
++def to_mapping_form(string: ScalarNode, key: Entry | None, entries: dict[str, Data]) -> FileEdits:
++    """Turn the include `string` into a mapping-form include holding `$ref` and the override `entries`.
++
++    `key` is the block mapping entry whose value is `string` (None for a list item or the document root).
++    On the key's line, the string and the space before it go, and the mapping follows one indentation unit
++    deeper. Otherwise `$ref: ` goes in front of the string and the entries follow at its column. The
++    string's bytes are kept.
++    """
++    src = string.file
++    if string.block is not None:
++        raise WriteRefused(f"{src.path}: cannot convert a block-scalar include to mapping form")
++    written = src.text[string.start : string.end]
++    style = _scalar_style(string)
++    if string.in_flow:
++        items = ", ".join(
++            f"{render_key(k, None, flow=True)}: {flow_text(v, style, flow=True)}" for k, v in entries.items()
++        )
++        return src, [inline_edit(src, string.start, string.end, f"{{{REF_KEY}: {written}, {items}}}")]
++    layout = detect_layout(src)
++    lines: list[str] = []
++    if key is not None and src.line_start(key.key_node.start) == src.line_start(string.start):
++        col = src.column(key.key_node.start) + layout.unit
++        lines.append(" " * col + f"{REF_KEY}: {written}")
++        edits = [Edit(_ws_start(src, string.start), string.end, "")]
++    else:
++        col = src.column(string.start)
++        edits = [inline_edit(src, string.start, string.start, f"{REF_KEY}: ")]
++    for k, v in entries.items():
++        lines.extend(entry_lines(k, v, col, layout, value_style=style))
++    edits.append(insert_lines(src, src.next_line(string.end), lines))
++    return src, edits
++
++
+ def append_item(seq: SequenceNode, value: Data) -> FileEdits:
+     src = seq.file
+     last = seq.items[-1] if seq.items else None
+diff --git a/src/troupe/edit/plan.py b/src/troupe/edit/plan.py
+index 9469cbe..a3f718d 100644
+--- a/src/troupe/edit/plan.py
++++ b/src/troupe/edit/plan.py
+@@ -8,6 +8,7 @@ deleting one is refused.
+ from dataclasses import dataclass
+ 
+ from troupe.errors import PathError, WriteRefused
++from troupe.overrides import is_bare
+ from troupe.paths import Path, format_path, is_index
+ from troupe.schema import Data, same
+ from troupe.tree import MappingNode, Node, ScalarNode, SequenceNode, TextNode, to_data
+@@ -25,6 +26,13 @@ class AddKey:
+     value: Data
+ 
+ 
++@dataclass(frozen=True)
++class AddOverride:
++    path: Path  # path of the new key, below the include at `include_path`
++    include_path: Path  # the include whose overrides get the key, in the file holding its reference
++    value: Data
++
++
+ @dataclass(frozen=True)
+ class Append:
+     path: Path  # path of the new item (index == length)
+@@ -42,7 +50,7 @@ class WriteText:
+     text: str
+ 
+ 
+-type Op = Replace | AddKey | Append | Delete | WriteText
++type Op = Replace | AddKey | AddOverride | Append | Delete | WriteText
+ 
+ 
+ def describe(node: Node) -> str:
+@@ -55,7 +63,7 @@ def describe(node: Node) -> str:
+     )
+ 
+ 
+-def plan(root: Node, path: Path, value: Data) -> list[Op]:
++def plan(root: Node, path: Path, value: Data, *, in_include: bool = False) -> list[Op]:
+     """Operations that make the value at `path` equal `value`. Raises PathError / WriteRefused."""
+     node: Node = root
+     for i, segment in enumerate(path):
+@@ -66,7 +74,7 @@ def plan(root: Node, path: Path, value: Data) -> list[Op]:
+             if entry is None:
+                 if any(is_index(s) for s in path[i:]):
+                     raise PathError(f"{format_path(path)}: not found ({format_path(here)} does not exist)")
+-                return [AddKey(here, _nest(rest, value))]
++                return [new_key_target(root, here, nest(rest, value), in_include=in_include)]
+             node = entry.value
+         elif isinstance(node, SequenceNode):
+             if not is_index(segment):
+@@ -85,11 +93,39 @@ def plan(root: Node, path: Path, value: Data) -> list[Op]:
+                 f"{format_path(path)}: {format_path(path[:i])} is a scalar, not a mapping or list"
+             )
+     ops: list[Op] = []
+-    _diff(node, value, path, ops)
++    _diff(root, node, value, path, ops, in_include)
+     return ops
+ 
+ 
+-def _nest(rest: Path, value: Data) -> Data:
++def new_key_target(root: Node, path: Path, value: Data, *, in_include: bool = False) -> Op:
++    """Where the new key at `path` (whose parent mapping exists) is written.
++
++    A key whose parent lies inside an included value, with no list item between the include and the
++    parent, is written as an override of the nearest such include, in the file that holds the include's
++    reference. Anything else, and every key when `in_include` is set (`set --in-include`), goes into the
++    parent mapping's own file: for a merged mapping, the innermost included one.
++    """
++    if in_include:
++        return AddKey(path, value)
++    anchor: int | None = 0 if root.include is not None else None  # length of the anchoring include's path
++    node = root
++    for depth, segment in enumerate(path[:-1], start=1):
++        if isinstance(node, MappingNode):
++            entry = node.get(segment)
++            assert entry is not None, segment
++            node = entry.value
++        else:
++            assert isinstance(node, SequenceNode), segment
++            node = node.items[int(segment)].value
++            anchor = None  # overrides cannot address list items
++        if node.include is not None:
++            anchor = depth
++    if anchor is None:
++        return AddKey(path, value)
++    return AddOverride(path, path[:anchor], value)
++
++
++def nest(rest: Path, value: Data) -> Data:
+     for segment in reversed(rest):
+         value = {segment: value}
+     return value
+@@ -108,10 +144,10 @@ def _check_no_includes(node: Node, path: Path) -> None:
+             _check_no_includes(item.value, (*path, str(index)))
+ 
+ 
+-def _diff(node: Node, value: Data, path: Path, ops: list[Op]) -> None:
++def _diff(root: Node, node: Node, value: Data, path: Path, ops: list[Op], in_include: bool) -> None:
+     where = format_path(path)
+     include = node.include
+-    if include is not None and isinstance(value, str) and value == include.string.value:
++    if include is not None and is_bare(include, value):
+         return
+     if isinstance(node, TextNode):
+         if not isinstance(value, str):
+@@ -133,14 +169,14 @@ def _diff(node: Node, value: Data, path: Path, ops: list[Op]) -> None:
+         for key, child in value.items():
+             existing = node.get(key)
+             if existing is None:
+-                adds.append(AddKey((*path, key), child))
++                adds.append(new_key_target(root, (*path, key), child, in_include=in_include))
+             else:
+-                _diff(existing.value, child, (*path, key), ops)
++                _diff(root, existing.value, child, (*path, key), ops, in_include)
+         ops.extend(adds + deletes)
+         return
+     if isinstance(node, SequenceNode) and isinstance(value, list) and (value or not node.items):
+         for index, (item, child) in enumerate(zip(node.items, value, strict=False)):
+-            _diff(item.value, child, (*path, str(index)), ops)
++            _diff(root, item.value, child, (*path, str(index)), ops, in_include)
+         for index in range(len(node.items), len(value)):
+             ops.append(Append((*path, str(index)), value[index]))
+         for index in reversed(range(len(value), len(node.items))):
+diff --git a/src/troupe/edit/text.py b/src/troupe/edit/text.py
+index c9ddd66..8f0ce65 100644
+--- a/src/troupe/edit/text.py
++++ b/src/troupe/edit/text.py
+@@ -114,7 +114,12 @@ def inline_edit(src: SourceFile, start: int, end: int, new: str) -> Edit:
+ 
+ 
+ def owned_end(node: Node) -> int:
+-    """The last offset belonging to the node's value (a kept block scalar owns its trailing blank lines)."""
++    """The last offset belonging to the node's value (a kept block scalar owns its trailing blank lines).
++
++    An included value ends where its reference does, in the file that holds the reference.
++    """
++    if node.include is not None:
++        return owned_end(node.include.overrides or node.include.string)
+     if isinstance(node, ScalarNode) and node.block is not None and node.block.chomp == "+":
+         return max(node.end, node.block.region_end - 1)
+     if isinstance(node, MappingNode) and not node.flow_style and node.entries:
+diff --git a/src/troupe/loader.py b/src/troupe/loader.py
+index dc962f6..47d6ffd 100644
+--- a/src/troupe/loader.py
++++ b/src/troupe/loader.py
+@@ -5,8 +5,10 @@ from dataclasses import dataclass, field
+ from pathlib import Path
+ 
+ from troupe.errors import LoadError
++from troupe.overrides import REF_KEY, merge, override_entries, ref_entry
+ from troupe.source import SourceFile, read_source
+ from troupe.tree import (
++    Entry,
+     Include,
+     MappingNode,
+     Node,
+@@ -14,11 +16,11 @@ from troupe.tree import (
+     SequenceNode,
+     TextNode,
+     build_tree,
++    include_target,
+ )
+ 
+ CONFIG_DIR = ".troupe"
+ CONFIG_NAMES = ("troupe.yml", "troupe.yaml")
+-INCLUDE_PREFIX = "file:"
+ YAML_SUFFIXES = (".yml", ".yaml")
+ 
+ 
+@@ -36,13 +38,6 @@ def find_config(theatre: Path) -> Path:
+     return present[0]
+ 
+ 
+-def include_target(node: ScalarNode) -> str | None:
+-    """The path named by an include string, or None if the scalar is not an include."""
+-    if isinstance(node.value, str) and node.value.startswith(INCLUDE_PREFIX) and not node.tagged:
+-        return node.value[len(INCLUDE_PREFIX) :]
+-    return None
+-
+-
+ def is_yaml_target(target: str | Path) -> bool:
+     return str(target).endswith(YAML_SUFFIXES)
+ 
+@@ -92,13 +87,40 @@ class _Loader:
+                     return node
+                 return self.include(node, base / target, stack)
+             case MappingNode():
++                ref = ref_entry(node)
+                 for entry in node.entries:
+-                    entry.value = self.expand(entry.value, base, stack)
++                    if entry is not ref:
++                        entry.value = self.expand(entry.value, base, stack)
++                if ref is not None:
++                    return self.include_mapping(node, ref, base, stack)
+             case SequenceNode():
+                 for item in node.items:
+                     item.value = self.expand(item.value, base, stack)
+         return node
+ 
++    def include_mapping(self, mapping: MappingNode, ref: Entry, base: Path, stack: tuple[Path, ...]) -> Node:
++        """A mapping-form include: the included content deep-merged with the mapping's other entries."""
++        string = ref.value
++        assert isinstance(string, ScalarNode)
++        target = include_target(string)
++        assert target is not None
++        path = base / target
++        root = self.include(string, path, stack)
++        entries = override_entries(mapping)
++        if entries:
++            if isinstance(root, TextNode):
++                raise LoadError(
++                    f"{mapping.file.path}: {REF_KEY} {path} is not a YAML file, so it cannot have other keys"
++                )
++            if not isinstance(root, MappingNode):
++                raise LoadError(
++                    f"{mapping.file.path}: {REF_KEY} {path} is not a mapping, so it cannot have other keys"
++                )
++            root = merge(root, mapping, entries)
++        root.include = Include(string=string, target=path, overrides=mapping)
++        root.in_flow = mapping.in_flow
++        return root
++
+     def include(self, string: ScalarNode, path: Path, stack: tuple[Path, ...]) -> Node:
+         key = path.resolve()
+         if key in stack:
+diff --git a/src/troupe/overrides.py b/src/troupe/overrides.py
+new file mode 100644
+index 0000000..16264b4
+--- /dev/null
++++ b/src/troupe/overrides.py
+@@ -0,0 +1,58 @@
++"""Mapping-form includes: the `$ref` syntax and how overrides merge with included content.
++
++`coder: {$ref: file:agents/coder.yaml, temperature: 0.3}` is the included mapping deep-merged with the
++overrides: mappings on both sides merge recursively, anything else in the override replaces. Included keys
++keep their order, and keys only the overrides have follow, in their order.
++"""
++
++from troupe.tree import Entry, Include, MappingNode, ScalarNode, include_target
++
++REF_KEY = "$ref"
++
++
++def ref_entry(mapping: MappingNode) -> Entry | None:
++    """The `$ref` entry that makes `mapping` an include, or None if `mapping` is an ordinary mapping."""
++    entry = mapping.get(REF_KEY)
++    if entry is not None and isinstance(entry.value, ScalarNode) and include_target(entry.value) is not None:
++        return entry
++    return None
++
++
++def override_entries(mapping: MappingNode) -> list[Entry]:
++    """The overrides of a mapping-form include: every entry but `$ref`."""
++    ref = ref_entry(mapping)
++    return [e for e in mapping.entries if e is not ref]
++
++
++def is_bare(include: Include, value: object) -> bool:
++    """Whether `value` is the include's own string and the include has no overrides, so it means the same."""
++    no_overrides = include.overrides is None or not override_entries(include.overrides)
++    return no_overrides and isinstance(value, str) and value == include.string.value
++
++
++def merge(base: MappingNode, override: MappingNode, entries: list[Entry]) -> MappingNode:
++    """`base` deep-merged with `entries`, the overriding entries of `override`. The inputs are not changed."""
++    by_key = {e.key: e for e in entries}
++    merged_entries: list[Entry] = []
++    for entry in base.entries:
++        over = by_key.pop(entry.key, None)
++        if over is None:
++            merged_entries.append(entry)
++        elif isinstance(entry.value, MappingNode) and isinstance(over.value, MappingNode):
++            value = merge(entry.value, over.value, over.value.entries)
++            # The nearest include wins: an included override value, else an included base value.
++            value.include = over.value.include or entry.value.include
++            merged_entries.append(Entry(key=entry.key, key_node=entry.key_node, value=value))
++        else:
++            merged_entries.append(over)
++    merged_entries.extend(by_key.values())
++    return MappingNode(
++        file=base.file,
++        start=base.start,
++        end=base.end,
++        in_flow=base.in_flow,
++        owner_col=base.owner_col,
++        flow_style=base.flow_style,
++        entries=merged_entries,
++        layers=[*(base.layers or [base]), *(override.layers or [override])],
++    )
+diff --git a/src/troupe/tree.py b/src/troupe/tree.py
+index 4ab8fc9..63c9b54 100644
+--- a/src/troupe/tree.py
++++ b/src/troupe/tree.py
+@@ -36,6 +36,7 @@ class Include:
+ 
+     string: "ScalarNode"
+     target: Path
++    overrides: "MappingNode | None" = None  # mapping form: the `$ref` mapping, as written where it is
+ 
+ 
+ @dataclass(eq=False, kw_only=True)
+@@ -76,6 +77,9 @@ class Entry:
+ class MappingNode(Node):
+     flow_style: bool
+     entries: list[Entry] = field(default_factory=list)
++    # For a mapping merged from included content and overrides: the mappings as written, included first.
++    # Empty for a mapping as written in one file.
++    layers: list["MappingNode"] = field(default_factory=list)
+ 
+     def get(self, key: str) -> Entry | None:
+         for entry in self.entries:
+@@ -96,6 +100,16 @@ class SequenceNode(Node):
+     items: list[Item] = field(default_factory=list)
+ 
+ 
++INCLUDE_PREFIX = "file:"
++
++
++def include_target(node: ScalarNode) -> str | None:
++    """The path named by an include string, or None if the scalar is not an include."""
++    if isinstance(node.value, str) and node.value.startswith(INCLUDE_PREFIX) and not node.tagged:
++        return node.value[len(INCLUDE_PREFIX) :]
++    return None
++
++
+ def to_data(node: Node) -> Data:
+     match node:
+         case ScalarNode() | TextNode():
+diff --git a/tests/test_cli.py b/tests/test_cli.py
+index e065208..ebf1b68 100644
+--- a/tests/test_cli.py
++++ b/tests/test_cli.py
+@@ -47,6 +47,8 @@ def test_theatre_option_may_come_before_the_subcommand(
+         ("get", "a", "--sources"),
+         ("set", "model", "b", "--reason"),
+         ("get", "model", "--reason", "x"),
++        ("set", "model", "b", "--in-include", "x"),
++        ("get", "model", "--in-include"),
+     ],
+ )
+ def test_bad_command_lines_exit_2_with_empty_stdout(
+@@ -70,6 +72,23 @@ def test_set_takes_an_optional_reason_before_or_after_path_and_value(
+     assert t.read("troupe.yml") == "model: b\n"
+ 
+ 
++@pytest.mark.parametrize(
++    "args",
++    [
++        ("set", "a.x", "1", "--in-include"),
++        ("set", "--in-include", "a.x", "1", "--reason", "why"),
++        ("set", "--reason", "why", "a.x", "1", "--in-include"),
++    ],
++)
++def test_set_takes_an_optional_in_include_anywhere(
++    make: Callable[[str], Theatre], args: tuple[str, ...]
++) -> None:
++    t = make("a:\n  b: 1\n")
++    r = t.run(*args)
++    assert (r.code, r.out, r.err) == (0, "", "")
++    assert t.read("troupe.yml") == "a:\n  b: 1\n  x: 1\n"
++
++
+ @pytest.mark.parametrize("args", [("show",), ("show", "--sources")])
+ def test_show_takes_an_optional_path(make: Callable[[str], Theatre], args: tuple[str, ...]) -> None:
+     r = make("model: x\n").run(*args)
+diff --git a/tests/test_overrides_loading.py b/tests/test_overrides_loading.py
+new file mode 100644
+index 0000000..9ad9ea2
+--- /dev/null
++++ b/tests/test_overrides_loading.py
+@@ -0,0 +1,104 @@
++"""Mapping-form includes: `$ref` plus overrides, deep-merged with the included content (config-loading)."""
++
++import pytest
++
++from conftest import Theatre
++
++CODER = "model: m1\ntemperature: 0.2\nlimits:\n  tokens: 100\n  calls: 5\ntools: [read, write]\n"
++
++
++def test_overrides_deep_merge_with_the_included_content(theatre: Theatre) -> None:
++    theatre.write("agents/coder.yaml", CODER)
++    theatre.write(
++        "troupe.yml",
++        "agents:\n  coder:\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n"
++        "    limits:\n      calls: 9\n    tools: [read]\n    extra: x\n",
++    )
++    r = theatre.run("show", "agents.coder")
++    assert (r.code, r.err) == (0, "")
++    assert (
++        r.out
++        == "model: m1\ntemperature: 0.3\nlimits:\n  tokens: 100\n  calls: 9\ntools:\n  - read\nextra: x\n"
++    )
++
++
++def test_override_scalar_replaces_an_included_mapping(theatre: Theatre) -> None:
++    theatre.write("agents/coder.yaml", "limits: {tokens: 100}\n")
++    theatre.write("troupe.yml", "agents:\n  coder:\n    $ref: file:agents/coder.yaml\n    limits: none\n")
++    assert theatre.run("get", "agents.coder.limits").out == "none\n"
++
++
++def test_override_mapping_replaces_an_included_scalar(theatre: Theatre) -> None:
++    theatre.write("agents/coder.yaml", "limits: none\n")
++    theatre.write("troupe.yml", "coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n")
++    assert theatre.run("show", "coder").out == "limits:\n  calls: 9\n"
++
++
++def test_mapping_form_without_overrides_is_the_scalar_form(theatre: Theatre) -> None:
++    theatre.write("agents/coder.yaml", "model: m1\n")
++    theatre.write("troupe.yml", "agents:\n  coder:\n    $ref: file:agents/coder.yaml\n")
++    mapping_form = theatre.run("show", "--sources").out
++    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml\n")
++    assert theatre.run("show", "--sources").out == mapping_form
++    assert mapping_form == "agents:\n  coder:\n    model: m1 # from .troupe/agents/coder.yaml\n"
++
++
++def test_text_include_in_mapping_form(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "prompt:\n  $ref: file:prompt.md\n")
++    theatre.write("prompt.md", "Hello\n")
++    assert theatre.run("get", "prompt").out == "Hello\n"
++    assert theatre.run("show", "--sources").out == "prompt: | # from .troupe/prompt.md\n  Hello\n"
++
++
++def test_text_include_with_overrides_exits_4_naming_both_files(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "prompt:\n  $ref: file:prompt.md\n  extra: 1\n")
++    theatre.write("prompt.md", "Hello\n")
++    for args in (("get", "prompt"), ("show",), ("set", "a", "1"), ("history",)):
++        r = theatre.run(*args)
++        assert (r.code, r.out) == (4, "")
++        assert "troupe.yml" in r.err and "prompt.md" in r.err
++
++
++@pytest.mark.parametrize("content", ["[a, b]\n", "5\n", ""], ids=["list", "scalar", "empty"])
++def test_overrides_on_content_that_is_not_a_mapping_exit_4(theatre: Theatre, content: str) -> None:
++    theatre.write("tools.yaml", content)
++    theatre.write("troupe.yml", "tools:\n  $ref: file:tools.yaml\n  extra: 1\n")
++    for args in (("show",), ("set", "a", "1"), ("history",)):
++        r = theatre.run(*args)
++        assert (r.code, r.out) == (4, "")
++        assert "troupe.yml" in r.err and "tools.yaml" in r.err
++
++
++def test_include_inside_an_override_resolves_against_the_including_file(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "coder:\n  $ref: file:agents/coder.yaml\n  prompt: file:prompt.md\n")
++    theatre.write("agents/coder.yaml", "model: m\n")
++    theatre.write("prompt.md", "outer")
++    theatre.write("agents/prompt.md", "inner")
++    assert theatre.run("get", "coder.prompt").out == "outer\n"
++
++
++def test_mapping_form_inside_an_included_file(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml\n")
++    theatre.write("agents/coder.yaml", "limits:\n  $ref: file:limits.yaml\n  calls: 9\n")
++    theatre.write("agents/limits.yaml", "calls: 5\ntokens: 1\n")
++    assert theatre.run("show", "agents.coder.limits").out == "calls: 9\ntokens: 1\n"
++
++
++def test_ref_that_is_not_an_include_string_is_an_ordinary_key(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a:\n  $ref: hello\n  b: 1\n")
++    assert theatre.run("show", "a").out == "$ref: hello\nb: 1\n"
++
++
++def test_missing_target_in_mapping_form_exits_4_naming_it(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a:\n  $ref: file:nope.yaml\n  b: 1\n")
++    for args in (("show",), ("history",)):
++        r = theatre.run(*args)
++        assert (r.code, r.out) == (4, "")
++        assert "nope.yaml" in r.err
++
++
++def test_ref_value_is_not_itself_expanded_as_an_include(theatre: Theatre) -> None:
++    # `$ref` names the include; it must not also become a key whose value is the included content.
++    theatre.write("troupe.yml", "a:\n  $ref: file:a.yaml\n")
++    theatre.write("a.yaml", "x: 1\n")
++    assert theatre.run("show").out == "a:\n  x: 1\n"
+diff --git a/tests/test_reconcile.py b/tests/test_reconcile.py
+index c8af381..aaf9241 100644
+--- a/tests/test_reconcile.py
++++ b/tests/test_reconcile.py
+@@ -224,3 +224,47 @@ def test_unloadable_configuration_records_nothing(make: Callable[[str], Theatre]
+     assert t.run("set", "a", "3").code == 4
+     t.write("troupe.yml", "a: 1\n")
+     assert added(t, 1) == []
++
++
++# --- mapping-form includes ---------------------------------------------------------------------------------
++
++
++def test_override_added_by_hand_is_recorded_as_a_file_edit(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "coder: file:agents/coder.yaml\n")
++    theatre.write("agents/coder.yaml", "temperature: 0.2\n")
++    theatre.run("history")
++    theatre.write("troupe.yml", "coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n")
++    assert theatre.run("get", "coder.temperature").out == "0.3\n"
++    new = events(theatre.run("history"))[1:]
++    assert [(e["op"], e["path"], e["old"], e["new"], e["via"]) for e in new] == [
++        ("set", "coder.temperature", 0.2, 0.3, "file")
++    ]
++
++
++def test_converting_an_include_to_mapping_form_records_nothing(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "coder: file:agents/coder.yaml\n")
++    theatre.write("agents/coder.yaml", "temperature: 0.2\n")
++    theatre.run("history")
++    theatre.write("troupe.yml", "coder:\n  $ref: file:agents/coder.yaml\n")
++    assert theatre.run("show").code == 0
++    assert added(theatre, 1) == []
++
++
++def test_set_of_a_new_override_records_one_cli_event(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "coder: file:agents/coder.yaml\n")
++    theatre.write("agents/coder.yaml", "model: m\n")
++    assert theatre.run("set", "coder.temperature", "0.3").code == 0
++    new = events(theatre.run("history"))[1:]
++    assert [(e["op"], e["path"], e["old"], e["new"], e["via"]) for e in new] == [
++        ("set", "coder.temperature", None, 0.3, "cli")
++    ]
++
++
++def test_set_after_a_hand_added_override_changes_the_override_and_records_both(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "coder: file:agents/coder.yaml\n")
++    theatre.write("agents/coder.yaml", "temperature: 0.2\n")
++    theatre.run("history")
++    theatre.write("troupe.yml", "coder:\n  $ref: file:agents/coder.yaml\n  extra: 1\n")
++    assert theatre.run("set", "coder.extra", "2").code == 0
++    assert theatre.read("agents/coder.yaml") == "temperature: 0.2\n"
++    assert added(theatre, 1) == [("set", "coder.extra", None, 1), ("set", "coder.extra", 1, 2)]
+diff --git a/tests/test_set_in_include.py b/tests/test_set_in_include.py
+new file mode 100644
+index 0000000..b260575
+--- /dev/null
++++ b/tests/test_set_in_include.py
+@@ -0,0 +1,146 @@
++"""`set --in-include`: new keys go into the included file itself, not into overrides (config-set, step 5 CR-B).
++
++Each test compares every file in the theatre byte for byte, so a stray override or edit fails it.
++"""
++
++import json
++
++import pytest
++
++from conftest import Theatre
++
++
++def set_and_read(theatre: Theatre, files: dict[str, str], *args: str) -> dict[str, str]:
++    for name, text in files.items():
++        theatre.write(name, text)
++    r = theatre.run("set", *args)
++    assert (r.code, r.out, r.err) == (0, "", ""), r.err
++    return {name: theatre.read(name) for name in files}
++
++
++@pytest.mark.parametrize(
++    ("files", "args", "after"),
++    [
++        pytest.param(
++            {"troupe.yml": "coder: file:agents/coder.yaml  # c\n", "agents/coder.yaml": "model: m\n"},
++            ("coder.temperature", "0.3", "--in-include"),
++            {"agents/coder.yaml": "model: m\ntemperature: 0.3\n"},
++            id="into-the-included-file",
++        ),
++        pytest.param(
++            {
++                "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n",
++                "agents/coder.yaml": "model: m\n",
++            },
++            ("--in-include", "coder.top_p", "0.9"),
++            {"agents/coder.yaml": "model: m\ntop_p: 0.9\n"},
++            id="mapping-form-with-overrides",
++        ),
++        pytest.param(
++            {
++                "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n",
++                "agents/coder.yaml": "limits:\n  tokens: 100\n",
++            },
++            ("coder.limits.burst", "2", "--in-include"),
++            {"agents/coder.yaml": "limits:\n  tokens: 100\n  burst: 2\n"},
++            id="merged-ancestor",
++        ),
++        pytest.param(
++            {
++                "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  extra:\n    a: 1\n",
++                "agents/coder.yaml": "model: m\n",
++            },
++            ("coder.extra.b", "2", "--in-include"),
++            {"troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  extra:\n    a: 1\n    b: 2\n"},
++            id="override-only-ancestor",
++        ),
++        pytest.param(
++            {"troupe.yml": "coder: file:agents/coder.yaml\n", "agents/coder.yaml": "model: m\n"},
++            ("coder.a.b", "x", "--in-include"),
++            {"agents/coder.yaml": "model: m\na:\n  b: x\n"},
++            id="missing-intermediates",
++        ),
++        pytest.param(
++            {
++                "troupe.yml": "coder: file:agents/coder.yaml\n",
++                "agents/coder.yaml": "limits: file:limits.yaml\n",
++                "agents/limits.yaml": "calls: 5\n",
++            },
++            ("coder.limits.burst", "2", "--in-include"),
++            {"agents/limits.yaml": "calls: 5\nburst: 2\n"},
++            id="nested-includes-innermost-file",
++        ),
++        pytest.param(
++            {
++                "troupe.yml": "coder: file:agents/coder.yaml\n",
++                "agents/coder.yaml": "limits:\n  $ref: file:limits.yaml\n  calls: 9\n",
++                "agents/limits.yaml": "calls: 5\n",
++            },
++            ("coder.limits.burst", "2", "--in-include"),
++            {"agents/limits.yaml": "calls: 5\nburst: 2\n"},
++            id="nested-merged-innermost-file",
++        ),
++        pytest.param(
++            {
++                "troupe.yml": "coder: file:agents/coder.yaml\n",
++                "agents/coder.yaml": "limits:\n  tokens: 100\n",
++            },
++            ("coder.limits", "{tokens: 100, calls: 9}", "--in-include"),
++            {"agents/coder.yaml": "limits:\n  tokens: 100\n  calls: 9\n"},
++            id="mapping-value",
++        ),
++        pytest.param(
++            {
++                "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n",
++                "agents/coder.yaml": "temperature: 0.2\n",
++            },
++            ("coder.temperature", "0.5", "--in-include"),
++            {"troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.5\n"},
++            id="existing-overridden-value-changes-the-override",
++        ),
++    ],
++)
++def test_in_include_writes_new_keys_into_the_included_file(
++    theatre: Theatre, files: dict[str, str], args: tuple[str, ...], after: dict[str, str]
++) -> None:
++    assert set_and_read(theatre, files, *args) == {**files, **after}
++
++
++def test_in_include_without_an_include_gives_the_same_bytes_as_without_it(theatre: Theatre) -> None:
++    with_flag = set_and_read(theatre, {"troupe.yml": "a:\n  b: 1\n"}, "a.c", "2", "--in-include")
++    without = set_and_read(theatre, {"troupe.yml": "a:\n  b: 1\n"}, "a.c", "2")
++    assert with_flag == without == {"troupe.yml": "a:\n  b: 1\n  c: 2\n"}
++
++
++def test_in_include_into_an_empty_included_file_exits_5_and_changes_nothing(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "coder: file:agents/coder.yaml\n")
++    theatre.write("agents/coder.yaml", "")
++    before = theatre.snapshot()
++    for extra in (("--in-include",), ()):
++        r = theatre.run("set", "coder.x", "1", *extra)
++        assert (r.code, r.out) == (5, "")
++        assert theatre.snapshot() == before
++
++
++def _own_events(theatre: Theatre, *flag: str) -> list[dict[str, object]]:
++    theatre.write("troupe.yml", "coder: file:agents/coder.yaml\n")
++    theatre.write("agents/coder.yaml", "model: m\n")
++    (theatre.dir / "events.sqlite").unlink(missing_ok=True)
++    assert theatre.run("set", "coder.temperature", "0.3", *flag).code == 0
++    lines = [json.loads(line) for line in theatre.run("history").out.splitlines()]
++    return [
++        {k: e[k] for k in ("seq", "op", "path", "old", "new", "actor", "via", "reason")}
++        for e in lines
++        if e["op"] != "import"
++    ]
++
++
++def test_in_include_records_the_same_event_as_without_it(theatre: Theatre) -> None:
++    with_flag = _own_events(theatre, "--in-include")
++    assert theatre.read("agents/coder.yaml") == "model: m\ntemperature: 0.3\n"
++    without = _own_events(theatre)
++    assert theatre.read("agents/coder.yaml") == "model: m\n"
++    assert with_flag == without
++    assert [(e["op"], e["path"], e["old"], e["new"], e["via"]) for e in with_flag] == [
++        ("set", "coder.temperature", None, 0.3, "cli")
++    ]
+diff --git a/tests/test_set_overrides.py b/tests/test_set_overrides.py
+new file mode 100644
+index 0000000..d9e3288
+--- /dev/null
++++ b/tests/test_set_overrides.py
+@@ -0,0 +1,268 @@
++"""New keys under includes are written as overrides in the including file (config-set, step 5 CR-A).
++
++Each test writes a theatre, runs one `set` and compares every file in it byte for byte, so a stray edit to the
++shared, included file fails the test.
++"""
++
++import pytest
++
++from conftest import Theatre
++
++
++def set_and_read(theatre: Theatre, files: dict[str, str], *args: str) -> dict[str, str]:
++    for name, text in files.items():
++        theatre.write(name, text)
++    r = theatre.run("set", *args)
++    assert (r.code, r.out, r.err) == (0, "", ""), r.err
++    return {name: theatre.read(name) for name in files}
++
++
++@pytest.mark.parametrize(
++    ("files", "args", "after"),
++    [
++        pytest.param(
++            {"troupe.yml": "coder: file:agents/coder.yaml  # c\n", "agents/coder.yaml": "model: m\n"},
++            ("coder.temperature", "0.3"),
++            {"troupe.yml": "coder:  # c\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n"},
++            id="contract-example-keeps-comment",
++        ),
++        pytest.param(
++            {"troupe.yml": "agents:\n    coder: file:agents/coder.yaml\n", "agents/coder.yaml": "model: m\n"},
++            ("agents.coder.temperature", "0.3"),
++            {
++                "troupe.yml": "agents:\n    coder:\n        $ref: file:agents/coder.yaml\n        temperature: 0.3\n"
++            },
++            id="indentation-of-the-including-file",
++        ),
++        pytest.param(
++            {
++                "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n",
++                "agents/coder.yaml": "model: m\n",
++            },
++            ("coder.top_p", "0.9"),
++            {"troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n  top_p: 0.9\n"},
++            id="existing-mapping-form",
++        ),
++        pytest.param(
++            {
++                "troupe.yml": "coder: file:agents/coder.yaml\n",
++                "agents/coder.yaml": "limits:\n  tokens: 100\n",
++            },
++            ("coder.limits.calls", "9"),
++            {"troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n"},
++            id="ancestor-deeper-in-the-included-file",
++        ),
++        pytest.param(
++            {
++                "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n",
++                "agents/coder.yaml": "limits:\n  tokens: 100\n",
++            },
++            ("coder.limits.burst", "2"),
++            {"troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n    burst: 2\n"},
++            id="into-an-existing-override-mapping",
++        ),
++        pytest.param(
++            {"troupe.yml": "coder: file:agents/coder.yaml\n", "agents/coder.yaml": "model: m\n"},
++            ("coder.a.b", "x"),
++            {"troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  a:\n    b: x\n"},
++            id="missing-intermediates",
++        ),
++        pytest.param(
++            {"troupe.yml": "coder: 'file:agents/coder.yaml'\n", "agents/coder.yaml": "model: m\n"},
++            ("coder.t", "1"),
++            {"troupe.yml": "coder:\n  $ref: 'file:agents/coder.yaml'\n  t: 1\n"},
++            id="quoted-include-string",
++        ),
++        pytest.param(
++            {"troupe.yml": "agents: {coder: file:agents/coder.yaml}\n", "agents/coder.yaml": "model: m\n"},
++            ("agents.coder.t", "1"),
++            {"troupe.yml": "agents: {coder: {$ref: file:agents/coder.yaml, t: 1}}\n"},
++            id="flow-mapping",
++        ),
++        pytest.param(
++            {"troupe.yml": "steps:\n  - file:step.yaml\n", "step.yaml": "name: a\n"},
++            ("steps.0.k", "v"),
++            {"troupe.yml": "steps:\n  - $ref: file:step.yaml\n    k: v\n"},
++            id="list-item",
++        ),
++        pytest.param(
++            {"troupe.yml": "file:base.yaml\n", "base.yaml": "a: 1\n"},
++            ("k", "v"),
++            {"troupe.yml": "$ref: file:base.yaml\nk: v\n"},
++            id="whole-document",
++        ),
++        pytest.param(
++            {
++                "troupe.yml": "coder: file:agents/coder.yaml\n",
++                "agents/coder.yaml": "limits: file:limits.yaml\n",
++                "agents/limits.yaml": "calls: 5\n",
++            },
++            ("coder.limits.burst", "2"),
++            {"agents/coder.yaml": "limits:\n  $ref: file:limits.yaml\n  burst: 2\n"},
++            id="nested-include-nearest-including-file",
++        ),
++        pytest.param(
++            {"troupe.yml": "coder: file:agents/coder.yaml\n", "agents/coder.yaml": "steps:\n  - name: a\n"},
++            ("coder.steps.0.n", "1"),
++            {"agents/coder.yaml": "steps:\n  - name: a\n    n: 1\n"},
++            id="key-inside-a-list-item-of-an-included-file",
++        ),
++        pytest.param(
++            {"troupe.yml": "coder: file:agents/coder.yaml\r\n", "agents/coder.yaml": "model: m\n"},
++            ("coder.t", "1"),
++            {"troupe.yml": "coder:\r\n  $ref: file:agents/coder.yaml\r\n  t: 1\r\n"},
++            id="crlf-including-file",
++        ),
++    ],
++)
++def test_new_key_under_an_include_is_written_as_an_override(
++    theatre: Theatre, files: dict[str, str], args: tuple[str, str], after: dict[str, str]
++) -> None:
++    assert set_and_read(theatre, files, *args) == {**files, **after}
++
++
++def test_new_override_reads_back_as_the_new_value(theatre: Theatre) -> None:
++    files = {"troupe.yml": "coder: file:agents/coder.yaml  # c\n", "agents/coder.yaml": "model: m\n"}
++    set_and_read(theatre, files, "coder.temperature", "0.3")
++    assert theatre.run("get", "coder.temperature").out == "0.3\n"
++    assert theatre.run("show", "coder").out == "model: m\ntemperature: 0.3\n"
++
++
++def test_overrides_merge_with_the_ancestor_in_the_included_file(theatre: Theatre) -> None:
++    files = {"troupe.yml": "coder: file:agents/coder.yaml\n", "agents/coder.yaml": "limits:\n  tokens: 100\n"}
++    set_and_read(theatre, files, "coder.limits.calls", "9")
++    assert theatre.run("show", "coder.limits").out == "tokens: 100\ncalls: 9\n"
++
++
++def test_a_file_included_twice_stays_shared(theatre: Theatre) -> None:
++    files = {"troupe.yml": "a: file:common.yaml\nb: file:common.yaml\n", "common.yaml": "x: 1\n"}
++    after = set_and_read(theatre, files, "a.k", "1")
++    assert after == {**files, "troupe.yml": "a:\n  $ref: file:common.yaml\n  k: 1\nb: file:common.yaml\n"}
++    assert theatre.run("get", "b.k").code == 5
++
++
++@pytest.mark.parametrize(
++    ("files", "args", "after"),
++    [
++        pytest.param(
++            {"troupe.yml": "coder: file:agents/coder.yaml\n", "agents/coder.yaml": "tools:\n  - read\n"},
++            ("coder.tools.1", "write"),
++            {"agents/coder.yaml": "tools:\n  - read\n  - write\n"},
++            id="list-in-an-included-file",
++        ),
++        pytest.param(
++            {
++                "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  tools: [read]\n",
++                "agents/coder.yaml": "tools: [read, write]\n",
++            },
++            ("coder.tools.1", "exec"),
++            {"troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  tools: [read, exec]\n"},
++            id="overridden-list",
++        ),
++    ],
++)
++def test_append_goes_into_the_file_that_holds_the_list(
++    theatre: Theatre, files: dict[str, str], args: tuple[str, str], after: dict[str, str]
++) -> None:
++    assert set_and_read(theatre, files, *args) == {**files, **after}
++
++
++def test_mapping_value_adding_a_key_under_an_include_writes_an_override(theatre: Theatre) -> None:
++    files = {"troupe.yml": "coder: file:agents/coder.yaml\n", "agents/coder.yaml": "limits:\n  tokens: 100\n"}
++    after = set_and_read(theatre, files, "coder.limits", "{tokens: 100, calls: 9}")
++    assert after == {
++        **files,
++        "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n",
++    }
++
++
++def test_new_key_after_an_include_entry_goes_below_its_reference(theatre: Theatre) -> None:
++    # The end of an entry whose value is an include is the end of its reference, not of the included file.
++    files = {"troupe.yml": "agents:\n  coder: file:c.yaml\nz: 1\n", "c.yaml": "model: " + "m" * 80 + "\n"}
++    after = set_and_read(theatre, files, "agents.x", "1")
++    assert after == {**files, "troupe.yml": "agents:\n  coder: file:c.yaml\n  x: 1\nz: 1\n"}
++
++
++def test_second_override_after_a_mapping_form_entry_goes_below_its_overrides(theatre: Theatre) -> None:
++    files = {
++        "troupe.yml": "agents:\n  coder:\n    $ref: file:c.yaml\n    t: 1\nz: 1\n",
++        "c.yaml": "model: " + "m" * 80 + "\n",
++    }
++    after = set_and_read(theatre, files, "agents.x", "1")
++    assert after == {
++        **files,
++        "troupe.yml": "agents:\n  coder:\n    $ref: file:c.yaml\n    t: 1\n  x: 1\nz: 1\n",
++    }
++
++
++# --- existing values, deletes and include equality -------------------------------------------------------
++
++OVERRIDDEN = {
++    "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n",
++    "agents/coder.yaml": "model: m\ntemperature: 0.2\n",
++}
++LIMITS = {
++    "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n",
++    "agents/coder.yaml": "limits:\n  tokens: 100\n  calls: 5\n",
++}
++
++
++def test_overridden_value_changes_the_override(theatre: Theatre) -> None:
++    after = set_and_read(theatre, OVERRIDDEN, "coder.temperature", "0.5")
++    assert after == {
++        **OVERRIDDEN,
++        "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.5\n",
++    }
++
++
++def test_value_that_is_not_overridden_changes_in_the_included_file(theatre: Theatre) -> None:
++    after = set_and_read(theatre, OVERRIDDEN, "coder.model", "m2")
++    assert after == {**OVERRIDDEN, "agents/coder.yaml": "model: m2\ntemperature: 0.2\n"}
++
++
++def test_deleting_an_overridden_key_removes_it_from_both_files(theatre: Theatre) -> None:
++    after = set_and_read(theatre, LIMITS, "coder.limits", "{tokens: 100}")
++    assert after == {
++        "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n",
++        "agents/coder.yaml": "limits:\n  tokens: 100\n",
++    }
++    assert theatre.run("show", "coder.limits").out == "tokens: 100\n"
++
++
++def test_deleting_one_of_several_override_keys_keeps_the_override_mapping(theatre: Theatre) -> None:
++    files = {
++        "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    calls: 9\n    burst: 2\n",
++        "agents/coder.yaml": "limits:\n  tokens: 100\n",
++    }
++    after = set_and_read(theatre, files, "coder.limits", "{tokens: 100, burst: 2}")
++    assert after == {
++        **files,
++        "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  limits:\n    burst: 2\n",
++    }
++
++
++def test_replacing_an_overridden_mapping_writes_the_override(theatre: Theatre) -> None:
++    after = set_and_read(theatre, LIMITS, "coder.limits", "5")
++    assert after == {**LIMITS, "troupe.yml": "coder:\n  $ref: file:agents/coder.yaml\n  limits: 5\n"}
++
++
++def test_setting_the_bare_include_string_with_overrides_is_refused(theatre: Theatre) -> None:
++    for name, text in OVERRIDDEN.items():
++        theatre.write(name, text)
++    before = theatre.snapshot()
++    r = theatre.run("set", "coder", "file:agents/coder.yaml")
++    assert (r.code, r.out) == (3, "")
++    assert "coder" in r.err
++    assert theatre.snapshot() == before
++
++
++def test_parent_set_that_keeps_the_merged_value_changes_only_the_rest(theatre: Theatre) -> None:
++    files = {
++        "troupe.yml": "agents:\n  coder:\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n  other: 1\n",
++        "agents/coder.yaml": "model: m\n",
++    }
++    after = set_and_read(theatre, files, "agents", "{coder: {model: m, temperature: 0.3}, other: 2}")
++    assert after == {
++        **files,
++        "troupe.yml": "agents:\n  coder:\n    $ref: file:agents/coder.yaml\n    temperature: 0.3\n  other: 2\n",
++    }
+diff --git a/tests/test_set_targets.py b/tests/test_set_targets.py
+index 1a23183..b96b75d 100644
+--- a/tests/test_set_targets.py
++++ b/tests/test_set_targets.py
+@@ -32,12 +32,14 @@ def test_value_inside_an_included_file_changes_only_that_file(theatre: Theatre)
+     assert theatre.read("agents/coder.yaml") == "model: m2   # pinned\ntemperature: 0.2\n"
+ 
+ 
+-def test_new_key_inside_an_included_mapping_goes_into_that_file(theatre: Theatre) -> None:
++def test_new_key_inside_an_included_mapping_is_an_override_in_the_including_file(theatre: Theatre) -> None:
+     theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml\n")
+     theatre.write("agents/coder.yaml", "model: m\n")
+     assert theatre.run("set", "agents.coder.temperature", "0.2").code == 0
+-    assert theatre.read("troupe.yml") == "agents:\n  coder: file:agents/coder.yaml\n"
+-    assert theatre.read("agents/coder.yaml") == "model: m\ntemperature: 0.2\n"
++    assert theatre.read("agents/coder.yaml") == "model: m\n"
++    assert theatre.read("troupe.yml") == (
++        "agents:\n  coder:\n    $ref: file:agents/coder.yaml\n    temperature: 0.2\n"
++    )
+ 
+ 
+ def test_text_include_content_becomes_value_exactly(theatre: Theatre) -> None:
+diff --git a/tests/test_show_sources.py b/tests/test_show_sources.py
+index 1df8453..534ad24 100644
+--- a/tests/test_show_sources.py
++++ b/tests/test_show_sources.py
+@@ -94,3 +94,13 @@ def test_sources_with_a_relative_theatre(
+     monkeypatch.chdir(theatre.root.parent)
+     r = run("show", "--sources", "--theatre", Path(theatre.root.name).as_posix())
+     assert r.out == f"a: 1{T}\n"
++
++
++def test_sources_name_the_overriding_file_for_overridden_values(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n")
++    theatre.write("agents/coder.yaml", "model: m1\ntemperature: 0.2\n")
++    r = theatre.run("show", "--sources")
++    assert (r.code, r.err) == (0, "")
++    assert r.out == (
++        "coder:\n  model: m1 # from .troupe/agents/coder.yaml\n  temperature: 0.3 # from .troupe/troupe.yml\n"
++    )
+diff --git a/tests/test_smoke.py b/tests/test_smoke.py
+index f2b72ce..d2b9d33 100644
+--- a/tests/test_smoke.py
++++ b/tests/test_smoke.py
+@@ -191,3 +191,45 @@ def test_watch_through_uv_run_records_a_hand_edit_and_stops_on_sigterm(theatre:
+         if proc.poll() is None:
+             proc.kill()
+             proc.communicate()
++
++
++def test_new_key_under_an_include_becomes_an_override_end_to_end(theatre: Path) -> None:
++    d = theatre / ".troupe"
++    coder_before = (d / "agents" / "coder.yaml").read_bytes()
++    r = troupe(theatre, "set", "agents.coder.temperature", "0.3")
++    assert (r.returncode, r.stdout, r.stderr) == (0, "", "")
++    assert (d / "agents" / "coder.yaml").read_bytes() == coder_before
++    assert (d / "troupe.yml").read_bytes() == (
++        b"# The demo theatre\n"
++        b"name: demo   # shown in the UI\n"
++        b"agents:\n"
++        b"  coder:\n"
++        b"    $ref: file:agents/coder.yaml\n"
++        b"    temperature: 0.3\n"
++        b"  reviewer:\n"
++        b"    model: 'small'\n"
++        b"    tools: [read]\n"
++        b"  # more agents here\n"
++        b"\n"
++        b"# global settings\n"
++        b"limits:\n"
++        b"  tokens: 1000\n"
++    )
++    shown = troupe(theatre, "show", "agents.coder", "--sources")
++    assert shown.stdout == (
++        "model: big # from .troupe/agents/coder.yaml\n"
++        'prompt: "You write code.\\r\\nBe brief.\\r\\n" # from .troupe/agents/coder.md\n'
++        "temperature: 0.3 # from .troupe/troupe.yml\n"
++    )
++
++
++def test_in_include_writes_into_the_shared_file_end_to_end(theatre: Path) -> None:
++    d = theatre / ".troupe"
++    config_before = (d / "troupe.yml").read_bytes()
++    r = troupe(theatre, "set", "agents.coder.temperature", "0.3", "--in-include")
++    assert (r.returncode, r.stdout, r.stderr) == (0, "", "")
++    assert (d / "troupe.yml").read_bytes() == config_before
++    assert (d / "agents" / "coder.yaml").read_bytes() == (
++        b"model: big  # strongest\nprompt: file:coder.md\ntemperature: 0.3\n"
++    )
++    assert troupe(theatre, "get", "agents.coder.temperature").stdout == "0.3\n"
+diff --git a/tests/test_watch.py b/tests/test_watch.py
+index 4f37d31..3c804e9 100644
+--- a/tests/test_watch.py
++++ b/tests/test_watch.py
+@@ -333,3 +333,12 @@ def test_include_added_while_nothing_runs_is_picked_up_by_show(make: Callable[[s
+     t.write("troupe.yml", "a: 1\nprompt: file:prompt.md\n")
+     assert t.run("show", "prompt").out == "Hello\n"
+     assert brief(t)[1:] == [("set", "prompt", None, "Hello\n")]
++
++
++def test_file_included_through_ref_is_watched(theatre: Theatre, watching: Callable[[], Watch]) -> None:
++    theatre.write("troupe.yml", "coder:\n  $ref: file:agents/coder.yaml\n  temperature: 0.3\n")
++    theatre.write("agents/coder.yaml", "model: m1\n")
++    watching()
++    start = time.monotonic()
++    theatre.write("agents/coder.yaml", "model: m2\n")
++    recorded_within(theatre, 2, [("set", "coder.model", "m1", "m2")], start)

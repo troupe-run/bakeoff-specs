@@ -1,0 +1,1 @@
+{"runnable": false, "why": "This question is about how `watch` behaves when it gets SIGINT or SIGTERM. The sandbox forbids `watch` and anything that waits, and a command cannot send a signal to a running process. There is also only one route (unanimous), so there is no difference between routes to show.", "files": {}, "commands": [], "show": []}

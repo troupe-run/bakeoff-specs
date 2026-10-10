@@ -1,0 +1,5 @@
+```json
+{"score": 3, "evidence": ["/judge/repo/spec/troupe-config-anchor-aliases-01M48SQ8/spec.md:51", "/judge/repo/spec/troupe-config-anchor-aliases-01M48SQ8/spec.md:52-65", "/judge/repo/spec/troupe-config-anchor-aliases-01M48SQ8/decisions/DM-01M48SQVABR08ZCXGCZD5S8GXV.md:17-26", "/judge/repo/spec/troupe-config-anchor-aliases-01M48SQ8/research.md:18", "/judge/repo/spec/troupe-config-anchor-aliases-01M48SQ8/decisions/DM-01M48T5X483RCHEXYJ60R4N35P.md:25", "/judge/gates.md:48"]}
+```
+
+I scored this 3 rather than 4 because most of the 'your choice' items have no alternatives written down. Every one of them (A-0 and C1–C14) is recorded in spec.md with a reason tied to this project, such as TROUPE-001/002, C-005 and step-5 includes, and so are the edge cases found during implementation. Only a few weigh real options. The merge-key decision record lists them: refuse at load, or add a local key beside `<<`. research.md R-1 rejects subclassing `Composer` and scanning the text. C8 and C9 imply alternatives in their reasons. C1, C2, C10, C11 and C12 have reasons but no alternatives.

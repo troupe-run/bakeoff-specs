@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "retry: 1  # attempts\nname: demo\n",
+        "input": "`config set --reason \"no login name\" retry 3` (TROUPE_ACTOR, USER, LOGNAME, LNAME and USERNAME all unset; the user has no account entry)",
+        "observed": true,
+        "results": {
+          "1": "all six arms: exit 0, prints nothing; the file now reads:\nretry: 3  # attempts\nname: demo"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set --reason \"user alice\" retry 4` with USER=alice, then `config set --reason \"empty USER\" retry 5` with USER set to an empty string",
+        "observed": true,
+        "results": {
+          "1": "all six arms: both exit 0 and print nothing; the file reads `retry: 4  # attempts` and then `retry: 5  # attempts`, and the comment is kept"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history retry`",
+        "observed": true,
+        "results": {
+          "1": "all six arms: exit 0 and the same four entries. The import of retry=1 has actor {\"kind\": \"unknown\", \"id\": null}. The set to 3 with no login name has actor {\"kind\": \"human\", \"id\": null}. The set to 4 has {\"kind\": \"human\", \"id\": \"alice\"}. The set to 5 with an empty USER has {\"kind\": \"human\", \"id\": null}, so an empty name is treated the same as a missing one."
+        }
+      },
+      {
+        "before": "",
+        "input": "`--theatre . config history` (no login name)",
+        "observed": true,
+        "results": {
+          "1": "five arms: exit 2, prints nothing to stdout, and stderr says '.' is an invalid choice. The wording differs, e.g. `troupe: argument COMMAND: invalid choice: '.' (choose from config)`, and two of these arms also print a usage line. One arm: exit 0 and lists the full history, including the `name` import, with the same actor values as above."
+        }
+      }
+    ],
+    "in_practice": "The only route records a change made with no identifiable user as a human with an empty id, not as an error. The note given for this route says the actor should be shown as \"unknown\", but the recorded kind is \"human\". \"unknown\" appears only on the entries created when the file is first imported. The arms differ only on the `--theatre` option, which is unrelated to this question: one arm accepts it and five reject it.",
+    "stakes": "When nobody has set TROUPE_ACTOR and no login name can be found, every change still has to be recorded under some author. The question is whether the history marks that change as made by an unnamed person or treats it as an error or a guess.",
+    "tradeoff": "Route 1: setting a value never fails for lack of a name, but the history cannot tell apart different unnamed users, or an empty USER from a missing one."
+  },
+  "plan_why": "Runs config set with TROUPE_ACTOR unset and no login name (no USER, LOGNAME, LNAME or USERNAME, and no passwd entry), then with USER=alice and with USER set to an empty string. Then config history shows each set's exit code and message, and the actor recorded for it: {kind: human, id: null} for no login name and id \"alice\" for USER=alice; with USER empty, the examples show whether id is \"\" or null. A final config history with no login name shows whether reading history needs one.",
+  "routes": [
+    [
+      "{kind: human, id: null}",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

@@ -1,0 +1,128 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "1",
+    "Arm C": "1",
+    "Arm D": "2",
+    "Arm E": "2",
+    "Arm F": "1"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "DROP",
+        "why": "config show prints 'prompt: file:prompts/coder.md' and 'notes: file:notes.txt' without the !literal tag, even though the file has it"
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "KEEP",
+        "why": "config show prints 'prompt: !literal file:prompts/coder.md' and 'notes: !literal file:notes.txt', keeping the tag"
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show",
+          "agents"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.notes",
+          "file:notes.txt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "agents.coder.notes"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/sys.md": "You are a coder.\n",
+      ".troupe/troupe.yml": "agents:\n  coder:\n    model: opus\n    prompt: !literal file:prompts/coder.md\n    system: file:sys.md\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml"
+    ],
+    "why": "Shows what `show` prints, as a whole section and with `--sources`, for literal strings that start with `file:` (tagged `!literal` in the file or written by `set`), next to a real text include. Plain output would be read as an include if loaded again; tagged or quoted output would not."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "config show keeps the !literal mark on the value",
+            "id": "KEEP"
+          },
+          {
+            "description": "config show drops the !literal mark",
+            "id": "DROP"
+          }
+        ],
+        "id": "Q1",
+        "text": "does config show keep the !literal mark"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Print plain",
+      [
+        "Arm B"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "sheet_id": "T8",
+  "status": "ok"
+}

@@ -1,0 +1,588 @@
+{
+  "outcomes": [
+    {
+      "outcome": "1",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.coder",
+            "{model: sonnet, prompt: \"Be terse.\\n\"}",
+            "--reason",
+            "multi-file set"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/prompts/coder.md": "Be terse.\n",
+            ".troupe/troupe.yml": "# team config\nagents:\n  coder:\n    model: sonnet # main model\n    prompt: file:prompts/coder.md\n  reviewer:\n    model: opus\n    prompt: file:prompts/reviewer.md\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "agents.coder"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:15.418179Z\", \"reason\": null, \"change\": \"2a562f22-573f-45cd-9b4d-8b797b3a51ea\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.prompt\", \"old\": null, \"new\": \"You write code.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:15.418179Z\", \"reason\": null, \"change\": \"2a562f22-573f-45cd-9b4d-8b797b3a51ea\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:15.421906Z\", \"reason\": \"multi-file set\", \"change\": \"3ccf6f53-59af-43d2-9d58-163418727811\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.prompt\", \"old\": \"You write code.\\n\", \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:15.421906Z\", \"reason\": \"multi-file set\", \"change\": \"3ccf6f53-59af-43d2-9d58-163418727811\"}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.reviewer",
+            "{model: haiku, prompt: 42}",
+            "--reason",
+            "should fail on second file"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "/theatre/.troupe/prompts/reviewer.md: agents.reviewer: the value is the text include file:prompts/reviewer.md, which can only be set to a string\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "agents.reviewer"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:15.418179Z\", \"reason\": null, \"change\": \"2a562f22-573f-45cd-9b4d-8b797b3a51ea\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.reviewer.prompt\", \"old\": null, \"new\": \"Review carefully.\\r\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:15.418179Z\", \"reason\": null, \"change\": \"2a562f22-573f-45cd-9b4d-8b797b3a51ea\"}\n"
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "agents",
+            "--sources"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "coder:\n  model: sonnet # from .troupe/troupe.yml\n  prompt: | # from .troupe/prompts/coder.md\n    Be terse.\nreviewer:\n  model: opus # from .troupe/troupe.yml\n  prompt: | # from .troupe/prompts/reviewer.md\n    Review carefully.\r\n"
+        }
+      ]
+    },
+    {
+      "outcome": "2",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.coder",
+            "{model: sonnet, prompt: \"Be terse.\\n\"}",
+            "--reason",
+            "multi-file set"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/prompts/coder.md": "Be terse.\n",
+            ".troupe/troupe.yml": "# team config\nagents:\n  coder:\n    model: sonnet # main model\n    prompt: file:prompts/coder.md\n  reviewer:\n    model: opus\n    prompt: file:prompts/reviewer.md\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "agents.coder"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:18.837838Z\", \"reason\": null, \"change\": \"522bcd3d-db3b-4ba3-815a-bc88b4895efb\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.prompt\", \"old\": null, \"new\": \"You write code.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:18.837838Z\", \"reason\": null, \"change\": \"522bcd3d-db3b-4ba3-815a-bc88b4895efb\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:18.841479Z\", \"reason\": \"multi-file set\", \"change\": \"b9528204-2b4d-4527-a733-aabe5fa24e71\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.prompt\", \"old\": \"You write code.\\n\", \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:18.841479Z\", \"reason\": \"multi-file set\", \"change\": \"b9528204-2b4d-4527-a733-aabe5fa24e71\"}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.reviewer",
+            "{model: haiku, prompt: 42}",
+            "--reason",
+            "should fail on second file"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: agents.reviewer.prompt: is the text of .troupe/prompts/reviewer.md; VALUE must be a string\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "agents.reviewer"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:18.837838Z\", \"reason\": null, \"change\": \"522bcd3d-db3b-4ba3-815a-bc88b4895efb\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.reviewer.prompt\", \"old\": null, \"new\": \"Review carefully.\\r\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:18.837838Z\", \"reason\": null, \"change\": \"522bcd3d-db3b-4ba3-815a-bc88b4895efb\"}\n"
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "agents",
+            "--sources"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "coder:\n  model: sonnet # from .troupe/troupe.yml\n  prompt: | # from .troupe/prompts/coder.md\n    Be terse.\nreviewer:\n  model: opus # from .troupe/troupe.yml\n  prompt: \"Review carefully.\\r\\n\" # from .troupe/prompts/reviewer.md\n"
+        }
+      ]
+    },
+    {
+      "outcome": "3",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.coder",
+            "{model: sonnet, prompt: \"Be terse.\\n\"}",
+            "--reason",
+            "multi-file set"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# team config\nagents:\n  coder:\n    model: sonnet\n    prompt: |\n      Be terse.\n  reviewer:\n    model: opus\n    prompt: file:prompts/reviewer.md\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "agents.coder"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:21.948175Z\", \"reason\": null, \"change\": \"6720e14c-f71b-4ba4-98a4-2230c6a0be49\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.prompt\", \"old\": null, \"new\": \"You write code.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:21.948175Z\", \"reason\": null, \"change\": \"6720e14c-f71b-4ba4-98a4-2230c6a0be49\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:21.952499Z\", \"reason\": \"multi-file set\", \"change\": \"918ceec1-86ff-45f9-a71a-2fccc588a4d4\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.prompt\", \"old\": \"You write code.\\n\", \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:21.952499Z\", \"reason\": \"multi-file set\", \"change\": \"918ceec1-86ff-45f9-a71a-2fccc588a4d4\"}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.reviewer",
+            "{model: haiku, prompt: 42}",
+            "--reason",
+            "should fail on second file"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# team config\nagents:\n  coder:\n    model: sonnet\n    prompt: |\n      Be terse.\n  reviewer:\n    model: haiku\n    prompt: 42\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "agents.reviewer"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:21.948175Z\", \"reason\": null, \"change\": \"6720e14c-f71b-4ba4-98a4-2230c6a0be49\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.reviewer.prompt\", \"old\": null, \"new\": \"Review carefully.\\r\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:21.948175Z\", \"reason\": null, \"change\": \"6720e14c-f71b-4ba4-98a4-2230c6a0be49\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"agents.reviewer.model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:23.028397Z\", \"reason\": \"should fail on second file\", \"change\": \"f6817197-1923-4b42-8303-97d447909ae5\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"agents.reviewer.prompt\", \"old\": \"Review carefully.\\r\\n\", \"new\": 42, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:23.028397Z\", \"reason\": \"should fail on second file\", \"change\": \"f6817197-1923-4b42-8303-97d447909ae5\"}\n"
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "agents",
+            "--sources"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "coder:\n  model: sonnet # from .troupe/troupe.yml\n  prompt: | # from .troupe/troupe.yml\n    Be terse.\nreviewer:\n  model: haiku # from .troupe/troupe.yml\n  prompt: 42 # from .troupe/troupe.yml\n"
+        }
+      ]
+    },
+    {
+      "outcome": "4",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.coder",
+            "{model: sonnet, prompt: \"Be terse.\\n\"}",
+            "--reason",
+            "multi-file set"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/prompts/coder.md": "Be terse.\n",
+            ".troupe/troupe.yml": "# team config\nagents:\n  coder:\n    model: sonnet # main model\n    prompt: file:prompts/coder.md\n  reviewer:\n    model: opus\n    prompt: file:prompts/reviewer.md\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "agents.coder"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:25.183033Z\", \"reason\": null, \"change\": \"aa315808-d8c8-447f-8bca-891512b518aa\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.prompt\", \"old\": null, \"new\": \"You write code.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:25.183033Z\", \"reason\": null, \"change\": \"aa315808-d8c8-447f-8bca-891512b518aa\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:25.183265Z\", \"reason\": \"multi-file set\", \"change\": \"d18ce7c3-8765-49da-a88a-611ab201dd44\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.prompt\", \"old\": \"You write code.\\n\", \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:25.183265Z\", \"reason\": \"multi-file set\", \"change\": \"d18ce7c3-8765-49da-a88a-611ab201dd44\"}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.reviewer",
+            "{model: haiku, prompt: 42}",
+            "--reason",
+            "should fail on second file"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: write refused: /theatre/.troupe/prompts/reviewer.md: a text include can only be set to a string\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "agents.reviewer"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:25.183033Z\", \"reason\": null, \"change\": \"aa315808-d8c8-447f-8bca-891512b518aa\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.reviewer.prompt\", \"old\": null, \"new\": \"Review carefully.\\r\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:25.183033Z\", \"reason\": null, \"change\": \"aa315808-d8c8-447f-8bca-891512b518aa\"}\n"
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "agents",
+            "--sources"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "coder:\n  model: sonnet # from .troupe/troupe.yml\n  prompt: | # from .troupe/prompts/coder.md\n    Be terse.\nreviewer:\n  model: opus # from .troupe/troupe.yml\n  prompt: \"Review carefully.\\r\\n\" # from .troupe/prompts/reviewer.md\n"
+        }
+      ]
+    },
+    {
+      "outcome": "5",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.coder",
+            "{model: sonnet, prompt: \"Be terse.\\n\"}",
+            "--reason",
+            "multi-file set"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/prompts/coder.md": "Be terse.\n",
+            ".troupe/troupe.yml": "# team config\nagents:\n  coder:\n    model: sonnet # main model\n    prompt: file:prompts/coder.md\n  reviewer:\n    model: opus\n    prompt: file:prompts/reviewer.md\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "agents.coder"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:27.893781Z\", \"reason\": null, \"change\": \"d4fd6ed1-e9c9-4271-b673-7ea31dcb16d6\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.prompt\", \"old\": null, \"new\": \"You write code.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:27.893781Z\", \"reason\": null, \"change\": \"d4fd6ed1-e9c9-4271-b673-7ea31dcb16d6\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:27.896160Z\", \"reason\": \"multi-file set\", \"change\": \"deff4ce1-56f7-4102-a86c-1525b055c7f6\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.prompt\", \"old\": \"You write code.\\n\", \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:27.896160Z\", \"reason\": \"multi-file set\", \"change\": \"deff4ce1-56f7-4102-a86c-1525b055c7f6\"}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.reviewer",
+            "{model: haiku, prompt: 42}",
+            "--reason",
+            "should fail on second file"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: agents.reviewer.prompt: text include .troupe/prompts/reviewer.md can only be set to a string\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "agents.reviewer"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:27.893781Z\", \"reason\": null, \"change\": \"d4fd6ed1-e9c9-4271-b673-7ea31dcb16d6\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.reviewer.prompt\", \"old\": null, \"new\": \"Review carefully.\\r\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:27.893781Z\", \"reason\": null, \"change\": \"d4fd6ed1-e9c9-4271-b673-7ea31dcb16d6\"}\n"
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "agents",
+            "--sources"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "coder:\n  model: sonnet # from .troupe/troupe.yml\n  prompt: | # from .troupe/prompts/coder.md\n    Be terse.\nreviewer:\n  model: opus # from .troupe/troupe.yml\n  prompt: | # from .troupe/prompts/reviewer.md\n    Review carefully.\n"
+        }
+      ]
+    },
+    {
+      "outcome": "6",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.coder",
+            "{model: sonnet, prompt: \"Be terse.\\n\"}",
+            "--reason",
+            "multi-file set"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# team config\nagents:\n  coder:\n    model: sonnet\n    prompt: |\n      Be terse.\n  reviewer:\n    model: opus\n    prompt: file:prompts/reviewer.md\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "agents.coder"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"agents.coder.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:30.834134Z\", \"reason\": null, \"change\": \"d4fe3468-1d2d-4487-b043-a4f26bf98a11\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"agents.coder.prompt\", \"old\": null, \"new\": \"You write code.\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:30.834134Z\", \"reason\": null, \"change\": \"d4fe3468-1d2d-4487-b043-a4f26bf98a11\"}\n{\"seq\": 5, \"op\": \"set\", \"path\": \"agents.coder.model\", \"old\": \"opus\", \"new\": \"sonnet\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:30.838898Z\", \"reason\": \"multi-file set\", \"change\": \"9c48e4ad-b1f4-4b4b-992f-42a76b4882d9\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"agents.coder.prompt\", \"old\": \"You write code.\\n\", \"new\": \"Be terse.\\n\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:30.838898Z\", \"reason\": \"multi-file set\", \"change\": \"9c48e4ad-b1f4-4b4b-992f-42a76b4882d9\"}\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "agents.reviewer",
+            "{model: haiku, prompt: 42}",
+            "--reason",
+            "should fail on second file"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "# team config\nagents:\n  coder:\n    model: sonnet\n    prompt: |\n      Be terse.\n  reviewer:\n    model: haiku\n    prompt: 42\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "history",
+            "agents.reviewer"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "{\"seq\": 3, \"op\": \"import\", \"path\": \"agents.reviewer.model\", \"old\": null, \"new\": \"opus\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:30.834134Z\", \"reason\": null, \"change\": \"d4fe3468-1d2d-4487-b043-a4f26bf98a11\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"agents.reviewer.prompt\", \"old\": null, \"new\": \"Review carefully.\\r\\n\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-10T08:46:30.834134Z\", \"reason\": null, \"change\": \"d4fe3468-1d2d-4487-b043-a4f26bf98a11\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"agents.reviewer.model\", \"old\": \"opus\", \"new\": \"haiku\", \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:32.083562Z\", \"reason\": \"should fail on second file\", \"change\": \"04fd7652-71df-4d80-b71b-1ac6540ab2bf\"}\n{\"seq\": 8, \"op\": \"set\", \"path\": \"agents.reviewer.prompt\", \"old\": \"Review carefully.\\r\\n\", \"new\": 42, \"actor\": {\"kind\": \"human\", \"id\": \"owner\"}, \"via\": \"cli\", \"at\": \"2026-10-10T08:46:32.083562Z\", \"reason\": \"should fail on second file\", \"change\": \"04fd7652-71df-4d80-b71b-1ac6540ab2bf\"}\n"
+        },
+        {
+          "args": [
+            "config",
+            "show",
+            "agents",
+            "--sources"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "coder:\n  model: sonnet # from .troupe/troupe.yml\n  prompt: | # from .troupe/troupe.yml\n    Be terse.\nreviewer:\n  model: haiku # from .troupe/troupe.yml\n  prompt: 42 # from .troupe/troupe.yml\n"
+        }
+      ]
+    }
+  ],
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder",
+          "{model: sonnet, prompt: \"Be terse.\\n\"}",
+          "--reason",
+          "multi-file set"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "agents.coder"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.reviewer",
+          "{model: haiku, prompt: 42}",
+          "--reason",
+          "should fail on second file"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "agents.reviewer"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/prompts/coder.md": "You write code.\n",
+      ".troupe/prompts/reviewer.md": "Review carefully.\r\n",
+      ".troupe/troupe.yml": "# team config\nagents:\n  coder:\n    model: opus  # main model\n    prompt: file:prompts/coder.md\n  reviewer:\n    model: opus\n    prompt: file:prompts/reviewer.md\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/prompts/coder.md",
+      ".troupe/prompts/reviewer.md"
+    ]
+  }
+}

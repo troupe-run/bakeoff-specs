@@ -1,0 +1,2279 @@
+diff --git a/README.md b/README.md
+index c40050a..6da5b24 100644
+--- a/README.md
++++ b/README.md
+@@ -6,7 +6,8 @@ includes. This package provides `troupe config`, which reads and changes that co
+ disturbing the hand-written files, and records every change as an event.
+ 
+ ```sh
+-uv run troupe config show PATH          [--theatre DIR]   # print a scalar setting
++uv run troupe config get PATH           [--theatre DIR]   # print a scalar setting
++uv run troupe config show [PATH] [--sources] [--theatre DIR]   # print a setting or a section as YAML
+ uv run troupe config set PATH VALUE     [--theatre DIR]   # change it in the file that holds it
+ uv run troupe config history [PATH]     [--theatre DIR]   # list changes as JSON Lines
+ uv run troupe config watch              [--theatre DIR]   # record hand edits as they happen
+@@ -15,6 +16,15 @@ uv run troupe config watch              [--theatre DIR]   # record hand edits as
+ - `PATH` is dotted (`agents.coder.model`); a digit segment indexes a list (`tools.0`).
+ - `VALUE` is one YAML 1.2 flow node: `0.2`, `true`, `null`, `abc`, `"0.2"`, `{a: 1}`, `[a, b]`,
+   `"line one\nline two\n"`.
++- `show` prints a section (or, without `PATH`, the whole configuration) as YAML with every include
++  resolved — text includes as literal blocks. `--sources` adds `# from <file>` to each value, naming
++  the file it lives in, relative to the theatre:
++
++  ```sh
++  $ uv run troupe config show agents --sources
++  coder:
++    model: sonnet # from .troupe/agents/coder.yaml
++  ```
+ - `set` changes only the bytes of the value: comments, quoting, indentation and layout elsewhere
+   stay exactly as written. Every edit is re-read and checked before the file is replaced; if it
+   cannot be written safely, nothing changes and the command exits 3.
+@@ -31,7 +41,7 @@ uv run troupe config watch              [--theatre DIR]   # record hand edits as
+ | 2 | usage error |
+ | 3 | write refused (no file changed) |
+ | 4 | configuration cannot be loaded |
+-| 5 | path not found, or the wrong kind of node for the command |
++| 5 | path not found, or the wrong kind of node for the command (e.g. `get` of a section) |
+ 
+ ## Development
+ 
+@@ -44,4 +54,4 @@ uv run ruff check . && uv run ruff format --check .
+ 
+ Specification, design decisions and task list: [`spec/001-config-load-show-set/`](spec/001-config-load-show-set/)
+ (load, show, set, history) and [`spec/002-config-file-sync/`](spec/002-config-file-sync/) (sync with
+-files, watch).
++files, watch) and [`spec/003-config-get-show/`](spec/003-config-get-show/) (get, show as YAML).
+diff --git a/spec/001-config-load-show-set/contracts/cli.md b/spec/001-config-load-show-set/contracts/cli.md
+index e88999d..5e7679d 100644
+--- a/spec/001-config-load-show-set/contracts/cli.md
++++ b/spec/001-config-load-show-set/contracts/cli.md
+@@ -1,5 +1,8 @@
+ # CLI Contract: `troupe config` (Step 1)
+ 
++> Step 3: `show PATH` below is now `get PATH`; `show` prints sections as YAML — see
++> `spec/003-config-get-show/contracts/cli.md`.
++
+ The product owner's contract (quoted in `spec.md` input) is normative; this file fixes the command
+ surface the implementation exposes and the exact output shapes tests check.
+ 
+diff --git a/spec/001-config-load-show-set/spec.md b/spec/001-config-load-show-set/spec.md
+index 5046387..a2f971b 100644
+--- a/spec/001-config-load-show-set/spec.md
++++ b/spec/001-config-load-show-set/spec.md
+@@ -185,6 +185,7 @@ then `config history` and `config history <path>`, and compare the JSON Lines ou
+ 
+ - **FR-015**: `config show PATH` MUST print the scalar at PATH per FR-006 (a text include prints as
+   its text). A mapping or list at PATH, or a missing PATH, MUST produce exit 5.
++  *(Replaced by step 3: this behaviour is now `get PATH`; see `spec/003-config-get-show/spec.md`.)*
+ 
+ **set — where the change is written**
+ 
+diff --git a/spec/002-config-file-sync/contracts/cli.md b/spec/002-config-file-sync/contracts/cli.md
+index 0db08b9..1770652 100644
+--- a/spec/002-config-file-sync/contracts/cli.md
++++ b/spec/002-config-file-sync/contracts/cli.md
+@@ -34,7 +34,8 @@ the current directory (spec D-11).
+ 
+ | Command | Imports a never-imported theatre | Reconciles first | Then |
+ |---|---|---|---|
+-| `show` | yes | yes | prints the value |
++| `get` (step 3) | yes | yes | prints the value |
++| `show` | yes | yes | prints the value (step 3: or a section as YAML) |
+ | `set` | yes | yes | writes and records its own events |
+ | `watch` | yes | yes, then within 2 s of each change | — |
+ | `history` | yes | **no** | prints recorded events |
+diff --git a/spec/003-config-get-show/checklists/requirements.md b/spec/003-config-get-show/checklists/requirements.md
+new file mode 100644
+index 0000000..6fe56bb
+--- /dev/null
++++ b/spec/003-config-get-show/checklists/requirements.md
+@@ -0,0 +1,43 @@
++# Specification Quality Checklist: troupe configuration — `get` for values, `show` for anything (Step 3)
++
++**Purpose**: Validate specification completeness and quality before proceeding to planning
++**Created**: 2026-10-03
++**Feature**: [spec.md](../spec.md)
++
++## Content Quality
++
++- [x] No implementation details (languages, frameworks, APIs)
++- [x] Focused on user value and business needs
++- [x] Written for non-technical stakeholders
++- [x] All mandatory sections completed
++
++## Requirement Completeness
++
++- [x] No [NEEDS CLARIFICATION] markers remain
++- [x] Requirements are testable and unambiguous
++- [x] Success criteria are measurable
++- [x] Success criteria are technology-agnostic (no implementation details)
++- [x] All acceptance scenarios are defined
++- [x] Edge cases are identified
++- [x] Scope is clearly bounded
++- [x] Dependencies and assumptions identified
++
++## Feature Readiness
++
++- [x] All functional requirements have clear acceptance criteria
++- [x] User scenarios cover primary flows
++- [x] Feature meets measurable outcomes defined in Success Criteria
++- [x] No implementation details leak into specification
++
++## Notes
++
++- The technical terms in the spec (YAML, literal block, chomping indicator, stdout/stderr, exit
++  codes) are the user-facing vocabulary of the CLI and its output format, fixed by the contract.
++  FR-224's "Python's `repr()`" restates step 1 FR-006, which the contract references ("as `show` did
++  in step 1").
++- Open points the contract leaves to the implementer are resolved and recorded as D-20 … D-26
++  (Principle V). The least obvious is D-23 (`show SCALAR --sources` prints the scalar as annotated
++  YAML); D-24 records that CRLF text includes read back with `\n` from the YAML view.
++- Step 1 FR-015 is explicitly replaced; existing `show` tests and docs must move to `get` in the same
++  change (Principle VI).
++- Validation passed on the first iteration.
+diff --git a/spec/003-config-get-show/contracts/cli.md b/spec/003-config-get-show/contracts/cli.md
+new file mode 100644
+index 0000000..aa3540b
+--- /dev/null
++++ b/spec/003-config-get-show/contracts/cli.md
+@@ -0,0 +1,69 @@
++# CLI Contract: `troupe config` (Step 3 changes)
++
++Step 1 (`spec/001-config-load-show-set/contracts/cli.md`) and step 2
++(`spec/002-config-file-sync/contracts/cli.md`) stay in force, except that step 1's `show PATH` is
++replaced by `get PATH` and the new `show` below.
++
++## Invocation
++
++```text
++uv run troupe config get  PATH                 [--theatre DIR]
++uv run troupe config show [PATH] [--sources]   [--theatre DIR]
++```
++
++Options may appear before or after PATH. `get` without PATH, `get --sources`, an extra positional, or
++an unknown option → exit 2.
++
++## Output
++
++| Command | Node at PATH | stdout |
++|---|---|---|
++| `get PATH` | scalar / text include | the value per step 1 FR-006 |
++| `get PATH` | mapping / list | nothing; exit 5; stderr `troupe: error: PATH: is a mapping, not a scalar; use \`troupe config show PATH\` to print it` (or `a list`) |
++| `show PATH` | scalar / text include | same as `get PATH` |
++| `show [PATH]` | mapping / list / omitted (whole configuration) | block-style YAML (below) |
++| `show PATH --sources` | scalar / text include | the scalar as one YAML node + ` # from <file>` (spec D-23) |
++| `show [PATH] --sources` | mapping / list / omitted | the same YAML, each scalar line + ` # from <file>` |
++
++### YAML layout (spec FR-220 – FR-225, D-21)
++
++```yaml
++model:
++  temperature: 0.2 # from .troupe/troupe.yml
++  name: opus # from .troupe/troupe.yml
++agents:
++  coder:
++    model: sonnet # from .troupe/agents/coder.yaml
++    tools:
++      - git # from .troupe/agents/coder.yaml
++    steps:
++      - name: a # from .troupe/agents/coder.yaml
++        run: x # from .troupe/agents/coder.yaml
++    extra: {}
++prompt: | # from .troupe/prompts/system.md
++  Be terse.
++  No jokes.
++```
++
++(The same output without `--sources` has no `# from` comments.)
++
++- 2-space indentation; lists indented under their key; collections in list items use the compact form.
++- Strings: plain if that reads back as the same string, else `'single'`, else `"double"`.
++- Text includes and other multi-line strings: literal blocks (`|`, `|-`, `|+`, with indentation
++  indicator when the first line starts with a space); the comment goes on the header line.
++- `true`/`false`, `null`, decimal integers, floats as `repr()` with `.inf`, `-.inf`, `.nan`.
++- Empty collection: `{}` / `[]`, no comment. Empty configuration: `{}`.
++- `<file>`: the file's real path relative to the theatre directory's real path, `/` separators.
++
++## Exit codes
++
++Unchanged: 0 success; 2 usage; 4 configuration cannot be loaded; 5 path not found / wrong kind of node.
++
++## Side effects
++
++| Command | Imports a never-imported theatre | Reconciles first | Writes configuration files |
++|---|---|---|---|
++| `get` | yes | yes | no |
++| `show` | yes | yes | no |
++
++`set`, `history` and `watch` are unchanged.
+diff --git a/spec/003-config-get-show/data-model.md b/spec/003-config-get-show/data-model.md
+new file mode 100644
+index 0000000..7d1f99e
+--- /dev/null
++++ b/spec/003-config-get-show/data-model.md
+@@ -0,0 +1,35 @@
++# Data Model: troupe configuration — Step 3
++
++Step 1 and step 2 data models are unchanged: no event type, stored field or file is added. `get` and
++`show` read the located tree that every command already loads, after the usual import/reconcile.
++
++## Located tree (existing, newly read for sources)
++
++| Node | Value shown | Source file (`--sources`) |
++|---|---|---|
++| `LocatedScalar` | `value` (typed scalar) | `file.path` — the file the scalar is written in (main file or YAML include) |
++| `TextInclude` | `target.text` (CRLF → LF in YAML view, spec D-24) | `target.path` — the included text file |
++| `LocatedMapping` | entries in document order | — (not a scalar) |
++| `LocatedSequence` | items in order | — (not a scalar) |
++
++An empty YAML include is a null `LocatedScalar` whose `file` is the included file (research G-6).
++
++## View line (transient, `config/view.py`)
++
++`show`'s output is a list of lines; each line is `(text, source)` where `source` is the
++`SourceFile` of the scalar the line holds, or `None` for lines that hold no scalar (keys opening a
++collection, literal-block content lines). With `--sources`, a line with a source is printed as
++`text + " # from " + source_label(source)`; other lines are printed as `text`. Every line ends `\n`.
++
++## Source label
++
++`source_label(theatre, file)`: `file.path` relative to `theatre.resolve()`, `/` separators, `..`
++segments for files outside the theatre (spec D-22, research G-4).
++
++## Validation rules
++
++- PATH resolution and its errors are step 1's `resolve` (exit 5).
++- `get`: node must be `LocatedScalar` or `TextInclude`, else exit 5 with the `config show` hint.
++- `show`: any node; PATH optional (root mapping when omitted).
++- Read-back invariant (FR-214): parsing `show`'s output (with or without `--sources`) by YAML 1.2
++  core-schema rules gives the configuration at PATH, except CRLF in text includes.
+diff --git a/spec/003-config-get-show/plan.md b/spec/003-config-get-show/plan.md
+new file mode 100644
+index 0000000..2e0db30
+--- /dev/null
++++ b/spec/003-config-get-show/plan.md
+@@ -0,0 +1,126 @@
++# Implementation Plan: troupe configuration — `get` for values, `show` for anything (Step 3)
++
++**Branch**: `main` (spec dir `003-config-get-show`) | **Date**: 2026-10-03 | **Spec**: [spec.md](spec.md)
++
++**Input**: Feature specification from `spec/003-config-get-show/spec.md`
++
++## Summary
++
++Rename step 1's `show` to `get`, with a hint to use `config show` when PATH is a mapping or list
++(research G-1). Add a new `show [PATH] [--sources]` that prints scalars like `get` and collections
++(or the whole configuration) as block-style YAML, written by a new `config/view.py` that walks the
++located tree the loader already builds. Each scalar line carries its source file, which `--sources`
++appends as ` # from <file>` (G-2, G-4). Scalar and literal-block spelling reuse `edit/render.py`
++(G-3). Both commands import and reconcile first, like every command except `history`, and write no
++configuration file.
++
++## Technical Context
++
++**Language/Version**: Python 3.12+ (managed with `uv`)
++
++**Primary Dependencies**: unchanged — `eventsourcing` (SQLite), `ruamel.yaml` (used for reading only;
++`show`'s YAML is written by our own renderer, research G-2). No new dependency.
++
++**Storage**: unchanged (`<theatre>/.troupe/events.sqlite3`, lock file).
++
++**Testing**: pytest; end-to-end tests drive the real CLI on real theatres and compare stdout
++byte-for-byte; read-back tests parse `show` output with ruamel (safe loader) and compare it with the
++configuration; file snapshots prove nothing is written.
++
++**Target Platform**: macOS and Linux
++
++**Project Type**: CLI (single Python package, `src/` layout)
++
++**Performance Goals**: none (constitution).
++
++**Constraints**: byte-exact output layout (spec FR-220 – FR-234); `get` output identical to step 1
++`show`; `mypy --strict` and ruff clean.
++
++**Scale/Scope**: one new subcommand (`get`), one changed subcommand (`show`), one new module.
++
++No NEEDS CLARIFICATION remains: every technical point is resolved in [research.md](research.md).
++
++## Constitution Check
++
++*GATE: Must pass before Phase 0 research. Re-checked after Phase 1 design (below).*
++
++| Principle / constraint | How the plan satisfies it | Status |
++|---|---|---|
++| I. User's files are sacred | `get` and `show` only read configuration files; tests compare the theatre's bytes before and after (SC-204). Errors name the path or file (existing `resolve`/load errors; the new `get` message names PATH). | PASS |
++| II. Tests that prove behaviour | Every FR maps to an e2e test with exact expected stdout on real theatres (main file, nested YAML includes, text includes, outside-theatre include, CRLF, empty collections, quoting); read-back tests prove FR-214; existing step 1 `show` tests move to `get` so they keep proving SC-201. | PASS |
++| III. Done means verified | Gates in [quickstart.md](quickstart.md) — pytest, `mypy --strict`, ruff — run and shown. | PASS |
++| IV. One decision, one place | `show` layout and indentation step: `view.py`; scalar spelling, literal blocks: existing `render.py`; source label: `view.source_label`; "what every command does first": existing `open_theatre`; the `get` hint wording: one constant/function in `commands.py`. | PASS |
++| V. Deliver what was asked | Every contract bullet maps to FRs (FR-200 – FR-240); open choices recorded (spec D-20 – D-26, research G-1 – G-7). D-22 was revised during planning (resolved paths) and the spec updated. | PASS |
++| VI. Traceability | Spec states step 1 FR-015 is replaced; README and step 1 contract references to `show PATH` updated in the same change as the code; code comments at `view.py` and the `get` hint cite the spec. | PASS |
++| Tech constraints | Python 3.12+/uv; `uv run troupe config get|show`; `eventsourcing` store unchanged; config location unchanged; macOS/Linux; no perf work. | PASS |
++
++## Project Structure
++
++### Documentation (this feature)
++
++```text
++spec/003-config-get-show/
++├── plan.md              # This file
++├── research.md          # Phase 0 output
++├── data-model.md        # Phase 1 output
++├── quickstart.md        # Phase 1 output
++├── contracts/cli.md     # Phase 1 output
++└── tasks.md             # Phase 2 output (/method-command)
++```
++
++### Source Code (repository root)
++
++```text
++src/troupe/
++├── cli.py                     # + `get PATH`; `show [PATH] [--sources]`
++└── config/
++    ├── view.py                # NEW: render(node, theatre, sources) -> str; source_label (G-2, G-4)
++    └── commands.py            # show → get (+ `config show` hint); new show(); both via open_theatre(reconcile=True)
++tests/
++├── e2e/
++│   ├── test_get.py            # moved from test_show.py: scalar printing, includes, CRLF text, non-ASCII
++│   ├── test_get_errors.py     # moved from test_show_errors.py; + mapping/list → 5 with `config show`
++│   ├── test_get_import.py     # moved from test_show_import.py (+ get reconciles)
++│   ├── test_show.py           # NEW content: scalars like get; sections/whole config as exact YAML
++│   ├── test_show_sources.py   # --sources: main/nested/text/outside-theatre includes, scalar, empty
++│   ├── test_show_readback.py  # show output parses back to the configuration
++│   └── test_usage.py          # + get/show usage errors
++└── unit/
++    └── test_view.py           # layout rules: quoting, literal chomping/indicator, compact items, {} []
++```
++
++**Structure Decision**: Keep the existing layout. The YAML view is a new decision (spec D-21) and
++gets its own module; `render.py` stays the single place for scalar spelling.
++
++## Design overview
++
++1. **`commands.get(theatre, path_text)`**: exactly step 1 `show`, with the collection error
++   `f"{path}: is {kind}, not a scalar; use `troupe config show {path}` to print it"` (FR-202).
++2. **`commands.show(theatre, path_text | None, sources)`**: parse PATH if given; under `theatre_lock`,
++   `open_theatre(reconcile=True)`; `node = resolve(root, path)` or `root`; if not `sources` and the
++   node is a scalar/text include → `format_scalar(node.value)`; else
++   `view.render(node, theatre, sources)`.
++3. **`view.render`**: walk the tree producing `(text, source | None)` lines (data-model "View line"):
++   - mapping: for each entry, key spelled by `render_key(key, PLAIN, False)`; scalar value → one line
++     `key: spelled` with source; literal → `key: |…` header with source, content lines without;
++     empty collection → `key: {}`/`key: []`; non-empty collection → `key:` then children at
++     `column + STEP`.
++   - list: items `- …` the same way; non-empty collection items in compact form.
++   - top-level scalar (only with `--sources`): spelled alone; literal content at column 2.
++   - empty root mapping → `{}`.
++   Join with ` # from <label>` where sources are requested; each line + `\n`.
++4. **CLI**: `get` subparser with required PATH; `show` with optional PATH and `--sources`.
++5. **Docs**: README command table (`get`, `show [PATH] [--sources]`); note in step 1 contract that
++   `show PATH` is superseded by step 3.
++
++## Post-design Constitution Check
++
++Re-evaluated after writing research.md, data-model.md, contracts/cli.md and quickstart.md: all rows
++above remain PASS. `view.py` repeats the block layout shape that `render_block` uses for `set`, but
++with different inputs (located nodes with sources) and a different decision behind it (spec D-21 vs
++step 1 FR-029); research G-2 records why sharing it would couple the read-only view to the write
++path. No violation; Complexity Tracking is empty.
++
++## Complexity Tracking
++
++No constitution violations to justify.
+diff --git a/spec/003-config-get-show/quickstart.md b/spec/003-config-get-show/quickstart.md
+new file mode 100644
+index 0000000..d6470ee
+--- /dev/null
++++ b/spec/003-config-get-show/quickstart.md
+@@ -0,0 +1,62 @@
++# Quickstart / validation guide — Step 3
++
++Run from the repository root. Prerequisites: `uv` and Python 3.12+.
++
++## Quality gates (Principle III)
++
++```sh
++uv sync
++uv run pytest
++uv run mypy --strict src tests
++uv run ruff check . && uv run ruff format --check .
++```
++
++All must pass, with output shown, before the work is reported done.
++
++## Scenario theatre
++
++```sh
++T=$(mktemp -d); mkdir -p "$T/.troupe/agents" "$T/.troupe/prompts"
++cat > "$T/.troupe/troupe.yml" <<'EOF'
++# main
++model: {temperature: 0.2, name: 'opus'}
++agents:
++  coder: file:agents/coder.yaml
++prompt: file:prompts/system.md
++EOF
++printf 'model: sonnet\ntools: [git, shell]\n' > "$T/.troupe/agents/coder.yaml"
++printf 'Be terse.\nNo jokes.\n' > "$T/.troupe/prompts/system.md"
++```
++
++## `get`
++
++```sh
++uv run troupe config get model.temperature --theatre "$T"   # 0.2
++uv run troupe config get prompt --theatre "$T"              # Be terse.\nNo jokes.\n exactly
++uv run troupe config get agents.coder --theatre "$T"; echo $?   # 5; stderr mentions `config show`
++```
++
++## `show`
++
++```sh
++uv run troupe config show model.temperature --theatre "$T"  # 0.2 (same as get)
++uv run troupe config show --theatre "$T"                    # spec User Story 2, scenario 2
++uv run troupe config show agents.coder --theatre "$T"       # model: sonnet / tools: / - git / - shell
++uv run troupe config show --sources --theatre "$T"          # spec User Story 3, scenario 1
++uv run troupe config show model.temperature --sources --theatre "$T"  # 0.2 # from .troupe/troupe.yml
++```
++
++Expected layouts: [contracts/cli.md](contracts/cli.md).
++
++## Read-back check
++
++```sh
++uv run troupe config show --sources --theatre "$T" \
++  | uv run python -c 'import sys; from ruamel.yaml import YAML; print(YAML(typ="safe").load(sys.stdin))'
++# {'model': {'temperature': 0.2, 'name': 'opus'}, 'agents': {...}, 'prompt': 'Be terse.\nNo jokes.\n'}
++```
++
++## Files untouched
++
++`get` and `show` must leave every file under `$T` byte-identical (the test suite compares
++`Theatre.snapshot()` before and after).
+diff --git a/spec/003-config-get-show/research.md b/spec/003-config-get-show/research.md
+new file mode 100644
+index 0000000..2886785
+--- /dev/null
++++ b/spec/003-config-get-show/research.md
+@@ -0,0 +1,94 @@
++# Research: troupe configuration — `get` for values, `show` for anything (Step 3)
++
++Each entry gives the decision, why it was made, and what else was considered. Behaviour choices the
++contract leaves open are in `spec.md` (D-20 … D-26). This file records the technical choices for step 3
++(G-1 … G-7). Step 1 research (R-*, B-*) and step 2 research (S-*) stay in force. Library behaviour was
++checked against the locked ruamel.yaml on 2026-10-03.
++
++## G-1 `get` is step 1's `show`, renamed; `show` dispatches on the node kind
++
++- **Decision**: Rename `commands.show` to `commands.get` with one change: the "not a scalar" error
++  message becomes `PATH: is a mapping, not a scalar; use \`troupe config show PATH\` to print it`
++  (FR-202). The new `commands.show(theatre, path_text | None, sources)` loads the same way, resolves
++  PATH (or takes the root), and then:
++  - scalar or text include, no `--sources` → `format_scalar` (identical to `get`, FR-211);
++  - otherwise → `view.render(node, sources=…)` (G-2).
++- **Rationale**: `get` keeps one code path with step 1 (SC-201). Both commands share
++  `open_theatre(reconcile=True)` and `resolve` (Principle IV); `get` is listed with the reconciling
++  commands (D-20, step 2 FR-120) simply by calling `open_theatre` the same way.
++- **Alternatives**: Keep `show` as the scalar printer and add a flag — contradicts the contract.
++
++## G-2 A new module `config/view.py` renders the located tree as YAML
++
++- **Decision**: `view.py` walks the located tree (`LocatedMapping`, `LocatedSequence`,
++  `LocatedScalar`, `TextInclude`) directly — the tree already holds resolved includes and, for each
++  scalar, the `SourceFile` it was read from — and produces output lines. For every scalar it yields
++  the line text plus the source path, and appends ` # from <file>` when `sources` is set.
++  Spelling of scalars and keys reuses `edit/render.py`: `render_inline(NewScalar(value), PLAIN,
++  in_flow=False)` (plain → single → double, FR-222; `.inf`/`.nan` via `canonical_plain`, FR-224),
++  `render_key`, and `render_literal(value, column, STEP)` for literal blocks (chomping and
++  indentation indicator, FR-223).
++- **Layout**: `STEP = 2` (the `show` indentation, one constant in `view.py`). Mapping entries at
++  `column`; a non-empty collection value goes on following lines at `column + 2`; list items at
++  `column` as `- `; a non-empty collection that is a list item starts on the item's line (compact
++  form, `- k: v` / `- - x`); empty collections as `{}` / `[]` inline. This is the same layout as
++  `render_block` (step 1 B-6), but `show` cannot use `render_block` because it needs per-scalar
++  source comments and must force text includes into literal blocks even when single-line.
++- **Rationale**: The located tree is the one place that knows where each value comes from; converting
++  it to plain values first would lose the sources. Reusing render.py's scalar functions keeps one
++  definition of "how a scalar is spelled" (Principle IV). `show`'s layout is a decision of its own
++  (spec D-21), so it lives in its own module; `set`'s new-collection layout follows the edited file's
++  indentation and is not changed.
++- **Alternatives**: Serialise with ruamel's emitter — its quoting, literal-block and comment placement
++  rules differ from ours (e.g. it cannot put a comment on a block-scalar header), and tests would pin
++  library behaviour. Parametrise `render_block` with callbacks — couples `set`'s write-back code (the
++  most delicate in the project) to a read-only view.
++
++## G-3 Text includes and multi-line strings
++
++- **Decision**: A `TextInclude` is always written as a literal block. Its text has `\r\n` replaced by
++  `\n` first (spec D-24). If the result is still not `literal_representable` (other control
++  characters — out of contract), it falls back to double quotes so the output stays valid YAML. Any
++  other string containing `\n` and `literal_representable` is a literal block; otherwise it is written
++  inline (double-quoted).
++- **Rationale**: Contract "text includes as literal blocks"; spec FR-223 and D-24. `render_literal`
++  already chooses `|`, `|-`, `|+` and the indentation indicator.
++- **Verified**: ruamel reads `| # from x\n  Be terse.\n` as `"Be terse.\n"`, `a: |2 # c\n   lead\n`
++  as `{"a": " lead\n"}`, `- k: |2\n     lead\n` as `[{"k": " lead\n"}]`, and top-level
++  `|2- # c\n   lead\n` as `" lead"` — comments on block headers are allowed, and content at
++  `column + 2` with indicator `2` reads back correctly at every depth including the top level.
++
++## G-4 Source file paths
++
++- **Decision**: `source_label(theatre, file) = os.path.relpath(file.path, theatre.resolve())` with
++  `os.sep` replaced by `/` (one function in `view.py`). `file.path` is already the resolved path the
++  loader keys files by; for a `TextInclude` the file is `target`, for every other scalar it is
++  `LocatedScalar.file`.
++- **Rationale**: Spec FR-232 – FR-233, D-22. `relpath` produces `..` segments for files outside the
++  theatre and never a leading `./`. Resolving the theatre handles theatres reached through linked
++  directories.
++- **Alternatives**: Keep the include path as written — would need the loader to carry a second path
++  per file, and would disagree with the file `set` writes to.
++
++## G-5 `show SCALAR --sources`
++
++- **Decision**: `view.render` of a scalar node produces one top-level YAML node: inline spelling (or a
++  literal block header with content at column 2) plus the comment (spec D-23, FR-234). Without
++  `--sources`, `show` never calls `view` for a scalar (G-1).
++- **Verified**: `0.2 # from x\n` reads back as `0.2`; `'0.2' # c\n` as `"0.2"` (G-3 covers literals).
++
++## G-6 Empty configuration and empty YAML includes
++
++- **Decision**: An empty main file is a `LocatedMapping` with no entries → `{}\n`. An empty YAML include
++  embeds as a null scalar sourced from the included file → `key: null # from <that file>`.
++- **Rationale**: Follows the loader's existing representation (step 1 D-5); FR-214 holds.
++
++## G-7 CLI
++
++- **Decision**: argparse subparsers: `get PATH` (required); `show [PATH]` (`nargs="?"`) with
++  `--sources` (`store_true`). argparse accepts options before or after the positional (D-26) and
++  rejects `get --sources` as an unrecognised argument (exit 2 via the existing usage-error path).
++- **Tests**: step 1 `show` tests that print scalars move to `get` (and one representative set is kept
++  on `show` to prove FR-211); tests that expected `show` of a collection to exit 5 become `get` tests
++  (with the `config show` hint) and `show` YAML tests. Usage tests: `get` with no PATH,
++  `get --sources`, `show a b`.
+diff --git a/spec/003-config-get-show/spec.md b/spec/003-config-get-show/spec.md
+new file mode 100644
+index 0000000..0dcbfd0
+--- /dev/null
++++ b/spec/003-config-get-show/spec.md
+@@ -0,0 +1,353 @@
++# Feature Specification: troupe configuration — `get` for values, `show` for anything (Step 3)
++
++**Feature Branch**: `main` (delivery is on `main`; no feature branch)
++
++**Created**: 2026-10-03
++
++**Status**: Draft
++
++**Input**: User description: "Step 3 — `get` for values, `show` for anything. We are changing
++`show`. From now on `troupe config get PATH` prints a single value — what `show` used to do.
++`troupe config show [PATH]` prints either a value or a whole section as YAML, and with `--sources`
++says which file each value comes from. Contract sections added: get and show (replaces "show PATH
++(step 1 and 2)")."
++
++The product owner's contract section **`get` and `show`** is normative and replaces step 1's section
++*show PATH (step 1 and 2)*. Every other step 1 and step 2 section stays in force (see
++`spec/001-config-load-show-set/spec.md` and `spec/002-config-file-sync/spec.md`). The requirements
++below restate the contract so each rule is individually testable; where this spec and the contract
++appear to differ, the contract wins and this spec is corrected. Choices the contract leaves open are
++recorded under **Decisions on open points**.
++
++Contract text (verbatim):
++
++> - `get PATH` prints a scalar as `show` did in step 1. A mapping or list → exit 5, and stderr mentions
++>   `config show`.
++> - `show [PATH]` prints a scalar like `get`; a mapping or list is printed as YAML (block style, includes
++>   resolved, text includes as literal blocks). `PATH` omitted → the whole configuration.
++> - `show [PATH] --sources` prints the same YAML with an end-of-line comment `# from <file>` on every line that
++>   holds a scalar, where `<file>` is the file the scalar comes from, relative to the theatre directory, with
++>   `/` separators. A text include's value comes from the included file.
++
++**What step 3 changes from steps 1 and 2.** Step 1 FR-015 (`show PATH` prints a scalar; a mapping or
++list → exit 5) is replaced: that behaviour moves to `get` (FR-200 – FR-203), and `show` now prints
++mappings and lists too (FR-210 – FR-226). Step 2's rule that every command except `history`
++reconciles first applies to `get` as well (FR-204).
++
++## User Scenarios & Testing *(mandatory)*
++
++The users are developers who keep a theatre's troupe configuration in hand-written YAML under
++`<theatre>/.troupe/`, split across several files with `file:` includes. They want one value for a
++script, or a readable view of a whole section with includes resolved — and, when a value is
++surprising, to know which file to open to change it.
++
++### User Story 1 - Read one value for a script (Priority: P1)
++
++A developer (or a script) asks for one setting with `get` and gets exactly the printed value, the
++same way `show` printed it in step 1. Asking `get` for a whole section is refused with a hint to use
++`show`.
++
++**Why this priority**: `get` takes over the step 1 behaviour every existing user and script relies
++on; without it the change to `show` would break them.
++
++**Independent Test**: Create a theatre with a main file, a YAML include and a text include; run
++`uv run troupe config get <path> --theatre <dir>` for scalars in each file and for a mapping and a
++list; compare stdout, stderr and the exit code with the expected results.
++
++**Acceptance Scenarios**:
++
++1. **Given** `troupe.yml` contains `model: {temperature: 0.2}`, **When** the user runs
++   `config get model.temperature`, **Then** stdout is `0.2\n` and the exit code is 0.
++2. **Given** `agents: {coder: "file:agents/coder.yaml"}` where `agents/coder.yaml` contains
++   `model: opus`, **When** the user runs `config get agents.coder.model`, **Then** stdout is `opus\n`.
++3. **Given** `prompt: file:prompts/system.md` where `system.md` contains `Be terse.\n`, **When** the
++   user runs `config get prompt`, **Then** stdout is exactly `Be terse.\n`.
++4. **Given** `tools: [git, shell]`, **When** the user runs `config get tools`, **Then** the exit code
++   is 5, stdout is empty, and stderr names `tools` and mentions `config show`.
++5. **Given** `agents.coder` is a mapping, **When** the user runs `config get agents.coder`, **Then**
++   the exit code is 5, stdout is empty, and stderr names `agents.coder` and mentions `config show`.
++6. **Given** no key `missing`, **When** the user runs `config get missing`, **Then** the exit code is 5
++   and stderr names `missing`.
++7. **Given** a hand edit `a: 1` → `a: 2` not yet recorded, **When** the user runs `config get a`,
++   **Then** stdout is `2\n` and history gains the reconcile `set` event for `a`.
++
++---
++
++### User Story 2 - See a section, or the whole configuration, as YAML (Priority: P1)
++
++A developer runs `show` on a section (or on nothing, for everything) and sees it as one readable YAML
++document with every include resolved in place — YAML includes expanded, text includes shown as
++literal blocks — so they can read the effective configuration without opening several files.
++
++**Why this priority**: It is the new capability the step asks for; it replaces having to open and
++mentally merge every included file.
++
++**Independent Test**: For fixtures with nested includes, text includes, lists of mappings, and
++values that need quoting, run `config show [PATH]` and compare stdout byte-for-byte with the expected
++YAML; also parse the output with YAML 1.2 core-schema rules and check it equals the configuration at
++PATH.
++
++**Acceptance Scenarios**:
++
++1. **Given** `model: {temperature: 0.2}`, **When** the user runs `config show model.temperature`,
++   **Then** stdout is `0.2\n` (same as `get`).
++2. **Given** `troupe.yml`:
++   ```yaml
++   # main
++   model: {temperature: 0.2, name: 'opus'}
++   agents:
++     coder: file:agents/coder.yaml
++   prompt: file:prompts/system.md
++   ```
++   with `agents/coder.yaml` = `model: sonnet\ntools: [git, shell]\n` and `prompts/system.md` =
++   `Be terse.\nNo jokes.\n`, **When** the user runs `config show`, **Then** stdout is exactly:
++   ```yaml
++   model:
++     temperature: 0.2
++     name: opus
++   agents:
++     coder:
++       model: sonnet
++       tools:
++         - git
++         - shell
++   prompt: |
++     Be terse.
++     No jokes.
++   ```
++3. **Given** the same theatre, **When** the user runs `config show agents.coder`, **Then** stdout is
++   exactly `model: sonnet\ntools:\n  - git\n  - shell\n`.
++4. **Given** `tools: [git, shell]`, **When** the user runs `config show tools`, **Then** stdout is
++   exactly `- git\n- shell\n`.
++5. **Given** `steps: [{name: a, run: x}, {name: b}]`, **When** the user runs `config show steps`,
++   **Then** stdout is exactly `- name: a\n  run: x\n- name: b\n`.
++6. **Given** string values `"0.2"`, `"true"`, `"null"`, `""` and `"a: b"`, **When** they are shown in a
++   section, **Then** each is quoted so that the YAML reads back as the same string, and plain strings
++   such as `opus` or `yes` are not quoted.
++7. **Given** a missing path, or a path that descends through a scalar, **When** the user runs
++   `config show` on it, **Then** the exit code is 5 and stderr names the path.
++
++---
++
++### User Story 3 - Find out which file a value comes from (Priority: P2)
++
++A developer sees a surprising value and runs `show --sources` to learn which file holds each value,
++so they know which file to open and edit.
++
++**Why this priority**: It builds on User Story 2's output and answers a frequent but secondary
++question once includes spread a configuration over many files.
++
++**Independent Test**: For a theatre with values in the main file, nested YAML includes, a text
++include, and an include outside `.troupe/`, run `config show [PATH] --sources` and compare stdout
++byte-for-byte with the expected annotated YAML.
++
++**Acceptance Scenarios**:
++
++1. **Given** the theatre of User Story 2 scenario 2, **When** the user runs `config show --sources`,
++   **Then** stdout is exactly:
++   ```yaml
++   model:
++     temperature: 0.2 # from .troupe/troupe.yml
++     name: opus # from .troupe/troupe.yml
++   agents:
++     coder:
++       model: sonnet # from .troupe/agents/coder.yaml
++       tools:
++         - git # from .troupe/agents/coder.yaml
++         - shell # from .troupe/agents/coder.yaml
++   prompt: | # from .troupe/prompts/system.md
++     Be terse.
++     No jokes.
++   ```
++2. **Given** the same theatre, **When** the user runs `config show agents --sources`, **Then** stdout
++   is the `agents` section alone, annotated the same way.
++3. **Given** `shared: file:../common/shared.yaml` (a file outside `.troupe/`, in `<theatre>/common/`),
++   **When** the user runs `config show shared --sources`, **Then** each scalar line ends with
++   `# from common/shared.yaml`.
++4. **Given** `model: {temperature: 0.2}`, **When** the user runs
++   `config show model.temperature --sources`, **Then** stdout is `0.2 # from .troupe/troupe.yml\n`
++   (D-23).
++5. **Given** the output of any `show --sources`, **When** it is parsed as YAML, **Then** it reads back
++   as the same values as `show` without `--sources` (the comments add nothing to the values).
++
++---
++
++### Edge Cases
++
++- **Empty configuration** (empty main file): `show` prints `{}\n`; `show --sources` prints `{}\n`
++  (no scalar, so no comment).
++- **Empty mapping or list inside a section**: printed in flow form, `{}` or `[]`, the only exception to
++  block style (block style cannot write an empty collection); not annotated, as it is not a scalar.
++- **Multi-line string that is not a text include** (e.g. a literal block in a YAML file): printed as a
++  literal block, like a text include; with `--sources` it is annotated with the YAML file it is in.
++- **Text include whose text has no trailing newline, more than one trailing newline, or is empty**:
++  still a literal block, with the chomping indicator that reads back as the exact text (`|-`, `|+`).
++- **Text include whose first line starts with a space**: literal block with an explicit indentation
++  indicator so it reads back as the exact text.
++- **Text include with CRLF line endings**: shown as a literal block of its lines (D-24).
++- **Text include whose text starts with `file:`**: shown as its text; it is not followed again.
++- **Single-line text include** (`Be terse.\n`): in a section, still a literal block (`prompt: |`);
++  as a scalar at PATH, `show` and `get` print the text exactly.
++- **Text include shown as a scalar with `--sources`**: printed as a top-level literal block with the
++  comment on its header line (D-23).
++- **Same file included twice** (two keys pointing to the same YAML file): both sections are shown in
++  full, each annotated with that file.
++- **Include target reached through `..` or a symbolic link**: `<file>` is the file's real location
++  made relative to the theatre directory's real location (D-22).
++- **Keys that need quoting** (e.g. a key `true` or `"a: b"`): quoted like string values.
++- **Floats** `inf`, `-inf`, `nan` inside a section: written `.inf`, `-.inf`, `.nan` so they read back
++  as floats; as a scalar at PATH they print as `get` prints them (step 1 FR-006).
++- **Hand edits not yet recorded**: `get` and `show` reconcile first (step 2), so they print the files
++  as they are.
++- **Usage errors**: `get` with no PATH, `get`/`show` with an extra argument, `get --sources`, an
++  unknown option → exit 2, stdout empty, nothing recorded.
++- **Unloadable configuration**: `get` and `show` exit 4 naming the file, as every command.
++
++## Requirements *(mandatory)*
++
++### Functional Requirements
++
++Numbering continues from step 2 (step 1 FR-001 – FR-044 and step 2 FR-100 – FR-131 remain in force,
++except FR-015, which this section replaces) at FR-200.
++
++**get**
++
++- **FR-200**: The tool MUST provide `troupe config get PATH [--theatre <dir>]`; PATH is required.
++- **FR-201**: `get` MUST print the scalar at PATH exactly as step 1 printed it with `show` (step 1
++  FR-006; a text include prints as its text).
++- **FR-202**: A mapping or list at PATH MUST produce exit 5 with empty stdout and a stderr message that
++  names PATH and contains the text `config show`.
++- **FR-203**: A missing PATH, or a PATH that descends through a scalar, uses a digit segment on a
++  mapping or a non-digit segment on a list, MUST produce exit 5 naming PATH (as step 1 `show` did).
++- **FR-204**: `get` and `show` MUST import a never-imported theatre and reconcile before printing,
++  like every command except `history` (step 2 FR-120); they MUST NOT write any configuration file.
++
++**show — what is printed**
++
++- **FR-210**: The tool MUST provide `troupe config show [PATH] [--sources] [--theatre <dir>]`.
++- **FR-211**: When PATH holds a scalar and `--sources` is not given, `show` MUST print exactly what
++  `get PATH` prints.
++- **FR-212**: When PATH holds a mapping or list, `show` MUST print that node as a YAML document; with
++  PATH omitted it MUST print the whole configuration. Errors for PATH are as for `get` (FR-203).
++- **FR-213**: The YAML MUST have every include resolved: a YAML include appears as its content,
++  embedded in place; a text include appears as its text. Nothing from the source files other than
++  values is reproduced (no comments, no `file:` strings, no original quoting or layout).
++- **FR-214**: Parsing the printed YAML with YAML 1.2 core-schema rules MUST give exactly the
++  configuration at PATH — same keys, same order, same values and types — except as stated in D-24.
++
++**show — how the YAML is written**
++
++- **FR-220**: Mappings and lists MUST be written in block style, indented 2 spaces per level; a list
++  nested under a key is indented 2 spaces under that key (`tools:\n  - git`); a mapping or list that is
++  a list item starts on the item's line (`- name: a\n  run: x`, `- - x`). Empty mappings and lists are
++  written `{}` and `[]`.
++- **FR-221**: Keys MUST appear in document order of the files, with includes expanded in place.
++- **FR-222**: A string MUST be written plain when the plain form reads back as the same string;
++  otherwise single-quoted when that can represent it; otherwise double-quoted (escaping only `\\`, `\"`
++  and control characters, as step 1 FR-028). Keys follow the same rule.
++- **FR-223**: A text include's value, and any other string containing a line break, MUST be written as
++  a literal block scalar (`|`), with the chomping indicator (`|` one trailing newline, `|-` none, `|+`
++  more than one) and, when needed, the indentation indicator that make it read back as the same text.
++  Its content lines are indented 2 spaces deeper than the key or `-` it belongs to.
++- **FR-224**: Other scalars MUST be written as: booleans `true`/`false`; null `null`; integers in
++  decimal; floats as Python's `repr()` except infinities and NaN as `.inf`, `-.inf`, `.nan`.
++- **FR-225**: Every line of output MUST end with `\n`; there MUST be no document markers (`---`,
++  `...`) and no trailing blank line beyond what a `|+` block's own content requires.
++
++**show --sources**
++
++- **FR-230**: With `--sources`, `show` MUST print the same YAML as without it, except that every line
++  that holds a scalar ends with ` # from <file>` (one space, then the comment). Lines that hold no
++  scalar (a key that opens a mapping or list, `{}`, `[]`) get no comment.
++- **FR-231**: For a literal block scalar the comment MUST go on its header line (`prompt: | # from …`);
++  its content lines MUST NOT be changed.
++- **FR-232**: `<file>` MUST be the file the scalar is written in: the main configuration file for its
++  own values, the included YAML file for values inside it (at any include depth), and, for a text
++  include, the included text file.
++- **FR-233**: `<file>` MUST be given relative to the theatre directory, with `/` separators and no
++  leading `./`; e.g. `.troupe/troupe.yml`, `.troupe/agents/coder.yaml`.
++- **FR-234**: When PATH holds a scalar, `show PATH --sources` MUST print that scalar as a one-node YAML
++  document written per FR-222 – FR-224 with the comment per FR-230 – FR-231 (D-23).
++
++**Errors**
++
++- **FR-240**: Exit codes and messages follow step 1 (FR-007, FR-008): usage errors exit 2,
++  unloadable configuration exits 4, path errors exit 5; on any non-zero exit stdout is empty and
++  stderr names the path or file.
++
++### Decisions on open points
++
++Recorded per Constitution Principles V and VI.
++
++- **D-20 `get` and `show` reconcile.** The step 2 contract says every command except `history`
++  reconciles first; `get` is such a command, so it reconciles too. Reason: `get` must answer from the
++  files as they are, and the hand edit is then recorded once.
++- **D-21 YAML layout.** The contract fixes block style and literal blocks but not the layout. Chosen:
++  2-space indentation, lists indented under their key, minimal quoting, document order (FR-220 –
++  FR-225). Reason: it matches the default indentation step 1 writes (FR-029), is the most common
++  hand-written layout, and reads back as the same values (FR-214), so the output can be pasted into a
++  configuration file. Empty collections use `{}` / `[]` because block style cannot express them.
++- **D-22 `<file>` for files outside the theatre directory, and symbolic links.** "Relative to the
++  theatre directory" is taken literally: a file outside it is given with `..` segments (e.g.
++  `../shared/x.yaml`). Both the file and the theatre directory are taken at their real locations
++  (symbolic links resolved) before the relative path is computed. Reason: the tool already identifies
++  every loaded file by its real location (that is how include cycles are detected, step 1 FR-012), so
++  `<file>` names the file that actually holds the value — the one a `set` would write — and a theatre
++  reached through a linked directory (e.g. `/tmp` on macOS) still gives `.troupe/troupe.yml`, not a
++  path full of `..`.
++- **D-23 `--sources` on a scalar.** The contract says `show` prints a scalar like `get`, and that
++  `--sources` prints "the same YAML" annotated, but does not say what `--sources` does for a scalar.
++  Chosen: the scalar is printed as YAML with the comment (e.g. `0.2 # from .troupe/troupe.yml`; a text
++  include as `| # from .troupe/prompts/system.md` followed by its indented lines). Reason: the user
++  asked where the value comes from, and `--sources` must answer that; printing it as YAML is the only
++  form that can carry the comment and is consistent with section output. Without `--sources`, a scalar
++  is printed exactly as `get` prints it, as the contract requires.
++- **D-24 CRLF text includes.** A YAML literal block cannot hold a carriage return; YAML reads its line
++  breaks as `\n`. Chosen: a text include is always shown as a literal block, as the contract requires,
++  with each of its lines as a content line; a CRLF file therefore reads back with `\n` line breaks.
++  `get` (and `show` on the scalar) still print the text exactly. Reason: the contract's "text includes
++  as literal blocks" is explicit, and `show`'s YAML is for reading; `get` remains the exact form.
++  This is the only exception to FR-214. Other non-printable characters in a text include that a
++  literal block cannot hold are out of contract.
++- **D-25 Separator before the comment.** One space before `#`, the minimum YAML requires. Reason:
++  the contract gives no column; one space is predictable for scripts and readers alike.
++- **D-26 `--sources` placement.** `--sources` is an option of `show` only; it may appear before or
++  after PATH. On `get` it is a usage error (exit 2).
++
++### Out of contract
++
++In addition to the step 1 and step 2 lists: text includes containing control characters other than
++tab and line breaks; non-UTF-8 text; configurations with keys that are not strings (e.g. digit-only
++keys, as step 1).
++
++### Key Entities
++
++- **Scalar / leaf**: as in step 1; the unit `get` prints and `--sources` annotates.
++- **Section**: a mapping or list at PATH (or the whole configuration), printed by `show` as YAML.
++- **Source file**: for each scalar, the file it is written in (main file, YAML include, or text include
++  target), named relative to the theatre directory.
++
++## Success Criteria *(mandatory)*
++
++### Measurable Outcomes
++
++- **SC-201**: Every step 1 `show PATH` scenario that printed a scalar gives the same stdout, stderr and
++  exit code under `get`; every step 1 scenario that refused a mapping or list exits 5 under `get` with
++  `config show` in stderr.
++- **SC-202**: For fixtures covering the main file, YAML includes nested at least two levels deep, text
++  includes, lists of mappings, nested lists, empty collections and strings that need quoting, `show`'s
++  output equals the expected bytes exactly, and reading it back gives the configuration at PATH
++  (100% of fixtures; CRLF per D-24).
++- **SC-203**: In `show --sources` output, 100% of lines that hold a scalar carry the correct
++  `# from <file>`, and no other line carries one.
++- **SC-204**: `get` and `show` never change any configuration file (bytes compared before and after)
++  and record only reconcile and import events.
++
++## Assumptions
++
++- Step 1 and step 2 contract sections, requirements and decisions remain in force, except step 1
++  FR-015, which this step replaces.
++- Existing tests and documentation for step 1 `show PATH` are moved to `get` or updated to the new
++  `show` behaviour in the same change (Principle VI).
++- `history`, `set` and `watch` are unchanged.
++- Users run on macOS or Linux; configurations are small.
+diff --git a/spec/003-config-get-show/tasks.md b/spec/003-config-get-show/tasks.md
+new file mode 100644
+index 0000000..12e2ee8
+--- /dev/null
++++ b/spec/003-config-get-show/tasks.md
+@@ -0,0 +1,196 @@
++---
++
++description: "Task list for troupe configuration — get for values, show for anything (Step 3)"
++---
++
++# Tasks: troupe configuration — `get` for values, `show` for anything (Step 3)
++
++**Input**: Design documents from `spec/003-config-get-show/`
++
++**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/cli.md, quickstart.md
++
++**Tests**: MANDATORY. Constitution Principle II overrides the template's "tests are optional". Every
++behaviour gets a test that fails when it breaks. End-to-end tests run the real `troupe` CLI (the
++`theatre` fixture in `tests/conftest.py`: `theatre.write(relpath, text)` writes under `.troupe/`,
++`theatre.config(*args)` runs `troupe config … --theatre <root>` and returns `Result(code, out, err)`,
++`theatre.snapshot()` gives every file's bytes, `assert_failed(result, code, mention)` checks a
++non-zero exit with empty stdout and `mention` in stderr). Compare stdout byte-for-byte with the
++expected text. Write each test task's tests first and see them fail. Once the implementation passes,
++break the behaviour deliberately once to confirm the test catches it.
++
++**Organization**: Grouped by user story (spec.md): US1 read one value with `get` (P1), US2 see a
++section or the whole configuration as YAML with `show` (P1), US3 `show --sources` (P2).
++
++## Format: `[ID] [P?] [Story] Description`
++
++- **[P]**: Can run in parallel (different files, no dependency on an incomplete task)
++- **[Story]**: US1 / US2 / US3
++
++## Path Conventions
++
++Single project: `src/troupe/`, `tests/` at the repository root (plan.md → Project Structure).
++
++---
++
++## Phase 1: Setup (Shared Infrastructure)
++
++**Purpose**: Confirm the step 2 baseline is green before changing anything.
++
++- [X] T001 Run the gates on the unchanged tree and record the output: `uv sync`, `uv run pytest`, `uv run mypy --strict src tests`, `uv run ruff check .`, `uv run ruff format --check .`; if anything fails, stop and report it before step 3 work begins
++
++---
++
++## Phase 2: Foundational (Blocking Prerequisites)
++
++**Purpose**: None needed. `get` reuses step 1's `show` code path, and `show` adds a new module. Both rely only on the existing `open_theatre`, `resolve`, `format_scalar` and `edit/render.py`. User stories start directly after Phase 1.
++
++---
++
++## Phase 3: User Story 1 - Read one value for a script (Priority: P1) 🎯 MVP
++
++**Goal**: `troupe config get PATH` prints a scalar exactly as step 1's `show` did; a mapping or list → exit 5 with stderr mentioning `config show` (FR-200 – FR-204).
++
++**Independent Test**: Run `config get` on scalars in the main file, nested YAML includes and text includes, and on a mapping and a list; compare stdout, stderr and the exit code (spec US1 scenarios 1–7).
++
++### Tests for User Story 1
++
++- [X] T002 [P] [US1] Create `tests/e2e/test_get.py` by moving `tests/e2e/test_show.py`'s current content (`git mv`, then edit): rename the parametrised test to `test_get_prints_the_scalar` and every `config("show", …)` / `run("config", "show", …)` call to `get`; keep all cases (all scalar kinds, folded/literal/stripped, `tools.1`, nested include `agents.coder.skills.1`, text include with CRLF bytes exact, text include without final newline, empty text include → `\n`, non-ASCII, CRLF config file). Update the module docstring to "`get PATH` prints a scalar exactly as step 1's `show` did (spec FR-201, SC-201)"
++- [X] T003 [P] [US1] Create `tests/e2e/test_get_errors.py` by moving `tests/e2e/test_show_errors.py` (`git mv`): rename to `test_get_exits_5_naming_the_path`, call `get`; keep every path case and the snapshot check. Add `test_get_of_a_collection_mentions_config_show`, parametrised over `model` (mapping), `tools` (list) and `agents.coder` where `agents.coder` is a YAML include `file:c.yaml` containing `model: x` (mapping from an include): `assert_failed(result, 5, path)` and `"config show" in result.err` (FR-202). (Descending through a text include stays covered by the existing `prompt.x` case.)
++- [X] T004 [P] [US1] Create `tests/e2e/test_get_import.py` by moving `tests/e2e/test_show_import.py` (`git mv`) and switching both tests to `get` (first `get` imports; a failing `get` still imports). Add `test_get_reconciles_a_hand_edit_first` (FR-204, D-20): import with `config history`, write `a: 2` over `a: 1`, `config get a` prints `2\n`, and `theatre.history()[-1] == {"seq": 2, "op": "set", "path": "a", "old": 1, "new": 2}`
++- [X] T005 [US1] In `tests/e2e/test_usage.py` add usage cases for `get` (exit 2, stdout empty, nothing recorded): `("config", "get")` (no PATH), `("config", "get", "a", "extra")`, `("config", "get", "a", "--sources")` (D-26), `("config", "get", "a", "--bogus")`; change the existing case `("config", "show")` — which is now valid — to `("config", "get")` and keep `("config", "show", "a", "extra")` and `("config", "show", "a", "--bogus")`; switch the `--theatre`/cwd/`TROUPE_THEATRE` default tests to `get` (they test the default, not the subcommand). In `tests/e2e/test_error_messages.py` change the `("show", "l")` case (a list → 5) to `("get", "l")` and the `("show", "a..b")` usage case to `("get", "a..b")`; leave the other `show` scalar cases as they are (still valid)
++
++### Implementation for User Story 1
++
++- [X] T006 [US1] In `src/troupe/config/commands.py` rename `show` to `get` (keep the body: `ConfigPath.parse`, `with theatre_lock(theatre): open_theatre(theatre, reconcile=True)`, `resolve`, `format_scalar`). Add a module-level function `use_show_hint(path: ConfigPath, node: Located) -> str` returning `f"{path}: is {node_kind(node)}, not a scalar; use `troupe config show {path}` to print it"` (the one place the FR-202 wording lives; comment cites spec FR-202) and raise `PathError(use_show_hint(path, node))` for a `LocatedMapping`/`LocatedSequence`. Update the module docstring to list `get, show, set, history, watch`
++- [X] T007 [US1] In `src/troupe/cli.py` add the `get` subparser: `add("get", "print a setting's value").add_argument("path", metavar="PATH")`; dispatch `if args.subcommand == "get": return commands.get(theatre, args.path)`. Temporarily keep `show` dispatching to `commands.get` until T013 replaces it, so the existing `show` scalar tests stay green. Update the module docstring to `troupe config get|show|set|history|watch`
++- [X] T008 [US1] Run T002 – T005 and the full suite to green; deliberately change the hint to omit `config show` and confirm T003's new test fails; make `get` call `open_theatre(reconcile=False)` and confirm T004's reconcile test fails; restore. Commit ("why": `get` takes over step 1's scalar printing so `show` can print sections)
++
++**Checkpoint**: `get` is a drop-in for step 1's `show`.
++
++---
++
++## Phase 4: User Story 2 - See a section, or the whole configuration, as YAML (Priority: P1)
++
++**Goal**: `show [PATH]` prints a scalar like `get`; a mapping or list (or the whole configuration) as block-style YAML with includes resolved and text includes as literal blocks (FR-210 – FR-225).
++
++**Independent Test**: Run `config show [PATH]` on fixtures and compare stdout byte-for-byte with the expected YAML; parse the output back and compare with the configuration (spec US2 scenarios 1–7).
++
++### Tests for User Story 2
++
++- [X] T009 [P] [US2] Unit tests in `tests/unit/test_view.py` for `view.render(node, theatre, sources=False)`, building nodes with the real loader (`load(theatre_root)` on files written under `tmp_path/.troupe/`, then `commands.resolve`) — exact strings:
++  - flat mapping `a: 1\nb: x\n` → `"a: 1\nb: x\n"`;
++  - nested mapping (flow in the file) `model: {temperature: 0.2, name: 'opus'}` → `"model:\n  temperature: 0.2\n  name: opus\n"` (FR-220, original quoting dropped FR-213);
++  - list under key `tools: [git, shell]` → `"tools:\n  - git\n  - shell\n"`;
++  - list at the root of the view (`resolve` to `tools`) → `"- git\n- shell\n"`;
++  - list of mappings `steps: [{name: a, run: x}, {name: b}]` at `steps` → `"- name: a\n  run: x\n- name: b\n"` (compact form);
++  - nested list `m: [[x, y], [z]]` at `m` → `"- - x\n  - y\n- - z\n"`;
++  - empty collections `e: {}\nl: []\n` → `"e: {}\nl: []\n"`; empty main file → `"{}\n"` (FR-220, edge case);
++  - quoting (FR-222): string values `"0.2"`, `"true"`, `"null"`, `""`, `"a: b"`, `"- x"`, `" lead"`, `"it's: x"` each render quoted and `YAML(typ="safe").load` of the output gives back the same string; plain `opus`, `yes`, `on` render unquoted; a key `"true"` (quoted in the file) renders quoted;
++  - scalars (FR-224): `true`, `false`, `null`, `42`, `0x1F` → `31`, `1e3` → `1000.0`, `.inf` → `.inf`, `-.inf` → `-.inf`, `.nan` → `.nan`;
++  - literal blocks (FR-223): a block-scalar value `notes: |\n  one\n  two\n` → `"notes: |\n  one\n  two\n"`; a double-quoted `"x\ny"` → `"k: |-\n  x\n  y\n"`; value with two trailing newlines → `|+` and reads back exactly; first line starting with a space → `|2` header and reads back exactly; a literal inside a list-of-mappings item (`- k: |` content indented 4) reads back exactly;
++  - text include (FR-223, D-24): `p: file:p.md` with `p.md` = `Be terse.\n` → `"p: |\n  Be terse.\n"` (single-line still literal); `p.md` = `no newline` → `"p: |-\n  no newline\n"`; empty `p.md` → header `p: |-` and reads back as `""`; CRLF `p.md` = `a\r\nb\r\n` → `"p: |\n  a\n  b\n"`; a text whose content starts with `file:` is shown as text;
++  - YAML include embedded in place (FR-213): `agents: {coder: "file:agents/coder.yaml"}` with a nested include two levels deep → the included keys appear under `coder` at the right indentation, in document order (FR-221); an empty YAML include → `key: null`
++- [X] T010 [P] [US2] Rewrite `tests/e2e/test_show.py` (it was moved to `test_get.py` in T002) for the new `show`: (1) `test_show_prints_a_scalar_like_get` — parametrised over `model.temperature`, `prompt` (text include, CRLF bytes exact), `model.stripped`, `agents.coder.model`: `config show P` stdout equals `config get P` stdout and both exit 0 (FR-211); (2) `test_show_of_the_whole_configuration` — the exact fixture and expected output of spec US2 scenario 2 (comment, flow mapping with `'opus'`, YAML include, text include `Be terse.\nNo jokes.\n`) byte-for-byte; (3) `test_show_of_a_section` — `agents.coder` → `"model: sonnet\ntools:\n  - git\n  - shell\n"` (US2 scenario 3); (4) `test_show_of_a_list` — `tools` → `"- git\n- shell\n"`; (5) `test_show_of_a_list_of_mappings` — US2 scenario 5; (6) `test_show_errors_exit_5_naming_the_path` — `missing`, `model.name.x`, `tools.9`, `model.0`, `prompt.x` → `assert_failed(..., 5, path)` (FR-212); (7) `test_show_writes_no_file` — `theatre.snapshot()` equal before/after `show` and `show --sources` (SC-204); (8) `test_show_reconciles_first` — hand edit `a: 1 → 2` after import, `config show` prints `a: 2\n` and history gains `set a 1 → 2` (FR-204); (9) `test_show_of_an_empty_configuration` — empty `troupe.yml` → `{}\n`; (10) `test_show_accepts_path_after_or_before_options` — `config show --theatre <root> tools` works (D-26)
++- [X] T011 [P] [US2] Create `tests/e2e/test_show_readback.py`: for a rich fixture (main file with flow and block collections, every scalar type including `.inf`/`.nan`, strings needing each quoting style, a multi-line block value, a `|+` value, a leading-space literal, a two-level YAML include, a text include without final newline, an include outside `.troupe/` via `file:../shared/s.yaml`), parse `config show` stdout and `config show --sources` stdout with `ruamel.yaml.YAML(typ="safe").load` and assert both equal the plain value tree built from the loaded configuration (walk `load(root).root` → dict/list/scalars, using `TextInclude.value`) with type-exact comparison via `troupe.config.scalars.scalars_equal` (FR-214, SC-202); also for `config show agents` (a section); a CRLF text include is checked separately: its read-back equals the text with `\r\n` → `\n` (D-24)
++
++### Implementation for User Story 2
++
++- [X] T012 [US2] Create `src/troupe/config/view.py` (module docstring: "`show`'s YAML view of the located tree — spec FR-210 – FR-234, D-21; research G-2 explains why it does not reuse `render_block`"). Contents:
++  - `STEP = 2` (the indentation step of `show`'s YAML, spec D-21);
++  - `type Line = tuple[str, SourceFile | None]` — the text of a line and the file of the scalar it holds (None for lines holding no scalar: keys opening a collection, literal-block content lines, `{}`/`[]`);
++  - `_spell(node: LocatedScalar | TextInclude, column: int) -> tuple[str, list[str], SourceFile]`: the inline text (or literal header) to put after `key: ` / `- ` / at the top level, the following content lines (already indented to `column`), and the source file. `TextInclude` → text `node.target.text.replace("\r\n", "\n")`; if `literal_representable(text)` → `render_literal(text, column, STEP)` else `render_inline(NewScalar(text), PLAIN, in_flow=False)` (double-quoted fallback, research G-3); source `node.target`. `LocatedScalar` with a `str` value containing `\n` and `literal_representable` → `render_literal(value, column, STEP)`; otherwise `render_inline(NewScalar(value), PLAIN, in_flow=False)`; source `node.file`;
++  - `_mapping_lines(node: LocatedMapping, column: int) -> list[Line]` and `_sequence_lines(node: LocatedSequence, column: int) -> list[Line]` following research G-2's layout: keys spelled with `render_key(str(key.value), PLAIN, False)`; scalar values → `f"{pad}{key}: {inline}"` with the scalar's source, then literal content lines with None; empty collection → `f"{pad}{key}: {{}}"` / `[]` with None; non-empty collection → `f"{pad}{key}:"` with None then children at `column + STEP`; list items `f"{pad}- {inline}"`; a non-empty collection item → render its lines at `column + 2` and splice `- ` into the first line (compact form, `- k: v` / `- - x`), keeping the first line's source;
++  - `_node_lines(node: Located, column: int) -> list[Line]` dispatching on node kind; an empty root mapping (`not node.entries`) → `[("{}", None)]`; a top-level scalar → `[(inline, source), *content lines]` with literal content at column `STEP`;
++  - `source_label(theatre: Path, file: SourceFile) -> str` = `os.path.relpath(file.path, theatre.resolve()).replace(os.sep, "/")` (spec FR-233, D-22; research G-4);
++  - `render(node: Located, theatre: Path, *, sources: bool) -> str` joining lines with `"\n"` after each, appending `f" # from {source_label(theatre, src)}"` to lines whose source is not None when `sources` (FR-230, D-25)
++  Import `literal_representable`, `render_inline`, `render_key`, `render_literal`, `PLAIN` from `troupe.config.edit.render`; do not duplicate any scalar-spelling rule
++- [X] T013 [US2] In `src/troupe/config/commands.py` add `show(theatre: Path, path_text: str | None, *, sources: bool) -> str`: parse PATH if given (before the lock, so usage errors record nothing); `with theatre_lock(theatre): loaded, _ = open_theatre(theatre, reconcile=True)`; `node = loaded.root if path is None else resolve(loaded.root, path)`; if not `sources` and `node` is a `LocatedScalar` or `TextInclude` → `format_scalar(node.value)` (FR-211); else `view.render(node, theatre, sources=sources)`. In `src/troupe/cli.py` replace the `show` subparser with `show = add("show", "print a setting or a section as YAML")`, `show.add_argument("path", metavar="PATH", nargs="?")`, `show.add_argument("--sources", action="store_true", help="say which file each value comes from")`; dispatch `commands.show(theatre, args.path, sources=args.sources)`
++- [X] T014 [US2] Run T009 – T011 and the full suite (including the step 1/2 tests that still call `show` on scalars, e.g. `tests/e2e/test_reconcile.py`, `test_state.py`, `test_set_includes.py`, `test_load_errors.py`) to green; deliberately (a) make text includes use `render_inline` instead of a literal block and confirm T009/T010 fail, (b) drop the compact list-item form and confirm the list-of-mappings tests fail, (c) render `"0.2"` plain and confirm T011 fails; restore. Commit ("why": `show` prints whole sections with includes resolved)
++
++**Checkpoint**: `show` prints any node; `get` and `show` agree on scalars.
++
++---
++
++## Phase 5: User Story 3 - Find out which file a value comes from (Priority: P2)
++
++**Goal**: `show [PATH] --sources` annotates every scalar line with ` # from <file>` (FR-230 – FR-234).
++
++**Independent Test**: Run `config show [PATH] --sources` on a theatre with values in the main file, nested YAML includes, a text include and an include outside `.troupe/`; compare stdout byte-for-byte (spec US3 scenarios 1–5).
++
++### Tests for User Story 3
++
++- [X] T015 [P] [US3] Create `tests/e2e/test_show_sources.py`: (1) whole configuration — the exact fixture and output of spec US3 scenario 1 byte-for-byte (literal header `prompt: | # from .troupe/prompts/system.md`, content lines unannotated; `tools:` and `agents:`/`coder:` lines unannotated); (2) `show agents --sources` → only the `agents` section, annotated (US3 scenario 2); (3) include outside `.troupe/`: `shared: file:../common/shared.yaml` with `<root>/common/shared.yaml` = `k: v\n` → `"k: v # from common/shared.yaml\n"` for `show shared --sources` (FR-233, D-22); (4) two-level include (`troupe.yml` → `agents/coder.yaml` → `agents/limits.yaml`): leaves from `limits.yaml` say `# from .troupe/agents/limits.yaml` (FR-232); (5) scalar with `--sources`: `show model.temperature --sources` → `"0.2 # from .troupe/troupe.yml\n"`; a string `"0.2"` → `"'0.2' # from .troupe/troupe.yml\n"`; a text include `prompt` → `"| # from .troupe/prompts/system.md\n  Be terse.\n  No jokes.\n"` (FR-234, D-23); (6) empty collections and an empty configuration → no comment (`e: {}`, `{}\n`); (7) a list of mappings: `- name: a # from …` and `  run: x # from …` both annotated; (8) every line count: for the US3 fixture, the number of `# from` comments equals the number of scalar leaves (SC-203); (9) theatre passed through a symlinked directory (`os.symlink(root, tmp_path / "link")`, run with `--theatre <link>`) → labels are still `.troupe/...` (D-22); (10) `--sources` before PATH (`show --sources agents`) gives the same output (D-26)
++
++### Implementation for User Story 3
++
++- [X] T016 [US3] Verify `view.render(..., sources=True)` and `source_label` from T012 satisfy T015; fix any gap in `src/troupe/config/view.py` (e.g. the compact list-item splice must keep the first inner line's source; a top-level literal's header carries the source). Add a comment at `source_label` citing spec D-22 (real paths, why)
++- [X] T017 [US3] Run T015 to green; deliberately (a) return `file.path` of the `TextInclude.include` scalar (the including file) instead of `target` and confirm T015 (1) fails, (b) drop `.resolve()` on the theatre and confirm T015 (9) fails, (c) annotate the `tools:` line and confirm T015 (1)/(8) fail; restore. Commit ("why": show where each value lives so users know which file to edit)
++
++**Checkpoint**: all three stories work.
++
++---
++
++## Phase 6: Polish & Cross-Cutting Concerns
++
++- [X] T018 [P] Update `README.md`: replace the `show PATH` line with `uv run troupe config get PATH [--theatre DIR]   # print a scalar setting` and `uv run troupe config show [PATH] [--sources] [--theatre DIR]   # print a setting or section as YAML (--sources: which file each value is in)`; add a short paragraph with a `show --sources` example; change the exit-5 row to "path not found, or the wrong kind of node for the command (e.g. `get` of a section)"; link `spec/003-config-get-show/`
++- [X] T019 [P] Mark step 1's `show PATH` as superseded: in `spec/001-config-load-show-set/spec.md` FR-015 append "*(Replaced by step 3: this behaviour is now `get PATH`; see `spec/003-config-get-show/spec.md`.)*"; in `spec/001-config-load-show-set/contracts/cli.md` add a one-line note at the top that `show PATH` is now `get PATH` (step 3); in `spec/002-config-file-sync/contracts/cli.md` add `get` to the side-effects table (imports: yes, reconciles: yes)
++- [X] T020 Walk through `spec/003-config-get-show/quickstart.md` by hand and confirm each expected output (including the read-back check)
++- [X] T021 Run the full gates and show output: `uv run pytest`, `uv run mypy --strict src tests`, `uv run ruff check .`, `uv run ruff format --check .`; report any failure with its output. Commit polish ("why": docs and earlier specs agree with the new commands, Principle VI)
++
++---
++
++## Dependencies & Execution Order
++
++### Phase Dependencies
++
++- **Setup (Phase 1)** → user stories (no foundational work).
++- **US1 (Phase 3)**: independent; it frees the `show` name by moving step 1 tests and code to `get`.
++- **US2 (Phase 4)** depends on US1 (T002 moves the old `test_show.py` before T010 rewrites it; T006 renames the function before T013 adds the new `show`).
++- **US3 (Phase 5)** depends on US2 (T012's renderer carries the sources).
++- **Polish (Phase 6)** after all stories.
++
++### Within Each Story
++
++Tests first (see them fail) → implementation → run to green → deliberate-break check → commit with a message saying why.
++
++### Parallel Opportunities
++
++- US1: T002 ∥ T003 ∥ T004 (different files); T005 after them (touches shared usage cases); T006 → T007.
++- US2: T009 ∥ T010 ∥ T011; T012 → T013.
++- US3: T015 alone, then T016.
++- Polish: T018 ∥ T019.
++
++## Parallel Example: User Story 2
++
++```bash
++# After US1 is committed:
++Task: "Unit tests for view.render in tests/unit/test_view.py"         # T009
++Task: "E2E tests for the new show in tests/e2e/test_show.py"          # T010
++Task: "Read-back tests in tests/e2e/test_show_readback.py"            # T011
++```
++
++## Implementation Strategy
++
++### MVP First (User Story 1)
++
++1. Phase 1.
++2. Phase 3 (US1): `get` exists and behaves exactly as step 1's `show`.
++3. **Stop and validate** with T002 – T005 and the full suite.
++
++### Incremental Delivery
++
++1. US1 → commit.
++2. US2 → commit.
++3. US3 → commit.
++4. Polish → commit.
++
++## Notes
++
++- Every commit message says why the change was made (Principle VI).
++- Tests that call `show` on a scalar in step 1/2 files stay as they are: `show` still prints scalars exactly like `get` (FR-211), so they keep passing and also guard that rule.
++- Text include content containing control characters other than tab/line breaks, non-UTF-8 text and non-string keys are out of contract (spec); do not test them.
++
++## Phase 7: Convergence
++
++- [X] T022 Fix literal blocks whose text starts with whitespace-only lines: `show` of a text include `p.md` = `"    \nabc\n"` prints `p: |` / a 6-space line / `  abc`, which YAML rejects (a leading all-space line may not be more indented than the first content line). In `src/troupe/config/edit/render.py` make `needs_indent_indicator` return True when any leading line before the first line with non-space content is longer than zero spaces, or that first content line starts with a space; add unit tests in `tests/unit/test_view.py` (text include and plain multi-line string, nested in a mapping, in a list item and at the top level with `--sources`) asserting the output reads back exactly, and an e2e `set` case in the existing set block-scalar tests (`tests/e2e/test_set_block.py`) proving a `set` of such a value now writes a literal that reads back (or still refuses with exit 3 and no file change, whichever the verify step decides — assert the actual, documented outcome) per FR-214, FR-223 (partial)
++- [X] T023 Add an e2e test in `tests/e2e/test_show_sources.py` where two keys include the same YAML file (`a: file:s.yaml`, `b: file:s.yaml`, `s.yaml` = `k: 1`): `show --sources` prints both sections in full, each `k: 1 # from .troupe/s.yaml` per spec Edge Cases "Same file included twice" (missing)
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index eaa5b57..d12ab5e 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -1,4 +1,4 @@
+-"""Command-line entry point: `troupe config show|set|history`."""
++"""Command-line entry point: `troupe config get|show|set|history|watch`."""
+ 
+ import argparse
+ import os
+@@ -28,7 +28,10 @@ def _parser() -> argparse.ArgumentParser:
+         )
+         return sub
+ 
+-    add("show", "print a setting's value").add_argument("path", metavar="PATH")
++    add("get", "print a setting's value").add_argument("path", metavar="PATH")
++    show = add("show", "print a setting, or a section as YAML")
++    show.add_argument("path", metavar="PATH", nargs="?")
++    show.add_argument("--sources", action="store_true", help="say which file each value is in")
+     set_parser = add("set", "change a setting and write it back to its file")
+     set_parser.add_argument("path", metavar="PATH")
+     set_parser.add_argument("value", metavar="VALUE")
+@@ -64,8 +67,10 @@ def run(argv: Sequence[str]) -> str:
+     theatre = Path(args.theatre or os.environ.get(THEATRE_ENV) or ".")
+     if args.subcommand == "watch":
+         return commands.watch(theatre, theatre_display(args.theatre), _announce, _report)
++    if args.subcommand == "get":
++        return commands.get(theatre, args.path)
+     if args.subcommand == "show":
+-        return commands.show(theatre, args.path)
++        return commands.show(theatre, args.path, sources=args.sources)
+     if args.subcommand == "set":
+         return commands.set_value(theatre, args.path, args.value)
+     return commands.history(theatre, args.path)
+diff --git a/src/troupe/config/commands.py b/src/troupe/config/commands.py
+index 4c59c52..943eb16 100644
+--- a/src/troupe/config/commands.py
++++ b/src/troupe/config/commands.py
+@@ -1,4 +1,4 @@
+-"""The `troupe config` subcommands: show, set, history, watch."""
++"""The `troupe config` subcommands: get, show, set, history, watch."""
+ 
+ import json
+ import signal
+@@ -6,6 +6,7 @@ import threading
+ from collections.abc import Callable
+ from pathlib import Path
+ 
++from troupe.config import view
+ from troupe.config.edit.apply import apply_set
+ from troupe.config.leaves import leaves
+ from troupe.config.loader import Loaded, load
+@@ -14,7 +15,13 @@ from troupe.config.paths import ConfigPath, dotted_is_within, is_index
+ from troupe.config.scalars import format_scalar, parse_value
+ from troupe.config.store import ConfigStore
+ from troupe.config.sync import reconcile as reconcile_files
+-from troupe.config.tree import Located, LocatedMapping, LocatedSequence, TextInclude
++from troupe.config.tree import (
++    Located,
++    LocatedMapping,
++    LocatedScalar,
++    LocatedSequence,
++    TextInclude,
++)
+ from troupe.config.watch import run_watch
+ from troupe.errors import PathError
+ 
+@@ -80,16 +87,35 @@ def _parent(path: ConfigPath, depth: int) -> str:
+     return ConfigPath(path.segments[:depth]).dotted if depth else "the top level"
+ 
+ 
+-def show(theatre: Path, path_text: str) -> str:
++def use_show_hint(path: ConfigPath, node: Located) -> str:
++    """`get` refuses a mapping or list and points to `show`, which prints it (spec FR-202)."""
++    return (
++        f"{path}: is {node_kind(node)}, not a scalar; use `troupe config show {path}` to print it"
++    )
++
++
++def get(theatre: Path, path_text: str) -> str:
++    """Print the scalar at PATH, as step 1's `show` did (spec FR-200 to FR-204)."""
+     path = ConfigPath.parse(path_text)
+     with theatre_lock(theatre):
+         loaded, _ = open_theatre(theatre, reconcile=True)
+     node = resolve(loaded.root, path)
+     if isinstance(node, (LocatedMapping, LocatedSequence)):
+-        raise PathError(f"{path}: is {node_kind(node)}, not a scalar")
++        raise PathError(use_show_hint(path, node))
+     return format_scalar(node.value)
+ 
+ 
++def show(theatre: Path, path_text: str | None, *, sources: bool) -> str:
++    """Print a scalar like `get`, anything else as YAML (spec FR-210 to FR-234)."""
++    path = None if path_text is None else ConfigPath.parse(path_text)
++    with theatre_lock(theatre):
++        loaded, _ = open_theatre(theatre, reconcile=True)
++    node = loaded.root if path is None else resolve(loaded.root, path)
++    if not sources and isinstance(node, (LocatedScalar, TextInclude)):
++        return format_scalar(node.value)
++    return view.render(node, theatre, sources=sources)
++
++
+ def set_value(theatre: Path, path_text: str, value_text: str) -> str:
+     path = ConfigPath.parse(path_text)
+     value = parse_value(value_text)
+diff --git a/src/troupe/config/edit/render.py b/src/troupe/config/edit/render.py
+index 032ddc7..fe2b9ce 100644
+--- a/src/troupe/config/edit/render.py
++++ b/src/troupe/config/edit/render.py
+@@ -159,11 +159,14 @@ def block_content_lines(value: str, chomp: str) -> list[str]:
+ 
+ 
+ def needs_indent_indicator(value: str) -> bool:
+-    """A literal block whose first non-blank line starts with a space needs an explicit
+-    indentation indicator."""
++    """A literal block needs an explicit indentation indicator when its first non-blank line
++    starts with a space, or when a spaces-only line comes before it: YAML takes the indentation
++    from the first non-blank line and rejects a leading line indented further than that."""
+     for line in value.split("\n"):
+         if line.strip(" ") != "":
+             return line.startswith(" ")
++        if line:
++            return True
+     return False
+ 
+ 
+diff --git a/src/troupe/config/view.py b/src/troupe/config/view.py
+new file mode 100644
+index 0000000..305ee40
+--- /dev/null
++++ b/src/troupe/config/view.py
+@@ -0,0 +1,110 @@
++"""`show`'s YAML view of the located tree (spec FR-210 to FR-234, D-21).
++
++The view walks the tree the loader built, so every scalar still knows the file it was read from;
++`--sources` appends that file to the scalar's line. Scalar spelling (quoting, literal blocks) is
++`edit/render.py`'s; only the layout is decided here. It does not reuse `render_block`, which lays
++out new values for `set` (research G-2).
++"""
++
++import os
++from pathlib import Path
++
++from troupe.config.edit.render import (
++    PLAIN,
++    literal_representable,
++    render_inline,
++    render_key,
++    render_literal,
++)
++from troupe.config.files import SourceFile
++from troupe.config.scalars import NewScalar
++from troupe.config.tree import Located, LocatedMapping, LocatedScalar, LocatedSequence, TextInclude
++
++STEP = 2  # indentation of `show`'s YAML (spec D-21)
++SOURCE_COMMENT = " # from "  # one space before `#` (spec D-25)
++
++type Line = tuple[str, SourceFile | None]
++"""A line's text and the file of the scalar it holds; None when it holds no scalar."""
++
++
++def source_label(theatre: Path, file: SourceFile) -> str:
++    """`<file>` of `# from <file>`: relative to the theatre, `/` separators (spec FR-233).
++
++    Loaded files are known by their real path, so the theatre is taken at its real path too
++    (spec D-22): a theatre reached through a linked directory still gives `.troupe/...`.
++    """
++    return os.path.relpath(file.path, theatre.resolve()).replace(os.sep, "/")
++
++
++def _scalar(node: LocatedScalar | TextInclude, column: int) -> tuple[str, list[str], SourceFile]:
++    """What follows `key: ` or `- ` (inline text or a literal header), the literal's content
++    lines indented to `column`, and the file the value comes from."""
++    if isinstance(node, TextInclude):
++        # A literal block cannot hold CR; the text is shown as its lines (spec D-24).
++        text = node.target.text.replace("\r\n", "\n")
++        if literal_representable(text):
++            header, lines = render_literal(text, column, STEP)
++            return header, lines, node.target
++        return render_inline(NewScalar(text), PLAIN, in_flow=False), [], node.target
++    value = node.value
++    if isinstance(value, str) and "\n" in value and literal_representable(value):
++        header, lines = render_literal(value, column, STEP)
++        return header, lines, node.file
++    return render_inline(NewScalar(value), PLAIN, in_flow=False), [], node.file
++
++
++def _is_empty(node: Located) -> bool:
++    if isinstance(node, LocatedMapping):
++        return not node.entries
++    if isinstance(node, LocatedSequence):
++        return not node.items
++    return False
++
++
++def _after(lead: str, node: Located, column: int) -> list[Line]:
++    """Lines for `node` written after `lead` (`key:` or `-`) whose own entries go at `column`."""
++    if isinstance(node, (LocatedScalar, TextInclude)):
++        inline, content, source = _scalar(node, column)
++        return [(f"{lead} {inline}", source), *((line, None) for line in content)]
++    if _is_empty(node):
++        return [(f"{lead} {{}}" if isinstance(node, LocatedMapping) else f"{lead} []", None)]
++    return [(lead, None), *_collection(node, column)]
++
++
++def _collection(node: LocatedMapping | LocatedSequence, column: int) -> list[Line]:
++    pad = " " * column
++    lines: list[Line] = []
++    if isinstance(node, LocatedMapping):
++        for key, value in node.entries:
++            lead = f"{pad}{render_key(str(key.value), PLAIN, False)}:"
++            lines.extend(_after(lead, value, column + STEP))
++        return lines
++    for item in node.items:
++        if isinstance(item, (LocatedMapping, LocatedSequence)) and not _is_empty(item):
++            # Compact form: the item's first entry shares the `- ` line (`- k: v`, `- - x`).
++            nested = _collection(item, column + 2)
++            (first, source), rest = nested[0], nested[1:]
++            lines.append((f"{pad}- {first[column + 2 :]}", source))
++            lines.extend(rest)
++        else:
++            lines.extend(_after(f"{pad}-", item, column + STEP))
++    return lines
++
++
++def _lines(node: Located) -> list[Line]:
++    if isinstance(node, (LocatedScalar, TextInclude)):
++        inline, content, source = _scalar(node, STEP)
++        return [(inline, source), *((line, None) for line in content)]
++    if _is_empty(node):
++        return [("{}" if isinstance(node, LocatedMapping) else "[]", None)]
++    return _collection(node, 0)
++
++
++def render(node: Located, theatre: Path, *, sources: bool) -> str:
++    """`node` as a YAML document; with `sources`, each scalar line names its file (FR-230)."""
++    out = []
++    for text, source in _lines(node):
++        if sources and source is not None:
++            text += SOURCE_COMMENT + source_label(theatre, source)
++        out.append(text + "\n")
++    return "".join(out)
+diff --git a/tests/e2e/test_error_messages.py b/tests/e2e/test_error_messages.py
+index 8f1c62a..1155e7c 100644
+--- a/tests/e2e/test_error_messages.py
++++ b/tests/e2e/test_error_messages.py
+@@ -14,7 +14,7 @@ FILES = {
+ @pytest.mark.parametrize(
+     ("args", "code", "mention"),
+     [
+-        (("show", "l"), 5, "l"),
++        (("get", "l"), 5, "l"),
+         (("show", "a.b"), 5, "a.b"),
+         (("show", "missing"), 5, "missing"),
+         (("set", "l.5", "x"), 5, "l.5"),
+@@ -22,7 +22,7 @@ FILES = {
+         (("set", "txt", "[1]"), 3, "txt"),
+         (("set", "f", '" x"'), 3, "f"),
+         (("set", "a", "[oops"), 2, "[oops"),
+-        (("show", "a..b"), 2, "a..b"),
++        (("get", "a..b"), 2, "a..b"),
+         (("history", "a..b"), 2, "a..b"),
+     ],
+ )
+diff --git a/tests/e2e/test_get.py b/tests/e2e/test_get.py
+new file mode 100644
+index 0000000..cecc7c1
+--- /dev/null
++++ b/tests/e2e/test_get.py
+@@ -0,0 +1,102 @@
++"""`get PATH` prints a scalar exactly as step 1's `show` did (spec FR-201, SC-201)."""
++
++import pytest
++
++from tests.conftest import Theatre
++
++MAIN = """\
++# theatre
++model:
++  name: opus
++  temperature: 0.2   # creative
++  enabled: true
++  budget: null
++  retries: 42
++  big: 1e3
++  answer: yes
++  quoted: "0.2"
++  single: 'it''s'
++  notes: |
++    line one
++    line two
++  stripped: |-
++    no newline
++  folded: >
++    folded
++    text
++tools: [git, shell]
++agents:
++  coder: file:agents/coder.yaml
++prompt: file:prompts/system.md
++"""
++
++
++@pytest.fixture
++def ready(theatre: Theatre) -> Theatre:
++    theatre.write("troupe.yml", MAIN)
++    theatre.write("agents/coder.yaml", "model: sonnet\nskills: file:skills/list.yaml\n")
++    theatre.write("agents/skills/list.yaml", "- review\n- refactor\n")
++    theatre.write("prompts/system.md", "Be terse.\n")
++    return theatre
++
++
++@pytest.mark.parametrize(
++    ("path", "printed"),
++    [
++        ("model.name", "opus\n"),
++        ("model.temperature", "0.2\n"),
++        ("model.enabled", "true\n"),
++        ("model.budget", "null\n"),
++        ("model.retries", "42\n"),
++        ("model.big", "1000.0\n"),
++        ("model.answer", "yes\n"),
++        ("model.quoted", "0.2\n"),
++        ("model.single", "it's\n"),
++        ("model.notes", "line one\nline two\n"),
++        ("model.stripped", "no newline\n"),
++        ("model.folded", "folded text\n"),
++        ("tools.1", "shell\n"),
++        ("agents.coder.model", "sonnet\n"),
++        ("agents.coder.skills.1", "refactor\n"),
++        ("prompt", "Be terse.\n"),
++    ],
++)
++def test_get_prints_the_scalar(ready: Theatre, path: str, printed: str) -> None:
++    result = ready.config("get", path)
++    assert (result.code, result.out, result.err) == (0, printed, "")
++
++
++def test_nested_include_path_is_relative_to_the_including_file(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: file:sub/one.yaml\n")
++    theatre.write("sub/one.yaml", "b: file:two.yaml\n")
++    theatre.write("sub/two.yaml", "c: deep\n")
++    assert theatre.config("get", "a.b.c").out == "deep\n"
++
++
++def test_text_include_prints_exact_bytes_including_crlf(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "prompt: file:p.txt\n")
++    theatre.write("p.txt", b"one\r\ntwo\r\n")
++    result = theatre.run("config", "get", "prompt")
++    assert result.out == "one\r\ntwo\r\n"
++
++
++def test_text_include_without_final_newline_gets_one(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "prompt: file:p.txt\n")
++    theatre.write("p.txt", "no newline")
++    assert theatre.config("get", "prompt").out == "no newline\n"
++
++
++def test_empty_text_include_prints_a_newline(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "prompt: 'file:p.txt'\n")
++    theatre.write("p.txt", "")
++    assert theatre.config("get", "prompt").out == "\n"
++
++
++def test_non_ascii_values_print_as_utf8(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "name: 日本語 ✓\n")
++    assert theatre.config("get", "name").out == "日本語 ✓\n"
++
++
++def test_crlf_config_file(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", b"a:\r\n  b: x\r\n")
++    assert theatre.config("get", "a.b").out == "x\n"
+diff --git a/tests/e2e/test_show_errors.py b/tests/e2e/test_get_errors.py
+similarity index 53%
+rename from tests/e2e/test_show_errors.py
+rename to tests/e2e/test_get_errors.py
+index e0e6c33..95ddd92 100644
+--- a/tests/e2e/test_show_errors.py
++++ b/tests/e2e/test_get_errors.py
+@@ -1,4 +1,4 @@
+-"""`show` of a missing path or a collection → exit 5 naming the path."""
++"""`get`: a missing path → exit 5 naming it; a collection → exit 5 pointing to `config show`."""
+ 
+ import pytest
+ 
+@@ -26,7 +26,16 @@ def ready(theatre: Theatre) -> Theatre:
+         "prompt.x",  # below a text include
+     ],
+ )
+-def test_show_exits_5_naming_the_path(ready: Theatre, path: str) -> None:
++def test_get_exits_5_naming_the_path(ready: Theatre, path: str) -> None:
+     before = ready.snapshot()
+-    assert_failed(ready.config("show", path), 5, path)
++    assert_failed(ready.config("get", path), 5, path)
+     assert ready.snapshot() == before
++
++
++@pytest.mark.parametrize("path", ["model", "tools", "agents.coder"])
++def test_get_of_a_collection_mentions_config_show(ready: Theatre, path: str) -> None:
++    ready.write("troupe.yml", ready.read("troupe.yml") + "agents:\n  coder: file:c.yaml\n")
++    ready.write("c.yaml", "model: x\n")
++    result = ready.config("get", path)
++    assert_failed(result, 5, path)
++    assert "config show" in result.err, result
+diff --git a/tests/e2e/test_get_import.py b/tests/e2e/test_get_import.py
+new file mode 100644
+index 0000000..0970842
+--- /dev/null
++++ b/tests/e2e/test_get_import.py
+@@ -0,0 +1,28 @@
++"""The first command imports the theatre (step 1 D-2), even a failing `get`; `get` reconciles."""
++
++from tests.conftest import Theatre
++from troupe.config.store import STORE_FILENAME
++
++
++def test_first_get_imports(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    assert not (theatre.root / ".troupe" / STORE_FILENAME).exists()
++    assert theatre.config("get", "a").code == 0
++    assert (theatre.root / ".troupe" / STORE_FILENAME).exists()
++    theatre.write("troupe.yml", "a: 2\n")  # a hand edit: not reconciled
++    assert theatre.history() == [{"seq": 1, "op": "import", "path": "a", "old": None, "new": 1}]
++
++
++def test_failing_get_still_imports(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    assert theatre.config("get", "nope").code == 5
++    theatre.write("troupe.yml", "a: 2\n")
++    assert [e["new"] for e in theatre.history()] == [1]
++
++
++def test_get_reconciles_a_hand_edit_first(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.history()  # import
++    theatre.write("troupe.yml", "a: 2\n")
++    assert theatre.config("get", "a").out == "2\n"
++    assert theatre.history()[-1] == {"seq": 2, "op": "set", "path": "a", "old": 1, "new": 2}
+diff --git a/tests/e2e/test_set_block.py b/tests/e2e/test_set_block.py
+index 2900be0..8b36671 100644
+--- a/tests/e2e/test_set_block.py
++++ b/tests/e2e/test_set_block.py
+@@ -100,3 +100,10 @@ def test_literal_followed_by_less_indented_comment(theatre: Theatre) -> None:
+ def test_refused_change_leaves_files_alone(theatre: Theatre) -> None:
+     files = {"troupe.yml": "p: >\n  some text\n"}
+     assert_refused(theatre, files, "p", '" leading"', 3, "p")
++
++
++def test_value_starting_with_a_spaces_only_line_gets_an_indentation_indicator(
++    theatre: Theatre,
++) -> None:
++    files = {"troupe.yml": "k: x\n"}
++    assert_set(theatre, files, "k", '"    \\nabc\\n"', {"troupe.yml": "k: |2\n      \n  abc\n"})
+diff --git a/tests/e2e/test_show.py b/tests/e2e/test_show.py
+index 9b954bd..a5d421b 100644
+--- a/tests/e2e/test_show.py
++++ b/tests/e2e/test_show.py
+@@ -1,102 +1,106 @@
+-"""`show PATH` prints a scalar from the main file, YAML includes and text includes."""
++"""`show [PATH]`: a scalar like `get`; a section or the whole configuration as YAML (spec FR-210 to
++FR-225)."""
+ 
+ import pytest
+ 
+-from tests.conftest import Theatre
++from tests.conftest import Theatre, assert_failed
+ 
+ MAIN = """\
+-# theatre
+-model:
+-  name: opus
+-  temperature: 0.2   # creative
+-  enabled: true
+-  budget: null
+-  retries: 42
+-  big: 1e3
+-  answer: yes
+-  quoted: "0.2"
+-  single: 'it''s'
+-  notes: |
+-    line one
+-    line two
+-  stripped: |-
+-    no newline
+-  folded: >
+-    folded
+-    text
+-tools: [git, shell]
++# main
++model: {temperature: 0.2, name: 'opus'}
+ agents:
+   coder: file:agents/coder.yaml
+ prompt: file:prompts/system.md
+ """
+ 
++WHOLE = """\
++model:
++  temperature: 0.2
++  name: opus
++agents:
++  coder:
++    model: sonnet
++    tools:
++      - git
++      - shell
++prompt: |
++  Be terse.
++  No jokes.
++"""
++
+ 
+ @pytest.fixture
+ def ready(theatre: Theatre) -> Theatre:
+     theatre.write("troupe.yml", MAIN)
+-    theatre.write("agents/coder.yaml", "model: sonnet\nskills: file:skills/list.yaml\n")
+-    theatre.write("agents/skills/list.yaml", "- review\n- refactor\n")
+-    theatre.write("prompts/system.md", "Be terse.\n")
++    theatre.write("agents/coder.yaml", "model: sonnet\ntools: [git, shell]\n")
++    theatre.write("prompts/system.md", "Be terse.\nNo jokes.\n")
+     return theatre
+ 
+ 
+ @pytest.mark.parametrize(
+-    ("path", "printed"),
+-    [
+-        ("model.name", "opus\n"),
+-        ("model.temperature", "0.2\n"),
+-        ("model.enabled", "true\n"),
+-        ("model.budget", "null\n"),
+-        ("model.retries", "42\n"),
+-        ("model.big", "1000.0\n"),
+-        ("model.answer", "yes\n"),
+-        ("model.quoted", "0.2\n"),
+-        ("model.single", "it's\n"),
+-        ("model.notes", "line one\nline two\n"),
+-        ("model.stripped", "no newline\n"),
+-        ("model.folded", "folded text\n"),
+-        ("tools.1", "shell\n"),
+-        ("agents.coder.model", "sonnet\n"),
+-        ("agents.coder.skills.1", "refactor\n"),
+-        ("prompt", "Be terse.\n"),
+-    ],
++    "path", ["model.temperature", "model.name", "prompt", "agents.coder.model"]
+ )
+-def test_show_prints_the_scalar(ready: Theatre, path: str, printed: str) -> None:
+-    result = ready.config("show", path)
+-    assert (result.code, result.out, result.err) == (0, printed, "")
+-
+-
+-def test_nested_include_path_is_relative_to_the_including_file(theatre: Theatre) -> None:
+-    theatre.write("troupe.yml", "a: file:sub/one.yaml\n")
+-    theatre.write("sub/one.yaml", "b: file:two.yaml\n")
+-    theatre.write("sub/two.yaml", "c: deep\n")
+-    assert theatre.config("show", "a.b.c").out == "deep\n"
++def test_show_prints_a_scalar_like_get(ready: Theatre, path: str) -> None:
++    shown = ready.config("show", path)
++    got = ready.config("get", path)
++    assert (shown.code, shown.out, shown.err) == (0, got.out, "")
++    assert got.code == 0
+ 
+ 
+-def test_text_include_prints_exact_bytes_including_crlf(theatre: Theatre) -> None:
++def test_show_of_a_crlf_text_include_prints_its_exact_text(theatre: Theatre) -> None:
+     theatre.write("troupe.yml", "prompt: file:p.txt\n")
+     theatre.write("p.txt", b"one\r\ntwo\r\n")
+-    result = theatre.run("config", "show", "prompt")
+-    assert result.out == "one\r\ntwo\r\n"
++    assert theatre.config("show", "prompt").out == "one\r\ntwo\r\n"
+ 
+ 
+-def test_text_include_without_final_newline_gets_one(theatre: Theatre) -> None:
+-    theatre.write("troupe.yml", "prompt: file:p.txt\n")
+-    theatre.write("p.txt", "no newline")
+-    assert theatre.config("show", "prompt").out == "no newline\n"
++def test_show_of_the_whole_configuration(ready: Theatre) -> None:
++    result = ready.config("show")
++    assert (result.code, result.out, result.err) == (0, WHOLE, "")
++
++
++def test_show_of_a_section(ready: Theatre) -> None:
++    assert ready.config("show", "agents.coder").out == "model: sonnet\ntools:\n  - git\n  - shell\n"
++
++
++def test_show_of_a_list(ready: Theatre) -> None:
++    assert ready.config("show", "agents.coder.tools").out == "- git\n- shell\n"
++
++
++def test_show_of_a_list_of_mappings(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "steps: [{name: a, run: x}, {name: b}]\n")
++    assert theatre.config("show", "steps").out == "- name: a\n  run: x\n- name: b\n"
++
++
++@pytest.mark.parametrize(
++    "path", ["missing", "model.name.x", "agents.coder.tools.9", "model.0", "prompt.x"]
++)
++def test_show_errors_exit_5_naming_the_path(ready: Theatre, path: str) -> None:
++    assert_failed(ready.config("show", path), 5, path)
++
++
++def test_show_writes_no_file(ready: Theatre) -> None:
++    before = ready.snapshot()
++    assert ready.config("show").code == 0
++    assert ready.config("show", "--sources").code == 0
++    assert ready.config("show", "agents", "--sources").code == 0
++    assert ready.snapshot() == before
+ 
+ 
+-def test_empty_text_include_prints_a_newline(theatre: Theatre) -> None:
+-    theatre.write("troupe.yml", "prompt: 'file:p.txt'\n")
+-    theatre.write("p.txt", "")
+-    assert theatre.config("show", "prompt").out == "\n"
++def test_show_reconciles_first(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.history()  # import
++    theatre.write("troupe.yml", "a: 2\n")
++    assert theatre.config("show").out == "a: 2\n"
++    assert theatre.history()[-1] == {"seq": 2, "op": "set", "path": "a", "old": 1, "new": 2}
+ 
+ 
+-def test_non_ascii_values_print_as_utf8(theatre: Theatre) -> None:
+-    theatre.write("troupe.yml", "name: 日本語 ✓\n")
+-    assert theatre.config("show", "name").out == "日本語 ✓\n"
++def test_show_of_an_empty_configuration(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "")
++    assert theatre.config("show").out == "{}\n"
+ 
+ 
+-def test_crlf_config_file(theatre: Theatre) -> None:
+-    theatre.write("troupe.yml", b"a:\r\n  b: x\r\n")
+-    assert theatre.config("show", "a.b").out == "x\n"
++def test_show_accepts_options_before_the_path(ready: Theatre) -> None:
++    result = ready.run(
++        "config", "show", "--theatre", str(ready.root), "agents.coder.tools", theatre=False
++    )
++    assert (result.code, result.out) == (0, "- git\n- shell\n")
+diff --git a/tests/e2e/test_show_import.py b/tests/e2e/test_show_import.py
+deleted file mode 100644
+index cd1f1b0..0000000
+--- a/tests/e2e/test_show_import.py
++++ /dev/null
+@@ -1,20 +0,0 @@
+-"""The first command imports the theatre (spec D-2), even `show`, even one that fails."""
+-
+-from tests.conftest import Theatre
+-from troupe.config.store import STORE_FILENAME
+-
+-
+-def test_first_show_imports(theatre: Theatre) -> None:
+-    theatre.write("troupe.yml", "a: 1\n")
+-    assert not (theatre.root / ".troupe" / STORE_FILENAME).exists()
+-    assert theatre.config("show", "a").code == 0
+-    assert (theatre.root / ".troupe" / STORE_FILENAME).exists()
+-    theatre.write("troupe.yml", "a: 2\n")  # a hand edit: not reconciled
+-    assert theatre.history() == [{"seq": 1, "op": "import", "path": "a", "old": None, "new": 1}]
+-
+-
+-def test_failing_show_still_imports(theatre: Theatre) -> None:
+-    theatre.write("troupe.yml", "a: 1\n")
+-    assert theatre.config("show", "nope").code == 5
+-    theatre.write("troupe.yml", "a: 2\n")
+-    assert [e["new"] for e in theatre.history()] == [1]
+diff --git a/tests/e2e/test_show_readback.py b/tests/e2e/test_show_readback.py
+new file mode 100644
+index 0000000..6b24d3e
+--- /dev/null
++++ b/tests/e2e/test_show_readback.py
+@@ -0,0 +1,93 @@
++"""`show`'s YAML, with and without `--sources`, reads back as the configuration (spec FR-214)."""
++
++from typing import Any
++
++import pytest
++from ruamel.yaml import YAML
++
++from tests.conftest import Theatre
++from troupe.config.commands import resolve
++from troupe.config.loader import load
++from troupe.config.paths import ConfigPath
++from troupe.config.scalars import Value, scalars_equal
++from troupe.config.tree import Located, LocatedMapping, LocatedSequence, TextInclude
++
++MAIN = """\
++# every kind of value
++flags: {on: true, off: false, none: ~, n: 42, hex: 0x10, f: 1.5, big: 1e3}
++odd: [.inf, -.inf, .nan]
++strings:
++  plain: opus
++  number_like: "0.2"
++  bool_like: 'true'
++  empty: ""
++  colon: "a: b"
++  dash: "- x"
++  hash: "x #y"
++  quote: "it's"
++  both: "it's \\"q\\""
++  tab: "a\\tb"
++  lead: " lead"
++  unicode: 日本語 ✓
++block: |
++  line one
++    indented
++  line three
++kept: "x\\n\\n"
++leading: "  lead\\nx\\n"
++nested:
++  - [a, [b, c]]
++  - {k: v, l: [1, {m: n}]}
++  - []
++  - {}
++agents: {coder: "file:agents/coder.yaml"}
++prompt: file:prompts/system.md
++bare: file:prompts/bare.txt
++shared: file:../common/shared.yaml
++"""
++
++
++def plain(node: Located) -> Value:
++    if isinstance(node, LocatedMapping):
++        return {str(key.value): plain(value) for key, value in node.entries}
++    if isinstance(node, LocatedSequence):
++        return [plain(item) for item in node.items]
++    if isinstance(node, TextInclude):
++        return node.value
++    return node.value
++
++
++@pytest.fixture
++def ready(theatre: Theatre) -> Theatre:
++    theatre.write("troupe.yml", MAIN)
++    theatre.write("agents/coder.yaml", "model: sonnet\nlimits: file:limits.yaml\n")
++    theatre.write("agents/limits.yaml", "retries: 3\ntools: [git]\n")
++    theatre.write("prompts/system.md", "Be terse.\n\n  No jokes.\n")
++    theatre.write("prompts/bare.txt", "no newline")
++    common = theatre.root / "common"
++    common.mkdir()
++    (common / "shared.yaml").write_text("k: v\n")
++    return theatre
++
++
++def read_back(text: str) -> Any:
++    return YAML(typ="safe").load(text)
++
++
++@pytest.mark.parametrize("path", [None, "agents", "strings", "nested", "nested.1"])
++@pytest.mark.parametrize("sources", [False, True])
++def test_show_reads_back_as_the_configuration(
++    ready: Theatre, path: str | None, sources: bool
++) -> None:
++    args = [*([path] if path else []), *(["--sources"] if sources else [])]
++    result = ready.config("show", *args)
++    assert result.code == 0, result
++    root = load(ready.root).root
++    expected = plain(root if path is None else resolve(root, ConfigPath.parse(path)))
++    assert scalars_equal(read_back(result.out), expected), result.out
++
++
++def test_crlf_text_include_reads_back_with_lf(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "p: file:p.md\n")
++    theatre.write("p.md", b"a\r\nb\r\n")
++    assert read_back(theatre.config("show").out) == {"p": "a\nb\n"}
+diff --git a/tests/e2e/test_show_sources.py b/tests/e2e/test_show_sources.py
+new file mode 100644
+index 0000000..4fe03fe
+--- /dev/null
++++ b/tests/e2e/test_show_sources.py
+@@ -0,0 +1,143 @@
++"""`show [PATH] --sources`: every scalar line names its file (spec FR-230 to FR-234)."""
++
++import os
++from pathlib import Path
++
++import pytest
++
++from tests.conftest import Theatre
++
++MAIN = """\
++# main
++model: {temperature: 0.2, name: 'opus'}
++agents:
++  coder: file:agents/coder.yaml
++prompt: file:prompts/system.md
++"""
++
++WHOLE = """\
++model:
++  temperature: 0.2 # from .troupe/troupe.yml
++  name: opus # from .troupe/troupe.yml
++agents:
++  coder:
++    model: sonnet # from .troupe/agents/coder.yaml
++    tools:
++      - git # from .troupe/agents/coder.yaml
++      - shell # from .troupe/agents/coder.yaml
++prompt: | # from .troupe/prompts/system.md
++  Be terse.
++  No jokes.
++"""
++
++
++@pytest.fixture
++def ready(theatre: Theatre) -> Theatre:
++    theatre.write("troupe.yml", MAIN)
++    theatre.write("agents/coder.yaml", "model: sonnet\ntools: [git, shell]\n")
++    theatre.write("prompts/system.md", "Be terse.\nNo jokes.\n")
++    return theatre
++
++
++def sources(theatre: Theatre, *args: str) -> str:
++    result = theatre.config("show", *args, "--sources")
++    assert (result.code, result.err) == (0, ""), result
++    return result.out
++
++
++def test_whole_configuration(ready: Theatre) -> None:
++    assert sources(ready) == WHOLE
++
++
++def test_section(ready: Theatre) -> None:
++    assert sources(ready, "agents") == (
++        "coder:\n"
++        "  model: sonnet # from .troupe/agents/coder.yaml\n"
++        "  tools:\n"
++        "    - git # from .troupe/agents/coder.yaml\n"
++        "    - shell # from .troupe/agents/coder.yaml\n"
++    )
++
++
++def test_option_before_the_path(ready: Theatre) -> None:
++    result = ready.config("show", "--sources", "agents")
++    assert result.out == sources(ready, "agents")
++
++
++def test_include_outside_the_troupe_directory(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "shared: file:../common/shared.yaml\n")
++    (theatre.root / "common").mkdir()
++    (theatre.root / "common" / "shared.yaml").write_text("k: v\n")
++    assert sources(theatre, "shared") == "k: v # from common/shared.yaml\n"
++
++
++def test_include_outside_the_theatre(theatre: Theatre, tmp_path: Path) -> None:
++    (tmp_path / "elsewhere.yaml").write_text("k: v\n")
++    theatre.write("troupe.yml", "x: file:../../elsewhere.yaml\n")
++    assert sources(theatre) == "x:\n  k: v # from ../elsewhere.yaml\n"
++
++
++def test_two_level_include_names_the_innermost_file(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "agents: {coder: 'file:agents/coder.yaml'}\n")
++    theatre.write("agents/coder.yaml", "model: m\nlimits: file:limits.yaml\n")
++    theatre.write("agents/limits.yaml", "retries: 3\n")
++    assert sources(theatre, "agents.coder") == (
++        "model: m # from .troupe/agents/coder.yaml\n"
++        "limits:\n"
++        "  retries: 3 # from .troupe/agents/limits.yaml\n"
++    )
++
++
++@pytest.mark.parametrize(
++    ("main", "path", "expected"),
++    [
++        ("model: {temperature: 0.2}\n", "model.temperature", "0.2 # from .troupe/troupe.yml\n"),
++        ('n: "0.2"\n', "n", "'0.2' # from .troupe/troupe.yml\n"),
++        ("n: null\n", "n", "null # from .troupe/troupe.yml\n"),
++    ],
++)
++def test_scalar_is_printed_as_yaml_with_its_source(
++    theatre: Theatre, main: str, path: str, expected: str
++) -> None:
++    theatre.write("troupe.yml", main)
++    assert sources(theatre, path) == expected
++
++
++def test_text_include_scalar(ready: Theatre) -> None:
++    assert sources(ready, "prompt") == (
++        "| # from .troupe/prompts/system.md\n  Be terse.\n  No jokes.\n"
++    )
++
++
++def test_empty_collections_and_configuration_get_no_comment(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "e: {}\nl: []\n")
++    assert sources(theatre) == "e: {}\nl: []\n"
++    theatre.write("troupe.yml", "")
++    assert sources(theatre) == "{}\n"
++
++
++def test_list_of_mappings(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "steps: [{name: a, run: x}]\n")
++    assert sources(theatre, "steps") == (
++        "- name: a # from .troupe/troupe.yml\n  run: x # from .troupe/troupe.yml\n"
++    )
++
++
++def test_one_comment_per_scalar_leaf(ready: Theatre) -> None:
++    leaves = [e for e in ready.history() if e["op"] == "import"]
++    assert sources(ready).count("# from ") == len(leaves)
++
++
++def test_theatre_reached_through_a_symlink(ready: Theatre, tmp_path: Path) -> None:
++    link = tmp_path / "link"
++    os.symlink(ready.root, link)
++    result = ready.run("config", "show", "--sources", "--theatre", str(link), theatre=False)
++    assert result.out == WHOLE
++
++
++def test_same_file_included_twice_is_shown_in_full_under_both_keys(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: file:s.yaml\nb: file:s.yaml\n")
++    theatre.write("s.yaml", "k: 1\n")
++    assert sources(theatre) == (
++        "a:\n  k: 1 # from .troupe/s.yaml\nb:\n  k: 1 # from .troupe/s.yaml\n"
++    )
+diff --git a/tests/e2e/test_usage.py b/tests/e2e/test_usage.py
+index 101e638..b48c1df 100644
+--- a/tests/e2e/test_usage.py
++++ b/tests/e2e/test_usage.py
+@@ -19,7 +19,10 @@ def ready(theatre: Theatre) -> Theatre:
+         (),
+         ("config",),
+         ("config", "frobnicate"),
+-        ("config", "show"),
++        ("config", "get"),
++        ("config", "get", "a", "extra"),
++        ("config", "get", "a", "--sources"),
++        ("config", "get", "a", "--bogus"),
+         ("config", "set", "a"),
+         ("config", "show", "a", "extra"),
+         ("config", "show", "a", "--bogus"),
+@@ -40,16 +43,16 @@ def test_invalid_value_exits_2_naming_the_value(ready: Theatre) -> None:
+ 
+ @pytest.mark.parametrize("path", ["a..b", ".a", "a."])
+ def test_empty_path_segment_exits_2_naming_the_path(ready: Theatre, path: str) -> None:
+-    assert_failed(ready.config("show", path), 2, path)
++    assert_failed(ready.config("get", path), 2, path)
+ 
+ 
+ def test_theatre_option_before_positionals(ready: Theatre) -> None:
+-    result = ready.run("config", "show", "--theatre", str(ready.root), "a", theatre=False)
++    result = ready.run("config", "get", "--theatre", str(ready.root), "a", theatre=False)
+     assert (result.code, result.out) == (0, "1\n")
+ 
+ 
+ def test_theatre_defaults_to_current_directory(ready: Theatre) -> None:
+-    result = ready.run("config", "show", "a", theatre=False, cwd=ready.root)
++    result = ready.run("config", "get", "a", theatre=False, cwd=ready.root)
+     assert (result.code, result.out) == (0, "1\n")
+ 
+ 
+@@ -57,11 +60,11 @@ def test_theatre_defaults_to_environment_variable(ready: Theatre, tmp_path: Path
+     other = Theatre(tmp_path / "other")
+     other.write("troupe.yml", "a: 2\n")
+     env = {"TROUPE_THEATRE": str(ready.root)}
+-    result = ready.run("config", "show", "a", theatre=False, cwd=other.root, env=env)
++    result = ready.run("config", "get", "a", theatre=False, cwd=other.root, env=env)
+     assert (result.code, result.out) == (0, "1\n")
+-    result = ready.run("config", "show", "a", "--theatre", str(other.root), theatre=False, env=env)
++    result = ready.run("config", "get", "a", "--theatre", str(other.root), theatre=False, env=env)
+     assert (result.code, result.out) == (0, "2\n")
+-    result = ready.run("config", "show", "a", theatre=False, env={"TROUPE_THEATRE": ""})
++    result = ready.run("config", "get", "a", theatre=False, env={"TROUPE_THEATRE": ""})
+     assert (result.code, result.out) == (0, "1\n")
+ 
+ 
+diff --git a/tests/unit/test_view.py b/tests/unit/test_view.py
+new file mode 100644
+index 0000000..e100619
+--- /dev/null
++++ b/tests/unit/test_view.py
+@@ -0,0 +1,203 @@
++"""`show`'s YAML view: layout, quoting, literal blocks, includes (spec FR-213 to FR-225)."""
++
++from pathlib import Path
++from typing import Any
++
++import pytest
++from ruamel.yaml import YAML
++
++from troupe.config.commands import resolve
++from troupe.config.loader import load
++from troupe.config.paths import ConfigPath
++from troupe.config.view import render
++
++
++def write(root: Path, relpath: str, content: str | bytes) -> None:
++    path = root / ".troupe" / relpath
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_bytes(content.encode("utf-8") if isinstance(content, str) else content)
++
++
++def view(root: Path, main: str, path: str | None = None) -> str:
++    write(root, "troupe.yml", main)
++    loaded = load(root)
++    node = loaded.root if path is None else resolve(loaded.root, ConfigPath.parse(path))
++    return render(node, root, sources=False)
++
++
++def read_back(text: str) -> Any:
++    return YAML(typ="safe").load(text)
++
++
++def test_flat_mapping(tmp_path: Path) -> None:
++    assert view(tmp_path, "a: 1\nb: x\n") == "a: 1\nb: x\n"
++
++
++def test_flow_mapping_becomes_block_and_original_quoting_is_dropped(tmp_path: Path) -> None:
++    out = view(tmp_path, "model: {temperature: 0.2, name: 'opus'}\n")
++    assert out == "model:\n  temperature: 0.2\n  name: opus\n"
++
++
++def test_list_under_a_key_is_indented(tmp_path: Path) -> None:
++    assert view(tmp_path, "tools: [git, shell]\n") == "tools:\n  - git\n  - shell\n"
++
++
++def test_list_at_the_top_of_the_view(tmp_path: Path) -> None:
++    assert view(tmp_path, "tools: [git, shell]\n", "tools") == "- git\n- shell\n"
++
++
++def test_list_of_mappings_uses_the_compact_form(tmp_path: Path) -> None:
++    out = view(tmp_path, "steps: [{name: a, run: x}, {name: b}]\n", "steps")
++    assert out == "- name: a\n  run: x\n- name: b\n"
++
++
++def test_nested_lists_use_the_compact_form(tmp_path: Path) -> None:
++    assert view(tmp_path, "m: [[x, y], [z]]\n", "m") == "- - x\n  - y\n- - z\n"
++
++
++def test_mapping_inside_a_list_inside_a_mapping(tmp_path: Path) -> None:
++    out = view(tmp_path, "a:\n  - b: {c: 1}\n    d: [2]\n")
++    assert out == "a:\n  - b:\n      c: 1\n    d:\n      - 2\n"
++    assert read_back(out) == {"a": [{"b": {"c": 1}, "d": [2]}]}
++
++
++def test_empty_collections_are_written_in_flow_form(tmp_path: Path) -> None:
++    assert view(tmp_path, "e: {}\nl: []\n") == "e: {}\nl: []\n"
++    assert view(tmp_path, "l: [[], {}]\n", "l") == "- []\n- {}\n"
++
++
++def test_empty_configuration(tmp_path: Path) -> None:
++    assert view(tmp_path, "") == "{}\n"
++
++
++@pytest.mark.parametrize(
++    "value", ["0.2", "true", "null", "", "a: b", "- x", " lead", "it's: x", "#c", "x #y", "~"]
++)
++def test_strings_that_need_quoting_are_quoted_and_read_back(tmp_path: Path, value: str) -> None:
++    main = "k: " + ('"' + value.replace('"', '\\"') + '"') + "\n"
++    out = view(tmp_path, main)
++    assert out != f"k: {value}\n"
++    assert read_back(out) == {"k": value}
++
++
++@pytest.mark.parametrize("value", ["opus", "yes", "on", "a b", "x:y"])
++def test_plain_strings_are_not_quoted(tmp_path: Path, value: str) -> None:
++    assert view(tmp_path, f"k: '{value}'\n") == f"k: {value}\n"
++
++
++def test_quoted_key_that_needs_quoting_stays_quoted(tmp_path: Path) -> None:
++    out = view(tmp_path, "'true': 1\n")
++    assert out == "'true': 1\n"
++    assert read_back(out) == {"true": 1}
++
++
++@pytest.mark.parametrize(
++    ("text", "shown"),
++    [
++        ("true", "true"),
++        ("false", "false"),
++        ("null", "null"),
++        ("42", "42"),
++        ("0x1F", "31"),
++        ("1e3", "1000.0"),
++        (".inf", ".inf"),
++        ("-.inf", "-.inf"),
++        (".nan", ".nan"),
++    ],
++)
++def test_non_string_scalars(tmp_path: Path, text: str, shown: str) -> None:
++    assert view(tmp_path, f"k: {text}\n") == f"k: {shown}\n"
++
++
++def test_block_value_is_a_literal_block(tmp_path: Path) -> None:
++    assert view(tmp_path, "notes: |\n    one\n    two\n") == "notes: |\n  one\n  two\n"
++
++
++def test_quoted_multiline_string_becomes_a_strip_literal(tmp_path: Path) -> None:
++    assert view(tmp_path, 'k: "x\\ny"\n') == "k: |-\n  x\n  y\n"
++
++
++def test_keep_chomping_reads_back_exactly(tmp_path: Path) -> None:
++    out = view(tmp_path, 'k: "x\\n\\n"\n')
++    assert out.startswith("k: |+\n")
++    assert read_back(out) == {"k": "x\n\n"}
++
++
++def test_leading_space_gets_an_indentation_indicator(tmp_path: Path) -> None:
++    out = view(tmp_path, 'k: "  lead\\nx\\n"\n')
++    assert out.startswith("k: |2\n")
++    assert read_back(out) == {"k": "  lead\nx\n"}
++
++
++def test_literal_inside_a_list_item_mapping_reads_back(tmp_path: Path) -> None:
++    out = view(tmp_path, 'l:\n  - k: "a\\n b\\n"\n    j: 1\n')
++    assert out == "l:\n  - k: |\n      a\n       b\n    j: 1\n"
++    assert read_back(out) == {"l": [{"k": "a\n b\n", "j": 1}]}
++
++
++def test_single_line_text_include_is_still_a_literal_block(tmp_path: Path) -> None:
++    write(tmp_path, "p.md", "Be terse.\n")
++    assert view(tmp_path, "p: file:p.md\n") == "p: |\n  Be terse.\n"
++
++
++def test_text_include_without_final_newline(tmp_path: Path) -> None:
++    write(tmp_path, "p.md", "no newline")
++    assert view(tmp_path, "p: file:p.md\n") == "p: |-\n  no newline\n"
++
++
++def test_empty_text_include(tmp_path: Path) -> None:
++    write(tmp_path, "p.md", "")
++    out = view(tmp_path, "p: file:p.md\nq: 1\n")
++    assert out.startswith("p: |-\n")
++    assert read_back(out) == {"p": "", "q": 1}
++
++
++def test_crlf_text_include_is_shown_as_its_lines(tmp_path: Path) -> None:
++    write(tmp_path, "p.md", b"a\r\nb\r\n")
++    assert view(tmp_path, "p: file:p.md\n") == "p: |\n  a\n  b\n"
++
++
++def test_text_include_whose_text_starts_with_file_is_shown_as_text(tmp_path: Path) -> None:
++    write(tmp_path, "p.md", "file:other.md\n")
++    assert view(tmp_path, "p: file:p.md\n") == "p: |\n  file:other.md\n"
++
++
++def test_yaml_includes_are_embedded_in_place_in_document_order(tmp_path: Path) -> None:
++    write(tmp_path, "agents/coder.yaml", "model: sonnet\nlimits: file:limits.yaml\nz: 1\n")
++    write(tmp_path, "agents/limits.yaml", "retries: 3\n")
++    out = view(tmp_path, "a: 0\nagents: {coder: 'file:agents/coder.yaml'}\nb: 2\n")
++    assert out == (
++        "a: 0\nagents:\n  coder:\n    model: sonnet\n    limits:\n      retries: 3\n"
++        "    z: 1\nb: 2\n"
++    )
++
++
++def test_empty_yaml_include_is_null(tmp_path: Path) -> None:
++    write(tmp_path, "e.yaml", "")
++    assert view(tmp_path, "k: file:e.yaml\n") == "k: null\n"
++
++
++SPACE_FIRST = "    \nabc\n"  # a whitespace-only line longer than the content indentation
++
++
++def test_text_include_starting_with_a_spaces_only_line_reads_back(tmp_path: Path) -> None:
++    write(tmp_path, "p.md", SPACE_FIRST)
++    out = view(tmp_path, "p: file:p.md\nq: 1\n")
++    assert out == "p: |2\n      \n  abc\nq: 1\n"
++    assert read_back(out) == {"p": SPACE_FIRST, "q": 1}
++
++
++def test_string_starting_with_a_spaces_only_line_in_a_list_item_reads_back(tmp_path: Path) -> None:
++    out = view(tmp_path, 'l:\n  - k: "  \\n\\nx"\n  - "   \\ny\\n"\n')
++    assert read_back(out) == {"l": [{"k": "  \n\nx"}, "   \ny\n"]}
++
++
++def test_top_level_text_include_starting_with_a_spaces_only_line_reads_back(
++    tmp_path: Path,
++) -> None:
++    write(tmp_path, "p.md", SPACE_FIRST)
++    write(tmp_path, "troupe.yml", "p: file:p.md\n")
++    loaded = load(tmp_path)
++    out = render(resolve(loaded.root, ConfigPath.parse("p")), tmp_path, sources=True)
++    assert out == "|2 # from .troupe/p.md\n      \n  abc\n"
++    assert read_back(out) == SPACE_FIRST

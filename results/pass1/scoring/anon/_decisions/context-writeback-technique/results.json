@@ -1,0 +1,248 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.coder.temp",
+          "0.35"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "name",
+          "a much longer new name"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "flags.c",
+          "3"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "desc",
+          "\"Changed folded text in the first paragraph only.\\n\\nSecond paragraph stays exactly as written.\\n\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "retry"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "# Team config -- hand edited, keep layout\nversion:   1          # spaced on purpose\nname: 'old name'      # single-quoted\nretry: 0x1F           # hex int\nenabled: yes          # plain string in YAML 1.2\nnothing: ~\nflags: {a: 1, b: [x, y]}   # flow style\ndesc: >\n  This is a folded\n  paragraph that wraps.\n\n  Second paragraph stays\n  exactly as written.\nagents:\n    coder:\n        model: \"opus\"    # model\n        temp: 0.2        # temperature\n\n    # trailing comment in coder block\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 5,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.temp",
+                "0.35"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# Team config -- hand edited, keep layout\nversion:   1          # spaced on purpose\nname: 'old name'      # single-quoted\nretry: 0x1F           # hex int\nenabled: yes          # plain string in YAML 1.2\nnothing: ~\nflags: {a: 1, b: [x, y]}   # flow style\ndesc: >\n  This is a folded\n  paragraph that wraps.\n\n  Second paragraph stays\n  exactly as written.\nagents:\n    coder:\n        model: \"opus\"    # model\n        temp: 0.35       # temperature\n\n    # trailing comment in coder block\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "a much longer new name"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# Team config -- hand edited, keep layout\nversion:   1          # spaced on purpose\nname: 'a much longer new name' # single-quoted\nretry: 0x1F           # hex int\nenabled: yes          # plain string in YAML 1.2\nnothing: ~\nflags: {a: 1, b: [x, y]}   # flow style\ndesc: >\n  This is a folded\n  paragraph that wraps.\n\n  Second paragraph stays\n  exactly as written.\nagents:\n    coder:\n        model: \"opus\"    # model\n        temp: 0.35       # temperature\n\n    # trailing comment in coder block\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "flags.c",
+                "3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# Team config -- hand edited, keep layout\nversion:   1          # spaced on purpose\nname: 'a much longer new name' # single-quoted\nretry: 0x1F           # hex int\nenabled: yes          # plain string in YAML 1.2\nnothing: ~\nflags: {a: 1, b: [x, y], c: 3} # flow style\ndesc: >\n  This is a folded\n  paragraph that wraps.\n\n  Second paragraph stays\n  exactly as written.\nagents:\n    coder:\n        model: \"opus\"    # model\n        temp: 0.35       # temperature\n\n    # trailing comment in coder block\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "desc",
+                "\"Changed folded text in the first paragraph only.\\n\\nSecond paragraph stays exactly as written.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# Team config -- hand edited, keep layout\nversion:   1          # spaced on purpose\nname: 'a much longer new name' # single-quoted\nretry: 0x1F           # hex int\nenabled: yes          # plain string in YAML 1.2\nnothing: ~\nflags: {a: 1, b: [x, y], c: 3} # flow style\ndesc: >\n  Changed folded text\n  in the first\n  paragraph only.\n\n\n  Second paragraph stays\n  exactly as written.\nagents:\n    coder:\n        model: \"opus\"    # model\n        temp: 0.35       # temperature\n\n    # trailing comment in coder block\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "31\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.coder.temp",
+                "0.35"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# Team config -- hand edited, keep layout\nversion:   1          # spaced on purpose\nname: 'old name'      # single-quoted\nretry: 0x1F           # hex int\nenabled: yes          # plain string in YAML 1.2\nnothing: ~\nflags: {a: 1, b: [x, y]}   # flow style\ndesc: >\n  This is a folded\n  paragraph that wraps.\n\n  Second paragraph stays\n  exactly as written.\nagents:\n    coder:\n        model: \"opus\"    # model\n        temp: 0.35       # temperature\n\n    # trailing comment in coder block\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "name",
+                "a much longer new name"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# Team config -- hand edited, keep layout\nversion:   1          # spaced on purpose\nname: 'a much longer new name' # single-quoted\nretry: 0x1F           # hex int\nenabled: yes          # plain string in YAML 1.2\nnothing: ~\nflags: {a: 1, b: [x, y]}   # flow style\ndesc: >\n  This is a folded\n  paragraph that wraps.\n\n  Second paragraph stays\n  exactly as written.\nagents:\n    coder:\n        model: \"opus\"    # model\n        temp: 0.35       # temperature\n\n    # trailing comment in coder block\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "flags.c",
+                "3"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# Team config -- hand edited, keep layout\nversion:   1          # spaced on purpose\nname: 'a much longer new name' # single-quoted\nretry: 0x1F           # hex int\nenabled: yes          # plain string in YAML 1.2\nnothing: ~\nflags: {a: 1, b: [x, y], c: 3}   # flow style\ndesc: >\n  This is a folded\n  paragraph that wraps.\n\n  Second paragraph stays\n  exactly as written.\nagents:\n    coder:\n        model: \"opus\"    # model\n        temp: 0.35       # temperature\n\n    # trailing comment in coder block\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "desc",
+                "\"Changed folded text in the first paragraph only.\\n\\nSecond paragraph stays exactly as written.\\n\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "# Team config -- hand edited, keep layout\nversion:   1          # spaced on purpose\nname: 'a much longer new name' # single-quoted\nretry: 0x1F           # hex int\nenabled: yes          # plain string in YAML 1.2\nnothing: ~\nflags: {a: 1, b: [x, y], c: 3}   # flow style\ndesc: >\n  Changed folded text\n  in the first\n  paragraph only.\n\n\n  Second paragraph stays\n  exactly as written.\nagents:\n    coder:\n        model: \"opus\"    # model\n        temp: 0.35       # temperature\n\n    # trailing comment in coder block\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "retry"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "31\n"
+            }
+          ]
+        }
+      ],
+      "route": "Splice replacement text into the original at the node's span; never re-serialise the file",
+      "route_no": 1
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+WP01–WP07 are all approved, and the combined code passes every gate (1,082 tests). WP08, the last package, is now being implemented in lane-h: it wires everything into `set`, with verify-before-write, history events, and a byte-exact integration test suite. After its review come acceptance, the lane merge, and the local merge into `main`.

@@ -1,0 +1,463 @@
+[
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 17,
+      "row": 16
+    },
+    "filename": "/work/bakeoff-specs-control/src/troupe/editor.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from .render import (\n    Renderer,\n    chomp_for,\n    double,\n    literal_ok,\n    scalar,\n    style_of,\n)",
+          "end_location": {
+            "column": 2,
+            "row": 20
+          },
+          "location": {
+            "column": 1,
+            "row": 12
+          }
+        }
+      ],
+      "message": "Remove unused import: `.render.is_multiline`"
+    },
+    "location": {
+      "column": 5,
+      "row": 16
+    },
+    "message": "`.render.is_multiline` imported but unused",
+    "name": "unused-import",
+    "noqa_row": 16,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "FURB188",
+    "end_location": {
+      "column": 49,
+      "row": 139
+    },
+    "filename": "/work/bakeoff-specs-control/src/troupe/editor.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "ln.removesuffix(\"\\r\")",
+          "end_location": {
+            "column": 49,
+            "row": 139
+          },
+          "location": {
+            "column": 13,
+            "row": 139
+          }
+        }
+      ],
+      "message": "Use removesuffix instead of ternary expression conditional upon endswith."
+    },
+    "location": {
+      "column": 13,
+      "row": 139
+    },
+    "message": "Prefer `str.removesuffix()` over conditionally replacing with slice.",
+    "name": "slice-to-remove-prefix-or-suffix",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/slice-to-remove-prefix-or-suffix"
+  },
+  {
+    "cell": null,
+    "code": "SIM103",
+    "end_location": {
+      "column": 16,
+      "row": 150
+    },
+    "filename": "/work/bakeoff-specs-control/src/troupe/render.py",
+    "fix": null,
+    "location": {
+      "column": 5,
+      "row": 147
+    },
+    "message": "Return the negated condition directly",
+    "name": "needless-bool",
+    "noqa_row": 147,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/needless-bool"
+  },
+  {
+    "cell": null,
+    "code": "UP035",
+    "end_location": {
+      "column": 33,
+      "row": 16
+    },
+    "filename": "/work/bakeoff-specs-control/src/troupe/yamldoc.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from typing import Any\nfrom collections.abc import Callable",
+          "end_location": {
+            "column": 33,
+            "row": 16
+          },
+          "location": {
+            "column": 1,
+            "row": 16
+          }
+        }
+      ],
+      "message": "Import from `collections.abc`"
+    },
+    "location": {
+      "column": 1,
+      "row": 16
+    },
+    "message": "Import from `collections.abc` instead: `Callable`",
+    "name": "deprecated-import",
+    "noqa_row": 16,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/deprecated-import"
+  },
+  {
+    "cell": null,
+    "code": "FURB166",
+    "end_location": {
+      "column": 29,
+      "row": 50
+    },
+    "filename": "/work/bakeoff-specs-control/src/troupe/yamldoc.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "s",
+          "end_location": {
+            "column": 25,
+            "row": 50
+          },
+          "location": {
+            "column": 20,
+            "row": 50
+          }
+        },
+        {
+          "content": "0",
+          "end_location": {
+            "column": 28,
+            "row": 50
+          },
+          "location": {
+            "column": 27,
+            "row": 50
+          }
+        }
+      ],
+      "message": "Replace with `base=0`"
+    },
+    "location": {
+      "column": 16,
+      "row": 50
+    },
+    "message": "Use of `int` with explicit `base=8` after removing prefix",
+    "name": "int-on-sliced-str",
+    "noqa_row": 50,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/int-on-sliced-str"
+  },
+  {
+    "cell": null,
+    "code": "FURB166",
+    "end_location": {
+      "column": 30,
+      "row": 52
+    },
+    "filename": "/work/bakeoff-specs-control/src/troupe/yamldoc.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "s",
+          "end_location": {
+            "column": 25,
+            "row": 52
+          },
+          "location": {
+            "column": 20,
+            "row": 52
+          }
+        },
+        {
+          "content": "0",
+          "end_location": {
+            "column": 29,
+            "row": 52
+          },
+          "location": {
+            "column": 27,
+            "row": 52
+          }
+        }
+      ],
+      "message": "Replace with `base=0`"
+    },
+    "location": {
+      "column": 16,
+      "row": 52
+    },
+    "message": "Use of `int` with explicit `base=16` after removing prefix",
+    "name": "int-on-sliced-str",
+    "noqa_row": 52,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/int-on-sliced-str"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 27,
+      "row": 179
+    },
+    "filename": "/work/bakeoff-specs-control/src/troupe/yamldoc.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "VNode | None",
+          "end_location": {
+            "column": 27,
+            "row": 179
+          },
+          "location": {
+            "column": 13,
+            "row": 179
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 13,
+      "row": 179
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 179,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 32,
+      "row": 187
+    },
+    "filename": "/work/bakeoff-specs-control/src/troupe/yamldoc.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "VNode",
+          "end_location": {
+            "column": 32,
+            "row": 187
+          },
+          "location": {
+            "column": 25,
+            "row": 187
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 25,
+      "row": 187
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 187,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 48,
+      "row": 187
+    },
+    "filename": "/work/bakeoff-specs-control/src/troupe/yamldoc.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "VNode",
+          "end_location": {
+            "column": 48,
+            "row": 187
+          },
+          "location": {
+            "column": 41,
+            "row": 187
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 187
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 187,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 48,
+      "row": 197
+    },
+    "filename": "/work/bakeoff-specs-control/src/troupe/yamldoc.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "VNode | None",
+          "end_location": {
+            "column": 48,
+            "row": 197
+          },
+          "location": {
+            "column": 34,
+            "row": 197
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 34,
+      "row": 197
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 197,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 38,
+      "row": 205
+    },
+    "filename": "/work/bakeoff-specs-control/src/troupe/yamldoc.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "VNode",
+          "end_location": {
+            "column": 38,
+            "row": 205
+          },
+          "location": {
+            "column": 31,
+            "row": 205
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 31,
+      "row": 205
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 205,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 25,
+      "row": 4
+    },
+    "filename": "/work/bakeoff-specs-control/tests/test_config.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 1,
+            "row": 5
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Remove unused import: `pathlib.Path`"
+    },
+    "location": {
+      "column": 21,
+      "row": 4
+    },
+    "message": "`pathlib.Path` imported but unused",
+    "name": "unused-import",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "PLW1510",
+    "end_location": {
+      "column": 26,
+      "row": 34
+    },
+    "filename": "/work/bakeoff-specs-control/tests/test_config.py",
+    "fix": {
+      "applicability": "displayonly",
+      "edits": [
+        {
+          "content": "check=False, ",
+          "end_location": {
+            "column": 9,
+            "row": 36
+          },
+          "location": {
+            "column": 9,
+            "row": 36
+          }
+        }
+      ],
+      "message": "Add explicit `check=False`"
+    },
+    "location": {
+      "column": 12,
+      "row": 34
+    },
+    "message": "`subprocess.run` without explicit `check` argument",
+    "name": "subprocess-run-without-check",
+    "noqa_row": 34,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/subprocess-run-without-check"
+  }
+]

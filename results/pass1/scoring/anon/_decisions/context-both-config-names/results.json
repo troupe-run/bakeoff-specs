@@ -1,0 +1,521 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "model"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "retry",
+          "5"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yaml": "model: from-yaml  # yaml file\nretry: 2\n",
+      ".troupe/troupe.yml": "model: from-yml  # yml file\nretry: 1\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/troupe.yaml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe: both troupe.yml and troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe: both troupe.yml and troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe: both troupe.yml and troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe: both troupe.yml and troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe: both troupe.yml and troupe.yaml exist\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: ./.troupe/troupe.yml: both troupe.yml and troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: ./.troupe/troupe.yml: both troupe.yml and troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: ./.troupe/troupe.yml: both troupe.yml and troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: ./.troupe/troupe.yml: both troupe.yml and troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: ./.troupe/troupe.yml: both troupe.yml and troupe.yaml exist\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "Exit 4 in both cases",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.yml: both troupe.yml and /theatre/.troupe/troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.yml: both troupe.yml and /theatre/.troupe/troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.yml: both troupe.yml and /theatre/.troupe/troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.yml: both troupe.yml and /theatre/.troupe/troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "/theatre/.troupe/troupe.yml: both troupe.yml and /theatre/.troupe/troupe.yaml exist\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.yml and .troupe/troupe.yaml: both exist; keep only one\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.yml and .troupe/troupe.yaml: both exist; keep only one\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.yml and .troupe/troupe.yaml: both exist; keep only one\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.yml and .troupe/troupe.yaml: both exist; keep only one\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: .troupe/troupe.yml and .troupe/troupe.yaml: both exist; keep only one\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: both /theatre/.troupe/troupe.yml and /theatre/.troupe/troupe.yaml exist; remove one\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: both /theatre/.troupe/troupe.yml and /theatre/.troupe/troupe.yaml exist; remove one\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: both /theatre/.troupe/troupe.yml and /theatre/.troupe/troupe.yaml exist; remove one\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: both /theatre/.troupe/troupe.yml and /theatre/.troupe/troupe.yaml exist; remove one\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: both /theatre/.troupe/troupe.yml and /theatre/.troupe/troupe.yaml exist; remove one\n",
+              "stdout": ""
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "get",
+                "model"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: error: ambiguous configuration: both .troupe/troupe.yml and .troupe/troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: error: ambiguous configuration: both .troupe/troupe.yml and .troupe/troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "retry",
+                "5"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: error: ambiguous configuration: both .troupe/troupe.yml and .troupe/troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: error: ambiguous configuration: both .troupe/troupe.yml and .troupe/troupe.yaml exist\n",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 4,
+              "stderr": "troupe: error: ambiguous configuration: both .troupe/troupe.yml and .troupe/troupe.yaml exist\n",
+              "stdout": ""
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+The WP01 implementer was cut off when the previous session ended. Its partial work survived: an uncommitted rewrite of `src/troupe/yamlcore.py` in the lane-a worktree, with nothing committed yet. I've resumed it from where it stopped; it will finish the tests, run the four checks (pytest, mypy, ruff check, ruff format) and commit. I'll review WP01 when it reports back.

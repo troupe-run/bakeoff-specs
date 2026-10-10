@@ -1,0 +1,12 @@
+{
+  "evidence": [
+    "repo/spec/001-config-load-show-set/spec.md:197-200 (FR-022 marked 'Replaced by step 5' with a pointer to FR-420–FR-427; FR-020 marked refined at :193)",
+    "diff.patch:3275-3287 (tests/e2e/test_set_new_key.py: the old new-key-in-included-file test is renamed and now expects the override in troupe.yml; the old result is kept under --in-include in tests/e2e/test_set_in_include.py:78)",
+    "diff.patch:9-36 (README documents mapping-form includes, where `set` now writes new keys, and `--in-include`); diff.patch:1843-1847 (CLI help for --in-include)",
+    "repo/spec/001-config-load-show-set/spec.md:177-178 and :297 (FR-010 and the Key Entities 'Include: a `file:` string' were not changed and do not mention mapping form or point to step 5)"
+  ],
+  "notes": "The replaced new-key rule, the test that enforced it, the README and the CLI help all agree with the new override behaviour, and the old behaviour is kept explicitly behind --in-include. The one leftover is in the step-1 spec: FR-010 and its glossary still define an include only as a `file:` string, with no pointer to step 5's FR-400. A newcomer reading that spec first gets an incomplete picture, but no test enforces the old definition.",
+  "raw": "```json\n{\"score\": 3, \"evidence\": [\"repo/spec/001-config-load-show-set/spec.md:197-200 (FR-022 marked 'Replaced by step 5' with a pointer to FR-420–FR-427; FR-020 marked refined at :193)\", \"diff.patch:3275-3287 (tests/e2e/test_set_new_key.py: the old new-key-in-included-file test is renamed and now expects the override in troupe.yml; the old result is kept under --in-include in tests/e2e/test_set_in_include.py:78)\", \"diff.patch:9-36 (README documents mapping-form includes, where `set` now writes new keys, and `--in-include`); diff.patch:1843-1847 (CLI help for --in-include)\", \"repo/spec/001-config-load-show-set/spec.md:177-178 and :297 (FR-010 and the Key Entities 'Include: a `file:` string' were not changed and do not mention mapping form or point to step 5)\"], \"notes\": \"The replaced new-key rule, the test that enforced it, the README and the CLI help all agree with the new override behaviour, and the old behaviour is kept explicitly behind --in-include. The one leftover is in the step-1 spec: FR-010 and its glossary still define an include only as a `file:` string, with no pointer to step 5's FR-400. A newcomer reading that spec first gets an incomplete picture, but no test enforces the old definition.\"}\n```",
+  "score": 3,
+  "status": "ok"
+}

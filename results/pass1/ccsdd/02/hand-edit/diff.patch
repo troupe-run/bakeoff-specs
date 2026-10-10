@@ -1,0 +1,72 @@
+commit 0898553a393a46af7bdfd711f860735a57696a9b
+Author:     Sam Teammate <sam.teammate@troupe.run>
+AuthorDate: Fri Oct 2 09:40:33 2026 +0000
+Commit:     Sam Teammate <sam.teammate@troupe.run>
+CommitDate: Fri Oct 2 09:40:33 2026 +0000
+
+    Let TROUPE_THEATRE set the default theatre
+
+diff --git a/src/troupe/cli/shell.py b/src/troupe/cli/shell.py
+index ffcd1c8..505cab5 100644
+--- a/src/troupe/cli/shell.py
++++ b/src/troupe/cli/shell.py
+@@ -8,6 +8,7 @@ direction is therefore ``shell <- subcommand modules <- main`` and has no cycle.
+ 
+ import argparse
+ import io
++import os
+ from collections.abc import Callable
+ from pathlib import Path
+ from typing import NoReturn
+@@ -37,13 +38,20 @@ type SubcommandRegistrar = Callable[[argparse._SubParsersAction[TroupeArgumentPa
+ 
+ 
+ def theatre_option_parent() -> TroupeArgumentParser:
+-    """Return a parent parser adding ``--theatre DIR`` (default: the current directory)."""
++    """Return a parent parser adding ``--theatre DIR``.
++
++    The default is ``$TROUPE_THEATRE`` when it is set and not empty, else the current directory.
++    """
++    env_theatre = os.environ.get("TROUPE_THEATRE")
+     parent = TroupeArgumentParser(add_help=False)
+     parent.add_argument(
+         "--theatre",
+         metavar="DIR",
+         type=Path,
+-        default=Path.cwd(),
+-        help="theatre directory holding .troupe/ (default: the current directory)",
++        default=Path(env_theatre) if env_theatre else Path.cwd(),
++        help=(
++            "theatre directory holding .troupe/ "
++            "(default: $TROUPE_THEATRE if set, else the current directory)"
++        ),
+     )
+     return parent
+diff --git a/tests/test_cli_usage.py b/tests/test_cli_usage.py
+index 19bb98f..7c28366 100644
+--- a/tests/test_cli_usage.py
++++ b/tests/test_cli_usage.py
+@@ -129,6 +129,23 @@ def test_history_defaults_to_the_current_directory(
+     }
+ 
+ 
++def test_theatre_env_var_is_the_default_and_option_wins(
++    make_theatre: MakeTheatre, run_cli: RunCli, monkeypatch: pytest.MonkeyPatch
++) -> None:
++    theatre = make_theatre(CONFIG)
++    other = make_theatre("name: other\n", name="other")
++    monkeypatch.setenv("TROUPE_THEATRE", str(theatre))
++
++    from_env = run_cli("config", "show", "name", cwd=other)
++    from_option = run_cli("config", "show", "name", "--theatre", str(other), cwd=other)
++    monkeypatch.setenv("TROUPE_THEATRE", "")
++    empty_env = run_cli("config", "show", "name", cwd=other)
++
++    assert (from_env.exit_code, from_env.stdout) == (0, b"demo\n")
++    assert (from_option.exit_code, from_option.stdout) == (0, b"other\n")
++    assert (empty_env.exit_code, empty_env.stdout) == (0, b"other\n")
++
++
+ def test_default_theatre_without_config_is_a_load_error(run_cli: RunCli, tmp_path: Path) -> None:
+     result = run_cli("config", "show", "a", cwd=tmp_path)
+ 

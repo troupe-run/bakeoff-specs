@@ -1,0 +1,392 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.coder"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.coder",
+          "--sources"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "agents.coder.prompt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show",
+          "agents.coder.notes"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/prompts/coder.txt": "Line one\r\nLine two\r\n",
+      ".troupe/prompts/notes.txt": "  indented first line\nlast line, no final newline",
+      ".troupe/prompts/plain.txt": "ordinary text\nsecond line\n",
+      ".troupe/troupe.yml": "agents:\n  coder:\n    name: coder\n    prompt: file:prompts/coder.txt\n    notes: file:prompts/notes.txt\n    plain: file:prompts/plain.txt\n"
+    },
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/prompts/coder.txt",
+      ".troupe/prompts/notes.txt"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: coder\nprompt: |\n  Line one\r\n  Line two\r\nnotes: |2-\n    indented first line\n  last line, no final newline\nplain: |\n  ordinary text\n  second line\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  name: coder\n  prompt: |\n    Line one\r\n    Line two\r\n  notes: |2-\n      indented first line\n    last line, no final newline\n  plain: |\n    ordinary text\n    second line\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: coder # from .troupe/troupe.yml\nprompt: | # from .troupe/prompts/coder.txt\n  Line one\r\n  Line two\r\nnotes: |2- # from .troupe/prompts/notes.txt\n    indented first line\n  last line, no final newline\nplain: | # from .troupe/prompts/plain.txt\n  ordinary text\n  second line\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "Line one\r\nLine two\r\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.notes"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "  indented first line\nlast line, no final newline\n"
+            }
+          ]
+        }
+      ],
+      "route": "Double-quoted at first; reworked so every text include is a literal block of the exact text",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: coder\nprompt: \"Line one\\r\\nLine two\\r\\n\"\nnotes: |2-\n    indented first line\n  last line, no final newline\nplain: |\n  ordinary text\n  second line\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  name: coder\n  prompt: \"Line one\\r\\nLine two\\r\\n\"\n  notes: |2-\n      indented first line\n    last line, no final newline\n  plain: |\n    ordinary text\n    second line\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: coder # from .troupe/troupe.yml\nprompt: \"Line one\\r\\nLine two\\r\\n\" # from .troupe/prompts/coder.txt\nnotes: |2- # from .troupe/prompts/notes.txt\n    indented first line\n  last line, no final newline\nplain: | # from .troupe/prompts/plain.txt\n  ordinary text\n  second line\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "Line one\r\nLine two\r\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.notes"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "  indented first line\nlast line, no final newline\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: coder\nprompt: \"Line one\\r\\nLine two\\r\\n\"\nnotes: \"  indented first line\\nlast line, no final newline\"\nplain: |\n  ordinary text\n  second line\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  name: coder\n  prompt: \"Line one\\r\\nLine two\\r\\n\"\n  notes: \"  indented first line\\nlast line, no final newline\"\n  plain: |\n    ordinary text\n    second line\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: coder # from .troupe/troupe.yml\nprompt: \"Line one\\r\\nLine two\\r\\n\" # from .troupe/prompts/coder.txt\nnotes: \"  indented first line\\nlast line, no final newline\" # from .troupe/prompts/notes.txt\nplain: | # from .troupe/prompts/plain.txt\n  ordinary text\n  second line\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "Line one\r\nLine two\r\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.notes"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "  indented first line\nlast line, no final newline\n"
+            }
+          ]
+        }
+      ],
+      "route": "Double-quoted with escapes",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: coder\nprompt: |\n  Line one\n  Line two\nnotes: |2-\n    indented first line\n  last line, no final newline\nplain: |\n  ordinary text\n  second line\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "coder:\n  name: coder\n  prompt: |\n    Line one\n    Line two\n  notes: |2-\n      indented first line\n    last line, no final newline\n  plain: |\n    ordinary text\n    second line\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder",
+                "--sources"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "name: coder # from .troupe/troupe.yml\nprompt: | # from .troupe/prompts/coder.txt\n  Line one\n  Line two\nnotes: |2- # from .troupe/prompts/notes.txt\n    indented first line\n  last line, no final newline\nplain: | # from .troupe/prompts/plain.txt\n  ordinary text\n  second line\n"
+            },
+            {
+              "args": [
+                "config",
+                "get",
+                "agents.coder.prompt"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "Line one\r\nLine two\r\n"
+            },
+            {
+              "args": [
+                "config",
+                "show",
+                "agents.coder.notes"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "  indented first line\nlast line, no final newline\n"
+            }
+          ]
+        }
+      ],
+      "route": "Literal block with CRLF turned into LF; get keeps the bytes",
+      "route_no": 3
+    }
+  ]
+}

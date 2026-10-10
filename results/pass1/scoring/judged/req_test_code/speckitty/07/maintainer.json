@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    "repo/tests/integration/test_remote_acceptance.py:1-5",
+    "repo/tests/integration/test_remote_acceptance.py:70-92",
+    "repo/tests/integration/test_remote_read.py:223-291",
+    "repo/tests/unit/test_loader_literals.py:1-32",
+    "repo/spec/troupe-config-remote-includes-01M4BMJ5/acceptance-matrix.json:8-55",
+    "repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:191-211"
+  ],
+  "notes": "I sampled three tests added at this step. Each names the requirements it protects in its docstring or comments (NFR-001/S-4, FR-003/FR-009, S-3/S-7/S-10). Those IDs resolve to text in spec.md, and acceptance-matrix.json links each FR back to named test functions; the unit tests import the code they exercise directly. It falls short of a 4 because several tests carry only a bare US scenario number (e.g. `# 5`) or no ID at all (e.g. test_query_naming_yaml_does_not_make_a_text_url_yaml). The matrix entries also still hold placeholder descriptions and 'TODO' notes, and for CLI-level integration tests you have to search to find the code.",
+  "raw": "{\"score\": 3, \"evidence\": [\"repo/tests/integration/test_remote_acceptance.py:1-5\", \"repo/tests/integration/test_remote_acceptance.py:70-92\", \"repo/tests/integration/test_remote_read.py:223-291\", \"repo/tests/unit/test_loader_literals.py:1-32\", \"repo/spec/troupe-config-remote-includes-01M4BMJ5/acceptance-matrix.json:8-55\", \"repo/spec/troupe-config-remote-includes-01M4BMJ5/spec.md:191-211\"], \"notes\": \"I sampled three tests added at this step. Each names the requirements it protects in its docstring or comments (NFR-001/S-4, FR-003/FR-009, S-3/S-7/S-10). Those IDs resolve to text in spec.md, and acceptance-matrix.json links each FR back to named test functions; the unit tests import the code they exercise directly. It falls short of a 4 because several tests carry only a bare US scenario number (e.g. `# 5`) or no ID at all (e.g. test_query_naming_yaml_does_not_make_a_text_url_yaml). The matrix entries also still hold placeholder descriptions and 'TODO' notes, and for CLI-level integration tests you have to search to find the code.\"}",
+  "score": 3,
+  "status": "ok"
+}

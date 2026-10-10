@@ -1,0 +1,18 @@
+{
+  "kind": "one-off",
+  "question": "Can a VALUE starting with '-' (e.g. -1e3) be passed without --",
+  "routes": [
+    {
+      "outcome": "Kept; also governs --reason -x at step 4",
+      "reasoning_given": "Plain argparse exits 2 on -1e3/-.inf; long options stay options",
+      "route": "Override argparse's private _parse_optional (via a parser subclass) so single-dash VALUEs are positional",
+      "route_no": 1
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

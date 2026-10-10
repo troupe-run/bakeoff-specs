@@ -1,0 +1,1920 @@
+diff --git a/README.md b/README.md
+index a7f0abe..473c44d 100644
+--- a/README.md
++++ b/README.md
+@@ -23,6 +23,7 @@ Every command takes `--theatre DIR` (default: the current directory).
+ | `troupe config show PATH` | Print the scalar at `PATH` |
+ | `troupe config set PATH VALUE` | Change or create the value at `PATH` and write it back into the file that holds it |
+ | `troupe config history [PATH]` | Print the change events as JSON Lines, oldest first, optionally only for `PATH` and below |
++| `troupe config watch` | Record hand edits to the files as they happen, until Ctrl-C (SIGINT) or SIGTERM |
+ 
+ `PATH` is dotted (`agents.coder.model`); a numeric segment indexes a list (`tools.0`). `VALUE` is one YAML 1.2 flow
+ node: `0.2` is a float, `true` a boolean, `abc` and `"0.2"` strings, `{a: 1}` a mapping, `[a, b]` a list, and
+@@ -39,6 +40,23 @@ uv run troupe config set agents.coder.tools '[read, write]' --theatre /tmp/demo
+ uv run troupe config history agents.coder --theatre /tmp/demo
+ ```
+ 
++### Watching for hand edits
++
++`troupe config watch` runs in the foreground. Once it is watching, it prints one line, `watching <dir>`. From then
++on, within 2 seconds of any change to `troupe.yml` or a file it includes (including files included by a later edit),
++it reconciles (see [State](#state)). It prints nothing else to stdout. If an edit leaves the configuration unloadable
++(say, half-typed YAML), it reports this once on stderr and carries on, then picks up the change once the files load
++again. SIGINT or SIGTERM stop it with exit code 0.
++
++```sh
++uv run troupe config watch --theatre /tmp/demo &        # watching /tmp/demo
++sed -i.bak 's/small/tiny/' /tmp/demo/.troupe/troupe.yml && rm /tmp/demo/.troupe/troupe.yml.bak
++sleep 2; uv run troupe config history agents.coder.model --theatre /tmp/demo   # ... "old": "small", "new": "tiny"
++kill %1
++```
++
++A `set` made while `watch` runs records exactly its own events. Its write-back is not picked up again.
++
+ ### Includes
+ 
+ A string starting with `file:` includes the named file, relative to the file containing it. A `.yml`/`.yaml` target is
+@@ -61,12 +79,18 @@ On failure stdout is empty and stderr names the path or file involved.
+ ### State
+ 
+ Change events are stored with the [`eventsourcing`](https://eventsourcing.readthedocs.io/) library in
+-`<theatre>/.troupe/events.sqlite`. The first command run against a theatre imports its current values. Edits made
+-by hand afterwards are not recorded as events, but `show` and `set` always read the files as they are now.
++`<theatre>/.troupe/events.sqlite`. The first command run against a theatre imports its current values.
++
++Edits made by hand are recorded by *reconciling*: troupe compares the files with the recorded configuration and
++records a `set` or `remove` event for each leaf that differs. A formatting-only or comment-only edit records nothing.
++`show` and `set` reconcile before doing anything else, so edits made while nothing was running are picked up.
++`history` never reconciles: it reports only what has been recorded. Commands against one theatre take turns (a lock
++on the `.troupe/` directory), so troupe never records its own write-back a second time.
+ 
+ ## Decisions on points the contract leaves open
+ 
+-These are recorded with their reasons in `spec/changes/config-load-show-set/design.md`:
++These are recorded with their reasons in `spec/changes/archive/2026-10-02-config-load-show-set/design.md`
++and `spec/changes/archive/2026-10-03-config-sync-with-files/design.md`:
+ 
+ 1. Setting a key under a null or scalar value (e.g. `agents:` with nothing after it) exits 5. Set the parent to a
+    mapping first: `set agents '{coder: {model: x}}'`.
+@@ -75,13 +99,21 @@ These are recorded with their reasons in `spec/changes/config-load-show-set/
+ 4. A string VALUE starting with `file:` becomes an include. If the result cannot load, the write is refused (exit 3).
+ 5. Mapping and list VALUEs are applied as a diff: unchanged entries keep their bytes, and keys missing from VALUE are
+    deleted. Changing or deleting a YAML include through a parent path is refused (exit 3).
+-6. Import happens on any command whose configuration loads, before the command runs.
++6. Import happens on any command whose configuration loads, before the command runs. So does reconciling (except for
++   `history`), and its events are kept even if the command then fails with exit 3 or 5.
+ 7. `history PATH` with no matches prints nothing and exits 0. `.inf`/`.nan` appear in JSON as the strings `".inf"`,
+    `"-.inf"` and `".nan"`.
+ 8. Anchors, aliases and non-core tags fail to load (exit 4) for now.
+ 9. A new key that would read back as a non-string when written plain (e.g. `true`) is quoted.
+ 10. Every `set` is verified before writing: the edited text is re-read and must give exactly the intended
+     configuration, otherwise nothing is written (exit 3).
++11. `watch` on a theatre that cannot be loaded exits 4 without printing its line. Once it is running, a load failure
++    does not stop it: it reports the error once on stderr and resumes when the files load again.
++12. `watch` prints only its `watching <dir>` line to stdout. `<dir>` is the theatre as given (`--theatre` or
++    `TROUPE_THEATRE`), not resolved, or the absolute current directory when neither is given.
++13. Reconcile records removes in the order they were recorded, then sets in the files' document order.
++14. `watch` reads the watched files every 0.2 s and reconciles once a change has read the same twice in a row. That
++    way it does not record a file that an editor has emptied halfway through a save.
+ 
+ ## Development
+ 
+@@ -94,4 +126,5 @@ uv run ruff check && uv run ruff format --check
+ Code map: `src/troupe/loader.py` (files and includes), `tree.py` (YAML nodes with source positions), `schema.py`
+ (core-schema types and printing), `store.py` (event store), `edit/` (byte-surgical write-back:
+ `plan.py` → `ops.py` → `apply.py`, with `scalars.py`, `blocks.py`, `folded.py` and `text.py` holding the quoting,
+-block-scalar, folding and layout rules), `commands.py` and `cli.py`.
++block-scalar, folding and layout rules), `sync.py` (reconcile), `commands.py` (subcommands, the theatre lock
++and the `watch` loop) and `cli.py`.
+diff --git a/spec/changes/archive/2026-10-03-config-sync-with-files/.method.yaml b/spec/changes/archive/2026-10-03-config-sync-with-files/.method.yaml
+new file mode 100644
+index 0000000..6a87d2b
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-sync-with-files/.method.yaml
+@@ -0,0 +1,2 @@
++schema: spec-driven
++created: 2026-10-03
+diff --git a/spec/changes/archive/2026-10-03-config-sync-with-files/design.md b/spec/changes/archive/2026-10-03-config-sync-with-files/design.md
+new file mode 100644
+index 0000000..8adaabe
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-sync-with-files/design.md
+@@ -0,0 +1,173 @@
++# Design
++
++## Context
++
++See proposal.md for the motivation and `spec/` for the behaviour. Relevant current state (step 1):
++
++- `commands.open_theatre()` loads the configuration, opens `ConfigStore` and imports on first use. `show`, `set` and
++  `history` all start with it.
++- `store.ConfigStore` wraps one eventsourcing aggregate whose state, `leaves`, is the projection `{path: scalar}`.
++  `projection()` already exists but nothing reads it. Step-1 design D10 kept it unreconciled on purpose. This change
++  replaces that decision: the projection now follows the files.
++- `edit/apply._changes(before, after)` already computes the leaf diff a `set` records (removes in old order, then
++  sets in new order, strict comparison via `schema.same`). Reconcile needs exactly the same rule.
++- `loader.load()` returns `Config.files`, every file it read keyed by resolved path, with the text as read
++  (`SourceFile.text`). That is the set of files `watch` has to watch, and the text it was reconciled against.
++- `set` writes files with a plain `open("w")` and records events afterwards (step-1 D11). Nothing stops two
++  processes from interleaving.
++
++## Goals / Non-Goals
++
++**Goals:**
++- One reconcile function, used by `show`, `set` and `watch`, sharing `set`'s leaf diff rule.
++- No reconcile can see a half-finished `set` (files written but events not yet recorded). This is the one way a
++  write-back could be picked up again.
++- `watch` notices every change made after its ready line, on Linux and macOS, with no new dependency.
++- Each policy lives in one named place: which commands reconcile, the poll interval, the settle rule, and the lock.
++
++**Non-Goals:**
++- Locking against the user's editor. Hand edits are not coordinated, and a reconcile sees whatever is on disk when it
++  runs.
++- Identifying who made a change: reconcile events are plain `set`/`remove` events, as the contract says.
++- Watching files that are not part of the loaded configuration (unrelated files under `.troupe/`, `events.sqlite`).
++- Performance work: configurations are small, so reloading the whole configuration on each change is fine.
++
++## Decisions
++
++### D1. Reconcile is `diff_leaves(projection, files)` recorded in one save
++Move `_changes` out of `edit/apply.py` into `leaves.py` as `diff_leaves(old: dict, new: dict) -> list[Change]`, taking
++leaf dicts. `set` keeps calling it, with `leaves(to_data(...))` of the configuration before and after. New module
++`sync.py` holds `reconcile(config, store) -> list[Change]`: `diff_leaves(store.projection(), leaves(to_data(config.root)))`,
++then `store.record(changes)` if the list is not empty (one `save()`, atomic). With one diff rule for both, a `set` and a
++hand edit with the same effect record the same events.
++- "Recorded order" for removes is the projection's dict order. That is import order, with leaves first created by a
++  later event appended at the end. That is the nearest thing to the old document order once the old file is gone.
++- Text-include leaves compare the target's text, as `set` already does. A hand edit to `prompt.md` is a `set prompt`.
++*Alternative:* diffing the old and new file texts. Rejected: we no longer have the old texts, and leaves are what
++events describe.
++
++### D2. One session per command, under a per-theatre lock
++Replace `open_theatre()` with a context manager `theatre_session(theatre, command, store=None)`:
++1. `find_config()`. With no config file this exits 4 before anything is created.
++2. Open the `.troupe/` **directory** read-only and `fcntl.flock(fd, LOCK_EX)` (blocking). The lock is released when
++   the session ends or the process dies.
++3. `load()` (exit 4), open `ConfigStore` (unless `watch` passes in its long-lived one, D8), import if needed, then
++   reconcile if `command` is one of `RECONCILING_COMMANDS`.
++4. Yield `(config, store)`. The command does its work, and for `set` that includes writing the files and recording
++   its events, before the lock is released.
++
++Which commands reconcile is decided in one place, `RECONCILING_COMMANDS = {"show", "set", "watch"}` in `commands.py`.
++`history` is not in it, but it still takes the lock because it may import.
++
++Why this gives "the write-back produces no further events": every reconcile runs inside the lock and loads the files
++at that moment. A `set` releases the lock only after its events are recorded. Any reconcile that runs after the
++`set`'s writes therefore finds files equal to the projection and records nothing.
++- *Lock file under `.troupe/`, rejected:* it would have to be created before the YAML is known to load, which breaks
++  "no state when the configuration cannot be loaded". A directory lock creates nothing.
++- *SQLite transaction as the lock, rejected:* it cannot cover the file writes, which happen outside the database.
++- *Ignoring paths that troupe has just written, rejected:* a hand edit made right after a `set` would be lost. With
++  the lock, the projection itself is what makes a write-back a no-op.
++
++Reconcile events are saved in their own `save()` before the command runs, so they persist if the command then exits
++3 or 5, as the import already does (step-1 decision 6).
++
++### D3. `watch` detects changes by polling file contents
++Every `POLL_INTERVAL = 0.2` s, `watch` reads its *watch set*. That is every path in the last successful load's
++`Config.files`, plus both config-file candidates (`troupe.yml`, `troupe.yaml`). It compares what it reads with the
++*baseline*: the text each file had when it was loaded (`SourceFile.text`) and whether each candidate existed. A file
++that is missing, unreadable or undecodable counts as different. Taking the baseline from the loader's own texts,
++rather than from a separate read, means no edit can slip in between "read for reconcile" and "start watching".
++
++When the watch set differs from the baseline and reads the same on two consecutive polls (the *settle rule*,
++`SETTLE_POLLS = 2`), `watch` opens a session (lock, load, reconcile) and takes the new baseline from that load.
++Includes added by a hand edit then join the watch set, and removed ones leave it. Worst-case latency is about
++POLL_INTERVAL × (SETTLE_POLLS + 1) plus one load: well under the 2 s limit.
++
++The settle rule matters because an editor that truncates and then rewrites would otherwise be caught at the moment
++the file is empty, and an empty file is a valid (empty) configuration. That would record a `remove` for every leaf
++followed by a `set` for every leaf.
++- *watchdog / inotify / FSEvents, rejected:* a new dependency with different behaviour on each platform. Editors
++  that save by rename also need directory watches and re-arming. Polling by content handles in-place writes,
++  renames, creation and deletion the same way on both OSes. Configurations are a few small files.
++- *mtime polling, rejected:* coarse mtime resolution on some filesystems can hide a quick second write.
++
++### D4. Ready line and startup
++`watch` installs its signal handlers, runs one session (lock, load, import, reconcile), takes the baseline from that
++load, then writes `watching <dir>\n` to stdout and flushes. Every change after the line differs from the baseline, so
++it will be seen. `<dir>` is the theatre as given (`--theatre`, else `TROUPE_THEATRE`), or `os.getcwd()` when neither
++is set. It is not `resolve()`d, because on macOS that would turn `/var/…` into `/private/var/…` and the line would no
++longer match what the caller passed. This mapping lives in `cli.py` next to the existing theatre default. If the first
++load fails, `watch` exits 4 through the normal error path before printing anything.
++
++### D5. Stopping
++SIGINT and SIGTERM handlers only set a `threading.Event`. The loop waits on that event with
++`stop.wait(POLL_INTERVAL)`, so it wakes at once. The flag is checked only between cycles, so a reconcile in progress
++finishes (it holds the lock and saves atomically). Then `watch` returns, and `main` exits 0 without writing to stderr.
++Replacing Python's default SIGINT handler also means no `KeyboardInterrupt` traceback.
++
++### D6. Load failures while watching
++A `LoadError` raised during a watch cycle is caught: nothing is recorded, `troupe: <message>` goes to stderr unless it
++equals the last message printed, and the loop goes on. While the configuration does not load, there is no
++`Config.files` to watch. So every poll retries the session (lock, load) until one succeeds. That is cheap, and it also
++catches a missing include target being created. Once a load succeeds, the remembered error is cleared and normal
++polling resumes. Any other exception ends `watch` through `main`'s normal error handling. This is conservative:
++an unexpected failure stops the watch rather than letting it run and record events silently.
++
++### D7. CLI shape
++`watch` is a new subparser with no positional arguments. `cli.run` currently returns the text to print. `watch`
++cannot work that way, so it writes its line itself and blocks. `run` calls `commands.watch(theatre, display,
++sys.stdout)` and returns `""`. Errors keep flowing through `TroupeError` → exit code in `main`, the one place exit
++codes are mapped.
++
++### D8. The store in a long-running process
++`watch` opens one `ConfigStore` for its whole life. The eventsourcing `Application` is created without an aggregate
++cache, so `repository.get()` rebuilds the projection from the database each time and sees events that other processes
++recorded. A test checks this (a `set` while `watch` runs, then a hand edit, must give an `old` equal to the `set`'s
++new value). If a cache is ever turned on, reconcile must reopen the store.
++
++### D9. Testing
++- Reconcile through the in-process CLI (`conftest.Theatre.run`): hand-edit with `Theatre.write`, run
++  `show`/`set`/`history`, and compare the exact event lists. The step-1 test `test_hand_edits_are_not_reconciled` is
++  replaced by a test showing that `history` does not reconcile but `show` does.
++- `watch` through real subprocesses: `[sys.executable, "-m", "troupe.cli", "config", "watch", "--theatre", dir]`,
++  read stdout until the ready line (with a timeout), make the edit, then poll `history` until a deadline of 2 s
++  measured from the edit. Assertions that nothing happened wait 2.5 s. Signals are sent with `Popen.send_signal`, and
++  the test then checks the exit code 0, the exact stdout and an empty stderr. One smoke test runs `watch` through
++  `uv run`, as the contract requires, which also proves that `uv` passes the signal on.
++- Lock: a test holds `flock` on `.troupe/` from the test process and checks that `set` blocks until it is released.
++  A second test checks that `set` while `watch` runs adds exactly one event.
++
++## Risks / Trade-offs
++
++- [`uv run` does not pass SIGTERM/SIGINT on to the child] → the uv smoke test catches this. Current uv versions do
++  forward both signals.
++- [`flock` on a directory fd is not supported on some filesystem, such as certain network mounts] → `flock` raises
++  `OSError`, which becomes a clear error naming `.troupe/`. Only local Linux and macOS filesystems are in scope.
++- [An editor writes in several steps over more than ~0.4 s] → an intermediate state can be reconciled, which adds
++  extra but correct events (each one matches what was on disk). The settle rule makes this unlikely, and it never
++  loses data.
++- [A blocked lock: a hung `set` stalls `watch`] → acceptable, since `set` is short. The lock dies with the process,
++  so a crash cannot leave a stale lock.
++- [Polling costs a little CPU while idle] → about 5 small reads per second. No performance targets apply.
++- [Reconcile events added by `set`/`show` surprise anyone who relied on step-1 "hand edits are not recorded"] → this
++  is the step-2 contract. The README and specs are updated in the same change.
++
++## Migration Plan
++
++Existing `events.sqlite` files stay valid: the event types do not change. The first reconciling command after the
++upgrade records any hand edits made since import as `set`/`remove` events. To roll back, use the step-1 code. It
++reads the same database, because reconcile records only event types that step 1 already defines.
++
++## Decisions on points the contract leaves open (for product-owner review)
++
++1. `watch` on an unloadable theatre at startup exits 4 without printing the line. This matches every other command.
++2. A load failure *while* watching does not stop `watch`. It reports once on stderr and resumes when the files load
++   again (an editor mid-save must not kill the watcher).
++3. `watch` writes nothing to stdout except the ready line. Events go to the store, and `history` shows them.
++4. `<dir>` in the ready line is the theatre as given, not resolved. When no theatre is given, it is the absolute
++   current directory.
++5. `history` still imports on a theatre's first command (step-1 behaviour). Importing is not reconciling.
++6. Reconcile events persist even if the command then fails (exit 3 or 5), as the import already does.
++7. Removes found by reconcile are listed in recorded order. Sets are listed in the files' document order.
++8. Commands against one theatre are serialised by a lock on the `.troupe/` directory, so a second command waits
++   rather than failing.
+diff --git a/spec/changes/archive/2026-10-03-config-sync-with-files/proposal.md b/spec/changes/archive/2026-10-03-config-sync-with-files/proposal.md
+new file mode 100644
+index 0000000..c709ae2
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-sync-with-files/proposal.md
+@@ -0,0 +1,46 @@
++# Proposal
++
++## Why
++
++People edit `.troupe/` files by hand in their editor, often while troupe is running. Step 1 deliberately left those
++edits out of the event record ("importing is not reconciling"), so `history` misses every hand edit and the
++recorded configuration drifts away from the files. Step 2 keeps the record and the files in sync: edits are picked up
++as they happen while `watch` runs, and any edits made while nothing was running are picked up by the next command.
++troupe's own write-backs must not be picked up a second time.
++
++## What Changes
++
++- **Reconcile**: compare the files, as loaded now, with the recorded configuration (the event projection). Emit one
++  `remove` event for each recorded leaf that is gone and one `set` event for each leaf that is new or has a different
++  value. A formatting-only or comment-only edit changes no leaf, so it emits nothing.
++- New subcommand `troupe config watch [--theatre DIR]`. It runs in the foreground, prints `watching <dir>` (flushed)
++  once it can observe changes, reconciles within 2 seconds of any change to the config file or an included file,
++  follows includes that hand edits add, and exits 0 on SIGINT or SIGTERM.
++- `show`, `set` and `watch` reconcile before doing their own work. `history` never reconciles. It still imports on
++  first use, as in step 1. **BREAKING** (behaviour, not interface): a hand edit now produces `set`/`remove` events,
++  and a `set` after a hand edit records the reconcile events first, then its own.
++- Commands against the same theatre are serialised, so a `set` running while `watch` runs records exactly its own
++  events, and its write-back produces no further events.
++
++## Capabilities
++
++### New Capabilities
++- `config-sync`: reconciling the files with the recorded configuration, the rule that commands reconcile first (except
++  `history`), the `watch` command, and how troupe's own write-backs are kept from being reconciled again.
++
++### Modified Capabilities
++- `config-cli`: `watch` joins the subcommands. The rule that commands leave user files untouched now covers `watch`.
++- `config-history`: hand edits are no longer ignored. "Import on first command" is replaced by "Import on a
++  theatre's first command": the import rules are the same, minus "later hand edits SHALL NOT generate events". The
++  `set` event scenario that started from a hand edit now expects the reconcile event before the `set` event.
++
++## Impact
++
++- Code: a new reconcile step (sharing the leaf diff that `set` already uses), a per-theatre lock taken around every
++  command's read-modify-write, a `watch` loop with signal handling in `commands.py`/`cli.py`, and `watch` added to the
++  argument parser.
++- No new runtime dependencies: changes are detected by polling file contents (see design.md).
++- State: still only `<theatre>/.troupe/events.sqlite`. The lock is taken on the `.troupe/` directory itself, so no
++  new file is created.
++- Tests: new reconcile and watch tests, including subprocess tests that run the real `watch` and send it signals.
++  The step-1 test `test_hand_edits_are_not_reconciled` is replaced. README updated.
+diff --git a/spec/changes/archive/2026-10-03-config-sync-with-files/spec/config-cli/spec.md b/spec/changes/archive/2026-10-03-config-sync-with-files/spec/config-cli/spec.md
+new file mode 100644
+index 0000000..b83227d
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-sync-with-files/spec/config-cli/spec.md
+@@ -0,0 +1,37 @@
++# Spec Delta
++
++## MODIFIED Requirements
++
++### Requirement: Invocation and theatre selection
++The CLI SHALL be invocable as `uv run troupe config <subcommand> [--theatre <dir>] [arguments]` from the repository
++root, with subcommands `show`, `set`, `history` and `watch`. `--theatre` SHALL default to the current working
++directory.
++
++#### Scenario: Explicit theatre
++- **WHEN** `uv run troupe config show model --theatre /tmp/t` is run and `/tmp/t/.troupe/troupe.yml` contains `model: x`
++- **THEN** stdout is `x\n` and the exit code is 0
++
++#### Scenario: Default theatre is the current directory
++- **WHEN** `troupe config show model` is run with the current directory set to a theatre whose config has `model: x`
++- **THEN** stdout is `x\n` and the exit code is 0
++
++#### Scenario: Unknown subcommand or missing argument
++- **WHEN** `troupe config frobnicate` or `troupe config set model` (no VALUE) is run
++- **THEN** the exit code is 2, stdout is empty and stderr has a usage message
++
++#### Scenario: watch takes no positional argument
++- **WHEN** `troupe config watch extra` is run
++- **THEN** the exit code is 2, stdout is empty and stderr has a usage message
++
++### Requirement: State confined to `.troupe/`
++The implementation SHALL keep its own state only under `<theatre>/.troupe/`. It SHALL NOT create or modify any other
++file except as `set`'s write-back rules require, and SHALL NOT create any state when the configuration cannot be
++loaded.
++
++#### Scenario: show leaves user files untouched
++- **WHEN** `show`, `history` and `watch` run against a theatre, including while files are edited by hand during `watch`
++- **THEN** no configuration file is created or modified by troupe, and new files appear only under `.troupe/`
++
++#### Scenario: Unloadable theatre creates no state
++- **WHEN** any subcommand runs against a directory with no `.troupe/troupe.yml` or `.yaml`
++- **THEN** the exit code is 4 and no file or directory is created
+diff --git a/spec/changes/archive/2026-10-03-config-sync-with-files/spec/config-history/spec.md b/spec/changes/archive/2026-10-03-config-sync-with-files/spec/config-history/spec.md
+new file mode 100644
+index 0000000..7a63a9d
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-sync-with-files/spec/config-history/spec.md
+@@ -0,0 +1,61 @@
++# Spec Delta
++
++## MODIFIED Requirements
++
++### Requirement: Events recorded by set
++A `set` SHALL record, atomically and only after the files are written, one `remove` event (`new` null) for each leaf
++that no longer exists, in old document order, followed by one `set` event for each leaf whose value it changes or
++creates, in new document order. `old` SHALL be the leaf's value as loaded from the files just before the `set` (null
++for a created leaf). Because `set` reconciles first (see config-sync), any hand edit is recorded before the `set`'s
++own events. A `set` that changes nothing, or that fails, SHALL record no events of its own.
++
++#### Scenario: Changing a scalar
++- **WHEN** `model` is `a` and `set model b` runs
++- **THEN** one event is added: op `set`, path `model`, old `"a"`, new `"b"`
++
++#### Scenario: Old value comes from the files
++- **WHEN** the theatre was imported with `a: 1`, the user edits it by hand to `a: 2`, and `set a 3` runs
++- **THEN** the last event added has old `2` and new `3`, and it comes right after the reconcile event `set a` (old 1, new 2)
++
++#### Scenario: Scalar replaced by a mapping
++- **WHEN** `a` is `1` and `set a "{b: 2, c: 3}"` runs
++- **THEN** the added events are `remove a` (old 1, new null), then `set a.b` (old null, new 2), then `set a.c` (old null, new 3)
++
++#### Scenario: Unchanged leaves are not recorded
++- **WHEN** `a` is `{b: 1, c: 2}` and `set a "{b: 1, c: 5}"` runs
++- **THEN** exactly one event is added, for `a.c`
++
++#### Scenario: Refused set records nothing
++- **WHEN** the files match the recorded configuration and a `set` exits 3
++- **THEN** no `set` or `remove` event is added
++
++## ADDED Requirements
++
++### Requirement: Import on a theatre's first command
++The first command run against a theatre whose configuration loads SHALL import it before doing its own work,
++recording one `import` event per leaf in document order with `old` null. Every subcommand imports, including
++`history` and `watch`, and the import persists even if the command then exits 3 or 5. A theatre is imported at most
++once. Hand edits made after the import SHALL be recorded only by reconciling (see config-sync), never by importing
++again. Nothing SHALL be imported or stored when the configuration cannot be loaded or the command line is invalid.
++
++#### Scenario: First history imports
++- **WHEN** the config is `a: 1\nb: [x, y]\n` and `history` is the first command run
++- **THEN** stdout is three JSON lines with seq 1, 2, 3, op `import`, paths `a`, `b.0`, `b.1`, old null, and new `1`, `"x"`, `"y"`
++
++#### Scenario: Import happens once
++- **WHEN** `history` runs twice
++- **THEN** both runs print the same import events and no new events are added
++
++#### Scenario: Hand edits are not imported
++- **WHEN** the theatre was imported with `a: 1`, the user then edits it to `a: 2` by hand, and `show a` runs
++- **THEN** no `import` event mentions the value 2. The edit is recorded as a `set` event
++
++#### Scenario: Empty configuration
++- **WHEN** the config file is empty and `history` runs
++- **THEN** stdout is empty, the exit code is 0, and the theatre counts as imported
++
++## REMOVED Requirements
++
++### Requirement: Import on first command
++**Reason**: It said later hand edits SHALL NOT generate events. Step 2 records hand edits by reconciling (config-sync).
++**Migration**: Replaced by "Import on a theatre's first command", which keeps the import rules unchanged and leaves hand edits to reconcile.
+diff --git a/spec/changes/archive/2026-10-03-config-sync-with-files/spec/config-sync/spec.md b/spec/changes/archive/2026-10-03-config-sync-with-files/spec/config-sync/spec.md
+new file mode 100644
+index 0000000..b6e6c19
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-sync-with-files/spec/config-sync/spec.md
+@@ -0,0 +1,146 @@
++# Spec Delta
++
++## Purpose
++
++Keeps a theatre's recorded configuration in step with its hand-edited files. Edits are picked up as they happen
++while `troupe config watch` runs, and edits made while nothing was running are picked up by the next command.
++troupe's own write-backs are never picked up as new changes.
++
++## ADDED Requirements
++
++### Requirement: Reconcile
++To reconcile, troupe SHALL load the configuration files as they are now and compare their leaves (as defined in
++config-history) with the recorded configuration, which is the leaves as left by every recorded event. It SHALL record,
++atomically, one `remove` event (`old` the recorded value, `new` null) for each recorded leaf whose path is no longer
++in the files, in recorded order, followed by one `set` event for each leaf in the files whose path is not recorded
++(`old` null) or whose value differs from the recorded value, in document order. Values SHALL be compared strictly: a
++difference of type (such as `1`, `1.0`, `true` and `"1"`) is a difference, and NaN equals NaN. An edit that changes
++no leaf, such as reformatting, requoting with the same value, reordering mapping keys, or changing comments, SHALL record
++nothing. A reconcile that finds no difference SHALL record nothing.
++
++#### Scenario: Hand edit becomes a set event
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `show a` runs
++- **THEN** one event is added: op `set`, path `a`, old `1`, new `2`
++
++#### Scenario: Removed and added leaves
++- **WHEN** the theatre was imported with `a: 1\nb: 2\n` and the file is edited by hand to `b: 2\nc: [x]\n`
++- **THEN** the next reconcile adds `remove a` (old 1, new null) and then `set c.0` (old null, new `"x"`)
++
++#### Scenario: Scalar replaced by a mapping by hand
++- **WHEN** the theatre was imported with `a: 1\n` and the file is edited by hand to `a:\n  b: 2\n`
++- **THEN** the next reconcile adds `remove a` and then `set a.b` (old null, new 2)
++
++#### Scenario: Type change is a change
++- **WHEN** the theatre was imported with `a: 1\n` and the file is edited by hand to `a: '1'\n`
++- **THEN** the next reconcile adds `set a` with old `1` and new `"1"`
++
++#### Scenario: Formatting-only and comment-only edits
++- **WHEN** the theatre was imported with `a: 1\nb: x\n` and the file is edited by hand to `# note\nb:   "x"   # c\na: 1\n`
++- **THEN** the next reconcile adds no event
++
++#### Scenario: Edit inside an included file
++- **WHEN** `prompt` is `file:prompt.md`, the theatre was imported, and `prompt.md` is edited by hand from `Hi\n` to `Bye\n`
++- **THEN** the next reconcile adds `set prompt` with old `"Hi\n"` and new `"Bye\n"`
++
++### Requirement: Commands reconcile first
++`show`, `set` and `watch` SHALL reconcile after the configuration loads (and, on a theatre's first command, after the
++import) and before doing their own work, so they pick up edits made while nothing was running. The reconcile's events
++SHALL persist even if the command then exits 3 or 5. `history` SHALL never reconcile: it reports only what has been
++recorded. Nothing SHALL be reconciled when the command line is invalid (exit 2) or the configuration cannot be loaded
++(exit 4).
++
++#### Scenario: set after a hand edit
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `set a 3` runs
++- **THEN** two events are added, in this order: `set a` (old 1, new 2), then `set a` (old 2, new 3)
++
++#### Scenario: Reconcile persists when the command fails
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `show nope` runs and exits 5
++- **THEN** a later `history` includes `set a` (old 1, new 2)
++
++#### Scenario: history does not reconcile
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `history` runs
++- **THEN** no event mentions the value 2. After `show a` runs, `history` lists `set a` (old 1, new 2)
++
++#### Scenario: Invalid command line or unloadable configuration records nothing
++- **WHEN** the file was edited by hand after import, and then `set a "[x"` (exit 2) runs, or the file is made invalid YAML and `show a` (exit 4) runs
++- **THEN** no event is added
++
++### Requirement: Watch command
++`troupe config watch [--theatre DIR]` SHALL run in the foreground. It SHALL load the configuration, import it if this
++is the theatre's first command, and reconcile. Only after it is able to observe every later change SHALL it print
++exactly one line, `watching <dir>`, to stdout and flush it. `<dir>` is the theatre directory as given by `--theatre`
++or `TROUPE_THEATRE`, or the absolute path of the current directory when neither is given. After that line appears,
++`watch` SHALL reconcile within 2 seconds of any change to the config file or to any file it currently includes. A file
++counts as changed when its content changes, when it is replaced (for example by an editor's save-by-rename), or when
++it is created or deleted. `watch` SHALL write nothing else to stdout. On SIGINT or SIGTERM it SHALL finish any
++reconcile in progress, then exit 0 with nothing written to stderr. If the configuration cannot be loaded when `watch`
++starts, it SHALL exit 4 like any other command, without printing the line.
++
++#### Scenario: Ready line
++- **WHEN** `watch --theatre /tmp/t` is started on a loadable theatre
++- **THEN** its stdout is the line `watching /tmp/t\n`, flushed while the process keeps running
++
++#### Scenario: Live edit is reconciled within 2 seconds
++- **WHEN** `watch` has printed its line and `troupe.yml` is then edited by hand from `a: 1\n` to `a: 2\n`
++- **THEN** within 2 seconds `history` lists `set a` (old 1, new 2), and running `history` does not cause it
++
++#### Scenario: Edit to an included file
++- **WHEN** `watch` is running and an included file is edited by hand so that a leaf changes
++- **THEN** within 2 seconds the leaf's `set` event is recorded
++
++#### Scenario: Save by rename
++- **WHEN** `watch` is running and an editor saves `troupe.yml` by writing a new file and renaming it over the old one
++- **THEN** the change is reconciled within 2 seconds
++
++#### Scenario: Comment-only live edit
++- **WHEN** `watch` is running and only a comment in `troupe.yml` is changed
++- **THEN** no event is recorded
++
++#### Scenario: Stopping
++- **WHEN** `watch` is running and receives SIGINT, or separately SIGTERM
++- **THEN** it exits 0, its stdout is exactly `watching <dir>\n`, and its stderr is empty
++
++#### Scenario: Unloadable at start
++- **WHEN** `watch` starts on a directory with no `.troupe/troupe.yml` or `.yaml`
++- **THEN** it exits 4, stdout is empty, stderr names `troupe.yml`, and no file or directory is created
++
++### Requirement: Unloadable configuration while watching
++When a change makes the configuration impossible to load (for example invalid YAML half-way through an edit, or a
++missing include target), `watch` SHALL record nothing, write one message naming the file involved to stderr, and keep
++running. It SHALL NOT repeat the message until the error changes. When a later change makes the configuration
++loadable again, `watch` SHALL reconcile within 2 seconds of that change.
++
++#### Scenario: Broken then fixed
++- **WHEN** `watch` is running on `a: 1\n`, the file becomes `a: [1\n`, and then becomes `a: 2\n`
++- **THEN** stderr gains a message naming `troupe.yml`, `watch` is still running, and within 2 seconds of the fix `set a` (old 1, new 2) is recorded with no event in between
++
++### Requirement: troupe's own write-backs are not reconciled again
++Commands against the same theatre SHALL NOT interleave their reads of the files, their writes to the files and their
++recording of events. A `set` that runs while `watch` runs SHALL add exactly the events it would add if `watch` were not
++running, and its write-back SHALL cause no further events, however soon `watch` notices the written files.
++
++#### Scenario: set while watch runs
++- **WHEN** `watch` is running on `model: a\n` and `set model b` runs
++- **THEN** after more than 2 seconds the only event added since `watch` printed its line is `set model` (old `"a"`, new `"b"`)
++
++#### Scenario: set into an included file while watch runs
++- **WHEN** `watch` is running and `set agents.coder.model m2` writes into the included `agents/coder.yaml`
++- **THEN** after more than 2 seconds exactly one event has been added, the `set`'s own
++
++### Requirement: Includes added by hand are followed
++When a hand edit adds an include, reconcile SHALL follow it like any other include: each leaf of the included content
++SHALL be recorded as a `set` event (and a leaf it replaces as a `remove` event). From then on `watch` SHALL also watch
++the newly included file. When an include is removed by hand, its leaves SHALL be recorded as `remove` events and
++`watch` SHALL stop treating the file as part of the configuration.
++
++#### Scenario: New YAML include
++- **WHEN** `watch` is running on `agents: {}\n`, `agents/tester.yaml` containing `model: t1\n` exists, and `troupe.yml` is edited to `agents:\n  tester: file:agents/tester.yaml\n`
++- **THEN** within 2 seconds `set agents.tester.model` (old null, new `"t1"`) is recorded
++
++#### Scenario: Newly included file is watched
++- **WHEN** after that, `agents/tester.yaml` is edited by hand to `model: t2\n`
++- **THEN** within 2 seconds `set agents.tester.model` (old `"t1"`, new `"t2"`) is recorded
++
++#### Scenario: New include added while nothing runs
++- **WHEN** no command is running, a hand edit adds `prompt: file:prompt.md`, and `show prompt` runs
++- **THEN** `history` lists `set prompt` whose new value is the text of `prompt.md`
+diff --git a/spec/changes/archive/2026-10-03-config-sync-with-files/tasks.md b/spec/changes/archive/2026-10-03-config-sync-with-files/tasks.md
+new file mode 100644
+index 0000000..888db5f
+--- /dev/null
++++ b/spec/changes/archive/2026-10-03-config-sync-with-files/tasks.md
+@@ -0,0 +1,34 @@
++# Tasks
++
++## 1. Reconcile
++
++- [x] 1.1 Move `_changes` from `src/troupe/edit/apply.py` to `leaves.diff_leaves(old, new)` (leaf dicts in, `list[Change]` out) and make `compute_set` use it; verify the existing `tests/test_history.py` and `tests/test_set_*.py` still pass unchanged
++- [x] 1.2 Add `src/troupe/sync.py` with `reconcile(config, store)` (D1): diff `store.projection()` against the loaded leaves and record the changes in one save; verify with unit tests in `tests/test_reconcile.py` that it records nothing when the files match and that removes come in recorded order, then sets in document order
++- [x] 1.3 Add a test that projection values round-trip through `events.sqlite` with their exact types (`1`, `1.0`, `true`, `"1"`, null, `.inf`, `.nan`, multi-line text), so a reconcile right after import records nothing; verify it passes
++- [x] 1.4 Add CLI-level tests in `tests/test_reconcile.py` for every scenario of the config-sync requirement "Reconcile": hand edit to set event, removed and added leaves, scalar replaced by mapping, type change, formatting/comment-only edit emits nothing, edit inside an included text file; verify they fail before 2.x wires reconcile into commands (expected) and pass after
++
++## 2. Sessions, lock and reconcile-first commands
++
++- [x] 2.1 Replace `commands.open_theatre` with the `theatre_session(theatre, command, store=None)` context manager (D2): `find_config` → `flock` on the `.troupe/` directory → load → import → reconcile; keep the set of reconciling commands in one named constant; verify `uv run pytest` passes
++- [x] 2.2 Make `set` hold the session (and so the lock) through compute, file writes and event recording; verify with a test that, while the test process holds `flock` on `.troupe/`, a `set` subprocess blocks and completes only after release
++- [x] 2.3 Wire `show` and `set` to reconcile first and `history` not to; verify the config-sync "Commands reconcile first" scenarios with tests (set after hand edit gives two events in order, reconcile persists when `show nope` exits 5, history does not reconcile but a later `show` does, exit 2 / exit 4 record nothing)
++- [x] 2.4 Replace `test_hand_edits_are_not_reconciled` with `test_hand_edits_are_not_imported` and update `test_set_records_old_value_from_the_files` to expect the reconcile event followed by the set event (config-history delta); verify both pass
++- [x] 2.5 Check that a theatre with no config file still creates nothing (lock taken only after `find_config`) and that invalid YAML creates no `events.sqlite`; verify the existing `test_cli.py` / `test_loading.py` state tests pass and add one for invalid YAML if missing
++- [x] 2.6 Update README ("State" section and decisions list) to say hand edits are now recorded by reconciling, `history` never reconciles, and commands on one theatre are serialised; verify the README example still runs as written
++
++## 3. The watch command
++
++- [x] 3.1 Add the `watch` subparser (no positional arguments) and the `<dir>` display rule (D4) in `cli.py`; verify `troupe config watch extra` exits 2 with a usage message and empty stdout
++- [x] 3.2 Implement `commands.watch` (D3–D6): signal handlers → initial session → baseline from `Config.files` texts plus config-file candidates → print and flush `watching <dir>` → poll every `POLL_INTERVAL` with the `SETTLE_POLLS` settle rule → reconcile under the session → new baseline; LoadError while watching reported once to stderr and retried every poll; verify with `uv run mypy` and `uv run ruff check`
++- [x] 3.3 Add a subprocess helper in `tests/test_watch.py` (start `python -m troupe.cli config watch`, wait for the ready line with a timeout, poll `history` up to a 2 s deadline, stop with a signal) and tests for: ready line text and flush, live edit reconciled within 2 s, edit to an included file, save-by-rename, comment-only edit records nothing, SIGINT and SIGTERM each exit 0 with exact stdout and empty stderr; verify they pass
++- [x] 3.4 Add tests for startup and failure handling: unloadable theatre at start exits 4 with no line and creates nothing; broken-then-fixed file reports once on stderr, keeps running and records only the final `set a`; verify they pass
++- [x] 3.5 Add tests for write-backs: `set model b` while `watch` runs adds exactly its own event after waiting 2.5 s; same for a `set` into an included YAML file; a hand edit after that `set` records `old` equal to the set's new value (D8); verify they pass
++- [x] 3.6 Add tests for includes added by hand: new YAML include recorded as `set` events within 2 s, then an edit to the newly included file recorded within 2 s; an include added while nothing runs is picked up by `show`; verify they pass
++- [x] 3.7 Add a smoke test in `tests/test_smoke.py` that runs `uv run troupe config watch --theatre DIR`, waits for the line, makes a hand edit, sees the event within 2 s, sends SIGTERM and gets exit 0; verify it passes
++- [x] 3.8 Document `watch` in README (commands table, what reconcile means, exit on SIGINT/SIGTERM, decisions from design.md); verify the documented commands run as written
++
++## 4. Integration
++
++- [x] 4.1 Run `uv run pytest`, `uv run mypy`, `uv run ruff check` and `uv run ruff format --check`; verify all are clean and show the output
++- [x] 4.2 Run `method validate config-sync-with-files --strict`; verify it reports the change as valid
++- [x] 4.3 Commit the work on `main` in small steps with messages that say why (no push, no PR); verify `git status` is clean and `git log` shows the commits
+diff --git a/spec/spec/config-cli/spec.md b/spec/spec/config-cli/spec.md
+index 312ee53..76eec77 100644
+--- a/spec/spec/config-cli/spec.md
++++ b/spec/spec/config-cli/spec.md
+@@ -9,7 +9,8 @@ scalars are printed, and how failures are reported through exit codes and messag
+ 
+ ### Requirement: Invocation and theatre selection
+ The CLI SHALL be invocable as `uv run troupe config <subcommand> [--theatre <dir>] [arguments]` from the repository
+-root, with subcommands `show`, `set` and `history`. `--theatre` SHALL default to the current working directory.
++root, with subcommands `show`, `set`, `history` and `watch`. `--theatre` SHALL default to the current working
++directory.
+ 
+ #### Scenario: Explicit theatre
+ - **WHEN** `uv run troupe config show model --theatre /tmp/t` is run and `/tmp/t/.troupe/troupe.yml` contains `model: x`
+@@ -23,6 +24,10 @@ root, with subcommands `show`, `set` and `history`. `--theatre` SHALL default to
+ - **WHEN** `troupe config frobnicate` or `troupe config set model` (no VALUE) is run
+ - **THEN** the exit code is 2, stdout is empty and stderr has a usage message
+ 
++#### Scenario: watch takes no positional argument
++- **WHEN** `troupe config watch extra` is run
++- **THEN** the exit code is 2, stdout is empty and stderr has a usage message
++
+ ### Requirement: Path syntax
+ A `PATH` SHALL be a sequence of keys separated by `.`. A segment of only ASCII digits SHALL index a list (0-based)
+ when the node it applies to is a list. A `PATH` that is empty or has an empty segment (such as `a..b` or `a.`) SHALL be
+@@ -87,8 +92,8 @@ file except as `set`'s write-back rules require, and SHALL NOT create any state
+ loaded.
+ 
+ #### Scenario: show leaves user files untouched
+-- **WHEN** `show` and `history` run against a theatre
+-- **THEN** every file outside `.troupe/` and every configuration file inside it is byte-identical to before, and new files appear only under `.troupe/`
++- **WHEN** `show`, `history` and `watch` run against a theatre, including while files are edited by hand during `watch`
++- **THEN** no configuration file is created or modified by troupe, and new files appear only under `.troupe/`
+ 
+ #### Scenario: Unloadable theatre creates no state
+ - **WHEN** any subcommand runs against a directory with no `.troupe/troupe.yml` or `.yaml`
+diff --git a/spec/spec/config-history/spec.md b/spec/spec/config-history/spec.md
+index 4ec29e5..b05ab6e 100644
+--- a/spec/spec/config-history/spec.md
++++ b/spec/spec/config-history/spec.md
+@@ -2,8 +2,8 @@
+ 
+ ## Purpose
+ 
+-Keeps a durable, per-leaf record of how a theatre's configuration has changed (its initial import and every `set`)
+-and lets users list that record, optionally filtered to a path.
++Keeps a durable, per-leaf record of how a theatre's configuration has changed (its initial import, every `set`,
++and every hand edit picked up by reconciling) and lets users list that record, optionally filtered to a path.
+ 
+ ## Requirements
+ 
+@@ -17,12 +17,12 @@ no leaves.
+ - **WHEN** `set model b` runs and then a separate `history` process runs
+ - **THEN** the second process prints the `set` event
+ 
+-### Requirement: Import on first command
++### Requirement: Import on a theatre's first command
+ The first command run against a theatre whose configuration loads SHALL import it before doing its own work,
+ recording one `import` event per leaf in document order with `old` null. Every subcommand imports, including
+-`history`, and the import persists even if the command then exits 3 or 5. A theatre is imported at most once. Later
+-hand edits to the files SHALL NOT generate events (importing is not reconciling). Nothing SHALL be imported or stored
+-when the configuration cannot be loaded or the command line is invalid.
++`history` and `watch`, and the import persists even if the command then exits 3 or 5. A theatre is imported at most
++once. Hand edits made after the import SHALL be recorded only by reconciling (see config-sync), never by importing
++again. Nothing SHALL be imported or stored when the configuration cannot be loaded or the command line is invalid.
+ 
+ #### Scenario: First history imports
+ - **WHEN** the config is `a: 1\nb: [x, y]\n` and `history` is the first command run
+@@ -32,9 +32,9 @@ when the configuration cannot be loaded or the command line is invalid.
+ - **WHEN** `history` runs twice
+ - **THEN** both runs print the same import events and no new events are added
+ 
+-#### Scenario: Hand edits are not reconciled
+-- **WHEN** the theatre was imported with `a: 1`, the user then edits it to `a: 2` by hand, and `history` runs
+-- **THEN** no event mentions the value 2
++#### Scenario: Hand edits are not imported
++- **WHEN** the theatre was imported with `a: 1`, the user then edits it to `a: 2` by hand, and `show a` runs
++- **THEN** no `import` event mentions the value 2. The edit is recorded as a `set` event
+ 
+ #### Scenario: Empty configuration
+ - **WHEN** the config file is empty and `history` runs
+@@ -44,7 +44,8 @@ when the configuration cannot be loaded or the command line is invalid.
+ A `set` SHALL record, atomically and only after the files are written, one `remove` event (`new` null) for each leaf
+ that no longer exists, in old document order, followed by one `set` event for each leaf whose value it changes or
+ creates, in new document order. `old` SHALL be the leaf's value as loaded from the files just before the `set` (null
+-for a created leaf). A `set` that changes nothing, or that fails, SHALL record nothing.
++for a created leaf). Because `set` reconciles first (see config-sync), any hand edit is recorded before the `set`'s
++own events. A `set` that changes nothing, or that fails, SHALL record no events of its own.
+ 
+ #### Scenario: Changing a scalar
+ - **WHEN** `model` is `a` and `set model b` runs
+@@ -52,7 +53,7 @@ for a created leaf). A `set` that changes nothing, or that fails, SHALL record n
+ 
+ #### Scenario: Old value comes from the files
+ - **WHEN** the theatre was imported with `a: 1`, the user edits it by hand to `a: 2`, and `set a 3` runs
+-- **THEN** the added event has old `2` and new `3`
++- **THEN** the last event added has old `2` and new `3`, and it comes right after the reconcile event `set a` (old 1, new 2)
+ 
+ #### Scenario: Scalar replaced by a mapping
+ - **WHEN** `a` is `1` and `set a "{b: 2, c: 3}"` runs
+@@ -63,7 +64,7 @@ for a created leaf). A `set` that changes nothing, or that fails, SHALL record n
+ - **THEN** exactly one event is added, for `a.c`
+ 
+ #### Scenario: Refused set records nothing
+-- **WHEN** a `set` exits 3
++- **WHEN** the files match the recorded configuration and a `set` exits 3
+ - **THEN** no `set` or `remove` event is added
+ 
+ ### Requirement: Listing history
+diff --git a/spec/spec/config-sync/spec.md b/spec/spec/config-sync/spec.md
+new file mode 100644
+index 0000000..8353a48
+--- /dev/null
++++ b/spec/spec/config-sync/spec.md
+@@ -0,0 +1,146 @@
++# config-sync Specification
++
++## Purpose
++
++Keeps a theatre's recorded configuration in step with its hand-edited files. Edits are picked up as they happen
++while `troupe config watch` runs, and edits made while nothing was running are picked up by the next command.
++troupe's own write-backs are never picked up as new changes.
++
++## Requirements
++
++### Requirement: Reconcile
++To reconcile, troupe SHALL load the configuration files as they are now and compare their leaves (as defined in
++config-history) with the recorded configuration, which is the leaves as left by every recorded event. It SHALL record,
++atomically, one `remove` event (`old` the recorded value, `new` null) for each recorded leaf whose path is no longer
++in the files, in recorded order, followed by one `set` event for each leaf in the files whose path is not recorded
++(`old` null) or whose value differs from the recorded value, in document order. Values SHALL be compared strictly: a
++difference of type (such as `1`, `1.0`, `true` and `"1"`) is a difference, and NaN equals NaN. An edit that changes
++no leaf, such as reformatting, requoting with the same value, reordering mapping keys, or changing comments, SHALL record
++nothing. A reconcile that finds no difference SHALL record nothing.
++
++#### Scenario: Hand edit becomes a set event
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `show a` runs
++- **THEN** one event is added: op `set`, path `a`, old `1`, new `2`
++
++#### Scenario: Removed and added leaves
++- **WHEN** the theatre was imported with `a: 1\nb: 2\n` and the file is edited by hand to `b: 2\nc: [x]\n`
++- **THEN** the next reconcile adds `remove a` (old 1, new null) and then `set c.0` (old null, new `"x"`)
++
++#### Scenario: Scalar replaced by a mapping by hand
++- **WHEN** the theatre was imported with `a: 1\n` and the file is edited by hand to `a:\n  b: 2\n`
++- **THEN** the next reconcile adds `remove a` and then `set a.b` (old null, new 2)
++
++#### Scenario: Type change is a change
++- **WHEN** the theatre was imported with `a: 1\n` and the file is edited by hand to `a: '1'\n`
++- **THEN** the next reconcile adds `set a` with old `1` and new `"1"`
++
++#### Scenario: Formatting-only and comment-only edits
++- **WHEN** the theatre was imported with `a: 1\nb: x\n` and the file is edited by hand to `# note\nb:   "x"   # c\na: 1\n`
++- **THEN** the next reconcile adds no event
++
++#### Scenario: Edit inside an included file
++- **WHEN** `prompt` is `file:prompt.md`, the theatre was imported, and `prompt.md` is edited by hand from `Hi\n` to `Bye\n`
++- **THEN** the next reconcile adds `set prompt` with old `"Hi\n"` and new `"Bye\n"`
++
++### Requirement: Commands reconcile first
++`show`, `set` and `watch` SHALL reconcile after the configuration loads (and, on a theatre's first command, after the
++import) and before doing their own work, so they pick up edits made while nothing was running. The reconcile's events
++SHALL persist even if the command then exits 3 or 5. `history` SHALL never reconcile: it reports only what has been
++recorded. Nothing SHALL be reconciled when the command line is invalid (exit 2) or the configuration cannot be loaded
++(exit 4).
++
++#### Scenario: set after a hand edit
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `set a 3` runs
++- **THEN** two events are added, in this order: `set a` (old 1, new 2), then `set a` (old 2, new 3)
++
++#### Scenario: Reconcile persists when the command fails
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `show nope` runs and exits 5
++- **THEN** a later `history` includes `set a` (old 1, new 2)
++
++#### Scenario: history does not reconcile
++- **WHEN** the theatre was imported with `a: 1\n`, the file is edited by hand to `a: 2\n`, and `history` runs
++- **THEN** no event mentions the value 2. After `show a` runs, `history` lists `set a` (old 1, new 2)
++
++#### Scenario: Invalid command line or unloadable configuration records nothing
++- **WHEN** the file was edited by hand after import, and then `set a "[x"` (exit 2) runs, or the file is made invalid YAML and `show a` (exit 4) runs
++- **THEN** no event is added
++
++### Requirement: Watch command
++`troupe config watch [--theatre DIR]` SHALL run in the foreground. It SHALL load the configuration, import it if this
++is the theatre's first command, and reconcile. Only after it is able to observe every later change SHALL it print
++exactly one line, `watching <dir>`, to stdout and flush it. `<dir>` is the theatre directory as given by `--theatre`
++or `TROUPE_THEATRE`, or the absolute path of the current directory when neither is given. After that line appears,
++`watch` SHALL reconcile within 2 seconds of any change to the config file or to any file it currently includes. A file
++counts as changed when its content changes, when it is replaced (for example by an editor's save-by-rename), or when
++it is created or deleted. `watch` SHALL write nothing else to stdout. On SIGINT or SIGTERM it SHALL finish any
++reconcile in progress, then exit 0 with nothing written to stderr. If the configuration cannot be loaded when `watch`
++starts, it SHALL exit 4 like any other command, without printing the line.
++
++#### Scenario: Ready line
++- **WHEN** `watch --theatre /tmp/t` is started on a loadable theatre
++- **THEN** its stdout is the line `watching /tmp/t\n`, flushed while the process keeps running
++
++#### Scenario: Live edit is reconciled within 2 seconds
++- **WHEN** `watch` has printed its line and `troupe.yml` is then edited by hand from `a: 1\n` to `a: 2\n`
++- **THEN** within 2 seconds `history` lists `set a` (old 1, new 2), and running `history` does not cause it
++
++#### Scenario: Edit to an included file
++- **WHEN** `watch` is running and an included file is edited by hand so that a leaf changes
++- **THEN** within 2 seconds the leaf's `set` event is recorded
++
++#### Scenario: Save by rename
++- **WHEN** `watch` is running and an editor saves `troupe.yml` by writing a new file and renaming it over the old one
++- **THEN** the change is reconciled within 2 seconds
++
++#### Scenario: Comment-only live edit
++- **WHEN** `watch` is running and only a comment in `troupe.yml` is changed
++- **THEN** no event is recorded
++
++#### Scenario: Stopping
++- **WHEN** `watch` is running and receives SIGINT, or separately SIGTERM
++- **THEN** it exits 0, its stdout is exactly `watching <dir>\n`, and its stderr is empty
++
++#### Scenario: Unloadable at start
++- **WHEN** `watch` starts on a directory with no `.troupe/troupe.yml` or `.yaml`
++- **THEN** it exits 4, stdout is empty, stderr names `troupe.yml`, and no file or directory is created
++
++### Requirement: Unloadable configuration while watching
++When a change makes the configuration impossible to load (for example invalid YAML half-way through an edit, or a
++missing include target), `watch` SHALL record nothing, write one message naming the file involved to stderr, and keep
++running. It SHALL NOT repeat the message until the error changes. When a later change makes the configuration
++loadable again, `watch` SHALL reconcile within 2 seconds of that change.
++
++#### Scenario: Broken then fixed
++- **WHEN** `watch` is running on `a: 1\n`, the file becomes `a: [1\n`, and then becomes `a: 2\n`
++- **THEN** stderr gains a message naming `troupe.yml`, `watch` is still running, and within 2 seconds of the fix `set a` (old 1, new 2) is recorded with no event in between
++
++### Requirement: troupe's own write-backs are not reconciled again
++Commands against the same theatre SHALL NOT interleave their reads of the files, their writes to the files and their
++recording of events. A `set` that runs while `watch` runs SHALL add exactly the events it would add if `watch` were not
++running, and its write-back SHALL cause no further events, however soon `watch` notices the written files.
++
++#### Scenario: set while watch runs
++- **WHEN** `watch` is running on `model: a\n` and `set model b` runs
++- **THEN** after more than 2 seconds the only event added since `watch` printed its line is `set model` (old `"a"`, new `"b"`)
++
++#### Scenario: set into an included file while watch runs
++- **WHEN** `watch` is running and `set agents.coder.model m2` writes into the included `agents/coder.yaml`
++- **THEN** after more than 2 seconds exactly one event has been added, the `set`'s own
++
++### Requirement: Includes added by hand are followed
++When a hand edit adds an include, reconcile SHALL follow it like any other include: each leaf of the included content
++SHALL be recorded as a `set` event (and a leaf it replaces as a `remove` event). From then on `watch` SHALL also watch
++the newly included file. When an include is removed by hand, its leaves SHALL be recorded as `remove` events and
++`watch` SHALL stop treating the file as part of the configuration.
++
++#### Scenario: New YAML include
++- **WHEN** `watch` is running on `agents: {}\n`, `agents/tester.yaml` containing `model: t1\n` exists, and `troupe.yml` is edited to `agents:\n  tester: file:agents/tester.yaml\n`
++- **THEN** within 2 seconds `set agents.tester.model` (old null, new `"t1"`) is recorded
++
++#### Scenario: Newly included file is watched
++- **WHEN** after that, `agents/tester.yaml` is edited by hand to `model: t2\n`
++- **THEN** within 2 seconds `set agents.tester.model` (old `"t1"`, new `"t2"`) is recorded
++
++#### Scenario: New include added while nothing runs
++- **WHEN** no command is running, a hand edit adds `prompt: file:prompt.md`, and `show prompt` runs
++- **THEN** `history` lists `set prompt` whose new value is the text of `prompt.md`
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index 9871188..f9593d8 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -1,4 +1,4 @@
+-"""Command-line entry point: `troupe config <show|set|history> [--theatre DIR] …`."""
++"""Command-line entry point: `troupe config <show|set|history|watch> [--theatre DIR] …`."""
+ 
+ import argparse
+ import os
+@@ -38,19 +38,25 @@ def _parser() -> argparse.ArgumentParser:
+     set_.add_argument("value")
+     history = sub.add_parser("history", parents=[theatre], help="list configuration changes as JSON Lines")
+     history.add_argument("path", nargs="?")
++    sub.add_parser("watch", parents=[theatre], help="record hand edits to the files as they happen")
+     return parser
+ 
+ 
+ def run(argv: Sequence[str]) -> str:
+     """Run a command and return what it prints; raises TroupeError on failure."""
+     args = _parser().parse_args(argv)
+-    theatre = Path(getattr(args, "theatre", os.environ.get("TROUPE_THEATRE") or "."))
++    given: str | None = getattr(args, "theatre", None) or os.environ.get("TROUPE_THEATRE") or None
++    theatre = Path(given or ".")
+     if args.command == "show":
+         return commands.show(theatre, parse_path(args.path))
+     if args.command == "set":
+         path = parse_path(args.path)
+         commands.set_value(theatre, path, parse_value(args.value))
+         return ""
++    if args.command == "watch":
++        # Shown as given (not resolved, which would turn macOS /var/… into /private/var/…).
++        commands.watch(theatre, given or os.getcwd(), sys.stdout)
++        return ""
+     prefix = parse_path(args.path) if args.path is not None else None
+     return commands.history(theatre, prefix)
+ 
+diff --git a/src/troupe/commands.py b/src/troupe/commands.py
+index 5ea093a..9de8093 100644
+--- a/src/troupe/commands.py
++++ b/src/troupe/commands.py
+@@ -1,26 +1,72 @@
+-"""The `troupe config` subcommands: show, set and history."""
++"""The `troupe config` subcommands: show, set, history and watch."""
+ 
++import fcntl
+ import json
+ import math
++import os
++import signal
++import sys
++import threading
++from collections.abc import Iterable, Iterator
++from contextlib import contextmanager
+ from pathlib import Path as FsPath
++from typing import TextIO
+ 
+ from troupe.edit.apply import compute_set
+-from troupe.errors import PathError
++from troupe.errors import LoadError, PathError
+ from troupe.leaves import leaves
+-from troupe.loader import Config, load, state_dir
++from troupe.loader import CONFIG_NAMES, Config, find_config, load, state_dir
+ from troupe.paths import Path, format_path, is_index
+ from troupe.schema import Data, Scalar, show_text
++from troupe.source import read_source
+ from troupe.store import ConfigStore
++from troupe.sync import reconcile
+ from troupe.tree import MappingNode, Node, ScalarNode, SequenceNode, TextNode, to_data
+ 
++# Every command reconciles before its own work, except `history`, which reports only what has been recorded.
++RECONCILING_COMMANDS = frozenset({"show", "set", "watch"})
+ 
+-def open_theatre(theatre: FsPath) -> tuple[Config, ConfigStore]:
+-    """Load the configuration, then import it into the event store if this is the first command."""
+-    config = load(theatre)
+-    store = ConfigStore(state_dir(theatre))
+-    if not store.is_imported():
+-        store.import_leaves(leaves(to_data(config.root)))
+-    return config, store
++
++@contextmanager
++def theatre_lock(theatre: FsPath) -> Iterator[None]:
++    """Hold an exclusive lock on the theatre's `.troupe/` directory, so commands never interleave.
++
++    The lock is on the directory itself, so it creates no file; the OS releases it if the process dies.
++    """
++    directory = state_dir(theatre)
++    try:
++        fd = os.open(directory, os.O_RDONLY)
++    except OSError as e:
++        raise LoadError(f"{directory}: cannot open for locking ({e.strerror})") from e
++    try:
++        try:
++            fcntl.flock(fd, fcntl.LOCK_EX)
++        except OSError as e:
++            raise LoadError(f"{directory}: cannot lock ({e.strerror})") from e
++        yield
++    finally:
++        os.close(fd)  # closing the descriptor releases the lock
++
++
++@contextmanager
++def theatre_session(
++    theatre: FsPath, command: str, store: ConfigStore | None = None
++) -> Iterator[tuple[Config, ConfigStore]]:
++    """Under the theatre lock: load, import on the first command, reconcile if `command` does, then run.
++
++    The config file is located before locking, so a theatre with none exits 4 without anything created.
++    The store is opened only once the configuration has loaded; a long-running command may pass its own.
++    """
++    find_config(theatre)
++    with theatre_lock(theatre):
++        config = load(theatre)
++        if store is None:
++            store = ConfigStore(state_dir(theatre))
++        if not store.is_imported():
++            store.import_leaves(leaves(to_data(config.root)))
++        if command in RECONCILING_COMMANDS:
++            reconcile(config, store)
++        yield config, store
+ 
+ 
+ def find(root: Node, path: Path) -> Node:
+@@ -44,8 +90,8 @@ def find(root: Node, path: Path) -> Node:
+ 
+ 
+ def show(theatre: FsPath, path: Path) -> str:
+-    config, _ = open_theatre(theatre)
+-    node = find(config.root, path)
++    with theatre_session(theatre, "show") as (config, _):
++        node = find(config.root, path)
+     if not isinstance(node, ScalarNode | TextNode):
+         kind = "mapping" if isinstance(node, MappingNode) else "list"
+         raise PathError(f"{format_path(path)}: is a {kind}, not a scalar")
+@@ -53,13 +99,14 @@ def show(theatre: FsPath, path: Path) -> str:
+ 
+ 
+ def set_value(theatre: FsPath, path: Path, value: Data) -> None:
+-    config, store = open_theatre(theatre)
+-    result = compute_set(theatre, config, path, value)
+-    for file, text in result.writes.items():
+-        with file.open("w", encoding="utf-8", newline="") as f:
+-            f.write(text)
+-    if result.changes:
+-        store.record(result.changes)
++    # The lock is held until the events are recorded, so no reconcile can see the written files first.
++    with theatre_session(theatre, "set") as (config, store):
++        result = compute_set(theatre, config, path, value)
++        for file, text in result.writes.items():
++            with file.open("w", encoding="utf-8", newline="") as f:
++                f.write(text)
++        if result.changes:
++            store.record(result.changes)
+ 
+ 
+ def _json_value(value: Scalar) -> Scalar:
+@@ -69,10 +116,11 @@ def _json_value(value: Scalar) -> Scalar:
+ 
+ 
+ def history(theatre: FsPath, path: Path | None) -> str:
+-    _, store = open_theatre(theatre)
++    with theatre_session(theatre, "history") as (_, store):
++        records = list(store.history())
+     prefix = format_path(path) if path is not None else None
+     lines = []
+-    for record in store.history():
++    for record in records:
+         c = record.change
+         if prefix is not None and not (c.path == prefix or c.path.startswith(prefix + ".")):
+             continue
+@@ -85,3 +133,103 @@ def history(theatre: FsPath, path: Path | None) -> str:
+         }
+         lines.append(json.dumps(obj, ensure_ascii=False, allow_nan=False) + "\n")
+     return "".join(lines)
++
++
++# --- watch -------------------------------------------------------------------------------------------------
++
++POLL_INTERVAL = 0.2  # seconds between reads of the watched files
++SETTLE_POLLS = 2  # a change is reconciled once the files read the same on this many consecutive polls
++
++
++class _Unreadable:
++    """A watched file that exists but cannot be read as UTF-8 text."""
++
++
++_UNREADABLE = _Unreadable()
++
++# What each watched file holds: its text, None if it does not exist, or _UNREADABLE.
++Snapshot = dict[FsPath, str | _Unreadable | None]
++
++
++def _read_files(paths: Iterable[FsPath]) -> Snapshot:
++    snapshot: Snapshot = {}
++    for path in paths:
++        if not path.exists():
++            snapshot[path] = None
++            continue
++        try:
++            snapshot[path] = read_source(path).text
++        except LoadError:
++            snapshot[path] = _UNREADABLE
++    return snapshot
++
++
++def _baseline(theatre: FsPath, config: Config) -> Snapshot:
++    """The watched files as they were when `config` was loaded: every file it read, plus both config names.
++
++    Using the loader's own texts means no edit can slip in between loading and starting to watch.
++    """
++    snapshot: Snapshot = {path: src.text for path, src in config.files.items()}
++    for name in CONFIG_NAMES:
++        snapshot.setdefault((state_dir(theatre) / name).resolve(), None)
++    return snapshot
++
++
++class _Watcher:
++    def __init__(self, theatre: FsPath) -> None:
++        self.theatre = theatre
++        self.store: ConfigStore | None = None
++        self.baseline: Snapshot | None = None  # None while the configuration does not load
++        self.last_error: str | None = None
++        self.pending: Snapshot | None = None
++        self.stable = 0
++
++    def start(self) -> None:
++        """Load, import and reconcile; a load failure here propagates (exit 4)."""
++        with theatre_session(self.theatre, "watch") as (config, store):
++            self.store = store
++            self.baseline = _baseline(self.theatre, config)
++
++    def poll(self) -> None:
++        if self.baseline is None:
++            self.reconcile()  # nothing loaded to compare with: retry the whole load every poll
++            return
++        current = _read_files(self.baseline)
++        if current == self.baseline:
++            self.pending, self.stable = None, 0
++            return
++        if current != self.pending:
++            self.pending, self.stable = current, 0
++        self.stable += 1
++        if self.stable >= SETTLE_POLLS:
++            self.pending, self.stable = None, 0
++            self.reconcile()
++
++    def reconcile(self) -> None:
++        try:
++            with theatre_session(self.theatre, "watch", self.store) as (config, store):
++                self.store = store
++                self.baseline = _baseline(self.theatre, config)
++        except LoadError as e:
++            self.baseline = None
++            if str(e) != self.last_error:
++                self.last_error = str(e)
++                print(f"troupe: {e}", file=sys.stderr, flush=True)
++        else:
++            self.last_error = None
++
++
++def watch(theatre: FsPath, display: str, out: TextIO) -> None:
++    """Reconcile now and whenever the config file or an included file changes, until SIGINT or SIGTERM.
++
++    The signal handlers only set a flag, checked between cycles, so a reconcile in progress always finishes.
++    """
++    stop = threading.Event()
++    for signum in (signal.SIGINT, signal.SIGTERM):
++        signal.signal(signum, lambda _signum, _frame: stop.set())
++    watcher = _Watcher(theatre)
++    watcher.start()
++    out.write(f"watching {display}\n")
++    out.flush()
++    while not stop.wait(POLL_INTERVAL):
++        watcher.poll()
+diff --git a/src/troupe/edit/apply.py b/src/troupe/edit/apply.py
+index c36e7a3..1d688a2 100644
+--- a/src/troupe/edit/apply.py
++++ b/src/troupe/edit/apply.py
+@@ -13,7 +13,7 @@ from troupe.edit import ops as prim
+ from troupe.edit.plan import AddKey, Append, Delete, Op, Replace, WriteText, plan
+ from troupe.edit.text import apply_edits
+ from troupe.errors import LoadError, WriteRefused
+-from troupe.leaves import leaves
++from troupe.leaves import diff_leaves, leaves
+ from troupe.loader import Config, load
+ from troupe.paths import Path, format_path
+ from troupe.schema import Data, same
+@@ -43,7 +43,7 @@ def compute_set(theatre: FsPath, config: Config, path: Path, value: Data) -> Set
+             f"{format_path(path)}: the edited files would not read back as intended; not writing"
+         )
+     writes = {current.files[k].path: t for k, t in texts.items() if t != original.get(k)}
+-    return SetResult(writes, _changes(to_data(config.root), to_data(current.root)))
++    return SetResult(writes, diff_leaves(leaves(to_data(config.root)), leaves(to_data(current.root))))
+ 
+ 
+ def _reload(theatre: FsPath, texts: dict[FsPath, str], path: Path) -> Config:
+@@ -146,10 +146,3 @@ def _matches(node: Node, expected: Data) -> bool:
+         return node.value == to_crlf(expected)
+     assert isinstance(node, ScalarNode | TextNode)
+     return same(node.value, expected)
+-
+-
+-def _changes(before: Data, after: Data) -> list[Change]:
+-    old, new = leaves(before), leaves(after)
+-    removed = [Change("remove", p, v, None) for p, v in old.items() if p not in new]
+-    changed = [Change("set", p, old.get(p), v) for p, v in new.items() if p not in old or not same(old[p], v)]
+-    return removed + changed
+diff --git a/src/troupe/leaves.py b/src/troupe/leaves.py
+index fca0768..42a0800 100644
+--- a/src/troupe/leaves.py
++++ b/src/troupe/leaves.py
+@@ -1,6 +1,7 @@
+-"""Flattening configuration data into leaves: `{dotted path: scalar}` in document order."""
++"""Flattening configuration data into leaves (`{dotted path: scalar}`, document order) and diffing them."""
+ 
+-from troupe.schema import Data, Scalar
++from troupe.schema import Data, Scalar, same
++from troupe.store import Change
+ 
+ 
+ def leaves(data: Data, prefix: str = "") -> dict[str, Scalar]:
+@@ -18,3 +19,13 @@ def _walk(data: Data, path: str, out: dict[str, Scalar]) -> None:
+             _walk(value, f"{path}.{index}" if path else str(index), out)
+     else:
+         out[path] = data
++
++
++def diff_leaves(old: dict[str, Scalar], new: dict[str, Scalar]) -> list[Change]:
++    """The events that turn `old` into `new`: removes in `old`'s order, then sets in `new`'s order.
++
++    This one rule decides what both `set` and reconcile record. Values compare strictly (`schema.same`).
++    """
++    removed = [Change("remove", p, v, None) for p, v in old.items() if p not in new]
++    changed = [Change("set", p, old.get(p), v) for p, v in new.items() if p not in old or not same(old[p], v)]
++    return removed + changed
+diff --git a/src/troupe/sync.py b/src/troupe/sync.py
+new file mode 100644
+index 0000000..e1c1935
+--- /dev/null
++++ b/src/troupe/sync.py
+@@ -0,0 +1,17 @@
++"""Reconciling: bringing the recorded configuration (the event projection) in line with the files."""
++
++from troupe.leaves import diff_leaves, leaves
++from troupe.loader import Config
++from troupe.store import Change, ConfigStore
++from troupe.tree import to_data
++
++
++def reconcile(config: Config, store: ConfigStore) -> list[Change]:
++    """Record a `remove`/`set` event for each leaf where the loaded files differ from the projection.
++
++    The events are saved in one atomic save; nothing is saved when nothing differs.
++    """
++    changes = diff_leaves(store.projection(), leaves(to_data(config.root)))
++    if changes:
++        store.record(changes)
++    return changes
+diff --git a/tests/test_history.py b/tests/test_history.py
+index f69a035..e4804bd 100644
+--- a/tests/test_history.py
++++ b/tests/test_history.py
+@@ -37,11 +37,12 @@ def test_any_command_imports_even_if_it_then_fails(make: Callable[[str], Theatre
+     assert brief(t.run("history")) == [(1, "import", "a", None, 1)]
+ 
+ 
+-def test_hand_edits_are_not_reconciled(make: Callable[[str], Theatre]) -> None:
++def test_hand_edits_are_not_imported(make: Callable[[str], Theatre]) -> None:
+     t = make("a: 1\n")
+     t.run("history")
+     t.write("troupe.yml", "a: 2\n")
+-    assert brief(t.run("history")) == [(1, "import", "a", None, 1)]
++    assert t.run("show", "a").code == 0
++    assert brief(t.run("history")) == [(1, "import", "a", None, 1), (2, "set", "a", 1, 2)]
+ 
+ 
+ def test_set_records_old_value_from_the_files(make: Callable[[str], Theatre]) -> None:
+@@ -49,7 +50,7 @@ def test_set_records_old_value_from_the_files(make: Callable[[str], Theatre]) ->
+     t.run("history")
+     t.write("troupe.yml", "a: 2\n")
+     assert t.run("set", "a", "3").code == 0
+-    assert brief(t.run("history"))[-1] == (2, "set", "a", 2, 3)
++    assert brief(t.run("history"))[1:] == [(2, "set", "a", 1, 2), (3, "set", "a", 2, 3)]
+ 
+ 
+ def test_set_records_one_event_for_a_changed_scalar(make: Callable[[str], Theatre]) -> None:
+diff --git a/tests/test_loading.py b/tests/test_loading.py
+index df205d6..5fc4775 100644
+--- a/tests/test_loading.py
++++ b/tests/test_loading.py
+@@ -97,6 +97,13 @@ def test_missing_include_target_exits_4_naming_it(theatre: Theatre) -> None:
+     assert not (theatre.dir / "events.sqlite").exists()
+ 
+ 
++def test_invalid_yaml_creates_no_state(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: [1\n")
++    for args in (("show", "a"), ("set", "a", "1"), ("history",)):
++        assert theatre.run(*args).code == 4
++    assert sorted(p.name for p in theatre.dir.iterdir()) == ["troupe.yml"]
++
++
+ def test_include_cycle_exits_4(theatre: Theatre) -> None:
+     theatre.write("troupe.yml", "a: file:a.yaml\n")
+     theatre.write("a.yaml", "b: file:b.yaml\n")
+diff --git a/tests/test_lock.py b/tests/test_lock.py
+new file mode 100644
+index 0000000..0ab9af3
+--- /dev/null
++++ b/tests/test_lock.py
+@@ -0,0 +1,30 @@
++"""Commands against one theatre are serialised by a lock on its `.troupe/` directory."""
++
++import fcntl
++import os
++import subprocess
++import sys
++import time
++from pathlib import Path
++
++
++def test_set_waits_while_another_process_holds_the_theatre_lock(tmp_path: Path) -> None:
++    config = tmp_path / ".troupe" / "troupe.yml"
++    config.parent.mkdir()
++    config.write_bytes(b"a: 1\n")
++    fd = os.open(config.parent, os.O_RDONLY)
++    try:
++        fcntl.flock(fd, fcntl.LOCK_EX)
++        proc = subprocess.Popen(
++            [sys.executable, "-m", "troupe.cli", "config", "set", "a", "2", "--theatre", str(tmp_path)],
++            stdout=subprocess.PIPE,
++            stderr=subprocess.PIPE,
++        )
++        time.sleep(1.5)
++        assert proc.poll() is None, "set ran while the lock was held"
++        assert config.read_bytes() == b"a: 1\n"
++    finally:
++        os.close(fd)
++    out, err = proc.communicate(timeout=30)
++    assert (proc.returncode, out, err) == (0, b"", b"")
++    assert config.read_bytes() == b"a: 2\n"
+diff --git a/tests/test_reconcile.py b/tests/test_reconcile.py
+new file mode 100644
+index 0000000..71c7e2d
+--- /dev/null
++++ b/tests/test_reconcile.py
+@@ -0,0 +1,204 @@
++"""Reconciling the recorded configuration with the files (config-sync: Reconcile)."""
++
++import math
++from collections.abc import Callable
++from pathlib import Path
++from typing import Any
++
++from test_history import events
++
++from conftest import Theatre
++from troupe.leaves import leaves
++from troupe.loader import load
++from troupe.store import Change, ConfigStore
++from troupe.sync import reconcile
++from troupe.tree import to_data
++
++
++def write(theatre: Path, text: str, name: str = "troupe.yml") -> None:
++    path = theatre / ".troupe" / name
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_bytes(text.encode("utf-8"))
++
++
++def imported(theatre: Path, text: str) -> ConfigStore:
++    """A theatre whose files are `text`, imported into a fresh store."""
++    write(theatre, text)
++    store = ConfigStore(theatre / ".troupe")
++    store.import_leaves(leaves(to_data(load(theatre).root)))
++    return store
++
++
++def recorded(store: ConfigStore) -> list[Change]:
++    return [r.change for r in store.history() if r.change.op != "import"]
++
++
++# --- reconcile() itself --------------------------------------------------------------------------
++
++
++def test_reconcile_records_nothing_when_the_files_match(tmp_path: Path) -> None:
++    store = imported(tmp_path, "a: 1\nb: [x, y]\n")
++    assert reconcile(load(tmp_path), store) == []
++    assert recorded(store) == []
++
++
++def test_reconcile_lists_removes_in_recorded_order_then_sets_in_document_order(tmp_path: Path) -> None:
++    store = imported(tmp_path, "a: 1\nb: 2\nc: 3\nd: 4\n")
++    write(tmp_path, "z: 9\nd: 5\ny: 8\nb: 2\n")
++    expected = [
++        Change("remove", "a", 1, None),
++        Change("remove", "c", 3, None),
++        Change("set", "z", None, 9),
++        Change("set", "d", 4, 5),
++        Change("set", "y", None, 8),
++    ]
++    assert reconcile(load(tmp_path), store) == expected
++    assert recorded(ConfigStore(tmp_path / ".troupe")) == expected
++
++
++def test_reconcile_saves_its_events_so_the_projection_matches_the_files(tmp_path: Path) -> None:
++    store = imported(tmp_path, "a: 1\n")
++    write(tmp_path, "a: 2\nb: x\n")
++    reconcile(load(tmp_path), store)
++    assert ConfigStore(tmp_path / ".troupe").projection() == {"a": 2, "b": "x"}
++    assert reconcile(load(tmp_path), store) == []
++
++
++def test_values_round_trip_through_storage_so_reconcile_after_import_records_nothing(tmp_path: Path) -> None:
++    store = imported(
++        tmp_path,
++        "i: 1\nf: 1.0\nb: true\ns: '1'\nn: null\ninf: .inf\nninf: -.inf\nnan: .nan\nm: |\n  two\n  lines\n",
++    )
++    projection = ConfigStore(tmp_path / ".troupe").projection()
++    assert [type(v) for v in projection.values()] == [
++        int,
++        float,
++        bool,
++        str,
++        type(None),
++        float,
++        float,
++        float,
++        str,
++    ]
++    assert projection["inf"] == math.inf and projection["ninf"] == -math.inf
++    assert math.isnan(projection["nan"])  # type: ignore[arg-type]
++    assert projection["m"] == "two\nlines\n"
++    assert reconcile(load(tmp_path), ConfigStore(tmp_path / ".troupe")) == []
++    assert recorded(store) == []
++
++
++# --- through the CLI: a hand edit made while nothing runs is reconciled by the next command ---------------
++
++
++def added(t: Theatre, before: int) -> list[tuple[Any, ...]]:
++    """The events after the first `before` ones, as (op, path, old, new)."""
++    return [(e["op"], e["path"], e["old"], e["new"]) for e in events(t.run("history"))[before:]]
++
++
++def test_hand_edit_becomes_a_set_event(make: Callable[[str], Theatre]) -> None:
++    t = make("a: 1\n")
++    assert t.run("history").code == 0
++    t.write("troupe.yml", "a: 2\n")
++    assert t.run("show", "a").out == "2\n"
++    assert added(t, 1) == [("set", "a", 1, 2)]
++
++
++def test_removed_and_added_leaves_become_remove_then_set(make: Callable[[str], Theatre]) -> None:
++    t = make("a: 1\nb: 2\n")
++    t.run("history")
++    t.write("troupe.yml", "b: 2\nc: [x]\n")
++    t.run("show", "b")
++    assert added(t, 2) == [("remove", "a", 1, None), ("set", "c.0", None, "x")]
++
++
++def test_scalar_replaced_by_a_mapping_by_hand(make: Callable[[str], Theatre]) -> None:
++    t = make("a: 1\n")
++    t.run("history")
++    t.write("troupe.yml", "a:\n  b: 2\n")
++    t.run("show", "a.b")
++    assert added(t, 1) == [("remove", "a", 1, None), ("set", "a.b", None, 2)]
++
++
++def test_type_change_by_hand_is_a_change(make: Callable[[str], Theatre]) -> None:
++    t = make("a: 1\n")
++    t.run("history")
++    t.write("troupe.yml", "a: '1'\n")
++    t.run("show", "a")
++    assert added(t, 1) == [("set", "a", 1, "1")]
++
++
++def test_formatting_and_comment_only_edits_record_nothing(make: Callable[[str], Theatre]) -> None:
++    t = make("a: 1\nb: x\n")
++    t.run("history")
++    t.write("troupe.yml", '# note\nb:   "x"   # c\na: 1\n')
++    assert t.run("show", "a").code == 0
++    assert added(t, 2) == []
++
++
++def test_edit_inside_an_included_text_file_is_reconciled(make: Callable[[str], Theatre]) -> None:
++    t = make("prompt: file:prompt.md\n")
++    t.write("prompt.md", "Hi\n")
++    t.run("history")
++    t.write("prompt.md", "Bye\n")
++    t.run("show", "prompt")
++    assert added(t, 1) == [("set", "prompt", "Hi\n", "Bye\n")]
++
++
++# --- which commands reconcile first (config-sync: Commands reconcile first) ------------------------------
++
++
++def test_set_after_a_hand_edit_records_the_reconcile_event_then_its_own(
++    make: Callable[[str], Theatre],
++) -> None:
++    t = make("a: 1\n")
++    t.run("history")
++    t.write("troupe.yml", "a: 2\n")
++    assert t.run("set", "a", "3").code == 0
++    assert added(t, 1) == [("set", "a", 1, 2), ("set", "a", 2, 3)]
++
++
++def test_reconcile_persists_when_the_command_then_fails(make: Callable[[str], Theatre]) -> None:
++    t = make("a: 1\n")
++    t.run("history")
++    t.write("troupe.yml", "a: 2\n")
++    assert t.run("show", "nope").code == 5
++    assert added(t, 1) == [("set", "a", 1, 2)]
++
++
++def test_reconcile_persists_when_set_is_refused(make: Callable[[str], Theatre]) -> None:
++    t = make("a: 1\nprompt: file:p.md\n")
++    t.write("p.md", "x\n")
++    t.run("history")
++    t.write("troupe.yml", "a: 2\nprompt: file:p.md\n")
++    assert t.run("set", "prompt", "5").code == 3
++    assert added(t, 2) == [("set", "a", 1, 2)]
++
++
++def test_history_does_not_reconcile_but_a_later_show_does(make: Callable[[str], Theatre]) -> None:
++    t = make("a: 1\n")
++    t.run("history")
++    t.write("troupe.yml", "a: 2\n")
++    assert added(t, 1) == []
++    assert added(t, 1) == []
++    t.run("show", "a")
++    assert added(t, 1) == [("set", "a", 1, 2)]
++
++
++def test_invalid_command_line_records_nothing(make: Callable[[str], Theatre]) -> None:
++    t = make("a: 1\n")
++    t.run("history")
++    t.write("troupe.yml", "a: 2\n")
++    assert t.run("set", "a", "[x").code == 2
++    assert t.run("show", "a..b").code == 2
++    assert added(t, 1) == []
++
++
++def test_unloadable_configuration_records_nothing(make: Callable[[str], Theatre]) -> None:
++    t = make("a: 1\n")
++    t.run("history")
++    t.write("troupe.yml", "a: [2\n")
++    assert t.run("show", "a").code == 4
++    assert t.run("set", "a", "3").code == 4
++    t.write("troupe.yml", "a: 1\n")
++    assert added(t, 1) == []
+diff --git a/tests/test_smoke.py b/tests/test_smoke.py
+index 1a1f577..e815822 100644
+--- a/tests/test_smoke.py
++++ b/tests/test_smoke.py
+@@ -1,8 +1,11 @@
+ """End-to-end: the real `uv run troupe config …` command from the repository root."""
+ 
+ import json
++import selectors
+ import shutil
++import signal
+ import subprocess
++import time
+ from dataclasses import dataclass
+ from pathlib import Path
+ 
+@@ -109,3 +112,39 @@ def test_missing_config_exits_4_through_uv_run(tmp_path: Path) -> None:
+     r = troupe(tmp_path, "history")
+     assert (r.returncode, r.stdout) == (4, "")
+     assert "troupe.yml" in r.stderr
++
++
++def test_watch_through_uv_run_records_a_hand_edit_and_stops_on_sigterm(theatre: Path) -> None:
++    proc = subprocess.Popen(
++        ["uv", "run", "--quiet", "troupe", "config", "watch", "--theatre", str(theatre)],
++        cwd=REPO,
++        stdout=subprocess.PIPE,
++        stderr=subprocess.PIPE,
++    )
++    try:
++        assert proc.stdout is not None
++        selector = selectors.DefaultSelector()
++        selector.register(proc.stdout, selectors.EVENT_READ)
++        assert selector.select(timeout=60), "watch did not print its line"
++        line = proc.stdout.readline()
++        assert line == f"watching {theatre}\n".encode()
++
++        start = time.monotonic()
++        (theatre / ".troupe/agents/coder.yaml").write_bytes(
++            b"model: huge  # strongest\nprompt: file:coder.md\n"
++        )
++        while True:
++            r = troupe(theatre, "history", "agents.coder.model")
++            if '"new": "huge"' in r.stdout:
++                break
++            assert time.monotonic() - start < 10, r.stdout
++            time.sleep(0.1)
++        assert json.loads(r.stdout.splitlines()[-1])["old"] == "big"
++
++        proc.send_signal(signal.SIGTERM)
++        out, err = proc.communicate(timeout=20)
++        assert (proc.returncode, out, err) == (0, b"", b"")
++    finally:
++        if proc.poll() is None:
++            proc.kill()
++            proc.communicate()
+diff --git a/tests/test_watch.py b/tests/test_watch.py
+new file mode 100644
+index 0000000..f9c0957
+--- /dev/null
++++ b/tests/test_watch.py
+@@ -0,0 +1,317 @@
++"""`troupe config watch`, run as a real process (config-sync: Watch command and the requirements after it)."""
++
++import fcntl
++import os
++import selectors
++import signal
++import subprocess
++import sys
++import time
++from collections.abc import Callable, Iterator
++from typing import Any
++
++import pytest
++from test_history import events
++
++from conftest import Theatre
++from troupe.store import ConfigStore
++
++DEADLINE = 2.0  # the contract: reconciled within 2 seconds of a change
++QUIET = 2.5  # how long to wait before concluding that nothing was recorded
++STARTUP_TIMEOUT = 30.0
++
++
++class Watch:
++    """A running `watch` process on a theatre."""
++
++    def __init__(self, t: Theatre) -> None:
++        self.t = t
++        self.proc = subprocess.Popen(
++            [sys.executable, "-m", "troupe.cli", "config", "watch", "--theatre", str(t.root)],
++            stdout=subprocess.PIPE,
++            stderr=subprocess.PIPE,
++        )
++        assert self.proc.stdout is not None
++        self.line = _readline(self.proc.stdout, STARTUP_TIMEOUT)
++
++    def stop(self, signum: int = signal.SIGTERM) -> tuple[int, str, str]:
++        self.proc.send_signal(signum)
++        out, err = self.proc.communicate(timeout=10)
++        return self.proc.returncode, self.line + out.decode(), err.decode()
++
++    def kill(self) -> None:
++        if self.proc.poll() is None:
++            self.proc.kill()
++            self.proc.communicate()
++
++
++def _readline(stream: Any, timeout: float) -> str:
++    """Read one line from a pipe, failing the test rather than hanging if it does not come."""
++    selector = selectors.DefaultSelector()
++    selector.register(stream, selectors.EVENT_READ)
++    data = b""
++    end = time.monotonic() + timeout
++    while not data.endswith(b"\n"):
++        if not selector.select(max(0.0, end - time.monotonic())):
++            pytest.fail(f"no line from watch within {timeout}s (got {data!r})")
++        chunk = os.read(stream.fileno(), 1)
++        if not chunk:
++            break
++        data += chunk
++    return data.decode()
++
++
++@pytest.fixture
++def watching(theatre: Theatre) -> Iterator[Callable[[], Watch]]:
++    started: list[Watch] = []
++
++    def _start() -> Watch:
++        w = Watch(theatre)
++        started.append(w)
++        return w
++
++    yield _start
++    for w in started:
++        w.kill()
++
++
++def brief(t: Theatre) -> list[tuple[Any, ...]]:
++    return [(e["op"], e["path"], e["old"], e["new"]) for e in events(t.run("history"))]
++
++
++def recorded_within(t: Theatre, since: int, expected: list[tuple[Any, ...]], start: float) -> None:
++    """Assert that the events after the first `since` become `expected` within DEADLINE of `start`."""
++    while True:
++        got = brief(t)[since:]
++        if got == expected:
++            assert time.monotonic() - start <= DEADLINE
++            return
++        if time.monotonic() - start > DEADLINE:
++            pytest.fail(f"after {DEADLINE}s the new events are {got}, expected {expected}")
++        time.sleep(0.05)
++
++
++def nothing_recorded(t: Theatre, since: int) -> None:
++    time.sleep(QUIET)
++    assert brief(t)[since:] == []
++
++
++# --- startup and stopping ----------------------------------------------------------------------------------
++
++
++def test_watch_prints_the_ready_line_and_keeps_running(
++    theatre: Theatre, watching: Callable[[], Watch]
++) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    w = watching()
++    assert w.line == f"watching {theatre.root}\n"
++    time.sleep(0.5)
++    assert w.proc.poll() is None
++
++
++def test_watch_imports_and_reconciles_at_startup(theatre: Theatre, watching: Callable[[], Watch]) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.run("history")
++    theatre.write("troupe.yml", "a: 2\n")
++    watching()
++    assert brief(theatre) == [("import", "a", None, 1), ("set", "a", 1, 2)]
++
++
++@pytest.mark.parametrize("signum", [signal.SIGINT, signal.SIGTERM])
++def test_watch_exits_0_on_signal_with_only_the_ready_line(
++    theatre: Theatre, watching: Callable[[], Watch], signum: int
++) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    w = watching()
++    assert w.stop(signum) == (0, f"watching {theatre.root}\n", "")
++
++
++def test_watch_on_an_unloadable_theatre_exits_4_and_creates_nothing(theatre: Theatre) -> None:
++    theatre.root.mkdir(exist_ok=True)
++    r = subprocess.run(
++        [sys.executable, "-m", "troupe.cli", "config", "watch", "--theatre", str(theatre.root)],
++        capture_output=True,
++        timeout=STARTUP_TIMEOUT,
++        check=False,
++    )
++    assert (r.returncode, r.stdout) == (4, b"")
++    assert b"troupe.yml" in r.stderr
++    assert list(theatre.root.iterdir()) == []
++
++
++# --- live edits --------------------------------------------------------------------------------------------
++
++
++def test_live_edit_is_reconciled_within_2_seconds(theatre: Theatre, watching: Callable[[], Watch]) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    watching()
++    start = time.monotonic()
++    theatre.write("troupe.yml", "a: 2\n")
++    recorded_within(theatre, 1, [("set", "a", 1, 2)], start)
++
++
++def test_edit_to_an_included_file_is_reconciled(theatre: Theatre, watching: Callable[[], Watch]) -> None:
++    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml\n")
++    theatre.write("agents/coder.yaml", "model: m1\n")
++    watching()
++    start = time.monotonic()
++    theatre.write("agents/coder.yaml", "model: m2  # bigger\n")
++    recorded_within(theatre, 1, [("set", "agents.coder.model", "m1", "m2")], start)
++
++
++def test_save_by_rename_is_reconciled(theatre: Theatre, watching: Callable[[], Watch]) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    watching()
++    start = time.monotonic()
++    theatre.write("troupe.yml.swp", "a: 2\n")
++    os.replace(theatre.dir / "troupe.yml.swp", theatre.dir / "troupe.yml")
++    recorded_within(theatre, 1, [("set", "a", 1, 2)], start)
++
++
++def test_comment_only_live_edit_records_nothing(theatre: Theatre, watching: Callable[[], Watch]) -> None:
++    theatre.write("troupe.yml", "a: 1  # old\n")
++    watching()
++    theatre.write("troupe.yml", "# new heading\na:   1  # new\n")
++    nothing_recorded(theatre, 1)
++
++
++def test_watch_leaves_user_files_untouched(theatre: Theatre, watching: Callable[[], Watch]) -> None:
++    theatre.write("troupe.yml", "a: 1  # c\np: file:p.md\n")
++    theatre.write("p.md", "text\r\n")
++    w = watching()
++    start = time.monotonic()
++    theatre.write("p.md", "new\r\n")
++    recorded_within(theatre, 2, [("set", "p", "text\r\n", "new\r\n")], start)
++    expected = theatre.snapshot()
++    assert w.stop()[0] == 0
++    assert theatre.snapshot() == expected
++    assert {p.name for p in theatre.dir.iterdir()} - {"troupe.yml", "p.md"} <= {
++        "events.sqlite",
++        "events.sqlite-journal",
++        "events.sqlite-wal",
++        "events.sqlite-shm",
++    }
++
++
++# --- configuration that does not load while watching ------------------------------------------------------
++
++
++def test_broken_then_fixed_file_reports_once_and_reconciles_only_the_fix(
++    theatre: Theatre, watching: Callable[[], Watch]
++) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    w = watching()
++    theatre.write("troupe.yml", "a: [1\n")
++    time.sleep(1.5)
++    assert w.proc.poll() is None
++    start = time.monotonic()
++    theatre.write("troupe.yml", "a: 2\n")
++    recorded_within(theatre, 1, [("set", "a", 1, 2)], start)
++    code, out, err = w.stop()
++    assert (code, out) == (0, f"watching {theatre.root}\n")
++    assert len(err.splitlines()) == 1 and "troupe.yml" in err
++
++
++def test_missing_include_target_then_created(theatre: Theatre, watching: Callable[[], Watch]) -> None:
++    theatre.write("troupe.yml", "a: 1\n")
++    w = watching()
++    theatre.write("troupe.yml", "a: 1\np: file:p.md\n")
++    time.sleep(1.0)
++    start = time.monotonic()
++    theatre.write("p.md", "hello\n")
++    recorded_within(theatre, 1, [("set", "p", None, "hello\n")], start)
++    _, _, err = w.stop()
++    assert len(err.splitlines()) == 1 and "p.md" in err
++
++
++# --- troupe's own write-backs ------------------------------------------------------------------------------
++
++
++def test_set_while_watch_runs_adds_exactly_its_own_event(
++    theatre: Theatre, watching: Callable[[], Watch]
++) -> None:
++    theatre.write("troupe.yml", "model: a\n")
++    watching()
++    assert theatre.run("set", "model", "b").code == 0
++    time.sleep(QUIET)
++    assert brief(theatre) == [("import", "model", None, "a"), ("set", "model", "a", "b")]
++
++
++def test_set_into_an_included_file_while_watch_runs_adds_exactly_its_own_event(
++    theatre: Theatre, watching: Callable[[], Watch]
++) -> None:
++    theatre.write("troupe.yml", "agents:\n  coder: file:agents/coder.yaml\n")
++    theatre.write("agents/coder.yaml", "model: m1\n")
++    watching()
++    assert theatre.run("set", "agents.coder.model", "m2").code == 0
++    time.sleep(QUIET)
++    assert brief(theatre)[1:] == [("set", "agents.coder.model", "m1", "m2")]
++
++
++def test_watch_reconciles_only_while_holding_the_theatre_lock(
++    theatre: Theatre, watching: Callable[[], Watch]
++) -> None:
++    """A `set` holds the lock from reading the files until its events are saved, so watch never sees it half done."""
++    theatre.write("troupe.yml", "a: 1\n")
++    watching()
++    fd = os.open(theatre.dir, os.O_RDONLY)
++    try:
++        fcntl.flock(fd, fcntl.LOCK_EX)
++        theatre.write("troupe.yml", "a: 2\n")
++        time.sleep(QUIET)
++        # `history` would wait for the lock too, so read the store directly.
++        assert [r.change.op for r in ConfigStore(theatre.dir).history()] == ["import"]
++    finally:
++        os.close(fd)
++    recorded_within(theatre, 1, [("set", "a", 1, 2)], time.monotonic())
++
++
++def test_hand_edit_after_a_set_while_watching_starts_from_the_set_value(
++    theatre: Theatre, watching: Callable[[], Watch]
++) -> None:
++    theatre.write("troupe.yml", "model: a\n")
++    watching()
++    assert theatre.run("set", "model", "b").code == 0
++    time.sleep(1.0)
++    start = time.monotonic()
++    theatre.write("troupe.yml", "model: c\n")
++    recorded_within(theatre, 2, [("set", "model", "b", "c")], start)
++
++
++# --- includes added by hand --------------------------------------------------------------------------------
++
++
++def test_include_added_by_hand_is_followed_and_then_watched(
++    theatre: Theatre, watching: Callable[[], Watch]
++) -> None:
++    theatre.write("troupe.yml", "agents: {}\n")
++    theatre.write("agents/tester.yaml", "model: t1\n")
++    watching()
++    start = time.monotonic()
++    theatre.write("troupe.yml", "agents:\n  tester: file:agents/tester.yaml\n")
++    recorded_within(theatre, 0, [("set", "agents.tester.model", None, "t1")], start)
++    start = time.monotonic()
++    theatre.write("agents/tester.yaml", "model: t2\n")
++    recorded_within(theatre, 1, [("set", "agents.tester.model", "t1", "t2")], start)
++
++
++def test_include_removed_by_hand_is_no_longer_watched(
++    theatre: Theatre, watching: Callable[[], Watch]
++) -> None:
++    theatre.write("troupe.yml", "p: file:p.md\n")
++    theatre.write("p.md", "x\n")
++    watching()
++    start = time.monotonic()
++    theatre.write("troupe.yml", "q: 1\n")
++    recorded_within(theatre, 1, [("remove", "p", "x\n", None), ("set", "q", None, 1)], start)
++    theatre.write("p.md", "y\n")
++    nothing_recorded(theatre, 3)
++
++
++def test_include_added_while_nothing_runs_is_picked_up_by_show(make: Callable[[str], Theatre]) -> None:
++    t = make("a: 1\n")
++    t.run("history")
++    t.write("prompt.md", "Hello\n")
++    t.write("troupe.yml", "a: 1\nprompt: file:prompt.md\n")
++    assert t.run("show", "prompt").out == "Hello\n"
++    assert brief(t)[1:] == [("set", "prompt", None, "Hello\n")]

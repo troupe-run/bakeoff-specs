@@ -1,0 +1,442 @@
+diff --git a/README.md b/README.md
+index aa81a2d..a53a512 100644
+--- a/README.md
++++ b/README.md
+@@ -5,7 +5,7 @@ AI orchestration. This package currently provides the configuration subsystem:
+ ```
+ uv run troupe config get PATH [--theatre DIR]
+ uv run troupe config show [PATH] [--sources] [--theatre DIR]
+-uv run troupe config set PATH VALUE [--theatre DIR]
++uv run troupe config set PATH VALUE [--reason TEXT] [--theatre DIR]
+ uv run troupe config history [PATH] [--theatre DIR]
+ uv run troupe config watch [--theatre DIR]
+ ```
+@@ -18,5 +18,8 @@ uv run troupe config watch [--theatre DIR]
+   `.troupe/troupe-state.sqlite`); `history` lists per-leaf `import`/`set`/`remove` events.
+ - Every command except `history` first reconciles the projection with the files (hand edits become
+   `set`/`remove` events); `watch` keeps reconciling as files change, until SIGINT/SIGTERM.
++- Every history event carries its lineage: `actor` (`TROUPE_ACTOR=human:<id>|agent:<id>`, default the
++  login name; `unknown` for imports and hand edits), `via` (`import`/`cli`/`file`), `at` (UTC), `reason`
++  (`set --reason`) and `change`, an id shared by all events of one command, reconcile or import.
+ 
+ Run the tests with `uv run pytest`.
+diff --git a/docs/decisions.md b/docs/decisions.md
+index b087215..3cd22ef 100644
+--- a/docs/decisions.md
++++ b/docs/decisions.md
+@@ -49,3 +49,16 @@ corrupt user data or to contradict the contract.
+ 19. **`show PATH --sources` on a scalar prints it as YAML (quoted if needed) with the comment**, rather than
+     the raw `get` form, since the contract describes `--sources` output as YAML.
+ 20. **Source files outside the theatre directory are named with `..` segments**, still relative to it.
++21. **`TROUPE_ACTOR` is checked by every command, not just `set`**; an invalid value exits 2 before
++    anything is read or recorded. An empty value is invalid rather than "unset": an agent with a
++    misconfigured variable must not be recorded as the logged-in human. The id is everything after the
++    first `:` and must be non-empty. If no login name can be found, the default actor's id is `null`.
++22. **A command's file reconcile is its own change, separate from the `set` that follows it**: the hand
++    edits have actor `unknown`, `via: "file"`, no reason and their own `change` id; `--reason` and the
++    CLI actor apply only to the `set`'s own events. `change` ids are random UUIDs; all events of one
++    change share one `at`.
++23. **Events recorded before lineage existed are upcast, not guessed at.** They get actor `unknown`, `at`
++    from the stored event's own timestamp, and `reason: null`. A legacy import keeps `via: "import"` and
++    gets `change: "import"` (there is only ever one import, recorded as a unit). A legacy `set`/`remove`
++    may have come from the CLI or a hand edit, which cannot be told apart, so its `via` and `change`
++    are `null`.
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index e6e9516..22d943f 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -4,6 +4,7 @@ from __future__ import annotations
+ 
+ import argparse
+ import fcntl
++import getpass
+ import json
+ import os
+ import signal
+@@ -25,7 +26,7 @@ from .config import (
+     split_path,
+ )
+ from .dump import dump, source_namer
+-from .store import STATE_FILE, ConfigStore, diff
++from .store import STATE_FILE, ConfigStore, diff, lineage
+ from .writer import Writer
+ from .yamlcore import ValueError_, format_scalar, parse_value, same
+ 
+@@ -63,6 +64,8 @@ def _parser() -> argparse.ArgumentParser:
+                 p.add_argument(arg)
+         if name == "show":
+             p.add_argument("--sources", action="store_true", help="say which file each value comes from")
++        if name == "set":
++            p.add_argument("--reason", default=None, help="why the change is made (recorded in history)")
+     return parser
+ 
+ 
+@@ -88,8 +91,24 @@ def main(argv: list[str] | None = None) -> int:
+         return 5
+ 
+ 
++def actor_from_env() -> dict[str, str | None]:
++    """The actor behind a CLI command: `TROUPE_ACTOR` (`human:<id>` / `agent:<id>`), else the login name."""
++    spec = os.environ.get("TROUPE_ACTOR")
++    if spec is None:
++        try:
++            login: str | None = getpass.getuser() or None
++        except (OSError, KeyError):
++            login = None  # no login name to be found: say so rather than guess
++        return {"kind": "human", "id": login}
++    kind, sep, ident = spec.partition(":")
++    if not sep or kind not in ("human", "agent") or not ident:
++        raise UsageError(f"TROUPE_ACTOR must be human:<id> or agent:<id>, not {spec!r}")
++    return {"kind": kind, "id": ident}
++
++
+ def run(argv: list[str]) -> int:
+     args = _parser().parse_args(argv)
++    actor = actor_from_env()
+     segs: list[str] | None = None
+     if getattr(args, "path", None) is not None:
+         try:
+@@ -125,7 +144,8 @@ def run(argv: list[str]) -> int:
+             store = ConfigStore(troupe_dir)
+             _reconcile(store, cfg)
+             if args.cmd == "set":
+-                return _set(theatre, cfg, store, segs, args.path, value)
++                how = lineage("cli", actor, args.reason)
++                return _set(theatre, cfg, store, segs, args.path, value, how)
+ 
+     if args.cmd in ("get", "show"):
+         item = lookup(cfg.root, segs, args.path) if segs is not None else cfg.root
+@@ -172,7 +192,7 @@ def _reconcile(store: ConfigStore, cfg: Config) -> None:
+         store.ensure_imported(leaves)
+ 
+ 
+-def _set(theatre: Path, cfg, store: ConfigStore, segs: list[str], path: str, value) -> int:
++def _set(theatre: Path, cfg, store: ConfigStore, segs: list[str], path: str, value, how: dict) -> int:
+     writer = Writer()
+     writer.set_path(cfg.root, segs, value, path)
+     results = {p: t for p, t in writer.results().items() if p not in writer.docs or t != writer.docs[p].text}
+@@ -190,7 +210,7 @@ def _set(theatre: Path, cfg, store: ConfigStore, segs: list[str], path: str, val
+     for p, text in results.items():
+         p.write_bytes(text.encode("utf-8"))
+ 
+-    store.record(diff(flatten(cfg.root), flatten(new_cfg.root)))
++    store.record(diff(flatten(cfg.root), flatten(new_cfg.root)), how)
+     return 0
+ 
+ 
+diff --git a/src/troupe/store.py b/src/troupe/store.py
+index b828fcf..23358c4 100644
+--- a/src/troupe/store.py
++++ b/src/troupe/store.py
+@@ -2,9 +2,10 @@
+ 
+ from __future__ import annotations
+ 
++from datetime import UTC, datetime
+ from pathlib import Path
+ from typing import Any
+-from uuid import NAMESPACE_URL, UUID, uuid5
++from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
+ 
+ from eventsourcing.application import AggregateNotFoundError, Application
+ from eventsourcing.domain import Aggregate, event
+@@ -13,6 +14,34 @@ from .yamlcore import same
+ 
+ STATE_FILE = "troupe-state.sqlite"
+ 
++UNKNOWN_ACTOR = {"kind": "unknown", "id": None}
++
++
++def rfc3339(moment: datetime) -> str:
++    return moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
++
++
++def lineage(via: str, actor: dict[str, Any] | None = None, reason: str | None = None) -> dict[str, Any]:
++    """Who/how/when/why for one change: every event recorded with it shares its fresh `change` id."""
++    return {
++        "actor": dict(actor or UNKNOWN_ACTOR),
++        "via": via,
++        "at": rfc3339(datetime.now(UTC)),
++        "reason": reason,
++        "change": str(uuid4()),
++    }
++
++
++def _legacy_lineage(state: dict[str, Any], via: str | None, change: str | None) -> None:
++    """Lineage for an event recorded before lineage existed: only its time and import-ness are known."""
++    state["lineage"] = {
++        "actor": dict(UNKNOWN_ACTOR),
++        "via": via,
++        "at": rfc3339(state["timestamp"]),
++        "reason": None,
++        "change": change,
++    }
++
+ 
+ class TheatreConfig(Aggregate):
+     """Projection of a theatre's configuration: current leaf values and the log of leaf changes."""
+@@ -26,24 +55,58 @@ class TheatreConfig(Aggregate):
+         self.leaves: dict[str, Any] = {}
+         self.log: list[dict[str, Any]] = []
+ 
+-    @event("LeafImported")
+-    def leaf_imported(self, path: str, new: Any) -> None:
+-        self._record("import", path, None, new)
+-
+-    @event("LeafSet")
+-    def leaf_set(self, path: str, old: Any, new: Any) -> None:
+-        self._record("set", path, old, new)
+-
+-    @event("LeafRemoved")
+-    def leaf_removed(self, path: str, old: Any) -> None:
+-        self._record("remove", path, old, None)
+-
+-    def _record(self, op: str, path: str, old: Any, new: Any) -> None:
++    # Version 2 added `lineage`. Version 1 events came from the one import or from a `set` or reconcile,
++    # indistinguishably; the import was a single unit, so it gets the change id "import".
++    class LeafImported(Aggregate.Event):
++        class_version = 2
++        path: str
++        new: Any
++        lineage: dict[str, Any]
++
++        @staticmethod
++        def upcast_v1_v2(state: dict[str, Any]) -> None:
++            _legacy_lineage(state, "import", "import")
++
++    class LeafSet(Aggregate.Event):
++        class_version = 2
++        path: str
++        old: Any
++        new: Any
++        lineage: dict[str, Any]
++
++        @staticmethod
++        def upcast_v1_v2(state: dict[str, Any]) -> None:
++            _legacy_lineage(state, None, None)
++
++    class LeafRemoved(Aggregate.Event):
++        class_version = 2
++        path: str
++        old: Any
++        lineage: dict[str, Any]
++
++        @staticmethod
++        def upcast_v1_v2(state: dict[str, Any]) -> None:
++            _legacy_lineage(state, None, None)
++
++    @event(LeafImported)
++    def leaf_imported(self, path: str, new: Any, lineage: dict[str, Any]) -> None:
++        self._record("import", path, None, new, lineage)
++
++    @event(LeafSet)
++    def leaf_set(self, path: str, old: Any, new: Any, lineage: dict[str, Any]) -> None:
++        self._record("set", path, old, new, lineage)
++
++    @event(LeafRemoved)
++    def leaf_removed(self, path: str, old: Any, lineage: dict[str, Any]) -> None:
++        self._record("remove", path, old, None, lineage)
++
++    def _record(self, op: str, path: str, old: Any, new: Any, lineage: dict[str, Any]) -> None:
+         if op == "remove":
+             self.leaves.pop(path, None)
+         else:
+             self.leaves[path] = new
+-        self.log.append({"seq": len(self.log) + 1, "op": op, "path": path, "old": old, "new": new})
++        entry = {"seq": len(self.log) + 1, "op": op, "path": path, "old": old, "new": new}
++        self.log.append(entry | lineage)
+ 
+ 
+ class ConfigStore(Application):
+@@ -68,27 +131,31 @@ class ConfigStore(Application):
+         if self._get() is not None:
+             return
+         agg = TheatreConfig()
++        how = lineage("import")
+         for path, value in leaves.items():
+-            agg.leaf_imported(path, value)
++            agg.leaf_imported(path, value, how)
+         self.save(agg)
+ 
+-    def record(self, changes: list[tuple[str, str, Any, Any]]) -> None:
++    def record(self, changes: list[tuple[str, str, Any, Any]], how: dict[str, Any]) -> None:
++        """Record `changes` as one change, described by `how` (see `lineage`)."""
+         if not changes:
+             return
+         agg = self._get()
+         assert agg is not None
+         for op, path, old, new in changes:
+             if op == "remove":
+-                agg.leaf_removed(path, old)
++                agg.leaf_removed(path, old, how)
+             else:
+-                agg.leaf_set(path, old, new)
++                agg.leaf_set(path, old, new, how)
+         self.save(agg)
+ 
+     def reconcile(self, leaves: dict[str, Any]) -> None:
+         """Record a `set`/`remove` for each leaf where `leaves` (the files) differ from the projection."""
+         agg = self._get()
+         assert agg is not None
+-        self.record(diff(agg.leaves, leaves))
++        changes = diff(agg.leaves, leaves)
++        if changes:
++            self.record(changes, lineage("file"))
+ 
+     def history(self) -> list[dict[str, Any]]:
+         agg = self._get()
+diff --git a/tests/conftest.py b/tests/conftest.py
+index a73d6bd..f968a5e 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -36,8 +36,8 @@ class Theatre:
+         assert code == 0, err
+         return out
+ 
+-    def set(self, path: str, value: str, expect: int = 0) -> None:
+-        code, _, err = self.run("set", path, value)
++    def set(self, path: str, value: str, *extra: str, expect: int = 0) -> None:
++        code, _, err = self.run("set", path, value, *extra)
+         assert code == expect, err
+ 
+     def history(self, path: str | None = None) -> list[dict]:
+diff --git a/tests/test_config.py b/tests/test_config.py
+index d4b6cb9..e539a74 100644
+--- a/tests/test_config.py
++++ b/tests/test_config.py
+@@ -299,9 +299,17 @@ def test_noop_set(theatre):
+ # ---------------------------------------------------------------- history
+ 
+ 
++LINEAGE = ("actor", "via", "at", "reason", "change")
++
++
+ def test_history(theatre):
+     theatre.write("troupe.yml", "a: 1\nm:\n  x: 1\n  y: [p, q]\nt: file:t.txt\n")
+     theatre.write("t.txt", "hi\n")
++    full = theatre.history()
++    assert all(set(LINEAGE) <= e.keys() for e in full)
++    theatre.history = lambda path=None: [  # lineage is covered by test_lineage.py
++        {k: v for k, v in e.items() if k not in LINEAGE} for e in type(theatre).history(theatre, path)
++    ]
+     assert theatre.history() == [
+         {"seq": 1, "op": "import", "path": "a", "old": None, "new": 1},
+         {"seq": 2, "op": "import", "path": "m.x", "old": None, "new": 1},
+diff --git a/tests/test_lineage.py b/tests/test_lineage.py
+new file mode 100644
+index 0000000..e4c2b64
+--- /dev/null
++++ b/tests/test_lineage.py
+@@ -0,0 +1,112 @@
++import json
++import re
++import sqlite3
++import subprocess
++import sys
++
++import pytest
++
++AT = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$")
++
++
++@pytest.fixture(autouse=True)
++def _no_actor(monkeypatch):
++    monkeypatch.delenv("TROUPE_ACTOR", raising=False)
++
++
++def lineage(e):
++    return e["actor"], e["via"], e["reason"]
++
++
++def test_import_is_unknown_actor_one_change(theatre):
++    theatre.write("troupe.yml", "a: 1\nb: 2\n")
++    h = theatre.history()
++    assert [lineage(e) for e in h] == [({"kind": "unknown", "id": None}, "import", None)] * 2
++    assert h[0]["change"] == h[1]["change"]
++    assert all(AT.match(e["at"]) for e in h)
++
++
++def test_set_records_actor_reason_and_one_change(theatre, monkeypatch):
++    theatre.write("troupe.yml", "m: {x: 1, y: 2}\n")
++    monkeypatch.setenv("TROUPE_ACTOR", "agent:claude-1")
++    theatre.set("m", "{x: 3, z: 4}", "--reason", "tune m")
++    h = theatre.history()[2:]
++    assert [(e["op"], e["path"]) for e in h] == [("set", "m.x"), ("set", "m.z"), ("remove", "m.y")]
++    assert {(str(lineage(e)), e["change"], e["at"]) for e in h} == {
++        (str(({"kind": "agent", "id": "claude-1"}, "cli", "tune m")), h[0]["change"], h[0]["at"])
++    }
++    assert AT.match(h[0]["at"])
++    assert h[0]["change"] != theatre.history()[0]["change"]
++
++
++def test_each_command_gets_its_own_change(theatre, monkeypatch):
++    theatre.write("troupe.yml", "a: 1\n")
++    monkeypatch.setenv("TROUPE_ACTOR", "human:ada")
++    theatre.set("a", "2")
++    theatre.set("a", "3")
++    h = theatre.history()
++    assert len({e["change"] for e in h}) == 3
++    assert [lineage(e) for e in h[1:]] == [({"kind": "human", "id": "ada"}, "cli", None)] * 2
++
++
++def test_default_actor_is_login_name(theatre, monkeypatch):
++    import getpass
++
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.set("a", "2")
++    assert theatre.history()[-1]["actor"] == {"kind": "human", "id": getpass.getuser()}
++
++
++def test_hand_edits_are_file_events_apart_from_the_set(theatre, monkeypatch):
++    theatre.write("troupe.yml", "a: 1\nb: 1\n")
++    theatre.get("a")
++    theatre.write("troupe.yml", "a: 2\nb: 1\n")
++    monkeypatch.setenv("TROUPE_ACTOR", "agent:x")
++    theatre.set("b", "3", "--reason", "why")
++    edit, setb = theatre.history()[2:]
++    assert lineage(edit) == ({"kind": "unknown", "id": None}, "file", None)
++    assert lineage(setb) == ({"kind": "agent", "id": "x"}, "cli", "why")
++    assert edit["change"] != setb["change"]
++
++
++@pytest.mark.parametrize("spec", ["", "bob", "robot:x", "human:", "agent:", ":x"])
++def test_bad_actor_is_usage_error(theatre, monkeypatch, spec):
++    theatre.write("troupe.yml", "a: 1\n")
++    monkeypatch.setenv("TROUPE_ACTOR", spec)
++    for args in (("get", "a"), ("set", "a", "2"), ("history",)):
++        assert theatre.run(*args)[0] == 2
++    assert theatre.read() == "a: 1\n"
++    monkeypatch.delenv("TROUPE_ACTOR")
++    assert len(theatre.history()) == 1
++
++
++def test_lineage_survives_restart(theatre, tmp_path):
++    theatre.write("troupe.yml", "a: 1\n")
++    env = {"TROUPE_ACTOR": "agent:bot", "PATH": ""}
++    run = [sys.executable, "-m", "troupe.cli", "config"]
++    subprocess.run([*run, "set", "a", "2", "--reason", "r", "--theatre", str(tmp_path)], env=env, check=True)
++    r = subprocess.run([*run, "history", "--theatre", str(tmp_path)], env=env, capture_output=True, text=True)
++    assert '"actor": {"kind": "agent", "id": "bot"}, "via": "cli"' in r.stdout.splitlines()[1]
++    assert '"reason": "r"' in r.stdout
++
++
++def test_events_from_before_lineage_say_what_is_unknown(theatre):
++    """A state file written before lineage existed: the import is known, a later set's origin is not."""
++    theatre.write("troupe.yml", "a: 1\n")
++    theatre.history()
++    db = sqlite3.connect(theatre.dir / "troupe-state.sqlite")
++    rows = db.execute("SELECT originator_version, topic, state FROM stored_events").fetchall()
++    for version, topic, state in rows:
++        if "Leaf" in topic:
++            data = json.loads(state)
++            del data["lineage"], data["class_version"]
++            db.execute(
++                "UPDATE stored_events SET state = ? WHERE originator_version = ?",
++                (json.dumps(data).encode(), version),
++            )
++    db.commit()
++    db.close()
++    (imported,) = theatre.history()
++    assert lineage(imported) == ({"kind": "unknown", "id": None}, "import", None)
++    assert imported["change"] == "import"
++    assert AT.match(imported["at"])

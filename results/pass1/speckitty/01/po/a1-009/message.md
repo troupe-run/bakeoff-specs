@@ -1,0 +1,1 @@
+WP01–WP05 are approved. WP06 (literal and folded block scalars) is now being implemented. WP07 (new entries and collections) follows it, then WP08 wires up `set`.

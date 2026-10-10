@@ -1,0 +1,423 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "agents.planner",
+          "haiku"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "tags.2",
+          "gamma"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "teams",
+          "{red: one, blue: two, gold: four}"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "fresh.name",
+          "x y"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\ntags:\n  - alpha\n  - \"beta\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'green': 'three'\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.planner",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'green': 'three'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.2",
+                "gamma"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'green': 'three'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "teams",
+                "{red: one, blue: two, gold: four}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  \"gold\": \"four\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "fresh.name",
+                "x y"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  \"gold\": \"four\"\nfresh:\n  name: x y\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder: opus\n  reviewer: sonnet\n  planner: haiku\ntags:\n  - alpha\n  - beta\n  - gamma\nteams:\n  red: one\n  blue: two\n  gold: four\nfresh:\n  name: x y\n"
+            }
+          ]
+        },
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.planner",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'green': 'three'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.2",
+                "gamma"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'green': 'three'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "teams",
+                "{red: one, blue: two, gold: four}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'gold': 'four'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "fresh.name",
+                "x y"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'gold': 'four'\nfresh:\n  name: x y\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder: opus\n  reviewer: sonnet\n  planner: haiku\ntags:\n  - alpha\n  - beta\n  - gamma\nteams:\n  red: one\n  blue: two\n  gold: four\nfresh:\n  name: x y\n"
+            }
+          ]
+        }
+      ],
+      "route": "Copy the preceding sibling's style (after a merge deletes the last entry, the last remaining one), else the minimal style",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.planner",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'green': 'three'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.2",
+                "gamma"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'green': 'three'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "teams",
+                "{red: one, blue: two, gold: four}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'gold': 'four'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "fresh.name",
+                "x y"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'gold': 'four'\nfresh:\n  name: x y\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder: opus\n  reviewer: sonnet\n  planner: haiku\ntags:\n  - alpha\n  - beta\n  - gamma\nteams:\n  red: one\n  blue: two\n  gold: four\nfresh:\n  name: x y\n"
+            }
+          ]
+        },
+        {
+          "arms": 2,
+          "results": [
+            {
+              "args": [
+                "config",
+                "set",
+                "agents.planner",
+                "haiku"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'green': 'three'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "tags.2",
+                "gamma"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"\nteams:\n  red: one\n  \"blue\": \"two\"\n  'green': 'three'\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "teams",
+                "{red: one, blue: two, gold: four}"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"\nteams:\n  red: one\n  blue: two\n  gold: four\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "fresh.name",
+                "x y"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {
+                ".troupe/troupe.yml": "agents:\n  coder: opus\n  'reviewer': 'sonnet'\n  'planner': 'haiku'\ntags:\n  - alpha\n  - \"beta\"\n  - \"gamma\"\nteams:\n  red: one\n  blue: two\n  gold: four\nfresh:\n  name: x y\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "show"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "agents:\n  coder: opus\n  reviewer: sonnet\n  planner: haiku\ntags:\n  - alpha\n  - beta\n  - gamma\nteams:\n  red: one\n  blue: two\n  gold: four\nfresh:\n  name: x y\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 2
+    }
+  ]
+}

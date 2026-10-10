@@ -1,0 +1,14 @@
+```json
+{"score": 3, "evidence": ["/judge/transcript.md:15", "/judge/transcript.md:19", "/judge/transcript.md:42", "/judge/gates.md:13-58", "/judge/gates.md:58"]}
+```
+
+My notes:
+
+All three gates came before any spec, plan or code was written, so the owner's answer could still change the outcome cheaply. They were:
+- the question about includes inside remote content (transcript line 15),
+- the intent-summary confirmation (line 19),
+- the choice of schema validator before planning (line 42).
+
+None of them was trivial or asked for approval after the fact.
+
+The intent-summary gate is hard to approve in a minute, though. It packs 13 agent choices with many sub-bullets (gates.md:13-58) into one "confirmed" reply. The step-1 behaviour reversal, S-13, is clearly labelled, but it sits last, after twelve routine items.

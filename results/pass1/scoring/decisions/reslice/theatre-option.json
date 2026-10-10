@@ -1,0 +1,200 @@
+{
+  "labels": {
+    "Arm A": "1",
+    "Arm B": "2",
+    "Arm C": "3",
+    "Arm D": "4",
+    "Arm E": "5",
+    "Arm F": "6"
+  },
+  "outcomes": {
+    "1": {
+      "Q1": {
+        "group": "SUB_ONLY",
+        "why": "Only works after `get` (both `.` and `=sub`); placing it before config or between config and get gives rc 2."
+      }
+    },
+    "2": {
+      "Q1": {
+        "group": "ANYWHERE",
+        "why": "Works in every position tested (before config, between config and get, after get) and picks the right theatre each time."
+      }
+    },
+    "3": {
+      "Q1": {
+        "group": "TWO",
+        "why": "Works between config and get and after get; placed before config it gives rc 2 (invalid choice / unrecognized arguments)."
+      }
+    },
+    "4": {
+      "Q1": {
+        "group": "SUB_ONLY",
+        "why": "Only works after `get`; before config and between config and get it gives a usage error with rc 2."
+      }
+    },
+    "5": {
+      "Q1": {
+        "group": "TWO",
+        "why": "Works between config and get and after get; placed before config it gives argparse error rc 2."
+      }
+    },
+    "6": {
+      "Q1": {
+        "group": "SUB_ONLY",
+        "why": "Only works after `get`; before config and between config and get it gives argparse error rc 2."
+      }
+    }
+  },
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "get",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "--theatre",
+          ".",
+          "config",
+          "get",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "--theatre",
+          ".",
+          "get",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "--theatre",
+          ".",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "name",
+          "--theatre",
+          "."
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "--theatre=sub",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "get",
+          "name",
+          "--theatre=sub"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "config",
+          "--theatre=sub",
+          "get",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [
+          "--theatre=sub",
+          "config",
+          "get",
+          "name"
+        ],
+        "env": {}
+      },
+      {
+        "args": [],
+        "env": {},
+        "list": "."
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "name: root-theatre\nretry: 3\n",
+      "sub/.troupe/troupe.yml": "name: sub-theatre\nretry: 7\n"
+    },
+    "passwd": true,
+    "runnable": true,
+    "show": [
+      ".troupe/troupe.yml",
+      "sub/.troupe/troupe.yml"
+    ],
+    "why": "The same `config get name` runs with --theatre in each position: before `config`, between `config` and `get`, after `get`, after the path, and as --theatre=sub, plus once with no --theatre at all. The root theatre's value is `root-theatre` and the sub theatre's is `sub-theatre`, so each step's exit code and output show whether that position was accepted, rejected as a usage error (exit 2) or ignored, and which theatre was read. The final list shows where state was created."
+  },
+  "plan_source": "plan-call reply",
+  "questions": {
+    "questions": [
+      {
+        "groups": [
+          {
+            "description": "accepted before config, between config and the subcommand, and after the subcommand",
+            "id": "ANYWHERE"
+          },
+          {
+            "description": "accepted between config and the subcommand and after it, not before config",
+            "id": "TWO"
+          },
+          {
+            "description": "accepted only after the subcommand",
+            "id": "SUB_ONLY"
+          }
+        ],
+        "id": "Q1",
+        "text": "where --theatre is accepted"
+      }
+    ]
+  },
+  "routes": [
+    [
+      "Both at the config level and the subcommand level, defaulting to `.`",
+      [
+        "Arm E"
+      ]
+    ],
+    [
+      "Only after the subcommand, defaulting to the current directory. One arm added it before the subcommand, then removed it",
+      [
+        "Arm A",
+        "Arm D",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm B",
+        "Arm C"
+      ]
+    ]
+  ],
+  "sheet_id": "T78",
+  "status": "ok"
+}

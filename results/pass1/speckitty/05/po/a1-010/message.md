@@ -1,0 +1,1 @@
+The WP03 claim is running; spec-kitty captures baseline test runs as part of the claim, so it takes a few minutes. I'll dispatch the implementer when it completes.

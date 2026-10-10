@@ -1,0 +1,3 @@
+```json
+{"score": 2, "evidence": ["repo/README.md:14-16", "repo/README.md:23-25", "repo/tests/test_config.py:100", "repo/tests/test_config.py:191", "repo/tests/test_config.py:230"], "notes": "The only requirement text is the README prose. You can match its behaviours, such as `show --sources`, reconcile and watch, to tests by name (test_show_sources, test_reconcile_on_command, test_watch), and the README's layout line points to modules like render.py and sync.py. But there are no requirement IDs or explicit links from requirement to test to code, so tracing depends on matching topic words, and some details (the `.yaml` alternative, the `events.lock` serialisation) have no test that clearly asserts them."}
+```

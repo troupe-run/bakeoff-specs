@@ -1,0 +1,269 @@
+[
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 50,
+      "row": 25
+    },
+    "filename": "/work/bakeoff-specs-speckit/src/troupe/config/edit/planner.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from dataclasses import dataclass, field\n\nfrom troupe.config.edit import folded, render\nfrom troupe.config.edit.layout import (\n    Lines,\n    indent_of,\n    indent_step,\n    inline_replace,\n    insertion_line,\n    is_blank,\n    last_content_line,\n    scalar_spans,\n)\nfrom troupe.config.files import CRLF, LF, SourceFile\nfrom troupe.config.loader import Loaded\nfrom troupe.config.paths import ConfigPath, is_index\nfrom troupe.config.scalars import NewNode, NewScalar, Value, plain_value, scalars_equal\nfrom troupe.config.tree import (\n    Located,\n    LocatedMapping,\n    LocatedScalar,\n    LocatedSequence,\n    TextInclude,\n)\nfrom troupe.errors import PathError, WriteRefused\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 27
+          },
+          "location": {
+            "column": 1,
+            "row": 7
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 7,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 100,
+      "row": 7
+    },
+    "filename": "/work/bakeoff-specs-speckit/src/troupe/config/leaves.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from dataclasses import dataclass\nfrom typing import Literal\n\nfrom troupe.config.scalars import Scalar, Value, scalars_equal\nfrom troupe.config.tree import (\n    Located,\n    LocatedMapping,\n    LocatedScalar,\n    LocatedSequence,\n    TextInclude,\n)\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 9
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 36,
+      "row": 14
+    },
+    "filename": "/work/bakeoff-specs-speckit/src/troupe/config/loader.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from dataclasses import dataclass, field\nfrom pathlib import Path\nfrom typing import Any, Literal\n\nfrom ruamel.yaml import YAML\nfrom ruamel.yaml.error import YAMLError\nfrom ruamel.yaml.nodes import MappingNode, Node, ScalarNode, SequenceNode\n\nfrom troupe.config.files import SourceFile, find_config, is_yaml_name, read_source\nfrom troupe.config.scalars import resolve_node\nfrom troupe.config.tree import (\n    Located,\n    LocatedMapping,\n    LocatedScalar,\n    LocatedSequence,\n    TextInclude,\n)\nfrom troupe.errors import LoadError\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 16
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "FURB166",
+    "end_location": {
+      "column": 32,
+      "row": 45
+    },
+    "filename": "/work/bakeoff-specs-speckit/src/troupe/config/scalars.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "text",
+          "end_location": {
+            "column": 28,
+            "row": 45
+          },
+          "location": {
+            "column": 20,
+            "row": 45
+          }
+        },
+        {
+          "content": "0",
+          "end_location": {
+            "column": 31,
+            "row": 45
+          },
+          "location": {
+            "column": 30,
+            "row": 45
+          }
+        }
+      ],
+      "message": "Replace with `base=0`"
+    },
+    "location": {
+      "column": 16,
+      "row": 45
+    },
+    "message": "Use of `int` with explicit `base=8` after removing prefix",
+    "name": "int-on-sliced-str",
+    "noqa_row": 45,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/int-on-sliced-str"
+  },
+  {
+    "cell": null,
+    "code": "FURB166",
+    "end_location": {
+      "column": 33,
+      "row": 47
+    },
+    "filename": "/work/bakeoff-specs-speckit/src/troupe/config/scalars.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "text",
+          "end_location": {
+            "column": 28,
+            "row": 47
+          },
+          "location": {
+            "column": 20,
+            "row": 47
+          }
+        },
+        {
+          "content": "0",
+          "end_location": {
+            "column": 32,
+            "row": 47
+          },
+          "location": {
+            "column": 30,
+            "row": 47
+          }
+        }
+      ],
+      "message": "Replace with `base=0`"
+    },
+    "location": {
+      "column": 16,
+      "row": 47
+    },
+    "message": "Use of `int` with explicit `base=16` after removing prefix",
+    "name": "int-on-sliced-str",
+    "noqa_row": 47,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/int-on-sliced-str"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 100,
+      "row": 21
+    },
+    "filename": "/work/bakeoff-specs-speckit/src/troupe/config/view.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import os\nfrom pathlib import Path\n\nfrom troupe.config.edit.render import (\n    PLAIN,\n    literal_representable,\n    render_inline,\n    render_key,\n    render_literal,\n)\nfrom troupe.config.files import SourceFile\nfrom troupe.config.scalars import NewScalar\nfrom troupe.config.tree import (\n    Located,\n    LocatedMapping,\n    LocatedScalar,\n    LocatedSequence,\n    TextInclude,\n)\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 23
+          },
+          "location": {
+            "column": 1,
+            "row": 9
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 9
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 9,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "PYI041",
+    "end_location": {
+      "column": 43,
+      "row": 68
+    },
+    "filename": "/work/bakeoff-specs-speckit/tests/unit/test_render.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "str | float | bool | None",
+          "end_location": {
+            "column": 43,
+            "row": 68
+          },
+          "location": {
+            "column": 12,
+            "row": 68
+          }
+        }
+      ],
+      "message": "Remove redundant type"
+    },
+    "location": {
+      "column": 12,
+      "row": 68
+    },
+    "message": "Use `float` instead of `int | float`",
+    "name": "redundant-numeric-union",
+    "noqa_row": 68,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/redundant-numeric-union"
+  }
+]

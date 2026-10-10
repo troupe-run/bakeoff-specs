@@ -1,0 +1,165 @@
+[
+  {
+    "decision": "TROUPE_ACTOR is validated by every command (get, history, etc.), not just set; an invalid value exits 2 before anything is read or recorded",
+    "options": [
+      "validate only on set",
+      "validate on every command"
+    ],
+    "reason": "Contract silent; chosen so nothing is read or recorded under a bad actor",
+    "recorded_at": "docs/decisions.md:21 (diff.patch:31); questions.md:20"
+  },
+  {
+    "decision": "An empty TROUPE_ACTOR is treated as invalid rather than unset, unlike empty TROUPE_THEATRE",
+    "options": [
+      "treat empty as unset (fall back to login)",
+      "treat empty as invalid"
+    ],
+    "reason": "an agent with a misconfigured variable must not be recorded as the logged-in human",
+    "recorded_at": "docs/decisions.md:21 (diff.patch:32-33); questions.md:21"
+  },
+  {
+    "decision": "Actor id is everything after the first ':' and must be non-empty; kind must be 'human' or 'agent'",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:21 (diff.patch:33-34)"
+  },
+  {
+    "decision": "When TROUPE_ACTOR is unset, default actor is {kind: human, id: login name via getpass.getuser()}; if no login name can be found, id is null",
+    "options": [
+      "guess",
+      "null id"
+    ],
+    "reason": "no login name to be found: say so rather than guess",
+    "recorded_at": "docs/decisions.md:21 (diff.patch:34); src/troupe/cli.py actor_from_env (diff.patch:85)"
+  },
+  {
+    "decision": "Imports and hand edits (reconcile) get actor {kind: unknown, id: null}",
+    "options": [],
+    "reason": "",
+    "recorded_at": "README.md (diff.patch:18-20); questions.md:12"
+  },
+  {
+    "decision": "via values are import / cli / file",
+    "options": [],
+    "reason": "",
+    "recorded_at": "README.md (diff.patch:19)"
+  },
+  {
+    "decision": "A command's file reconcile is its own change, separate from the following set; --reason and CLI actor apply only to the set's own events",
+    "options": [
+      "merge reconcile edits into the set's change",
+      "separate change"
+    ],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:22 (diff.patch:35-38)"
+  },
+  {
+    "decision": "change ids are random UUID4s; all events of one change share one `at`",
+    "options": [],
+    "reason": "",
+    "recorded_at": "docs/decisions.md:22 (diff.patch:37-38)"
+  },
+  {
+    "decision": "`at` formatted as UTC RFC3339 with microseconds and trailing Z",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/store.py rfc3339, diff.patch:150-151); questions.md:14"
+  },
+  {
+    "decision": "Legacy (pre-lineage) events are upcast via eventsourcing class_version 2 upcasters rather than migrating stored data",
+    "options": [
+      "guess values",
+      "upcast with unknowns"
+    ],
+    "reason": "Events recorded before lineage existed are upcast, not guessed at",
+    "recorded_at": "docs/decisions.md:23 (diff.patch:39); src/troupe/store.py (diff.patch:195-226)"
+  },
+  {
+    "decision": "Legacy events get actor unknown, at from stored event timestamp, reason null",
+    "options": [],
+    "reason": "only time and import-ness are known",
+    "recorded_at": "docs/decisions.md:23 (diff.patch:39-41)"
+  },
+  {
+    "decision": "Legacy import keeps via 'import' and gets change id 'import'",
+    "options": [],
+    "reason": "there is only ever one import, recorded as a unit",
+    "recorded_at": "docs/decisions.md:23 (diff.patch:41-42)"
+  },
+  {
+    "decision": "Legacy set/remove gets via null and change null, outside the contract's three via values",
+    "options": [
+      "pick one of import/cli/file",
+      "null"
+    ],
+    "reason": "CLI vs hand edit origin cannot be told apart; chosen over guessing as brief asks",
+    "recorded_at": "docs/decisions.md:23 (diff.patch:42-43); questions.md:25"
+  },
+  {
+    "decision": "Add --reason option only to `config set`, defaulting to null",
+    "options": [],
+    "reason": "",
+    "recorded_at": "README.md (diff.patch:10); src/troupe/cli.py (diff.patch:69-70)"
+  },
+  {
+    "decision": "Lineage is stored as a single `lineage` dict field on each event and merged flat into history entries",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/store.py _record, diff.patch:246-247)"
+  },
+  {
+    "decision": "reconcile only creates a lineage/records when there are changes",
+    "options": [],
+    "reason": "",
+    "recorded_at": "unrecorded (src/troupe/store.py reconcile, diff.patch:282-284)"
+  },
+  {
+    "decision": "Declare explicit event fields on the versioned event classes after a TypeError",
+    "options": [],
+    "reason": "Explicit event classes need their fields declared",
+    "recorded_at": "transcript.md:11"
+  },
+  {
+    "decision": "Existing test_history strips lineage fields and checks only their presence; lineage tested separately in new tests/test_lineage.py",
+    "options": [],
+    "reason": "lineage is covered by test_lineage.py",
+    "recorded_at": "tests/test_config.py (diff.patch:317-321)"
+  },
+  {
+    "decision": "Use type(theatre).history instead of importing Theatre from conftest in test",
+    "options": [
+      "from conftest import Theatre",
+      "type(theatre).history"
+    ],
+    "reason": "drop the conftest import hack",
+    "recorded_at": "transcript.md:17"
+  },
+  {
+    "decision": "Extend conftest Theatre.set to accept extra args",
+    "options": [],
+    "reason": "let set in conftest take extra args",
+    "recorded_at": "transcript.md:17"
+  },
+  {
+    "decision": "Legacy-compat tested by stripping lineage/class_version from stored sqlite events; also manually verified against a DB written by previous commit via temporary worktree",
+    "options": [],
+    "reason": "check that a state DB written by the previous version still reads correctly through the upcaster",
+    "recorded_at": "transcript.md:13-15; tests/test_lineage.py (diff.patch:423-442)"
+  },
+  {
+    "decision": "Commit directly to main and not push",
+    "options": [],
+    "reason": "",
+    "recorded_at": "commit 30b372a; questions.md:5"
+  },
+  {
+    "decision": "Skip finishing-branch menu (merge/PR/keep) and keep state as is",
+    "options": [
+      "merge into main",
+      "push and open PR",
+      "keep as is"
+    ],
+    "reason": "work already on main; push/PR ruled out by delivery instructions",
+    "recorded_at": "questions.md:37-40; transcript.md:27"
+  }
+]

@@ -1,0 +1,29 @@
+{
+  "context": {
+    "examples": [],
+    "in_practice": "Route 1: when watch starts, it prints a single line on standard output saying it is watching. It prints nothing more there while it runs. Warnings and errors go to the error stream, so a script that captures standard output only ever gets that one line. Events are not shown live. To see what happened, you look at the history afterwards. This matches the documented promise of one line.\n\nRoute 2: what watch prints was never decided on purpose, so nothing here says what it does. It may print events, diagnostics or both on standard output, or it may match route 1. Someone using or maintaining it would have to check the actual behaviour, because there is no stated rule to rely on.",
+    "stakes": "Anyone who runs the watch command in a terminal, or pipes it into a script, depends on what comes out on standard output. A script that reads it might expect exactly one line, while a person might expect to see each event as it happens.",
+    "tradeoff": "Route 1 keeps the output predictable for scripts, but a person watching cannot see events as they happen and has to look them up in the history. Route 2 costs nothing up front, but nobody knows what the output looks like, and it might break the one-line promise."
+  },
+  "plan_why": "The question is only about what `troupe config watch` prints to stdout. watch runs in the foreground until SIGINT/SIGTERM, and the sandbox forbids running watch or sending signals. The other commands (get, show, set, history) cannot show watch's stdout, so no allowed command can make the routes' differences visible.",
+  "routes": [
+    [
+      "Only the watching line; diagnostics on stderr; events visible through history",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm D",
+        "Arm E"
+      ]
+    ]
+  ],
+  "runnable": false,
+  "status": "ok"
+}

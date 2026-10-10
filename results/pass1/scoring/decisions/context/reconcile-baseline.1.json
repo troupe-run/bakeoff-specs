@@ -1,0 +1,57 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "# project config\nmodel: opus   # main model\nretry: 3\nagents:\n  coder: file:agents/coder.yaml  # c\n  notes: file:agents/notes.txt",
+        "input": "`config get model`, then `config set model sonnet --reason upgrade` (as human:owner)",
+        "observed": true,
+        "results": {
+          "1": "All six arms behaved the same: `get` prints `opus`. `set` exits 0 with no output, and .troupe/troupe.yml now reads:\nmodel: sonnet # main model\nThe comment is kept. The other lines are unchanged."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config set retry 3` (as agent:bot; retry is already 3)",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0, no output, no file changes. Nothing about it shows up later in `config history`."
+        }
+      },
+      {
+        "before": "agents:\n  coder: file:agents/coder.yaml  # c\n  notes: file:agents/notes.txt",
+        "input": "`config set agents.coder.max_tokens 4096` (as agent:bot; coder points to file:agents/coder.yaml)",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0. .troupe/troupe.yml now reads:\nagents:\n  coder:  # c\n    $ref: file:agents/coder.yaml\n    max_tokens: 4096\n  notes: file:agents/notes.txt\n.troupe/agents/coder.yaml and notes.txt are not touched."
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history` (after the three sets above)",
+        "observed": true,
+        "results": {
+          "1": "All six arms: exit 0, 7 lines of JSON. Lines 1–5 are `import` entries for model=opus, retry=3, agents.coder.model=haiku, agents.coder.temperature=0.2 and agents.notes=\"be careful\\n\", with actor unknown. Line 6 is `set` model opus→sonnet by human owner, reason \"upgrade\". Line 7 is `set` agents.coder.max_tokens null→4096 by agent bot. The tool's own write-backs were not logged as hand edits, and the unchanged retry produced no entry."
+        }
+      }
+    ],
+    "in_practice": "In this run the tool's own writes were never mistaken for hand edits, and setting a key to the value it already has records nothing. The run never edited a file by hand between commands, though, so it doesn't show whether a real hand edit made outside the tool gets detected and attributed.",
+    "stakes": "If the tool compares the files against the wrong reference, it can miss changes someone made by hand, or log its own writes as hand edits. Either way, the history stops being a reliable record of who changed what.",
+    "tradeoff": "Route 1: every command has to rebuild the recorded configuration from the event log and compare each value against the files on disk."
+  },
+  "plan_why": "Every command except history first compares the files with the recorded configuration. These commands show that a set's own write-backs (a plain value change, a no-op set, and a scalar include rewritten into $ref mapping form with an override) are not picked up again by the next command's comparison. The final history should hold only the import and the set events, with no via:file events.",
+  "routes": [
+    [
+      "The recorded configuration (projection of the events), diffed leaf by leaf against the loaded files",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm C",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

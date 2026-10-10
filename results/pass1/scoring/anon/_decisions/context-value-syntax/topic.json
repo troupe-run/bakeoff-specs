@@ -1,0 +1,24 @@
+{
+  "kind": "divergent",
+  "question": "Which VALUE forms set accepts (empty, block collections, tags, anchors)",
+  "routes": [
+    {
+      "outcome": "Kept",
+      "reasoning_given": "None recorded",
+      "route": "Compose VALUE as a single flow-sequence item; empty or whitespace-only VALUE becomes null",
+      "route_no": 1
+    },
+    {
+      "outcome": "Kept; anchors/aliases still exit 2 at step 6 and tags at step 7",
+      "reasoning_given": "The contract says a single flow node; accepting more invents behaviour. A bare `a: b` must be quoted",
+      "route": "Exactly one scalar or flow node; empty input, block collections, multi-document, tags and anchors exit 2",
+      "route_no": 2
+    },
+    {
+      "outcome": "",
+      "reasoning_given": "",
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

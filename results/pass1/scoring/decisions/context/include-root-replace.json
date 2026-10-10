@@ -1,0 +1,84 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": ".troupe/troupe.yml:\nprompt: file:prompt.txt  # system prompt\nagents:\n  coder: file:agents/coder.yaml\n  reviewer:\n    $ref: file:agents/reviewer.yaml\n    temperature: 0.3\n\n.troupe/prompt.txt:\nBe terse.",
+        "input": "`config set prompt '\"Be terse.\\n\"'` (the same text prompt.txt already holds)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output, no file changed",
+          "2": "exit 0, no output, no file changed",
+          "3": "exit 0, no output, no file changed",
+          "4": "exit 0, no output, no file changed"
+        }
+      },
+      {
+        "before": ".troupe/prompt.txt:\nBe terse.",
+        "input": "`config set prompt '\"Be verbose.\\n\"'`",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; troupe.yml is unchanged and .troupe/prompt.txt now reads:\nBe verbose.",
+          "2": "exit 0, no output; troupe.yml is unchanged and .troupe/prompt.txt now reads:\nBe verbose.",
+          "3": "exit 0, no output; troupe.yml is unchanged and .troupe/prompt.txt now reads:\nBe verbose.",
+          "4": "exit 0, no output; troupe.yml is unchanged and .troupe/prompt.txt now reads:\nBe verbose."
+        }
+      },
+      {
+        "before": ".troupe/agents/coder.yaml:\nmodel: opus",
+        "input": "`config set agents.coder '{model: opus}'` (the value the included coder.yaml already gives)",
+        "observed": true,
+        "results": {
+          "1": "The two arms differed. One arm: exit 0, silent, nothing changed. The other arm: exit 3, `troupe: write refused: agents.coder: value comes from include /theatre/.troupe/agents/coder.yaml; refusing to replace it`",
+          "2": "The two arms differed. One arm: exit 3, `/theatre/.troupe/agents/coder.yaml: agents.coder: the whole value comes from the include file:agents/coder.yaml; change the included file instead`. The other arm: exit 0, silent, nothing changed",
+          "3": "exit 3, `troupe: error: agents.coder: its whole value comes from include 'file:agents/coder.yaml' in /theatre/.troupe/troupe.yml; change the included file instead`",
+          "4": "exit 3, `troupe: agents.coder: value comes from include /theatre/.troupe/agents/coder.yaml; refusing to replace it (change a path inside it instead); no file changed`"
+        }
+      },
+      {
+        "before": ".troupe/agents/reviewer.yaml:\nmodel: haiku",
+        "input": "`config set agents.reviewer '{model: haiku, temperature: 0.3}'` (the same value it already resolves to, through `$ref` plus an override)",
+        "observed": true,
+        "results": {
+          "1": "The two arms differed. One arm: exit 0, silent, nothing changed. The other arm: exit 3, `troupe: write refused: agents.reviewer: value comes from include /theatre/.troupe/agents/reviewer.yaml; refusing to replace it`",
+          "2": "The two arms differed. One arm: exit 3, `/theatre/.troupe/agents/reviewer.yaml: agents.reviewer: the whole value comes from the include file:agents/reviewer.yaml; change the included file instead`. The other arm: exit 0, silent, nothing changed",
+          "3": "exit 3, `troupe: error: agents.reviewer: its whole value comes from include 'file:agents/reviewer.yaml' in /theatre/.troupe/troupe.yml; change the included file instead`",
+          "4": "exit 3, `troupe: agents.reviewer: value comes from include /theatre/.troupe/agents/reviewer.yaml with overrides; refusing to replace it (change a path inside it instead); no file changed`"
+        }
+      }
+    ],
+    "in_practice": "On every route, setting a text-file include actually wrote the new text into prompt.txt. Even route 1's description says it always refuses, but neither of its arms did. The routes only differed on YAML-file includes. There, routes 3 and 4 refused even when the value was unchanged. On routes 1 and 2, one arm refused and the other quietly accepted the unchanged value, so neither route behaved the same across its arms. On every route, `config history` afterwards was the same: four import entries plus a single `set` of prompt from \"Be terse.\\n\" to \"Be verbose.\\n\" by human:owner. No-ops and refusals were not logged.",
+    "stakes": "Whether `config set` on a key whose whole value comes from an include (a text file such as `prompt: file:prompt.txt`, or a YAML file such as `coder: file:agents/coder.yaml`) writes into the included file or refuses. It also decides whether re-sending the value the key already has is a quiet no-op or an exit-3 error, which matters to scripts that re-apply the same config.",
+    "tradeoff": "Refusing even unchanged values (routes 3 and 4, and one arm each of routes 1 and 2) means a script that re-applies the same config gets exit 3. Accepting them silently (the other arm of routes 1 and 2) avoids that, but the two arms of one route then act differently, and the text include is overwritten in place either way."
+  },
+  "plan_why": "Shows, for a text include and for scalar-form and mapping-form YAML includes, whether replacing the whole included value is refused (exit 3) even when the value is identical, treated as a no-op, or written into the text file in place",
+  "routes": [
+    [
+      "Exit 3 always, even when the new value is identical (including changes through an ancestor)",
+      [
+        "Arm B",
+        "Arm D"
+      ]
+    ],
+    [
+      "Exit 3 only when the value would change; an identical value is a no-op",
+      [
+        "Arm A",
+        "Arm E"
+      ]
+    ],
+    [
+      "Rule 4 applies only to the root of a YAML include; a text include is edited in place",
+      [
+        "Arm F"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm C"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

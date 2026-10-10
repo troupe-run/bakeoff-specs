@@ -1,0 +1,2990 @@
+diff --git a/README.md b/README.md
+index 106f6d2..a2de69c 100644
+--- a/README.md
++++ b/README.md
+@@ -22,7 +22,7 @@ Every command takes `--theatre DIR` (default: the current directory).
+ |---|---|
+ | `troupe config get PATH` | Print the scalar at `PATH` (a mapping or list exits 5: use `show`) |
+ | `troupe config show [PATH] [--sources]` | Print the value at `PATH`, or the whole configuration, as YAML with includes resolved; `--sources` says which file each value comes from |
+-| `troupe config set PATH VALUE [--reason TEXT] [--in-include]` | Change or create the value at `PATH` and write it back into the file that holds it; `--reason` is recorded in the history; `--in-include` puts new keys into the included (shared) file instead of an override |
++| `troupe config set PATH VALUE [--reason TEXT] [--in-include] [--expand-alias]` | Change or create the value at `PATH` and write it back into the file that holds it; `--reason` is recorded in the history; `--in-include` puts new keys into the included (shared) file instead of an override; `--expand-alias` gives a value reached through an [alias](#anchors-and-aliases) its own copy |
+ | `troupe config history [PATH]` | Print the change events with their [lineage](#lineage) as JSON Lines, oldest first, optionally only for `PATH` and below |
+ | `troupe config watch` | Record hand edits to the files as they happen, until Ctrl-C (SIGINT) or SIGTERM |
+ 
+@@ -186,6 +186,73 @@ cat /tmp/demo/.troupe/agents/coder.yaml
+ Mapping-form includes need step 5 or later. Older code reads `$ref` as an ordinary key, so going back means
+ rewriting them as one-line includes (and moving the overrides into the shared file) by hand.
+ 
++### Anchors and aliases
++
++A value can be shared within one file with a YAML anchor (`&name`) and aliases (`*name`) to it. An alias has the value
++of the node anchored with that name earlier in the same file. A merge key (`<<`, plain) adds the entries of the
++mapping (or list of mappings) it names to the mapping that holds it. That mapping's own keys win, then earlier
++mappings in the list. `get`, `show`, `history` and reconciling all see the resolved values, and `show --sources` names
++the file the anchor is written in.
++
++```sh
++printf 'defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  <<: *d\n  temperature: 0.2\n' > /tmp/demo/.troupe/troupe.yml
++uv run troupe config get coder.settings.model --theatre /tmp/demo   # opus
++uv run troupe config show reviewer --theatre /tmp/demo              # model: opus / temperature: 0.2
++```
++
++Anchors do not cross files: an alias cannot refer to an anchor in a file it includes, or one that includes it. An
++alias with no anchor before it (or inside the node it refers to), an anchor or alias used as a key, and a merge key
++whose value is not a mapping or list of mappings written in that file all fail to load (exit 4).
++
++Setting a value **at the anchor** changes it there, keeping the `&name`, so every alias sees the new value. History
++records an event for each path whose value changed. Setting a value **through an alias** would do the same thing
++without your saying so, so it is refused (exit 3) and nothing changes:
++
++```sh
++printf 'defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n' > /tmp/demo/.troupe/troupe.yml
++uv run troupe config set defaults.model sonnet --theatre /tmp/demo        # coder and reviewer now use sonnet too
++uv run troupe config set coder.settings.model haiku --theatre /tmp/demo   # exit 3:
++# troupe: coder.settings.model: coder.settings is the alias *d of &d at defaults, so this would change all its
++# uses. Set defaults.model to change it everywhere, or use --expand-alias to give coder.settings a copy
++```
++
++This covers a mapping or list VALUE that would change anything under an alias, and a new key below one. Removing an
++entry whose value is an alias is fine, since it changes nothing else. Deleting an anchor that an alias still uses is
++refused (exit 3).
++
++To change it for one user only, ask for that user's own copy with `--expand-alias`. The alias is replaced by a
++block-style copy of the anchored node as it is written, marked with a comment, and the value is then set in the
++copy. The anchor and every other alias stay as they were:
++
++```sh
++printf 'defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n' > /tmp/demo/.troupe/troupe.yml
++uv run troupe config set --expand-alias coder.settings.model sonnet --theatre /tmp/demo
++cat /tmp/demo/.troupe/troupe.yml
++# defaults: &d
++#   model: opus
++# coder:
++#   settings:  # expanded from *d by troupe
++#     model: sonnet
++# reviewer:
++#   settings: *d
++```
++
++The copy keeps each key and scalar as written (quoting, `0x10`, include strings), and aliases inside the anchored
++node stay aliases. An alias that the set still reaches through is expanded too, with its own comment. An alias inside
++a flow collection (`{…}`, `[…]`) cannot take a block-style copy, so setting through it is refused even with the flag.
++With no alias in the way, the flag changes nothing, so running the same command again is safe.
++
++Merge keys are never written. In a mapping with `<<`, its own keys are set where they are written, and a new key goes
++after its last entry. But a value that the merge key supplies cannot be set, deleted or given a copy (exit 3, even
++with `--expand-alias`), and neither can the `<<` entry or anything that holds it. Change the merged value at its
++anchor, or edit the file by hand:
++
++```sh
++printf 'base: &b\n  model: opus\ncoder:\n  <<: *b\n  temperature: 0.5\n' > /tmp/demo/.troupe/troupe.yml
++uv run troupe config set coder.temperature 0.7 --theatre /tmp/demo   # changes coder's own key
++uv run troupe config set coder.model sonnet --theatre /tmp/demo      # exit 3: supplied by the merge key coder.<<
++```
++
+ ### Exit codes
+ 
+ | Code | Meaning |
+@@ -193,7 +260,7 @@ rewriting them as one-line includes (and moving the overrides into the shared fi
+ | 0 | success |
+ | 2 | usage error (bad arguments, path syntax, VALUE or `TROUPE_ACTOR`) |
+ | 3 | write refused, so no file changed |
+-| 4 | the configuration cannot be loaded (missing or duplicate config file, invalid YAML, missing include, include cycle, overrides on a text include or on included content that is not a mapping) |
++| 4 | the configuration cannot be loaded (missing or duplicate config file, invalid YAML, missing include, include cycle, overrides on a text include or on included content that is not a mapping, an alias without an anchor before it, a merge key that names no mapping) |
+ | 5 | path not found, or the wrong kind of node for the command |
+ 
+ On failure stdout is empty and stderr names the path or file involved.
+@@ -214,7 +281,8 @@ on the `.troupe/` directory), so troupe never records its own write-back a secon
+ These are recorded with their reasons in `spec/changes/archive/2026-10-02-config-load-show-set/design.md`,
+ `spec/changes/archive/2026-10-03-config-sync-with-files/design.md`, `spec/changes/archive/2026-10-03-config-get-and-show/design.md`,
+ `spec/changes/archive/2026-10-04-config-lineage/design.md`, `spec/changes/archive/2026-10-05-config-include-overrides/design.md`
+-and `spec/changes/archive/2026-10-05-config-set-in-include/design.md`:
++`spec/changes/archive/2026-10-05-config-set-in-include/design.md` and
++`spec/changes/archive/2026-10-06-config-anchors-and-aliases/design.md`:
+ 
+ 1. Setting a key under a null or scalar value (e.g. `agents:` with nothing after it) exits 5. Set the parent to a
+    mapping first: `set agents '{coder: {model: x}}'`.
+@@ -227,7 +295,8 @@ and `spec/changes/archive/2026-10-05-config-set-in-include/design.md`:
+    `history`), and its events are kept even if the command then fails with exit 3 or 5.
+ 7. `history PATH` with no matches prints nothing and exits 0. `.inf`/`.nan` appear in JSON as the strings `".inf"`,
+    `"-.inf"` and `".nan"`.
+-8. Anchors, aliases and non-core tags fail to load (exit 4) for now.
++8. Non-core tags fail to load (exit 4). Anchors, aliases and merge keys load: see
++   [Anchors and aliases](#anchors-and-aliases).
+ 9. A new key that would read back as a non-string when written plain (e.g. `true`) is quoted.
+ 10. Every `set` is verified before writing: the edited text is re-read and must give exactly the intended
+     configuration, otherwise nothing is written (exit 3).
+@@ -282,6 +351,20 @@ and `spec/changes/archive/2026-10-05-config-set-in-include/design.md`:
+ 37. With `--in-include` and nested includes, the key goes into the innermost included file: the file containing its
+     deepest existing ancestor.
+ 38. `--in-include` adds no exit codes and does not change the recorded events: history records values, not files.
++39. Merge keys (`<<`) are applied when reading, since that is what people who write `<<: *base` mean.
++40. A value supplied by a merge key cannot be set, even with `--expand-alias` (exit 3). Writing a local key instead
++    would not touch `<<`, but merges are shallow: a local mapping would silently drop the other merged sub-keys.
++41. Deleting or replacing anything that holds a `<<` entry is refused (exit 3): "never written" covers removal.
++42. `--expand-alias` with no alias in the way changes nothing, so re-running a command after the expansion succeeds.
++43. `--expand-alias` expands every alias the set would otherwise be refused for, including nested ones and those a
++    mapping or list VALUE reaches into. Expanding only the first would leave the command refused.
++44. A comment already on the alias's line is kept, and the `# expanded from *name by troupe` marker follows it.
++45. The copy is the anchored node as written, not its resolved value: nested aliases, include strings, quoting and
++    number formats stay. Anchors inside it are not copied, as they would re-bind later aliases.
++46. A path through an alias in an included file, or in the included part of a mapping-form include, is refused, even
++    where an override would be written elsewhere. That refuses more than strictly needed, but never writes through
++    an anchor.
++47. A new key named `<<` is written quoted (`'<<'`), so it is an ordinary key and never a merge key.
+ 
+ ## Development
+ 
+diff --git a/spec/changes/archive/2026-10-06-config-anchors-and-aliases/.method.yaml b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/.method.yaml
+new file mode 100644
+index 0000000..aa32566
+--- /dev/null
++++ b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/.method.yaml
+@@ -0,0 +1,2 @@
++schema: spec-driven
++created: 2026-10-06
+diff --git a/spec/changes/archive/2026-10-06-config-anchors-and-aliases/design.md b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/design.md
+new file mode 100644
+index 0000000..95f7866
+--- /dev/null
++++ b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/design.md
+@@ -0,0 +1,202 @@
++# Design
++
++## Context
++
++See proposal.md for the motivation and `spec/` for the behaviour. Today:
++
++- `tree._Builder.node` raises `LoadError` on any `AliasEvent` or anchored event (README decision 8;
++  `tests/test_loading.py::test_anchors_are_refused_at_load`).
++- ruamel's event for an anchored node starts **at the `&`**. For `a: &x  "q"` the `ScalarEvent` spans `&x  "q"`,
++  and for a block mapping `d: &d\n  model: …` the `MappingStartEvent` starts at `&d`. Every edit primitive takes
++  `node.start` as the start of the value's own text, so spans that include `&name` would make a replace remove the
++  anchor.
++- `loader._Loader.expand` replaces `entry.value` / `item.value` in place with included content. `overrides.merge`
++  builds merged mappings out of new `Entry` objects plus `layers` (the mappings as written).
++- `edit/apply.compute_set` plans once, then applies the operations one at a time, reloading from the edited texts
++  after each, and finally checks that the result reads back as intended (`_matches`). Anything that does not reload,
++  or does not match, becomes `WriteRefused` (exit 3) with no file written.
++
++## Goals / Non-Goals
++
++**Goals:**
++- Aliased values are the anchored node itself, so `to_data`, `leaves`, `render`, `show --sources`, import, reconcile
++  and history need no change.
++- One place decides "this write goes through an alias" and one place decides "this write touches a merge key", both
++  in the planner. Expansion reuses the existing apply → reload loop.
++- The read-back check stays the last line of defence: any case this design misses becomes exit 3, never a wrong
++  file.
++
++**Non-Goals:**
++- Writing anchors or aliases in new values (VALUE is a flow node and cannot contain them).
++- Collapsing equal values back into an alias, or turning a copy back into an alias.
++- Anchors across files, YAML 1.1 merge semantics beyond `<<`, and anchors or aliases as mapping keys.
++
++## Decisions
++
++### D1. An alias is the anchored node object; the alias is recorded on the entry or item
++`Node` gets `anchor: Anchor | None` (`name`, and the `start`/`end` of the `&name` text). The builder moves
++`node.start` past the node's properties (the anchor and any whitespace, line breaks or comments after it, and a
++tag if present), so a node's span is its value text only, as before. `Entry` and `Item` get
++`alias: Alias | None` (`name`, the `start`/`end` of `*name`, and `target`), and their `value` **is** the anchored
++`Node` object. The builder keeps `anchors: dict[str, Node]`, filled when an anchored node is complete. A later
++anchor of the same name replaces the earlier one. An alias to a name that is missing, or still being built (an
++alias inside its own anchor), raises `LoadError`. An `AliasEvent` or anchored event in key position keeps failing
++as today ("only scalar mapping keys", plus anchored keys).
++
++*Alternative*: an `AliasNode` type pointing at its target. Rejected: every consumer (`to_data`, render, leaves,
++sources, plan, apply, `_matches`) would need a new case. With the shared object, they read the right value
++unchanged, and the anchored node's `file`, `owner_col` and `in_flow` describe where an edit would actually go.
++
++### D2. The loader expands each node once
++`_Loader.expand` keeps a memo keyed by `id(node)`. A node reached a second time through an alias returns the same
++expanded node. So an anchored include string is read once, and all its aliases share one included tree. Without the
++memo, the second visit would see an already-replaced `entry.value` and include the file again as a separate tree.
++`overrides.merge` copies `alias` onto the `Entry` objects it creates for deep-merged keys (from the base entry,
++else the override), so the alias marker survives mapping-form includes.
++
++### D3. Merge keys are resolved by the builder; the mapping as written is kept
++At the end of a block or flow mapping, an entry whose key is plain and untagged `<<` is a merge key. Its value must
++be a mapping, or a sequence of mappings, as built in this file (directly or through aliases). An include string is
++not a mapping yet at build time, so it fails to load (exit 4). The builder then makes the resolved `MappingNode`:
++- local entries keep their positions;
++- the merged-in entries that no local key (and no earlier merge source) has take the `<<` entry's position;
++- `written` holds the mapping as written, with the `<<` entry and only local entries.
++
++Merged-in entries are the source mapping's `Entry` objects, so they are already marked if they came through an
++alias. A key is **supplied by a merge** exactly when `node.written is not None and node.written.get(key) is None`,
++with no extra bookkeeping. Every edit primitive gets the mapping as written: `apply.physical_mapping` (and the
++places that pick a layer for `delete` or `add_key`) follow `written` after `layers`. The physical indexes, last
++entries and `owned_end` that `ops.py` computes therefore only ever see real text.
++
++*Alternative*: treat `<<` as an ordinary key (YAML 1.2 core has no merge keys). Rejected: people who write `<<: *base`
++mean a merge, and `get coder.model` should answer accordingly. See D8.
++
++### D4. The planner raises typed refusals; expansion is a retry loop in `compute_set`
++`errors.py` gains two `WriteRefused` subclasses:
++- `ThroughAlias(path, alias_path, alias, anchor_path, in_flow)`. Its message names `PATH`, `*name` and
++  `alias_path`, says where the anchor is (`anchor_path`, the first non-alias path to the anchored node), and
++  mentions `--expand-alias`.
++- `MergeKeyWrite(path, holder_path)`. Its message names `PATH` and the `<<` at `holder_path`, and says merge keys
++  are not written, so `--expand-alias` cannot help.
++
++In `plan.plan` and `plan._diff`:
++- Walking `PATH`, an entry or item with `alias` raises `ThroughAlias` (this covers the alias itself, values below it
++  and new keys below it). A key supplied by a merge raises `MergeKeyWrite`.
++- `_diff` first returns early when `same(to_data(node), value)`, so an unchanged alias or merged value is a no-op.
++  Otherwise it raises the same two errors on reaching an aliased or merge-supplied child. Deleting a merged key
++  raises `MergeKeyWrite`. Deleting an alias entry is a plain `Delete`.
++- `Replace` and `Delete` of a subtree that holds a `<<` entry raise `MergeKeyWrite`. This is a walker next to
++  `_check_no_includes`, which does not descend through aliases, since nothing below an alias is rewritten.
++- `new_key_target` is unchanged. Its path was already walked by the checks above.
++
++`compute_set(..., expand_alias=False)` plans in a loop. On `ThroughAlias`, if the flag is set and the alias is not
++`in_flow`, it applies an `ExpandAlias(alias_path)` operation, reloads and plans again on the new tree. Otherwise it
++re-raises. Each round removes one alias from the text, so the loop ends. Nested aliases on the way are expanded one
++round at a time, each with its own comment. A no-op `VALUE` plans to `[]` before any refusal, so nothing is
++expanded. Expansion does not change `to_data`, so the expected value, the read-back check and the recorded events
++work as before, and only real value changes become events.
++
++*Alternative*: a separate expansion pass that pre-computes every alias on `PATH` and in `VALUE`'s diff. Rejected:
++it would duplicate the planner's walk. The retry reuses the one place that knows when a write crosses an alias.
++
++### D5. The copy is the anchored node as written, rendered in block style
++`ExpandAlias` is applied by `ops.expand_alias(slot, alias, copy)`. The copy comes from the anchored node **as
++written**: the builder's tree for the anchor's file, before include expansion. It is found by `anchor.start`.
++`blocks.copy_lines(node, col, layout)` renders it:
++- a mapping gives its written entries in order, keys as written;
++- a sequence gives `-` items at the list offset from "New collection values";
++- a single-line scalar gives its source text (so `'opus'` and `0x10` stay as written, and include strings stay
++  includes);
++- a multi-line scalar is rendered by `render_value`, the rule for new multi-line values;
++- an aliased entry or item gives `*name`;
++- an empty collection gives `{}` / `[]`.
++
++Anchors and comments inside the copy are not copied, because node spans exclude anchors (D1). An anchor in the
++copy would also re-bind later aliases. A `<<` entry in the node raises `MergeKeyWrite` (merge keys are never
++written).
++
++The edits, all in the alias's file:
++- remove the whitespace before `*name` and the `*name` itself;
++- put a scalar copy at that position;
++- add `  # expanded from *name by troupe` at the end of the key's line (the dash's line for an item). When that line
++  already ends with a comment, the marker goes after it with two spaces;
++- insert a collection copy as lines after that line, at the key's (or dash's) column plus one indentation unit.
++
++Expanding then re-plans (D4), so `VALUE` is written into the copy by the existing primitives, which keep the marker
++as an end-of-line comment.
++
++*Alternative*: render the copy from the resolved data with `render_value`. Rejected: nested aliases would silently
++become independent copies, include strings would be replaced by included content, and the user's quoting and number
++formats would change.
++
++### D6. Replacing an anchored node keeps `&name`
++Since spans exclude the anchor (D1), scalar and flow replacements leave `&name` in place without any change. The
++block-collection and empty-value replacements insert inline text right after the indicator. `Slot.indicator_end`
++becomes "after the indicator, or after the anchor when the node has one on that line", the single place that
++decides it. So `a: &x 1` → `a: &x 2`, and `a: &x 1` set to a list gives `a: &x` followed by the list lines.
++Deleting an anchored node that an alias still uses is not special-cased. The reload fails ("undefined alias"), and
++`_reload` already turns that into exit 3 naming `PATH`.
++
++### D7. CLI
++`cli.py` adds `--expand-alias` (`store_true`) to `set`. `commands.set_value(..., expand_alias=False)` passes it to
++`compute_set`. `plan` does not take it, because the decision lives in the D4 loop.
++
++### D8. Points the contract leaves open, and what we chose
++The contract gives four rules (anchor writes, alias refusal, `--expand-alias`, merge keys never written). Where it
++is silent, we took the choice that cannot change a value the user did not name:
++- **Merge keys are honoured when reading.** The contract names them, and users write `<<: *base` to get a merge.
++  Reading `<<` as a plain key would give answers nobody expects.
++- **A merge-supplied value cannot be set, even with `--expand-alias`.** Writing a local key would avoid touching
++  `<<`, but merges are shallow. A local mapping would silently replace every merged sub-key, and a local scalar
++  would silently start shadowing the anchor. Refusing loses nothing (exit 3, the message says to edit by hand). This
++  can be relaxed later without changing other behaviour.
++- **Deleting or replacing anything that holds a `<<` is refused.** "Never written" covers removal, and the user can
++  still do it by hand.
++- **The flag without an alias on the way has no effect.** So re-running a command after the expansion has happened
++  succeeds instead of failing, the same reasoning as `--in-include`.
++- **The flag also expands aliases reached by a mapping or list `VALUE`'s differences, and nested aliases on the
++  way.** "That alias" is any alias the set would otherwise be refused for. Expanding only the first would leave the
++  command refused with the flag that asks for expansion.
++- **An existing end-of-line comment is kept, and the marker follows it.** Losing a user's comment is not allowed,
++  and the marker still ends the key's line.
++- **Aliases in flow collections are not expanded** (exit 3). A block-style copy cannot go inside `{…}` / `[…]`.
++- **The copy is the node as written** (D5), with nested aliases kept. "Other aliases still refer to the anchor"
++  includes those inside the anchored node.
++- **Paths through an alias inside an included file, or in the included layer of a mapping-form include, are
++  refused**, even when an override would be written elsewhere. This refuses more than strictly needed, and it
++  cannot write through an anchor.
++
++## Risks / Trade-offs
++
++- [Shared node objects are mutated by the loader or merge] → D2's memo. `merge` already builds new nodes rather
++  than mutating, and a test loads a file with an anchored include used twice and checks both paths.
++- [Spans excluding properties break a primitive that looked back from `node.start`] → the full existing suite runs
++  unchanged against unanchored files (their spans do not move). New tests cover replace, delete and add next to
++  anchored scalars and block and flow collections. The read-back check turns any miss into exit 3.
++- [Alias marker lost in merged layers, letting a write go through an anchor] → D2 copies `alias` in `merge`, and a
++  test covers a mapping-form include whose included file has an alias. `_matches` would not catch a write through
++  the anchor, because the aliases change consistently, so this one needs its test.
++- [Copy rendering differs from what the parser reads back] → the read-back check after the final set compares
++  values. A copy that reads back differently is exit 3.
++- [Merge key resolution order differs from other tools] → we follow the YAML merge-key spec: local keys win, then
++  earlier sources. Tests pin it.
++
++## Migration Plan
++
++No data migration. The event store is untouched and new events are ordinary `set`/`remove` events. Rolling back to
++earlier code makes configurations with anchors fail to load (exit 4) again, and history recorded meanwhile stays
++readable. README decision 8 is replaced by the new rules and the D8 choices.
++
++## Implementation notes
++
++What the implementation added beyond the decisions above, and why:
++- **Expected value by node identity** (`apply._expected`). The read-back check built the intended configuration
++  from plain data, so it expected only `PATH` to change and refused every set at an anchor (the aliases changed
++  too). It now replaces the changed node wherever it appears in the tree, which follows aliases and merge keys.
++- **An alias entry's extent is its `*name` text** (`text.held_span` / `held_end`). Deleting an alias entry,
++  appending after one, and `owned_end` of a collection whose last entry is an alias all used to measure the
++  anchored node elsewhere in the file. `owned_end` of a mapping with a merge key measures the mapping as written.
++- **A new key named `<<` is written quoted**, so troupe never creates a merge key (README decision 47).
++- **VALUE still cannot contain anchors or aliases** (exit 2), as before. The loader no longer refuses them, so
++  `values.parse_value` checks for them itself.
++- An anchored empty scalar (`a: &x` with nothing after it) starts at its anchor's end, not on the next line.
+diff --git a/spec/changes/archive/2026-10-06-config-anchors-and-aliases/proposal.md b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/proposal.md
+new file mode 100644
+index 0000000..d8a2e67
+--- /dev/null
++++ b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/proposal.md
+@@ -0,0 +1,57 @@
++# Proposal
++
++## Why
++
++Bug report troupe-run/repo#2: teams share settings between agents with YAML anchors
++(`defaults: &d` … `settings: *d`). When `set coder.settings.model sonnet` follows the alias, it edits the anchor,
++which silently changes `defaults` and every other agent that uses `*d`. The reporter expects the opposite. Changing
++the anchor (`defaults.model`) should change everyone. Changing one user of the alias should be refused, and
++`set` should offer an explicit way to give that user its own copy.
++
++On `main` today, anchors and aliases fail to load (exit 4, README decision 8), so these configurations cannot be
++used at all. The contract now adds an **Aliases** section (step 6) that defines how they behave. This change adds
++anchor and alias support under those rules, so the reported behaviour cannot occur.
++
++## What Changes
++
++- **Loading**: anchors (`&name`), aliases (`*name`) and merge keys (`<<`) load. An alias has the value of its
++  anchored node. A merge key adds the entries of the mapping(s) it names, and the mapping's own keys win.
++  `get`, `show`, `show --sources`, `history`, import and reconcile all see the resolved values. Undefined aliases,
++  anchors or aliases used as mapping keys, and merge keys whose value is not a mapping (or a list of mappings) fail
++  to load (exit 4).
++- **Setting at an anchor**: setting a path whose value is defined at an anchor changes it there, keeping the
++  `&name`, so every alias sees the new value. History records an event for every path whose value changed.
++- **Setting through an alias**: setting a path reached through an alias (`*name`) is refused with exit 3, and
++  no file changes. stderr names the path and the alias, and mentions `--expand-alias`.
++- **`set --expand-alias PATH VALUE`** (new flag): replaces the alias on the path with a block-style copy of the
++  anchored node. It adds the end-of-line comment `# expanded from *<name> by troupe` (two spaces before `#`) on
++  the key's line, then sets the value in the copy. Nothing else changes, and other aliases still refer to the
++  anchor. Without an alias on the way, the flag has no effect.
++- **Merge keys are never written**: any `set` that would add, change or delete a `<<` entry, or change or delete
++  a value that a merge key supplies, is refused with exit 3. That includes `--expand-alias` and copies that would
++  contain a `<<`.
++- README: the exit-4 rule for anchors (decision 8) is replaced by the new behaviour and its decisions.
++
++## Capabilities
++
++### New Capabilities
++None.
++
++### Modified Capabilities
++- `config-loading`: new requirement "Anchors, aliases and merge keys".
++- `config-set`: new requirements "Setting a value defined at an anchor", "Refusing to set through an alias",
++  "Expanding an alias on request" and "Merge keys are never written".
++- `config-cli`: "Invocation and theatre selection" lists `set PATH VALUE [--reason TEXT] [--in-include]
++  [--expand-alias]`.
++
++## Impact
++
++- Code: `tree.py` (build anchors, aliases and merge keys instead of refusing them, and record where each is
++  written), `loader.py` (expand includes once per anchored node), `edit/plan.py` (detect paths through aliases and
++  merge keys), `edit/apply.py` (the expand-then-retry loop and keeping `&name` on replace), `edit/ops.py` and
++  `edit/blocks.py` (writing the copy), `cli.py` and `commands.py` (the flag). The store, history format and
++  rendering for `show` do not change.
++- Tests: `test_anchors_are_refused_at_load` is replaced. New tests cover loading, setting at an anchor, refusing
++  through an alias, expansion, merge keys and the CLI flag.
++- Compatibility: configurations that failed to load before now load. Going back to earlier code makes them fail
++  to load again (exit 4), and the history recorded meanwhile stays valid.
+diff --git a/spec/changes/archive/2026-10-06-config-anchors-and-aliases/spec/config-cli/spec.md b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/spec/config-cli/spec.md
+new file mode 100644
+index 0000000..1f82a4f
+--- /dev/null
++++ b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/spec/config-cli/spec.md
+@@ -0,0 +1,40 @@
++# Spec Delta
++
++## MODIFIED Requirements
++
++### Requirement: Invocation and theatre selection
++The CLI SHALL be invocable as `uv run troupe config <subcommand> [--theatre <dir>] [arguments]` from the repository
++root, with subcommands `get PATH`, `show [PATH] [--sources]`, `set PATH VALUE [--reason TEXT] [--in-include] [--expand-alias]`, `history [PATH]` and
++`watch`. `--theatre` SHALL default to the current working directory.
++
++#### Scenario: Explicit theatre
++- **WHEN** `uv run troupe config get model --theatre /tmp/t` is run and `/tmp/t/.troupe/troupe.yml` contains `model: x`
++- **THEN** stdout is `x\n` and the exit code is 0
++
++#### Scenario: Default theatre is the current directory
++- **WHEN** `troupe config get model` is run with the current directory set to a theatre whose config has `model: x`
++- **THEN** stdout is `x\n` and the exit code is 0
++
++#### Scenario: Unknown subcommand or missing argument
++- **WHEN** `troupe config frobnicate`, `troupe config get` (no PATH), `troupe config set model` (no VALUE), `troupe config set model b --reason` (no TEXT), `troupe config set model b --in-include x` (an extra argument) or `troupe config set model b --expand-alias x` (an extra argument) is run
++- **THEN** the exit code is 2, stdout is empty and stderr has a usage message
++
++#### Scenario: show takes an optional PATH
++- **WHEN** `troupe config show` and `troupe config show --sources` are run against a theatre that loads
++- **THEN** each exits 0 and prints the whole configuration
++
++#### Scenario: set takes an optional reason
++- **WHEN** `troupe config set model b --reason "why"` and `troupe config set --reason "why" model c` are run against a theatre that loads
++- **THEN** each exits 0 and changes `model`
++
++#### Scenario: watch takes no positional argument
++- **WHEN** `troupe config watch extra` is run
++- **THEN** the exit code is 2, stdout is empty and stderr has a usage message
++
++#### Scenario: set takes an optional --in-include
++- **WHEN** `troupe config set a.x 1 --in-include` and `troupe config set --in-include a.y 2 --reason why` are run against a theatre that loads, with `a` a mapping
++- **THEN** each exits 0 and creates its key
++
++#### Scenario: set takes an optional --expand-alias
++- **WHEN** `troupe config set a.x 1 --expand-alias` and `troupe config set --expand-alias a.y 2 --reason why` are run against a theatre that loads, with `a` a mapping and no alias involved
++- **THEN** each exits 0 and creates its key
+diff --git a/spec/changes/archive/2026-10-06-config-anchors-and-aliases/spec/config-loading/spec.md b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/spec/config-loading/spec.md
+new file mode 100644
+index 0000000..c6f3faf
+--- /dev/null
++++ b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/spec/config-loading/spec.md
+@@ -0,0 +1,64 @@
++# Spec Delta
++
++## ADDED Requirements
++
++### Requirement: Anchors, aliases and merge keys
++A node in a configuration file MAY carry an anchor (`&name`). An alias (`*name`) SHALL have the value of the node
++most recently anchored with that name earlier in the same file. Anchors and aliases do not cross files, so an
++alias in one file never refers to an anchor in a file it includes or that includes it. An anchored node that is or
++contains an include SHALL be resolved as usual, and every alias to it SHALL have the same resolved value.
++
++A plain (unquoted, untagged) key `<<` SHALL be a **merge key**. Its value SHALL be a mapping (written there or
++through an alias), or a list of such mappings. The mapping that holds the merge key SHALL have every entry of the
++merged mappings that it does not set itself. Where more than one merged mapping has a key, the first one in the
++list SHALL win. Merged entries SHALL take the merge key's position, in the order of the merged mappings, and the
++mapping's own keys SHALL keep their positions. The `<<` key itself SHALL NOT appear in the value. A quoted `"<<"`
++is an ordinary key.
++
++`get`, `show`, `show --sources`, `history`, import and reconciling SHALL all use these resolved values. A value
++reached through an alias or a merge key SHALL be reported as coming from the file in which its anchored node is
++written.
++
++Loading SHALL fail with exit 4, with a message naming the file, for an alias with no earlier anchor of its name,
++an alias inside the node it refers to, an anchor or alias used as a mapping key, or a merge key whose value is not
++a mapping or a list of mappings as written in that file (an include string is not one).
++
++#### Scenario: Alias of an anchored mapping
++- **WHEN** the config is `defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n`
++- **THEN** `get coder.settings.model` and `get reviewer.settings.model` print `opus\n`, and `show coder` prints `settings:\n  model: opus\n`
++
++#### Scenario: Alias of an anchored scalar
++- **WHEN** the config is `a: &x 1\nb: *x\n`
++- **THEN** `get b` prints `1\n`
++
++#### Scenario: Merge key
++- **WHEN** the config is `base: &b\n  model: opus\n  temperature: 0.2\ncoder:\n  <<: *b\n  temperature: 0.5\n  top_p: 1\n`
++- **THEN** `show coder` prints `model: opus\ntemperature: 0.5\ntop_p: 1\n`
++
++#### Scenario: Merge key with a list of mappings
++- **WHEN** the config is `a: &a {x: 1, y: 1}\nb: &b {y: 2, z: 2}\nc:\n  <<: [*a, *b]\n`
++- **THEN** `show c` prints `x: 1\ny: 1\nz: 2\n`
++
++#### Scenario: Quoted merge key is an ordinary key
++- **WHEN** the config is `a: &a {x: 1}\nc:\n  "<<": *a\n`
++- **THEN** `get c.<<.x` prints `1\n`
++
++#### Scenario: Import records aliased values at every path
++- **WHEN** the first command runs against `defaults: &d\n  model: opus\ncoder:\n  settings: *d\n`
++- **THEN** `history` lists import events for `defaults.model` and `coder.settings.model`, both `opus`
++
++#### Scenario: Undefined alias
++- **WHEN** the config is `a: *nothing\n`
++- **THEN** every subcommand exits 4 and stderr names the config file
++
++#### Scenario: Anchors do not cross files
++- **WHEN** `troupe.yml` is `shared: file:shared.yaml\ncoder: *d\n` and `shared.yaml` is `&d {model: opus}\n`
++- **THEN** every subcommand exits 4 and stderr names `troupe.yml`
++
++#### Scenario: Alias inside its own anchor
++- **WHEN** the config is `a: &a\n  b: *a\n`
++- **THEN** every subcommand exits 4 and stderr names the config file
++
++#### Scenario: Merge key with a scalar value
++- **WHEN** the config is `c:\n  <<: 1\n`
++- **THEN** every subcommand exits 4 and stderr names the config file
+diff --git a/spec/changes/archive/2026-10-06-config-anchors-and-aliases/spec/config-set/spec.md b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/spec/config-set/spec.md
+new file mode 100644
+index 0000000..05396c7
+--- /dev/null
++++ b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/spec/config-set/spec.md
+@@ -0,0 +1,166 @@
++# Spec Delta
++
++## ADDED Requirements
++
++### Requirement: Setting a value defined at an anchor
++When `PATH` is not reached through an alias or a merge key (see "Refusing to set through an alias" and "Merge keys
++are never written"), `set` SHALL change the value where it is written, by the other rules of this capability. That
++holds when the value is an anchored node or lies inside one. The anchor (`&name`) SHALL stay in place, in front of
++the new value, so every alias of the anchor, and every mapping that merges it, has the new value. A whole anchored
++node replaced by a value of another kind (for example a scalar by a block collection) SHALL keep its anchor on the
++owning line. The events recorded SHALL be one per path whose value changed, including paths reached through
++aliases and merge keys, all in the one change. A `set` that would delete an anchored node that an alias still
++refers to SHALL be refused with exit 3, and no file SHALL change.
++
++#### Scenario: Changing the anchor changes every alias
++- **WHEN** the file is `defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n` and `set defaults.model sonnet` runs
++- **THEN** the file becomes `defaults: &d\n  model: sonnet\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n`, `get coder.settings.model` and `get reviewer.settings.model` print `sonnet\n`, and `history` gains three `set` events, for `defaults.model`, `coder.settings.model` and `reviewer.settings.model` (old `opus`, new `sonnet`), sharing one `change` id
++
++#### Scenario: Anchored scalar
++- **WHEN** the file is `a: &x 1\nb: *x\n` and `set a 2` runs
++- **THEN** the file becomes `a: &x 2\nb: *x\n`
++
++#### Scenario: Anchored scalar replaced by a list
++- **WHEN** the file is `a: &x 1\nb: *x\n` and `set a "[1, 2]"` runs
++- **THEN** the file becomes `a: &x\n  - 1\n  - 2\nb: *x\n` and `show b` prints `- 1\n- 2\n`
++
++#### Scenario: Deleting an anchor that is still used
++- **WHEN** the file is `c:\n  a: &x 1\n  k: 2\nb: *x\n` and `set c "{k: 2}"` runs
++- **THEN** the exit code is 3, stderr names `c`, and the file is unchanged
++
++### Requirement: Refusing to set through an alias
++A value is **reached through an alias** when the alias (`*name`) is its own value or the value of one of its
++ancestors. Without `--expand-alias`, a `set` SHALL be refused with exit 3, no file SHALL change and no event of
++its own SHALL be recorded, when it would change, add or delete a value reached through an alias. That covers:
++- `PATH` itself, or an ancestor of it, reached through an alias, including a new key or list item below an alias;
++- a mapping or list `VALUE` whose differences reach into an alias.
++
++This holds in every file, including included files. stderr SHALL name `PATH`, the alias (`*name`) and the path
++where the alias is written, and SHALL mention `--expand-alias`. The existing rules still apply: a `VALUE` equal to
++the current value changes nothing and exits 0. Removing an entry or item whose value is an alias, without
++changing anything reached through it, is not setting through the alias and SHALL proceed.
++
++#### Scenario: Setting one user of a shared anchor is refused
++- **WHEN** the file is `defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n` and `set coder.settings.model sonnet` runs
++- **THEN** the exit code is 3, stdout is empty, stderr contains `coder.settings.model`, `*d` and `--expand-alias`, the file is unchanged, and `history` gains no `cli` event
++
++#### Scenario: Setting the alias itself is refused
++- **WHEN** the same file and `set coder.settings "{model: sonnet}"` runs
++- **THEN** the exit code is 3 and the file is unchanged
++
++#### Scenario: New key below an alias is refused
++- **WHEN** the same file and `set coder.settings.temperature 0.3` runs
++- **THEN** the exit code is 3 and the file is unchanged
++
++#### Scenario: Mapping VALUE that reaches into an alias is refused
++- **WHEN** the same file and `set coder "{settings: {model: sonnet}}"` runs
++- **THEN** the exit code is 3 and the file is unchanged
++
++#### Scenario: Unchanged value through an alias
++- **WHEN** the same file and `set coder.settings.model opus` runs
++- **THEN** the exit code is 0 and no file changes
++
++#### Scenario: Removing an alias entry
++- **WHEN** the file is `defaults: &d\n  model: opus\ncoder:\n  settings: *d\n  model: x\n` and `set coder "{model: x}"` runs
++- **THEN** the file becomes `defaults: &d\n  model: opus\ncoder:\n  model: x\n`
++
++### Requirement: Expanding an alias on request
++With `--expand-alias`, each alias for which the `set` would otherwise be refused (by "Refusing to set through an
++alias") SHALL first be replaced by a block-style copy of its anchored node, and then `VALUE` SHALL be set in the
++copy by the other rules of this capability. When an alias is replaced:
++- the `*name` text, and the whitespace before it, SHALL be removed;
++- the end-of-line comment `# expanded from *<name> by troupe` SHALL be put on the line of the alias's key (the
++  dash's line, for a list item), with exactly two spaces before `#`. If that line already ends with a comment, the
++  comment SHALL be kept and the new comment SHALL follow it, after two spaces;
++- the copy SHALL reproduce the anchored node as it is written. It has the same keys and items in the same order,
++  each scalar keeps its written text (quoting included), and include strings stay include strings. Aliases inside
++  the anchored node stay aliases. The node's own anchors and comments are not copied. A scalar copy SHALL go on the
++  key's line, before the comment. A collection copy SHALL be written in block style by the rules of "New
++  collection values", one indentation level below the key or dash.
++
++When a copy still holds an alias that the `set` reaches through, that alias SHALL be expanded the same way, with
++its own comment. No other byte SHALL change: the anchor, its value and every other alias SHALL stay as they were.
++Only the paths whose value changes SHALL be recorded as events (the expansion itself changes no value). With
++nothing to expand, the flag SHALL have no effect. A `VALUE` equal to the current value SHALL change nothing, and no
++alias SHALL be expanded. An alias inside a flow collection cannot take a block-style copy: setting through it SHALL
++be refused with exit 3 even with the flag, and stderr SHALL name the alias.
++
++#### Scenario: Giving one agent its own copy
++- **WHEN** the file is `defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n` and `set --expand-alias coder.settings.model sonnet` runs
++- **THEN** the file becomes `defaults: &d\n  model: opus\ncoder:\n  settings:  # expanded from *d by troupe\n    model: sonnet\nreviewer:\n  settings: *d\n`, `get reviewer.settings.model` and `get defaults.model` print `opus\n`, and `history` gains one `set` event, `coder.settings.model` from `opus` to `sonnet`
++
++#### Scenario: Scalar alias
++- **WHEN** the file is `a: &x 1\nb: *x\n` and `set b 2 --expand-alias` runs
++- **THEN** the file becomes `a: &x 1\nb: 2  # expanded from *x by troupe\n`
++
++#### Scenario: The copy keeps written text and becomes block style
++- **WHEN** the file is `d: &d {model: 'opus', limits: {tokens: 0x10}}\nc: *d\n` and `set --expand-alias c.limits.calls 5` runs
++- **THEN** the file becomes `d: &d {model: 'opus', limits: {tokens: 0x10}}\nc:  # expanded from *d by troupe\n  model: 'opus'\n  limits:\n    tokens: 0x10\n    calls: 5\n`
++
++#### Scenario: Nested aliases stay aliases
++- **WHEN** the file is `t: &t [read]\nd: &d\n  model: opus\n  tools: *t\nc: *d\n` and `set --expand-alias c.model sonnet` runs
++- **THEN** the file becomes `t: &t [read]\nd: &d\n  model: opus\n  tools: *t\nc:  # expanded from *d by troupe\n  model: sonnet\n  tools: *t\n`
++
++#### Scenario: Nested alias on the way is expanded too
++- **WHEN** the file is `t: &t\n  - read\nd: &d\n  tools: *t\nc: *d\n` and `set --expand-alias c.tools.1 write` runs
++- **THEN** the file becomes `t: &t\n  - read\nd: &d\n  tools: *t\nc:  # expanded from *d by troupe\n  tools:  # expanded from *t by troupe\n    - read\n    - write\n`
++
++#### Scenario: Existing comment is kept
++- **WHEN** the file is `d: &d\n  model: opus\nc: *d  # shared\n` and `set --expand-alias c.model sonnet` runs
++- **THEN** the file becomes `d: &d\n  model: opus\nc:  # shared  # expanded from *d by troupe\n  model: sonnet\n`
++
++#### Scenario: Alias as a list item
++- **WHEN** the file is `d: &d\n  model: opus\nagents:\n  - *d\n  - *d\n` and `set --expand-alias agents.0.model sonnet` runs
++- **THEN** the file becomes `d: &d\n  model: opus\nagents:\n  -  # expanded from *d by troupe\n    model: sonnet\n  - *d\n`
++
++#### Scenario: Alias in a flow collection
++- **WHEN** the file is `d: &d {model: opus}\nc: {settings: *d}\n` and `set --expand-alias c.settings.model sonnet` runs
++- **THEN** the exit code is 3, stderr contains `*d`, and the file is unchanged
++
++#### Scenario: Nothing to expand
++- **WHEN** the file is `a:\n  b: 1\n` and `set --expand-alias a.b 2` runs
++- **THEN** the file becomes `a:\n  b: 2\n`, the same as without the flag
++
++#### Scenario: Unchanged value expands nothing
++- **WHEN** the file is `d: &d\n  model: opus\nc: *d\n` and `set --expand-alias c.model opus` runs
++- **THEN** the exit code is 0 and no file changes
++
++### Requirement: Merge keys are never written
++`set` SHALL never add, change or delete a merge key (`<<`) entry, including its value and the aliases in it. A value
++is **supplied by a merge key** when the mapping that holds the merge key does not set that key itself. A `set` SHALL
++be refused with exit 3, with no file changed, when it would:
++- change a value supplied by a merge key, or anything below one, including a new key below it;
++- delete a value supplied by a merge key (for example, a mapping `VALUE` that leaves out a merged key);
++- change, replace or delete a mapping that holds a merge key in a way that changes or removes the `<<` entry,
++  including deleting an entry or item that contains it;
++- expand an alias whose anchored node contains a merge key.
++
++This holds with or without `--expand-alias`. stderr SHALL name `PATH` and the merge key, and SHALL say that merge
++keys are not written, so `--expand-alias` cannot help. A mapping that holds a merge key SHALL otherwise be set like
++any mapping: its own keys are changed where they are written, and a new key that no merged mapping supplies is
++added after its last entry. Setting a value at the anchor that a merge key names follows "Setting a value defined at
++an anchor".
++
++#### Scenario: Own key next to a merge key
++- **WHEN** the file is `base: &b\n  model: opus\n  temperature: 0.2\ncoder:\n  <<: *b\n  temperature: 0.5\n` and `set coder.temperature 0.7` runs
++- **THEN** the file becomes `base: &b\n  model: opus\n  temperature: 0.2\ncoder:\n  <<: *b\n  temperature: 0.7\n`
++
++#### Scenario: Merged value is refused
++- **WHEN** the same file and `set coder.model sonnet` runs, with or without `--expand-alias`
++- **THEN** the exit code is 3, stderr contains `coder.model` and `<<`, and the file is unchanged
++
++#### Scenario: New key next to a merge key
++- **WHEN** the same file and `set coder.top_p 0.9` runs
++- **THEN** the file becomes `base: &b\n  model: opus\n  temperature: 0.2\ncoder:\n  <<: *b\n  temperature: 0.5\n  top_p: 0.9\n`
++
++#### Scenario: Changing the merged anchor
++- **WHEN** the same file and `set base.model sonnet` runs
++- **THEN** `base.model` becomes `sonnet` in the file, `get coder.model` prints `sonnet\n`, and `history` gains `set` events for `base.model` and `coder.model`
++
++#### Scenario: Leaving out a merged key is refused
++- **WHEN** the same file and `set coder "{temperature: 0.5}"` runs
++- **THEN** the exit code is 3 and the file is unchanged
++
++#### Scenario: Replacing the mapping that holds a merge key is refused
++- **WHEN** the same file and `set coder none` runs
++- **THEN** the exit code is 3 and the file is unchanged
+diff --git a/spec/changes/archive/2026-10-06-config-anchors-and-aliases/tasks.md b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/tasks.md
+new file mode 100644
+index 0000000..4498d38
+--- /dev/null
++++ b/spec/changes/archive/2026-10-06-config-anchors-and-aliases/tasks.md
+@@ -0,0 +1,42 @@
++# Tasks
++
++## 1. Loading anchors, aliases and merge keys
++
++- [x] 1.1 In `tree.py`, add `Anchor` (name, start, end) on `Node` and `Alias` (name, start, end, target) on `Entry` and `Item`. Move `node.start` past the anchor, and any whitespace, comments, line breaks and tag after it. Make an alias's `value` the anchored `Node` object, keeping `anchors: dict[str, Node]` filled on completion. Raise `LoadError` (naming the file) for an undefined alias, an alias inside its own anchor, and an anchored or alias key (D1). Verify that `uv run mypy` is clean and that the existing `uv run pytest` suite passes except `test_anchors_are_refused_at_load`
++- [x] 1.2 In `tree.py`, resolve plain untagged `<<` keys at mapping end into a resolved `MappingNode`, with `written` holding the mapping as written. Merged entries take the `<<` position, in source order, with local keys and earlier sources winning. A merge value that is not a mapping or a list of mappings (an include string included) fails to load (D3). Verify with the tests in 1.4
++- [x] 1.3 In `loader.py`, memoise `_Loader.expand` by node identity so that an anchored node (including an anchored include string) is expanded once and shared by its aliases. In `overrides.merge`, carry `alias` onto the `Entry` objects it creates (D2). Verify with a test that `a: &x file:inc.yaml\nb: *x\n` loads, reads `inc.yaml` once and gives both paths the same values
++- [x] 1.4 Replace `test_anchors_are_refused_at_load` with `tests/test_aliases_loading.py`, run through the real CLI, covering every "Anchors, aliases and merge keys" scenario: mapping alias, scalar alias, merge key, list of merges, quoted `"<<"`, import events at every aliased path, undefined alias, anchors not crossing files, alias inside its own anchor, scalar merge value. Add `show --sources` naming the anchor's file for an aliased value, and a reconcile test where a hand edit at the anchor records events for every aliased path. Verify they pass and that the merge-order test fails if local keys stop winning
++- [x] 1.5 Update README: replace decision 8 with the loading rules (anchors, aliases, merge keys; what still fails with exit 4) and list it in the exit-code table's code-4 row. Verify the README example config with an anchor loads with `uv run troupe config show --theatre /tmp/demo`
++
++## 2. Setting values defined at an anchor
++
++- [x] 2.1 Make `Slot.indicator_end` in `edit/ops.py` return the end of the node's anchor when that anchor is on the indicator's line, so block-collection and empty-value replacements keep `&name` (D6). Verify `uv run mypy` and the existing suite stay clean
++- [x] 2.2 Add `tests/test_set_anchors.py` with byte-exact file checks for every "Setting a value defined at an anchor" scenario: the issue's `defaults.model` (three events sharing one change id), anchored scalar, anchored scalar replaced by a list, and deleting a still-used anchor exiting 3 with the file unchanged. Add a quoted anchored scalar (`a: &x "q"`), an anchored flow mapping, and an anchored block mapping replaced by a scalar (`a: &x 5`). Verify they pass, and that the replaced-by-scalar and anchored-null tests fail if `indicator_end` ignores the anchor (replaced-by-list goes through the inline replace, which keeps the anchor by its span alone). Also compute the read-back check's expected value by node identity (`apply._expected`), so aliases and merges of the changed node are expected to change with it
++
++## 3. Refusing to set through an alias
++
++- [x] 3.1 Add `ThroughAlias` and `MergeKeyWrite` (`WriteRefused` subclasses, exit 3) to `errors.py`. `ThroughAlias` carries the path, alias path, name, anchor path and `in_flow`, and its message names `PATH`, `*name` and the alias's path, says where the anchor is, and mentions `--expand-alias` (D4). Verify `uv run mypy` is clean
++- [x] 3.2 In `edit/plan.py`, raise `ThroughAlias` when the `PATH` walk crosses or ends at an aliased entry or item, and when `_diff` reaches an aliased child whose data would change. Return early in `_diff` when the data is unchanged. Keep deleting an alias entry a plain `Delete` (D4). Verify with the tests in 3.3
++- [x] 3.3 Add `tests/test_set_through_alias.py` (byte-exact, every file), covering every "Refusing to set through an alias" scenario: the issue's refusal (exit 3, empty stdout, stderr has `coder.settings.model`, `*d`, `--expand-alias`, no `cli` event), the alias itself, a new key below it, a mapping VALUE reaching into it, an unchanged value (exit 0, no mtime change), and removing an alias entry. Add an alias inside an included file, and a mapping-form include whose included file holds the alias (override write still refused). Verify they pass, and that the issue test fails if the plan check is removed (the anchor would change)
++- [x] 3.4 Update README: a "Shared values: anchors and aliases" section showing the issue's file, `set defaults.model` changing every user, and `set coder.settings.model` being refused. Verify each command runs as written against `/tmp/demo`
++
++## 4. Merge keys are never written
++
++- [x] 4.1 Make `apply.physical_mapping` and the layer choices for `delete` and `add_key` follow `written` (after `layers`), so primitives only see mappings as written (D3). In `edit/plan.py`, raise `MergeKeyWrite` for a merge-supplied key on the `PATH` walk or in `_diff` (change or delete), and for a `Replace` or `Delete` of a subtree holding a `<<` entry (a walker next to `_check_no_includes` that does not descend through aliases). Verify `uv run mypy` is clean and the existing suite passes
++- [x] 4.2 Add `tests/test_set_merge_keys.py` (byte-exact), covering every "Merge keys are never written" scenario: an own key next to `<<`, a merged value refused with and without `--expand-alias` (stderr has `coder.model` and `<<`), a new key added after the last entry, changing the merged anchor (events for `base.model` and `coder.model`), leaving out a merged key, and replacing the holding mapping. Add a new key when `<<` is the last entry, and deleting an entry that contains a `<<`. Also quote a new `<<` key so it is never written as a merge key, and make `owned_end` use the written mapping. Verify they pass, and that the new-key placement tests (merge key last, only the merge key written) fail if `as_written` ignores `written` (an own key is the same `Entry` object in both mappings, so it is placed right either way)
++- [x] 4.3 Update README with merge keys: how they read, what `set` refuses and why (D8). Verify the example runs as written
++
++## 5. `set --expand-alias`
++
++- [x] 5.1 Add `--expand-alias` (`store_true`) to `set` in `cli.py` and pass `expand_alias` through `commands.set_value` to `compute_set` (D7). Extend `tests/test_cli.py` with "set takes an optional --expand-alias" (both positions, with `--reason`) and `set model b --expand-alias x` exiting 2 with empty stdout. Verify they pass
++- [x] 5.2 Add `copy_lines` to `edit/blocks.py` (the copy of the anchored node as written: keys and single-line scalars keep their source text, `*name` for nested aliases, block style by the "New collection values" rules, `{}`/`[]` when empty, multi-line scalars via `render_value`, `MergeKeyWrite` on a `<<` entry). Add `ops.expand_alias`, which removes ` *name`, writes a scalar copy in place, puts `  # expanded from *name by troupe` at the end of the key's or dash's line (after an existing comment), and inserts a collection copy one unit deeper (D5). Verify `uv run mypy` is clean
++- [x] 5.3 Add the `ExpandAlias` op and the plan → expand → reload → re-plan loop to `compute_set`. It re-raises when the flag is off or the alias is `in_flow` (D4). Verify with the tests in 5.4
++- [x] 5.4 Add `tests/test_set_expand_alias.py` (byte-exact, every file), covering every "Expanding an alias on request" scenario: the issue's expansion (reviewer and defaults still `opus`, one event), scalar alias, written text and block style (`'opus'`, `0x10`), nested aliases kept, a nested alias on the way expanded too, an existing comment kept, an alias as a list item, an alias in a flow collection (exit 3), nothing to expand, and an unchanged value expanding nothing. Add a mapping VALUE reaching into an alias with the flag, an anchored include string expanded to the include string, and a CRLF file. Verify they pass, and that each expanded file loads with `show` giving the expected values
++- [x] 5.5 Add a smoke test through `uv run troupe config set --expand-alias …` on the issue's file that checks the exact file bytes and that `get reviewer.settings.model` still prints `opus`. Verify it passes
++- [x] 5.6 Update README: `set PATH VALUE [--reason TEXT] [--in-include] [--expand-alias]` in the commands table, the expansion example in the anchors section, and the D8 choices with their reasons appended to the decisions list, with this change's design.md added to the referenced files. Verify each new README command runs as written against `/tmp/demo`
++
++## 6. Integration
++
++- [x] 6.1 Run `uv run pytest`, `uv run mypy`, `uv run ruff check` and `uv run ruff format --check`. Verify all are clean and show the output
++- [x] 6.2 Run `method validate config-anchors-and-aliases --strict`. Verify it reports the change as valid
++- [x] 6.3 Commit the work on `main` in small steps with messages that say why and reference troupe-run/repo#2 (no push, no PR), then archive the change and sync its specs into `spec/specs`. Verify `git status` is clean and `git log` shows the commits
+diff --git a/spec/spec/config-cli/spec.md b/spec/spec/config-cli/spec.md
+index 6c3201e..db95311 100644
+--- a/spec/spec/config-cli/spec.md
++++ b/spec/spec/config-cli/spec.md
+@@ -9,7 +9,7 @@ scalars are printed, and how failures are reported through exit codes and messag
+ 
+ ### Requirement: Invocation and theatre selection
+ The CLI SHALL be invocable as `uv run troupe config <subcommand> [--theatre <dir>] [arguments]` from the repository
+-root, with subcommands `get PATH`, `show [PATH] [--sources]`, `set PATH VALUE [--reason TEXT] [--in-include]`, `history [PATH]` and
++root, with subcommands `get PATH`, `show [PATH] [--sources]`, `set PATH VALUE [--reason TEXT] [--in-include] [--expand-alias]`, `history [PATH]` and
+ `watch`. `--theatre` SHALL default to the current working directory.
+ 
+ #### Scenario: Explicit theatre
+@@ -21,7 +21,7 @@ root, with subcommands `get PATH`, `show [PATH] [--sources]`, `set PATH VALUE [-
+ - **THEN** stdout is `x\n` and the exit code is 0
+ 
+ #### Scenario: Unknown subcommand or missing argument
+-- **WHEN** `troupe config frobnicate`, `troupe config get` (no PATH), `troupe config set model` (no VALUE), `troupe config set model b --reason` (no TEXT) or `troupe config set model b --in-include x` (an extra argument) is run
++- **WHEN** `troupe config frobnicate`, `troupe config get` (no PATH), `troupe config set model` (no VALUE), `troupe config set model b --reason` (no TEXT), `troupe config set model b --in-include x` (an extra argument) or `troupe config set model b --expand-alias x` (an extra argument) is run
+ - **THEN** the exit code is 2, stdout is empty and stderr has a usage message
+ 
+ #### Scenario: show takes an optional PATH
+@@ -40,6 +40,10 @@ root, with subcommands `get PATH`, `show [PATH] [--sources]`, `set PATH VALUE [-
+ - **WHEN** `troupe config set a.x 1 --in-include` and `troupe config set --in-include a.y 2 --reason why` are run against a theatre that loads, with `a` a mapping
+ - **THEN** each exits 0 and creates its key
+ 
++#### Scenario: set takes an optional --expand-alias
++- **WHEN** `troupe config set a.x 1 --expand-alias` and `troupe config set --expand-alias a.y 2 --reason why` are run against a theatre that loads, with `a` a mapping and no alias involved
++- **THEN** each exits 0 and creates its key
++
+ ### Requirement: Path syntax
+ A `PATH` SHALL be a sequence of keys separated by `.`. A segment of only ASCII digits SHALL index a list (0-based)
+ when the node it applies to is a list. A `PATH` that is empty or has an empty segment (such as `a..b` or `a.`) SHALL be
+diff --git a/spec/spec/config-loading/spec.md b/spec/spec/config-loading/spec.md
+index 18ecda6..8528f4b 100644
+--- a/spec/spec/config-loading/spec.md
++++ b/spec/spec/config-loading/spec.md
+@@ -134,3 +134,64 @@ a mapping (a list, a scalar, or an empty file).
+ #### Scenario: Missing target in mapping form
+ - **WHEN** a mapping-form include names a file that does not exist
+ - **THEN** every subcommand exits 4 and stderr names the missing target
++
++### Requirement: Anchors, aliases and merge keys
++A node in a configuration file MAY carry an anchor (`&name`). An alias (`*name`) SHALL have the value of the node
++most recently anchored with that name earlier in the same file. Anchors and aliases do not cross files, so an
++alias in one file never refers to an anchor in a file it includes or that includes it. An anchored node that is or
++contains an include SHALL be resolved as usual, and every alias to it SHALL have the same resolved value.
++
++A plain (unquoted, untagged) key `<<` SHALL be a **merge key**. Its value SHALL be a mapping (written there or
++through an alias), or a list of such mappings. The mapping that holds the merge key SHALL have every entry of the
++merged mappings that it does not set itself. Where more than one merged mapping has a key, the first one in the
++list SHALL win. Merged entries SHALL take the merge key's position, in the order of the merged mappings, and the
++mapping's own keys SHALL keep their positions. The `<<` key itself SHALL NOT appear in the value. A quoted `"<<"`
++is an ordinary key.
++
++`get`, `show`, `show --sources`, `history`, import and reconciling SHALL all use these resolved values. A value
++reached through an alias or a merge key SHALL be reported as coming from the file in which its anchored node is
++written.
++
++Loading SHALL fail with exit 4, with a message naming the file, for an alias with no earlier anchor of its name,
++an alias inside the node it refers to, an anchor or alias used as a mapping key, or a merge key whose value is not
++a mapping or a list of mappings as written in that file (an include string is not one).
++
++#### Scenario: Alias of an anchored mapping
++- **WHEN** the config is `defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n`
++- **THEN** `get coder.settings.model` and `get reviewer.settings.model` print `opus\n`, and `show coder` prints `settings:\n  model: opus\n`
++
++#### Scenario: Alias of an anchored scalar
++- **WHEN** the config is `a: &x 1\nb: *x\n`
++- **THEN** `get b` prints `1\n`
++
++#### Scenario: Merge key
++- **WHEN** the config is `base: &b\n  model: opus\n  temperature: 0.2\ncoder:\n  <<: *b\n  temperature: 0.5\n  top_p: 1\n`
++- **THEN** `show coder` prints `model: opus\ntemperature: 0.5\ntop_p: 1\n`
++
++#### Scenario: Merge key with a list of mappings
++- **WHEN** the config is `a: &a {x: 1, y: 1}\nb: &b {y: 2, z: 2}\nc:\n  <<: [*a, *b]\n`
++- **THEN** `show c` prints `x: 1\ny: 1\nz: 2\n`
++
++#### Scenario: Quoted merge key is an ordinary key
++- **WHEN** the config is `a: &a {x: 1}\nc:\n  "<<": *a\n`
++- **THEN** `get c.<<.x` prints `1\n`
++
++#### Scenario: Import records aliased values at every path
++- **WHEN** the first command runs against `defaults: &d\n  model: opus\ncoder:\n  settings: *d\n`
++- **THEN** `history` lists import events for `defaults.model` and `coder.settings.model`, both `opus`
++
++#### Scenario: Undefined alias
++- **WHEN** the config is `a: *nothing\n`
++- **THEN** every subcommand exits 4 and stderr names the config file
++
++#### Scenario: Anchors do not cross files
++- **WHEN** `troupe.yml` is `shared: file:shared.yaml\ncoder: *d\n` and `shared.yaml` is `&d {model: opus}\n`
++- **THEN** every subcommand exits 4 and stderr names `troupe.yml`
++
++#### Scenario: Alias inside its own anchor
++- **WHEN** the config is `a: &a\n  b: *a\n`
++- **THEN** every subcommand exits 4 and stderr names the config file
++
++#### Scenario: Merge key with a scalar value
++- **WHEN** the config is `c:\n  <<: 1\n`
++- **THEN** every subcommand exits 4 and stderr names the config file
+diff --git a/spec/spec/config-set/spec.md b/spec/spec/config-set/spec.md
+index 64f9fca..d00ea14 100644
+--- a/spec/spec/config-set/spec.md
++++ b/spec/spec/config-set/spec.md
+@@ -453,3 +453,166 @@ recorded are as without it. Where no include is involved, `--in-include` SHALL g
+ #### Scenario: Events are unchanged
+ - **WHEN** `set coder.temperature 0.3 --in-include` runs on a scalar-form include whose file has no `temperature`
+ - **THEN** `history` gains one event, `set coder.temperature` (old null, new 0.3) via `cli`, exactly as it would without the flag
++
++### Requirement: Setting a value defined at an anchor
++When `PATH` is not reached through an alias or a merge key (see "Refusing to set through an alias" and "Merge keys
++are never written"), `set` SHALL change the value where it is written, by the other rules of this capability. That
++holds when the value is an anchored node or lies inside one. The anchor (`&name`) SHALL stay in place, in front of
++the new value, so every alias of the anchor, and every mapping that merges it, has the new value. A whole anchored
++node replaced by a value of another kind (for example a scalar by a block collection) SHALL keep its anchor on the
++owning line. The events recorded SHALL be one per path whose value changed, including paths reached through
++aliases and merge keys, all in the one change. A `set` that would delete an anchored node that an alias still
++refers to SHALL be refused with exit 3, and no file SHALL change.
++
++#### Scenario: Changing the anchor changes every alias
++- **WHEN** the file is `defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n` and `set defaults.model sonnet` runs
++- **THEN** the file becomes `defaults: &d\n  model: sonnet\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n`, `get coder.settings.model` and `get reviewer.settings.model` print `sonnet\n`, and `history` gains three `set` events, for `defaults.model`, `coder.settings.model` and `reviewer.settings.model` (old `opus`, new `sonnet`), sharing one `change` id
++
++#### Scenario: Anchored scalar
++- **WHEN** the file is `a: &x 1\nb: *x\n` and `set a 2` runs
++- **THEN** the file becomes `a: &x 2\nb: *x\n`
++
++#### Scenario: Anchored scalar replaced by a list
++- **WHEN** the file is `a: &x 1\nb: *x\n` and `set a "[1, 2]"` runs
++- **THEN** the file becomes `a: &x\n  - 1\n  - 2\nb: *x\n` and `show b` prints `- 1\n- 2\n`
++
++#### Scenario: Deleting an anchor that is still used
++- **WHEN** the file is `c:\n  a: &x 1\n  k: 2\nb: *x\n` and `set c "{k: 2}"` runs
++- **THEN** the exit code is 3, stderr names `c`, and the file is unchanged
++
++### Requirement: Refusing to set through an alias
++A value is **reached through an alias** when the alias (`*name`) is its own value or the value of one of its
++ancestors. Without `--expand-alias`, a `set` SHALL be refused with exit 3, no file SHALL change and no event of
++its own SHALL be recorded, when it would change, add or delete a value reached through an alias. That covers:
++- `PATH` itself, or an ancestor of it, reached through an alias, including a new key or list item below an alias;
++- a mapping or list `VALUE` whose differences reach into an alias.
++
++This holds in every file, including included files. stderr SHALL name `PATH`, the alias (`*name`) and the path
++where the alias is written, and SHALL mention `--expand-alias`. The existing rules still apply: a `VALUE` equal to
++the current value changes nothing and exits 0. Removing an entry or item whose value is an alias, without
++changing anything reached through it, is not setting through the alias and SHALL proceed.
++
++#### Scenario: Setting one user of a shared anchor is refused
++- **WHEN** the file is `defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n` and `set coder.settings.model sonnet` runs
++- **THEN** the exit code is 3, stdout is empty, stderr contains `coder.settings.model`, `*d` and `--expand-alias`, the file is unchanged, and `history` gains no `cli` event
++
++#### Scenario: Setting the alias itself is refused
++- **WHEN** the same file and `set coder.settings "{model: sonnet}"` runs
++- **THEN** the exit code is 3 and the file is unchanged
++
++#### Scenario: New key below an alias is refused
++- **WHEN** the same file and `set coder.settings.temperature 0.3` runs
++- **THEN** the exit code is 3 and the file is unchanged
++
++#### Scenario: Mapping VALUE that reaches into an alias is refused
++- **WHEN** the same file and `set coder "{settings: {model: sonnet}}"` runs
++- **THEN** the exit code is 3 and the file is unchanged
++
++#### Scenario: Unchanged value through an alias
++- **WHEN** the same file and `set coder.settings.model opus` runs
++- **THEN** the exit code is 0 and no file changes
++
++#### Scenario: Removing an alias entry
++- **WHEN** the file is `defaults: &d\n  model: opus\ncoder:\n  settings: *d\n  model: x\n` and `set coder "{model: x}"` runs
++- **THEN** the file becomes `defaults: &d\n  model: opus\ncoder:\n  model: x\n`
++
++### Requirement: Expanding an alias on request
++With `--expand-alias`, each alias for which the `set` would otherwise be refused (by "Refusing to set through an
++alias") SHALL first be replaced by a block-style copy of its anchored node, and then `VALUE` SHALL be set in the
++copy by the other rules of this capability. When an alias is replaced:
++- the `*name` text, and the whitespace before it, SHALL be removed;
++- the end-of-line comment `# expanded from *<name> by troupe` SHALL be put on the line of the alias's key (the
++  dash's line, for a list item), with exactly two spaces before `#`. If that line already ends with a comment, the
++  comment SHALL be kept and the new comment SHALL follow it, after two spaces;
++- the copy SHALL reproduce the anchored node as it is written. It has the same keys and items in the same order,
++  each scalar keeps its written text (quoting included), and include strings stay include strings. Aliases inside
++  the anchored node stay aliases. The node's own anchors and comments are not copied. A scalar copy SHALL go on the
++  key's line, before the comment. A collection copy SHALL be written in block style by the rules of "New
++  collection values", one indentation level below the key or dash.
++
++When a copy still holds an alias that the `set` reaches through, that alias SHALL be expanded the same way, with
++its own comment. No other byte SHALL change: the anchor, its value and every other alias SHALL stay as they were.
++Only the paths whose value changes SHALL be recorded as events (the expansion itself changes no value). With
++nothing to expand, the flag SHALL have no effect. A `VALUE` equal to the current value SHALL change nothing, and no
++alias SHALL be expanded. An alias inside a flow collection cannot take a block-style copy: setting through it SHALL
++be refused with exit 3 even with the flag, and stderr SHALL name the alias.
++
++#### Scenario: Giving one agent its own copy
++- **WHEN** the file is `defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n` and `set --expand-alias coder.settings.model sonnet` runs
++- **THEN** the file becomes `defaults: &d\n  model: opus\ncoder:\n  settings:  # expanded from *d by troupe\n    model: sonnet\nreviewer:\n  settings: *d\n`, `get reviewer.settings.model` and `get defaults.model` print `opus\n`, and `history` gains one `set` event, `coder.settings.model` from `opus` to `sonnet`
++
++#### Scenario: Scalar alias
++- **WHEN** the file is `a: &x 1\nb: *x\n` and `set b 2 --expand-alias` runs
++- **THEN** the file becomes `a: &x 1\nb: 2  # expanded from *x by troupe\n`
++
++#### Scenario: The copy keeps written text and becomes block style
++- **WHEN** the file is `d: &d {model: 'opus', limits: {tokens: 0x10}}\nc: *d\n` and `set --expand-alias c.limits.calls 5` runs
++- **THEN** the file becomes `d: &d {model: 'opus', limits: {tokens: 0x10}}\nc:  # expanded from *d by troupe\n  model: 'opus'\n  limits:\n    tokens: 0x10\n    calls: 5\n`
++
++#### Scenario: Nested aliases stay aliases
++- **WHEN** the file is `t: &t [read]\nd: &d\n  model: opus\n  tools: *t\nc: *d\n` and `set --expand-alias c.model sonnet` runs
++- **THEN** the file becomes `t: &t [read]\nd: &d\n  model: opus\n  tools: *t\nc:  # expanded from *d by troupe\n  model: sonnet\n  tools: *t\n`
++
++#### Scenario: Nested alias on the way is expanded too
++- **WHEN** the file is `t: &t\n  - read\nd: &d\n  tools: *t\nc: *d\n` and `set --expand-alias c.tools.1 write` runs
++- **THEN** the file becomes `t: &t\n  - read\nd: &d\n  tools: *t\nc:  # expanded from *d by troupe\n  tools:  # expanded from *t by troupe\n    - read\n    - write\n`
++
++#### Scenario: Existing comment is kept
++- **WHEN** the file is `d: &d\n  model: opus\nc: *d  # shared\n` and `set --expand-alias c.model sonnet` runs
++- **THEN** the file becomes `d: &d\n  model: opus\nc:  # shared  # expanded from *d by troupe\n  model: sonnet\n`
++
++#### Scenario: Alias as a list item
++- **WHEN** the file is `d: &d\n  model: opus\nagents:\n  - *d\n  - *d\n` and `set --expand-alias agents.0.model sonnet` runs
++- **THEN** the file becomes `d: &d\n  model: opus\nagents:\n  -  # expanded from *d by troupe\n    model: sonnet\n  - *d\n`
++
++#### Scenario: Alias in a flow collection
++- **WHEN** the file is `d: &d {model: opus}\nc: {settings: *d}\n` and `set --expand-alias c.settings.model sonnet` runs
++- **THEN** the exit code is 3, stderr contains `*d`, and the file is unchanged
++
++#### Scenario: Nothing to expand
++- **WHEN** the file is `a:\n  b: 1\n` and `set --expand-alias a.b 2` runs
++- **THEN** the file becomes `a:\n  b: 2\n`, the same as without the flag
++
++#### Scenario: Unchanged value expands nothing
++- **WHEN** the file is `d: &d\n  model: opus\nc: *d\n` and `set --expand-alias c.model opus` runs
++- **THEN** the exit code is 0 and no file changes
++
++### Requirement: Merge keys are never written
++`set` SHALL never add, change or delete a merge key (`<<`) entry, including its value and the aliases in it. A value
++is **supplied by a merge key** when the mapping that holds the merge key does not set that key itself. A `set` SHALL
++be refused with exit 3, with no file changed, when it would:
++- change a value supplied by a merge key, or anything below one, including a new key below it;
++- delete a value supplied by a merge key (for example, a mapping `VALUE` that leaves out a merged key);
++- change, replace or delete a mapping that holds a merge key in a way that changes or removes the `<<` entry,
++  including deleting an entry or item that contains it;
++- expand an alias whose anchored node contains a merge key.
++
++This holds with or without `--expand-alias`. stderr SHALL name `PATH` and the merge key, and SHALL say that merge
++keys are not written, so `--expand-alias` cannot help. A mapping that holds a merge key SHALL otherwise be set like
++any mapping: its own keys are changed where they are written, and a new key that no merged mapping supplies is
++added after its last entry. Setting a value at the anchor that a merge key names follows "Setting a value defined at
++an anchor".
++
++#### Scenario: Own key next to a merge key
++- **WHEN** the file is `base: &b\n  model: opus\n  temperature: 0.2\ncoder:\n  <<: *b\n  temperature: 0.5\n` and `set coder.temperature 0.7` runs
++- **THEN** the file becomes `base: &b\n  model: opus\n  temperature: 0.2\ncoder:\n  <<: *b\n  temperature: 0.7\n`
++
++#### Scenario: Merged value is refused
++- **WHEN** the same file and `set coder.model sonnet` runs, with or without `--expand-alias`
++- **THEN** the exit code is 3, stderr contains `coder.model` and `<<`, and the file is unchanged
++
++#### Scenario: New key next to a merge key
++- **WHEN** the same file and `set coder.top_p 0.9` runs
++- **THEN** the file becomes `base: &b\n  model: opus\n  temperature: 0.2\ncoder:\n  <<: *b\n  temperature: 0.5\n  top_p: 0.9\n`
++
++#### Scenario: Changing the merged anchor
++- **WHEN** the same file and `set base.model sonnet` runs
++- **THEN** `base.model` becomes `sonnet` in the file, `get coder.model` prints `sonnet\n`, and `history` gains `set` events for `base.model` and `coder.model`
++
++#### Scenario: Leaving out a merged key is refused
++- **WHEN** the same file and `set coder "{temperature: 0.5}"` runs
++- **THEN** the exit code is 3 and the file is unchanged
++
++#### Scenario: Replacing the mapping that holds a merge key is refused
++- **WHEN** the same file and `set coder none` runs
++- **THEN** the exit code is 3 and the file is unchanged
+diff --git a/src/troupe/cli.py b/src/troupe/cli.py
+index 7612f4f..66364d0 100644
+--- a/src/troupe/cli.py
++++ b/src/troupe/cli.py
+@@ -46,6 +46,11 @@ def _parser() -> argparse.ArgumentParser:
+         action="store_true",
+         help="write new keys into the included file itself, not as overrides in the including file",
+     )
++    set_.add_argument(
++        "--expand-alias",
++        action="store_true",
++        help="replace an alias on the way with a copy of its anchored value, then set the value in the copy",
++    )
+     history = sub.add_parser("history", parents=[theatre], help="list configuration changes as JSON Lines")
+     history.add_argument("path", nargs="?")
+     sub.add_parser("watch", parents=[theatre], help="record hand edits to the files as they happen")
+@@ -67,7 +72,13 @@ def run(argv: Sequence[str]) -> str:
+     if args.command == "set":
+         path = parse_path(args.path)
+         commands.set_value(
+-            theatre, path, parse_value(args.value), actor, args.reason, in_include=args.in_include
++            theatre,
++            path,
++            parse_value(args.value),
++            actor,
++            args.reason,
++            in_include=args.in_include,
++            expand_alias=args.expand_alias,
+         )
+         return ""
+     if args.command == "watch":
+diff --git a/src/troupe/commands.py b/src/troupe/commands.py
+index 26ec1e1..0ed9dec 100644
+--- a/src/troupe/commands.py
++++ b/src/troupe/commands.py
+@@ -122,13 +122,14 @@ def set_value(
+     reason: str | None,
+     *,
+     in_include: bool = False,
++    expand_alias: bool = False,
+ ) -> None:
+     """Write `value` at `path` and record its events as one change by `actor`, through the CLI.
+ 
+     The lock is held until the events are recorded, so no reconcile can see the written files first.
+     """
+     with theatre_session(theatre, "set") as (config, store):
+-        result = compute_set(theatre, config, path, value, in_include=in_include)
++        result = compute_set(theatre, config, path, value, in_include=in_include, expand_alias=expand_alias)
+         for file, text in result.writes.items():
+             with file.open("w", encoding="utf-8", newline="") as f:
+                 f.write(text)
+diff --git a/src/troupe/edit/apply.py b/src/troupe/edit/apply.py
+index e42a08e..d350511 100644
+--- a/src/troupe/edit/apply.py
++++ b/src/troupe/edit/apply.py
+@@ -10,16 +10,37 @@ from dataclasses import dataclass
+ from pathlib import Path as FsPath
+ 
+ from troupe.edit import ops as prim
+-from troupe.edit.plan import AddKey, AddOverride, Append, Delete, Op, Replace, WriteText, nest, plan
++from troupe.edit.plan import (
++    AddKey,
++    AddOverride,
++    Append,
++    Delete,
++    ExpandAlias,
++    Op,
++    Replace,
++    WriteText,
++    nest,
++    plan,
++)
+ from troupe.edit.text import apply_edits
+-from troupe.errors import LoadError, WriteRefused
++from troupe.errors import LoadError, MergeKeyWrite, ThroughAlias, WriteRefused
+ from troupe.leaves import diff_leaves, leaves
+ from troupe.loader import Config, load
+ from troupe.overrides import is_bare, ref_entry
+ from troupe.paths import Path, format_path
+ from troupe.schema import Data, same
+ from troupe.store import Change
+-from troupe.tree import Entry, Item, MappingNode, Node, ScalarNode, SequenceNode, TextNode, to_data
++from troupe.tree import (
++    Entry,
++    Item,
++    MappingNode,
++    Node,
++    ScalarNode,
++    SequenceNode,
++    TextNode,
++    build_tree,
++    to_data,
++)
+ 
+ 
+ @dataclass
+@@ -29,18 +50,34 @@ class SetResult:
+ 
+ 
+ def compute_set(
+-    theatre: FsPath, config: Config, path: Path, value: Data, *, in_include: bool = False
++    theatre: FsPath,
++    config: Config,
++    path: Path,
++    value: Data,
++    *,
++    in_include: bool = False,
++    expand_alias: bool = False,
+ ) -> SetResult:
+-    operations = plan(config.root, path, value, in_include=in_include)
+     original = {key: src.text for key, src in config.files.items()}
+     texts = dict(original)
+     current = config
++    while True:
++        try:
++            operations = plan(current.root, path, value, in_include=in_include)
++            break
++        except ThroughAlias as e:
++            # With --expand-alias, give the alias the set stopped at a copy, then plan again on the result.
++            # Each round replaces one alias nearer the change, so this ends.
++            if not expand_alias or e.in_flow:
++                raise
++            _apply(current, ExpandAlias(e.alias_at), texts)
++            current = _reload(theatre, texts, path)
++    expected = _expected(current.root, path, value)  # an expansion changes no value
+     for op in operations:
+         _apply(current, op, texts)
+         current = _reload(theatre, texts, path)
+     if texts == original:
+         return SetResult({}, [])
+-    expected = _with_value(to_data(config.root), path, value)
+     if not _matches(current.root, expected):
+         raise WriteRefused(
+             f"{format_path(path)}: the edited files would not read back as intended; not writing"
+@@ -63,6 +100,10 @@ def _apply(config: Config, op: Op, texts: dict[FsPath, str]) -> None:
+         assert isinstance(node, TextNode)
+         texts[node.target.path.resolve()] = to_crlf(op.text) if "\r\n" in node.target.text else op.text
+         return
++    if isinstance(op, ExpandAlias):
++        src, edits = _expand_alias(config.root, op.path, where)
++        texts[src.path.resolve()] = apply_edits(texts[src.path.resolve()], edits)
++        return
+     for src, edits in _edits(config.root, op, where):
+         file_key = src.path.resolve()
+         texts[file_key] = apply_edits(texts[file_key], edits)
+@@ -95,7 +136,8 @@ def _delete_key(root: Node, path: Path, parent: MappingNode, key: str, where: st
+     changes nothing), up to the mapping that holds `$ref`, which stays.
+     """
+     out: list[prim.FileEdits] = []
+-    for depth, layer in enumerate(parent.layers or [parent]):
++    for depth, merged in enumerate(parent.layers or [parent]):
++        layer = as_written(merged)
+         entry = layer.get(key)
+         if entry is None:
+             continue
+@@ -110,7 +152,8 @@ def _delete_layer(root: Node, path: Path, layer: MappingNode, where: str) -> lis
+     """Delete the override mapping `layer` (the value at `path`) from the override that holds it."""
+     holder = _node_at(root, path[:-1])
+     assert isinstance(holder, MappingNode), where
+-    for depth, outer in enumerate(holder.layers or [holder]):
++    for depth, merged in enumerate(holder.layers or [holder]):
++        outer = as_written(merged)
+         entry = outer.get(path[-1])
+         if entry is not None and entry.value is layer:
+             if depth > 0 and len(outer.entries) == 1 and ref_entry(outer) is None:
+@@ -148,16 +191,67 @@ def _add_override(root: Node, op: AddOverride) -> prim.FileEdits:
+             if isinstance(parent, MappingNode):
+                 key = parent.get(op.include_path[-1])
+         return prim.to_mapping_form(include.string, key, {rel[0]: nest(rel[1:], op.value)})
+-    mapping = include.overrides
++    mapping = as_written(include.overrides)
+     while len(rel) > 1:
+         entry = mapping.get(rel[0])
+         if entry is None:
+             break
+         assert isinstance(entry.value, MappingNode) and entry.value.include is None, op.path
+-        mapping, rel = entry.value, rel[1:]
++        mapping, rel = as_written(entry.value), rel[1:]
+     return prim.add_key(mapping, rel[0], nest(rel[1:], op.value))
+ 
+ 
++def _expand_alias(root: Node, path: Path, where: str) -> prim.FileEdits:
++    """The edits that replace the alias at `path` with a copy of its anchored node as written."""
++    parent = _node_at(root, path[:-1])
++    holder: Entry | Item | None = None
++    if isinstance(parent, MappingNode):
++        for merged in reversed(parent.layers or [parent]):  # the alias as written, in whichever layer has it
++            layer = as_written(merged)
++            entry = layer.get(path[-1])
++            if entry is not None and entry.alias is not None:
++                parent, holder = layer, entry
++                break
++    else:
++        assert isinstance(parent, SequenceNode), where
++        holder = parent.items[int(path[-1])]
++    assert holder is not None and holder.alias is not None, where
++    anchor = holder.alias.target.anchor
++    assert anchor is not None, where
++    # The anchored node as written: its own file's tree, with no includes expanded.
++    copy = _anchored_at(build_tree(parent.file), anchor.start)
++    if _holds_merge_key(copy):
++        raise MergeKeyWrite(where, format_path(path), f"the copy of *{holder.alias.name} would contain")
++    return prim.expand_alias(parent, holder, copy, where)
++
++
++def _anchored_at(node: Node | None, start: int) -> Node:
++    """The node of a tree built from one file whose anchor starts at `start`."""
++    stack = [node]
++    while stack:
++        here = stack.pop()
++        if here is None:
++            continue
++        if here.anchor is not None and here.anchor.start == start:
++            return here
++        if isinstance(here, MappingNode):
++            stack.extend(e.value for e in as_written(here).entries if e.alias is None)
++        elif isinstance(here, SequenceNode):
++            stack.extend(i.value for i in here.items if i.alias is None)
++    raise AssertionError(f"no anchor at offset {start}")
++
++
++def _holds_merge_key(node: Node) -> bool:
++    """Whether a merge key is written in `node` (not counting what aliases in it refer to)."""
++    if isinstance(node, MappingNode):
++        return node.written is not None or any(
++            e.alias is None and _holds_merge_key(e.value) for e in node.entries
++        )
++    if isinstance(node, SequenceNode):
++        return any(i.alias is None and _holds_merge_key(i.value) for i in node.items)
++    return False
++
++
+ def to_crlf(text: str) -> str:
+     """Text-include content for a CRLF target: every LF not already preceded by CR becomes CRLF."""
+     return re.sub(r"(?<!\r)\n", "\r\n", text)
+@@ -168,15 +262,20 @@ def physical_mapping(node: MappingNode) -> MappingNode:
+ 
+     For a merged mapping that is the innermost included one (only `set --in-include` adds keys there).
+     """
+-    mapping = node.layers[0] if node.layers else node
++    mapping = as_written(node.layers[0] if node.layers else node)
+     assert not mapping.layers
+     return mapping
+ 
+ 
++def as_written(mapping: MappingNode) -> MappingNode:
++    """A mapping as written in its file: for one with a merge key, without the merged-in entries."""
++    return mapping.written or mapping
++
++
+ def _slot(parent: Node, key: str) -> prim.Slot:
+     """Where the value at `key` is written: for a merged mapping, in the last layer that sets it."""
+     if isinstance(parent, MappingNode):
+-        layer = next(m for m in reversed(parent.layers or [parent]) if m.get(key) is not None)
++        layer = next(as_written(m) for m in reversed(parent.layers or [parent]) if m.get(key) is not None)
+         entry = layer.get(key)
+         assert entry is not None
+         return prim.Slot(node=entry.value, parent=layer, entry=entry)
+@@ -198,6 +297,32 @@ def _node_at(root: Node, path: Path) -> Node:
+     return node
+ 
+ 
++def _expected(root: Node, path: Path, value: Data) -> Data:
++    """The configuration once `value` is at `path`: wherever the changed node appears, through an alias or
++    a merge key as well (an alias's value is the anchored node object itself), it has the new value."""
++    target, depth = root, 0
++    for segment in path:
++        if isinstance(target, MappingNode) and (entry := target.get(segment)) is not None:
++            target = entry.value
++        elif isinstance(target, SequenceNode) and segment.isdigit() and int(segment) < len(target.items):
++            target = target.items[int(segment)].value
++        else:
++            break
++        depth += 1
++    changed = _with_value(to_data(target), path[depth:], value)
++
++    def build(node: Node) -> Data:
++        if node is target:
++            return changed
++        if isinstance(node, MappingNode):
++            return {e.key: build(e.value) for e in node.entries}
++        if isinstance(node, SequenceNode):
++            return [build(i.value) for i in node.items]
++        return to_data(node)
++
++    return build(root)
++
++
+ def _with_value(data: Data, path: Path, value: Data) -> Data:
+     if not path:
+         return value
+diff --git a/src/troupe/edit/blocks.py b/src/troupe/edit/blocks.py
+index 1a2c1fa..f90d9e5 100644
+--- a/src/troupe/edit/blocks.py
++++ b/src/troupe/edit/blocks.py
+@@ -8,7 +8,7 @@ from troupe.edit.text import Layout
+ from troupe.errors import LoadError
+ from troupe.schema import Data
+ from troupe.source import SourceFile
+-from troupe.tree import MappingNode, build_tree
++from troupe.tree import Entry, Item, MappingNode, Node, ScalarNode, SequenceNode, build_tree
+ 
+ 
+ @dataclass
+@@ -144,3 +144,64 @@ def item_lines(value: Data, col: int, layout: Layout, *, value_style: str | None
+         return [" " * col + "- " + inner[0][col + 2 :], *inner[1:]]
+     r = render_value(value, owner_col=col, owner_is_key=False, layout=layout, preferred=value_style)
+     return [" " * col + "-" + (" " + r.inline if r.inline else ""), *r.lines]
++
++
++# --- copies of anchored nodes (`set --expand-alias`) -------------------------------------------------------
++
++
++def copy_value(node: Node, *, owner_col: int, owner_is_key: bool, layout: Layout) -> Rendered:
++    """A block-style copy of `node` as written (built from its own file, without includes expanded).
++
++    Keys and single-line scalars keep their written text, so quoting, number formats and include strings stay.
++    Nested aliases stay `*name`. The node's anchors and comments are not copied. Collections are written in
++    block style like new values; multi-line scalars are written as new multi-line values are.
++    """
++    if isinstance(node, MappingNode) and node.entries:
++        assert node.written is None, "a copy never holds a merge key"
++        col = owner_col + layout.unit
++        lines: list[str] = []
++        for entry in node.entries:
++            lines.extend(_copy_entry(entry, col, layout))
++        return Rendered("", lines)
++    if isinstance(node, SequenceNode) and node.items:
++        col = owner_col + (layout.seq_offset if owner_is_key else layout.unit)
++        lines = []
++        for item in node.items:
++            lines.extend(_copy_item(item, col, layout))
++        return Rendered("", lines)
++    if isinstance(node, MappingNode | SequenceNode):
++        return Rendered("{}" if isinstance(node, MappingNode) else "[]")
++    assert isinstance(node, ScalarNode)
++    text = node.file.text[node.start : node.end]
++    if node.block is None and not node.tagged and "\n" not in text and "\r" not in text:
++        return Rendered(text)
++    return render_value(node.value, owner_col=owner_col, owner_is_key=owner_is_key, layout=layout)
++
++
++def _copied(holder: Entry | Item, owner_col: int, owner_is_key: bool, layout: Layout) -> Rendered:
++    if holder.alias is not None:
++        return Rendered("*" + holder.alias.name)
++    return copy_value(holder.value, owner_col=owner_col, owner_is_key=owner_is_key, layout=layout)
++
++
++def _copy_entry(entry: Entry, col: int, layout: Layout) -> list[str]:
++    key = entry.key_node
++    written = key.file.text[key.start : key.end]
++    key_text = written if "\n" not in written else render_key(entry.key, None, flow=False)
++    r = _copied(entry, col, True, layout)
++    return [" " * col + key_text + ":" + (" " + r.inline if r.inline else ""), *r.lines]
++
++
++def _copy_item(item: Item, col: int, layout: Layout) -> list[str]:
++    """An item at column `col`; a non-empty collection is compact (`- key: v`), as in `item_lines`."""
++    value = item.value
++    if (
++        item.alias is None
++        and isinstance(value, MappingNode | SequenceNode)
++        and (value.entries if isinstance(value, MappingNode) else value.items)
++    ):
++        # Collections owned by a `-` go one unit in; place them at col + 2 so the first joins the dash.
++        inner = copy_value(value, owner_col=col + 2 - layout.unit, owner_is_key=False, layout=layout).lines
++        return [" " * col + "- " + inner[0][col + 2 :], *inner[1:]]
++    r = _copied(item, col, False, layout)
++    return [" " * col + "-" + (" " + r.inline if r.inline else ""), *r.lines]
+diff --git a/src/troupe/edit/ops.py b/src/troupe/edit/ops.py
+index 4c56988..5165ac5 100644
+--- a/src/troupe/edit/ops.py
++++ b/src/troupe/edit/ops.py
+@@ -9,6 +9,7 @@ from troupe.blockscalar import BlockLayout
+ from troupe.edit.blocks import (
+     Rendered,
+     block_ok,
++    copy_value,
+     entry_lines,
+     flow_text,
+     item_lines,
+@@ -22,7 +23,10 @@ from troupe.edit.scalars import QUOTE_STYLES, double, render_key
+ from troupe.edit.text import (
+     Edit,
+     Layout,
++    comment_start,
+     detect_layout,
++    held_end,
++    held_span,
+     indicator_end,
+     inline_edit,
+     insert_lines,
+@@ -47,10 +51,17 @@ class Slot:
+ 
+     @property
+     def indicator_end(self) -> int:
++        """Where text written right after the `key:` or `-` goes: past the node's anchor if it is there."""
+         if self.entry is not None:
+-            return indicator_end(self.node.file, self.entry.key_node.end)
+-        assert self.item is not None and self.item.dash is not None
+-        return self.item.dash + 1
++            end = indicator_end(self.node.file, self.entry.key_node.end)
++        else:
++            assert self.item is not None and self.item.dash is not None
++            end = self.item.dash + 1
++        anchor = self.node.anchor
++        src = self.node.file
++        if anchor is not None and anchor.start >= end and src.line_start(anchor.start) == src.line_start(end):
++            return anchor.end
++        return end
+ 
+ 
+ type FileEdits = tuple[SourceFile, list[Edit]]
+@@ -209,10 +220,10 @@ def add_key(mapping: MappingNode, key: str, value: Data) -> FileEdits:
+     src = mapping.file
+     last = mapping.entries[-1] if mapping.entries else None
+     key_style = _scalar_style(last.key_node) if last else None
+-    value_style = _scalar_style(last.value) if last else None
++    value_style = _scalar_style(last.value) if last and last.alias is None else None
+     if mapping.flow_style:
+         entry = f"{render_key(key, key_style, flow=True)}: {flow_text(value, value_style, flow=True)}"
+-        return src, [_flow_append(mapping, last.value.end if last else None, entry)]
++        return src, [_flow_append(mapping, held_span(last)[1] if last else None, entry)]
+     layout = detect_layout(src)
+     if last is None:
+         col, pos = 0, len(src.text)
+@@ -259,9 +270,10 @@ def to_mapping_form(string: ScalarNode, key: Entry | None, entries: dict[str, Da
+ def append_item(seq: SequenceNode, value: Data) -> FileEdits:
+     src = seq.file
+     last = seq.items[-1] if seq.items else None
+-    style = _scalar_style(last.value) if last else None
++    style = _scalar_style(last.value) if last and last.alias is None else None
+     if seq.flow_style:
+-        return src, [_flow_append(seq, last.value.end if last else None, flow_text(value, style, flow=True))]
++        last_end = held_span(last)[1] if last else None
++        return src, [_flow_append(seq, last_end, flow_text(value, style, flow=True))]
+     assert last is not None and last.dash is not None
+     layout = detect_layout(src)
+     col = src.column(last.dash)
+@@ -282,9 +294,9 @@ def delete(parent: MappingNode | SequenceNode, index: int, where: str) -> FileEd
+     src = parent.file
+     if parent.flow_style:
+         spans = (
+-            [(e.key_node.start, max(e.value.end, e.key_node.end)) for e in parent.entries]
++            [(e.key_node.start, max(held_span(e)[1], e.key_node.end)) for e in parent.entries]
+             if isinstance(parent, MappingNode)
+-            else [(i.value.start, i.value.end) for i in parent.items]
++            else [held_span(i) for i in parent.items]
+         )
+         start, end = spans[index]
+         if index > 0:
+@@ -295,12 +307,10 @@ def delete(parent: MappingNode | SequenceNode, index: int, where: str) -> FileEd
+     starts = (
+         [e.key_node.start for e in parent.entries]
+         if isinstance(parent, MappingNode)
+-        else [i.dash if i.dash is not None else i.value.start for i in parent.items]
++        else [i.dash if i.dash is not None else held_span(i)[0] for i in parent.items]
+     )
+-    if isinstance(parent, MappingNode):
+-        end = owned_end(parent.entries[index].value)
+-    else:
+-        end = owned_end(parent.items[index].value)
++    holder: Entry | Item = parent.entries[index] if isinstance(parent, MappingNode) else parent.items[index]
++    end = held_end(holder)
+     first = starts[index]
+     line_start = src.line_start(first)
+     if src.text[line_start:first].strip(" ") == "":
+@@ -310,3 +320,53 @@ def delete(parent: MappingNode | SequenceNode, index: int, where: str) -> FileEd
+         # its place, which sits at the same column.
+         return src, [Edit(first, starts[1], "")]
+     raise WriteRefused(f"{where}: cannot delete an entry that shares its line with another")
++
++
++EXPANDED_COMMENT = "# expanded from *{name} by troupe"
++
++
++def expand_alias(
++    parent: MappingNode | SequenceNode, holder: Entry | Item, copy: Node, where: str
++) -> FileEdits:
++    """Replace the alias that is `holder`'s value with `copy`, its anchored node as written, in block style.
++
++    The `*name` goes, and the end-of-line comment `EXPANDED_COMMENT` is put on the key's (or dash's) line, two
++    spaces after whatever ends it. A scalar copy takes the alias's place; a collection copy follows that line.
++    """
++    alias = holder.alias
++    assert alias is not None and not alias.in_flow, where
++    src = parent.file
++    if isinstance(holder, Entry):
++        owner = holder.key_node.start
++    else:
++        assert holder.dash is not None, where
++        owner = holder.dash
++    r = copy_value(
++        copy, owner_col=src.column(owner), owner_is_key=isinstance(holder, Entry), layout=detect_layout(src)
++    )
++    marker = "  " + EXPANDED_COMMENT.format(name=alias.name)
++    owner_end = src.line_end(owner)
++    edits: list[Edit] = []
++    if src.line_start(alias.start) == src.line_start(owner):
++        commented = comment_start(src, alias.end) is not None
++        if r.inline and commented:
++            edits += [inline_edit(src, alias.start, alias.end, r.inline), Edit(owner_end, owner_end, marker)]
++        elif r.inline:
++            edits.append(Edit(alias.start, owner_end, r.inline + marker))
++        elif commented:  # the comment keeps its bytes, and so does the whitespace before it
++            edits += [Edit(_ws_start(src, alias.start), alias.end, ""), Edit(owner_end, owner_end, marker)]
++        else:
++            edits.append(Edit(_ws_start(src, alias.start), owner_end, marker))
++    else:
++        if src.line_text(alias.start).strip(" \t") != src.text[alias.start : alias.end]:
++            raise WriteRefused(
++                f"{where}: cannot expand *{alias.name}: it shares its line with something else"
++            )
++        edits.append(Edit(owner_end, owner_end, marker))
++        if r.inline:
++            edits.append(Edit(alias.start, alias.end, r.inline))
++        else:
++            edits.append(Edit(src.line_start(alias.start), src.next_line(alias.start), ""))
++    if r.lines:
++        edits.append(insert_lines(src, src.next_line(alias.end), r.lines))
++    return src, edits
+diff --git a/src/troupe/edit/plan.py b/src/troupe/edit/plan.py
+index a3f718d..065e395 100644
+--- a/src/troupe/edit/plan.py
++++ b/src/troupe/edit/plan.py
+@@ -2,16 +2,18 @@
+ 
+ When the existing value and VALUE are both mappings (or both lists) only their differences become
+ operations, so unchanged entries keep their bytes. YAML include roots are never rewritten: changing or
+-deleting one is refused.
++deleting one is refused. Nothing is written through an alias (`*name`), since that would change the anchor
++and every other use of it: such a set raises `ThroughAlias`, naming the alias. Merge keys (`<<`) are never
++written: a set that would change one, or a value one supplies, raises `MergeKeyWrite`.
+ """
+ 
+ from dataclasses import dataclass
+ 
+-from troupe.errors import PathError, WriteRefused
++from troupe.errors import MergeKeyWrite, PathError, ThroughAlias, WriteRefused
+ from troupe.overrides import is_bare
+ from troupe.paths import Path, format_path, is_index
+ from troupe.schema import Data, same
+-from troupe.tree import MappingNode, Node, ScalarNode, SequenceNode, TextNode, to_data
++from troupe.tree import Alias, MappingNode, Node, ScalarNode, SequenceNode, TextNode, merged_in, to_data
+ 
+ 
+ @dataclass(frozen=True)
+@@ -50,7 +52,12 @@ class WriteText:
+     text: str
+ 
+ 
+-type Op = Replace | AddKey | AddOverride | Append | Delete | WriteText
++@dataclass(frozen=True)
++class ExpandAlias:
++    path: Path  # the entry or item whose value is written as an alias; it gets a copy of the anchored node
++
++
++type Op = Replace | AddKey | AddOverride | Append | Delete | WriteText | ExpandAlias
+ 
+ 
+ def describe(node: Node) -> str:
+@@ -65,6 +72,9 @@ def describe(node: Node) -> str:
+ 
+ def plan(root: Node, path: Path, value: Data, *, in_include: bool = False) -> list[Op]:
+     """Operations that make the value at `path` equal `value`. Raises PathError / WriteRefused."""
++    existing = _existing(root, path)
++    if existing is not None and same(to_data(existing), value):
++        return []  # nothing changes, even through an alias
+     node: Node = root
+     for i, segment in enumerate(path):
+         here = path[: i + 1]
+@@ -75,13 +85,20 @@ def plan(root: Node, path: Path, value: Data, *, in_include: bool = False) -> li
+                 if any(is_index(s) for s in path[i:]):
+                     raise PathError(f"{format_path(path)}: not found ({format_path(here)} does not exist)")
+                 return [new_key_target(root, here, nest(rest, value), in_include=in_include)]
++            if merged_in(node, segment) is not None:
++                raise merge_supplied(path, here)
++            if entry.alias is not None:
++                raise through_alias(root, path, here, entry.alias)
+             node = entry.value
+         elif isinstance(node, SequenceNode):
+             if not is_index(segment):
+                 raise PathError(f"{format_path(path)}: {format_path(path[:i]) or 'the root'} is a list")
+             index = int(segment)
+             if index < len(node.items):
+-                node = node.items[index].value
++                item = node.items[index]
++                if item.alias is not None:
++                    raise through_alias(root, path, here, item.alias)
++                node = item.value
+             elif index == len(node.items) and not rest:
+                 return [Append(here, value)]
+             else:
+@@ -93,10 +110,78 @@ def plan(root: Node, path: Path, value: Data, *, in_include: bool = False) -> li
+                 f"{format_path(path)}: {format_path(path[:i])} is a scalar, not a mapping or list"
+             )
+     ops: list[Op] = []
+-    _diff(root, node, value, path, ops, in_include)
++    _diff(root, node, value, path, ops, in_include, path)
+     return ops
+ 
+ 
++def _existing(root: Node, path: Path) -> Node | None:
++    """The node at `path`, or None if there is none."""
++    node = root
++    for segment in path:
++        if isinstance(node, MappingNode) and (entry := node.get(segment)) is not None:
++            node = entry.value
++        elif isinstance(node, SequenceNode) and is_index(segment) and int(segment) < len(node.items):
++            node = node.items[int(segment)].value
++        else:
++            return None
++    return node
++
++
++def merge_supplied(path: Path, value_path: Path) -> MergeKeyWrite:
++    """The refusal for a `set` of `path` that would change the merge-supplied value at `value_path`."""
++    return MergeKeyWrite(
++        format_path(path), format_path(value_path[:-1]), f"{format_path(value_path)} is supplied by"
++    )
++
++
++def _check_no_merge_keys(node: Node, path: Path, top: Path) -> None:
++    """Refuse to replace or delete `node` (at `path`) if a merge key is written in it."""
++    if isinstance(node, MappingNode):
++        if node.written is not None:
++            raise MergeKeyWrite(format_path(top), format_path(path), "this would rewrite")
++        for entry in node.entries:
++            if entry.alias is None:
++                _check_no_merge_keys(entry.value, (*path, entry.key), top)
++    elif isinstance(node, SequenceNode):
++        for index, item in enumerate(node.items):
++            if item.alias is None:
++                _check_no_merge_keys(item.value, (*path, str(index)), top)
++
++
++def through_alias(root: Node, path: Path, alias_path: Path, alias: Alias) -> ThroughAlias:
++    """The refusal for a `set` of `path` that would write through `alias`, written at `alias_path`."""
++    anchor = anchor_path(root, alias.target)
++    rest = path[len(alias_path) :]
++    return ThroughAlias(
++        format_path(path),
++        alias_path,
++        alias.name,
++        format_path(anchor) if anchor is not None else None,
++        format_path((*anchor, *rest)) if anchor is not None else None,
++        in_flow=alias.in_flow,
++    )
++
++
++def anchor_path(root: Node, target: Node) -> Path | None:
++    """The path at which `target` is written (not reached through an alias or a merge key), if any."""
++    stack: list[tuple[Node, Path]] = [(root, ())]
++    while stack:
++        node, path = stack.pop()
++        if node is target:
++            return path
++        children: list[tuple[Node, Path]] = []
++        if isinstance(node, MappingNode):
++            children = [
++                (e.value, (*path, e.key))
++                for e in node.entries
++                if e.alias is None and (node.written is None or node.written.get(e.key) is e)
++            ]
++        elif isinstance(node, SequenceNode):
++            children = [(i.value, (*path, str(n))) for n, i in enumerate(node.items) if i.alias is None]
++        stack.extend(reversed(children))
++    return None
++
++
+ def new_key_target(root: Node, path: Path, value: Data, *, in_include: bool = False) -> Op:
+     """Where the new key at `path` (whose parent mapping exists) is written.
+ 
+@@ -136,15 +221,21 @@ def _check_no_includes(node: Node, path: Path) -> None:
+         raise WriteRefused(
+             f"{format_path(path)}: its value comes from {node.include.target}; not replacing it"
+         )
++    # Below an alias nothing is rewritten: only the `*name` text goes.
+     if isinstance(node, MappingNode):
+         for entry in node.entries:
+-            _check_no_includes(entry.value, (*path, entry.key))
++            if entry.alias is None:
++                _check_no_includes(entry.value, (*path, entry.key))
+     elif isinstance(node, SequenceNode):
+         for index, item in enumerate(node.items):
+-            _check_no_includes(item.value, (*path, str(index)))
++            if item.alias is None:
++                _check_no_includes(item.value, (*path, str(index)))
+ 
+ 
+-def _diff(root: Node, node: Node, value: Data, path: Path, ops: list[Op], in_include: bool) -> None:
++def _diff(
++    root: Node, node: Node, value: Data, path: Path, ops: list[Op], in_include: bool, top: Path
++) -> None:
++    """Add the operations that turn `node` (at `path`) into `value`; `top` is the PATH being set."""
+     where = format_path(path)
+     include = node.include
+     if include is not None and is_bare(include, value):
+@@ -164,23 +255,38 @@ def _diff(root: Node, node: Node, value: Data, path: Path, ops: list[Op], in_inc
+         deletes: list[Op] = []
+         for entry in node.entries:
+             if entry.key not in value:
+-                _check_no_includes(entry.value, (*path, entry.key))
++                if merged_in(node, entry.key) is not None:
++                    raise merge_supplied(top, (*path, entry.key))
++                if entry.alias is None:
++                    _check_no_includes(entry.value, (*path, entry.key))
++                    _check_no_merge_keys(entry.value, (*path, entry.key), top)
+                 deletes.append(Delete((*path, entry.key)))
+         for key, child in value.items():
+             existing = node.get(key)
+-            if existing is None:
++            if existing is not None and merged_in(node, key) is not None:
++                if not same(to_data(existing.value), child):
++                    raise merge_supplied(top, (*path, key))
++            elif existing is None:
+                 adds.append(new_key_target(root, (*path, key), child, in_include=in_include))
++            elif existing.alias is not None:
++                if not same(to_data(existing.value), child):
++                    raise through_alias(root, top, (*path, key), existing.alias)
+             else:
+-                _diff(root, existing.value, child, (*path, key), ops, in_include)
++                _diff(root, existing.value, child, (*path, key), ops, in_include, top)
+         ops.extend(adds + deletes)
+         return
+     if isinstance(node, SequenceNode) and isinstance(value, list) and (value or not node.items):
+         for index, (item, child) in enumerate(zip(node.items, value, strict=False)):
+-            _diff(root, item.value, child, (*path, str(index)), ops, in_include)
++            if item.alias is None:
++                _diff(root, item.value, child, (*path, str(index)), ops, in_include, top)
++            elif not same(to_data(item.value), child):
++                raise through_alias(root, top, (*path, str(index)), item.alias)
+         for index in range(len(node.items), len(value)):
+             ops.append(Append((*path, str(index)), value[index]))
+         for index in reversed(range(len(value), len(node.items))):
+-            _check_no_includes(node.items[index].value, (*path, str(index)))
++            if node.items[index].alias is None:
++                _check_no_includes(node.items[index].value, (*path, str(index)))
++                _check_no_merge_keys(node.items[index].value, (*path, str(index)), top)
+             ops.append(Delete((*path, str(index))))
+         return
+     if isinstance(node, ScalarNode) and same(node.value, value):
+@@ -188,4 +294,5 @@ def _diff(root: Node, node: Node, value: Data, path: Path, ops: list[Op], in_inc
+     _check_no_includes(node, path)
+     if same(to_data(node), value):
+         return
++    _check_no_merge_keys(node, path, top)
+     ops.append(Replace(path, value))
+diff --git a/src/troupe/edit/scalars.py b/src/troupe/edit/scalars.py
+index edbcfe3..f5046c0 100644
+--- a/src/troupe/edit/scalars.py
++++ b/src/troupe/edit/scalars.py
+@@ -102,5 +102,10 @@ def render_scalar(value: Scalar, preferred: str | None, *, flow: bool) -> str:
+ 
+ 
+ def render_key(key: str, preferred: str | None, *, flow: bool) -> str:
+-    """A new mapping key; like a string value, it is quoted when plain would read back as another type."""
++    """A new mapping key; like a string value, it is quoted when plain would read back as another type.
++
++    A `<<` key is quoted too: written plain, it would be a merge key (and troupe never writes those).
++    """
++    if key == "<<" and preferred is None:
++        preferred = "'"
+     return _render(key, preferred, flow=flow)
+diff --git a/src/troupe/edit/text.py b/src/troupe/edit/text.py
+index 8f0ce65..78c3752 100644
+--- a/src/troupe/edit/text.py
++++ b/src/troupe/edit/text.py
+@@ -5,7 +5,7 @@ from dataclasses import dataclass
+ from itertools import pairwise
+ 
+ from troupe.source import SourceFile
+-from troupe.tree import MappingNode, Node, ScalarNode, SequenceNode, build_tree
++from troupe.tree import Entry, Item, MappingNode, Node, ScalarNode, SequenceNode, build_tree
+ 
+ DEFAULT_INDENT = 2
+ 
+@@ -120,15 +120,29 @@ def owned_end(node: Node) -> int:
+     """
+     if node.include is not None:
+         return owned_end(node.include.overrides or node.include.string)
++    if isinstance(node, MappingNode) and node.written is not None:
++        return owned_end(node.written)  # merged-in entries are written elsewhere
+     if isinstance(node, ScalarNode) and node.block is not None and node.block.chomp == "+":
+         return max(node.end, node.block.region_end - 1)
+     if isinstance(node, MappingNode) and not node.flow_style and node.entries:
+-        return max(owned_end(node.entries[-1].value), node.entries[-1].key_node.end)
++        return max(held_end(node.entries[-1]), node.entries[-1].key_node.end)
+     if isinstance(node, SequenceNode) and not node.flow_style and node.items:
+-        return max(owned_end(node.items[-1].value), node.end)
++        return max(held_end(node.items[-1]), node.end)
+     return node.end
+ 
+ 
++def held_span(holder: Entry | Item) -> tuple[int, int]:
++    """Where an entry's or item's value is written; for an alias, its `*name` (the value is elsewhere)."""
++    if holder.alias is not None:
++        return holder.alias.start, holder.alias.end
++    return holder.value.start, holder.value.end
++
++
++def held_end(holder: Entry | Item) -> int:
++    """The last offset belonging to an entry's or item's value as written there."""
++    return holder.alias.end if holder.alias is not None else owned_end(holder.value)
++
++
+ def insertion_point(src: SourceFile, last_end: int, col: int) -> int:
+     """Where a new block entry goes: below the last entry and any comments indented at least `col`."""
+     text = src.text
+diff --git a/src/troupe/errors.py b/src/troupe/errors.py
+index a76aa04..aac2e8f 100644
+--- a/src/troupe/errors.py
++++ b/src/troupe/errors.py
+@@ -29,3 +29,48 @@ class PathError(TroupeError):
+     """The path does not exist, or is the wrong kind of node for the command."""
+ 
+     exit_code = 5
++
++
++class ThroughAlias(WriteRefused):
++    """`set` would write through an alias (`*name`), which would change the anchor and every other alias.
++
++    `alias_path` is where the alias is written. `set --expand-alias` replaces it with a copy and retries.
++    """
++
++    def __init__(
++        self,
++        path: str,
++        alias_at: tuple[str, ...],
++        name: str,
++        anchor_path: str | None,
++        at_anchor: str | None,
++        *,
++        in_flow: bool,
++    ) -> None:
++        self.alias_at = alias_at  # the path of the alias, for `set --expand-alias`
++        alias_path = ".".join(alias_at)
++        self.name = name
++        self.in_flow = in_flow
++        where = f"&{name} at {anchor_path}" if anchor_path is not None else f"&{name}"
++        if in_flow:
++            hint = f"--expand-alias cannot expand *{name} at {alias_path}: it is inside a flow collection"
++        elif at_anchor is not None:
++            hint = (
++                f"Set {at_anchor} to change it everywhere, or use --expand-alias to give {alias_path} a copy"
++            )
++        else:
++            hint = f"Use --expand-alias to give {alias_path} its own copy"
++        super().__init__(
++            f"{path}: {alias_path} is the alias *{name} of {where}, so this would change all its uses. {hint}"
++        )
++
++
++class MergeKeyWrite(WriteRefused):
++    """`set` would have to add, change or delete a merge key (`<<`) or a value one supplies."""
++
++    def __init__(self, path: str, holder_path: str, what: str) -> None:
++        holder = f"{holder_path}.<<" if holder_path else "<<"
++        super().__init__(
++            f"{path}: {what} the merge key {holder}; troupe never writes merge keys (--expand-alias cannot "
++            "help), so edit the file by hand"
++        )
+diff --git a/src/troupe/loader.py b/src/troupe/loader.py
+index 47d6ffd..4a51f2e 100644
+--- a/src/troupe/loader.py
++++ b/src/troupe/loader.py
+@@ -67,6 +67,8 @@ class _Loader:
+     def __init__(self, overlay: Mapping[Path, str]) -> None:
+         self.overlay = overlay
+         self.files: dict[Path, SourceFile] = {}
++        # Each node expanded so far, by identity: a node reached again through an alias is expanded once.
++        self.expanded: dict[int, Node] = {}
+ 
+     def read(self, path: Path) -> SourceFile:
+         key = path.resolve()
+@@ -80,6 +82,12 @@ class _Loader:
+         return src
+ 
+     def expand(self, node: Node, base: Path, stack: tuple[Path, ...]) -> Node:
++        done = self.expanded.get(id(node))
++        if done is None:
++            done = self.expanded[id(node)] = self._expand(node, base, stack)
++        return done
++
++    def _expand(self, node: Node, base: Path, stack: tuple[Path, ...]) -> Node:
+         match node:
+             case ScalarNode():
+                 target = include_target(node)
+diff --git a/src/troupe/overrides.py b/src/troupe/overrides.py
+index 16264b4..e0e4b98 100644
+--- a/src/troupe/overrides.py
++++ b/src/troupe/overrides.py
+@@ -42,7 +42,8 @@ def merge(base: MappingNode, override: MappingNode, entries: list[Entry]) -> Map
+             value = merge(entry.value, over.value, over.value.entries)
+             # The nearest include wins: an included override value, else an included base value.
+             value.include = over.value.include or entry.value.include
+-            merged_entries.append(Entry(key=entry.key, key_node=entry.key_node, value=value))
++            alias = entry.alias or over.alias  # a write below either side would go through it
++            merged_entries.append(Entry(key=entry.key, key_node=entry.key_node, value=value, alias=alias))
+         else:
+             merged_entries.append(over)
+     merged_entries.extend(by_key.values())
+diff --git a/src/troupe/tree.py b/src/troupe/tree.py
+index 63c9b54..c80d8fe 100644
+--- a/src/troupe/tree.py
++++ b/src/troupe/tree.py
+@@ -2,6 +2,11 @@
+ 
+ `build_tree` turns one file's text into nodes using the parser's events and marks. Scalars are resolved
+ with the core schema in `troupe.schema`, not with the parser's own resolver.
++
++An alias is not a node of its own: the entry or item holding it records the `Alias`, and its value is the
++anchored node object itself, so every reader sees the anchored value. A node's span never includes its
++anchor (`&name`), so replacing the value keeps the anchor. A mapping with a merge key (`<<`) is resolved into
++the merged mapping, which keeps the mapping as written in `written`.
+ """
+ 
+ from collections.abc import Iterator
+@@ -39,6 +44,15 @@ class Include:
+     overrides: "MappingNode | None" = None  # mapping form: the `$ref` mapping, as written where it is
+ 
+ 
++@dataclass(eq=False, kw_only=True)
++class Anchor:
++    """The `&name` written in front of a node: its name and where the text is."""
++
++    name: str
++    start: int
++    end: int
++
++
+ @dataclass(eq=False, kw_only=True)
+ class Node:
+     file: SourceFile
+@@ -47,6 +61,18 @@ class Node:
+     in_flow: bool  # the node sits inside a flow collection
+     owner_col: int  # column of the key or `-` that owns this node (-1 for a document root)
+     include: Include | None = None  # set on the root node of an included YAML file
++    anchor: Anchor | None = None  # the node's `&name`, outside its span
++
++
++@dataclass(eq=False, kw_only=True)
++class Alias:
++    """A `*name` written as an entry's or item's value; the value is then `target`, the anchored node."""
++
++    name: str
++    start: int
++    end: int
++    in_flow: bool  # the alias sits inside a flow collection
++    target: Node
+ 
+ 
+ @dataclass(eq=False, kw_only=True)
+@@ -71,6 +97,7 @@ class Entry:
+     key: str
+     key_node: ScalarNode
+     value: Node
++    alias: Alias | None = None
+ 
+ 
+ @dataclass(eq=False, kw_only=True)
+@@ -80,6 +107,8 @@ class MappingNode(Node):
+     # For a mapping merged from included content and overrides: the mappings as written, included first.
+     # Empty for a mapping as written in one file.
+     layers: list["MappingNode"] = field(default_factory=list)
++    # For a mapping with a merge key: the mapping as written (its own entries and the `<<` entry).
++    written: "MappingNode | None" = None
+ 
+     def get(self, key: str) -> Entry | None:
+         for entry in self.entries:
+@@ -92,6 +121,7 @@ class MappingNode(Node):
+ class Item:
+     value: Node
+     dash: int | None  # offset of the `-` for block sequences
++    alias: Alias | None = None
+ 
+ 
+ @dataclass(eq=False, kw_only=True)
+@@ -101,6 +131,20 @@ class SequenceNode(Node):
+ 
+ 
+ INCLUDE_PREFIX = "file:"
++MERGE_KEY = "<<"
++
++
++def is_merge_key(key_node: ScalarNode) -> bool:
++    """Whether a key is a merge key: a plain, untagged `<<`."""
++    return key_node.style is None and not key_node.tagged and key_node.value == MERGE_KEY
++
++
++def merged_in(mapping: MappingNode, key: str) -> Entry | None:
++    """The `<<` entry if the mapping's value at `key` is supplied by a merge key, else None."""
++    written = mapping.written
++    if written is None or written.get(key) is not None or mapping.get(key) is None:
++        return None
++    return next(e for e in written.entries if is_merge_key(e.key_node))
+ 
+ 
+ def include_target(node: ScalarNode) -> str | None:
+@@ -146,6 +190,8 @@ class _Builder:
+         self.src = src
+         self.events = events
+         self.peeked: Event | None = None
++        self.anchors: dict[str, Node] = {}  # the latest complete node with each anchor name
++        self.building: set[str] = set()  # anchor names of nodes still being built
+ 
+     def next(self) -> Event:
+         if self.peeked is not None:
+@@ -176,17 +222,65 @@ class _Builder:
+             assert isinstance(self.next(), DocumentEndEvent)
+         return root
+ 
++    def value(self, *, in_flow: bool, owner_col: int) -> tuple[Node, Alias | None]:
++        """The next value, and the alias it was written as (None for a node written in place)."""
++        event = self.peek()
++        if not isinstance(event, AliasEvent):
++            return self.node(in_flow=in_flow, owner_col=owner_col), None
++        self.next()
++        name = str(event.anchor)
++        target = self.anchors.get(name)
++        if target is None:
++            inside = name in self.building
++            problem = "is inside the node it refers to" if inside else "has no anchor before it"
++            raise self.fail(event, f"alias *{name} {problem}")
++        alias = Alias(
++            name=name, start=event.start_mark.index, end=event.end_mark.index, in_flow=in_flow, target=target
++        )
++        return target, alias
++
+     def node(self, *, in_flow: bool, owner_col: int) -> Node:
+         event = self.next()
+-        if isinstance(event, AliasEvent) or getattr(event, "anchor", None) is not None:
+-            raise self.fail(event, "anchors and aliases are not supported")
++        if isinstance(event, AliasEvent):
++            raise self.fail(event, f"unexpected alias *{event.anchor}")
++        name: str | None = getattr(event, "anchor", None)
++        if name is not None:
++            self.building.add(name)
++        node: Node
+         if isinstance(event, ScalarEvent):
+-            return self.scalar(event, in_flow=in_flow, owner_col=owner_col)
+-        if isinstance(event, MappingStartEvent):
+-            return self.mapping(event, in_flow=in_flow, owner_col=owner_col)
+-        if isinstance(event, SequenceStartEvent):
+-            return self.sequence(event, in_flow=in_flow, owner_col=owner_col)
+-        raise self.fail(event, f"unexpected {type(event).__name__}")
++            node = self.scalar(event, in_flow=in_flow, owner_col=owner_col)
++        elif isinstance(event, MappingStartEvent):
++            node = self.mapping(event, in_flow=in_flow, owner_col=owner_col)
++        elif isinstance(event, SequenceStartEvent):
++            node = self.sequence(event, in_flow=in_flow, owner_col=owner_col)
++        else:
++            raise self.fail(event, f"unexpected {type(event).__name__}")
++        if name is not None:
++            self.building.discard(name)
++            self.anchors[name] = node
++        return node
++
++    def anchor_of(self, event: Event) -> Anchor | None:
++        name: str | None = getattr(event, "anchor", None)
++        if name is None:
++            return None
++        start = self.src.text.find("&" + name, event.start_mark.index)
++        assert start >= 0, name
++        return Anchor(name=name, start=start, end=start + 1 + len(name))
++
++    def after_anchor(self, anchor: Anchor) -> int:
++        """The offset where the anchored node's own text starts: past spaces, comments and line breaks."""
++        text = self.src.text
++        pos = anchor.end
++        while pos < len(text):
++            ch = text[pos]
++            if ch in " \t\r\n":
++                pos += 1
++            elif ch == "#":
++                pos = self.src.next_line(pos)
++            else:
++                break
++        return pos
+ 
+     def scalar(self, event: ScalarEvent, *, in_flow: bool, owner_col: int) -> ScalarNode:
+         style = event.style or None
+@@ -204,6 +298,10 @@ class _Builder:
+             except ValueError as e:
+                 raise self.fail(event, str(e)) from None
+         start, end = event.start_mark.index, event.end_mark.index
++        anchor = self.anchor_of(event)
++        if anchor is not None and anchor.start == start:
++            # A tag before the anchor stays in the (never rewritten) span; an empty scalar ends at its anchor.
++            start = min(self.after_anchor(anchor), end)
+         node = ScalarNode(
+             file=self.src,
+             start=start,
+@@ -213,6 +311,7 @@ class _Builder:
+             value=value,
+             style=style,
+             tagged=tagged,
++            anchor=anchor,
+         )
+         if style in ("|", ">"):
+             layout = parse_block(self.src, start, owner_col)
+@@ -228,16 +327,22 @@ class _Builder:
+     def mapping(self, event: MappingStartEvent, *, in_flow: bool, owner_col: int) -> MappingNode:
+         self.collection_tag_ok(event, "map")
+         flow = bool(event.flow_style)
++        anchor = self.anchor_of(event)
++        start = self.after_anchor(anchor) if anchor is not None else event.start_mark.index
+         node = MappingNode(
+             file=self.src,
+-            start=event.start_mark.index,
+-            end=event.start_mark.index,
++            start=start,
++            end=start,
+             in_flow=in_flow,
+             owner_col=owner_col,
+             flow_style=flow,
++            anchor=anchor,
+         )
++        merges: list[tuple[Entry, list[MappingNode]]] = []
+         while not isinstance(self.peek(), MappingEndEvent):
+             key_event = self.peek()
++            if isinstance(key_event, AliasEvent) or getattr(key_event, "anchor", None) is not None:
++                raise self.fail(key_event, "anchors and aliases cannot be mapping keys")
+             if not isinstance(key_event, ScalarEvent):
+                 raise self.fail(key_event, "only scalar mapping keys are supported")
+             key_node = self.node(in_flow=in_flow or flow, owner_col=owner_col)
+@@ -245,20 +350,33 @@ class _Builder:
+             key = key_text(key_node.value)
+             if node.get(key) is not None:
+                 raise self.fail(key_event, f"duplicate key {key!r}")
+-            value = self.node(in_flow=in_flow or flow, owner_col=self.src.column(key_node.start))
+-            node.entries.append(Entry(key=key, key_node=key_node, value=value))
+-            node.end = max(value.end, key_node.end)
++            value_event = self.peek()
++            value, alias = self.value(in_flow=in_flow or flow, owner_col=self.src.column(key_node.start))
++            entry = Entry(key=key, key_node=key_node, value=value, alias=alias)
++            node.entries.append(entry)
++            node.end = max(alias.end if alias is not None else value.end, key_node.end)
++            if is_merge_key(key_node):
++                merges.append((entry, self.merge_sources(value_event, value)))
+         end_event = self.next()
+         if flow:
+             node.end = end_event.end_mark.index
+         elif node.entries:
+             node.start = node.entries[0].key_node.start
+-        return node
++        return node if not merges else _resolve_merges(node, merges)
++
++    def merge_sources(self, event: Event, value: Node) -> list[MappingNode]:
++        """The mappings a merge key's value names: a mapping, or a list of mappings."""
++        if isinstance(value, MappingNode):
++            return [value]
++        if isinstance(value, SequenceNode) and all(isinstance(i.value, MappingNode) for i in value.items):
++            return [i.value for i in value.items if isinstance(i.value, MappingNode)]
++        raise self.fail(event, f"the value of merge key {MERGE_KEY} must be a mapping or a list of mappings")
+ 
+     def sequence(self, event: SequenceStartEvent, *, in_flow: bool, owner_col: int) -> SequenceNode:
+         self.collection_tag_ok(event, "seq")
+         flow = bool(event.flow_style)
+-        start = event.start_mark.index
++        anchor = self.anchor_of(event)
++        start = self.after_anchor(anchor) if anchor is not None else event.start_mark.index
+         node = SequenceNode(
+             file=self.src,
+             start=start,
+@@ -266,6 +384,7 @@ class _Builder:
+             in_flow=in_flow,
+             owner_col=owner_col,
+             flow_style=flow,
++            anchor=anchor,
+         )
+         dash_col = self.src.column(start)
+         prev_end = start
+@@ -278,9 +397,10 @@ class _Builder:
+                     else self.find_dash(prev_end, self.peek().start_mark.index, dash_col)
+                 )
+             col = self.src.column(dash) if dash is not None else owner_col
+-            value = self.node(in_flow=in_flow or flow, owner_col=col)
+-            node.items.append(Item(value=value, dash=dash))
+-            prev_end = node.end = max(value.end, dash + 1 if dash is not None else value.end)
++            value, alias = self.value(in_flow=in_flow or flow, owner_col=col)
++            value_end = alias.end if alias is not None else value.end
++            node.items.append(Item(value=value, dash=dash, alias=alias))
++            prev_end = node.end = max(value_end, dash + 1 if dash is not None else value_end)
+         end_event = self.next()
+         if flow:
+             node.end = end_event.end_mark.index
+@@ -298,3 +418,34 @@ class _Builder:
+                 return pos
+             pos -= 1
+         raise LoadError(f"{self.src.path}: cannot locate a sequence entry before offset {hi}")
++
++
++def _resolve_merges(written: MappingNode, merges: list[tuple[Entry, list[MappingNode]]]) -> MappingNode:
++    """The mapping `written` with its merge keys applied.
++
++    Its own keys win, then earlier merge sources. Merged-in entries take the `<<` entry's position.
++    """
++    own = {e.key for e in written.entries if not is_merge_key(e.key_node)}
++    sources = {id(entry): mappings for entry, mappings in merges}
++    seen: set[str] = set()
++    entries: list[Entry] = []
++    for entry in written.entries:
++        if id(entry) not in sources:
++            entries.append(entry)
++            continue
++        for mapping in sources[id(entry)]:
++            for merged in mapping.entries:
++                if merged.key not in own and merged.key not in seen:
++                    seen.add(merged.key)
++                    entries.append(merged)
++    return MappingNode(
++        file=written.file,
++        start=written.start,
++        end=written.end,
++        in_flow=written.in_flow,
++        owner_col=written.owner_col,
++        flow_style=written.flow_style,
++        anchor=written.anchor,
++        entries=entries,
++        written=written,
++    )
+diff --git a/src/troupe/values.py b/src/troupe/values.py
+index fa88f99..fdb2873 100644
+--- a/src/troupe/values.py
++++ b/src/troupe/values.py
+@@ -17,9 +17,21 @@ def parse_value(text: str) -> Data:
+         return None
+     if not _is_flow(root):
+         raise UsageError(f"invalid VALUE {text!r}: must be a single flow node (quote it to make a string)")
++    if _has_anchor(root):
++        raise UsageError(f"invalid VALUE {text!r}: anchors (&) and aliases (*) cannot be written")
+     return to_data(root)
+ 
+ 
++def _has_anchor(node: Node) -> bool:
++    if node.anchor is not None:
++        return True
++    if isinstance(node, MappingNode):
++        return any(e.alias is not None or _has_anchor(e.value) for e in node.entries)
++    if isinstance(node, SequenceNode):
++        return any(i.alias is not None or _has_anchor(i.value) for i in node.items)
++    return False
++
++
+ def _is_flow(node: Node) -> bool:
+     if isinstance(node, ScalarNode):
+         return node.style not in ("|", ">")
+diff --git a/tests/test_aliases_loading.py b/tests/test_aliases_loading.py
+new file mode 100644
+index 0000000..936bbba
+--- /dev/null
++++ b/tests/test_aliases_loading.py
+@@ -0,0 +1,124 @@
++"""Loading anchors, aliases and merge keys (config-loading, "Anchors, aliases and merge keys")."""
++
++import json
++from collections.abc import Callable
++from pathlib import Path
++
++import pytest
++
++from conftest import Theatre
++from troupe.loader import load
++from troupe.tree import MappingNode
++
++SHARED = "defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n"
++MERGED = "base: &b\n  model: opus\n  temperature: 0.2\ncoder:\n  <<: *b\n  temperature: 0.5\n  top_p: 1\n"
++
++
++def history(t: Theatre) -> list[dict[str, object]]:
++    r = t.run("history")
++    assert r.code == 0, r.err
++    return [json.loads(line) for line in r.out.splitlines()]
++
++
++def test_alias_of_an_anchored_mapping_has_its_value(make: Callable[[str], Theatre]) -> None:
++    t = make(SHARED)
++    assert t.run("get", "coder.settings.model").out == "opus\n"
++    assert t.run("get", "reviewer.settings.model").out == "opus\n"
++    assert t.run("show", "coder").out == "settings:\n  model: opus\n"
++
++
++def test_alias_of_an_anchored_scalar_has_its_value(make: Callable[[str], Theatre]) -> None:
++    assert make("a: &x 1\nb: *x\n").run("get", "b").out == "1\n"
++
++
++def test_alias_of_a_quoted_scalar_with_space_after_the_anchor(make: Callable[[str], Theatre]) -> None:
++    assert make('a: &x  "q r"\nb: *x\n').run("get", "b").out == "q r\n"
++
++
++def test_merge_key_adds_entries_and_own_keys_win(make: Callable[[str], Theatre]) -> None:
++    assert make(MERGED).run("show", "coder").out == "model: opus\ntemperature: 0.5\ntop_p: 1\n"
++
++
++def test_merged_entries_take_the_merge_key_position(make: Callable[[str], Theatre]) -> None:
++    t = make("base: &b {model: opus}\ncoder:\n  first: 1\n  <<: *b\n  last: 2\n")
++    assert t.run("show", "coder").out == "first: 1\nmodel: opus\nlast: 2\n"
++
++
++def test_merge_key_list_earlier_source_wins(make: Callable[[str], Theatre]) -> None:
++    t = make("a: &a {x: 1, y: 1}\nb: &b {y: 2, z: 2}\nc:\n  <<: [*a, *b]\n")
++    assert t.run("show", "c").out == "x: 1\ny: 1\nz: 2\n"
++
++
++def test_merge_key_with_an_inline_mapping(make: Callable[[str], Theatre]) -> None:
++    assert make("c:\n  <<: {x: 1}\n  y: 2\n").run("show", "c").out == "x: 1\ny: 2\n"
++
++
++def test_quoted_merge_key_is_an_ordinary_key(make: Callable[[str], Theatre]) -> None:
++    assert make('a: &a {x: 1}\nc:\n  "<<": *a\n').run("get", "c.<<.x").out == "1\n"
++
++
++def test_import_records_aliased_values_at_every_path(make: Callable[[str], Theatre]) -> None:
++    t = make("defaults: &d\n  model: opus\ncoder:\n  settings: *d\n")
++    events = [(e["op"], e["path"], e["new"], e["via"]) for e in history(t)]
++    assert events == [
++        ("import", "defaults.model", "opus", "import"),
++        ("import", "coder.settings.model", "opus", "import"),
++    ]
++
++
++def test_hand_edit_at_the_anchor_is_reconciled_at_every_alias(make: Callable[[str], Theatre]) -> None:
++    t = make(SHARED)
++    t.run("history")
++    t.write("troupe.yml", SHARED.replace("opus", "sonnet"))
++    assert t.run("get", "defaults.model").out == "sonnet\n"
++    edits = [(e["path"], e["old"], e["new"]) for e in history(t) if e["via"] == "file"]
++    assert edits == [
++        ("defaults.model", "opus", "sonnet"),
++        ("coder.settings.model", "opus", "sonnet"),
++        ("reviewer.settings.model", "opus", "sonnet"),
++    ]
++    assert len({e["change"] for e in history(t) if e["via"] == "file"}) == 1
++
++
++def test_anchored_include_is_expanded_once_and_shared(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: &x file:inc.yaml\nb: *x\n")
++    theatre.write("inc.yaml", "k: 1\n")
++    config = load(Path(theatre.root))
++    assert isinstance(config.root, MappingNode)
++    a, b = config.root.get("a"), config.root.get("b")
++    assert a is not None and b is not None
++    assert a.value is b.value
++    assert theatre.run("show", "b", "--sources").out == "k: 1 # from .troupe/inc.yaml\n"
++
++
++@pytest.mark.parametrize(
++    "config",
++    [
++        pytest.param("a: *nothing\n", id="undefined-alias"),
++        pytest.param("a: &a\n  b: *a\n", id="alias-inside-its-own-anchor"),
++        pytest.param("c:\n  <<: 1\n", id="merge-key-with-a-scalar"),
++        pytest.param("c:\n  <<: [1]\n", id="merge-key-with-a-list-of-scalars"),
++        pytest.param("a: 1\n&k b: 2\n", id="anchored-key"),
++        pytest.param("a: &k b\n*k : 2\n", id="alias-key"),
++    ],
++)
++def test_bad_anchors_aliases_and_merge_keys_fail_to_load(make: Callable[[str], Theatre], config: str) -> None:
++    t = make(config)
++    for args in (("show",), ("get", "a"), ("history",), ("set", "z", "1")):
++        r = t.run(*args)
++        assert (r.code, r.out) == (4, ""), args
++        assert "troupe.yml" in r.err
++
++
++def test_merge_key_naming_an_include_fails_to_load(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: &x file:inc.yaml\nc:\n  <<: *x\n")
++    theatre.write("inc.yaml", "k: 1\n")
++    r = theatre.run("show")
++    assert r.code == 4 and "troupe.yml" in r.err
++
++
++def test_anchors_do_not_cross_files(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "shared: file:shared.yaml\ncoder: *d\n")
++    theatre.write("shared.yaml", "&d {model: opus}\n")
++    r = theatre.run("show")
++    assert r.code == 4 and "troupe.yml" in r.err
+diff --git a/tests/test_cli.py b/tests/test_cli.py
+index ebf1b68..b5a8b8b 100644
+--- a/tests/test_cli.py
++++ b/tests/test_cli.py
+@@ -49,6 +49,8 @@ def test_theatre_option_may_come_before_the_subcommand(
+         ("get", "model", "--reason", "x"),
+         ("set", "model", "b", "--in-include", "x"),
+         ("get", "model", "--in-include"),
++        ("set", "model", "b", "--expand-alias", "x"),
++        ("get", "model", "--expand-alias"),
+     ],
+ )
+ def test_bad_command_lines_exit_2_with_empty_stdout(
+@@ -89,6 +91,22 @@ def test_set_takes_an_optional_in_include_anywhere(
+     assert t.read("troupe.yml") == "a:\n  b: 1\n  x: 1\n"
+ 
+ 
++@pytest.mark.parametrize(
++    ("args", "after"),
++    [
++        (("set", "a.x", "1", "--expand-alias"), "a:\n  b: 1\n  x: 1\n"),
++        (("set", "--expand-alias", "a.y", "2", "--reason", "why"), "a:\n  b: 1\n  y: 2\n"),
++    ],
++)
++def test_set_takes_an_optional_expand_alias_anywhere(
++    make: Callable[[str], Theatre], args: tuple[str, ...], after: str
++) -> None:
++    t = make("a:\n  b: 1\n")
++    r = t.run(*args)
++    assert (r.code, r.out, r.err) == (0, "", "")
++    assert t.read("troupe.yml") == after
++
++
+ @pytest.mark.parametrize("args", [("show",), ("show", "--sources")])
+ def test_show_takes_an_optional_path(make: Callable[[str], Theatre], args: tuple[str, ...]) -> None:
+     r = make("model: x\n").run(*args)
+diff --git a/tests/test_loading.py b/tests/test_loading.py
+index 5fc4775..789bd55 100644
+--- a/tests/test_loading.py
++++ b/tests/test_loading.py
+@@ -125,11 +125,6 @@ def test_same_file_included_twice_is_not_a_cycle(theatre: Theatre) -> None:
+     assert theatre.run("show", "b.x").out == "1\n"
+ 
+ 
+-def test_anchors_are_refused_at_load(make: Callable[[str], Theatre]) -> None:
+-    t = make("a: &x 1\nb: *x\n")
+-    assert t.run("show", "a").code == 4
+-
+-
+ def test_duplicate_keys_are_refused_at_load(make: Callable[[str], Theatre]) -> None:
+     assert make("a: 1\na: 2\n").run("show", "a").code == 4
+ 
+diff --git a/tests/test_paths_values.py b/tests/test_paths_values.py
+index 0d25dc6..143a0b9 100644
+--- a/tests/test_paths_values.py
++++ b/tests/test_paths_values.py
+@@ -41,7 +41,9 @@ def test_values_parse_as_one_yaml_1_2_flow_node(text: str, expected: Data) -> No
+     assert same(parse_value(text), expected)
+ 
+ 
+-@pytest.mark.parametrize("text", ["[a, b", "a: b: c", "a: b", "- a", "|\n  x\n", "{a: 1", "&x a", "*x"])
++@pytest.mark.parametrize(
++    "text", ["[a, b", "a: b: c", "a: b", "- a", "|\n  x\n", "{a: 1", "&x a", "*x", "[&x a, *x]"]
++)
+ def test_values_that_are_not_a_single_flow_node_are_usage_errors(text: str) -> None:
+     with pytest.raises(UsageError, match="invalid VALUE"):
+         parse_value(text)
+diff --git a/tests/test_set_anchors.py b/tests/test_set_anchors.py
+new file mode 100644
+index 0000000..901466d
+--- /dev/null
++++ b/tests/test_set_anchors.py
+@@ -0,0 +1,75 @@
++"""Setting a value defined at an anchor changes it there, for every alias (config-set, step 6)."""
++
++import json
++from collections.abc import Callable
++
++import pytest
++
++from conftest import Result, Theatre
++
++SHARED = "defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n"
++
++
++def test_changing_the_anchor_changes_every_alias(make: Callable[[str], Theatre]) -> None:
++    t = make(SHARED)
++    t.run("history")  # import first, so the events below are the set's own
++    r = t.run("set", "defaults.model", "sonnet")
++    assert (r.code, r.out, r.err) == (0, "", "")
++    assert t.read("troupe.yml") == SHARED.replace("opus", "sonnet")
++    assert t.run("get", "coder.settings.model").out == "sonnet\n"
++    assert t.run("get", "reviewer.settings.model").out == "sonnet\n"
++    events = [json.loads(line) for line in t.run("history").out.splitlines() if '"via": "cli"' in line]
++    assert [(e["op"], e["path"], e["old"], e["new"]) for e in events] == [
++        ("set", "defaults.model", "opus", "sonnet"),
++        ("set", "coder.settings.model", "opus", "sonnet"),
++        ("set", "reviewer.settings.model", "opus", "sonnet"),
++    ]
++    assert len({e["change"] for e in events}) == 1
++
++
++@pytest.mark.parametrize(
++    ("before", "path", "value", "after"),
++    [
++        pytest.param("a: &x 1\nb: *x\n", "a", "2", "a: &x 2\nb: *x\n", id="anchored-scalar"),
++        pytest.param('a: &x  "q"\nb: *x\n', "a", "r", 'a: &x  "r"\nb: *x\n', id="quoted-scalar"),
++        pytest.param(
++            "a: &x 1\nb: *x\n", "a", "[1, 2]", "a: &x\n  - 1\n  - 2\nb: *x\n", id="scalar-replaced-by-a-list"
++        ),
++        pytest.param(
++            "a: &x\n  k: 1\nb: *x\n", "a", "5", "a: &x 5\nb: *x\n", id="block-mapping-replaced-by-a-scalar"
++        ),
++        pytest.param(
++            "a: &x # c\n  k: 1\nb: *x\n", "a", "5", "a: &x 5 # c\nb: *x\n", id="block-mapping-with-comment"
++        ),
++        pytest.param("a: &x\nb: *x\n", "a", "3", "a: &x 3\nb: *x\n", id="anchored-null"),
++        pytest.param(
++            "a: &x {k: 1}\nb: *x\n", "a.j", "2", "a: &x {k: 1, j: 2}\nb: *x\n", id="new-key-in-flow"
++        ),
++        pytest.param(
++            "a: &x\n  k: 1\nb: *x\n", "a.j", "2", "a: &x\n  k: 1\n  j: 2\nb: *x\n", id="new-key-in-block"
++        ),
++        pytest.param(
++            "l:\n  - &x 1\n  - *x\n", "l.0", "[a]", "l:\n  - &x\n    - a\n  - *x\n", id="anchored-list-item"
++        ),
++    ],
++)
++def test_anchor_stays_in_front_of_the_new_value(
++    set_file: Callable[..., str], before: str, path: str, value: str, after: str
++) -> None:
++    assert set_file(before, path, value) == after
++
++
++def test_alias_sees_the_value_set_at_a_replaced_anchor(make: Callable[[str], Theatre]) -> None:
++    t = make("a: &x 1\nb: *x\n")
++    assert t.run("set", "a", "[1, 2]").code == 0
++    assert t.run("show", "b").out == "- 1\n- 2\n"
++
++
++def test_deleting_an_anchor_that_is_still_used_is_refused(refused: Callable[..., Result]) -> None:
++    r = refused("c:\n  a: &x 1\n  k: 2\nb: *x\n", "c", "{k: 2}")
++    assert r.code == 3
++    assert "c:" in r.err
++
++
++def test_deleting_an_unused_anchor_is_allowed(set_file: Callable[..., str]) -> None:
++    assert set_file("c:\n  a: &x 1\n  k: 2\n", "c", "{k: 2}") == "c:\n  k: 2\n"
+diff --git a/tests/test_set_expand_alias.py b/tests/test_set_expand_alias.py
+new file mode 100644
+index 0000000..934c00a
+--- /dev/null
++++ b/tests/test_set_expand_alias.py
+@@ -0,0 +1,172 @@
++"""`set --expand-alias`: give one user of an anchor its own copy (config-set, "Expanding an alias on request").
++
++Each test checks the whole file byte for byte, and that the result loads with the intended values.
++"""
++
++import json
++from collections.abc import Callable
++
++import pytest
++
++from conftest import Theatre
++
++SHARED = "defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n"
++
++
++def expand(t: Theatre, *args: str) -> str:
++    r = t.run("set", "--expand-alias", *args)
++    assert (r.code, r.out, r.err) == (0, "", ""), r.err
++    return t.read("troupe.yml")
++
++
++def test_giving_one_agent_its_own_copy(make: Callable[[str], Theatre]) -> None:
++    t = make(SHARED)
++    t.run("history")
++    assert expand(t, "coder.settings.model", "sonnet") == (
++        "defaults: &d\n  model: opus\ncoder:\n  settings:  # expanded from *d by troupe\n    model: sonnet\n"
++        "reviewer:\n  settings: *d\n"
++    )
++    assert t.run("get", "coder.settings.model").out == "sonnet\n"
++    assert t.run("get", "reviewer.settings.model").out == "opus\n"
++    assert t.run("get", "defaults.model").out == "opus\n"
++    events = [json.loads(line) for line in t.run("history").out.splitlines()]
++    assert [(e["op"], e["path"], e["old"], e["new"]) for e in events if e["via"] == "cli"] == [
++        ("set", "coder.settings.model", "opus", "sonnet")
++    ]
++
++
++@pytest.mark.parametrize(
++    ("before", "args", "after"),
++    [
++        pytest.param(
++            "a: &x 1\nb: *x\n", ("b", "2"), "a: &x 1\nb: 2  # expanded from *x by troupe\n", id="scalar-alias"
++        ),
++        pytest.param(
++            "d: &d {model: 'opus', limits: {tokens: 0x10}}\nc: *d\n",
++            ("c.limits.calls", "5"),
++            "d: &d {model: 'opus', limits: {tokens: 0x10}}\nc:  # expanded from *d by troupe\n  model: 'opus'\n"
++            "  limits:\n    tokens: 0x10\n    calls: 5\n",
++            id="copy-keeps-written-text-in-block-style",
++        ),
++        pytest.param(
++            "t: &t [read]\nd: &d\n  model: opus\n  tools: *t\nc: *d\n",
++            ("c.model", "sonnet"),
++            "t: &t [read]\nd: &d\n  model: opus\n  tools: *t\nc:  # expanded from *d by troupe\n  model: sonnet\n"
++            "  tools: *t\n",
++            id="nested-aliases-stay-aliases",
++        ),
++        pytest.param(
++            "t: &t\n  - read\nd: &d\n  tools: *t\nc: *d\n",
++            ("c.tools.1", "write"),
++            "t: &t\n  - read\nd: &d\n  tools: *t\nc:  # expanded from *d by troupe\n"
++            "  tools:  # expanded from *t by troupe\n    - read\n    - write\n",
++            id="nested-alias-on-the-way-is-expanded-too",
++        ),
++        pytest.param(
++            "d: &d\n  model: opus\nc: *d  # shared\n",
++            ("c.model", "sonnet"),
++            "d: &d\n  model: opus\nc:  # shared  # expanded from *d by troupe\n  model: sonnet\n",
++            id="existing-comment-is-kept",
++        ),
++        pytest.param(
++            "d: &d\n  model: opus\nagents:\n  - *d\n  - *d\n",
++            ("agents.0.model", "sonnet"),
++            "d: &d\n  model: opus\nagents:\n  -  # expanded from *d by troupe\n    model: sonnet\n  - *d\n",
++            id="alias-as-a-list-item",
++        ),
++        pytest.param(
++            SHARED,
++            ("coder", "{settings: {model: sonnet}}"),
++            "defaults: &d\n  model: opus\ncoder:\n  settings:  # expanded from *d by troupe\n    model: sonnet\n"
++            "reviewer:\n  settings: *d\n",
++            id="mapping-value-reaching-into-an-alias",
++        ),
++        pytest.param(
++            "d: &d\n  model: opus\n  tags: [a, b]\n  list:\n  - x\n  - k: 1\n    j: 2\nc: *d\n",
++            ("c.model", "sonnet"),
++            "d: &d\n  model: opus\n  tags: [a, b]\n  list:\n  - x\n  - k: 1\n    j: 2\n"
++            "c:  # expanded from *d by troupe\n  model: sonnet\n  tags:\n  - a\n  - b\n  list:\n  - x\n  - k: 1\n"
++            "    j: 2\n",
++            id="lists-follow-the-file-layout",
++        ),
++        pytest.param(
++            "d: &d {a: {}, b: []}\nc: *d\n",
++            ("c.z", "1"),
++            "d: &d {a: {}, b: []}\nc:  # expanded from *d by troupe\n  a: {}\n  b: []\n  z: 1\n",
++            id="empty-collections",
++        ),
++        pytest.param(
++            "d: &d\n  p: |\n    line one\n    line two\n  k: 1\nc: *d\n",
++            ("c.k", "2"),
++            "d: &d\n  p: |\n    line one\n    line two\n  k: 1\nc:  # expanded from *d by troupe\n  p: |\n"
++            "    line one\n    line two\n  k: 2\n",
++            id="multi-line-scalar",
++        ),
++        pytest.param(
++            "d: &d\n  m: &m 1\n  n: *m\nc: *d\n",
++            ("c.n", "2"),
++            "d: &d\n  m: &m 1\n  n: *m\nc:  # expanded from *d by troupe\n  m: 1\n  n: 2  # expanded from *m by troupe\n",
++            id="anchors-inside-the-copy-are-not-copied",
++        ),
++        pytest.param(
++            "a: &x\n  k: 1\nb:\n  *x\n",
++            ("b.k", "2"),
++            "a: &x\n  k: 1\nb:  # expanded from *x by troupe\n  k: 2\n",
++            id="alias-below-its-key",
++        ),
++        pytest.param("a:\n  b: 1\n", ("a.b", "2"), "a:\n  b: 2\n", id="nothing-to-expand"),
++    ],
++)
++def test_expansion(make: Callable[[str], Theatre], before: str, args: tuple[str, ...], after: str) -> None:
++    assert expand(make(before), *args) == after
++
++
++def test_expanded_files_read_back_as_intended(make: Callable[[str], Theatre]) -> None:
++    t = make("t: &t\n  - read\nd: &d\n  tools: *t\nc: *d\n")
++    expand(t, "c.tools.1", "write")
++    assert (
++        t.run("show").out == "t:\n  - read\nd:\n  tools:\n    - read\nc:\n  tools:\n    - read\n    - write\n"
++    )
++
++
++def test_unchanged_value_expands_nothing(make: Callable[[str], Theatre]) -> None:
++    t = make("d: &d\n  model: opus\nc: *d\n")
++    before = t.snapshot()
++    expand(t, "c.model", "opus")
++    assert t.snapshot() == before
++
++
++def test_alias_in_a_flow_collection_is_not_expanded(make: Callable[[str], Theatre]) -> None:
++    t = make("d: &d {model: opus}\nc: {settings: *d}\n")
++    before = t.snapshot()
++    r = t.run("set", "--expand-alias", "c.settings.model", "sonnet")
++    assert (r.code, r.out) == (3, "")
++    assert "*d" in r.err and "flow" in r.err
++    assert t.snapshot() == before
++
++
++def test_copy_that_would_hold_a_merge_key_is_refused(make: Callable[[str], Theatre]) -> None:
++    t = make("b: &b {m: 1}\nd: &d\n  <<: *b\n  k: 1\nc: *d\n")
++    before = t.snapshot()
++    r = t.run("set", "--expand-alias", "c.k", "2")
++    assert (r.code, r.out) == (3, "")
++    assert "<<" in r.err and "*d" in r.err
++    assert t.snapshot() == before
++
++
++def test_anchored_include_string_is_copied_as_the_include(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "a: &x file:inc.yaml\nb: *x\n")
++    theatre.write("inc.yaml", "k: 1\n")
++    expand(theatre, "b.j", "2")
++    assert theatre.read("troupe.yml") == (
++        "a: &x file:inc.yaml\nb:  # expanded from *x by troupe\n  $ref: file:inc.yaml\n  j: 2\n"
++    )
++    assert theatre.read("inc.yaml") == "k: 1\n"
++    assert theatre.run("show", "a").out == "k: 1\n"
++
++
++def test_crlf_file(make: Callable[[str], Theatre]) -> None:
++    t = make("d: &d\r\n  model: opus\r\nc: *d\r\n")
++    assert expand(t, "c.model", "sonnet") == (
++        "d: &d\r\n  model: opus\r\nc:  # expanded from *d by troupe\r\n  model: sonnet\r\n"
++    )
+diff --git a/tests/test_set_merge_keys.py b/tests/test_set_merge_keys.py
+new file mode 100644
+index 0000000..6da65a8
+--- /dev/null
++++ b/tests/test_set_merge_keys.py
+@@ -0,0 +1,105 @@
++"""Merge keys (`<<`) are never written (config-set, "Merge keys are never written")."""
++
++import json
++from collections.abc import Callable
++
++import pytest
++
++from conftest import Theatre
++
++MERGED = "base: &b\n  model: opus\n  temperature: 0.2\ncoder:\n  <<: *b\n  temperature: 0.5\n"
++
++
++@pytest.mark.parametrize(
++    ("before", "path", "value", "after"),
++    [
++        pytest.param(MERGED, "coder.temperature", "0.7", MERGED.replace("0.5", "0.7"), id="own-key"),
++        pytest.param(MERGED, "coder.top_p", "0.9", MERGED + "  top_p: 0.9\n", id="new-key"),
++        pytest.param(
++            "base: &b {m: 1}\ncoder:\n  t: 1\n  <<: *b\nz: 2\n",
++            "coder.u",
++            "2",
++            "base: &b {m: 1}\ncoder:\n  t: 1\n  <<: *b\n  u: 2\nz: 2\n",
++            id="new-key-when-the-merge-key-is-last",
++        ),
++        pytest.param(
++            "base: &b {m: 1}\ncoder:\n  <<: *b\nz: 2\n",
++            "coder.u",
++            "2",
++            "base: &b {m: 1}\ncoder:\n  <<: *b\n  u: 2\nz: 2\n",
++            id="new-key-when-only-the-merge-key-is-written",
++        ),
++        pytest.param(
++            "base: &b {m: 1}\ncoder:\n  <<: *b\n",
++            "after",
++            "1",
++            "base: &b {m: 1}\ncoder:\n  <<: *b\nafter: 1\n",
++            id="new-key-after-a-merging-mapping",
++        ),
++        pytest.param(
++            MERGED,
++            "coder",
++            "{model: opus, temperature: 0.5, top_p: 1}",
++            MERGED + "  top_p: 1\n",
++            id="mapping-value-keeping-merged-keys",
++        ),
++        pytest.param(
++            "base: &b {m: 1}\nzz: {}\n",
++            "zz.<<",
++            "5",
++            "base: &b {m: 1}\nzz: {'<<': 5}\n",
++            id="new-key-named-<<",
++        ),
++    ],
++)
++def test_writes_next_to_a_merge_key(
++    set_file: Callable[..., str], before: str, path: str, value: str, after: str
++) -> None:
++    assert set_file(before, path, value) == after
++
++
++def test_changing_the_merged_anchor_changes_the_merging_mapping(make: Callable[[str], Theatre]) -> None:
++    t = make(MERGED)
++    t.run("history")
++    assert t.run("set", "base.model", "sonnet").code == 0
++    assert t.read("troupe.yml") == MERGED.replace("opus", "sonnet")
++    assert t.run("get", "coder.model").out == "sonnet\n"
++    events = [json.loads(line) for line in t.run("history").out.splitlines()]
++    assert [(e["path"], e["new"]) for e in events if e["via"] == "cli"] == [
++        ("base.model", "sonnet"),
++        ("coder.model", "sonnet"),
++    ]
++
++
++@pytest.mark.parametrize(
++    ("before", "args"),
++    [
++        pytest.param(MERGED, ("coder.model", "sonnet"), id="merged-value"),
++        pytest.param(
++            MERGED, ("coder.model", "sonnet", "--expand-alias"), id="merged-value-with-expand-alias"
++        ),
++        pytest.param(MERGED, ("coder", "{temperature: 0.5}"), id="leaving-out-a-merged-key"),
++        pytest.param(MERGED, ("coder", "none"), id="replacing-the-holding-mapping"),
++        pytest.param(MERGED, ("coder", "{}"), id="emptying-the-holding-mapping"),
++        pytest.param(
++            "base: &b {m: 1}\nx:\n  coder:\n    <<: *b\n  k: 1\n",
++            ("x", "{k: 1}"),
++            id="deleting-an-entry-with-it",
++        ),
++        pytest.param(
++            "base: &b {m: 1}\nl:\n  - k: 1\n  - <<: *b\n", ("l", "[{k: 1}]"), id="deleting-an-item-with-it"
++        ),
++        pytest.param(
++            "base: &b {s: {m: 1}}\ncoder:\n  <<: *b\n", ("coder.s.x", "2"), id="new-key-below-a-merged-value"
++        ),
++    ],
++)
++def test_writes_to_merge_keys_are_refused(
++    make: Callable[[str], Theatre], before: str, args: tuple[str, ...]
++) -> None:
++    t = make(before)
++    snapshot = t.snapshot()
++    r = t.run("set", *args)
++    assert (r.code, r.out) == (3, "")
++    assert args[0] in r.err and "<<" in r.err
++    assert t.snapshot() == snapshot
+diff --git a/tests/test_set_through_alias.py b/tests/test_set_through_alias.py
+new file mode 100644
+index 0000000..9fbc947
+--- /dev/null
++++ b/tests/test_set_through_alias.py
+@@ -0,0 +1,116 @@
++"""Setting a value reached through an alias is refused (config-set, "Refusing to set through an alias").
++
++Each refusal checks that no file in the theatre changed, so a write through the anchor fails the test.
++"""
++
++import json
++from collections.abc import Callable
++
++import pytest
++
++from conftest import Result, Theatre
++
++SHARED = "defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n"
++
++
++def cli_events(t: Theatre) -> list[dict[str, object]]:
++    events = [json.loads(line) for line in t.run("history").out.splitlines()]
++    return [e for e in events if e["via"] == "cli"]
++
++
++def test_setting_one_user_of_a_shared_anchor_is_refused(make: Callable[[str], Theatre]) -> None:
++    t = make(SHARED)
++    before = t.snapshot()
++    r = t.run("set", "coder.settings.model", "sonnet")
++    assert (r.code, r.out) == (3, "")
++    for text in ("coder.settings.model", "*d", "--expand-alias", "defaults.model"):
++        assert text in r.err
++    assert t.snapshot() == before
++    assert cli_events(t) == []
++
++
++@pytest.mark.parametrize(
++    ("path", "value"),
++    [
++        pytest.param("coder.settings", "{model: sonnet}", id="the-alias-itself"),
++        pytest.param("coder.settings.temperature", "0.3", id="new-key-below-the-alias"),
++        pytest.param("coder", "{settings: {model: sonnet}}", id="mapping-value-reaching-into-it"),
++        pytest.param("coder", "{settings: {model: opus, extra: 1}}", id="mapping-value-adding-below-it"),
++    ],
++)
++def test_writes_through_an_alias_are_refused(refused: Callable[..., Result], path: str, value: str) -> None:
++    r = refused(SHARED, path, value)
++    assert r.code == 3
++    assert "*d" in r.err and "--expand-alias" in r.err
++
++
++def test_alias_as_a_list_item_is_refused(refused: Callable[..., Result]) -> None:
++    r = refused("d: &d {m: 1}\nl:\n  - *d\n", "l.0.m", "2")
++    assert r.code == 3 and "l.0" in r.err
++
++
++def test_unchanged_value_through_an_alias_changes_nothing(make: Callable[[str], Theatre]) -> None:
++    t = make(SHARED)
++    before = t.snapshot()
++    mtime = (t.dir / "troupe.yml").stat().st_mtime_ns
++    r = t.run("set", "coder.settings.model", "opus")
++    assert (r.code, r.out, r.err) == (0, "", "")
++    assert t.snapshot() == before
++    assert (t.dir / "troupe.yml").stat().st_mtime_ns == mtime
++    assert t.run("set", "coder", "{settings: {model: opus}}").code == 0
++    assert t.snapshot() == before
++
++
++@pytest.mark.parametrize(
++    ("before", "path", "value", "after"),
++    [
++        pytest.param(
++            "defaults: &d\n  model: opus\ncoder:\n  settings: *d\n  model: x\n",
++            "coder",
++            "{model: x}",
++            "defaults: &d\n  model: opus\ncoder:\n  model: x\n",
++            id="remove-an-alias-entry",
++        ),
++        pytest.param(
++            "d: &d {m: 1}\nl: {a: *d, b: 1}\n",
++            "l",
++            "{b: 1}",
++            "d: &d {m: 1}\nl: {b: 1}\n",
++            id="remove-in-flow",
++        ),
++        pytest.param(
++            "d: &d\n  m: 1\nc:\n  k: x\n  s: *d\nz: 1\n",
++            "c.t",
++            "1",
++            "d: &d\n  m: 1\nc:\n  k: x\n  s: *d\n  t: 1\nz: 1\n",
++            id="new-key-after-an-alias-entry",
++        ),
++        pytest.param(
++            "d: &d {m: 1}\nl: [*d]\n", "l.1", "2", "d: &d {m: 1}\nl: [*d, 2]\n", id="append-after-alias"
++        ),
++    ],
++)
++def test_writes_next_to_an_alias_are_allowed(
++    set_file: Callable[..., str], before: str, path: str, value: str, after: str
++) -> None:
++    assert set_file(before, path, value) == after
++
++
++def test_alias_inside_an_included_file_is_refused(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "coder: file:agents/coder.yaml\n")
++    theatre.write("agents/coder.yaml", "d: &d {m: 1}\ns: *d\n")
++    before = theatre.snapshot()
++    for path, value in (("coder.s.m", "2"), ("coder.s.x", "1")):
++        r = theatre.run("set", path, value)
++        assert r.code == 3 and "coder.s" in r.err and "--expand-alias" in r.err
++        assert theatre.snapshot() == before
++
++
++def test_alias_in_the_included_layer_of_a_mapping_form_include_is_refused(theatre: Theatre) -> None:
++    theatre.write("troupe.yml", "coder:\n  $ref: file:agents/coder.yaml\n  s:\n    x: 1\n")
++    theatre.write("agents/coder.yaml", "d: &d {m: 1}\ns: *d\n")
++    before = theatre.snapshot()
++    for path, value in (("coder.s.m", "3"), ("coder.s.y", "2")):
++        r = theatre.run("set", path, value)
++        assert r.code == 3 and "*d" in r.err
++        assert theatre.snapshot() == before
+diff --git a/tests/test_smoke.py b/tests/test_smoke.py
+index d2b9d33..265c635 100644
+--- a/tests/test_smoke.py
++++ b/tests/test_smoke.py
+@@ -233,3 +233,23 @@ def test_in_include_writes_into_the_shared_file_end_to_end(theatre: Path) -> Non
+         b"model: big  # strongest\nprompt: file:coder.md\ntemperature: 0.3\n"
+     )
+     assert troupe(theatre, "get", "agents.coder.temperature").stdout == "0.3\n"
++
++
++def test_shared_anchor_is_refused_then_expanded_end_to_end(tmp_path: Path) -> None:
++    """The reported bug (troupe-run/repo#2), through the real command."""
++    config = tmp_path / ".troupe" / "troupe.yml"
++    config.parent.mkdir()
++    shared = b"defaults: &d\n  model: opus\ncoder:\n  settings: *d\nreviewer:\n  settings: *d\n"
++    config.write_bytes(shared)
++    r = troupe(tmp_path, "set", "coder.settings.model", "sonnet")
++    assert (r.returncode, r.stdout) == (3, "")
++    assert "--expand-alias" in r.stderr
++    assert config.read_bytes() == shared
++    r = troupe(tmp_path, "set", "--expand-alias", "coder.settings.model", "sonnet")
++    assert (r.returncode, r.stdout, r.stderr) == (0, "", "")
++    assert config.read_bytes() == (
++        b"defaults: &d\n  model: opus\ncoder:\n  settings:  # expanded from *d by troupe\n    model: sonnet\n"
++        b"reviewer:\n  settings: *d\n"
++    )
++    assert troupe(tmp_path, "get", "reviewer.settings.model").stdout == "opus\n"
++    assert troupe(tmp_path, "get", "coder.settings.model").stdout == "sonnet\n"

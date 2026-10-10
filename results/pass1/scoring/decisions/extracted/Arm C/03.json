@@ -1,0 +1,320 @@
+[
+  {
+    "decision": "For `show PATH --sources` on a single scalar, print the scalar as YAML with its `# from <file>` comment; a text include prints as a literal block with the comment on the header line (option A)",
+    "options": [
+      "(A) Print the scalar as YAML with the comment",
+      "(B) Ignore --sources for scalars and print exactly what get prints",
+      "(C) Print the plain value, then a separate `# from <file>` line"
+    ],
+    "reason": "With --sources the output is always valid YAML and every scalar shows its source, which fits 'the same YAML'. Without --sources a scalar still prints like get. The PO said this case is out of contract and the choice was the agent's.",
+    "recorded_at": "spec/troupe-config-get-show-01M411XB/spec.md:18; decisions/DM-01M411YHFR2PMJEJWMHX4KN9C4.md; questions.md Scored run Q1/Q2"
+  },
+  {
+    "decision": "Write the spec decisions without asking the PO further questions, using the defaults offered in Q1 (layout, literal blocks, comment on header line, relative paths, reconcile first, exit codes, tests move to get)",
+    "options": [
+      "Ask the PO about each choice",
+      "Decide and record the defaults unless the PO objects"
+    ],
+    "reason": "Only one case was unresolved by the contract and the existing code. The PO replied 'No corrections'.",
+    "recorded_at": "questions.md Scored run Q1; spec.md:160"
+  },
+  {
+    "decision": "Print CRLF text includes, and other text a literal block cannot hold, double-quoted with escapes",
+    "options": [
+      "literal block",
+      "double-quoted string"
+    ],
+    "reason": "A literal block can't keep carriage returns. TROUPE-002 requires that data is never altered.",
+    "recorded_at": "spec.md:106; research.md:41-44 (D-4); questions.md Scored Q2"
+  },
+  {
+    "decision": "Put exactly one space before `#` in a source comment (the Q1 example had shown two)",
+    "options": [
+      "one space",
+      "two spaces"
+    ],
+    "reason": "",
+    "recorded_at": "spec.md:160; research.md:59 (D-6); questions.md Scored Q2"
+  },
+  {
+    "decision": "`get` does not accept `--sources`; passing it is a usage error (exit 2)",
+    "options": [],
+    "reason": "",
+    "recorded_at": "spec.md:111; questions.md Scored Q2"
+  },
+  {
+    "decision": "Ask no further questions during planning and record every contract-open choice in research.md as D-1 to D-9",
+    "options": [],
+    "reason": "The PO had delegated all contract-open choices as long as they were recorded",
+    "recorded_at": "plan.md:15; questions.md Scored Q3"
+  },
+  {
+    "decision": "Emit the YAML with a custom renderer (`troupe/yamlout.py`) instead of the ruamel dumper",
+    "options": [
+      "own emitter reusing writeback.scalars/blocks",
+      "ruamel round-trip dumper with comment injection",
+      "dump then post-process lines"
+    ],
+    "reason": "--sources needs to know which output line holds which scalar, and a dumper does not expose that. Using a dumper would also decide quoting twice, which breaks TROUPE-007. Post-processing lines is fragile for multi-line scalars.",
+    "recorded_at": "research.md:5-9 (R-1)"
+  },
+  {
+    "decision": "Use one list of lines tagged with their source for both outputs; --sources only appends comments to the tagged lines",
+    "options": [],
+    "reason": "The two outputs then differ only by the comments, by construction (US3 scenario 5)",
+    "recorded_at": "plan.md:17; data-model.md"
+  },
+  {
+    "decision": "Layout: 2-space indentation, lists indented under their key, compact `- k: v` and `- - a` items, inline `{}`/`[]`, no `---`, a final newline",
+    "options": [],
+    "reason": "Common hand-written YAML style; matches the indent step set uses for new collections",
+    "recorded_at": "research.md:11-20 (D-1)"
+  },
+  {
+    "decision": "Use literal blocks for every text-include value (including one-line or empty text) and for every other string containing a newline; chomping preference is clip, then strip, then keep; use indentation digit 2 when the first line starts with a space",
+    "options": [],
+    "reason": "Exact read-back using the same chomping logic as set; multi-line values stay readable",
+    "recorded_at": "research.md:22-32 (D-2)"
+  },
+  {
+    "decision": "Amend spec FR-008: in YAML output, write float specials as `.inf`/`-.inf`/`.nan` instead of as get prints them",
+    "options": [
+      "floats as get prints them (inf/nan)",
+      ".inf/.nan in YAML"
+    ],
+    "reason": "get prints inf/nan, which YAML reads back as strings, so show output would not parse back to the same data",
+    "recorded_at": "research.md:34-39 (D-3); spec FR-008; questions.md Scored Q3"
+  },
+  {
+    "decision": "Quote strings and keys with set's choose_style rules, plus a check that a plain key also round-trips as a key",
+    "options": [],
+    "reason": "One quoting rule shared with set (FR-015)",
+    "recorded_at": "research.md:46-53 (D-5)"
+  },
+  {
+    "decision": "Source label is `os.path.relpath` to the theatre directory with `/` separators, `../` for files outside it, and no special handling for file names containing line breaks",
+    "options": [],
+    "reason": "The contract asks for relative paths with `/`; relpath also covers targets outside the theatre. Such file names are vanishingly rare and the contract is silent.",
+    "recorded_at": "research.md:55-61 (D-6)"
+  },
+  {
+    "decision": "Only flow-scalar lines and literal-block header lines get a comment; collection-opening lines, `{}`/`[]` lines and block body lines get none",
+    "options": [],
+    "reason": "These are exactly the lines that hold a scalar; a comment inside a block body would become content",
+    "recorded_at": "research.md:63-70 (D-7)"
+  },
+  {
+    "decision": "No runtime self-check in show; correctness is proven by parse-back tests",
+    "options": [
+      "runtime check",
+      "tests only"
+    ],
+    "reason": "The renderer is pure and deterministic, so a runtime check would only turn a bug into a confusing error",
+    "recorded_at": "research.md:72-75 (D-8)"
+  },
+  {
+    "decision": "Move the step-1 show scalar tests to test_get.py, switch value-reading helpers to get, and run test_cli_basics' missing-PATH check on get",
+    "options": [],
+    "reason": "get is now the value reader; show no longer requires PATH",
+    "recorded_at": "research.md:77-84 (D-9); questions.md Scored Q3"
+  },
+  {
+    "decision": "get refusal wording is `{path} is a {mapping|list}, not a scalar; use 'troupe config show {path}'`, kept in one constant SECTION_REFUSAL",
+    "options": [],
+    "reason": "",
+    "recorded_at": "research.md:86-88"
+  },
+  {
+    "decision": "Split the work into 3 WPs: WP01 renderer and WP02 get run in parallel, then WP03 show depends on both",
+    "options": [],
+    "reason": "WP02 alone already delivers get",
+    "recorded_at": "tasks.md; questions.md Scored Q4"
+  },
+  {
+    "decision": "WP02 must not touch show; WP03 may make one pre-authorised out-of-map edit to cli.py (owned by WP02), limited to the show subparser",
+    "options": [],
+    "reason": "This keeps show's old behaviour until WP03, and it is safe because WP03 runs after WP02",
+    "recorded_at": "questions.md Scored Q4; tasks/WP03-show-command.md"
+  },
+  {
+    "decision": "scalar_of returns `ScalarValue | None` through a frozen wrapper dataclass",
+    "options": [
+      "Scalar | None",
+      "tuple[bool, Scalar]",
+      "ScalarValue | None"
+    ],
+    "reason": "None is a valid YAML null, so a bare Optional could not tell a null scalar from a section",
+    "recorded_at": "transcript.md:52; tasks/WP02-get-command.md"
+  },
+  {
+    "decision": "Use agent profile python-pedro for implementation and reviewer-renata for review in separate agents",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:67,147; questions.md Scored Q4"
+  },
+  {
+    "decision": "Render an empty text include as `|-` rather than `|`",
+    "options": [
+      "|-",
+      "|"
+    ],
+    "reason": "The WP edge-case list and research D-2 say `|-`; both read back as an empty string",
+    "recorded_at": "transcript.md:143; research.md:31"
+  },
+  {
+    "decision": "Leave keys longer than 1024 characters unhandled and file a P4 tracker bug for a PO decision",
+    "options": [
+      "invent an explicit-key `? key` layout",
+      "flag and defer"
+    ],
+    "reason": "It is a YAML implicit-key limit that no quoting fixes, the contract is silent, and the charter requires gaps to be filed",
+    "recorded_at": "transcript.md:143-145"
+  },
+  {
+    "decision": "Keep the key round-trip fallback check even though no test triggers it",
+    "options": [],
+    "reason": "The WP requires it",
+    "recorded_at": "transcript.md:143"
+  },
+  {
+    "decision": "Add D-10: write a string plain only if ruamel safe-load reads it back as the same string under both YAML 1.2 and 1.1 (keys must load as exactly {s: 'x'}); otherwise single quotes, else double. The rule is show-only and set's quoting is unchanged.",
+    "options": [
+      "amend NFR-001/D-8 to make YAML 1.2 core the read-back schema",
+      "quote anything YAML 1.1/1.2 readers would misread in show (and possibly set)"
+    ],
+    "reason": "The reviewer found strings like 2001-12-14, 1_000, yes and `<<` that are misread. Quoting more never changes data (TROUPE-002).",
+    "recorded_at": "research.md:90-93 (D-10); commit 91813c5; transcript.md:179-182"
+  },
+  {
+    "decision": "Send WP01 back for a fix cycle instead of accepting the reviewer's approval",
+    "options": [
+      "accept the approval with a tracker issue",
+      "reject and fix now"
+    ],
+    "reason": "show output must parse back exactly, so the misreads break that requirement",
+    "recorded_at": "transcript.md:179; tasks/WP01-yaml-renderer/review-feedback-1.md"
+  },
+  {
+    "decision": "Extend D-10 to floats: an exponent float without a `.` gets `.0` before the `e` (1e+20 becomes 1.0e+20) in YAML output only; get output is unchanged",
+    "options": [],
+    "reason": "YAML 1.1 readers need a `.` to read a float",
+    "recorded_at": "research.md:94; commit 87ebd81; transcript.md:241-242"
+  },
+  {
+    "decision": "Accept yamlout importing ruamel directly for the read-back probe as a documented exception, and file a P4 tracker issue for the stale yamlcore docstring",
+    "options": [
+      "move the probe into yamlcore",
+      "keep it in yamlout and document the exception"
+    ],
+    "reason": "The read-back rule lives in one place, and the implementer could not edit yamlcore.py",
+    "recorded_at": "transcript.md:243,269"
+  },
+  {
+    "decision": "Replace the old key compose check with one shared read-back probe for values and keys",
+    "options": [],
+    "reason": "The new key probe covers everything the old check did",
+    "recorded_at": "transcript.md:204,240"
+  },
+  {
+    "decision": "The probe silences ruamel warnings, creates each loader once and caches up to 4096 results (lru_cache)",
+    "options": [],
+    "reason": "Warnings would leak into show's stderr; the check runs once per string",
+    "recorded_at": "transcript.md:192,240; diff src/troupe/yamlout.py"
+  },
+  {
+    "decision": "Rename test fixture values (y, n, x/y) to neutral strings instead of changing the expected output",
+    "options": [],
+    "reason": "YAML 1.1 reads them as booleans, so D-10 now quotes them correctly; those tests are about layout",
+    "recorded_at": "transcript.md:240,298"
+  },
+  {
+    "decision": "show on a scalar without --sources uses format_scalar and never goes through the renderer",
+    "options": [],
+    "reason": "The renderer's float spellings (1.0e+20, .inf) differ from get's, which would break FR-004",
+    "recorded_at": "transcript.md:275,280; analysis-report R2"
+  },
+  {
+    "decision": "Source labels are relative to the resolved session.theatre.directory, not the --theatre string as given",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:280"
+  },
+  {
+    "decision": "show help text is 'print PATH, or everything, as YAML' (spec FR-015 wording), not the WP prompt's wording",
+    "options": [
+      "print PATH, or everything, as YAML",
+      "print PATH, or the whole configuration, as YAML"
+    ],
+    "reason": "Analysis I1: either wording is allowed",
+    "recorded_at": "transcript.md:63,347"
+  },
+  {
+    "decision": "Parse-back tests check show output under both YAML 1.2 and 1.1",
+    "options": [],
+    "reason": "D-10",
+    "recorded_at": "transcript.md:280,296"
+  },
+  {
+    "decision": "The orchestrator ran and committed WP03's tests itself after the implementer was cut off twice",
+    "options": [
+      "resume the implementer again",
+      "finish it directly"
+    ],
+    "reason": "To keep the work from being lost a third time",
+    "recorded_at": "transcript.md:327-331"
+  },
+  {
+    "decision": "Run acceptance with --lenient instead of creating an empty docs/ folder",
+    "options": [
+      "create an empty docs/",
+      "lenient mode"
+    ],
+    "reason": "The repo has never had docs/",
+    "recorded_at": "transcript.md:356-358; questions.md Scored Q7"
+  },
+  {
+    "decision": "Deliver by a local --no-ff merge of feat/troupe-config-get-show into main, with no push and no PR",
+    "options": [],
+    "reason": "The owner's delivery requirement",
+    "recorded_at": "transcript.md:364; questions.md Scored Q7"
+  },
+  {
+    "decision": "Close the ruamel-divergence tracker issue as fixed by D-10",
+    "options": [],
+    "reason": "Fixed in WP01 cycle 2 and merged",
+    "recorded_at": "transcript.md:366"
+  },
+  {
+    "decision": "Recommend not re-running acceptance on the feature branch after the post-merge acceptance check failed",
+    "options": [
+      "re-run acceptance on the feature branch and merge again",
+      "leave as is"
+    ],
+    "reason": "The mission was already accepted on the right branch",
+    "recorded_at": "questions.md Scored Q8; transcript.md:371"
+  },
+  {
+    "decision": "Take no action after method merge failed on missing lane branches",
+    "options": [],
+    "reason": "The mission was already merged; there is nothing left to merge",
+    "recorded_at": "questions.md Scored Q9; transcript.md:375"
+  },
+  {
+    "decision": "`kind` for the get refusal is found by checking isinstance(unwrap(node), MappingNode) after scalar_of returns None",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:183"
+  },
+  {
+    "decision": "Rename the cli.py docstring 'The step-1 commands' to 'The one-shot commands'",
+    "options": [],
+    "reason": "get isn't a step-1 command",
+    "recorded_at": "transcript.md:183"
+  },
+  {
+    "decision": "Add test_reconcile_first's parametrize over get, show and set",
+    "options": [],
+    "reason": "",
+    "recorded_at": "transcript.md:133"
+  }
+]

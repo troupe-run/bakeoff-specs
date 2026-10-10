@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["spec/spec/config-aliases/requirements.md:873-905 (cites tracker issue troupe-run/repo#2; states the anchor, refusal, --expand-alias and merge-key rules)", "spec/spec/config-aliases/requirements.md Req 4.1, 5.1, 7.1, 9.1 (diff.patch:1047-1101)", "spec/spec/config-aliases/design.md:314 (links tests/test_e2e_aliases.py as the issue #2 scenario test)", "tests/test_e2e_aliases.py (diff.patch:5588-5713, reproduces the reporter's exact file)", "spec/spec/config-foundation/requirements.md:180 (Req 3.9 still says anchors/aliases mean exit 4, with no step-6 note)", "spec/spec/config-aliases/tasks.md:198 (task 5.2, which aligns the earlier specs, is still unchecked)", "spec/steering/roadmap.md:252"]}
+```

@@ -1,0 +1,583 @@
+{
+  "outcomes": [
+    {
+      "outcome": "1",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "note",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "name: demo  # project\nnote: !literal file:notes.txt\nother: x\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "other",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "name: demo  # project\nnote: !literal file:notes.txt\nother: file:notes.txt\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "name: demo\nnote: file:notes.txt\nother: |\n  included text\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "name",
+            "file:missing.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "/theatre/.troupe/troupe.yml: name: written value cannot be read back: /theatre/.troupe/troupe.yml: name: include target /theatre/.troupe/missing.txt does not exist or is not a regular file\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "name",
+            "file:troupe.yml"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "/theatre/.troupe/troupe.yml: name: written value cannot be read back: /theatre/.troupe/troupe.yml: include cycle: /theatre/.troupe/troupe.yml -> /theatre/.troupe/troupe.yml\n",
+          "stdout": ""
+        }
+      ]
+    },
+    {
+      "outcome": "2",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "note",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "name: demo  # project\nnote: !literal file:notes.txt\nother: x\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "other",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "name: demo  # project\nnote: !literal file:notes.txt\nother: file:notes.txt\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "name: demo\nnote: file:notes.txt\nother: |\n  included text\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "name",
+            "file:missing.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: name: the result would not load (.troupe/missing.txt: included file not found (from .troupe/troupe.yml)); not writing\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "name",
+            "file:troupe.yml"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: name: the result would not load (.troupe/troupe.yml: include cycle (/theatre/.troupe/troupe.yml -> /theatre/.troupe/troupe.yml)); not writing\n",
+          "stdout": ""
+        }
+      ]
+    },
+    {
+      "outcome": "3",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "note",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "name: demo  # project\nnote: !literal file:notes.txt\nother: x\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "other",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "name: demo  # project\nnote: !literal file:notes.txt\nother: file:notes.txt\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "name: demo\nnote: file:notes.txt\nother: |\n  included text\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "name",
+            "file:missing.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: name: include target not found: /theatre/.troupe/missing.txt (included from /theatre/.troupe/troupe.yml, at name); no file changed\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "name",
+            "file:troupe.yml"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: name: include cycle at name: /theatre/.troupe/troupe.yml -> /theatre/.troupe/troupe.yml; no file changed\n",
+          "stdout": ""
+        }
+      ]
+    },
+    {
+      "outcome": "4",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "note",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "name: demo  # project\nnote: !literal file:notes.txt\nother: x\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "other",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "name: demo  # project\nnote: !literal file:notes.txt\nother: file:notes.txt\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "name: demo\nnote: !literal file:notes.txt\nother: |\n  included text\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "name",
+            "file:missing.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: write refused: name: cannot write this change faithfully (/theatre/.troupe/troupe.yml: include target /theatre/.troupe/missing.txt not found)\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "name",
+            "file:troupe.yml"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: write refused: name: cannot write this change faithfully (/theatre/.troupe/troupe.yml: include cycle through /theatre/.troupe/troupe.yml)\n",
+          "stdout": ""
+        }
+      ]
+    },
+    {
+      "outcome": "5",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "note",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "name: demo  # project\nnote: !literal file:notes.txt\nother: x\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "other",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "name: demo  # project\nnote: !literal file:notes.txt\nother: file:notes.txt\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "name: demo\nnote: !literal file:notes.txt\nother: |\n  included text\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "name",
+            "file:missing.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 4,
+          "stderr": "troupe: .troupe/missing.txt: included file not found (from ./.troupe/troupe.yml)\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "name",
+            "file:troupe.yml"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 4,
+          "stderr": "troupe: .troupe/troupe.yml: include cycle (from ./.troupe/troupe.yml)\n",
+          "stdout": ""
+        }
+      ]
+    },
+    {
+      "outcome": "6",
+      "results": [
+        {
+          "args": [
+            "config",
+            "set",
+            "note",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "name: demo  # project\nnote: !literal file:notes.txt\nother: x\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "other",
+            "file:notes.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {
+            ".troupe/troupe.yml": "name: demo  # project\nnote: !literal file:notes.txt\nother: file:notes.txt\n"
+          },
+          "rc": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "show"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 0,
+          "stderr": "",
+          "stdout": "name: demo\nnote: file:notes.txt\nother: |\n  included text\n"
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "name",
+            "file:missing.txt"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: error: name: the change to /theatre/.troupe/troupe.yml would not load back (/theatre/.troupe/troupe.yml: included file /theatre/.troupe/missing.txt not found); no file was changed\n",
+          "stdout": ""
+        },
+        {
+          "args": [
+            "config",
+            "set",
+            "--include",
+            "name",
+            "file:troupe.yml"
+          ],
+          "env": {
+            "TROUPE_ACTOR": "human:owner"
+          },
+          "files": {},
+          "rc": 3,
+          "stderr": "troupe: error: name: the change to /theatre/.troupe/troupe.yml would not load back (/theatre/.troupe/troupe.yml: include cycle through /theatre/.troupe/troupe.yml); no file was changed\n",
+          "stdout": ""
+        }
+      ]
+    }
+  ],
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "set",
+          "note",
+          "file:notes.txt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--include",
+          "other",
+          "file:notes.txt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "show"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--include",
+          "name",
+          "file:missing.txt"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "--include",
+          "name",
+          "file:troupe.yml"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/notes.txt": "included text\n",
+      ".troupe/troupe.yml": "name: demo  # project\nnote: hello\nother: x\n"
+    },
+    "passwd": true,
+    "show": [
+      ".troupe/troupe.yml",
+      ".troupe/notes.txt"
+    ]
+  }
+}

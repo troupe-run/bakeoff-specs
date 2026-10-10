@@ -1,0 +1,577 @@
+{
+  "plan": {
+    "commands": [
+      {
+        "args": [
+          "config",
+          "history"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "greeting",
+          "\"Grüß dich 👋 — ok\""
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:zoë"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "set",
+          "rôle",
+          "\"line sep ünïcode\"",
+          "--reason",
+          "pourquoi pas — 理由"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "agent:代理"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "greeting"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      },
+      {
+        "args": [
+          "config",
+          "history",
+          "rôle"
+        ],
+        "env": {
+          "TROUPE_ACTOR": "human:owner"
+        }
+      }
+    ],
+    "files": {
+      ".troupe/troupe.yml": "name: café\ngreeting: \"こんにちは\"\nmood: 🎭\nrôle: naïve\nnote: \"tab\\there\"\n"
+    },
+    "show": [
+      ".troupe/troupe.yml"
+    ]
+  },
+  "routes": [
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"caf\\u00e9\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:08.777741Z\", \"reason\": null, \"change\": \"a6ee5ce4-4b27-4b02-8ce6-0a3b6c990e5c\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"greeting\", \"old\": null, \"new\": \"\\u3053\\u3093\\u306b\\u3061\\u306f\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:08.777741Z\", \"reason\": null, \"change\": \"a6ee5ce4-4b27-4b02-8ce6-0a3b6c990e5c\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"mood\", \"old\": null, \"new\": \"\\ud83c\\udfad\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:08.777741Z\", \"reason\": null, \"change\": \"a6ee5ce4-4b27-4b02-8ce6-0a3b6c990e5c\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"r\\u00f4le\", \"old\": null, \"new\": \"na\\u00efve\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:08.777741Z\", \"reason\": null, \"change\": \"a6ee5ce4-4b27-4b02-8ce6-0a3b6c990e5c\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"note\", \"old\": null, \"new\": \"tab\\there\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:08.777741Z\", \"reason\": null, \"change\": \"a6ee5ce4-4b27-4b02-8ce6-0a3b6c990e5c\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "greeting",
+                "\"Grüß dich 👋 — ok\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:zoë"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: café\ngreeting: \"Grüß dich 👋 — ok\"\nmood: 🎭\nrôle: naïve\nnote: \"tab\\there\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "rôle",
+                "\"line sep ünïcode\"",
+                "--reason",
+                "pourquoi pas — 理由"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:代理"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: café\ngreeting: \"Grüß dich 👋 — ok\"\nmood: 🎭\nrôle: line sep ünïcode\nnote: \"tab\\there\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "greeting"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"greeting\", \"old\": null, \"new\": \"\\u3053\\u3093\\u306b\\u3061\\u306f\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:08.777741Z\", \"reason\": null, \"change\": \"a6ee5ce4-4b27-4b02-8ce6-0a3b6c990e5c\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"greeting\", \"old\": \"\\u3053\\u3093\\u306b\\u3061\\u306f\", \"new\": \"Gr\\u00fc\\u00df dich \\ud83d\\udc4b \\u2014 ok\", \"actor\": {\"kind\": \"human\", \"id\": \"zo\\u00eb\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:08:09.362548Z\", \"reason\": null, \"change\": \"fef6667a-05df-4d59-9db6-9aea297190b6\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "rôle"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 4, \"op\": \"import\", \"path\": \"r\\u00f4le\", \"old\": null, \"new\": \"na\\u00efve\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:08.777741Z\", \"reason\": null, \"change\": \"a6ee5ce4-4b27-4b02-8ce6-0a3b6c990e5c\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"r\\u00f4le\", \"old\": \"na\\u00efve\", \"new\": \"line\\u2028sep \\u00fcn\\u00efcode\", \"actor\": {\"kind\": \"agent\", \"id\": \"\\u4ee3\\u7406\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:08:09.960317Z\", \"reason\": \"pourquoi pas \\u2014 \\u7406\\u7531\", \"change\": \"22cee47d-e36e-432c-95f6-f8b2b19d71a0\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "ASCII escaping",
+      "route_no": 1
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"café\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:24.899795Z\", \"reason\": null, \"change\": \"6381eb7c-f116-49a3-984d-508608289390\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"greeting\", \"old\": null, \"new\": \"こんにちは\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:24.899795Z\", \"reason\": null, \"change\": \"6381eb7c-f116-49a3-984d-508608289390\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"mood\", \"old\": null, \"new\": \"🎭\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:24.899795Z\", \"reason\": null, \"change\": \"6381eb7c-f116-49a3-984d-508608289390\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"rôle\", \"old\": null, \"new\": \"naïve\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:24.899795Z\", \"reason\": null, \"change\": \"6381eb7c-f116-49a3-984d-508608289390\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"note\", \"old\": null, \"new\": \"tab\\there\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:24.899795Z\", \"reason\": null, \"change\": \"6381eb7c-f116-49a3-984d-508608289390\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "greeting",
+                "\"Grüß dich 👋 — ok\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:zoë"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: café\ngreeting: \"Grüß dich 👋 — ok\"\nmood: 🎭\nrôle: naïve\nnote: \"tab\\there\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "rôle",
+                "\"line sep ünïcode\"",
+                "--reason",
+                "pourquoi pas — 理由"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:代理"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: café\ngreeting: \"Grüß dich 👋 — ok\"\nmood: 🎭\nrôle: \"line sep ünïcode\"\nnote: \"tab\\there\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "greeting"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"greeting\", \"old\": null, \"new\": \"こんにちは\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:24.899795Z\", \"reason\": null, \"change\": \"6381eb7c-f116-49a3-984d-508608289390\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"greeting\", \"old\": \"こんにちは\", \"new\": \"Grüß dich 👋 — ok\", \"actor\": {\"kind\": \"human\", \"id\": \"zoë\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:08:25.443308Z\", \"reason\": null, \"change\": \"6d501c67-7963-4cbb-a5c7-a1ade22f949b\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "rôle"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 4, \"op\": \"import\", \"path\": \"rôle\", \"old\": null, \"new\": \"naïve\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:24.899795Z\", \"reason\": null, \"change\": \"6381eb7c-f116-49a3-984d-508608289390\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"rôle\", \"old\": \"naïve\", \"new\": \"line sep ünïcode\", \"actor\": {\"kind\": \"agent\", \"id\": \"代理\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:08:25.978506Z\", \"reason\": \"pourquoi pas — 理由\", \"change\": \"b82a4923-cb18-4b17-b448-ef679ed69f28\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "ensure_ascii=False with keys in a fixed order",
+      "route_no": 2
+    },
+    {
+      "outcomes": [
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"café\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:12.466808Z\", \"reason\": null, \"change\": \"784f1ec9-71e7-4093-b1b9-3d5af51ac45b\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"greeting\", \"old\": null, \"new\": \"こんにちは\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:12.466808Z\", \"reason\": null, \"change\": \"784f1ec9-71e7-4093-b1b9-3d5af51ac45b\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"mood\", \"old\": null, \"new\": \"🎭\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:12.466808Z\", \"reason\": null, \"change\": \"784f1ec9-71e7-4093-b1b9-3d5af51ac45b\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"rôle\", \"old\": null, \"new\": \"naïve\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:12.466808Z\", \"reason\": null, \"change\": \"784f1ec9-71e7-4093-b1b9-3d5af51ac45b\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"note\", \"old\": null, \"new\": \"tab\\there\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:12.466808Z\", \"reason\": null, \"change\": \"784f1ec9-71e7-4093-b1b9-3d5af51ac45b\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "greeting",
+                "\"Grüß dich 👋 — ok\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:zoë"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: café\ngreeting: \"Grüß dich 👋 — ok\"\nmood: 🎭\nrôle: naïve\nnote: \"tab\\there\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "rôle",
+                "\"line sep ünïcode\"",
+                "--reason",
+                "pourquoi pas — 理由"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:代理"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: café\ngreeting: \"Grüß dich 👋 — ok\"\nmood: 🎭\nrôle: line sep ünïcode\nnote: \"tab\\there\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "greeting"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"greeting\", \"old\": null, \"new\": \"こんにちは\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:12.466808Z\", \"reason\": null, \"change\": \"784f1ec9-71e7-4093-b1b9-3d5af51ac45b\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"greeting\", \"old\": \"こんにちは\", \"new\": \"Grüß dich 👋 — ok\", \"actor\": {\"kind\": \"human\", \"id\": \"zoë\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:08:13.001875Z\", \"reason\": null, \"change\": \"7343151f-2bd2-4dba-b39f-2f0890be6acc\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "rôle"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 4, \"op\": \"import\", \"path\": \"rôle\", \"old\": null, \"new\": \"naïve\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:12.466808Z\", \"reason\": null, \"change\": \"784f1ec9-71e7-4093-b1b9-3d5af51ac45b\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"rôle\", \"old\": \"naïve\", \"new\": \"line sep ünïcode\", \"actor\": {\"kind\": \"agent\", \"id\": \"代理\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:08:13.545104Z\", \"reason\": \"pourquoi pas — 理由\", \"change\": \"dd720d05-9aea-4655-94ee-380633acc720\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"café\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:15.524795Z\", \"reason\": null, \"change\": \"4d6ef2e7-6700-485c-92b7-36d155c055e2\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"greeting\", \"old\": null, \"new\": \"こんにちは\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:15.524795Z\", \"reason\": null, \"change\": \"4d6ef2e7-6700-485c-92b7-36d155c055e2\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"mood\", \"old\": null, \"new\": \"🎭\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:15.524795Z\", \"reason\": null, \"change\": \"4d6ef2e7-6700-485c-92b7-36d155c055e2\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"rôle\", \"old\": null, \"new\": \"naïve\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:15.524795Z\", \"reason\": null, \"change\": \"4d6ef2e7-6700-485c-92b7-36d155c055e2\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"note\", \"old\": null, \"new\": \"tab\\there\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:15.524795Z\", \"reason\": null, \"change\": \"4d6ef2e7-6700-485c-92b7-36d155c055e2\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "greeting",
+                "\"Grüß dich 👋 — ok\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:zoë"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: café\ngreeting: \"Grüß dich 👋 — ok\"\nmood: 🎭\nrôle: naïve\nnote: \"tab\\there\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "rôle",
+                "\"line sep ünïcode\"",
+                "--reason",
+                "pourquoi pas — 理由"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:代理"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: café\ngreeting: \"Grüß dich 👋 — ok\"\nmood: 🎭\nrôle: \"line\\Lsep ünïcode\"\nnote: \"tab\\there\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "greeting"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"greeting\", \"old\": null, \"new\": \"こんにちは\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:15.524795Z\", \"reason\": null, \"change\": \"4d6ef2e7-6700-485c-92b7-36d155c055e2\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"greeting\", \"old\": \"こんにちは\", \"new\": \"Grüß dich 👋 — ok\", \"actor\": {\"kind\": \"human\", \"id\": \"zoë\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:08:16.096395Z\", \"reason\": null, \"change\": \"68654c00-42c2-4e18-82d7-cc0c4766eeb1\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "rôle"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 4, \"op\": \"import\", \"path\": \"rôle\", \"old\": null, \"new\": \"naïve\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:15.524795Z\", \"reason\": null, \"change\": \"4d6ef2e7-6700-485c-92b7-36d155c055e2\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"rôle\", \"old\": \"naïve\", \"new\": \"line sep ünïcode\", \"actor\": {\"kind\": \"agent\", \"id\": \"代理\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:08:16.803444Z\", \"reason\": \"pourquoi pas — 理由\", \"change\": \"29453a90-6e9e-43ba-a854-a8b80c4a3825\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"café\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:18.726723Z\", \"reason\": null, \"change\": \"fbe410c1-3ebf-438d-8a3f-25dbca6435d1\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"greeting\", \"old\": null, \"new\": \"こんにちは\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:18.726723Z\", \"reason\": null, \"change\": \"fbe410c1-3ebf-438d-8a3f-25dbca6435d1\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"mood\", \"old\": null, \"new\": \"🎭\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:18.726723Z\", \"reason\": null, \"change\": \"fbe410c1-3ebf-438d-8a3f-25dbca6435d1\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"rôle\", \"old\": null, \"new\": \"naïve\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:18.726723Z\", \"reason\": null, \"change\": \"fbe410c1-3ebf-438d-8a3f-25dbca6435d1\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"note\", \"old\": null, \"new\": \"tab\\there\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:18.726723Z\", \"reason\": null, \"change\": \"fbe410c1-3ebf-438d-8a3f-25dbca6435d1\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "greeting",
+                "\"Grüß dich 👋 — ok\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:zoë"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: café\ngreeting: \"Grüß dich 👋 — ok\"\nmood: 🎭\nrôle: naïve\nnote: \"tab\\there\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "rôle",
+                "\"line sep ünïcode\"",
+                "--reason",
+                "pourquoi pas — 理由"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:代理"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: café\ngreeting: \"Grüß dich 👋 — ok\"\nmood: 🎭\nrôle: \"line\\Lsep ünïcode\"\nnote: \"tab\\there\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "greeting"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"greeting\", \"old\": null, \"new\": \"こんにちは\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:18.726723Z\", \"reason\": null, \"change\": \"fbe410c1-3ebf-438d-8a3f-25dbca6435d1\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"greeting\", \"old\": \"こんにちは\", \"new\": \"Grüß dich 👋 — ok\", \"actor\": {\"kind\": \"human\", \"id\": \"zoë\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:08:19.257786Z\", \"reason\": null, \"change\": \"a07402ee-3d52-448e-8c09-fcfc4a7ac524\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "rôle"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 4, \"op\": \"import\", \"path\": \"rôle\", \"old\": null, \"new\": \"naïve\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:18.726723Z\", \"reason\": null, \"change\": \"fbe410c1-3ebf-438d-8a3f-25dbca6435d1\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"rôle\", \"old\": \"naïve\", \"new\": \"line sep ünïcode\", \"actor\": {\"kind\": \"agent\", \"id\": \"代理\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:08:19.831948Z\", \"reason\": \"pourquoi pas — 理由\", \"change\": \"fd9c4e2d-e167-4969-b6f8-4bb20e6386c4\"}\n"
+            }
+          ]
+        },
+        {
+          "arms": 1,
+          "results": [
+            {
+              "args": [
+                "config",
+                "history"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 1, \"op\": \"import\", \"path\": \"name\", \"old\": null, \"new\": \"café\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:21.648970Z\", \"reason\": null, \"change\": \"e8250ac1-e4f1-4f1c-bddf-466f0a5d321b\"}\n{\"seq\": 2, \"op\": \"import\", \"path\": \"greeting\", \"old\": null, \"new\": \"こんにちは\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:21.648970Z\", \"reason\": null, \"change\": \"e8250ac1-e4f1-4f1c-bddf-466f0a5d321b\"}\n{\"seq\": 3, \"op\": \"import\", \"path\": \"mood\", \"old\": null, \"new\": \"🎭\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:21.648970Z\", \"reason\": null, \"change\": \"e8250ac1-e4f1-4f1c-bddf-466f0a5d321b\"}\n{\"seq\": 4, \"op\": \"import\", \"path\": \"rôle\", \"old\": null, \"new\": \"naïve\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:21.648970Z\", \"reason\": null, \"change\": \"e8250ac1-e4f1-4f1c-bddf-466f0a5d321b\"}\n{\"seq\": 5, \"op\": \"import\", \"path\": \"note\", \"old\": null, \"new\": \"tab\\there\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:21.648970Z\", \"reason\": null, \"change\": \"e8250ac1-e4f1-4f1c-bddf-466f0a5d321b\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "greeting",
+                "\"Grüß dich 👋 — ok\""
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:zoë"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: café\ngreeting: \"Grüß dich 👋 — ok\"\nmood: 🎭\nrôle: naïve\nnote: \"tab\\there\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "set",
+                "rôle",
+                "\"line sep ünïcode\"",
+                "--reason",
+                "pourquoi pas — 理由"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "agent:代理"
+              },
+              "files": {
+                ".troupe/troupe.yml": "name: café\ngreeting: \"Grüß dich 👋 — ok\"\nmood: 🎭\nrôle: \"line sep ünïcode\"\nnote: \"tab\\there\"\n"
+              },
+              "rc": 0,
+              "stderr": "",
+              "stdout": ""
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "greeting"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 2, \"op\": \"import\", \"path\": \"greeting\", \"old\": null, \"new\": \"こんにちは\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:21.648970Z\", \"reason\": null, \"change\": \"e8250ac1-e4f1-4f1c-bddf-466f0a5d321b\"}\n{\"seq\": 6, \"op\": \"set\", \"path\": \"greeting\", \"old\": \"こんにちは\", \"new\": \"Grüß dich 👋 — ok\", \"actor\": {\"kind\": \"human\", \"id\": \"zoë\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:08:22.162222Z\", \"reason\": null, \"change\": \"864055d7-2113-4675-afda-aa5fb37cb0e3\"}\n"
+            },
+            {
+              "args": [
+                "config",
+                "history",
+                "rôle"
+              ],
+              "env": {
+                "TROUPE_ACTOR": "human:owner"
+              },
+              "files": {},
+              "rc": 0,
+              "stderr": "",
+              "stdout": "{\"seq\": 4, \"op\": \"import\", \"path\": \"rôle\", \"old\": null, \"new\": \"naïve\", \"actor\": {\"kind\": \"unknown\", \"id\": null}, \"via\": \"import\", \"at\": \"2026-10-09T12:08:21.648970Z\", \"reason\": null, \"change\": \"e8250ac1-e4f1-4f1c-bddf-466f0a5d321b\"}\n{\"seq\": 7, \"op\": \"set\", \"path\": \"rôle\", \"old\": \"naïve\", \"new\": \"line sep ünïcode\", \"actor\": {\"kind\": \"agent\", \"id\": \"代理\"}, \"via\": \"cli\", \"at\": \"2026-10-09T12:08:22.673311Z\", \"reason\": \"pourquoi pas — 理由\", \"change\": \"ea291a25-8812-44b2-9bfb-e490b2897416\"}\n"
+            }
+          ]
+        }
+      ],
+      "route": "not considered",
+      "route_no": 3
+    }
+  ]
+}

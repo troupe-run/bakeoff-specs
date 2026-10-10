@@ -1,0 +1,66 @@
+{
+  "context": {
+    "examples": [
+      {
+        "before": "name: demo\nempty: {}\ntools: []\nagents:\n  coder:\n    model: opus  # main model\n    tags: [a, b]",
+        "input": "`config set empty.model sonnet` (the `empty` block starts as `{}`, so nothing is recorded under it)",
+        "observed": true,
+        "results": {
+          "1": "exit 0, no output; the file now reads:\nempty: {model: sonnet}",
+          "2": "all five arms: exit 0, no output; the file now reads:\nempty: {model: sonnet}"
+        }
+      },
+      {
+        "before": "agents:\n  coder:\n    model: opus  # main model\n    tags: [a, b]",
+        "input": "`config set agents.coder.tags []`, then `config set agents.coder solo` (replaces the whole coder block)",
+        "observed": true,
+        "results": {
+          "1": "both commands exit 0, no output; the file now reads:\nname: demo\nempty: {model: sonnet}\ntools: []\nagents:\n  coder: solo",
+          "2": "all five arms: both commands exit 0, no output; the file now reads:\nname: demo\nempty: {model: sonnet}\ntools: []\nagents:\n  coder: solo"
+        }
+      },
+      {
+        "before": "tools: []",
+        "input": "`config set tools.0 hammer` (on an empty list)",
+        "observed": true,
+        "results": {
+          "1": "exit 0; the file now reads:\ntools: [hammer]",
+          "2": "all five arms: exit 0; the file now reads:\ntools: [hammer]"
+        }
+      },
+      {
+        "before": "",
+        "input": "`config history` after the commands above",
+        "observed": true,
+        "results": {
+          "1": "exit 0; 10 entries: 4 imports (name, agents.coder.model, tags.0, tags.1), set empty.model, remove tags.0, remove tags.1, then entry 8 `set agents.coder` = \"solo\", entry 9 `remove agents.coder.model` (old \"opus\"), then set tools.0. None of the entries is flagged as an error.",
+          "2": "four arms: exactly the same 10 entries in the same order as route 1. One arm: the same 10 entries, but entries 8 and 9 are swapped. `remove agents.coder.model` is logged first, then `set agents.coder` = \"solo\" (both still belong to one change)."
+        }
+      }
+    ],
+    "in_practice": "In what was run, the two routes produced the same results: every exit code, every output and every file was identical. The only difference was in the history log, from one of the five arms on route 2. When one block replaced another, that arm recorded the removal of the old key before the new value was set. Every other arm recorded the set first. This test never replayed a remove for a path that history doesn't know about in a way that made one route crash and the other survive.",
+    "stakes": "This is about rebuilding config history from old \"remove\" records, including removes for paths that were never recorded (such as keys inside a block that started empty, or a key that a parent overwrite wiped out). If a route handles this badly, `config set` could crash, or the change history could be wrong or out of order. In this run nobody hit either problem: every implementation on both routes finished every command with exit 0 and produced the same file.",
+    "tradeoff": "Route 1 quietly ignores removes for paths it doesn't know about, so a corrupted or out-of-order history would be accepted without any warning. Route 2 adds no such guard, so it could crash on old logs this test didn't produce, and its arms differed on the order of history entries."
+  },
+  "plan_why": "Changes leaves into empty collections and back, and replaces a mapping with a scalar, so remove events can name paths the stored state never recorded. Each later command replays the event history: route 1 (pop(path, None)) carries on, while an implementation that doesn't allow for this may fail with a non-zero exit once such a remove is in the log.",
+  "routes": [
+    [
+      "pop(path, None)",
+      [
+        "Arm C"
+      ]
+    ],
+    [
+      "not considered",
+      [
+        "Arm A",
+        "Arm B",
+        "Arm D",
+        "Arm E",
+        "Arm F"
+      ]
+    ]
+  ],
+  "runnable": true,
+  "status": "ok"
+}

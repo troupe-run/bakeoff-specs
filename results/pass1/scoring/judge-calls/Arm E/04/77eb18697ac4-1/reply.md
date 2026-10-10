@@ -1,0 +1,3 @@
+```json
+{"score": 1, "evidence": ["/judge/repo/README.md:18-23", "/judge/diff.patch:5 (README header still reads 'Step 1: the configuration subsystem')", "/judge/diff.patch:153-164 (store.py _apply/record signature changes; only an inline code comment explains them)", "/judge/repo (no .git directory, commit messages, spec or change record found)"], "notes": "There are no commits and no spec or change record. The only reason given for the lineage feature is a README paragraph, plus one inline comment about legacy events. Changes to existing behaviour, such as the new record/act signatures, every command now rejecting a malformed TROUPE_ACTOR, and the README still saying 'Step 1', are not tied to the request or to any earlier requirement they displace."}
+```

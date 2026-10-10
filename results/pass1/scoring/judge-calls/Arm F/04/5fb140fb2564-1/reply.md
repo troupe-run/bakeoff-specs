@@ -1,0 +1,3 @@
+```json
+{"score": 1, "evidence": ["/judge/questions.md:3-28", "/judge/questions.md:22", "/judge/questions.md:30-58", "/judge/questions.md:60-94", "/judge/questions.md:134-173"], "notes": "In the scored run, every exchange was a workflow handoff or status report, and the PO answered each with only the next command, so none of the answers could change what was built. Q1 did raise one real gap the contract leaves open (event stores created before step 4) and asked for review of D-30/D-31, but only as an aside left out of scope, so it resolved no ambiguity and did not shape the build."}
+```

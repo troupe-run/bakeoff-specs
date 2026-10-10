@@ -1,0 +1,1 @@
+WP06 is approved, and WP07 (new keys and items, flow appends, replacing one kind of node with another) is now being implemented. WP08, which wires up `set`, is the last work package.

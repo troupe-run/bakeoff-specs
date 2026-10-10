@@ -1,0 +1,234 @@
+[
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 50,
+      "row": 25
+    },
+    "filename": "/work/bakeoff-specs-speckit/src/troupe/config/edit/alias.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from dataclasses import replace\n\nfrom troupe.config.edit import render\nfrom troupe.config.edit.planner import (\n    MERGE_KEY,\n    EditPlan,\n    _after_indicator,\n    _context,\n    _Owner,\n    _owner_column,\n    plan_set,\n)\nfrom troupe.config.leaves import written_value\nfrom troupe.config.loader import Loaded, reload\nfrom troupe.config.paths import ConfigPath\nfrom troupe.config.scalars import NewNode, NewScalar, Value\nfrom troupe.config.tree import (\n    LocatedMapping,\n    LocatedScalar,\n    LocatedSequence,\n    alias_name,\n)\nfrom troupe.errors import LoadError, WriteRefused\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 27
+          },
+          "location": {
+            "column": 1,
+            "row": 8
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 8
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 8,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 100,
+      "row": 7
+    },
+    "filename": "/work/bakeoff-specs-speckit/src/troupe/config/leaves.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from dataclasses import dataclass\nfrom typing import Literal\n\nfrom troupe.config.scalars import Scalar, Value, scalars_equal\nfrom troupe.config.tree import (\n    Located,\n    LocatedMapping,\n    LocatedScalar,\n    LocatedSequence,\n    TextInclude,\n)\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 9
+          },
+          "location": {
+            "column": 1,
+            "row": 3
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 3,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "FURB166",
+    "end_location": {
+      "column": 32,
+      "row": 49
+    },
+    "filename": "/work/bakeoff-specs-speckit/src/troupe/config/scalars.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "text",
+          "end_location": {
+            "column": 28,
+            "row": 49
+          },
+          "location": {
+            "column": 20,
+            "row": 49
+          }
+        },
+        {
+          "content": "0",
+          "end_location": {
+            "column": 31,
+            "row": 49
+          },
+          "location": {
+            "column": 30,
+            "row": 49
+          }
+        }
+      ],
+      "message": "Replace with `base=0`"
+    },
+    "location": {
+      "column": 16,
+      "row": 49
+    },
+    "message": "Use of `int` with explicit `base=8` after removing prefix",
+    "name": "int-on-sliced-str",
+    "noqa_row": 49,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/int-on-sliced-str"
+  },
+  {
+    "cell": null,
+    "code": "FURB166",
+    "end_location": {
+      "column": 33,
+      "row": 51
+    },
+    "filename": "/work/bakeoff-specs-speckit/src/troupe/config/scalars.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "text",
+          "end_location": {
+            "column": 28,
+            "row": 51
+          },
+          "location": {
+            "column": 20,
+            "row": 51
+          }
+        },
+        {
+          "content": "0",
+          "end_location": {
+            "column": 32,
+            "row": 51
+          },
+          "location": {
+            "column": 30,
+            "row": 51
+          }
+        }
+      ],
+      "message": "Replace with `base=0`"
+    },
+    "location": {
+      "column": 16,
+      "row": 51
+    },
+    "message": "Use of `int` with explicit `base=16` after removing prefix",
+    "name": "int-on-sliced-str",
+    "noqa_row": 51,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/int-on-sliced-str"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 100,
+      "row": 21
+    },
+    "filename": "/work/bakeoff-specs-speckit/src/troupe/config/view.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import os\nfrom pathlib import Path\n\nfrom troupe.config.edit.render import (\n    PLAIN,\n    literal_representable,\n    render_inline,\n    render_key,\n    render_literal,\n)\nfrom troupe.config.files import SourceFile\nfrom troupe.config.scalars import NewScalar\nfrom troupe.config.tree import (\n    Located,\n    LocatedMapping,\n    LocatedScalar,\n    LocatedSequence,\n    TextInclude,\n)\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 23
+          },
+          "location": {
+            "column": 1,
+            "row": 9
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 9
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 9,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "PYI041",
+    "end_location": {
+      "column": 43,
+      "row": 68
+    },
+    "filename": "/work/bakeoff-specs-speckit/tests/unit/test_render.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "str | float | bool | None",
+          "end_location": {
+            "column": 43,
+            "row": 68
+          },
+          "location": {
+            "column": 12,
+            "row": 68
+          }
+        }
+      ],
+      "message": "Remove redundant type"
+    },
+    "location": {
+      "column": 12,
+      "row": 68
+    },
+    "message": "Use `float` instead of `int | float`",
+    "name": "redundant-numeric-union",
+    "noqa_row": 68,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/redundant-numeric-union"
+  }
+]

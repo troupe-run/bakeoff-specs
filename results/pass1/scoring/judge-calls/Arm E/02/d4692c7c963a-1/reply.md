@@ -1,0 +1,1 @@
+{"score": null, "status": "not_applicable", "evidence": ["/judge/questions.md:3-20", "/judge/transcript.md:26"], "notes": "At this step the arm sent no question. Its only message to the product owner (questions.md:3) is a step_done completion report on committed work (1f533bf). It asks for no decision and offers no options, so the research_first rubric has nothing to judge."}

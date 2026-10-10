@@ -1,0 +1,4 @@
+```json
+{"score": 3, "evidence": ["spec/changes/archive/2026-10-04-config-lineage/tasks.md:19", "spec/changes/archive/2026-10-04-config-lineage/tasks.md:14", "tests/test_lineage_legacy.py:1", "tests/test_lineage.py:83", "tests/test_lineage.py:198", "tests/test_cli.py:64", "tests/test_history.py:133", "tests/test_set_targets.py:16", "spec/spec/config-set/spec.md:24", "spec/changes/archive/2026-10-04-config-lineage/tasks.md:18"]}
+{"notes": "Of five sampled requirements, the four step-4 ones are linked and correct: CLI actor, Reason, pre-lineage store, and the changed history line keys. tasks.md names each scenario and its test file, and tasks 1.1/2.2/3.1 name the code files and functions plus decisions D1–D9. The fifth, the step-1 config-set 'No-op set' scenario, traces to tests/test_set_targets.py:16 only by name match, and nothing in src/ refers back to the spec, so links are not explicit end to end."}
+```

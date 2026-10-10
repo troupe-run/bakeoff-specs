@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "/judge/repo/spec/spec/config-cli/spec.md:12",
+    "/judge/repo/spec/spec/config-sync/spec.md:71-72",
+    "/judge/repo/tests/test_cli.py:18-29",
+    "/judge/repo/README.md:112-113",
+    "/judge/repo/src/troupe/cli.py:48"
+  ],
+  "notes": "The code (cli.py:48) and an existing test (test_cli.py:18-29) cover three behaviours: TROUPE_THEATRE as the default, an explicit --theatre winning over it, and an empty value falling back to the current directory. However, the spec's theatre-selection requirement (config-cli/spec.md:12) still says --theatre defaults only to the current directory. TROUPE_THEATRE appears only in passing, in the watch ready-line wording in the spec and in README item 12, so precedence and the empty/unset fallback are never stated as a requirement.",
+  "raw": "```json\n{\"score\": 2, \"evidence\": [\"/judge/repo/spec/spec/config-cli/spec.md:12\", \"/judge/repo/spec/spec/config-sync/spec.md:71-72\", \"/judge/repo/tests/test_cli.py:18-29\", \"/judge/repo/README.md:112-113\", \"/judge/repo/src/troupe/cli.py:48\"], \"notes\": \"The code (cli.py:48) and an existing test (test_cli.py:18-29) cover three behaviours: TROUPE_THEATRE as the default, an explicit --theatre winning over it, and an empty value falling back to the current directory. However, the spec's theatre-selection requirement (config-cli/spec.md:12) still says --theatre defaults only to the current directory. TROUPE_THEATRE appears only in passing, in the watch ready-line wording in the spec and in README item 12, so precedence and the empty/unset fallback are never stated as a requirement.\"}\n```",
+  "score": 2,
+  "status": "ok"
+}

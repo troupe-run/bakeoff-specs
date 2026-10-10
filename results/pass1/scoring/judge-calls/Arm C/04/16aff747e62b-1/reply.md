@@ -1,0 +1,3 @@
+```json
+{"score": 3, "evidence": ["/judge/transcript.md:6-7", "/judge/questions.md:5-18", "/judge/questions.md:20-26", "/judge/questions.md:237-251"], "notes": "Both real questions came after research and say what was found and where: Q1 names the code files read and the stored-timestamp and `via` facts, and Q11 cites the accept output and the earlier record at 8d4739f. Each also offers options with a marked recommendation. It falls short of a 4 because Q1 never says why A beats B or what refusing would cost, and its six bundled defaults have no reasons. Q11's reason is thin and leaves the consequences of the alternatives mostly unstated."}
+```

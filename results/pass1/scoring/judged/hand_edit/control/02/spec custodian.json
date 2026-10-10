@@ -1,0 +1,13 @@
+{
+  "evidence": [
+    "repo/tests/test_config.py:140-147",
+    "repo/src/troupe/cli.py:26",
+    "repo/src/troupe/cli.py:103",
+    "repo/README.md:5-12",
+    "diff.patch:238-241"
+  ],
+  "notes": "At the end of the step, the code still supports the TROUPE_THEATRE default (cli.py:103): a set, non-empty value becomes the default theatre, and an explicit --theatre wins. A test covers this behaviour, but it was already there before this step (the diff shows those lines as unchanged context). The step did not change the env default or record it anywhere: the repo has no spec, the README still shows only `[--theatre DIR]` and never mentions the env var, and the env var is named only in the existing CLI help text.",
+  "raw": "{\"score\": 2, \"evidence\": [\"repo/tests/test_config.py:140-147\", \"repo/src/troupe/cli.py:26\", \"repo/src/troupe/cli.py:103\", \"repo/README.md:5-12\", \"diff.patch:238-241\"], \"notes\": \"At the end of the step, the code still supports the TROUPE_THEATRE default (cli.py:103): a set, non-empty value becomes the default theatre, and an explicit --theatre wins. A test covers this behaviour, but it was already there before this step (the diff shows those lines as unchanged context). The step did not change the env default or record it anywhere: the repo has no spec, the README still shows only `[--theatre DIR]` and never mentions the env var, and the env var is named only in the existing CLI help text.\"}",
+  "score": 2,
+  "status": "ok"
+}
