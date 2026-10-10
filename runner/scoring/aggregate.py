@@ -1,13 +1,14 @@
 # runner/scoring/aggregate.py
 """Stage: collected + judged + ratings + owner verdicts + weights -> scores.json (spec §3, §4, §6). Deterministic."""
 from __future__ import annotations
-import json, statistics
+import json, math, statistics
 from pathlib import Path
 from runner import faults, paths
 from runner.scoring import evidence, inputs, scales, values
 
 ARM_MEASURED = {"violations", "choice"}
-MEASURED = {"correctness", "regressions", "churn", "time", "mutation", "types", "lint", "violations", "choice"}
+MEASURED = {"correctness", "regressions", "churn", "time", "cost", "mutation", "types", "lint", "violations", "choice"}
+FIELD_RELATIVE = {"time", "cost"}       # scored against the median arm at the step (owner, 2026-10-10)
 
 
 def _v(x):
@@ -163,18 +164,47 @@ def _measured(part: str, rec: dict, base: dict | None, sc: dict, pass_: str) -> 
         a, b = _v(rec["churn"]), _v(base["churn"])
         return ({"score": scales.churn_score(a["lines"], b["lines"], sc["ratio_cap"])} if a and b
                 else {"score": None, "why": "churn not measured"})
-    if part == "time":
-        t, bt = _v(rec["time"]), _v(base["time"])
-        hh, bh = _v(rec["hidden"]), _v(base["hidden"])
-        if not (t and bt and hh and bh):
-            return {"score": None, "why": "time or passed tests missing"}
-        if not bh["passed"]:
-            return {"score": None, "why": "baseline passed no tests"}
-        if not hh["passed"]:
-            return {"score": 0.0}
-        s = scales.ratio_score(t["seconds"] / hh["passed"], bt["seconds"] / bh["passed"], sc["ratio_cap"])
-        return {"score": s} if s is not None else {"score": None, "why": "time or passed tests missing"}
     raise ValueError(part)
+
+
+def _raw(part: str, rec: dict) -> float | None:
+    """The scored run's arm seconds (`time`) or USD (`cost`, cost.json "scored": PO and the N.a discovery run are
+    excluded, as they are from time) for one step; None when unmeasured."""
+    if part == "time":
+        t = _v(rec.get("time"))
+        x = t.get("seconds") if t else None
+    else:
+        c = _v(rec.get("cost"))
+        x = c.get("scored_usd") if c else None
+    return x if isinstance(x, (int, float)) and not isinstance(x, bool) and x > 0 else None
+
+
+def per_passed(part: str, rec: dict) -> tuple[float | None, str | None]:
+    """(value per hidden test passed, None) or (None, why). Zero passed is (inf, None): no outcome, the worst score."""
+    hh = _v(rec.get("hidden"))
+    x = _raw(part, rec)
+    if x is None or not hh:
+        return None, f"{part} or passed tests missing"
+    return (x / hh["passed"] if hh["passed"] else math.inf), None
+
+
+def _field_relative(part: str, n: int, rec: dict, field: dict[str, dict[int, dict]], sc: dict) -> dict:
+    """Owner rule, 2026-10-10, the same for every arm and step: time and cost per hidden test passed, on a log scale
+    against the median of the arms measured at this step: 0.5 - log10(arm / median) / (2 log10 ratio_cap), clamped
+    to [0, 1]. The median arm scores 0.5, ratio_cap times cheaper or faster 1, ratio_cap times dearer or slower 0. An
+    arm that passed no hidden test scores 0 and is left out of the median; an unmeasured value is unmeasured."""
+    mine, why = per_passed(part, rec)
+    if mine is None:
+        return {"score": None, "why": why}
+    xs = [x for x in (per_passed(part, r[n])[0] for r in field.values() if n in r)
+          if x is not None and math.isfinite(x)]
+    if not xs:
+        return {"score": None, "why": "no arm passed a hidden test at this step"}
+    med = statistics.median(xs)
+    if not math.isfinite(mine):
+        return {"score": 0.0, "per_passed": None, "median": med, "arms": len(xs)}
+    return {"score": scales.ratio_score(mine, med, sc["ratio_cap"]), "per_passed": mine, "median": med,
+            "arms": len(xs)}
 
 
 def _choice(pass_: str, arm: str, sc: dict) -> dict:
@@ -188,7 +218,7 @@ def _choice(pass_: str, arm: str, sc: dict) -> dict:
     return {"score": sum(rs) / len(rs)} if rs else {"score": None, "why": "no rated routes"}
 
 
-def _part_steps(pass_, part, arm, recs, base_recs, rubrics, verdicts, sc) -> dict[str, dict]:
+def _part_steps(pass_, part, arm, recs, base_recs, rubrics, verdicts, sc, field=None) -> dict[str, dict]:
     if part in ARM_MEASURED or (part in rubrics and rubrics[part].unit == "arm"):
         if part == "choice":
             return {"arm": _choice(pass_, arm, sc)}
@@ -212,6 +242,8 @@ def _part_steps(pass_, part, arm, recs, base_recs, rubrics, verdicts, sc) -> dic
             return {"arm": {"score": max(0.0, 1.0 - deducted), "deducted": deducted, "kinds": kinds,
                              "arm_level": len(arm_list)}}
         return {"arm": _judged(pass_, part, arm, "arm", verdicts, _lens_names(rubrics[part]))}
+    if part in FIELD_RELATIVE:
+        return {str(n): _field_relative(part, n, r, field or {arm: recs}, sc) for n, r in sorted(recs.items())}
     if part in MEASURED:
         return {str(n): _measured(part, r, base_recs.get(n), sc, pass_) for n, r in sorted(recs.items())}
     if part not in rubrics:
@@ -289,7 +321,7 @@ def run(pass_: str, baseline: str = "control") -> Path:
             names = list(w.parts.get(dim, {dim: 0}))
             parts = {}
             for part in names:
-                steps = _part_steps(pass_, part, arm, coll[arm], coll.get(baseline, {}), rubrics, verdicts, sc)
+                steps = _part_steps(pass_, part, arm, coll[arm], coll.get(baseline, {}), rubrics, verdicts, sc, coll)
                 parts[part] = {"score": _part_score(steps), "steps": steps}
                 flags += [f"{arm}: {part} {f'{int(k):02d}' if k.isdigit() else k}: lens file(s) {st['ignored_lenses']} "
                           "are not lenses of the rubric; ignored" for k, st in steps.items() if st.get("ignored_lenses")]

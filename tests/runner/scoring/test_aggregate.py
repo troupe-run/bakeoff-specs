@@ -1,4 +1,5 @@
 import json
+import math
 import pytest
 from runner import paths
 from runner.scoring import aggregate, inputs, values
@@ -77,10 +78,10 @@ def test_owner_verdict_is_used_and_lenses_are_kept(p):
     assert st["score"] == 0.5 and st["lenses"] == {"auditor": 1, "maintainer": 3, "newcomer": 4} and st["disputed"]
 
 
-def test_control_missing_for_a_step_leaves_time_unscored(p):
+def test_control_missing_for_a_step_still_scores_time_against_the_median_arm(p):
     write_collected(p, "alpha", 2)
     st = _scores(p)["arms"]["alpha"]["dimensions"]["time"]["parts"]["time"]["steps"]["2"]
-    assert st["score"] is None and st["why"] == "no baseline for this step"
+    assert st["score"] == 0.5 and st["arms"] == 1         # alone at the step: it is the median
 
 
 def test_unreviewed_all_fail_test_stops_aggregation(p, monkeypatch):
@@ -176,15 +177,51 @@ def test_any_step_missing_violations_evidence_leaves_the_part_unscored(p):
     assert st["score"] is None and st["why"] == "violations evidence missing for steps [2]"
 
 
-def test_time_with_zero_passed_is_worst_and_baseline_zero_passed_is_unscored(p):
-    zero = {"passed": 0, "total": 10, "excluded": [], "per_test": {}}
-    write_collected(p, "alpha", 2, hidden=zero)
-    write_collected(p, "control", 2)
-    assert _scores(p)["arms"]["alpha"]["dimensions"]["time"]["parts"]["time"]["steps"]["2"]["score"] == 0.0
-    write_collected(p, "alpha", 2)
-    write_collected(p, "control", 2, hidden=zero)
-    st = _scores(p)["arms"]["alpha"]["dimensions"]["time"]["parts"]["time"]["steps"]["2"]
-    assert st["score"] is None and st["why"] == "baseline passed no tests"
+def _time_cost(p, arm, step):
+    parts = _scores(p)["arms"][arm]["dimensions"]["time"]["parts"]
+    return parts["time"]["steps"][str(step)], parts["cost"]["steps"][str(step)]
+
+
+def _tc(p, arm, step, seconds, usd, passed=10):
+    write_collected(p, arm, step, time={"seconds": seconds, "attempt": 1, "turns": []},
+                    cost={"scored_usd": usd, "po_usd": 99.0, "discovery_usd": 99.0},
+                    hidden={"passed": passed, "total": 10, "excluded": [], "per_test": {}})
+
+
+def test_time_and_cost_are_log_scored_against_the_median_arm_per_passed_test(p):
+    _tc(p, "control", 1, 100.0, 1.0)
+    _tc(p, "alpha", 1, 1000.0, 0.1)
+    _tc(p, "beta", 1, 300.0, 3.0)       # median of 100, 1000, 300 = 300 s; of 1.0, 0.1, 3.0 = $1.0
+    write_arm_violations(p, "beta", [])
+    t, c = _time_cost(p, "alpha", 1)
+    assert t["median"] == 30.0 and c["median"] == pytest.approx(0.1)          # per passed test (10 passed)
+    assert t["score"] == pytest.approx(0.5 - math.log10(1000 / 300) / 2)       # slower than the median: below 0.5
+    assert c["score"] == 1.0                                                  # 10x cheaper than the median: 1
+    t, c = _time_cost(p, "beta", 1)
+    assert t["score"] == 0.5 and c["score"] == pytest.approx(0.5 - math.log10(3) / 2)
+
+
+def test_time_and_cost_clamp_at_ratio_cap_and_po_and_discovery_cost_do_not_count(p):
+    _tc(p, "control", 1, 1.0, 1.0)
+    _tc(p, "alpha", 1, 1000.0, 1000.0)
+    _tc(p, "beta", 1, 10.0, 10.0)
+    write_arm_violations(p, "beta", [])
+    t, c = _time_cost(p, "alpha", 1)
+    assert t["score"] == 0.0 and c["score"] == 0.0 and c["median"] == 1.0   # median $10/10 passed; PO $99 ignored
+    t, c = _time_cost(p, "control", 1)
+    assert t["score"] == 1.0 and c["score"] == 1.0
+
+
+def test_zero_passed_is_worst_and_left_out_of_the_median_and_unmeasured_cost_is_unmeasured(p):
+    _tc(p, "control", 1, 100.0, 1.0)
+    _tc(p, "alpha", 1, 1.0, 0.01, passed=0)
+    t, c = _time_cost(p, "alpha", 1)
+    assert t["score"] == 0.0 and c["score"] == 0.0
+    t, _ = _time_cost(p, "control", 1)
+    assert t["score"] == 0.5 and t["arms"] == 1
+    write_collected(p, "alpha", 1, cost=values.missing("x", "gone"))
+    _, c = _time_cost(p, "alpha", 1)
+    assert c == {"score": None, "why": "cost or passed tests missing"}
 
 
 def test_an_arm_with_a_different_step_set_is_flagged(p):

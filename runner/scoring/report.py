@@ -353,7 +353,12 @@ def _phase_tables(coll: dict) -> list[str]:
 
 def _time_cost(coll: dict, factor: float) -> list[str]:
     arms = sorted(coll)
-    out = ["## Time and cost", ""]
+    cap = inputs.load_weights().scales.get("ratio_cap", 10.0)
+    out = ["## Time and cost", "",
+           f"Scored in the time dimension as two equal parts, time and cost, each per hidden test passed, on a log scale "
+           f"against the median of the arms at the step: the median arm scores 0.5, {cap:g}× faster or cheaper 1, "
+           f"{cap:g}× slower or dearer 0 (owner, 2026-10-10). Both are the scored run's arm turns only: the PO's cost "
+           "and the N.a discovery runs are reported, not scored.", ""]
     for n in _steps_of(coll):
         out += [f"### Step {n}", ""]
         secs, usd, rows = {}, {}, []

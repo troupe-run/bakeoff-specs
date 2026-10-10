@@ -35,13 +35,18 @@ test_names = 5
 choice = 6
 process = 4
 
+[parts.time]                  # owner, 2026-10-10: each per hidden test passed, against the median arm at the step
+time = 2.5                    # scored run's arm working time (PO and the N.a discovery run excluded)
+cost = 2.5                    # scored run's arm USD, cost.json "scored" (PO and the N.a discovery run excluded)
+
 [parts.setup]
 setup_effort = 4
 fit = 4
 violations = 2
 
 [scales]
-ratio_cap = 10.0           # log scale relative to control: capped at 10x worse and 10x better (spec §4)
+ratio_cap = 10.0           # log scale, capped at 10x worse and 10x better (spec §4): churn relative to control;
+                           # time and cost relative to the median arm at the step (owner, 2026-10-10)
 # types/lint (owner, 2026-10-10), the same for every arm and step: score = max(0, 1 - per_kloc / zero_per_kloc), where
 # per_kloc is per 1,000 non-blank *.py lines the tool checked (quality/size.json: mypy usually src only, ruff src+tests).
 types_zero_per_kloc = 10   # 10 mypy errors per 1,000 lines = 0

@@ -22,7 +22,7 @@ open items in design §8. Brainstormed with the owner 2026-10-05 19:46–20:15 A
 | Was | Now |
 |---|---|
 | Coping with change 30 · Correctness 20 · Traceability 15 · Human interaction 15 · Code and test quality 10 · Setup and ergonomics 10 | Coping with change **20** · Correctness 20 · Traceability **10** · Human interaction **10** · Code and test quality **15** · **Decision quality 10** · Setup and ergonomics 10 · **Time to outcome 5** |
-| Cost reported, not scored | **Time to outcome is scored** (5). Cost stays reported alongside, with outliers either way flagged. Owner: "I'd score time taken to reach an outcome (cost is a proxy for that)"; "blow-outs one way or another are interesting data points." |
+| Cost reported, not scored | **Time to outcome is scored** (5). Cost stays reported alongside, with outliers either way flagged. *Amended 2026-10-10 (owner): the 5 points are split equally between time and the scored run's cost, both against the median arm (§4).* Owner: "I'd score time taken to reach an outcome (cost is a proxy for that)"; "blow-outs one way or another are interesting data points." |
 | "Number and value of questions" | **Value of questions.** Asking is never penalised for its own sake; only asks whose answer was within reach, or that were superfluous, lose points. The count is reported. |
 | Owner review time scored under human interaction | **Removed from the score; reported.** The relay auto-continued uncontroversial reviews, so the measure reflects the relay, not the arm. |
 | LLM judges, checked by the owner | **A panel of three lenses per judged part** (§6). Disagreement is reported, not averaged away. |
@@ -43,12 +43,12 @@ change is deliberate overlap. Six of seven steps are change steps.
 | 15 | **Code and test quality** | Mutation score (5) · types: `mypy --strict` errors per 1,000 lines (3) · lint: ruff findings per 1,000 lines, a safe auto-fix counting 0.1 (2) · test names checked against what the tests assert (5) | measured · measured · measured · judged |
 | 10 | **Decision quality** | Choice: the owner's rating of each route the arm took, averaged over topics (6) · Process: options weighed, reason stated, decision recorded (4) — §8 | owner-rated · judged |
 | 10 | **Setup and ergonomics** | Setup effort (4) · fit with Claude Code and the arm's tracker (4) · arm violations, deduction by severity (2) | judged · judged · measured |
-| 5 | **Time to outcome** | Arm working time per hidden test passed | measured |
+| 5 | **Time to outcome** | Time: arm working time per hidden test passed (2.5) · cost: the scored run's arm USD per hidden test passed (2.5); each against the median arm at the step (owner, 2026-10-10) | measured · measured |
 
 Internal splits not given above are equal. All weights live in one file, `scoring/weights.toml` (single source
 of truth).
 
-**Reported, not scored:** cost; time and cost by phase (§5); outliers in time or cost, by step and by arm; owner
+**Reported, not scored:** PO cost and the N.a discovery runs' cost; time and cost by phase (§5); outliers in time or cost, by step and by arm; owner
 review time; tracker quality (incl. step 6's tracker round trip); N.a runs in full; re-runs and harness faults;
 the decision review's unscored parts (§8).
 
@@ -60,9 +60,15 @@ the decision review's unscored parts (§8).
   never the arm's config), a finding with a safe auto-fix counting 0.1. Lines are non-blank `*.py` lines the tool
   checked (`quality/size.json`): mypy its targets (src), ruff src and tests. A crashed tool or an unmeasured size is
   unmeasured, never 0.
-- **Control as the baseline where none exists:** time and collateral churn are scored on log(arm ÷ control) for the
+- **Control as the baseline where none exists:** collateral churn is scored on log(arm ÷ control) for the
   same step. Equal to control is the midpoint; the scale is capped at 10× worse and 10× better, so one bad control
   step or one blow-out cannot flatten everyone else.
+- **Time and cost against the median arm (owner, 2026-10-10):** per step and per hidden test passed,
+  score = 0.5 − log10(arm ÷ median of the measured arms) ÷ (2 · log10 `ratio_cap`), clamped to [0, 1]: the median arm
+  scores 0.5, 10× faster or cheaper 1, 10× slower or dearer 0. Cost is the scored run's arm cost; the PO's and the
+  N.a discovery run's are excluded, as from time. An arm that passed no hidden test scores 0 and is left out of the
+  median; an unmeasured value is unmeasured. (Replaces the control anchor, which gave control a fixed 0.5 and
+  clamped the slowest arms together at 0.)
 - **Judged parts:** 0–4 on an anchored rubric (every level described concretely), median of the three lenses.
 - **Not applicable decided by the record, not by vote (owner, 2026-10-10):** for parts whose rubric allows
   `not_applicable` (value of questions, research before asking), a step is not applicable exactly when its question
