@@ -247,7 +247,7 @@ def test_quality_specs_run_hardened_like_prep_and_hidden_tests(tmp_state, monkey
     group.write_text("actor:x:1000:\n")
     # avoid a real `docker run ... cat /etc/passwd` against the tester image: _accounts is the only side
     # effect _spec has for mode="script" that this test needs to avoid to stay pure.
-    monkeypatch.setattr(hidden, "_accounts", lambda p, image: (passwd, group, "actor"))
+    monkeypatch.setattr(hidden, "_accounts", lambda p, image, **_: (passwd, group, "actor"))
 
     p = Paths("dryquality", "dryrun")
     copy = tmp_path / "work" / "bakeoff-specs-dryrun"
@@ -1008,7 +1008,7 @@ def test_script_spec_carries_uv_project_environment_only_when_given_the_mutation
     accounts.mkdir()
     (accounts / "passwd").write_text("actor:x:1000:1000::/home/actor:/bin/bash\n")
     (accounts / "group").write_text("actor:x:1000:\n")
-    monkeypatch.setattr(hidden, "_accounts", lambda p, image: (accounts / "passwd", accounts / "group", "actor"))
+    monkeypatch.setattr(hidden, "_accounts", lambda p, image, **_: (accounts / "passwd", accounts / "group", "actor"))
     copy = tmp_path / "work" / "bakeoff-specs-dryrun"
     copy.mkdir(parents=True)
 
