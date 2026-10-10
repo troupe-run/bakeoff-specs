@@ -4,11 +4,12 @@ from runner.scoring import inputs
 
 def test_shipped_weights_match_the_spec():
     w = inputs.load_weights()
-    assert w.dimensions == {"coping": 20, "correctness": 20, "traceability": 10, "interaction": 10,
-                            "code_quality": 15, "decision_quality": 10, "setup": 10, "time": 5}
+    assert w.dimensions == {"coping": 20, "correctness": 20, "traceability": 5, "interaction": 10,
+                            "code_quality": 15, "decision_quality": 15, "setup": 5, "time": 10}
     assert w.parts["coping"] == {"regressions": 7, "stale_updated": 7, "churn": 3, "hand_edit": 3}
-    assert w.parts["decision_quality"] == {"choice": 6, "process": 4}
-    assert w.parts["setup"] == {"setup_effort": 4, "fit": 4, "violations": 2}
+    assert w.parts["decision_quality"] == {"choice": 9, "process": 6}
+    assert w.parts["setup"] == {"setup_effort": 2, "fit": 2, "violations": 1}
+    assert w.parts["time"] == {"time": 5, "cost": 5}
     assert w.parts["code_quality"] == {"mutation": 4, "types": 3, "lint": 2, "test_names": 4, "size": 2}
 
 

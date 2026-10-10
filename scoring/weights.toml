@@ -1,13 +1,13 @@
 # scoring/weights.toml — owner decisions 2026-10-05 (spec §2-§3). The only place weights live.
-[dimensions]
+[dimensions]                  # owner, 2026-10-10: decision_quality 10 -> 15, time 5 -> 10, setup 10 -> 5, traceability 10 -> 5
 coping = 20
 correctness = 20
-traceability = 10
+traceability = 5
 interaction = 10
 code_quality = 15
-decision_quality = 10
-setup = 10
-time = 5
+decision_quality = 15
+setup = 5
+time = 10
 
 [parts.coping]
 regressions = 7
@@ -16,9 +16,9 @@ churn = 3
 hand_edit = 3
 
 [parts.traceability]          # equal split (spec: splits not given are equal)
-req_test_code = 3.3333333333333335
-change_reason = 3.3333333333333335
-step6_spec_trace = 3.333333333333333
+req_test_code = 1.6666666666666667
+change_reason = 1.6666666666666667
+step6_spec_trace = 1.6666666666666665
 
 [parts.interaction]
 question_value = 3.3333333333333335
@@ -33,17 +33,17 @@ test_names = 4             # owner, 2026-10-10: 5 -> 4 for size
 size = 2                   # concision: source lines (src, not tests) against the median arm (owner, 2026-10-10)
 
 [parts.decision_quality]
-choice = 6
-process = 4
+choice = 9                    # owner, 2026-10-10: scaled with the dimension (6/4 of 10 -> 9/6 of 15)
+process = 6
 
 [parts.time]                  # owner, 2026-10-10: raw time and cost per step, against the median arm at the step
-time = 2.5                    # scored run's arm working time (PO and the N.a discovery run excluded)
-cost = 2.5                    # scored run's arm USD, cost.json "scored" (PO and the N.a discovery run excluded)
+time = 5                      # scored run's arm working time (PO and the N.a discovery run excluded)
+cost = 5                      # scored run's arm USD, cost.json "scored" (PO and the N.a discovery run excluded)
 
 [parts.setup]
-setup_effort = 4
-fit = 4
-violations = 2
+setup_effort = 2              # owner, 2026-10-10: scaled with the dimension (4/4/2 of 10 -> 2/2/1 of 5)
+fit = 2
+violations = 1
 
 [scales]
 ratio_cap = 10.0           # log scale, capped at 10x worse and 10x better (spec §4): churn relative to control;

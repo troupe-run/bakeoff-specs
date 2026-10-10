@@ -38,12 +38,12 @@ change is deliberate overlap. Six of seven steps are change steps.
 |---|---|---|---|
 | 20 | **Coping with change** | Regressions: earlier steps' hidden tests still green after each change step (7) · Stale artefacts updated: old requirements, tests and docs a change made wrong were found and changed, steps 3, 5, 7 (7) · Collateral churn: lines changed in files the step had no reason to touch (3) · Hand edit detected and reconciled, step 2 (3) | measured · judged · measured · judged |
 | 20 | **Correctness** | Hidden tests passed per step, **all** tests at that step including earlier steps' (a regression deliberately costs twice) | measured |
-| 10 | **Traceability** | Requirement → test → code · change → reason · step 6's fix leaves a spec trace | judged |
+| 5 | **Traceability** | Requirement → test → code · change → reason · step 6's fix leaves a spec trace | judged |
 | 10 | **Quality of human interaction** | Value of questions, N.a and N.b both counted · research before asking, informed-choice framing (design §8) · gates at sensible points | judged |
 | 15 | **Code and test quality** | Mutation score (4) · types: `mypy --strict` errors per 1,000 lines (3) · lint: ruff findings per 1,000 lines, a safe auto-fix counting 0.1 (2) · test names checked against what the tests assert (4) · size: source lines against the median arm (2; owner, 2026-10-10) | measured · measured · measured · judged · measured |
-| 10 | **Decision quality** | Choice: the owner's rating of each route the arm took, averaged over topics (6) · Process: options weighed, reason stated, decision recorded (4) — §8 | owner-rated · judged |
-| 10 | **Setup and ergonomics** | Setup effort (4) · fit with Claude Code and the arm's tracker (4) · arm violations, deduction by severity (2) | judged · judged · measured |
-| 5 | **Time to outcome** | Time: arm working time per step (2.5) · cost: the scored run's arm USD per step (2.5); each against the median arm at the step (owner, 2026-10-10) | measured · measured |
+| 15 | **Decision quality** | Choice: the owner's rating of each route the arm took, averaged over topics (9) · Process: options weighed, reason stated, decision recorded (6) — §8 | owner-rated · judged |
+| 5 | **Setup and ergonomics** | Setup effort (2) · fit with Claude Code and the arm's tracker (2) · arm violations, deduction by severity (1) | judged · judged · measured |
+| 10 | **Time to outcome** | Time: arm working time per step (5) · cost: the scored run's arm USD per step (5); each against the median arm at the step (owner, 2026-10-10) | measured · measured |
 
 Internal splits not given above are equal. All weights live in one file, `scoring/weights.toml` (single source
 of truth).
