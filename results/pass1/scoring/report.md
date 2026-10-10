@@ -2,11 +2,10 @@
 
 ## Bottom line
 
-- 1–2 (within noise): openspec 83.6 · ccsdd 81.5
-- 3–5 (within noise): speckit 78.8 · speckitty 78.5 · superpowers 74.6
-- 6: control 72.6
+- 1: openspec 81.7
+- 2–6 (within noise): ccsdd 77.1 · speckit 76.5 · speckitty 75.6 · superpowers 74.5 · control 72.4
 
-1. 2 group(s) of arms are within noise of each other and should not be ranked against one another; 12 weight/judge variant(s) change the order.
+1. 1 group(s) of arms are within noise of each other and should not be ranked against one another; 21 weight/judge variant(s) change the order.
 2. Relative to the field mean (share of each dimension's weight):
    - ccsdd: strongest interaction (+15% of its weight vs the field mean), weakest time (-37%)
    - control: strongest time (+41% of its weight vs the field mean), weakest code_quality (-26%)
@@ -23,14 +22,14 @@
 
 ## Scorecard
 
-| arm | code_quality /15 | coping /20 | correctness /20 | decision_quality /10 | interaction /10 | setup /10 | time /5 | traceability /10 | total /100 |
+| arm | code_quality /15 | coping /20 | correctness /20 | decision_quality /15 | interaction /10 | setup /5 | time /10 | traceability /5 | total /100 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| ccsdd | 11.6 | 16.8 | 19.8 | 7.5 | 7.4 | 9.0 | 0.7▼ | 8.7 | 81.5 |
-| control | 6.4† | 16.4 | 19.7 | 5.6 | 4.5 | 9.0 | 4.7 | 6.2 | 72.6 |
-| openspec | 12.2 | 17.8 | 19.8 | 7.2 | 6.7 | 8.0 | 2.9 | 8.9 | 83.6 |
-| speckit | 11.3 | 16.8 | 19.8 | 6.9 | 5.7† | 8.0 | 2.3 | 8.1 | 78.8 |
-| speckitty | 11.7 | 17.3 | 19.5 | 7.3 | 8.0 | 6.0 | 0.5▼ | 8.2 | 78.5 |
-| superpowers | 8.3 | 16.6 | 19.7 | 6.8 | 2.7 | 9.0 | 4.5 | 6.9 | 74.6 |
+| ccsdd | 11.6 | 16.8 | 19.8 | 11.2 | 7.4 | 4.5 | 1.4▼ | 4.3 | 77.1 |
+| control | 6.4† | 16.4 | 19.7 | 8.5 | 4.5 | 4.5 | 9.3 | 3.1 | 72.4 |
+| openspec | 12.2 | 17.8 | 19.8 | 10.9 | 6.7 | 4.0 | 5.8 | 4.5 | 81.7 |
+| speckit | 11.3 | 16.8 | 19.8 | 10.3 | 5.7† | 4.0 | 4.5 | 4.0 | 76.5 |
+| speckitty | 11.7 | 17.3 | 19.5 | 10.9 | 8.0 | 3.0 | 1.0▼ | 4.1 | 75.6 |
+| superpowers | 8.3 | 16.6 | 19.7 | 10.3 | 2.7 | 4.5 | 9.0 | 3.5 | 74.5 |
 
 † a part of this dimension is unmeasured (its weight went to the measured parts); — nothing measured; ▲/▼ ≥3× / ≤1/3× the median of the arms. A total is 100 × the measured dimensions' scores over their weights (an unmeasured dimension is left out, never counted as 0); † on a total: that arm's measured dimensions differ from the field's, so it is not like-for-like.
 
@@ -140,12 +139,12 @@ Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was us
 
 Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was used; ◦ a thin panel: fewer than three lenses answered. — unmeasured or not applicable; the reason is in the arm's appendix.
 
-### decision_quality (/10)
+### decision_quality (/15)
 
 | part | ccsdd | control | openspec | speckit | speckitty | superpowers |
 |---|---:|---:|---:|---:|---:|---:|
-| choice (6 pts) | 0.72 | 0.61 | 0.68 | 0.65 | 0.72 | 0.66 |
-| process (4 pts) | 0.79 | 0.50 | 0.79 | 0.75 | 0.75 | 0.71 |
+| choice (9 pts) | 0.72 | 0.61 | 0.68 | 0.65 | 0.72 | 0.66 |
+| process (6 pts) | 0.79 | 0.50 | 0.79 | 0.75 | 0.75 | 0.71 |
 
 | part · step | ccsdd | control | openspec | speckit | speckitty | superpowers |
 |---|---:|---:|---:|---:|---:|---:|
@@ -194,13 +193,13 @@ Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was us
 
 Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was used; ◦ a thin panel: fewer than three lenses answered. — unmeasured or not applicable; the reason is in the arm's appendix.
 
-### setup (/10)
+### setup (/5)
 
 | part | ccsdd | control | openspec | speckit | speckitty | superpowers |
 |---|---:|---:|---:|---:|---:|---:|
-| fit (4 pts) | 0.75 | 0.75 | 0.50 | 0.50 | 0.50 | 0.75 |
-| setup_effort (4 pts) | 1.00 | 1.00 | 1.00 | 1.00 | 0.50 | 1.00 |
-| violations (2 pts) | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| fit (2 pts) | 0.75 | 0.75 | 0.50 | 0.50 | 0.50 | 0.75 |
+| setup_effort (2 pts) | 1.00 | 1.00 | 1.00 | 1.00 | 0.50 | 1.00 |
+| violations (1 pts) | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 
 | part · step | ccsdd | control | openspec | speckit | speckitty | superpowers |
 |---|---:|---:|---:|---:|---:|---:|
@@ -210,12 +209,12 @@ Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was us
 
 Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was used; ◦ a thin panel: fewer than three lenses answered. — unmeasured or not applicable; the reason is in the arm's appendix.
 
-### time (/5)
+### time (/10)
 
 | part | ccsdd | control | openspec | speckit | speckitty | superpowers |
 |---|---:|---:|---:|---:|---:|---:|
-| cost (2.5 pts) | 0.25 | 1.00 | 0.58 | 0.46 | 0.07 | 0.94 |
-| time (2.5 pts) | 0.04 | 0.87 | 0.58 | 0.44 | 0.13 | 0.85 |
+| cost (5 pts) | 0.25 | 1.00 | 0.58 | 0.46 | 0.07 | 0.94 |
+| time (5 pts) | 0.04 | 0.87 | 0.58 | 0.44 | 0.13 | 0.85 |
 
 | part · step | ccsdd | control | openspec | speckit | speckitty | superpowers |
 |---|---:|---:|---:|---:|---:|---:|
@@ -236,13 +235,13 @@ Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was us
 
 Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was used; ◦ a thin panel: fewer than three lenses answered. — unmeasured or not applicable; the reason is in the arm's appendix.
 
-### traceability (/10)
+### traceability (/5)
 
 | part | ccsdd | control | openspec | speckit | speckitty | superpowers |
 |---|---:|---:|---:|---:|---:|---:|
-| change_reason (3.33333 pts) | 1.00 | 0.62 | 1.00 | 0.92 | 0.96 | 0.83 |
-| req_test_code (3.33333 pts) | 0.86 | 0.50 | 0.68 | 0.75 | 0.75 | 0.50 |
-| step6_spec_trace (3.33333 pts) | 0.75 | 0.75 | 1.00 | 0.75 | 0.75 | 0.75 |
+| change_reason (1.66667 pts) | 1.00 | 0.62 | 1.00 | 0.92 | 0.96 | 0.83 |
+| req_test_code (1.66667 pts) | 0.86 | 0.50 | 0.68 | 0.75 | 0.75 | 0.50 |
+| step6_spec_trace (1.66667 pts) | 0.75 | 0.75 | 1.00 | 0.75 | 0.75 | 0.75 |
 
 | part · step | ccsdd | control | openspec | speckit | speckitty | superpowers |
 |---|---:|---:|---:|---:|---:|---:|
@@ -908,27 +907,36 @@ Each arm's total across every variant: weights ±5 per dimension, disputed judge
 
 | arm | reported | lowest | highest |
 |---|---:|---:|---:|
-| openspec | 83.6 | 82.3 | 84.9 |
-| ccsdd | 81.5 | 78.0 | 85.0 |
-| speckit | 78.8 | 77.0 | 80.6 |
-| speckitty | 78.5 | 74.9 | 82.1 |
-| superpowers | 74.6 | 71.9 | 77.2 |
-| control | 72.6 | 70.8 | 74.3 |
+| openspec | 81.7 | 80.4 | 83.0 |
+| ccsdd | 77.1 | 73.6 | 80.6 |
+| speckit | 76.5 | 74.7 | 78.2 |
+| speckitty | 75.6 | 71.9 | 79.2 |
+| superpowers | 74.5 | 71.9 | 77.1 |
+| control | 72.4 | 70.7 | 74.2 |
 
 ### Variants that change the order
 
+- code_quality -5, judges median: openspec > ccsdd > speckit > superpowers > speckitty > control
+- code_quality -5, judges low: openspec > ccsdd > speckit > superpowers > speckitty > control
+- code_quality -5, judges high: openspec > ccsdd > speckit > superpowers > speckitty > control
 - interaction +5, judges median: openspec > ccsdd > speckitty > speckit > superpowers > control
 - interaction +5, judges low: openspec > ccsdd > speckitty > speckit > superpowers > control
 - interaction +5, judges high: openspec > ccsdd > speckitty > speckit > superpowers > control
+- interaction -5, judges median: openspec > speckit > ccsdd > superpowers > speckitty > control
+- interaction -5, judges low: openspec > speckit > ccsdd > superpowers > speckitty > control
+- interaction -5, judges high: openspec > speckit > ccsdd > superpowers > speckitty > control
+- setup +5, judges median: openspec > ccsdd > speckit > superpowers > speckitty > control
+- setup +5, judges low: openspec > ccsdd > speckit > superpowers > speckitty > control
+- setup +5, judges high: openspec > ccsdd > speckit > superpowers > speckitty > control
 - setup -5, judges median: openspec > ccsdd > speckitty > speckit > superpowers > control
 - setup -5, judges low: openspec > ccsdd > speckitty > speckit > superpowers > control
 - setup -5, judges high: openspec > ccsdd > speckitty > speckit > superpowers > control
-- time +5, judges median: openspec > ccsdd > speckit > superpowers > speckitty > control
-- time +5, judges low: openspec > ccsdd > speckit > superpowers > speckitty > control
-- time +5, judges high: openspec > ccsdd > speckit > superpowers > speckitty > control
-- time -5, judges median: ccsdd > openspec > speckitty > speckit > superpowers > control
-- time -5, judges low: ccsdd > openspec > speckitty > speckit > superpowers > control
-- time -5, judges high: ccsdd > openspec > speckitty > speckit > superpowers > control
+- time +5, judges median: openspec > superpowers > speckit > ccsdd > control > speckitty
+- time +5, judges low: openspec > superpowers > speckit > ccsdd > control > speckitty
+- time +5, judges high: openspec > superpowers > speckit > ccsdd > control > speckitty
+- time -5, judges median: openspec > ccsdd > speckitty > speckit > superpowers > control
+- time -5, judges low: openspec > ccsdd > speckitty > speckit > superpowers > control
+- time -5, judges high: openspec > ccsdd > speckitty > speckit > superpowers > control
 
 ### Flags
 
