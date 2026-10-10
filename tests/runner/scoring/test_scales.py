@@ -58,4 +58,11 @@ def test_rating_with_custom_table():
 
 def test_a_half_step_scores_midway_and_off_scale_values_do_not_score():
     assert scales.rating("3.5") == 0.625 and scales.rating("1.5") == 0.125
-    assert scales.rating("5.5") is None and scales.rating("0.5") is None and scales.rating("3.2") is None
+    assert scales.rating("5.5") is None and scales.rating("0.5") is None and scales.rating("6") is None
+    assert scales.rating("nan") is None and scales.rating("inf") is None and scales.rating("") is None
+
+
+def test_a_reslice_mean_between_whole_ratings_scores_linearly_between_them():
+    assert scales.rating("4.25") == 0.8125 and scales.rating("5.0") == 1.0 and scales.rating("1.0") == 0.0
+    custom = {"1": 0.1, "2": 0.3, "3": 0.5, "4": 0.7, "5": 0.9}
+    assert abs(scales.rating("3.25", custom) - 0.55) < 1e-9

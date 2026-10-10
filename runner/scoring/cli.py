@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from runner import faults, paths
 from runner.scoring import (aggregate, anonymise, collect, confidence, context, decisions, evidence, inputs, judge, leakcheck, page,
-                            remeasure, report, review, values)
+                            remeasure, report, reslice, review, values)
 
 
 def _scores(pass_: str) -> dict:
@@ -59,12 +59,15 @@ def _report(ns) -> None:
 
 
 def _estimates(ns) -> tuple[dict, dict]:
-    """The judge stage's and the decision stages' (extract, align, context) estimates: one approval covers their
-    total."""
+    """The judge stage's and the decision stages' (extract, align, context, reslice) estimates: one approval covers
+    their total. A reslice --redo of --only topics counts their calls too."""
     d = decisions.estimate(ns.pass_, retry_failed=ns.retry_failed)
     c = context.estimate(ns.pass_, retry_failed=ns.retry_failed)
+    r = reslice.estimate(ns.pass_, retry_failed=ns.retry_failed, only=getattr(ns, "only", None),
+                         redo=getattr(ns, "redo", False) and getattr(ns, "stage", None) == "decisions-reslice")
     return (judge.estimate(ns.pass_, retry_failed=ns.retry_failed),
-            d | {"calls": d["calls"] + c["calls"], "context_calls": c["calls"]})
+            d | {"calls": d["calls"] + c["calls"] + r["calls"], "context_calls": c["calls"],
+                 "reslice_calls": r["calls"]})
 
 
 def _approve(ns) -> None:
@@ -78,7 +81,7 @@ def _judge_estimate(ns) -> None:
     the upper bound if every call needed its one parse retry. Needs no approval."""
     j, d = _estimates(ns)
     calls = j["calls"] + d["calls"]
-    e = {"calls": calls, "judge_calls": j["calls"], "decision_calls": d["calls"],
+    e = {"calls": calls, "judge_calls": j["calls"], "decision_calls": d["calls"], "reslice_calls": d["reslice_calls"],
          "input_mb": round(j["input_mb"] + d["input_mb"], 3)}
     # Every call is retried once when its reply does not parse, so 2x is the upper bound. Shown only: approval is
     # checked against `calls` (judge.check_approval), as before.
@@ -119,6 +122,35 @@ def _decisions_context(ns) -> None:
     except NotReady as e:
         raise inputs.InputError(str(e)) from None
     print(json.dumps(got, indent=2, sort_keys=True))
+
+
+def _decisions_reslice(ns) -> None:
+    """Spends model quota (one call per topic of reslice.json) and uses Docker (each label's final code), as
+    decisions-context; runs after it (it reuses its plans) and before decisions-import (which reads its ratings)."""
+    from runner import preflight
+    from runner.checklist import NotReady
+    if faults.halted(ns.pass_):
+        raise inputs.InputError(f"HALTED ({faults.ledger_paths(ns.pass_)[1]}): {faults.halt_reason(ns.pass_)}")
+    if getattr(ns, "ask", None):
+        raise inputs.InputError("--ask is for decisions-context: decisions-reslice reuses its plans unchanged")
+    _approve(ns)
+    try:
+        with preflight.lock():
+            got = reslice.run(ns.pass_, judge.ContainerJudge(ns.pass_), context.ArmRunner(ns.pass_),
+                              retry_failed=ns.retry_failed, only=getattr(ns, "only", None),
+                              redo=getattr(ns, "redo", False))
+    except NotReady as e:
+        raise inputs.InputError(str(e)) from None
+    print(json.dumps(got, indent=2, sort_keys=True))
+    print(reslice.ratings_path(ns.pass_))
+    print(reslice.summary_path(ns.pass_))
+
+
+def _decisions_import(ns) -> None:
+    f = decisions.import_ratings(ns.pass_)
+    print(f)
+    for w in json.loads(f.read_text()).get("warnings", []):     # never the arm: the owner may still be reading blind
+        print(f"warning: {w['topic']} route {w['route_no']}: one arm {w['why']}")
 
 
 def _remeasure(ns) -> None:
@@ -165,8 +197,9 @@ STAGES = {
     "decisions-extract": _decisions_extract,
     "decisions-align": _decisions_align,
     "decisions-context": _decisions_context,
+    "decisions-reslice": _decisions_reslice,                     # after decisions-context, before decisions-import
     "decisions-sheet": lambda ns: print(decisions.sheet(ns.pass_)),
-    "decisions-import": lambda ns: print(decisions.import_ratings(ns.pass_)),
+    "decisions-import": _decisions_import,
     "review-sheet": lambda ns: print(review.sheet(ns.pass_)),
     "review-import": lambda ns: print(review.import_sheet(ns.pass_)),
     "aggregate": lambda ns: print(aggregate.run(ns.pass_, ns.baseline)),

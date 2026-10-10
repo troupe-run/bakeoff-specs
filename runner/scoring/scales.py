@@ -26,13 +26,22 @@ def judged(score: float | None) -> float | None:
 
 
 def rating(r: str, table: dict[str, float] | None = None) -> float | None:
-    """A whole rating from the table; a half step ("3.5") midway between its neighbours; n/a (anything else) None."""
+    """A whole rating from the table; anything between two whole ratings ("3.5", or a reslice mean such as "4.25")
+    linearly between its neighbours; n/a (anything else) None."""
     t = table or _RATINGS
     if r in t:
         return t[r]
-    lo, dot, half = str(r).partition(".")
-    if dot and half == "5" and lo in t and str(int(lo) + 1) in t:
-        return (t[lo] + t[str(int(lo) + 1)]) / 2
+    try:
+        x = float(r)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(x) or str(r).strip().lower() in ("nan", "inf", "-inf"):
+        return None
+    lo, hi = str(math.floor(x)), str(math.floor(x) + 1)
+    if x == math.floor(x):
+        return t.get(lo)
+    if lo in t and hi in t:
+        return t[lo] + (t[hi] - t[lo]) * (x - math.floor(x))
     return None
 
 

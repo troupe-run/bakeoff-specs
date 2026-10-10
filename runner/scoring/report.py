@@ -7,7 +7,7 @@ import json
 import statistics
 from pathlib import Path
 from runner import paths
-from runner.scoring import aggregate, confidence, decisions, inputs, values
+from runner.scoring import aggregate, confidence, decisions, inputs, scales, values
 
 DASH = "—"
 # Footnote markers on a time cell: where the seconds are approximate.
@@ -236,7 +236,7 @@ def _decisions(pass_: str) -> list[str]:
             reason = f" — {r['reason']}" if r.get("reason") else ""
             later = f" (later: {r['outcome']})" if r.get("outcome") else ""        # spec §8.6: did it survive?
             rating = r.get("rating", DASH)
-            rating = f"{rating}/5" if rating in decisions.RATINGS and rating != decisions.NA else rating
+            rating = f"{rating}/5" if scales.rating(str(rating)) is not None else rating   # a reslice mean too
             lines[kind].append(f"  - {r.get('route', '?')} [{', '.join(r['arms'])}]: {rating}{reason}"
                                f"{later}")
     out = ["## Decision review", ""]

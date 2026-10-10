@@ -722,8 +722,9 @@ def import_ratings(pass_: str) -> Path:
     problems += [f"{tid}: not on the sheet" for tid in sorted(set(parsed) - {t["sheet_id"] for t in structure})]
     if problems:
         raise SheetError("the rating sheet has problems:\n" + "\n".join(f"- {p}" for p in problems))
+    resliced = _resliced(pass_, structure)
     key = judge.anon_key(pass_)
-    out = []
+    out, warnings = [], []
     for t in sorted(structure, key=lambda t: t["id"]):
         rated = {r["route_no"]: r for r in parsed[t["sheet_id"]]}
         routes = []
@@ -732,12 +733,84 @@ def import_ratings(pass_: str) -> Path:
             if unknown:
                 raise inputs.InputError(f"{t['sheet_id']} route {r['route_no']}: {unknown} not in anon-key.json")
             o = rated[r["route_no"]]
-            routes.append({"route": r["route"], "arms": sorted(key[l] for l in r["labels"]), "rating": o["rating"],
-                           "reason": o["reason"], "outcome": r.get("outcome", "")})   # spec §8.6: shown, not scored
+            base = {"route": r["route"], "rating": o["rating"], "reason": o["reason"],
+                    "outcome": r.get("outcome", "")}                          # spec §8.6: shown, not scored
+            if t["sheet_id"] not in resliced:
+                routes.append({**base, "arms": sorted(key[l] for l in r["labels"])})
+                continue
+            got, warn = _reslice_routes(t["sheet_id"], r, base, resliced[t["sheet_id"]], key)
+            routes += got
+            warnings += warn
         out.append({"id": t["id"], "kind": t["kind"], "routes": routes})   # the sheet's kind, never recomputed
     f = d / "ratings.json"
-    _write(f, values.dump({"topics": out}))
+    _write(f, values.dump({"topics": out, **({"warnings": warnings} if warnings else {})}))
     return f
+
+
+def _rating_text(x: float | None) -> str:
+    """A reslice rating as ratings.json writes ratings: "4", "3.5", "4.25"; None (every group n/a) is "n/a"."""
+    return NA if x is None else f"{x:.3f}".rstrip("0").rstrip(".")
+
+
+def _resliced(pass_: str, structure: list[dict]) -> dict[str, dict]:
+    """{sheet id: {label: reslice entry}} for every topic of reslice.json, checked against the sheet and against the
+    CURRENT group ratings; {} when there is no reslice.json. Refuses while a resliced topic is unclassified or its
+    ratings are stale, so a placeholder route rating is never imported in its place unnoticed."""
+    from runner.scoring import reslice                    # lazy: reslice imports this module
+    spec = reslice.load_spec(pass_)
+    if spec is None:
+        return {}
+    sheet_ids = {t["sheet_id"]: t for t in structure}
+    if missing := sorted(set(spec) - set(sheet_ids)):
+        raise inputs.InputError(f"reslice.json names topics not on the sheet: {', '.join(missing)}")
+    f = reslice.ratings_path(pass_)
+    got = _record(f)
+    if not isinstance(got, dict):
+        raise inputs.InputError(f"{f} is missing: run the decisions-reslice stage first")
+    problems = []
+    for sid in sorted(spec, key=lambda x: int(x[1:])):
+        entries = got.get(sid)
+        if not isinstance(entries, dict):
+            problems.append(f"{sid}: not classified (run decisions-reslice)")
+            continue
+        on_routes = {l for r in sheet_ids[sid]["routes"] for l in r["labels"]}
+        if stray := sorted(set(entries) - on_routes):
+            problems.append(f"{sid}: classified for labels not on its routes {stray} (run decisions-reslice)")
+        for lab, e in entries.items():
+            if reslice.rating(spec[sid], e.get("groups", {})) != e.get("rating"):
+                problems.append(f"{sid}: its ratings differ from reslice.json's (run decisions-reslice; no new "
+                                "model calls)")
+                break
+    if problems:
+        raise inputs.InputError("the reslice cannot be imported:\n" + "\n".join(f"- {p}" for p in problems))
+    return {sid: got[sid] for sid in spec}
+
+
+def _reslice_routes(sid: str, r: dict, base: dict, entries: dict[str, dict], key: dict) -> tuple[list[dict], list[dict]]:
+    """One sheet route of a resliced topic: its arms rated per arm from their behaviour groups, arms with the same
+    groups together; an arm classified "none" (or not at all) keeps the route's rating, with a warning."""
+    by: dict[tuple, dict] = {}
+    warnings = []
+    for lab in r["labels"]:
+        e = entries.get(lab)
+        if e is None or any(g == "none" for g in e["groups"].values()):
+            why = ("not classified" if e is None else "none of these: "
+                   + "; ".join(f"{q}: {w}" for q, w in sorted(e.get("none_of_these", {}).items())))
+            warnings.append({"topic": sid, "route_no": r["route_no"], "arm": key[lab],
+                             "why": f"kept the route's rating ({why})"})
+            k = ("route",)
+            by.setdefault(k, {**base, "arms": [], "warning": "kept the route's rating: no behaviour group fitted"})
+        else:
+            k = ("groups", tuple(sorted(e["groups"].items())))
+            reason = "; ".join(f"{q}: behaviour group {g}" for q, g in sorted(e["groups"].items()))
+            by.setdefault(k, {**base, "rating": _rating_text(e["rating"]), "reason": reason, "arms": [],
+                              "groups": dict(sorted(e["groups"].items())), "route_rating": base["rating"]})
+        by[k]["arms"].append(key[lab])
+    out = []
+    for x in by.values():
+        x["arms"] = sorted(x["arms"])
+        out.append(x)
+    return out, warnings
 
 
 # ---- the estimate --------------------------------------------------------------------------------------------------
