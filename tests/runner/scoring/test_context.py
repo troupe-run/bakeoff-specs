@@ -379,6 +379,47 @@ def test_redo_writes_a_topic_again_with_the_owners_ask_and_keeps_the_earlier_rec
     assert json.loads((cx.out_dir("p") / "dash.1.json").read_text())["context"]["stakes"] == WRITTEN["stakes"]
 
 
+def test_an_ok_record_holds_the_plan_it_ran(aligned):
+    cx.run("p", judge.FakeJudge([json.dumps(PLAN), json.dumps(WRITTEN)]), FakeRunner())
+    rec = json.loads(cx.out_path("p", "dash").read_text())
+    assert rec["plan"] == cx.parse_plan(json.dumps(PLAN)) and rec["plan_why"] == "dash values"
+
+
+def test_a_redo_that_fails_leaves_the_earlier_record_in_place_and_records_the_failure_beside_it(aligned):
+    cx.run("p", judge.FakeJudge([json.dumps(PLAN), json.dumps(WRITTEN)]), FakeRunner())
+    before = cx.out_path("p", "dash").read_text()
+    assert cx.run("p", judge.FakeJudge([json.dumps(PLAN)]), FakeRunner(fail=("Arm B",)),
+                  only=["T1"], redo=True)["failed"] == 1
+    assert cx.out_path("p", "dash").read_text() == before
+    assert not (cx.out_dir("p") / "dash.1.json").exists()
+    assert json.loads(cx.failed_path(cx.out_path("p", "dash")).read_text())["why"].startswith("run: Arm B")
+    assert cx.run("p", judge.FakeJudge([json.dumps(PLAN), json.dumps({**WRITTEN, "stakes": "Again."})]), FakeRunner(),
+                  only=["T1"], redo=True)["written"] == 1
+    assert not cx.failed_path(cx.out_path("p", "dash")).exists()
+    assert json.loads((cx.out_dir("p") / "dash.1.json").read_text())["context"]["stakes"] == WRITTEN["stakes"]
+
+
+def test_a_pin_violation_during_a_redo_leaves_the_earlier_record_in_place(aligned):
+    cx.run("p", judge.FakeJudge([json.dumps(PLAN), json.dumps(WRITTEN)]), FakeRunner())
+    before = cx.out_path("p", "dash").read_text()
+
+    class PinJudge:
+        def ask(self, prompt, inputs, files=()):
+            raise judge.PinViolation("model pin not verified")
+    with pytest.raises(judge.PinViolation):
+        cx.run("p", PinJudge(), FakeRunner(), only=["T1"], redo=True)
+    assert cx.out_path("p", "dash").read_text() == before and sorted(
+        x.name for x in cx.out_dir("p").iterdir()) == ["dash.json"]
+
+
+def test_a_second_redo_keeps_both_earlier_records(aligned):
+    for stakes in ("one", "two", "three"):
+        cx.run("p", judge.FakeJudge([json.dumps(PLAN), json.dumps({**WRITTEN, "stakes": stakes})]), FakeRunner(),
+               only=["T1"], redo=True)
+    got = {x.name: json.loads(x.read_text())["context"]["stakes"] for x in cx.out_dir("p").iterdir()}
+    assert got == {"dash.json": "three", "dash.1.json": "one", "dash.2.json": "two"}
+
+
 def test_redo_without_only_is_refused(aligned):
     from runner.scoring import inputs
     with pytest.raises(inputs.InputError, match="need --only"):

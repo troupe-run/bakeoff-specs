@@ -561,6 +561,36 @@ def _record(f: Path):
         return None
 
 
+def failed_path(f: Path) -> Path:
+    return f.with_name(f"{f.stem}.failed.json")
+
+
+def _archived(f: Path) -> list[Path]:
+    """Earlier records of `f` kept by a redo: `<id>.<n>.json`."""
+    pat = re.compile(rf"^{re.escape(f.stem)}\.(\d+)\.json$")
+    return sorted((x for x in f.parent.glob(f"{f.stem}.*.json") if pat.match(x.name)),
+                  key=lambda x: int(pat.match(x.name)[1]))
+
+
+def _land(f: Path, rec: dict) -> None:
+    """Write a topic's record without ever losing an earlier one. An `ok` record replaces the current one, which is
+    first kept as `<id>.<n>.json` (a redo's history); a failure never replaces an `ok` record (it is written beside
+    it, as `<id>.failed.json`, so a failed --redo leaves the written context in place) but does replace an earlier
+    failure. A successful write removes any `<id>.failed.json`."""
+    old = _record(f)
+    if rec.get("status") != "ok":
+        if isinstance(old, dict) and old.get("status") == "ok":
+            dz._write(failed_path(f), values.dump(rec))
+        else:
+            dz._write(f, values.dump(rec))
+        return
+    if isinstance(old, dict) and old.get("status") == "ok":
+        n = 1 + max((int(x.name.split(".")[-2]) for x in _archived(f)), default=0)
+        dz._write(f.with_name(f"{f.stem}.{n}.json"), f.read_text())
+    dz._write(f, values.dump(rec))
+    failed_path(f).unlink(missing_ok=True)
+
+
 def _unfinished(f: Path, t: dict, retry_failed: bool) -> bool:
     r = _record(f)
     if not isinstance(r, dict) or r.get("routes") != fingerprint(t):
@@ -586,7 +616,9 @@ def run(pass_: str, j: judge.Judge, runner: Runner, *, retry_failed: bool = Fals
     """Context for every unfinished topic (or only the sheet ids / topic ids in `only`), one at a time. Each topic's
     record is written as it lands: `{"status": "ok", "routes", "runnable", "context"}` or
     `{"status": "context_failed", "routes", "why", "raw"?}`. `redo` (with `only`) writes the named topics again,
-    keeping each earlier record as `<id>.<n>.json`; `ask` is the owner's request for what the examples must cover."""
+    keeping each earlier record as `<id>.<n>.json` once the new one is written (`_land`: a failed redo, or a crash
+    such as a PinViolation, leaves the earlier record in place); `ask` is the owner's request for what the examples
+    must cover. An `ok` record holds the plan it ran (`plan`), so a later stage can run it again unchanged."""
     if (redo or ask) and not only:
         raise inputs.InputError("--redo and --ask need --only: name the topics to write again")
     arms, labs = dz._arms(pass_), dz.labels(pass_)
@@ -595,11 +627,6 @@ def run(pass_: str, j: judge.Judge, runner: Runner, *, retry_failed: bool = Fals
     counts = {"written": 0, "failed": 0, "skipped": 0}
     todo = [t for t in _topics(pass_) if not only or t["sheet_id"] in only or t["id"] in only]
     pending = [t for t in todo if redo or _unfinished(out_path(pass_, t["id"]), t, retry_failed)]
-    if redo:
-        for t in pending:
-            if (f := out_path(pass_, t["id"])).exists():
-                n = 1 + sum(1 for _ in out_dir(pass_).glob(f"{t['id']}.*.json"))
-                f.rename(f.with_name(f"{t['id']}.{n}.json"))
     counts["skipped"] = len(todo) - len(pending)
     if pending:                     # every arm's code installed and answering before anything is spent (review F2/F5)
         runner.ready(sorted({lab for t in pending for r in t["routes"] for lab in r["labels"]}))
@@ -614,7 +641,7 @@ def run(pass_: str, j: judge.Judge, runner: Runner, *, retry_failed: bool = Fals
         plan, why, raw = dz._ask(j, plan_prompt(ask), item, ["topic.json", "contract.md", "steps.md"], parse_plan,
                                  "one JSON object")
         if plan is None:
-            dz._write(f, values.dump({**rec, "status": "context_failed", "why": f"plan: {why}", "raw": raw}))
+            _land(f, {**rec, "status": "context_failed", "why": f"plan: {why}", "raw": raw})
             counts["failed"] += 1
             continue
         files = ["topic.json"]
@@ -624,7 +651,7 @@ def run(pass_: str, j: judge.Judge, runner: Runner, *, retry_failed: bool = Fals
                 for lab in sorted({lab for r in t["routes"] for lab in r["labels"]}):
                     results[lab] = _scrub_results(runner.run(lab, plan), arms)
             except RunFailed as e:          # the harness's failure: the topic fails (retryable), never a result
-                dz._write(f, values.dump({**rec, "status": "context_failed", "why": f"run: {e}"}))
+                _land(f, {**rec, "status": "context_failed", "why": f"run: {e}"})
                 counts["failed"] += 1
                 continue
             dz._write(item / "results.json", values.dump({"plan": {k: plan[k] for k in ("files", "commands", "show", "passwd")},
@@ -635,11 +662,11 @@ def run(pass_: str, j: judge.Judge, runner: Runner, *, retry_failed: bool = Fals
                                                         plan["runnable"]),
                                 "one JSON object")
         if got is None:
-            dz._write(f, values.dump({**rec, "status": "context_failed", "why": f"write: {why}", "raw": raw}))
+            _land(f, {**rec, "status": "context_failed", "why": f"write: {why}", "raw": raw})
             counts["failed"] += 1
             continue
-        dz._write(f, values.dump({**rec, "status": "ok", "runnable": plan["runnable"], "plan_why": plan["why"],
-                                  "context": got}))
+        _land(f, {**rec, "status": "ok", "runnable": plan["runnable"], "plan_why": plan["why"], "plan": plan,
+                  "context": got})
         counts["written"] += 1
     return counts
 
