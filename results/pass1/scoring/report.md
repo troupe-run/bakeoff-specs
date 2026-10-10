@@ -221,17 +221,17 @@ Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was us
 |---|---:|---:|---:|---:|---:|---:|
 | cost · step 1 | 0.11 | 1.00 | 0.66 | 0.41 | 0.11 | 0.87 |
 | cost · step 2 | 0.24 | 1.00 | 0.63 | 0.42 | 0.14 | 1.00 |
-| cost · step 3 | 0.25 | 1.00 | 0.64 | 0.41 | 0.12 | 0.99 |
+| cost · step 3 | 0.25 | 1.00 | 0.64 | 0.41 | 0.12 | 1.00 |
 | cost · step 4 | 0.30 | 0.98 | 0.53 | 0.47 | 0.00 | 0.94 |
-| cost · step 5 | 0.25 | 1.00 | 0.48 | 0.52 | 0.08 | 0.99 |
-| cost · step 6 | 0.24 | 0.99 | 0.45 | 0.57 | 0.00 | 0.77 |
+| cost · step 5 | 0.25 | 1.00 | 0.48 | 0.52 | 0.09 | 1.00 |
+| cost · step 6 | 0.24 | 1.00 | 0.45 | 0.57 | 0.00 | 0.78 |
 | cost · step 7 | 0.35 | 1.00 | 0.68 | 0.40 | 0.05 | 1.00 |
-| time · step 1 | 0.00 | 0.75 | 0.54 | 0.46 | 0.22 | 0.71 |
+| time · step 1 | 0.00 | 0.75 | 0.54 | 0.46 | 0.23 | 0.71 |
 | time · step 2 | 0.11 | 1.00 | 0.59 | 0.43 | 0.17 | 0.96 |
-| time · step 3 | 0.04 | 0.89 | 0.63 | 0.42 | 0.19 | 0.94 |
-| time · step 4 | 0.01 | 0.88 | 0.61 | 0.43 | 0.03 | 0.90 |
+| time · step 3 | 0.04 | 0.90 | 0.63 | 0.42 | 0.19 | 0.94 |
+| time · step 4 | 0.01 | 0.89 | 0.61 | 0.43 | 0.03 | 0.90 |
 | time · step 5 | 0.00 | 0.84 | 0.59 | 0.43 | 0.20 | 0.90 |
-| time · step 6 | 0.00 | 0.77 | 0.50 | 0.50 | 0.05 | 0.72 |
+| time · step 6 | 0.00 | 0.77 | 0.50 | 0.50 | 0.06 | 0.72 |
 | time · step 7 | 0.13 | 0.94 | 0.62 | 0.42 | 0.04 | 0.84 |
 
 Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was used; ◦ a thin panel: fewer than three lenses answered. — unmeasured or not applicable; the reason is in the arm's appendix.
@@ -702,7 +702,7 @@ Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was us
 
 ## Time and cost
 
-Scored in the time dimension as two equal parts, time and cost, each per hidden test passed, on a log scale against the median of the arms at the step: the median arm scores 0.5, 10× faster or cheaper 1, 10× slower or dearer 0 (owner, 2026-10-10). Both are the scored run's arm turns only: the PO's cost and the N.a discovery runs are reported, not scored.
+Scored in the time dimension as two equal parts, time and cost, each the raw per-step value, on a log scale against the median of the arms at the step: the median arm scores 0.5, 10× faster or cheaper 1, 10× slower or dearer 0 (owner, 2026-10-10). Both are the scored run's arm turns only: the PO's cost and the N.a discovery runs are reported, not scored.
 
 ### Step 1
 
