@@ -313,6 +313,14 @@ def commits_between(p: Paths, a: str, b: str) -> str:
     return "".join(f"{sha}\x1f{msg.rstrip().translate(_SEPS)}\x1e" for sha, msg in _nul_fields(r, 2))
 
 
+def commit_log(p: Paths, a: str, b: str) -> list[tuple[str, str, str]]:
+    """(short sha, subject, body) for every commit in a..b, newest first: `git log --format='%h %s%n%n%b'` split
+    exactly (NUL-delimited, as `log`). Run in the container like every read; anonymise's commits.md."""
+    r = git(p, "log", "-z", "--no-color", "--no-notes", "--no-show-signature", "--encoding=UTF-8",
+            "--format=%h%x00%s%x00%b", f"{a}..{b}")
+    return [(h, s, body.rstrip()) for h, s, body in _nul_fields(r, 3)]
+
+
 def diffstat(p: Paths, a: str, b: str) -> str:
     return _out(git(p, "diff", "--no-textconv", "--no-ext-diff", "--stat", a, b))
 

@@ -425,6 +425,53 @@ def questions_md(step_dir: Path) -> str:
     return "\n".join(out)
 
 
+def commits_md(commits: list[tuple[str, str, str]]) -> str:
+    """The step's commits (sha_before..sha_after, newest first) as `git log --format='%h %s%n%n%b'` reads, under a
+    heading each. Scrubbed by the caller (trailers and method names, like every other file)."""
+    if not commits:
+        return "# Commits\n\nNo commits in this step's range.\n"
+    out = [f"# Commits ({len(commits)}, newest first)\n", "Each commit's short SHA and subject, then its message body.\n"]
+    for h, subject, body in commits:
+        out.append(f"## {h} {_one(subject)}\n")
+        if body.strip():
+            out.append(_one(body).rstrip() + "\n")
+    return "\n".join(out)
+
+
+def _write_commits(p: Paths, shas: tuple[str, str], dest: Path, terms: list[Term]) -> None:
+    _w(dest / "commits.md", scrub(commits_md(gitops.commit_log(p, *shas)), terms))
+
+
+def add_commits(pass_: str) -> list[str]:
+    """Writes only `anon/<label>/<NN>/commits.md` into an existing anon/ tree, under the labels of the existing key
+    (never a new key: refuses without one), leaving every other file as it is. Deletes leak-check.json first (R39):
+    the tree changed, so `--stage leak-check` must run again. Returns the failures ("arm/NN: why"); a failed step gets
+    no commits.md and is named in MISSING.md/.json."""
+    out = paths.scoring_out(pass_)
+    anon = out / "anon"
+    key = {arm: label for label, arm in read_key(pass_).items()}
+    if not anon.is_dir():
+        raise FileNotFoundError(f"{anon}: no anonymised tree; run the anonymise stage")
+    (out / "leak-check.json").unlink(missing_ok=True)
+    pass_dir = paths.RESULTS / pass_
+    arms = collect.arms(pass_dir)
+    if sorted(arms) != sorted(key):
+        raise ValueError(f"the key's arms {sorted(key)} are not this pass's arms {sorted(arms)}")
+    t, failures = pass_terms(arms), []
+    for arm in arms:
+        for nn in _step_dirs(pass_dir / arm):
+            dest = anon / key[arm] / nn
+            shas = _shas(pass_dir / arm / nn)
+            if shas is None:
+                failures.append(f"{arm}/{nn}: git.json has no sha_before/sha_after")
+                continue
+            try:
+                _write_commits(Paths(pass_, arm), shas, dest, t)
+            except (gitops.GitError, docker.ContainerError, OSError) as e:
+                failures.append(f"{arm}/{nn}: {e}")
+    return failures
+
+
 def gates_md(step_dir: Path) -> str:
     recs = evidence.read_jsonl(step_dir / "owner-gates.jsonl")
     if recs is None:
@@ -477,7 +524,7 @@ def _missing(dest: Path, items: list[tuple[list[str], str]], terms: list[Term]) 
 
 
 def run(pass_: str) -> Path:
-    """Writes scoring_out/anon/<label>/<NN>/{repo/, diff.patch, transcript.md, questions.md, gates.md,
+    """Writes scoring_out/anon/<label>/<NN>/{repo/, diff.patch, commits.md, transcript.md, questions.md, gates.md,
     others-questions.md, [stale-list.toml], [UNSCRUBBED.txt], [MISSING.md + MISSING.json]}, <label>/setup/ and, last, scoring_out/anon-key.json.
     Evidence that is absent is named in MISSING.md, never written as a file that looks like input. Returns anon/."""
     out = paths.scoring_out(pass_)
@@ -505,20 +552,21 @@ def run(pass_: str) -> Path:
                 miss: list[tuple[list[str], str]] = []
                 shas = _shas(sd)
                 if shas is None:
-                    miss.append((["repo/", "diff.patch"], "git.json has no sha_before/sha_after for this step"))
+                    miss.append((["repo/", "diff.patch", "commits.md"], "git.json has no sha_before/sha_after for this step"))
                 else:
                     work = tmp / arm / nn
                     try:
                         gitops.export_tree(p, shas[1], work)
                         listed = copy_scrubbed(work, dest / "repo", t)
                         _w(dest / "diff.patch", scrub(gitops.diff_text(p, *shas), t))
+                        _write_commits(p, shas, dest, t)
                         _unscrubbed_note(dest, listed)
                     except (gitops.GitError, docker.ContainerError, OSError) as e:
                         failures.append(f"{arm}/{nn}: {e}")
                         shutil.rmtree(dest / "repo", ignore_errors=True)
-                        (dest / "diff.patch").unlink(missing_ok=True)
-                        (dest / "UNSCRUBBED.txt").unlink(missing_ok=True)
-                        miss.append((["repo/", "diff.patch"], f"export or diff failed: {e}"))
+                        for f in ("diff.patch", "commits.md", "UNSCRUBBED.txt"):
+                            (dest / f).unlink(missing_ok=True)
+                        miss.append((["repo/", "diff.patch", "commits.md"], f"export or diff failed: {e}"))
                     finally:
                         shutil.rmtree(work, ignore_errors=True)
                 tr = transcript(sd, t)

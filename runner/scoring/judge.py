@@ -8,7 +8,7 @@ or quoted. A verdict is `ok` (score 0-4 with evidence), `not_applicable` (only w
 R24(d)). Only `ok` is a score."""
 from __future__ import annotations
 import hashlib, json, os, re, shutil, time
-from datetime import date
+from datetime import date, datetime, timezone
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Protocol
@@ -19,8 +19,8 @@ from runner.scoring import anonymise, inputs, values
 TOOLS = "Read,Glob,Grep"
 TRANSIENT = ("no_result", "is_error")        # retried in place with limits.transient_backoff (as po.decide)
 AT_ONCE = ("auth_failed", "timeout")         # never retried: a credential fault / a hung judge is the harness's
-_FILES = {"repo": "repo/", "diff": "diff.patch", "transcript": "transcript.md", "questions": "questions.md",
-          "gates": "gates.md", "stale_list": "stale-list.toml"}
+_FILES = {"repo": "repo/", "diff": "diff.patch", "commits": "commits.md", "transcript": "transcript.md",
+          "questions": "questions.md", "gates": "gates.md", "stale_list": "stale-list.toml"}
 _APPROVAL = re.compile(r"approved (\d{4}-\d{2}-\d{2}) (\d+)")
 
 
@@ -167,13 +167,18 @@ def _label(pass_: str, arm: str) -> str:
     return {a: lab for lab, a in anon_key(pass_).items()}[arm]
 
 
-def items(pass_: str) -> list[tuple[str, str, str, str]]:
-    """(part, arm, key, lens) for every judged part x arm x applicable step with an anonymised copy (or `"arm"`
-    for arm-unit parts) x the rubric's three lenses — sorted."""
+def items(pass_: str, parts: list[str] | None = None) -> list[tuple[str, str, str, str]]:
+    """(part, arm, key, lens) for every judged part (or only `parts`) x arm x applicable step with an anonymised copy
+    (or `"arm"` for arm-unit parts) x the rubric's three lenses — sorted."""
     anon = paths.scoring_out(pass_) / "anon"
     labels = {a: lab for lab, a in anon_key(pass_).items()}
+    rubrics = inputs.load_rubrics()
+    if parts is not None and (unknown := sorted(set(parts) - set(rubrics))):
+        raise inputs.InputError(f"--part {unknown}: not a judged part (rubrics: {sorted(rubrics)})")
     out = []
-    for part, r in inputs.load_rubrics().items():
+    for part, r in rubrics.items():
+        if parts is not None and part not in parts:
+            continue
         for arm in sorted(labels):
             keys = ["arm"] if r.unit == "arm" else [f"{n:02d}" for n in r.steps if (anon / labels[arm] / f"{n:02d}").is_dir()]
             out += [(part, arm, k, l["name"]) for k in keys for l in r.lenses]
@@ -238,10 +243,28 @@ def _unfinished(out: Path, retry_failed: bool) -> bool:
     return status == "input_missing" or (retry_failed and status == "judge_failed")
 
 
-def run(pass_: str, j: Judge, *, retry_failed: bool = False) -> dict:
-    """Asks every unfinished item (resumable) and writes each verdict as it lands."""
+def supersede(pass_: str, parts: list[str]) -> Path | None:
+    """`--redo`: moves the `parts`' existing verdicts out of judged/ (into state/<pass>-scoring/judged-superseded/
+    <stamp>/<part>/, kept, never deleted) so the run asks them again. Done once, before the first ask: a resumed run
+    without --redo then skips only what this redo has already re-judged. None when there was nothing to move."""
+    if not parts:
+        raise inputs.InputError("--redo needs --part: it re-judges whole parts, never every part at once")
+    items(pass_, parts)                                         # refuses unknown parts before anything moves
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    dest, moved = paths.STATE / f"{pass_}-scoring" / "judged-superseded" / stamp, False
+    for part in parts:
+        src = paths.scoring_out(pass_) / "judged" / part
+        if src.is_dir():
+            dest.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(src), str(dest / part))
+            moved = True
+    return dest if moved else None
+
+
+def run(pass_: str, j: Judge, *, retry_failed: bool = False, parts: list[str] | None = None) -> dict:
+    """Asks every unfinished item (resumable; only `parts` when given) and writes each verdict as it lands."""
     rubrics, counts = inputs.load_rubrics(), {"asked": 0, "skipped": 0, "input_missing": 0}
-    for part, arm, key, lens in items(pass_):
+    for part, arm, key, lens in items(pass_, parts):
         out = out_path(pass_, part, arm, key, lens)
         if not _unfinished(out, retry_failed):
             counts["skipped"] += 1
@@ -268,12 +291,13 @@ def _size(p: Path) -> int:
     return sum(f.stat().st_size for f in p.rglob("*") if f.is_file() and not f.is_symlink()) if p.is_dir() else 0
 
 
-def estimate(pass_: str, *, retry_failed: bool = False) -> dict:
+def estimate(pass_: str, *, retry_failed: bool = False, parts: list[str] | None = None, redo: bool = False) -> dict:
     """Calls the judge stage would make now (unfinished items with their inputs present, input_missing ones that
-    are now answerable included; parse retries not counted) and the size of the inputs those calls read."""
+    are now answerable included; parse retries not counted) and the size of the inputs those calls read. `parts`
+    limits it to those parts; `redo` counts their finished items too (what `--redo` would re-ask)."""
     calls, size = 0, 0
-    for part, arm, key, lens in items(pass_):
-        if not _unfinished(out_path(pass_, part, arm, key, lens), retry_failed):
+    for part, arm, key, lens in items(pass_, parts):
+        if not redo and not _unfinished(out_path(pass_, part, arm, key, lens), retry_failed):
             continue
         d, files = inputs_for(pass_, part, arm, key)
         if absent(d, files):

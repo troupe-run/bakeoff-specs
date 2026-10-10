@@ -2,7 +2,9 @@
 dimension = "traceability"
 unit = "step"
 steps = [2, 3, 4, 5, 6, 7]
-evidence = ["repo", "diff"]
+# The repo is an exported tree with no .git: the step's commit messages (sha_before..sha_after, subject and body,
+# newest first) are in commits.md (owner, 2026-10-10; before that judges never saw them).
+evidence = ["repo", "diff", "commits"]
 
 [levels]
 0 = "The step's changes carry no reason: commit messages are generic ('update', 'wip', 'fixes') and no spec, change record or decision ties the diff to the request."
@@ -13,12 +15,12 @@ evidence = ["repo", "diff"]
 
 [[lens]]
 name = "reviewer"
-perspective = "You are reviewing this step's diff hunk by hunk before it merges. For each substantive hunk, can you find in the commits or the records why it is there? Count the hunks you could not approve for want of a reason."
+perspective = "You are reviewing this step's diff hunk by hunk before it merges. For each substantive hunk, can you find in the commits or the records why it is there? Count the hunks you could not approve for want of a reason. The repo has no .git; the step's commit messages (subject and body) are in commits.md."
 
 [[lens]]
 name = "archaeologist"
-perspective = "A year from now you run blame on lines this step changed (pick three, at least one that changed existing behaviour). Does the commit and whatever it references tell you why the line changed, and what it was before?"
+perspective = "A year from now you run blame on lines this step changed (pick three, at least one that changed existing behaviour). Does the commit and whatever it references tell you why the line changed, and what it was before? The repo has no .git: find the commit by matching diff.patch to the commit messages in commits.md (subject and body, newest first)."
 
 [[lens]]
 name = "product owner"
-perspective = "You asked for this step's change. Looking only at the repo's records and commit history, can you see where your request landed, and which earlier requirements it displaced or modified?"
+perspective = "You asked for this step's change. Looking only at the repo's records and commit history, can you see where your request landed, and which earlier requirements it displaced or modified? The commit history (messages, subject and body) is in commits.md; the repo itself has no .git."

@@ -36,7 +36,7 @@ def test_two_bad_replies_are_recorded_as_judge_failed_not_a_score(tmp_path):
 
 def test_the_stage_resumes_without_repeating_finished_items(tmp_state, monkeypatch):
     items = [("req_test_code", "alpha", "01", "auditor"), ("req_test_code", "alpha", "01", "maintainer")]
-    monkeypatch.setattr(judge, "items", lambda pass_: items)
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: items)
     monkeypatch.setattr(judge, "inputs_for", lambda pass_, part, arm, key: (tmp_state, ["repo/x"]))
     (tmp_state / "repo").mkdir(); (tmp_state / "repo" / "x").write_text("x")   # R24(d): inputs must exist
     first = judge.FakeJudge([OK])
@@ -135,7 +135,7 @@ def test_the_prompt_carries_the_rubric_levels_lens_files_shape_and_blindness_ins
 
 # ---- items, inputs_for, run on an anonymised fixture -------------------------------------------------------------
 
-STEP_FILES = ("diff.patch", "transcript.md", "questions.md", "gates.md", "others-questions.md")
+STEP_FILES = ("diff.patch", "commits.md", "transcript.md", "questions.md", "gates.md", "others-questions.md")
 
 
 def anon_fixture(pass_="p", arms=("alpha", "beta"), steps=("01", "03")):
@@ -182,7 +182,8 @@ def test_inputs_for_selects_the_files_each_rubric_evidence_kind_names(tmp_state)
     d, files = judge.inputs_for("p", "req_test_code", "beta", "03")
     assert d == out / "anon" / lab["beta"] / "03" and files == ["repo/"]
     assert judge.inputs_for("p", "gates", "beta", "03")[1] == ["gates.md", "transcript.md"]
-    assert judge.inputs_for("p", "change_reason", "beta", "03")[1] == ["diff.patch", "repo/"]
+    assert judge.inputs_for("p", "change_reason", "beta", "03")[1] == ["commits.md", "diff.patch", "repo/"]
+    assert judge.inputs_for("p", "test_names", "beta", "03")[1] == ["commits.md", "diff.patch", "repo/"]
 
 
 def test_question_value_also_reads_the_other_arms_questions(tmp_state):
@@ -227,7 +228,7 @@ def test_a_step_without_a_transcript_makes_the_arm_unit_part_input_missing_not_s
 def test_run_writes_each_verdict_under_the_real_arm_and_never_names_it_to_the_judge(tmp_state, monkeypatch):
     _, lab = anon_fixture()
     its = [("req_test_code", "alpha", "01", "auditor"), ("fit", "beta", "arm", "claude-code-user")]
-    monkeypatch.setattr(judge, "items", lambda pass_: its)
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: its)
     j = judge.FakeJudge([OK, OK])
     assert judge.run("p", j) == {"asked": 2, "skipped": 0, "input_missing": 0}
     v = json.loads(judge.out_path("p", "req_test_code", "alpha", "01", "auditor").read_text())
@@ -249,7 +250,7 @@ def test_an_item_whose_input_is_named_in_missing_json_is_recorded_input_missing_
     d = out / "anon" / lab["alpha"] / "01"
     (d / "transcript.md").unlink()
     missing_json(d, (["transcript.md"], "no arm turn streams"))
-    monkeypatch.setattr(judge, "items", lambda pass_: [("gates", "alpha", "01", "auditor"),
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [("gates", "alpha", "01", "auditor"),
                                                        ("req_test_code", "alpha", "01", "auditor")])
     j = judge.FakeJudge([OK])
     assert judge.run("p", j) == {"asked": 1, "skipped": 0, "input_missing": 1}
@@ -262,7 +263,7 @@ def test_an_item_whose_input_is_named_in_missing_json_is_recorded_input_missing_
 def test_missing_json_is_authoritative_even_for_a_file_on_disk(tmp_state, monkeypatch):
     out, lab = anon_fixture()
     missing_json(out / "anon" / lab["alpha"] / "01", (["repo/", "diff.patch"], "export failed"))
-    monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "x")])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [("req_test_code", "alpha", "01", "x")])
     judge.run("p", judge.FakeJudge([]))
     v = json.loads(judge.out_path("p", "req_test_code", "alpha", "01", "x").read_text())
     assert v["status"] == "input_missing" and v["notes"] == "repo/: export failed"
@@ -271,7 +272,7 @@ def test_missing_json_is_authoritative_even_for_a_file_on_disk(tmp_state, monkey
 def test_an_absent_required_file_without_missing_json_is_also_input_missing(tmp_state, monkeypatch):
     out, lab = anon_fixture()
     (out / "anon" / lab["alpha"] / "01" / "diff.patch").unlink()
-    monkeypatch.setattr(judge, "items", lambda pass_: [("change_reason", "alpha", "01", "x")])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [("change_reason", "alpha", "01", "x")])
     judge.run("p", judge.FakeJudge([]))
     v = json.loads(judge.out_path("p", "change_reason", "alpha", "01", "x").read_text())
     assert v["status"] == "input_missing" and "diff.patch" in v["notes"]
@@ -281,7 +282,7 @@ def test_a_missing_setup_record_is_input_missing(tmp_state, monkeypatch):
     import shutil
     out, lab = anon_fixture()
     shutil.rmtree(out / "anon" / lab["alpha"] / "setup")
-    monkeypatch.setattr(judge, "items", lambda pass_: [("fit", "alpha", "arm", "x")])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [("fit", "alpha", "arm", "x")])
     judge.run("p", judge.FakeJudge([]))
     assert json.loads(judge.out_path("p", "fit", "alpha", "arm", "x").read_text())["status"] == "input_missing"
 
@@ -306,7 +307,7 @@ def _write_status(status, *key):
 def test_an_input_missing_verdict_is_asked_again_once_the_inputs_are_present(tmp_state, monkeypatch):
     anon_fixture()
     key = ("req_test_code", "alpha", "01", "a")
-    monkeypatch.setattr(judge, "items", lambda pass_: [key])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [key])
     _write_status("input_missing", *key)
     assert judge.run("p", judge.FakeJudge([OK])) == {"asked": 1, "skipped": 0, "input_missing": 0}
     assert json.loads(judge.out_path("p", *key).read_text())["status"] == "ok"
@@ -316,7 +317,7 @@ def test_an_input_missing_verdict_stays_when_the_inputs_are_still_missing(tmp_st
     out, lab = anon_fixture()
     (out / "anon" / lab["alpha"] / "01" / "gates.md").unlink()
     key = ("gates", "alpha", "01", "a")
-    monkeypatch.setattr(judge, "items", lambda pass_: [key])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [key])
     _write_status("input_missing", *key)
     assert judge.run("p", judge.FakeJudge([])) == {"asked": 0, "skipped": 0, "input_missing": 1}
     assert json.loads(judge.out_path("p", *key).read_text())["status"] == "input_missing"
@@ -325,7 +326,7 @@ def test_an_input_missing_verdict_stays_when_the_inputs_are_still_missing(tmp_st
 def test_a_judge_failed_verdict_is_final_unless_retry_failed_is_asked_for(tmp_state, monkeypatch):
     anon_fixture()
     key = ("req_test_code", "alpha", "01", "a")
-    monkeypatch.setattr(judge, "items", lambda pass_: [key])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [key])
     _write_status("judge_failed", *key)
     assert judge.run("p", judge.FakeJudge([])) == {"asked": 0, "skipped": 1, "input_missing": 0}
     assert judge.estimate("p")["calls"] == 0 and judge.estimate("p", retry_failed=True)["calls"] == 1
@@ -336,7 +337,7 @@ def test_a_judge_failed_verdict_is_final_unless_retry_failed_is_asked_for(tmp_st
 def test_estimate_counts_input_missing_items_that_are_now_answerable(tmp_state, monkeypatch):
     out, lab = anon_fixture()
     (out / "anon" / lab["alpha"] / "01" / "gates.md").unlink()
-    monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a"),
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [("req_test_code", "alpha", "01", "a"),
                                                        ("gates", "alpha", "01", "a")])
     _write_status("input_missing", "req_test_code", "alpha", "01", "a")   # answerable now
     _write_status("input_missing", "gates", "alpha", "01", "a")           # still missing
@@ -347,7 +348,7 @@ def test_estimate_counts_input_missing_items_that_are_now_answerable(tmp_state, 
 
 def test_estimate_counts_pending_calls_and_their_input_size(tmp_state, monkeypatch):
     out, lab = anon_fixture(arms=("alpha",), steps=("01",))
-    monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a"),
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [("req_test_code", "alpha", "01", "a"),
                                                        ("req_test_code", "alpha", "01", "b"),
                                                        ("gates", "alpha", "01", "a")])
     judge.out_path("p", "req_test_code", "alpha", "01", "b").parent.mkdir(parents=True)
@@ -446,7 +447,7 @@ def test_the_container_judge_runs_with_only_a_fresh_home_its_selected_inputs_and
 
 def test_a_research_first_judge_cannot_see_the_other_arms_questions(item, monkeypatch):
     seen = fake_turns(monkeypatch, [("ok", OK)])
-    monkeypatch.setattr(judge, "items", lambda pass_: [("research_first", "alpha", "03", "investigator")])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [("research_first", "alpha", "03", "investigator")])
     judge.run("p", judge.ContainerJudge("p", credentials.dummy()))
     ctrs = {x.ctr for x in seen[0].mounts}
     assert ctrs == {"/home/actor", "/judge/questions.md", "/judge/transcript.md"}
@@ -636,7 +637,7 @@ def test_the_judge_stage_refuses_when_the_estimate_has_grown_past_the_approval(t
     anon_fixture()
     # anon_fixture also makes 5 decision calls (4 extractions + 1 alignment): one approval covers the total (Task 18)
     (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 6\n")
-    monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a"),
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [("req_test_code", "alpha", "01", "a"),
                                                        ("req_test_code", "alpha", "01", "b")])
     monkeypatch.setattr(judge, "ContainerJudge", lambda *a, **k: pytest.fail("no judge past the approval"))
     assert cli.main(["score", "p", "--stage", "judge"]) == 1
@@ -648,7 +649,7 @@ def test_retry_failed_counts_failed_items_against_the_approval_and_asks_them(tmp
     from runner import cli
     anon_fixture()
     key = ("req_test_code", "alpha", "01", "a")
-    monkeypatch.setattr(judge, "items", lambda pass_: [key])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [key])
     _write_status("judge_failed", *key)
     # anon_fixture also makes 5 decision calls (4 extractions + 1 alignment): one approval covers the total (Task 18)
     (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 6\n")
@@ -664,7 +665,7 @@ def test_the_judge_stage_runs_once_approved(tmp_state, monkeypatch, capsys):
     anon_fixture()
     # anon_fixture also makes 5 decision calls (4 extractions + 1 alignment): one approval covers the total (Task 18)
     (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 7\n")
-    monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a"),
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [("req_test_code", "alpha", "01", "a"),
                                                        ("req_test_code", "alpha", "01", "b")])
     monkeypatch.setattr(judge, "ContainerJudge", lambda pass_: judge.FakeJudge([OK, OK]))
     assert cli.main(["score", "p", "--stage", "judge"]) == 0
@@ -674,7 +675,7 @@ def test_the_judge_stage_runs_once_approved(tmp_state, monkeypatch, capsys):
 def test_the_estimate_stage_needs_no_approval_and_prints_calls_size_and_implied_cost(tmp_state, monkeypatch, capsys):
     from runner import cli
     anon_fixture()
-    monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a")])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [("req_test_code", "alpha", "01", "a")])
     assert cli.main(["score", "p", "--stage", "judge-estimate"]) == 0
     got = json.loads(capsys.readouterr().out)
     assert got["judge_calls"] == 1 and got["calls"] == 6 and "input_mb" in got and got["implied_usd"] is None
@@ -685,7 +686,7 @@ def test_the_estimate_shows_an_upper_bound_with_parse_retries_but_approval_still
     # every judge and decision call may be retried once when its reply does not parse: shown, never gated on
     from runner import cli
     anon_fixture()
-    monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a")])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [("req_test_code", "alpha", "01", "a")])
     monkeypatch.setattr(judge, "implied_cost", lambda pass_, calls: {"po_usd_per_call": 0.5, "implied_usd": 0.5 * calls})
     assert cli.main(["score", "p", "--stage", "judge-estimate"]) == 0
     got = json.loads(capsys.readouterr().out)
@@ -694,3 +695,43 @@ def test_the_estimate_shows_an_upper_bound_with_parse_retries_but_approval_still
     monkeypatch.setattr(judge, "run", lambda *a, **k: {})
     monkeypatch.setattr(judge, "ContainerJudge", lambda pass_: None)
     assert cli.main(["score", "p", "--stage", "judge"]) == 0
+
+
+
+# ---- --part / --redo: re-judge one part (owner, 2026-10-10: change_reason with commits.md) --------------------------
+
+def test_items_and_estimate_can_be_limited_to_named_parts_and_unknown_parts_are_refused(tmp_state):
+    anon_fixture()
+    its = judge.items("p", ["change_reason"])
+    assert its and {p for p, *_ in its} == {"change_reason"} and {k for _, _, k, _ in its} == {"03"}
+    with pytest.raises(inputs.InputError, match="not a judged part"):
+        judge.items("p", ["no_such_part"])
+    for part, arm, key, lens in its:
+        judge.out_path("p", part, arm, key, lens).parent.mkdir(parents=True, exist_ok=True)
+        judge.out_path("p", part, arm, key, lens).write_text(json.dumps({"status": "ok", "score": 2}))
+    assert judge.estimate("p", parts=["change_reason"])["calls"] == 0
+    assert judge.estimate("p", parts=["change_reason"], redo=True)["calls"] == len(its) == 6
+
+
+def test_redo_moves_only_the_named_parts_verdicts_out_of_results_then_run_asks_only_them(tmp_state):
+    anon_fixture()
+    other = judge.out_path("p", "req_test_code", "alpha", "01", "auditor")
+    other.parent.mkdir(parents=True)
+    other.write_text("{}")
+    old = judge.out_path("p", "change_reason", "alpha", "03", "reviewer")
+    old.parent.mkdir(parents=True)
+    old.write_text(json.dumps({"status": "ok", "score": 1}))
+    dest = judge.supersede("p", ["change_reason"])
+    assert dest.is_relative_to(paths.STATE) and (dest / "change_reason" / "alpha" / "03" / "reviewer.json").exists()
+    assert not old.exists() and other.exists()
+    fake = judge.FakeJudge([OK] * 6)
+    got = judge.run("p", fake, parts=["change_reason"])
+    assert got["asked"] == 6 and not fake.replies
+    assert all("commits.md" in fs for fs in fake.files)
+    assert json.loads(old.read_text())["score"] == 3
+
+
+def test_redo_without_parts_is_refused(tmp_state):
+    anon_fixture()
+    with pytest.raises(inputs.InputError, match="needs --part"):
+        judge.supersede("p", [])

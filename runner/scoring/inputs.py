@@ -132,7 +132,7 @@ def legitimate(path: str, s: StaleList) -> bool:
     return any(fnmatch.fnmatch(path, pat) or fnmatch.fnmatch(path, pat.replace("/**", "")) for pat in s.legitimate)
 
 
-EVIDENCE_KINDS = {"repo", "diff", "stale_list", "transcript", "questions", "gates", "setup"}
+EVIDENCE_KINDS = {"repo", "diff", "commits", "stale_list", "transcript", "questions", "gates", "setup"}
 
 
 @dataclass(frozen=True)

@@ -290,7 +290,7 @@ def test_the_container_judges_mount_check_accepts_a_context_item(aligned):
 
 def test_the_context_stage_needs_approval_for_its_two_calls_per_topic_and_passes_only(aligned, monkeypatch):
     from runner import cli
-    monkeypatch.setattr(judge, "items", lambda pass_: [])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [])
     monkeypatch.setattr(judge, "ContainerJudge", lambda pass_: judge.FakeJudge([]))
     monkeypatch.setattr(cx, "ArmRunner", lambda pass_: FakeRunner())
     seen = []

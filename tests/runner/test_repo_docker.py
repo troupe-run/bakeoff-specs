@@ -98,6 +98,9 @@ def test_reads_report_what_the_tree_holds(P):
     assert gitops.log(P, base, sha) == [{"sha": sha, "author": "Sam Teammate", "subject": "add a"}]
     [rec] = [r for r in gitops.commits_between(P, base, sha).split("\x1e") if r.strip()]
     assert rec.strip().split("\x1f") == [sha, "add a\nbody line"]
+    [(short, subject, body)] = gitops.commit_log(P, base, sha)
+    assert sha.startswith(short) and subject == "add a" and body == "body line"
+    assert gitops.commit_log(P, sha, sha) == []
     (P.repo / "a.py").write_text("changed\n"); (P.repo / "new.py").write_text("n")
     assert "a.py" in gitops.worktree_diffstat(P)
     assert gitops.porcelain(P).splitlines() == [" M a.py", "?? new.py"]

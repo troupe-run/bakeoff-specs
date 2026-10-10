@@ -430,7 +430,7 @@ def test_the_stage_runs_between_context_and_import_and_needs_approval_for_its_ca
     from runner.scoring import cli as scli
     order = list(scli.STAGES)
     assert order.index("decisions-context") < order.index("decisions-reslice") < order.index("decisions-import")
-    monkeypatch.setattr(judge, "items", lambda pass_: [])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [])
     monkeypatch.setattr(judge, "ContainerJudge", lambda pass_: judge.FakeJudge([GOOD]))
     monkeypatch.setattr(cx, "ArmRunner", lambda pass_: FakeRunner(by_label=BY_LABEL))
     (ctx / "judge-approved").write_text("approved 2026-10-10 1\n")           # 1 align + 1 reslice = 2

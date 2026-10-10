@@ -106,6 +106,12 @@ the decision review's unscored parts (§8).
 - **Anonymised copies (design §8):** arms become Arm A–F in a fixed random order; repo names, tool folder names,
   commit trailers and URLs are scrubbed. The key is kept out of the judges' inputs. Blinding is partial and the
   report says so.
+- **Commit messages (owner, 2026-10-10):** the anonymised repo is an exported tree with no `.git`, so each step also
+  gets `commits.md`, its commit messages (subject and body, scrubbed like everything else). Change → reason and test
+  names read it with the diff.
+- **Test names sample (owner, 2026-10-10; from pass 2):** the judges get the step's diff and check every test it
+  added or changed; over 30, a systematic sample spread over every changed file, every k-th in diff order with
+  k = floor(N ÷ max(30, ⌈N ÷ 10⌉)), so at least max(30, a tenth) are read.
 - **Disputed:** lenses differ by 2 or more. The owner reviews every disputed item, every judgement that decides a
   top-two placing, and a random ~10% of the rest. The owner's verdict is stored beside the judges', never instead.
 - **Cost:** roughly 6 arms × 7 steps × ~7 parts × 3 lenses ≈ 900 calls. An estimate is given for go-ahead before

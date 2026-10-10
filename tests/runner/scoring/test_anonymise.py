@@ -141,6 +141,11 @@ def world(tmp_path, monkeypatch):
         (dest / "src" / "a.py").write_text("print('control group')\n")
 
     monkeypatch.setattr(gitops, "export_tree", export)
+    monkeypatch.setattr(gitops, "commit_log", lambda p, a, b: [
+        ("abc1234", "Plan lineage (OpenSpec change config-lineage) in bakeoff-specs-speckit-pass1#2",
+         "Why: the /speckit-plan step via kitty/mission-x.\n\nCo-Authored-By: Claude <noreply@x>\n"
+         "Claude-Session: https://claude.ai/code/session_1"),
+        ("def5678", "Fix alias set", "")])
     monkeypatch.setattr(gitops, "diff_text", lambda p, a, b: (
         "diff --git a/.specify/notes.md b/.specify/notes.md\n+Claude-Session: https://x\n+speckit /opsx:apply\n"))
     return pd
@@ -166,7 +171,7 @@ def test_run_writes_labelled_dirs_with_every_artefact_and_the_key_after_the_expo
     lab = {v: k for k, v in key.items()}["speckit"]
     step = anon / lab / "01"
     assert sorted(p.name for p in step.iterdir()) == [
-        "diff.patch", "gates.md", "others-questions.md", "questions.md", "repo", "transcript.md"]
+        "commits.md", "diff.patch", "gates.md", "others-questions.md", "questions.md", "repo", "transcript.md"]
     assert (step / "repo" / "spec" / "notes.md").read_text().startswith("speckit".replace("speckit", "method") + " method")
 
 
@@ -222,7 +227,7 @@ def test_a_step_without_shas_gets_a_placeholder_not_a_crash_and_no_repo(world):
     assert "no sha_before" in (step / "MISSING.md").read_text()
     assert not (step / "repo").exists() and not (step / "diff.patch").exists()
     assert json.loads((step / "MISSING.json").read_text()) == [
-        {"files": ["repo/", "diff.patch"], "why": "git.json has no sha_before/sha_after for this step"}]
+        {"files": ["repo/", "diff.patch", "commits.md"], "why": "git.json has no sha_before/sha_after for this step"}]
 
 
 def test_a_failed_export_is_reported_and_the_run_still_finishes(world, monkeypatch, capsys):
@@ -236,7 +241,9 @@ def test_a_failed_export_is_reported_and_the_run_still_finishes(world, monkeypat
                          for d in steps)
     assert not any("bakeoff-specs-control" in (d / "MISSING.md").read_text() for d in steps)
     assert not any("bakeoff-specs-control" in (d / "MISSING.json").read_text() for d in steps)   # scrubbed too
-    assert all(json.loads((d / "MISSING.json").read_text())[0]["files"] == ["repo/", "diff.patch"] for d in steps)
+    assert all(json.loads((d / "MISSING.json").read_text())[0]["files"] == ["repo/", "diff.patch", "commits.md"]
+               for d in steps)
+    assert not any((d / "commits.md").exists() for d in steps)
     assert (paths.scoring_out("p1") / "anon-key.json").exists()
 
 
@@ -545,3 +552,47 @@ def test_a_failed_anonymise_run_also_leaves_no_stale_leak_check_json(world, monk
     with pytest.raises(RuntimeError):
         an.run("p1")
     assert not lc.exists()
+
+
+# --- commits.md (owner, 2026-10-10): the step's commit messages for change_reason and test_names --------------------
+def test_commits_md_has_every_commit_subject_and_body_scrubbed_of_names_and_trailers(world):
+    anon = an.run("p1")
+    lab = {v: k for k, v in an.read_key("p1").items()}["speckit"]
+    c = (anon / lab / "01" / "commits.md").read_text()
+    assert "## abc1234 Plan lineage" in c and "## def5678 Fix alias set" in c and "Why: the" in c
+    low = c.lower()
+    assert not any(w in low for w in ("openspec", "speckit", "kitty", "bakeoff-specs", "co-authored-by",
+                                       "claude-session"))
+    assert leakcheck.check(anon, ["speckit", "control"]) == []
+
+
+def test_commits_md_for_an_empty_range_says_so():
+    assert "No commits in this step's range." in an.commits_md([])
+
+
+def _tree_digest(anon: Path, skip: str = "commits.md") -> dict[str, str]:
+    import hashlib
+    return {f.relative_to(anon).as_posix(): hashlib.sha256(f.read_bytes()).hexdigest()
+            for f in sorted(anon.rglob("*")) if f.is_file() and f.name != skip}
+
+
+def test_add_commits_writes_only_commits_md_under_the_existing_labels(world, monkeypatch):
+    anon = an.run("p1")
+    key_before = an.key_path("p1").read_bytes()
+    for f in anon.rglob("commits.md"):
+        f.unlink()
+    before = _tree_digest(anon)
+    (paths.scoring_out("p1") / "leak-check.json").write_text("{}")
+    assert an.add_commits("p1") == []
+    assert _tree_digest(anon) == before and an.key_path("p1").read_bytes() == key_before
+    assert len(list(anon.rglob("commits.md"))) == len([d for d in anon.glob("Arm */0[0-9]")])
+    assert not (paths.scoring_out("p1") / "leak-check.json").exists()       # R39: the tree changed
+
+
+def test_add_commits_refuses_without_a_key_and_names_failed_steps(world, monkeypatch):
+    with pytest.raises(FileNotFoundError):
+        an.add_commits("p1")
+    an.run("p1")
+    monkeypatch.setattr(gitops, "commit_log", lambda p, a, b: (_ for _ in ()).throw(docker.ContainerError("boom")))
+    fails = an.add_commits("p1")
+    assert fails and all("boom" in f for f in fails)

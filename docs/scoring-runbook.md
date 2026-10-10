@@ -47,6 +47,10 @@ resumable or idempotent unless noted.
    only when there is no key. Extractions and both sheets record the key's sha256 and refuse on a mismatch, so a
    changed key can never silently re-map ratings or verdicts.
    Check: any `anon/<label>/<NN>/MISSING.md` and `UNSCRUBBED.txt` are expected, and are disclosed in the report.
+8a. `--stage anonymise-commits` (Docker, container git) adds only `anon/<label>/<NN>/commits.md` (the step's commit
+   messages, `git log --format='%h %s%n%n%b' sha_before..sha_after`, scrubbed) to an existing `anon/`, under the
+   existing key, touching nothing else. Use it on an `anon/` written before commits.md existed (2026-10-10); a
+   fresh `--stage anonymise` writes commits.md itself. It removes `leak-check.json`: run step 9 again.
 9. `--stage leak-check` searches every file under `anon/` (contents and paths, `repo/` and `diff.patch` included)
    for every arm's names, aliases, tool folders and CLI forms, with a checker independent of the scrubber's regexes.
    It writes `leak-check.json` and exits non-zero naming each hit. Fix the scrub terms (or accept a hit as disclosed
@@ -81,6 +85,11 @@ resumable or idempotent unless noted.
 14. `--stage judge`: resumable, so re-run after a crash. Failed items are final unless `--retry-failed`; items
     whose input was missing are re-checked automatically on every run. Check: the printed counts; unjudged items
     show as unmeasured, never as zero.
+    `--part change_reason [...]` limits judge and judge-estimate to those parts. `--redo --part P` re-judges a whole
+    part: estimate with `--stage judge-estimate --part P --redo`, then `--stage judge --part P --redo` moves P's
+    earlier verdicts to `state/<pass>-scoring/judged-superseded/<stamp>/` (kept) before asking. After a crash resume
+    with `--part P` **without** `--redo`, or the verdicts already redone are moved aside again. Owner verdicts in
+    `review/verdicts.jsonl` are untouched and still override.
 
 ## 6. Owner review of judgements
 

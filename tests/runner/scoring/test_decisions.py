@@ -463,7 +463,7 @@ def test_the_estimate_counts_unfinished_extractions_and_one_alignment_even_for_a
 def test_judge_estimate_prints_decision_calls_in_the_total(tmp_state, monkeypatch, capsys):
     from runner import cli
     anon_fixture()
-    monkeypatch.setattr(judge, "items", lambda pass_: [("req_test_code", "alpha", "01", "a")])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [("req_test_code", "alpha", "01", "a")])
     assert cli.main(["score", "p", "--stage", "judge-estimate"]) == 0
     got = json.loads(capsys.readouterr().out)
     assert (got["judge_calls"], got["decision_calls"], got["calls"]) == (1, 5, 6)
@@ -473,7 +473,7 @@ def test_judge_estimate_prints_decision_calls_in_the_total(tmp_state, monkeypatc
 def test_decision_stages_that_ask_a_model_refuse_without_approval(tmp_state, monkeypatch, capsys, stage):
     from runner import cli
     anon_fixture()
-    monkeypatch.setattr(judge, "items", lambda pass_: [])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [])
     monkeypatch.setattr(judge, "ContainerJudge", lambda *a, **k: pytest.fail("no judge without approval"))
     assert cli.main(["score", "p", "--stage", stage]) == 1
     assert "judge-approved is missing" in capsys.readouterr().out
@@ -482,7 +482,7 @@ def test_decision_stages_that_ask_a_model_refuse_without_approval(tmp_state, mon
 def test_decisions_extract_runs_once_the_total_is_approved(tmp_state, monkeypatch, capsys):
     from runner import cli
     anon_fixture()
-    monkeypatch.setattr(judge, "items", lambda pass_: [])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [])
     (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 5\n")
     monkeypatch.setattr(judge, "ContainerJudge", lambda pass_: judge.FakeJudge([D1] * 4))
     assert cli.main(["score", "p", "--stage", "decisions-extract"]) == 0
@@ -545,7 +545,7 @@ def test_decisions_align_passes_allow_failed_from_the_command_line(tmp_state, mo
     from runner import cli
     anon_fixture(arms=("alpha",), steps=("01",))
     (paths.scoring_out("p") / "judge-approved").write_text("approved 2026-10-06 9\n")
-    monkeypatch.setattr(judge, "items", lambda pass_: [])
+    monkeypatch.setattr(judge, "items", lambda pass_, parts=None: [])
     seen = []
     monkeypatch.setattr(dz, "align", lambda pass_, j, allow_failed=False: seen.append(allow_failed) or "ok")
     monkeypatch.setattr(judge, "ContainerJudge", lambda pass_: judge.FakeJudge([]))

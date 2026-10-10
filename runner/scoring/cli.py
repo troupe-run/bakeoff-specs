@@ -65,7 +65,9 @@ def _estimates(ns) -> tuple[dict, dict]:
     c = context.estimate(ns.pass_, retry_failed=ns.retry_failed)
     r = reslice.estimate(ns.pass_, retry_failed=ns.retry_failed, only=getattr(ns, "only", None),
                          redo=getattr(ns, "redo", False) and getattr(ns, "stage", None) == "decisions-reslice")
-    return (judge.estimate(ns.pass_, retry_failed=ns.retry_failed),
+    parts = getattr(ns, "part", None)
+    jredo = bool(getattr(ns, "redo", False) and parts and getattr(ns, "stage", None) in ("judge", "judge-estimate"))
+    return (judge.estimate(ns.pass_, retry_failed=ns.retry_failed, parts=parts, redo=jredo),
             d | {"calls": d["calls"] + c["calls"] + r["calls"], "context_calls": c["calls"],
                  "reslice_calls": r["calls"]})
 
@@ -93,8 +95,11 @@ def _judge_estimate(ns) -> None:
 def _judge(ns) -> None:
     """Spends model quota: refuses unless `judge-approved` covers the current estimate (`judge.check_approval`)."""
     _approve(ns)
-    print(json.dumps(judge.run(ns.pass_, judge.ContainerJudge(ns.pass_), retry_failed=ns.retry_failed), indent=2,
-                     sort_keys=True))
+    parts = getattr(ns, "part", None)
+    if getattr(ns, "redo", False):
+        print(f"judge --redo: earlier verdicts of {parts} moved to {judge.supersede(ns.pass_, parts or [])}")
+    print(json.dumps(judge.run(ns.pass_, judge.ContainerJudge(ns.pass_), retry_failed=ns.retry_failed, parts=parts),
+                     indent=2, sort_keys=True))
 
 
 def _decisions_extract(ns) -> None:
@@ -186,11 +191,26 @@ def _leak_check(ns) -> None:
     print(f"leak check: no leaks in {files} file(s) under {anon} ({out})")
 
 
+def _anonymise_commits(ns) -> None:
+    """Adds `commits.md` to every step of the existing anon/ tree under the existing key, nothing else (owner,
+    2026-10-10). Run `--stage leak-check` after it: it removes leak-check.json, as anonymise does (R39)."""
+    try:
+        fails = anonymise.add_commits(ns.pass_)
+    except FileNotFoundError as e:
+        raise inputs.InputError(str(e)) from None
+    for f in fails:
+        print(f"anonymise-commits: {f}")
+    if fails:
+        raise inputs.InputError(f"anonymise-commits: {len(fails)} step(s) failed (listed above)")
+    print("anonymise-commits: commits.md written for every step; run --stage leak-check")
+
+
 STAGES = {
     "all-fail": lambda ns: print(json.dumps(evidence.all_fail(paths.RESULTS / ns.pass_,
                                                                collect.arms(paths.RESULTS / ns.pass_)), indent=2)),
     "collect": lambda ns: print(len(collect.run(ns.pass_, docker=not ns.no_docker)), "records"),
     "anonymise": lambda ns: print(anonymise.run(ns.pass_)),     # Docker (container git); rewrites anon/ and anon-key.json
+    "anonymise-commits": _anonymise_commits,                    # Docker (container git); adds only commits.md to anon/
     # quality/size.json for steps whose quality run predates it, from the anonymised trees (needs the anon key)
     "size": lambda ns: print(len(size.backfill(ns.pass_)), "size records"),
     "leak-check": _leak_check,

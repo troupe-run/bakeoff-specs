@@ -1,9 +1,14 @@
 # scoring/rubrics/test_names.toml — code and test quality: does each test's name say what its body actually asserts?
-# A name that overclaims is worse than a vague one: it marks the question as answered. Checked set: every test the
-# step added or changed, in diff order, up to the first 30.
+# A name that overclaims is worse than a vague one: it marks the question as answered.
+# Checked set (owner, 2026-10-10; pass 2 on): every test the step added or changed, found in diff.patch (an added
+# `def test_`, or a test whose body a hunk changed), in diff order. Up to 30, all of them. Over 30, a systematic sample
+# spread across every changed file: every k-th in diff order, k = floor(changed / max(30, ceil(changed / 10))), so at
+# least max(30, a tenth of them) and under twice that are read; e.g. 40 changed -> all 40, 300 -> every 10th (30),
+# 816 -> every 9th (91). The judge states the count and k. Before this the judges had only repo/ (no diff, no
+# .git) and guessed which tests were the step's.
 dimension = "code_quality"
 unit = "step"
-evidence = ["repo"]
+evidence = ["repo", "diff", "commits"]
 
 [levels]
 0 = "Names do not describe behaviour (test_1, test_set, test_it_works), or most checked names claim something their body does not assert."
@@ -14,12 +19,12 @@ evidence = ["repo"]
 
 [[lens]]
 name = "falsifier"
-perspective = "Read each checked test's name as a claim. Ask: if the claim were false, would the body fail? Record per test: claim checked, overclaims (cite the missing assertion), or underclaims. Score from the overclaims first. The checked tests: every test this step added or changed, in diff order, up to the first 30."
+perspective = "Read each checked test's name as a claim. Ask: if the claim were false, would the body fail? Record per test: claim checked, overclaims (cite the missing assertion), or underclaims. Score from the overclaims first. The checked tests: every test this step added or changed (find them in diff.patch: an added `def test_`, or a test whose body a hunk changed; commits.md has the commit messages), in diff order. If there are 30 or fewer, check them all. If there are more, check every k-th in diff order across all changed files, k = floor(N / max(30, ceil(N / 10))) for N changed tests, so you read at least max(30, a tenth of N); state N and k in your notes."
 
 [[lens]]
 name = "spec reader"
-perspective = "Read only the names of the checked tests, as a list. What behaviour do they describe? Compare that with the step's request and contract sections. Are the names specific enough to tell which rule each test pins? The checked tests: every test this step added or changed, in diff order, up to the first 30."
+perspective = "Read only the names of the checked tests, as a list. What behaviour do they describe? Compare that with the step's request and contract sections. Are the names specific enough to tell which rule each test pins? The checked tests: every test this step added or changed (find them in diff.patch: an added `def test_`, or a test whose body a hunk changed; commits.md has the commit messages), in diff order. If there are 30 or fewer, check them all. If there are more, check every k-th in diff order across all changed files, k = floor(N / max(30, ceil(N / 10))) for N changed tests, so you read at least max(30, a tenth of N); state N and k in your notes."
 
 [[lens]]
 name = "failure triager"
-perspective = "CI reports one of these tests failed and gives you only its name. For each checked test, would you know what behaviour broke without opening the body? Then open the body: was your guess right? The checked tests: every test this step added or changed, in diff order, up to the first 30."
+perspective = "CI reports one of these tests failed and gives you only its name. For each checked test, would you know what behaviour broke without opening the body? Then open the body: was your guess right? The checked tests: every test this step added or changed (find them in diff.patch: an added `def test_`, or a test whose body a hunk changed; commits.md has the commit messages), in diff order. If there are 30 or fewer, check them all. If there are more, check every k-th in diff order across all changed files, k = floor(N / max(30, ceil(N / 10))) for N changed tests, so you read at least max(30, a tenth of N); state N and k in your notes."

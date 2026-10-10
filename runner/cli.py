@@ -484,7 +484,11 @@ def register_score(sub):
     p.add_argument("--only", nargs="+", default=None, metavar="TOPIC",
                    help="decisions-context, decisions-reslice: only these topics (sheet ids such as T4, or topic ids)")
     p.add_argument("--redo", action="store_true",
-                   help="decisions-context, decisions-reslice: write the --only topics again")
+                   help="decisions-context, decisions-reslice: write the --only topics again; judge, judge-estimate "
+                        "(with --part): re-judge those parts, moving their earlier verdicts to "
+                        "state/<pass>-scoring/judged-superseded/")
+    p.add_argument("--part", nargs="+", default=None, metavar="PART",
+                   help="judge, judge-estimate: only these judged parts (rubric names such as change_reason)")
     p.add_argument("--ask", default=None, help="decisions-context: the owner's request for what the examples cover")
     p.set_defaults(func=scli.score)
 REGISTRARS.append(register_score)
