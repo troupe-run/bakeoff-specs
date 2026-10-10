@@ -2,18 +2,18 @@
 
 ## Bottom line
 
-- 1: openspec 77.6
-- 2: ccsdd 76.3
-- 3–4 (within noise): speckit 75.2 · speckitty 74.1
-- 5: superpowers 70.9
-- 6: control 66.9
+- 1–2 (within noise): ccsdd 81.2 · openspec 81.2
+- 3: speckitty 78.9
+- 4: speckit 76.8
+- 5: superpowers 72.2
+- 6: control 68.5
 
-1. 1 group(s) of arms are within noise of each other and should not be ranked against one another; 3 weight/judge variant(s) change the order.
+1. 1 group(s) of arms are within noise of each other and should not be ranked against one another; 21 weight/judge variant(s) change the order.
 2. Relative to the field mean (share of each dimension's weight):
-   - ccsdd: strongest interaction (+12% of its weight vs the field mean), weakest time (-22%)
-   - control: strongest time (+28% of its weight vs the field mean), weakest code_quality (-26%)
-   - openspec: strongest traceability (+10% of its weight vs the field mean), weakest setup (-2%)
-   - speckit: strongest code_quality (+17% of its weight vs the field mean), weakest time (-13%)
+   - ccsdd: strongest code_quality (+16% of its weight vs the field mean), weakest time (-22%)
+   - control: strongest time (+28% of its weight vs the field mean), weakest code_quality (-35%)
+   - openspec: strongest code_quality (+15% of its weight vs the field mean), weakest setup (-2%)
+   - speckit: strongest code_quality (+8% of its weight vs the field mean), weakest time (-13%)
    - speckitty: strongest interaction (+23% of its weight vs the field mean), weakest setup (-22%)
    - superpowers: strongest time (+27% of its weight vs the field mean), weakest interaction (-23%)
 3. Time and cost outliers (≥3× or ≤1/3× the median, arm totals): 4 on time, 4 on cost; see Time and cost.
@@ -27,12 +27,12 @@
 
 | arm | code_quality /15 | coping /20 | correctness /20 | decision_quality /10 | interaction /10 | setup /10 | time /5 | traceability /10 | total /100 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| ccsdd | 8.0 | 16.8 | 19.8 | 7.5 | 6.8 | 9.0 | 0.0▼ | 8.4 | 76.3 |
-| control | 3.8† | 16.4 | 19.7 | 5.6 | 4.7 | 9.0 | 2.5▲ | 5.3 | 66.9 |
-| openspec | 9.1 | 17.8 | 19.8 | 7.2 | 6.0 | 8.0 | 1.1 | 8.5 | 77.6 |
-| speckit | 10.2 | 16.8 | 19.8 | 6.9 | 5.1 | 8.0 | 0.4 | 8.1 | 75.2 |
-| speckitty | 7.9 | 17.3 | 19.5 | 7.3 | 8.0 | 6.0 | 0.0▼ | 8.1 | 74.1 |
-| superpowers | 6.5 | 16.6 | 19.7 | 6.8 | 3.3 | 9.0 | 2.4▲ | 6.5 | 70.9 |
+| ccsdd | 12.9 | 16.8 | 19.8 | 7.5 | 6.8 | 9.0 | 0.0▼ | 8.4 | 81.2 |
+| control | 5.3† | 16.4 | 19.7 | 5.6 | 4.7 | 9.0 | 2.5▲ | 5.3 | 68.5 |
+| openspec | 12.8 | 17.8 | 19.8 | 7.2 | 6.0 | 8.0 | 1.1 | 8.5 | 81.2 |
+| speckit | 11.7 | 16.8 | 19.8 | 6.9 | 5.1 | 8.0 | 0.4 | 8.1 | 76.8 |
+| speckitty | 12.7 | 17.3 | 19.5 | 7.3 | 8.0 | 6.0 | 0.0▼ | 8.1 | 78.9 |
+| superpowers | 7.9 | 16.6 | 19.7 | 6.8 | 3.3 | 9.0 | 2.4▲ | 6.5 | 72.2 |
 
 † a part of this dimension is unmeasured (its weight went to the measured parts); — nothing measured; ▲/▼ ≥3× / ≤1/3× the median of the arms. A total is 100 × the measured dimensions' scores over their weights (an unmeasured dimension is left out, never counted as 0); † on a total: that arm's measured dimensions differ from the field's, so it is not like-for-like.
 
@@ -42,12 +42,20 @@
 
 | part | ccsdd | control | openspec | speckit | speckitty | superpowers |
 |---|---:|---:|---:|---:|---:|---:|
+| lint (2 pts) | 0.95 | 0.52 | 0.92 | 0.95 | 0.88 | 0.68 |
 | mutation (5 pts) | 0.86 | — | 0.87 | 0.72 | 0.84 | 0.76 |
-| mypy_lint (5 pts) | 0.00 | 0.00 | 0.24 | 0.67 | 0.00 | 0.00 |
 | test_names (5 pts) | 0.75 | 0.50 | 0.71 | 0.64 | 0.75 | 0.54 |
+| types (3 pts) | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 |
 
 | part · step | ccsdd | control | openspec | speckit | speckitty | superpowers |
 |---|---:|---:|---:|---:|---:|---:|
+| lint · step 1 | 0.96 | 0.63 | 0.91 | 0.93 | 0.91 | 0.61 |
+| lint · step 2 | 0.96 | 0.60 | 0.92 | 0.94 | 0.92 | 0.69 |
+| lint · step 3 | 0.96 | 0.62 | 0.92 | 0.95 | 0.89 | 0.72 |
+| lint · step 4 | 0.94 | 0.40 | 0.93 | 0.95 | 0.89 | 0.70 |
+| lint · step 5 | 0.95 | 0.45 | 0.93 | 0.96 | 0.86 | 0.67 |
+| lint · step 6 | 0.94 | 0.45 | 0.93 | 0.96 | 0.88 | 0.68 |
+| lint · step 7 | 0.94 | 0.52 | 0.92 | 0.97 | 0.83 | 0.69 |
 | mutation · step 1 | 0.86 | — | 0.87 | 0.72 | 0.84 | 0.74 |
 | mutation · step 2 | 0.85 | — | 0.86 | 0.70 | 0.85 | 0.73 |
 | mutation · step 3 | 0.84 | — | 0.87 | 0.74 | 0.85 | 0.79 |
@@ -55,13 +63,6 @@
 | mutation · step 5 | 0.86 | — | 0.89 | 0.75 | 0.84 | 0.79 |
 | mutation · step 6 | 0.86 | — | 0.86 | 0.69 | 0.85 | 0.75 |
 | mutation · step 7 | 0.86 | — | 0.85 | 0.70 | 0.78 | 0.76 |
-| mypy_lint · step 1 | 0.00 | 0.00 | 0.60 | 0.70 | 0.00 | 0.00 |
-| mypy_lint · step 2 | 0.00 | 0.00 | 0.50 | 0.70 | 0.00 | 0.00 |
-| mypy_lint · step 3 | 0.00 | 0.00 | 0.35 | 0.65 | 0.00 | 0.00 |
-| mypy_lint · step 4 | 0.00 | 0.00 | 0.20 | 0.65 | 0.00 | 0.00 |
-| mypy_lint · step 5 | 0.00 | 0.00 | 0.05 | 0.65 | 0.00 | 0.00 |
-| mypy_lint · step 6 | 0.00 | 0.00 | 0.00 | 0.70 | 0.00 | 0.00 |
-| mypy_lint · step 7 | 0.00 | 0.00 | 0.00 | 0.65 | 0.00 | 0.00 |
 | test_names · step 1 | 0.75 | 0.25 | 0.75 | 0.50 | 0.75 | 0.50 |
 | test_names · step 2 | 0.75° | 0.50° | 0.75 | 0.75 | 0.75 | 0.50 |
 | test_names · step 3 | 0.75 | 0.50° | 0.75° | 0.50° | 0.75 | 0.50 |
@@ -69,8 +70,17 @@
 | test_names · step 5 | 0.75 | 0.50 | 0.75 | 0.75 | 0.75 | 0.50 |
 | test_names · step 6 | 0.75 | 0.75 | 0.75 | 0.75° | 0.75 | 0.50 |
 | test_names · step 7 | 0.75 | 0.50 | 0.50 | 0.50° | 0.75 | 0.50 |
+| types · step 1 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 |
+| types · step 2 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 |
+| types · step 3 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 |
+| types · step 4 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 |
+| types · step 5 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 |
+| types · step 6 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 |
+| types · step 7 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 |
 
 Scores are 0–1. * judges disagreed by 2+ points; ° the owner's verdict was used; ◦ a thin panel: fewer than three lenses answered. — unmeasured or not applicable; the reason is in the arm's appendix.
+
+types = max(0, 1 − mypy --strict errors per 1,000 lines / 10); lint = max(0, 1 − ruff findings per 1,000 lines / 10), harness ruleset, a finding with a safe auto-fix counting 0.1. Lines are non-blank *.py lines the tool checked: mypy its targets (src), ruff src and tests. The same rule for every arm and step.
 
 ### coping (/20)
 
@@ -880,18 +890,36 @@ Each arm's total across every variant: weights ±5 per dimension, disputed judge
 
 | arm | reported | lowest | highest |
 |---|---:|---:|---:|
-| openspec | 77.6 | 74.6 | 80.5 |
-| ccsdd | 76.3 | 72.3 | 80.3 |
-| speckit | 75.2 | 71.7 | 78.7 |
-| speckitty | 74.1 | 70.2 | 78.0 |
-| superpowers | 70.9 | 68.8 | 73.0 |
-| control | 66.9 | 64.5 | 69.4 |
+| ccsdd | 81.2 | 77.0 | 85.5 |
+| openspec | 81.2 | 78.1 | 84.3 |
+| speckitty | 78.9 | 74.7 | 83.0 |
+| speckit | 76.8 | 73.2 | 80.3 |
+| superpowers | 72.2 | 70.0 | 74.4 |
+| control | 68.5 | 66.6 | 70.4 |
 
 ### Variants that change the order
 
-- interaction +5, judges median: openspec > ccsdd > speckitty > speckit > superpowers > control
-- interaction +5, judges low: openspec > ccsdd > speckitty > speckit > superpowers > control
-- interaction +5, judges high: openspec > ccsdd > speckitty > speckit > superpowers > control
+- code_quality -5, judges median: openspec > ccsdd > speckitty > speckit > superpowers > control
+- code_quality -5, judges low: openspec > ccsdd > speckitty > speckit > superpowers > control
+- code_quality -5, judges high: openspec > ccsdd > speckitty > speckit > superpowers > control
+- coping +5, judges median: openspec > ccsdd > speckitty > speckit > superpowers > control
+- coping +5, judges low: openspec > ccsdd > speckitty > speckit > superpowers > control
+- coping +5, judges high: openspec > ccsdd > speckitty > speckit > superpowers > control
+- decision_quality -5, judges median: openspec > ccsdd > speckitty > speckit > superpowers > control
+- decision_quality -5, judges low: openspec > ccsdd > speckitty > speckit > superpowers > control
+- decision_quality -5, judges high: openspec > ccsdd > speckitty > speckit > superpowers > control
+- interaction -5, judges median: openspec > ccsdd > speckitty > speckit > superpowers > control
+- interaction -5, judges low: openspec > ccsdd > speckitty > speckit > superpowers > control
+- interaction -5, judges high: openspec > ccsdd > speckitty > speckit > superpowers > control
+- setup -5, judges median: openspec > ccsdd > speckitty > speckit > superpowers > control
+- setup -5, judges low: openspec > ccsdd > speckitty > speckit > superpowers > control
+- setup -5, judges high: openspec > ccsdd > speckitty > speckit > superpowers > control
+- time +5, judges median: openspec > ccsdd > speckitty > speckit > superpowers > control
+- time +5, judges low: openspec > ccsdd > speckitty > speckit > superpowers > control
+- time +5, judges high: openspec > ccsdd > speckitty > speckit > superpowers > control
+- traceability +5, judges median: openspec > ccsdd > speckitty > speckit > superpowers > control
+- traceability +5, judges low: openspec > ccsdd > speckitty > speckit > superpowers > control
+- traceability +5, judges high: openspec > ccsdd > speckitty > speckit > superpowers > control
 
 ### Flags
 
@@ -926,6 +954,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/ccsdd/01/run.json))
 - phases.common: {"seconds": {"implement": 3896.7370002269745, "review": 2697.8569991588593, "rework": 1809.1069996356964, "specify": 3203.4210002422333, "test": 18579.82799911499, "understand": 400.37199997901917, "waiting": 88.2}, "skipped_lines": 0, "usd": {"implement": 16.029133081026217, "review": 12.561328680122715, "rework": 5.749576740704031, "specify": 13.44914339561834, "test": 60.997609633329546, "understand": 1.8647580691993, "waiting": 0.0}} ([src](../../../results/pass1/ccsdd/01/transcripts/a1))
 - phases.method: [{"label": "/kiro-discovery", "seconds": 88.3109998703003, "stem": "arm-a1-001", "usd": 0.4274582}, {"label": "/kiro-spec-batch", "seconds": 4589.926000118256, "stem": "arm-a1-002", "usd": 23.71831000000002}, {"label": "(free text)", "seconds": 545.9530000686646, "stem": "arm-a1-003", "usd": 3.0108431999999965}, {"label": "/kiro-impl", "seconds": 6192.608999967575, "stem": "arm-a1-004", "usd": 22.964796200000023}, {"label": "/kiro-impl", "seconds": 18584.27899980545, "stem": "arm-a1-005", "usd": 57.81791880000014}, {"label": "/kiro-validate-impl", "seconds": 588.6879999637604, "stem": "arm-a1-006", "usd": 2.7122231999999684}] ([src](../../../results/pass1/ccsdd/01/turns))
+- types: 0 mypy errors / 4,379 lines = 0.00 per KLOC → 1.00
+- lint: 45 ruff findings (43 safe-fix) = 6.3 weighted / 15,602 lines = 0.40 per KLOC → 0.96
 
 ### Step 2
 
@@ -944,6 +974,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/ccsdd/02/run.json))
 - phases.common: {"seconds": {"implement": 284.28600025177, "review": 438.6710002422333, "rework": 26.49899983406067, "specify": 399.4039993286133, "test": 9699.226000070572, "understand": 360.7440001964569, "waiting": 123.89999999999999}, "skipped_lines": 0, "usd": {"implement": 0.604363036434442, "review": 1.931440984481524, "rework": 0.05633417047622966, "specify": 1.996031955993246, "test": 20.619565055173837, "understand": 1.9628611974407006, "waiting": 0.0}} ([src](../../../results/pass1/ccsdd/02/transcripts/a1))
 - phases.method: [{"label": "/kiro-discovery", "seconds": 182.6710000038147, "stem": "arm-a1-001", "usd": 1.0572119999999998}, {"label": "/kiro-spec-init", "seconds": 15.65999984741211, "stem": "arm-a1-002", "usd": 0.10074019999999995}, {"label": "/kiro-spec-requirements", "seconds": 120.89299988746643, "stem": "arm-a1-003", "usd": 0.5158183999999999}, {"label": "/kiro-validate-gap", "seconds": 115.60500001907349, "stem": "arm-a1-004", "usd": 0.5834826000000004}, {"label": "/kiro-spec-design", "seconds": 10.390999794006348, "stem": "arm-a1-005", "usd": 0.08008039999999994}, {"label": "(free text)", "seconds": 251.22300004959106, "stem": "arm-a1-006", "usd": 1.0953418000000004}, {"label": "/kiro-spec-tasks", "seconds": 9.564000129699707, "stem": "arm-a1-007", "usd": 0.12119519999999984}, {"label": "(free text)", "seconds": 267.37999987602234, "stem": "arm-a1-008", "usd": 1.7675494000000014}, {"label": "(free text)", "seconds": 6.413000106811523, "stem": "arm-a1-009", "usd": 0.09972419999999982}, {"label": "/kiro-impl", "seconds": 10231.679999828339, "stem": "arm-a1-010", "usd": 21.74945219999998}] ([src](../../../results/pass1/ccsdd/02/turns))
+- types: 0 mypy errors / 4,806 lines = 0.00 per KLOC → 1.00
+- lint: 56 ruff findings (53 safe-fix) = 8.3 weighted / 19,060 lines = 0.44 per KLOC → 0.96
 
 ### Step 3
 
@@ -962,6 +994,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/ccsdd/03/run.json))
 - phases.common: {"seconds": {"implement": 814.5289998054504, "review": 300.621000289917, "rework": 107.60900044441223, "specify": 503.9420003890991, "test": 7834.6619992256165, "understand": 886.8509995937347, "waiting": 250.10000000000002}, "skipped_lines": 0, "usd": {"implement": 1.7088709327430807, "review": 0.6409861538799333, "rework": 0.22305256149144, "specify": 1.8579775088857835, "test": 16.239732923173566, "understand": 3.7956965198262003, "waiting": 0.0}} ([src](../../../results/pass1/ccsdd/03/transcripts/a1))
 - phases.method: [{"label": "/kiro-discovery", "seconds": 132.33300018310547, "stem": "arm-a1-001", "usd": 0.7038244}, {"label": "/kiro-spec-init", "seconds": 20.568000078201294, "stem": "arm-a1-002", "usd": 0.12531419999999993}, {"label": "/kiro-spec-requirements", "seconds": 160.57299995422363, "stem": "arm-a1-003", "usd": 0.5960176000000003}, {"label": "(free text)", "seconds": 35.33500003814697, "stem": "arm-a1-004", "usd": 0.153513}, {"label": "(free text)", "seconds": 9.894999980926514, "stem": "arm-a1-005", "usd": 0.05744720000000014}, {"label": "/kiro-spec-design", "seconds": 369.28399991989136, "stem": "arm-a1-006", "usd": 1.5411368000000005}, {"label": "(free text)", "seconds": 12.046000003814697, "stem": "arm-a1-007", "usd": 0.0920160000000001}, {"label": "/kiro-spec-tasks", "seconds": 248.9539999961853, "stem": "arm-a1-008", "usd": 1.5026260000000002}, {"label": "(free text)", "seconds": 12.368000030517578, "stem": "arm-a1-009", "usd": 0.10905759999999987}, {"label": "/kiro-impl", "seconds": 9449.674999952316, "stem": "arm-a1-010", "usd": 19.585363800000003}] ([src](../../../results/pass1/ccsdd/03/turns))
+- types: 0 mypy errors / 5,199 lines = 0.00 per KLOC → 1.00
+- lint: 64 ruff findings (61 safe-fix) = 9.1 weighted / 22,050 lines = 0.41 per KLOC → 0.96
 
 ### Step 4
 
@@ -980,6 +1014,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/ccsdd/04/run.json))
 - phases.common: {"seconds": {"implement": 244.68600010871887, "review": 392.0970001220703, "rework": 33.431999921798706, "specify": 414.90900015830994, "test": 10501.038000106812, "understand": 438.5939996242523, "waiting": 29.9}, "skipped_lines": 0, "usd": {"implement": 1.0303400865055157, "review": 0.8860268826150577, "rework": 0.04891197943891164, "specify": 1.5053967377440798, "test": 15.363321247603665, "understand": 1.4678820660927714, "waiting": 0.0}} ([src](../../../results/pass1/ccsdd/04/transcripts/a1))
 - phases.method: [{"label": "/kiro-discovery", "seconds": 737.4619998931885, "stem": "arm-a1-001", "usd": 3.6256685999999996}, {"label": "(free text)", "seconds": 33.52499985694885, "stem": "arm-a1-002", "usd": 0.21143620000000007}, {"label": "/kiro-impl", "seconds": 11254.463999986649, "stem": "arm-a1-003", "usd": 16.4647742}] ([src](../../../results/pass1/ccsdd/04/turns))
+- types: 0 mypy errors / 5,517 lines = 0.00 per KLOC → 1.00
+- lint: 78 ruff findings (71 safe-fix) = 14.1 weighted / 24,290 lines = 0.58 per KLOC → 0.94
 
 ### Step 5
 
@@ -998,6 +1034,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/ccsdd/05/run.json))
 - phases.common: {"seconds": {"implement": 2939.885999441147, "review": 472.81600046157837, "rework": 1041.276999950409, "specify": 2908.4849994182587, "test": 24553.599999904633, "understand": 828.9590005874634, "waiting": 131.4}, "skipped_lines": 0, "usd": {"implement": 6.00878782478245, "review": 0.3738583271834937, "rework": 0.9051301188254968, "specify": 7.961161218829447, "test": 23.37724840494002, "understand": 1.5175535054390665, "waiting": 0.0}} ([src](../../../results/pass1/ccsdd/05/transcripts/a1))
 - phases.method: [{"label": "/kiro-discovery", "seconds": 2446.053999900818, "stem": "arm-a1-001", "usd": 6.218317000000001}, {"label": "(free text)", "seconds": 18.76199984550476, "stem": "arm-a1-002", "usd": 0.2016971999999999}, {"label": "/kiro-discovery", "seconds": 130.97699999809265, "stem": "arm-a1-003", "usd": 1.0462341999999998}, {"label": "(free text)", "seconds": 11.434999942779541, "stem": "arm-a1-004", "usd": 0.1483775999999999}, {"label": "/kiro-impl", "seconds": 18783.2460000515, "stem": "arm-a1-005", "usd": null}, {"label": "(free text)", "seconds": 9.354000091552734, "stem": "arm-a1-006", "usd": 0.0}, {"label": "(free text)", "seconds": 9.175000190734863, "stem": "arm-a1-007", "usd": 0.0}, {"label": "(free text)", "seconds": 2326.2089998722076, "stem": "arm-a1-008", "usd": 7.975591399999996}, {"label": "(free text)", "seconds": 1145.5569999217987, "stem": "arm-a1-009", "usd": 3.985818799999997}, {"label": "(free text)", "seconds": 2749.378000020981, "stem": "arm-a1-010", "usd": 6.5973612000000195}, {"label": "(free text)", "seconds": 5120.053999900818, "stem": "arm-a1-011", "usd": 13.97034199999996}] ([src](../../../results/pass1/ccsdd/05/turns))
+- types: 0 mypy errors / 7,380 lines = 0.00 per KLOC → 1.00
+- lint: 89 ruff findings (82 safe-fix) = 15.2 weighted / 31,928 lines = 0.48 per KLOC → 0.95
 
 ### Step 6
 
@@ -1016,6 +1054,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/ccsdd/06/run.json))
 - phases.common: {"seconds": {"implement": 912.9240002632141, "review": 1438.0500004291534, "rework": 345.55200028419495, "specify": 2583.562999486923, "test": 24579.909999132156, "understand": 1364.614000082016, "waiting": 133.1}, "skipped_lines": 0, "usd": {"implement": 0.03432112945905157, "review": 3.683829289000003, "rework": 0.0, "specify": 1.6988008127261593, "test": 0.23875433402869736, "understand": 4.566781634786089, "waiting": 0.0}, "usd_why": "cost unknown for arm-a1-010 (killed or no total): not included"} ([src](../../../results/pass1/ccsdd/06/transcripts/a1))
 - phases.method: [{"label": "/kiro-discovery", "seconds": 204.96799993515015, "stem": "arm-a1-001", "usd": 0.7838256}, {"label": "/kiro-spec-init", "seconds": 18.774999856948853, "stem": "arm-a1-002", "usd": 0.09617200000000015}, {"label": "/kiro-spec-requirements", "seconds": 339.90899991989136, "stem": "arm-a1-003", "usd": 1.0608377999999998}, {"label": "(free text)", "seconds": 17.99899983406067, "stem": "arm-a1-004", "usd": 0.08778599999999992}, {"label": "/kiro-spec-design", "seconds": 884.4830000400543, "stem": "arm-a1-005", "usd": 3.1848018000000002}, {"label": "(free text)", "seconds": 28.801999807357788, "stem": "arm-a1-006", "usd": 0.17238359999999986}, {"label": "/kiro-spec-tasks", "seconds": 632.8989999294281, "stem": "arm-a1-007", "usd": 2.5423332000000016}, {"label": "/kiro-spec-tasks", "seconds": 507.9539999961853, "stem": "arm-a1-008", "usd": 2.1562855999999995}, {"label": "(free text)", "seconds": 13.847000122070312, "stem": "arm-a1-009", "usd": 0.13806160000000034}, {"label": "/kiro-impl", "seconds": 28580.105000019073, "stem": "arm-a1-010", "usd": null}] ([src](../../../results/pass1/ccsdd/06/turns))
+- types: 0 mypy errors / 8,979 lines = 0.00 per KLOC → 1.00
+- lint: 107 ruff findings (94 safe-fix) = 22.4 weighted / 38,818 lines = 0.58 per KLOC → 0.94
 
 ### Step 7
 
@@ -1034,6 +1074,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/ccsdd/07/run.json))
 - phases.common: {"seconds": {"implement": 570.4160001277924, "review": 1159.628000497818, "rework": 900.706000328064, "specify": 2532.062000274658, "test": 13654.592999696732, "understand": 370.6879999637604, "waiting": 12.7}, "skipped_lines": 0, "usd": {"implement": 1.588578762657109, "review": 1.7696855545933552, "rework": 2.508419159347621, "specify": 7.051660399543934, "test": 38.0273282081587, "understand": 1.0323467156993191, "waiting": 0.0}} ([src](../../../results/pass1/ccsdd/07/transcripts/a1))
 - phases.method: [{"label": "/kiro-discovery", "seconds": 18593.424000024796, "stem": "arm-a1-001", "usd": 51.77981800000004}, {"label": "/kiro-validate-impl", "seconds": 595.3799998760223, "stem": "arm-a1-002", "usd": 0.19820079999999507}] ([src](../../../results/pass1/ccsdd/07/turns))
+- types: 0 mypy errors / 9,773 lines = 0.00 per KLOC → 1.00
+- lint: 123 ruff findings (109 safe-fix) = 24.9 weighted / 44,474 lines = 0.56 per KLOC → 0.94
 
 ### Lens verdicts
 
@@ -1222,6 +1264,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/control/01/run.json))
 - phases.common: {"seconds": {"implement": 314.38700008392334, "review": 0.0, "rework": 0.0, "specify": 0.0, "test": 52.77199983596802, "understand": 421.1949999332428, "waiting": 7.8}, "skipped_lines": 0, "usd": {"implement": 1.0708911625255173, "review": 0.0, "rework": 0.0, "specify": 0.0, "test": 0.17975637745215434, "understand": 1.4347094600223291, "waiting": 0.0}} ([src](../../../results/pass1/control/01/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 788.3869998455048, "stem": "arm-a1-001", "usd": 2.6853570000000007}] ([src](../../../results/pass1/control/01/turns))
+- types: 36 mypy errors / 1,204 lines = 29.90 per KLOC → 0.00
+- lint: 13 ruff findings (9 safe-fix) = 4.9 weighted / 1,311 lines = 3.74 per KLOC → 0.63
 
 ### Step 2
 
@@ -1240,6 +1284,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/control/02/run.json))
 - phases.common: {"seconds": {"implement": 38.65400004386902, "review": 0.0, "rework": 0.0, "specify": 8.890000104904175, "test": 73.9779999256134, "understand": 60.10000014305115, "waiting": 9.0}, "skipped_lines": 0, "usd": {"implement": 0.1615716853672588, "review": 0.0, "rework": 0.0, "specify": 0.037159732452897866, "test": 0.30922414535403697, "understand": 0.2512148368258064, "waiting": 0.0}} ([src](../../../results/pass1/control/02/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 181.65900015830994, "stem": "arm-a1-001", "usd": 0.7591704}] ([src](../../../results/pass1/control/02/turns))
+- types: 37 mypy errors / 1,313 lines = 28.18 per KLOC → 0.00
+- lint: 15 ruff findings (10 safe-fix) = 6 weighted / 1,501 lines = 4.00 per KLOC → 0.60
 
 ### Step 3
 
@@ -1258,6 +1304,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/control/03/run.json))
 - phases.common: {"seconds": {"implement": 57.03699994087219, "review": 0.0, "rework": 0.0, "specify": 0.0, "test": 77.48499989509583, "understand": 66.42799997329712, "waiting": 5.8}, "skipped_lines": 0, "usd": {"implement": 0.1557093921167575, "review": 0.0, "rework": 0.0, "specify": 0.0, "test": 0.21153185203183555, "understand": 0.18134655585140702, "waiting": 0.0}} ([src](../../../results/pass1/control/03/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 201.135999917984, "stem": "arm-a1-001", "usd": 0.5485878000000001}] ([src](../../../results/pass1/control/03/turns))
+- types: 41 mypy errors / 1,390 lines = 29.50 per KLOC → 0.00
+- lint: 16 ruff findings (11 safe-fix) = 6.1 weighted / 1,605 lines = 3.80 per KLOC → 0.62
 
 ### Step 4
 
@@ -1276,6 +1324,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/control/04/run.json))
 - phases.common: {"seconds": {"implement": 22.687999963760376, "review": 0.0, "rework": 0.0, "specify": 13.939000129699707, "test": 125.73799991607666, "understand": 46.4539999961853, "waiting": 21.8}, "skipped_lines": 0, "usd": {"implement": 0.07608325740892827, "review": 0.0, "rework": 0.0, "specify": 0.046743852987703054, "test": 0.39048677374391627, "understand": 0.14556291585945244, "waiting": 0.0}} ([src](../../../results/pass1/control/04/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 170.17000007629395, "stem": "arm-a1-001", "usd": 0.570497}, {"label": "(free text)", "seconds": 38.7189998626709, "stem": "arm-a1-002", "usd": 0.08837980000000001}] ([src](../../../results/pass1/control/04/turns))
+- types: 44 mypy errors / 1,441 lines = 30.53 per KLOC → 0.00
+- lint: 21 ruff findings (12 safe-fix) = 10.2 weighted / 1,704 lines = 5.99 per KLOC → 0.40
 
 ### Step 5
 
@@ -1294,6 +1344,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/control/05/run.json))
 - phases.common: {"seconds": {"implement": 65.97200012207031, "review": 0.0, "rework": 0.0, "specify": 14.815000057220459, "test": 233.92600011825562, "understand": 290.7999999523163, "waiting": 26.2}, "skipped_lines": 0, "usd": {"implement": 0.18942150500766464, "review": 0.0, "rework": 0.0, "specify": 0.04039218153489946, "test": 0.637310544095252, "understand": 0.8202377693621835, "waiting": 0.0}} ([src](../../../results/pass1/control/05/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 470.5620000362396, "stem": "arm-a1-001", "usd": 1.3509331999999998}, {"label": "(free text)", "seconds": 80.95900011062622, "stem": "arm-a1-002", "usd": 0.21024959999999981}, {"label": "(free text)", "seconds": 54.09400010108948, "stem": "arm-a1-003", "usd": 0.12617919999999994}] ([src](../../../results/pass1/control/05/turns))
+- types: 58 mypy errors / 1,574 lines = 36.85 per KLOC → 0.00
+- lint: 24 ruff findings (15 safe-fix) = 10.5 weighted / 1,905 lines = 5.51 per KLOC → 0.45
 
 ### Step 6
 
@@ -1312,6 +1364,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/control/06/run.json))
 - phases.common: {"seconds": {"implement": 37.29900002479553, "review": 0.0, "rework": 0.0, "specify": 10.966000080108643, "test": 299.5009996891022, "understand": 123.95400023460388, "waiting": 7.3}, "skipped_lines": 0, "usd": {"implement": 0.1083278023625691, "review": 0.0, "rework": 0.0, "specify": 0.03184864711108131, "test": 0.8698432955345908, "understand": 0.3600006549917586, "waiting": 0.0}} ([src](../../../results/pass1/control/06/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 471.7640001773834, "stem": "arm-a1-001", "usd": 1.3700203999999998}] ([src](../../../results/pass1/control/06/turns))
+- types: 67 mypy errors / 1,731 lines = 38.71 per KLOC → 0.00
+- lint: 26 ruff findings (16 safe-fix) = 11.6 weighted / 2,094 lines = 5.54 per KLOC → 0.45
 
 ### Step 7
 
@@ -1330,6 +1384,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/control/07/run.json))
 - phases.common: {"seconds": {"implement": 86.57499980926514, "review": 0.0, "rework": 0.0, "specify": 9.091000080108643, "test": 274.4560000896454, "understand": 84.13600015640259, "waiting": 5.4}, "skipped_lines": 0, "usd": {"implement": 0.27688261377984424, "review": 0.0, "rework": 0.0, "specify": 0.02907467363094205, "test": 0.8777602638152082, "understand": 0.26908224877400516, "waiting": 0.0}} ([src](../../../results/pass1/control/07/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 454.3140001296997, "stem": "arm-a1-001", "usd": 1.4527997999999998}] ([src](../../../results/pass1/control/07/turns))
+- types: 87 mypy errors / 1,965 lines = 44.27 per KLOC → 0.00
+- lint: 26 ruff findings (16 safe-fix) = 11.6 weighted / 2,426 lines = 4.78 per KLOC → 0.52
 
 ### Lens verdicts
 
@@ -1518,6 +1574,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/openspec/01/run.json))
 - phases.common: {"seconds": {"implement": 354.22699999809265, "review": 0.0, "rework": 0.0, "specify": 273.00600004196167, "test": 1027.7070002555847, "understand": 388.84999990463257, "waiting": 32.2}, "skipped_lines": 0, "usd": {"implement": 1.3624036634383, "review": 0.0, "rework": 0.0, "specify": 1.079003721136991, "test": 3.9617852493197963, "understand": 1.670999766104915, "waiting": 0.0}} ([src](../../../results/pass1/openspec/01/transcripts/a1))
 - phases.method: [{"label": "/opsx:propose", "seconds": 424.9800000190735, "stem": "arm-a1-001", "usd": 1.5677432000000002}, {"label": "/opsx:apply", "seconds": 1584.7669999599457, "stem": "arm-a1-002", "usd": 6.109106800000001}, {"label": "/opsx:archive", "seconds": 11.507999897003174, "stem": "arm-a1-003", "usd": 0.17833580000000016}, {"label": "(free text)", "seconds": 22.68400001525879, "stem": "arm-a1-004", "usd": 0.21900660000000105}] ([src](../../../results/pass1/openspec/01/turns))
+- types: 0 mypy errors / 1,796 lines = 0.00 per KLOC → 1.00
+- lint: 8 ruff findings (6 safe-fix) = 2.6 weighted / 2,980 lines = 0.87 per KLOC → 0.91
 
 ### Step 2
 
@@ -1536,6 +1594,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/openspec/02/run.json))
 - phases.common: {"seconds": {"implement": 32.72699999809265, "review": 0.0, "rework": 0.0, "specify": 345.04300022125244, "test": 657.71399974823, "understand": 160.22699975967407, "waiting": 22.8}, "skipped_lines": 0, "usd": {"implement": 0.11031853856281268, "review": 0.0, "rework": 0.0, "specify": 1.2162659750595346, "test": 1.954507178461776, "understand": 0.5984241079158775, "waiting": 0.0}} ([src](../../../results/pass1/openspec/02/transcripts/a1))
 - phases.method: [{"label": "/opsx:propose", "seconds": 434.12599992752075, "stem": "arm-a1-001", "usd": 1.5201186}, {"label": "/opsx:apply", "seconds": 673.5789999961853, "stem": "arm-a1-002", "usd": 1.9183082000000002}, {"label": "/opsx:archive", "seconds": 88.12099981307983, "stem": "arm-a1-003", "usd": 0.4410890000000003}] ([src](../../../results/pass1/openspec/02/turns))
+- types: 0 mypy errors / 1,945 lines = 0.00 per KLOC → 1.00
+- lint: 10 ruff findings (8 safe-fix) = 2.8 weighted / 3,614 lines = 0.77 per KLOC → 0.92
 
 ### Step 3
 
@@ -1554,6 +1614,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/openspec/03/run.json))
 - phases.common: {"seconds": {"implement": 30.973000049591064, "review": 0.0, "rework": 20.792999982833862, "specify": 280.9240002632141, "test": 227.16599988937378, "understand": 122.48900008201599, "waiting": 23.3}, "skipped_lines": 0, "usd": {"implement": 0.1258470637908062, "review": 0.0, "rework": 0.08448448619934296, "specify": 1.391890697039669, "test": 0.9230030682661542, "understand": 0.6577736847040287, "waiting": 0.0}} ([src](../../../results/pass1/openspec/03/transcripts/a1))
 - phases.method: [{"label": "/opsx:propose", "seconds": 291.01700019836426, "stem": "arm-a1-001", "usd": 1.4532178000000002}, {"label": "/opsx:apply", "seconds": 345.50499987602234, "stem": "arm-a1-002", "usd": 1.4036866000000006}, {"label": "/opsx:archive", "seconds": 45.96600008010864, "stem": "arm-a1-003", "usd": 0.32609460000000023}] ([src](../../../results/pass1/openspec/03/turns))
+- types: 0 mypy errors / 2,036 lines = 0.00 per KLOC → 1.00
+- lint: 13 ruff findings (11 safe-fix) = 3.1 weighted / 3,998 lines = 0.78 per KLOC → 0.92
 
 ### Step 4
 
@@ -1572,6 +1634,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/openspec/04/run.json))
 - phases.common: {"seconds": {"implement": 9.914999961853027, "review": 0.0, "rework": 24.132000207901, "specify": 241.8639998435974, "test": 360.7739999294281, "understand": 125.22200012207031, "waiting": 46.0}, "skipped_lines": 0, "usd": {"implement": 0.1100623149063736, "review": 0.0, "rework": 0.12535815190483043, "specify": 1.3844043009179998, "test": 1.874107471276219, "understand": 0.8031093609945773, "waiting": 0.0}} ([src](../../../results/pass1/openspec/04/transcripts/a1))
 - phases.method: [{"label": "/opsx:propose", "seconds": 264.72000002861023, "stem": "arm-a1-001", "usd": 1.5312455999999997}, {"label": "/opsx:apply", "seconds": 468.3819999694824, "stem": "arm-a1-002", "usd": 2.4326972}, {"label": "/opsx:archive", "seconds": 28.973000049591064, "stem": "arm-a1-003", "usd": 0.3330988000000006}] ([src](../../../results/pass1/openspec/04/turns))
+- types: 0 mypy errors / 2,189 lines = 0.00 per KLOC → 1.00
+- lint: 16 ruff findings (14 safe-fix) = 3.4 weighted / 4,560 lines = 0.75 per KLOC → 0.93
 
 ### Step 5
 
@@ -1590,6 +1654,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/openspec/05/run.json))
 - phases.common: {"seconds": {"implement": 62.92400026321411, "review": 0.0, "rework": 5.186000108718872, "specify": 474.6329998970032, "test": 919.3479995727539, "understand": 394.8109998703003, "waiting": 86.1}, "skipped_lines": 0, "usd": {"implement": 0.3696860910042039, "review": 0.0, "rework": 0.025834256027985128, "specify": 2.5059094000879254, "test": 4.822748492360856, "understand": 2.16917976051903, "waiting": 0.0}} ([src](../../../results/pass1/openspec/05/transcripts/a1))
 - phases.method: [{"label": "/opsx:propose", "seconds": 510.5130000114441, "stem": "arm-a1-001", "usd": 2.4938326}, {"label": "(free text)", "seconds": 30.556999921798706, "stem": "arm-a1-002", "usd": 0.1790111999999997}, {"label": "/opsx:propose", "seconds": 101.99399995803833, "stem": "arm-a1-003", "usd": 0.6514027999999996}, {"label": "/opsx:apply", "seconds": 762.4459998607635, "stem": "arm-a1-004", "usd": 3.9290778000000017}, {"label": "/opsx:archive", "seconds": 14.105999946594238, "stem": "arm-a1-005", "usd": 0.19144380000000005}, {"label": "(free text)", "seconds": 90.37199997901917, "stem": "arm-a1-006", "usd": 0.6226858000000002}, {"label": "/opsx:apply", "seconds": 274.9520001411438, "stem": "arm-a1-007", "usd": 1.3694695999999986}, {"label": "/opsx:archive", "seconds": 72.34299993515015, "stem": "arm-a1-008", "usd": 0.4564344000000009}] ([src](../../../results/pass1/openspec/05/turns))
+- types: 0 mypy errors / 2,426 lines = 0.00 per KLOC → 1.00
+- lint: 19 ruff findings (17 safe-fix) = 3.7 weighted / 5,340 lines = 0.69 per KLOC → 0.93
 
 ### Step 6
 
@@ -1608,6 +1674,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/openspec/06/run.json))
 - phases.common: {"seconds": {"implement": 49.71499991416931, "review": 0.0, "rework": 0.0, "specify": 306.6549997329712, "test": 954.9350001811981, "understand": 303.1160001754761, "waiting": 37.3}, "skipped_lines": 0, "usd": {"implement": 0.2332697250391807, "review": 0.0, "rework": 0.0, "specify": 1.352131089348675, "test": 4.480688430194884, "understand": 1.4970577554172622, "waiting": 0.0}} ([src](../../../results/pass1/openspec/06/transcripts/a1))
 - phases.method: [{"label": "/opsx:propose", "seconds": 497.4399998188019, "stem": "arm-a1-001", "usd": 2.182748}, {"label": "/opsx:apply", "seconds": 1109.37299990654, "stem": "arm-a1-002", "usd": 5.205154800000002}, {"label": "/opsx:archive", "seconds": 7.746999979019165, "stem": "arm-a1-003", "usd": 0.17524419999999985}] ([src](../../../results/pass1/openspec/06/turns))
+- types: 0 mypy errors / 2,954 lines = 0.00 per KLOC → 1.00
+- lint: 26 ruff findings (24 safe-fix) = 4.4 weighted / 6,391 lines = 0.69 per KLOC → 0.93
 
 ### Step 7
 
@@ -1626,6 +1694,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/openspec/07/run.json))
 - phases.common: {"seconds": {"implement": 59.07099962234497, "review": 0.0, "rework": 22.637999773025513, "specify": 599.6800005435944, "test": 1130.0710000991821, "understand": 163.2039999961853, "waiting": 41.5}, "skipped_lines": 0, "usd": {"implement": 0.28068332481868596, "review": 0.0, "rework": 0.10756731872087484, "specify": 3.2593968778909064, "test": 5.369675265644748, "understand": 1.0766726129247828, "waiting": 0.0}} ([src](../../../results/pass1/openspec/07/transcripts/a1))
 - phases.method: [{"label": "/opsx:propose", "seconds": 517.0169999599457, "stem": "arm-a1-001", "usd": 3.0200935999999996}, {"label": "/opsx:apply", "seconds": 1451.2980000972748, "stem": "arm-a1-002", "usd": 6.895650599999998}, {"label": "/opsx:archive", "seconds": 7.0899999141693115, "stem": "arm-a1-003", "usd": 0.17825120000000005}] ([src](../../../results/pass1/openspec/07/turns))
+- types: 0 mypy errors / 3,382 lines = 0.00 per KLOC → 1.00
+- lint: 34 ruff findings (31 safe-fix) = 6.1 weighted / 7,445 lines = 0.82 per KLOC → 0.92
 
 ### Lens verdicts
 
@@ -1814,6 +1884,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckit/01/run.json))
 - phases.common: {"seconds": {"implement": 787.0689997673035, "review": 155.82799983024597, "rework": 46.81599998474121, "specify": 176.74300003051758, "test": 1570.6709997653961, "understand": 226.39199995994568, "waiting": 81.4}, "skipped_lines": 0, "usd": {"implement": 2.681800102133826, "review": 1.2760704, "rework": 0.16076387038706808, "specify": 0.7689962987111626, "test": 5.352580604884668, "understand": 0.9058719238832733, "waiting": 0.0}} ([src](../../../results/pass1/speckit/01/transcripts/a1))
 - phases.method: [{"label": "/speckit-specify", "seconds": 114.13199996948242, "stem": "arm-a1-001", "usd": 0.5861253999999999}, {"label": "/speckit-plan", "seconds": 238.21200013160706, "stem": "arm-a1-002", "usd": 0.8576858000000002}, {"label": "/speckit-tasks", "seconds": 123.97399997711182, "stem": "arm-a1-003", "usd": 0.5050340000000002}, {"label": "/speckit-implement", "seconds": 1833.5629999637604, "stem": "arm-a1-004", "usd": 6.1473618}, {"label": "/speckit-converge", "seconds": 62.138999938964844, "stem": "arm-a1-005", "usd": 0.44918359999999957}, {"label": "/speckit-implement", "seconds": 181.45899987220764, "stem": "arm-a1-006", "usd": 0.72058}, {"label": "/speckit-converge", "seconds": 44.03200006484985, "stem": "arm-a1-007", "usd": 0.3127956000000012}, {"label": "/speckit-implement", "seconds": 158.31199979782104, "stem": "arm-a1-008", "usd": 0.5674285999999995}, {"label": "/speckit-converge", "seconds": 30.853999853134155, "stem": "arm-a1-009", "usd": 0.3003567999999994}, {"label": "/speckit-implement", "seconds": 159.9229998588562, "stem": "arm-a1-010", "usd": 0.4857971999999986}, {"label": "/speckit-converge", "seconds": 20.936000108718872, "stem": "arm-a1-011", "usd": 0.21373439999999988}] ([src](../../../results/pass1/speckit/01/turns))
+- types: 0 mypy errors / 1,830 lines = 0.00 per KLOC → 1.00
+- lint: 6 ruff findings (4 safe-fix) = 2.4 weighted / 3,392 lines = 0.71 per KLOC → 0.93
 
 ### Step 2
 
@@ -1832,6 +1904,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckit/02/run.json))
 - phases.common: {"seconds": {"implement": 0.0, "review": 82.1340000629425, "rework": 16.328999996185303, "specify": 130.02100038528442, "test": 1914.3559999465942, "understand": 348.0979998111725, "waiting": 44.4}, "skipped_lines": 0, "usd": {"implement": 0.0, "review": 0.4742280000000001, "rework": 0.021376919278952317, "specify": 0.5530232514661818, "test": 2.676502356872889, "understand": 1.522245272381978, "waiting": 0.0}} ([src](../../../results/pass1/speckit/02/transcripts/a1))
 - phases.method: [{"label": "/speckit-specify", "seconds": 125.82699990272522, "stem": "arm-a1-001", "usd": 0.6736426}, {"label": "/speckit-plan", "seconds": 191.3069999217987, "stem": "arm-a1-002", "usd": 0.8717348}, {"label": "/speckit-tasks", "seconds": 94.61300015449524, "stem": "arm-a1-003", "usd": 0.42698040000000015}, {"label": "/speckit-implement", "seconds": 1799.422000169754, "stem": "arm-a1-004", "usd": 2.355641200000001}, {"label": "/speckit-converge", "seconds": 62.29900002479553, "stem": "arm-a1-005", "usd": 0.3097880000000002}, {"label": "/speckit-implement", "seconds": 197.82599997520447, "stem": "arm-a1-006", "usd": 0.4451488000000001}, {"label": "/speckit-converge", "seconds": 19.91000008583069, "stem": "arm-a1-007", "usd": 0.16443999999999992}] ([src](../../../results/pass1/speckit/02/turns))
+- types: 0 mypy errors / 1,988 lines = 0.00 per KLOC → 1.00
+- lint: 6 ruff findings (4 safe-fix) = 2.4 weighted / 4,343 lines = 0.55 per KLOC → 0.94
 
 ### Step 3
 
@@ -1850,6 +1924,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckit/03/run.json))
 - phases.common: {"seconds": {"implement": 8.941999912261963, "review": 108.02800035476685, "rework": 0.6770000457763672, "specify": 220.60199999809265, "test": 1145.3359999656677, "understand": 323.4229998588562, "waiting": 48.9}, "skipped_lines": 0, "usd": {"implement": 0.013058822337903363, "review": 0.5708099999999989, "rework": 0.0014191373052742527, "specify": 1.1052604318449857, "test": 1.7883106007844418, "understand": 1.2892702077273939, "waiting": 0.0}} ([src](../../../results/pass1/speckit/03/transcripts/a1))
 - phases.method: [{"label": "/speckit-specify", "seconds": 149.50699996948242, "stem": "arm-a1-001", "usd": 0.7846248}, {"label": "/speckit-plan", "seconds": 136.7279999256134, "stem": "arm-a1-002", "usd": 0.7701663999999999}, {"label": "/speckit-tasks", "seconds": 102.55399990081787, "stem": "arm-a1-003", "usd": 0.6015402000000001}, {"label": "/speckit-implement", "seconds": 1110.1099998950958, "stem": "arm-a1-004", "usd": 1.6211369999999992}, {"label": "/speckit-converge", "seconds": 47.187000036239624, "stem": "arm-a1-005", "usd": 0.2984749999999998}, {"label": "/speckit-implement", "seconds": 200.3329999446869, "stem": "arm-a1-006", "usd": 0.41985079999999986}, {"label": "/speckit-converge", "seconds": 60.961000204086304, "stem": "arm-a1-007", "usd": 0.2723349999999991}] ([src](../../../results/pass1/speckit/03/turns))
+- types: 0 mypy errors / 2,108 lines = 0.00 per KLOC → 1.00
+- lint: 7 ruff findings (5 safe-fix) = 2.5 weighted / 4,885 lines = 0.51 per KLOC → 0.95
 
 ### Step 4
 
@@ -1868,6 +1944,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckit/04/run.json))
 - phases.common: {"seconds": {"implement": 94.56500005722046, "review": 26.854000091552734, "rework": 33.94999980926514, "specify": 192.62999987602234, "test": 1105.9810004234314, "understand": 256.4889998435974, "waiting": 36.0}, "skipped_lines": 0, "usd": {"implement": 0.14802888121925173, "review": 0.1895062000000003, "rework": 0.05314419167893398, "specify": 0.8909122553383928, "test": 1.7312655849771637, "understand": 1.2608792867862573, "waiting": 0.0}} ([src](../../../results/pass1/speckit/04/transcripts/a1))
 - phases.method: [{"label": "/speckit-specify", "seconds": 134.15399980545044, "stem": "arm-a1-001", "usd": 0.7612656}, {"label": "/speckit-plan", "seconds": 127.6969997882843, "stem": "arm-a1-002", "usd": 0.6515607999999999}, {"label": "/speckit-tasks", "seconds": 128.54800009727478, "stem": "arm-a1-003", "usd": 0.6467133999999997}, {"label": "/speckit-implement", "seconds": 1293.4679999351501, "stem": "arm-a1-004", "usd": 2.0246904}, {"label": "/speckit-converge", "seconds": 27.85700011253357, "stem": "arm-a1-005", "usd": 0.1895062000000003}] ([src](../../../results/pass1/speckit/04/turns))
+- types: 0 mypy errors / 2,228 lines = 0.00 per KLOC → 1.00
+- lint: 7 ruff findings (5 safe-fix) = 2.5 weighted / 5,472 lines = 0.46 per KLOC → 0.95
 
 ### Step 5
 
@@ -1886,6 +1964,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckit/05/run.json))
 - phases.common: {"seconds": {"implement": 28.217000007629395, "review": 76.67499995231628, "rework": 70.34000015258789, "specify": 559.539999961853, "test": 2737.322000026703, "understand": 377.9949996471405, "waiting": 54.5}, "skipped_lines": 0, "usd": {"implement": 0.06287594719700483, "review": 0.5499288, "rework": 0.15673863749638894, "specify": 2.311970107916752, "test": 5.858518045455354, "understand": 1.8203176619345003, "waiting": 0.0}} ([src](../../../results/pass1/speckit/05/transcripts/a1))
 - phases.method: [{"label": "/speckit-specify", "seconds": 165.60599994659424, "stem": "arm-a1-001", "usd": 0.8338982}, {"label": "/speckit-plan", "seconds": 286.2589998245239, "stem": "arm-a1-002", "usd": 1.2925849999999994}, {"label": "/speckit-specify", "seconds": 72.98000001907349, "stem": "arm-a1-003", "usd": 0.4073918000000001}, {"label": "/speckit-plan", "seconds": 94.80099987983704, "stem": "arm-a1-004", "usd": 0.4939172000000003}, {"label": "/speckit-tasks", "seconds": 139.12800002098083, "stem": "arm-a1-005", "usd": 0.7184962000000001}, {"label": "/speckit-implement", "seconds": 2600.9639999866486, "stem": "arm-a1-006", "usd": 5.795599400000001}, {"label": "/speckit-converge", "seconds": 76.71499991416931, "stem": "arm-a1-007", "usd": 0.5499288}, {"label": "/speckit-implement", "seconds": 414.0880000591278, "stem": "arm-a1-008", "usd": 0.6685325999999989}] ([src](../../../results/pass1/speckit/05/turns))
+- types: 0 mypy errors / 2,588 lines = 0.00 per KLOC → 1.00
+- lint: 7 ruff findings (5 safe-fix) = 2.5 weighted / 6,413 lines = 0.39 per KLOC → 0.96
 
 ### Step 6
 
@@ -1904,6 +1984,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckit/06/run.json))
 - phases.common: {"seconds": {"implement": 98.56699991226196, "review": 88.32299995422363, "rework": 0.0, "specify": 194.9409999847412, "test": 1215.0130002498627, "understand": 33.769999980926514, "waiting": 25.1}, "skipped_lines": 0, "usd": {"implement": 0.22359104778196695, "review": 0.41667580000000015, "rework": 0.0, "specify": 0.45187135808985623, "test": 2.4281463752802184, "understand": 0.06795281884795812, "waiting": 0.0}} ([src](../../../results/pass1/speckit/06/transcripts/a1))
 - phases.method: [{"label": "/speckit-bug-assess", "seconds": 1232.805999994278, "stem": "arm-a1-001", "usd": 2.933357199999999}, {"label": "/speckit-bug-test", "seconds": 309.5859999656677, "stem": "arm-a1-002", "usd": 0.23820440000000032}, {"label": "/speckit-converge", "seconds": 88.35999989509583, "stem": "arm-a1-003", "usd": 0.41667580000000015}] ([src](../../../results/pass1/speckit/06/turns))
+- types: 0 mypy errors / 2,861 lines = 0.00 per KLOC → 1.00
+- lint: 6 ruff findings (4 safe-fix) = 2.4 weighted / 6,777 lines = 0.35 per KLOC → 0.96
 
 ### Step 7
 
@@ -1922,6 +2004,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckit/07/run.json))
 - phases.common: {"seconds": {"implement": 88.52500033378601, "review": 142.10399985313416, "rework": 59.426000118255615, "specify": 131.09899973869324, "test": 3682.6099994182587, "understand": 772.1510004997253, "waiting": 80.6}, "skipped_lines": 0, "usd": {"implement": 0.19157031265833324, "review": 1.2302718000000024, "rework": 0.12988829503741567, "specify": 0.7019713773173458, "test": 8.274596877214718, "understand": 3.3037379377721905, "waiting": 0.0}} ([src](../../../results/pass1/speckit/07/transcripts/a1))
 - phases.method: [{"label": "/speckit-specify", "seconds": 222.52999997138977, "stem": "arm-a1-001", "usd": 1.0954174}, {"label": "/speckit-plan", "seconds": 267.22300004959106, "stem": "arm-a1-002", "usd": 1.4972155999999992}, {"label": "/speckit-tasks", "seconds": 139.88700008392334, "stem": "arm-a1-003", "usd": 0.6868466}, {"label": "/speckit-implement", "seconds": 3103.6429998874664, "stem": "arm-a1-004", "usd": 6.716252799999999}, {"label": "/speckit-converge", "seconds": 97.12299990653992, "stem": "arm-a1-005", "usd": 0.605357200000002}, {"label": "/speckit-implement", "seconds": 973.6789999008179, "stem": "arm-a1-006", "usd": 2.1866978000000046}, {"label": "/speckit-converge", "seconds": 38.401000022888184, "stem": "arm-a1-007", "usd": 0.38522500000000015}, {"label": "/speckit-implement", "seconds": 27.86299991607666, "stem": "arm-a1-008", "usd": 0.4193345999999991}, {"label": "/speckit-converge", "seconds": 9.036999940872192, "stem": "arm-a1-009", "usd": 0.23968960000000017}] ([src](../../../results/pass1/speckit/07/turns))
+- types: 0 mypy errors / 3,408 lines = 0.00 per KLOC → 1.00
+- lint: 7 ruff findings (5 safe-fix) = 2.5 weighted / 8,275 lines = 0.30 per KLOC → 0.97
 
 ### Lens verdicts
 
@@ -2110,6 +2194,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckitty/01/run.json))
 - phases.common: {"seconds": {"implement": 1398.0959994792938, "review": 349.46400022506714, "rework": 32.87000012397766, "specify": 919.5539999008179, "test": 5395.1059992313385, "understand": 760.1189997196198, "waiting": 2321.2999999999997}, "skipped_lines": 0, "usd": {"implement": 6.831057452579159, "review": 1.884032680125908, "rework": 0.16963139636736635, "specify": 4.126209074089264, "test": 26.482836801869247, "understand": 4.913973994969044, "waiting": 0.0}} ([src](../../../results/pass1/speckitty/01/transcripts/a1))
 - phases.method: [{"label": "/spec-kitty.specify", "seconds": 88.125, "stem": "arm-a1-001", "usd": 0.5246086}, {"label": "(free text)", "seconds": 111.04399991035461, "stem": "arm-a1-002", "usd": 0.3780022000000002}, {"label": "/spec-kitty.plan", "seconds": 29.935999870300293, "stem": "arm-a1-003", "usd": 0.1795274}, {"label": "(free text)", "seconds": 18.439000129699707, "stem": "arm-a1-004", "usd": 0.06314559999999991}, {"label": "(free text)", "seconds": 24.9229998588562, "stem": "arm-a1-005", "usd": 0.07063979999999992}, {"label": "(free text)", "seconds": 165.00799989700317, "stem": "arm-a1-006", "usd": 0.6434654000000002}, {"label": "/spec-kitty.tasks", "seconds": 779.8150000572205, "stem": "arm-a1-007", "usd": 3.334784}, {"label": "(free text)", "seconds": 151.9559998512268, "stem": "arm-a1-008", "usd": 1.0095302000000004}, {"label": "(free text)", "seconds": 3298.7829999923706, "stem": "arm-a1-009", "usd": 17.02205900000002}, {"label": "(free text)", "seconds": 1257.6760001182556, "stem": "arm-a1-010", "usd": 5.5872550000000025}, {"label": "(free text)", "seconds": 1482.6610000133514, "stem": "arm-a1-011", "usd": 7.375289800000001}, {"label": "(free text)", "seconds": 1254.1659998893738, "stem": "arm-a1-012", "usd": 5.811026799999965}, {"label": "/spec-kitty.accept", "seconds": 14.707000017166138, "stem": "arm-a1-013", "usd": 0.2548935999999955}, {"label": "/spec-kitty", "seconds": 75.9599997997284, "stem": "arm-a1-014", "usd": 0.8946875999999975}, {"label": "/spec-kitty.merge", "seconds": 45.331000089645386, "stem": "arm-a1-015", "usd": 0.5731345999999959}, {"label": "(free text)", "seconds": 54.11500000953674, "stem": "arm-a1-016", "usd": 0.6856918000000078}] ([src](../../../results/pass1/speckitty/01/turns))
+- types: 0 mypy errors / 3,113 lines = 0.00 per KLOC → 1.00
+- lint: 20 ruff findings (15 safe-fix) = 6.5 weighted / 7,390 lines = 0.88 per KLOC → 0.91
 
 ### Step 2
 
@@ -2128,6 +2214,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckitty/02/run.json))
 - phases.common: {"seconds": {"implement": 0.0, "review": 7432.418999671936, "rework": 0.0, "specify": 466.63899993896484, "test": 0.0, "understand": 507.46099972724915, "waiting": 108.4}, "skipped_lines": 0, "usd": {"implement": 0.0, "review": 14.128690199999992, "rework": 0.0, "specify": 2.073479163599728, "test": 0.0, "understand": 2.932488236400274, "waiting": 0.0}} ([src](../../../results/pass1/speckitty/02/transcripts/a1))
 - phases.method: [{"label": "/spec-kitty.specify", "seconds": 104.63399982452393, "stem": "arm-a1-001", "usd": 0.6957556}, {"label": "(free text)", "seconds": 136.0920000076294, "stem": "arm-a1-002", "usd": 0.4826571999999998}, {"label": "/spec-kitty.plan", "seconds": 78.81500005722046, "stem": "arm-a1-003", "usd": 0.3539245999999998}, {"label": "(free text)", "seconds": 186.82500004768372, "stem": "arm-a1-004", "usd": 0.7992894000000004}, {"label": "/spec-kitty.tasks", "seconds": 367.6399998664856, "stem": "arm-a1-005", "usd": 1.6334950000000004}, {"label": "/spec-kitty-implement-review", "seconds": 7433.169999837875, "stem": "arm-a1-006", "usd": 14.128690199999992}, {"label": "/spec-kitty.accept", "seconds": 22.649999856948853, "stem": "arm-a1-007", "usd": 0.2757302000000017}, {"label": "(free text)", "seconds": 17.4469997882843, "stem": "arm-a1-008", "usd": 0.24836499999999617}, {"label": "/spec-kitty.merge", "seconds": 59.3989999294281, "stem": "arm-a1-009", "usd": 0.5167504000000029}] ([src](../../../results/pass1/speckitty/02/turns))
+- types: 0 mypy errors / 3,355 lines = 0.00 per KLOC → 1.00
+- lint: 24 ruff findings (19 safe-fix) = 6.9 weighted / 9,075 lines = 0.76 per KLOC → 0.92
 
 ### Step 3
 
@@ -2146,6 +2234,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckitty/03/run.json))
 - phases.common: {"seconds": {"implement": 0.0, "review": 3064.084000349045, "rework": 0.0, "specify": 320.5349998474121, "test": 793.4539995193481, "understand": 922.9930002689362, "waiting": 81.5}, "skipped_lines": 0, "usd": {"implement": 0.0, "review": 10.485845495103876, "rework": 0.0, "specify": 1.509579793906419, "test": 1.3442072183746028, "understand": 3.1659462926151125, "waiting": 0.0}} ([src](../../../results/pass1/speckitty/03/transcripts/a1))
 - phases.method: [{"label": "/spec-kitty.specify", "seconds": 122.14699983596802, "stem": "arm-a1-001", "usd": 0.6724384000000001}, {"label": "(free text)", "seconds": 114.18099999427795, "stem": "arm-a1-002", "usd": 0.405141}, {"label": "/spec-kitty.plan", "seconds": 209.69000005722046, "stem": "arm-a1-003", "usd": 1.0526751999999997}, {"label": "/spec-kitty.tasks", "seconds": 238.96299982070923, "stem": "arm-a1-004", "usd": 1.1323174000000011}, {"label": "/spec-kitty-implement-review", "seconds": 3061.7269999980927, "stem": "arm-a1-005", "usd": 10.480587600000007}, {"label": "(free text)", "seconds": 349.635999917984, "stem": "arm-a1-006", "usd": 0.3698584000000018}, {"label": "(free text)", "seconds": 973.8220000267029, "stem": "arm-a1-007", "usd": 2.0948818000000013}, {"label": "/spec-kitty.accept", "seconds": 14.739000082015991, "stem": "arm-a1-008", "usd": 0.1536515999999999}, {"label": "/spec-kitty.merge", "seconds": 13.828999996185303, "stem": "arm-a1-009", "usd": 0.1440273999999988}] ([src](../../../results/pass1/speckitty/03/turns))
+- types: 0 mypy errors / 3,617 lines = 0.00 per KLOC → 1.00
+- lint: 33 ruff findings (24 safe-fix) = 11.4 weighted / 10,367 lines = 1.10 per KLOC → 0.89
 
 ### Step 4
 
@@ -2164,6 +2254,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckitty/04/run.json))
 - phases.common: {"seconds": {"implement": 99.31200003623962, "review": 240.61399936676025, "rework": 140.86800003051758, "specify": 457.22499990463257, "test": 7268.3150000572205, "understand": 2413.04900097847, "waiting": 164.0}, "skipped_lines": 0, "usd": {"implement": 0.2092120398055453, "review": 0.5104359810803645, "rework": 0.30605749875217336, "specify": 1.861841894735877, "test": 15.4432816857461, "understand": 6.705813099879955, "waiting": 0.0}} ([src](../../../results/pass1/speckitty/04/transcripts/a1))
 - phases.method: [{"label": "/spec-kitty.specify", "seconds": 154.42300009727478, "stem": "arm-a1-001", "usd": 0.675263}, {"label": "(free text)", "seconds": 195.12999987602234, "stem": "arm-a1-002", "usd": 0.5519666000000001}, {"label": "(free text)", "seconds": 7.111999988555908, "stem": "arm-a1-003", "usd": 0.03456079999999995}, {"label": "(free text)", "seconds": 79.63100004196167, "stem": "arm-a1-004", "usd": 0.30855299999999986}, {"label": "(free text)", "seconds": 167.4800000190735, "stem": "arm-a1-005", "usd": 0.6637694000000003}, {"label": "/spec-kitty.tasks", "seconds": 398.1170001029968, "stem": "arm-a1-006", "usd": 1.7518938}, {"label": "(free text)", "seconds": 3615.457999944687, "stem": "arm-a1-007", "usd": 7.526607000000004}, {"label": "(free text)", "seconds": 1916.558000087738, "stem": "arm-a1-008", "usd": 4.178464800000002}, {"label": "(free text)", "seconds": 387.22499990463257, "stem": "arm-a1-009", "usd": 0.7217653999999989}, {"label": "(free text)", "seconds": 3568.375, "stem": "arm-a1-010", "usd": 7.686940600000007}, {"label": "/spec-kitty.accept", "seconds": 18.286999940872192, "stem": "arm-a1-011", "usd": 0.17992860000000022}, {"label": "(free text)", "seconds": 40.759000062942505, "stem": "arm-a1-012", "usd": 0.2924281999999998}, {"label": "/spec-kitty.merge", "seconds": 68.3769998550415, "stem": "arm-a1-013", "usd": 0.46450100000000205}] ([src](../../../results/pass1/speckitty/04/turns))
+- types: 0 mypy errors / 3,961 lines = 0.00 per KLOC → 1.00
+- lint: 38 ruff findings (27 safe-fix) = 13.7 weighted / 12,123 lines = 1.13 per KLOC → 0.89
 
 ### Step 5
 
@@ -2182,6 +2274,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckitty/05/run.json))
 - phases.common: {"seconds": {"implement": 631.8500001430511, "review": 1584.2389996051788, "rework": 5.578999996185303, "specify": 661.7839999198914, "test": 5905.595000505447, "understand": 2659.3189992904663, "waiting": 174.10000000000002}, "skipped_lines": 0, "usd": {"implement": 2.479678583893648, "review": 5.871937241274633, "rework": 0.008455283193108615, "specify": 3.0242297277337244, "test": 17.13612197293766, "understand": 10.054473190967217, "waiting": 0.0}} ([src](../../../results/pass1/speckitty/05/transcripts/a1))
 - phases.method: [{"label": "/spec-kitty.specify", "seconds": 116.44799995422363, "stem": "arm-a1-001", "usd": 0.7135476000000002}, {"label": "(free text)", "seconds": 23.2739999294281, "stem": "arm-a1-002", "usd": 0.09966359999999996}, {"label": "/spec-kitty.specify", "seconds": 22.73800015449524, "stem": "arm-a1-003", "usd": 0.18783899999999998}, {"label": "(free text)", "seconds": 44.13800001144409, "stem": "arm-a1-004", "usd": 0.12679360000000006}, {"label": "(free text)", "seconds": 164.46599984169006, "stem": "arm-a1-005", "usd": 0.6703354000000001}, {"label": "/spec-kitty.plan", "seconds": 175.25300002098083, "stem": "arm-a1-006", "usd": 0.9777944000000005}, {"label": "(free text)", "seconds": 140.9409999847412, "stem": "arm-a1-007", "usd": 0.6974574000000002}, {"label": "/spec-kitty.tasks", "seconds": 433.34500002861023, "stem": "arm-a1-008", "usd": 2.1566391999999985}, {"label": "/spec-kitty-implement-review", "seconds": 1371.0719997882843, "stem": "arm-a1-009", "usd": 4.1911432}, {"label": "(free text)", "seconds": 1056.6219999790192, "stem": "arm-a1-010", "usd": 4.435436199999996}, {"label": "(free text)", "seconds": 624.6139998435974, "stem": "arm-a1-011", "usd": 1.8798431999999998}, {"label": "(free text)", "seconds": 618.3030002117157, "stem": "arm-a1-012", "usd": 0.936993600000001}, {"label": "(free text)", "seconds": 1736.082999944687, "stem": "arm-a1-013", "usd": 4.6721112000000105}, {"label": "(free text)", "seconds": 2623.986999988556, "stem": "arm-a1-014", "usd": 9.073418600000007}, {"label": "(free text)", "seconds": 2037.1819999217987, "stem": "arm-a1-015", "usd": 4.825746999999986}, {"label": "/spec-kitty-mission-review", "seconds": 164.17799997329712, "stem": "arm-a1-016", "usd": 1.483762200000001}, {"label": "/spec-kitty.accept", "seconds": 24.507999897003174, "stem": "arm-a1-017", "usd": 0.3365197999999978}, {"label": "(free text)", "seconds": 41.70700001716614, "stem": "arm-a1-018", "usd": 0.6711449999999957}, {"label": "/spec-kitty.merge", "seconds": 30.786999940872192, "stem": "arm-a1-019", "usd": 0.43870580000000103}] ([src](../../../results/pass1/speckitty/05/turns))
+- types: 0 mypy errors / 4,606 lines = 0.00 per KLOC → 1.00
+- lint: 52 ruff findings (34 safe-fix) = 21.4 weighted / 14,914 lines = 1.43 per KLOC → 0.86
 
 ### Step 6
 
@@ -2200,6 +2294,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckitty/06/run.json))
 - phases.common: {"seconds": {"implement": 791.9679996967316, "review": 1152.72900056839, "rework": 1.1110000610351562, "specify": 584.2499997615814, "test": 9446.110999584198, "understand": 604.8250002861023, "waiting": 162.5}, "skipped_lines": 0, "usd": {"implement": 1.9005536860726953, "review": 2.6704358962907713, "rework": 0.0026661623475139383, "specify": 2.8141118087758716, "test": 23.049481589810462, "understand": 3.5199020567026915, "waiting": 0.0}} ([src](../../../results/pass1/speckitty/06/transcripts/a1))
 - phases.method: [{"label": "/spec-kitty.specify", "seconds": 136.44400000572205, "stem": "arm-a1-001", "usd": 0.797669}, {"label": "(free text)", "seconds": 66.49399995803833, "stem": "arm-a1-002", "usd": 0.23724480000000003}, {"label": "(free text)", "seconds": 118.30999994277954, "stem": "arm-a1-003", "usd": 0.5539795999999999}, {"label": "/spec-kitty.plan", "seconds": 217.49399995803833, "stem": "arm-a1-004", "usd": 1.3103938000000004}, {"label": "(free text)", "seconds": 191.03099989891052, "stem": "arm-a1-005", "usd": 0.8749081999999992}, {"label": "/spec-kitty.tasks", "seconds": 380.47100019454956, "stem": "arm-a1-006", "usd": 1.9417437999999998}, {"label": "/spec-kitty-implement-review", "seconds": 1084.0590000152588, "stem": "arm-a1-007", "usd": 2.505568200000001}, {"label": "(free text)", "seconds": 545.2480001449585, "stem": "arm-a1-008", "usd": 1.367623}, {"label": "(free text)", "seconds": 9778.849999904633, "stem": "arm-a1-009", "usd": 23.4663646}, {"label": "(free text)", "seconds": 17.032000064849854, "stem": "arm-a1-010", "usd": 0.2995832000000007}, {"label": "/spec-kitty.accept", "seconds": 29.456000089645386, "stem": "arm-a1-011", "usd": 0.3954170000000019}, {"label": "/spec-kitty.merge", "seconds": 15.631999969482422, "stem": "arm-a1-012", "usd": 0.2066560000000024}] ([src](../../../results/pass1/speckitty/06/turns))
+- types: 0 mypy errors / 5,909 lines = 0.00 per KLOC → 1.00
+- lint: 54 ruff findings (35 safe-fix) = 22.5 weighted / 18,221 lines = 1.23 per KLOC → 0.88
 
 ### Step 7
 
@@ -2218,6 +2314,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/speckitty/07/run.json))
 - phases.common: {"seconds": {"implement": 867.3849990367889, "review": 2446.9180002212524, "rework": 71.38899993896484, "specify": 3564.7970004081726, "test": 17940.147000789642, "understand": 2947.4559996128082, "waiting": 158.6}, "skipped_lines": 0, "usd": {"implement": 1.938220531301731, "review": 7.197722650295146, "rework": 0.1732520660934992, "specify": 10.025993366707453, "test": 41.55630326758791, "understand": 11.212443118014312, "waiting": 0.0}} ([src](../../../results/pass1/speckitty/07/transcripts/a1))
 - phases.method: [{"label": "/spec-kitty.specify", "seconds": 144.2350001335144, "stem": "arm-a1-001", "usd": 0.9719845999999999}, {"label": "(free text)", "seconds": 78.55700016021729, "stem": "arm-a1-002", "usd": 0.23069840000000008}, {"label": "(free text)", "seconds": 129.0880000591278, "stem": "arm-a1-003", "usd": 0.5634134}, {"label": "/spec-kitty.plan", "seconds": 200.55099987983704, "stem": "arm-a1-004", "usd": 1.8162906000000003}, {"label": "(free text)", "seconds": 333.94400000572205, "stem": "arm-a1-005", "usd": 1.3496593999999997}, {"label": "/spec-kitty.tasks", "seconds": 878.6370000839233, "stem": "arm-a1-006", "usd": 5.164848599999998}, {"label": "/spec-kitty-implement-review", "seconds": 1915.7650001049042, "stem": "arm-a1-007", "usd": 5.967656000000007}, {"label": "(free text)", "seconds": 586.5199999809265, "stem": "arm-a1-008", "usd": 1.3445824000000002}, {"label": "(free text)", "seconds": 9364.429999828339, "stem": "arm-a1-009", "usd": 22.724677200000063}, {"label": "(free text)", "seconds": 147.72099995613098, "stem": "arm-a1-010", "usd": 0.6408241999999902}, {"label": "(free text)", "seconds": 12535.886000156403, "stem": "arm-a1-011", "usd": 26.514925399999996}, {"label": "(free text)", "seconds": 2038.944000005722, "stem": "arm-a1-012", "usd": 3.665588800000009}, {"label": "/spec-kitty.accept", "seconds": 36.37899994850159, "stem": "arm-a1-013", "usd": 0.7143505999999888}, {"label": "/spec-kitty.merge", "seconds": 22.735999822616577, "stem": "arm-a1-014", "usd": 0.43443539999999814}] ([src](../../../results/pass1/speckitty/07/turns))
+- types: 0 mypy errors / 7,403 lines = 0.00 per KLOC → 1.00
+- lint: 87 ruff findings (52 safe-fix) = 40.2 weighted / 24,068 lines = 1.67 per KLOC → 0.83
 
 ### Lens verdicts
 
@@ -2406,6 +2504,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/superpowers/01/run.json))
 - phases.common: {"seconds": {"implement": 362.54499983787537, "review": 0.0, "rework": 0.0, "specify": 0.0, "test": 138.56300020217896, "understand": 439.5129997730255, "waiting": 27.8}, "skipped_lines": 0, "usd": {"implement": 1.2368288204831772, "review": 0.0, "rework": 0.0, "specify": 0.0, "test": 0.524622612858856, "understand": 1.5443779666579682, "waiting": 0.0}} ([src](../../../results/pass1/superpowers/01/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 913.7439999580383, "stem": "arm-a1-001", "usd": 3.1172030000000017}, {"label": "/superpowers:finishing-a-development-branch", "seconds": 10.961999893188477, "stem": "arm-a1-002", "usd": 0.09889839999999994}, {"label": "(free text)", "seconds": 16.036999940872192, "stem": "arm-a1-003", "usd": 0.08972800000000003}] ([src](../../../results/pass1/superpowers/01/turns))
+- types: 51 mypy errors / 1,077 lines = 47.35 per KLOC → 0.00
+- lint: 8 ruff findings (3 safe-fix) = 5.3 weighted / 1,368 lines = 3.87 per KLOC → 0.61
 
 ### Step 2
 
@@ -2424,6 +2524,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/superpowers/02/run.json))
 - phases.common: {"seconds": {"implement": 22.522000074386597, "review": 0.0, "rework": 26.631999969482422, "specify": 8.588000059127808, "test": 79.57599997520447, "understand": 79.81500029563904, "waiting": 12.4}, "skipped_lines": 0, "usd": {"implement": 0.08454121063393365, "review": 0.0, "rework": 0.0999689863949283, "specify": 0.03223692032345989, "test": 0.30204689960642606, "understand": 0.3006821830412523, "waiting": 0.0}} ([src](../../../results/pass1/superpowers/02/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 200.5860002040863, "stem": "arm-a1-001", "usd": 0.7528980000000002}, {"label": "/superpowers:finishing-a-development-branch", "seconds": 16.58299994468689, "stem": "arm-a1-002", "usd": 0.06657820000000003}] ([src](../../../results/pass1/superpowers/02/turns))
+- types: 44 mypy errors / 1,198 lines = 36.73 per KLOC → 0.00
+- lint: 7 ruff findings (2 safe-fix) = 5.2 weighted / 1,662 lines = 3.13 per KLOC → 0.69
 
 ### Step 3
 
@@ -2442,6 +2544,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/superpowers/03/run.json))
 - phases.common: {"seconds": {"implement": 24.43400001525879, "review": 0.0, "rework": 0.0, "specify": 6.919999837875366, "test": 72.40400004386902, "understand": 59.00399994850159, "waiting": 12.8}, "skipped_lines": 0, "usd": {"implement": 0.11677813650685949, "review": 0.0, "rework": 0.0, "specify": 0.03307295920398632, "test": 0.34117619484909345, "understand": 0.2808227094400606, "waiting": 0.0}} ([src](../../../results/pass1/superpowers/03/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 147.83899998664856, "stem": "arm-a1-001", "usd": 0.7064995999999999}, {"label": "/superpowers:finishing-a-development-branch", "seconds": 15.04200005531311, "stem": "arm-a1-002", "usd": 0.06535040000000003}] ([src](../../../results/pass1/superpowers/03/turns))
+- types: 48 mypy errors / 1,295 lines = 37.07 per KLOC → 0.00
+- lint: 8 ruff findings (3 safe-fix) = 5.3 weighted / 1,911 lines = 2.77 per KLOC → 0.72
 
 ### Step 4
 
@@ -2460,6 +2564,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/superpowers/04/run.json))
 - phases.common: {"seconds": {"implement": 9.539000034332275, "review": 0.0, "rework": 0.0, "specify": 0.0, "test": 115.25899982452393, "understand": 71.83199977874756, "waiting": 12.3}, "skipped_lines": 0, "usd": {"implement": 0.03725576386819702, "review": 0.0, "rework": 0.0, "specify": 0.0, "test": 0.44649948552777907, "understand": 0.27958155060402373, "waiting": 0.0}} ([src](../../../results/pass1/superpowers/04/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 178.11099982261658, "stem": "arm-a1-001", "usd": 0.6955645999999999}, {"label": "/superpowers:finishing-a-development-branch", "seconds": 18.615000009536743, "stem": "arm-a1-002", "usd": 0.06777219999999995}] ([src](../../../results/pass1/superpowers/04/turns))
+- types: 49 mypy errors / 1,367 lines = 35.84 per KLOC → 0.00
+- lint: 9 ruff findings (3 safe-fix) = 6.3 weighted / 2,078 lines = 3.03 per KLOC → 0.70
 
 ### Step 5
 
@@ -2478,6 +2584,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/superpowers/05/run.json))
 - phases.common: {"seconds": {"implement": 118.55899953842163, "review": 0.0, "rework": 0.0, "specify": 0.0, "test": 125.13499999046326, "understand": 211.10300040245056, "waiting": 12.6}, "skipped_lines": 0, "usd": {"implement": 0.4464860375203058, "review": 0.0, "rework": 0.0, "specify": 0.0, "test": 0.48329146513383214, "understand": 0.7926390973458616, "waiting": 0.0}} ([src](../../../results/pass1/superpowers/05/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 400.19599986076355, "stem": "arm-a1-001", "usd": 1.4732739999999998}, {"label": "/superpowers:finishing-a-development-branch", "seconds": 17.569000005722046, "stem": "arm-a1-002", "usd": 0.0822442000000001}, {"label": "(free text)", "seconds": 37.09699988365173, "stem": "arm-a1-003", "usd": 0.16689839999999978}] ([src](../../../results/pass1/superpowers/05/turns))
+- types: 52 mypy errors / 1,494 lines = 34.81 per KLOC → 0.00
+- lint: 13 ruff findings (6 safe-fix) = 7.6 weighted / 2,337 lines = 3.25 per KLOC → 0.67
 
 ### Step 6
 
@@ -2496,6 +2604,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/superpowers/06/run.json))
 - phases.common: {"seconds": {"implement": 0.0, "review": 0.0, "rework": 127.50499987602234, "specify": 6.203999996185303, "test": 293.9450001716614, "understand": 151.69199991226196, "waiting": 15.2}, "skipped_lines": 0, "usd": {"implement": 0.0, "review": 0.0, "rework": 0.41737981494541504, "specify": 0.020308414359020956, "test": 0.9865394029118977, "understand": 0.5043871677836665, "waiting": 0.0}} ([src](../../../results/pass1/superpowers/06/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 562.3600001335144, "stem": "arm-a1-001", "usd": 1.8407954000000002}, {"label": "/superpowers:finishing-a-development-branch", "seconds": 17.03499984741211, "stem": "arm-a1-002", "usd": 0.0878194000000001}] ([src](../../../results/pass1/superpowers/06/turns))
+- types: 70 mypy errors / 1,725 lines = 40.58 per KLOC → 0.00
+- lint: 15 ruff findings (7 safe-fix) = 8.7 weighted / 2,707 lines = 3.21 per KLOC → 0.68
 
 ### Step 7
 
@@ -2514,6 +2624,8 @@ Blinding is partial: judges and the owner's decision ratings saw anonymised labe
 - violations: 0 ([src](../../../results/pass1/superpowers/07/run.json))
 - phases.common: {"seconds": {"implement": 188.09100031852722, "review": 0.0, "rework": 0.0, "specify": 0.0, "test": 322.84699964523315, "understand": 202.92500019073486, "waiting": 13.3}, "skipped_lines": 0, "usd": {"implement": 0.5236368374906247, "review": 0.0, "rework": 0.0, "specify": 0.0, "test": 0.9054660267398977, "understand": 0.5673295357694771, "waiting": 0.0}} ([src](../../../results/pass1/superpowers/07/transcripts/a1))
 - phases.method: [{"label": "(free text)", "seconds": 682.5749998092651, "stem": "arm-a1-001", "usd": 1.9002105999999996}, {"label": "/superpowers:finishing-a-development-branch", "seconds": 31.336999893188477, "stem": "arm-a1-002", "usd": 0.09622180000000014}] ([src](../../../results/pass1/superpowers/07/turns))
+- types: 94 mypy errors / 1,994 lines = 47.14 per KLOC → 0.00
+- lint: 17 ruff findings (8 safe-fix) = 9.8 weighted / 3,181 lines = 3.08 per KLOC → 0.69
 
 ### Lens verdicts
 
