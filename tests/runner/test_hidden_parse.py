@@ -84,6 +84,19 @@ def test_the_arm_uid_gets_the_same_login_name_as_the_harness_uid():
     assert gr.splitlines()[-1] == "actor:x:1001:" and gr.startswith(GROUP)
 
 
+def test_a_script_without_the_arm_entry_mounts_accounts_with_no_row_for_the_arm_uid(tmp_state, monkeypatch):
+    monkeypatch.setattr(hidden, "_image_accounts", lambda image: (PASSWD + "x:x:1001:1001::/:/bin/sh\n",
+                                                                  GROUP + "x:x:1001:\n"))
+    p = Paths("dryhp", "dryrun")
+    with docker.recording() as got:
+        docker.run_argv(hidden._spec(p, _copy(p), ["true"], mode="script", arm_entry=False))
+    m = {x.ctr: x for x in got[0].mounts}
+    assert Path(m["/etc/passwd"].host).read_text() == PASSWD and Path(m["/etc/group"].host).read_text() == GROUP
+    assert m["/etc/passwd"].ro and got[0].user == "0:0" and got[0].cmd[:1] == ["choom"]     # still dropped to 1001
+    with pytest.raises(ValueError, match="only a script"):
+        hidden._spec(p, _copy(p), ["true"], mode="harness", arm_entry=False)
+
+
 def test_pytest_starts_as_the_harness_uid_with_only_the_caps_it_needs(tmp_state, accounts):
     _, _, s = _spec(tmp_state, "harness")
     caps = {"SETUID", "SETGID", "KILL", "DAC_OVERRIDE", "SETPCAP", "SYS_RESOURCE"}

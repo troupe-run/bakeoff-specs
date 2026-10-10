@@ -29,7 +29,7 @@ def test_a_topic_with_nothing_to_run_says_so():
 
 @pytest.mark.parametrize("bad", [
     {"files": {"../x": "a"}}, {"files": {"/etc/x": "a"}}, {"files": {"a/../../x": "a"}},
-    {"commands": []}, {"commands": [{"args": ["config", "show", "x"]}] * 9},
+    {"commands": []}, {"commands": [{"args": ["config", "show", "x"]}] * (cx.MAX_COMMANDS + 1)},
     {"commands": [{"args": ["config", "watch"]}]}, {"commands": [{"args": ["rm", "-rf", "/"]}]},
     {"commands": [{"args": ["config", "show"], "env": {"PATH": "/x"}}]},
     {"commands": [{"args": ["config", "show"], "env": {"lower": "x"}}]},
@@ -400,3 +400,209 @@ def test_a_hand_edit_step_rewrites_the_file_between_commands_without_running_tro
 def test_a_hand_edit_outside_the_theatre_or_without_content_is_refused(bad):
     with pytest.raises(judge.BadReply, match="edit"):
         cx.parse_plan(json.dumps({**PLAN, "commands": [bad]}))
+
+
+# ---- watch, sleep, symlinks, listings, --theatre, no login name (2026-10-10) ----------------------------------------
+
+WATCHED = {**PLAN, "show": [], "commands": [
+    {"watch": "start", "args": ["config", "watch"]},
+    {"edit": {"path": ".troupe/troupe.yml", "content": "note: by hand\n"}}, {"sleep": 0.3},
+    {"watch": "stop", "signal": "SIGINT"}]}
+
+
+def _plan(steps, **kw):
+    return {**PLAN, "show": [], "commands": steps, **kw}
+
+
+@pytest.mark.parametrize("ok", [
+    ["--theatre", ".", "config", "get", "x"], ["config", "--theatre=sub", "show"], ["config", "show", "--theatre", "a/b"],
+    ["--theatre=linked", "config", "set", "note", "--theatre-like"]])
+def test_a_relative_theatre_inside_the_theatre_is_accepted_in_any_position(ok):
+    assert cx.parse_plan(json.dumps(_plan([{"args": ok}])))["commands"][0]["args"] == ok
+
+
+@pytest.mark.parametrize("bad", [
+    ["--theatre", "/tmp", "config", "show"], ["--theatre=../x", "config", "show"], ["config", "show", "--theatre"],
+    ["config", "show", "--theatre="], ["--theat", "/x", "config", "show"], ["config", "show", "--the=/x"],
+    ["--theatre", ".", "show"], ["--theatre", "--theatre", "config", "show"]])
+def test_an_absolute_dotdot_missing_or_abbreviated_theatre_or_no_config_is_refused(bad):
+    with pytest.raises(judge.BadReply, match="theatre|config"):
+        cx.parse_plan(json.dumps(_plan([{"args": bad}])))
+
+
+def test_env_may_set_or_unset_the_login_variables_and_passwd_defaults_to_true():
+    got = cx.parse_plan(json.dumps(_plan([{"args": ["config", "show"], "env": {"USER": None, "LOGNAME": "o"}}])))
+    assert got["commands"][0]["env"] == {"USER": None, "LOGNAME": "o"} and got["passwd"] is True
+    assert cx.parse_plan(json.dumps(_plan([{"args": ["config", "show"]}], passwd=False)))["passwd"] is False
+
+
+@pytest.mark.parametrize("bad", [
+    _plan([{"args": ["config", "show"], "env": {"HOME": None}}]), _plan([{"args": ["config", "show"]}], passwd="no"),
+    _plan([{"args": ["config", "show"], "env": {"USER": 1}}])])
+def test_a_harness_variable_cannot_be_unset_and_passwd_must_be_a_boolean(bad):
+    with pytest.raises(judge.BadReply, match="env|passwd"):
+        cx.parse_plan(json.dumps(bad))
+
+
+def test_a_watch_plan_is_parsed_into_start_steps_stop():
+    got = cx.parse_plan(json.dumps(WATCHED))["commands"]
+    assert got[0] == {"watch": "start", "args": ["config", "watch"], "env": {}}
+    assert got[2] == {"sleep": 0.3, "args": [], "env": {}}
+    assert got[3] == {"watch": "stop", "signal": "SIGINT", "args": [], "env": {}}
+
+
+@pytest.mark.parametrize("steps, match", [
+    ([{"watch": "start", "args": ["config", "watch"]}], "ends with watch running"),
+    ([{"watch": "stop", "signal": "SIGINT"}], "no watch is running"),
+    ([{"watch": "start", "args": ["config", "watch"]}, {"watch": "start", "args": ["config", "watch"]}],
+     "already running"),
+    ([{"watch": "start", "args": ["config", "watch"]}, {"watch": "stop", "signal": "SIGKILL"}], "SIGINT or SIGTERM"),
+    ([{"watch": "start", "args": ["config", "watch"]}, {"watch": "stop"}], "SIGINT or SIGTERM"),
+    ([{"watch": "start", "args": ["config", "show"]}], "watch start runs `config watch`"),
+    ([{"args": ["--theatre", ".", "config", "watch"]}], "runs only as"),
+    ([{"watch": "pause"}], '"start" or "stop"'),
+    ([{"sleep": 1, "edit": {"path": "x", "content": ""}}], "one step kind"),
+    ([{"sleep": 0}], "sleep"), ([{"sleep": cx.MAX_SLEEP_SECONDS + 1}], "sleep"), ([{"sleep": True}], "sleep"),
+    ([{"sleep": 6}, {"sleep": 6}], "in all"),
+    ([{"symlink": {"path": "l", "target": "/etc"}}], "symlink"),
+    ([{"symlink": {"path": "l", "target": "../x"}}], "symlink"),
+    ([{"symlink": {"path": "/l", "target": "x"}}], "symlink"), ([{"symlink": {"path": "l"}}], "symlink"),
+    ([{"list": "/"}], "list"), ([{"list": "../x"}], "list"), ([{"list": ["."]}], "list"), (["x"], "JSON object")])
+def test_bad_watch_sleep_symlink_and_list_steps_are_refused(steps, match):
+    with pytest.raises(judge.BadReply, match=match):
+        cx.parse_plan(json.dumps(_plan(steps)))
+
+
+def test_the_plan_prompt_says_what_the_sandbox_now_allows():
+    p = cx.plan_prompt()
+    assert "cannot be unset" not in p and '"passwd": false' in p and '{"USER": null}' in p
+    assert '"watch": "start"' in p and '"signal": "SIGINT"' in p and '"symlink"' in p and '"list"' in p
+    assert '["--theatre", ".", "config", "get", "x"]' in p and "applies to the whole plan" in p
+
+
+def test_a_plan_at_its_limits_ends_inside_the_sandboxs_600_seconds_by_the_constants():
+    assert cx.worst_seconds() < 600 and cx.WATCH_SECONDS < 600                          # hidden.run_script: 600 s
+    assert cx.WATCH_READY_SECONDS <= cx.CMD_SECONDS and cx.WATCH_STOP_SECONDS + 1 <= cx.CMD_SECONDS
+
+
+def test_the_generated_script_always_ends_a_watch_bounded_in_time():
+    sc = cx.script(cx.parse_plan(json.dumps(WATCHED)), "/work/x")
+    assert "set -m" in sc and "trap 'if [ -n \"$W\" ]; then wstop TERM; fi' EXIT" in sc
+    assert 'kill -s KILL -- "-$W"' in sc and f"timeout -k 2 {cx.WATCH_SECONDS} uv run" in sc and "wstop INT" in sc
+
+
+FAKE_WATCH_UV = r"""#!/bin/bash
+shift 5                             # run --quiet --project <impl> troupe
+case " $* " in
+*" watch "*)
+  echo $$ > "$TMPDIR/watch.pid"
+  [ -f broken ] && { echo "config is broken" >&2; exit 4; }
+  if [ -f stubborn ]; then trap '' INT TERM
+  else trap 'echo "INT; file: $(cat .troupe/troupe.yml)"; exit 0' INT; trap 'echo TERM; exit 0' TERM; fi
+  echo "watching $PWD"; echo "watch argv: $*" >&2
+  while :; do sleep 0.1; done;;
+*) echo "argv: $*"; echo "user=${USER-unset} logname=${LOGNAME-unset}"
+   [ "$2" = mkstate ] && { mkdir -p .troupe/sub; printf '\0\1SQLite format 3' > .troupe/history.db; }
+   exit 0;;
+esac
+"""
+
+
+@pytest.fixture
+def watch_tools(fake_tools, tmp_path):
+    (tmp_path / "bin" / "uv").write_text(FAKE_WATCH_UV)
+    return fake_tools
+
+
+def test_watch_runs_in_the_background_while_a_hand_edit_lands_and_sigint_stops_it(watch_tools):
+    r = _run(cx.parse_plan(json.dumps(WATCHED)), watch_tools)
+    assert r[0]["watch"] == "start" and r[0]["rc"] is None and r[0]["stdout"].startswith("watching ")
+    assert r[0]["watch_state"] == "printed its watching line and is running" and "watch argv" in r[0]["stderr"]
+    assert r[1]["hand_edit"] == ".troupe/troupe.yml" and r[2]["sleep"] == 0.3
+    assert r[3]["watch"] == "stop" and r[3]["signal"] == "SIGINT" and r[3]["rc"] == 0
+    assert r[3]["watch_state"] == "exited after the signal"
+    assert "INT; file: note: by hand" in r[3]["stdout"] and r[3]["stdout"].startswith("watching ")
+
+
+def test_sigterm_reaches_watch_and_a_command_can_run_while_it_watches(watch_tools):
+    plan = cx.parse_plan(json.dumps(_plan([{"watch": "start", "args": ["--theatre", ".", "config", "watch"]},
+                                           {"args": ["config", "show", "note"]},
+                                           {"watch": "stop", "signal": "SIGTERM"}])))
+    r = _run(plan, watch_tools)
+    assert r[1]["stdout"].startswith("argv: config show note") and r[2]["stdout"].endswith("TERM\n")
+    assert r[2]["rc"] == 0
+
+
+def test_a_watch_that_exits_at_once_on_a_broken_config_is_reported_as_such(watch_tools):
+    plan = cx.parse_plan(json.dumps(_plan([{"watch": "start", "args": ["config", "watch"]}, {"sleep": 0.2},
+                                           {"watch": "stop", "signal": "SIGINT"}], files={"broken": ""})))
+    r = _run(plan, watch_tools)
+    assert r[0]["rc"] == 4 and r[0]["watch_state"] == "exited before printing a watching line"
+    assert "config is broken" in r[0]["stderr"]
+    assert r[2]["rc"] == 4 and r[2]["watch_state"] == "had already exited before the signal"
+
+
+def test_a_watch_that_ignores_the_signal_is_killed(watch_tools, monkeypatch):
+    monkeypatch.setattr(cx, "WATCH_STOP_SECONDS", 1)
+    plan = cx.parse_plan(json.dumps(_plan([{"watch": "start", "args": ["config", "watch"]},
+                                           {"watch": "stop", "signal": "SIGINT"}], files={"stubborn": ""})))
+    r = _run(plan, watch_tools)
+    assert r[1]["watch_state"] == "still running 1 s after the signal, so killed" and r[1]["rc"] == 128 + 9
+
+
+def test_a_watch_left_running_is_killed_when_the_script_ends(watch_tools, tmp_path):
+    plan = {"files": {}, "show": [], "commands": [{"watch": "start", "args": ["config", "watch"], "env": {}}]}
+    assert _run(plan, watch_tools)[0]["rc"] is None                                   # parse_plan would refuse it
+    with pytest.raises(ProcessLookupError):
+        os.kill(int((tmp_path / "watch.pid").read_text()), 0)
+
+
+def test_a_watch_still_running_at_the_lifetime_limit_says_so():
+    plan = cx.parse_plan(json.dumps(_plan([{"watch": "start", "args": ["config", "watch"]},
+                                           {"watch": "stop", "signal": "SIGINT"}])))
+    r = cx.parse_output("R 1 -   0 0 watching\nR 2 124   0 0 exited-before-stop", plan)
+    assert f"stopped after {cx.WATCH_SECONDS} s" in r[1]["stderr"] and r[1]["watch_state"].startswith("had already")
+
+
+def test_a_symlink_step_links_inside_the_theatre_and_theatre_may_name_it(watch_tools):
+    plan = cx.parse_plan(json.dumps(_plan([
+        {"symlink": {"path": "linked", "target": "sub"}}, {"symlink": {"path": "linked", "target": "x"}},
+        {"args": ["--theatre", "linked", "config", "show"]}, {"list": "."}], files={"sub/.troupe/troupe.yml": "a: 1\n"})))
+    r = _run(plan, watch_tools)
+    assert r[0]["rc"] == 0 and r[0]["symlink"] == {"path": "linked", "target": "sub"}
+    assert r[1]["rc"] == 1 and "already exists" in r[1]["stderr"]
+    assert r[2]["stdout"].startswith("argv: --theatre linked config show")
+    assert "linked -> sub\n" in r[3]["stdout"] and "sub/.troupe/troupe.yml  5 bytes\n" in r[3]["stdout"]
+
+
+def test_a_listing_shows_paths_and_sizes_never_a_binary_stores_bytes(watch_tools):
+    plan = cx.parse_plan(json.dumps(_plan([{"list": ".troupe"}, {"args": ["config", "mkstate"]}, {"list": ".troupe"},
+                                           {"list": "nowhere"}])))
+    r = _run(plan, watch_tools)
+    assert r[0]["stdout"] == ".troupe/troupe.yml  10 bytes\n" and r[0]["list"] == ".troupe"
+    assert r[2]["stdout"] == ".troupe/history.db  17 bytes\n.troupe/sub/\n.troupe/troupe.yml  10 bytes\n"
+    assert "SQLite" not in r[2]["stdout"] and r[3]["rc"] == 1 and "no directory nowhere" in r[3]["stderr"]
+
+
+def test_env_null_unsets_a_login_variable_for_one_command(watch_tools):
+    plan = cx.parse_plan(json.dumps(_plan([{"args": ["config", "show"], "env": {"USER": None, "LOGNAME": None}},
+                                           {"args": ["config", "show"], "env": {"USER": "someone"}}])))
+    r = _run(plan, {**watch_tools, "USER": "u", "LOGNAME": "l"})
+    assert "user=unset logname=unset" in r[0]["stdout"] and "user=someone logname=l" in r[1]["stdout"]
+
+
+def test_a_plan_without_passwd_runs_with_no_account_entry_for_the_arm_uid(monkeypatch):
+    from runner import hidden
+    seen = []
+    monkeypatch.setattr(hidden, "run_script", lambda p, copy, sc, arm_entry=True: seen.append(arm_entry) or "R 1 0  ")
+    rn = cx.ArmRunner("p")
+    rn._prep["Arm A"] = (None, paths.REPO_ROOT / "copy")
+    rn.run("Arm A", cx.parse_plan(json.dumps(_plan([{"args": ["config", "show"]}], passwd=False))))
+    rn.run("Arm A", cx.parse_plan(json.dumps(_plan([{"args": ["config", "show"]}]))))
+    assert seen == [False, True]
+
+
+def test_scrubbing_keeps_what_a_step_was():
+    r = cx._scrub_results([{"args": [], "env": {}, "rc": None, "stdout": "watching /tmp/tmp.AbC123", "stderr": "",
+                            "files": {}, "watch": "start", "watch_state": "x"}], ["alpha"])[0]
+    assert r["stdout"] == "watching /theatre" and r["watch"] == "start" and r["watch_state"] == "x"

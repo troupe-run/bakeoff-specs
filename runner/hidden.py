@@ -474,9 +474,19 @@ def _image_accounts(image: str) -> tuple[str, str]:
     return cat("/etc/passwd"), cat("/etc/group")
 
 
-def _accounts(p: Paths, image: str) -> tuple[Path, Path, str]:
+def without_arm_user(passwd: str, group: str) -> tuple[str, str]:
+    """The image's passwd/group with no row for uid/gid 1001: `pwd.getpwuid` (so `getpass` with no login variable)
+    fails for the arm, as on a host whose uid has no account (decision context, 2026-10-10)."""
+    def drop(text: str) -> str:
+        return "".join(l + "\n" for l in text.splitlines() if l.split(":")[2:3] != [str(ARM_UID)])
+    return drop(passwd), drop(group)
+
+
+def _accounts(p: Paths, image: str, *, arm_entry: bool = True) -> tuple[Path, Path, str]:
     pw, gr, name = with_arm_user(*_image_accounts(image))
-    d = _tester_root(p) / "etc"
+    if not arm_entry:
+        pw, gr = without_arm_user(*_image_accounts(image))
+    d = _tester_root(p) / ("etc" if arm_entry else "etc-no-arm")
     d.mkdir(parents=True, exist_ok=True)
     (d / "passwd").write_text(pw)
     (d / "group").write_text(gr)
@@ -485,16 +495,19 @@ def _accounts(p: Paths, image: str) -> tuple[Path, Path, str]:
 
 def _spec(p: Paths, copy: Path | None, cmd: list[str], *, mode: str, network: str = "none", proxy: bool = False,
           env: dict | None = None, workdir: str | None = None, timeout: int = 600, name: str = "tester",
-          reference: bool = False) -> RunSpec:
+          reference: bool = False, arm_entry: bool = True) -> RunSpec:
     """`mode`: "prep" (the arm's build: uid 1001, no caps, no harness mounts), "harness" (the entry script runs
     `cmd` — pytest — as uid 1000; the arm is uid 1001 via --cmd-prefix) or "script" (`cmd` as uid 1001, no
     caps). All run in the tester image, which holds no reference; `reference=True` (harness mode, no arm copy)
-    selects the reference image for the harness's own reference runs. Creates a fresh, empty home for this one
-    container (removed by `_run`)."""
+    selects the reference image for the harness's own reference runs. `arm_entry=False` ("script" only): uid 1001
+    has no passwd/group row, so it has no login name unless LOGNAME/USER give one. Creates a fresh, empty home for
+    this one container (removed by `_run`)."""
     if mode not in ("prep", "harness", "script"):
         raise ValueError(mode)
     if reference and (mode != "harness" or copy is not None):
         raise ValueError("the reference image runs only the harness's reference runs, never an arm copy")
+    if not arm_entry and mode != "script":
+        raise ValueError("only a script runs without the arm's passwd entry")
     pins = config.load_pins()
     image = pins.images["tester_ref" if reference else "tester"]
     home = _tester_root(p) / f"home-{uuid.uuid4().hex[:12]}"
@@ -505,7 +518,7 @@ def _spec(p: Paths, copy: Path | None, cmd: list[str], *, mode: str, network: st
     e = {**ENV, **(env or {})}
     user, caps, tmpfs, stdin = f"{ARM_UID}:{ARM_UID}", (), (), False    # prep: arm build code is untrusted too
     if mode != "prep":
-        passwd, group, login = _accounts(p, image)
+        passwd, group, login = _accounts(p, image, arm_entry=arm_entry)
         mounts += [Mount(passwd, "/etc/passwd", True), Mount(group, "/etc/group", True)]
         e |= {"LOGNAME": login, "USER": login, "BAKEOFF_SHARE_THEATRE_WITH_ARM": "1"}
         user = "0:0"
@@ -700,9 +713,11 @@ def _collect(p: Paths, step: int, first_only: bool) -> list[str]:
     return parse_collected(res["pytest.log"].decode(errors="replace"))
 
 
-def run_script(p: Paths, copy: Path, script: str) -> str:
-    """A shell script in the tester sandbox as the ARM uid (network none, no caps); used by the hand-edit probe."""
-    return _run(_spec(p, copy, ["bash", "-c", script], mode="script"), timeout=600).stdout.decode(errors="replace")
+def run_script(p: Paths, copy: Path, script: str, *, arm_entry: bool = True) -> str:
+    """A shell script in the tester sandbox as the ARM uid (network none, no caps); used by the hand-edit probe and
+    the decision context (`arm_entry=False`: the uid has no passwd entry)."""
+    return _run(_spec(p, copy, ["bash", "-c", script], mode="script", arm_entry=arm_entry),
+                timeout=600).stdout.decode(errors="replace")
 
 
 def _single(p: Paths, copy: Path | None, step: int, nodeid: str, junit_id: str, *, impl: str | None = None,
