@@ -95,7 +95,11 @@ Adjustments, each from something pass 1 showed:
 - **Test names say what broke,** and each test checks one behaviour.
 - **Less code is generally better,** but not so terse that it becomes obtuse.
 
-## For pass 2
+## For pass 2 (not planned)
+
+- **The owner decided on 2026-10-11 not to run pass 2.** It would take about two weeks, mostly machine time
+  competing with the troupe build, and OpenSpec's lead could no longer change the build decision cheaply. The
+  notes below stay as a record, in case the harness is ever re-run.
 
 - **Carry the scoring changes forward:**
   - lint per KLOC, with safe fixes weighted 0.1;
