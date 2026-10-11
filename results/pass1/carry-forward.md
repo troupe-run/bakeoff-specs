@@ -118,7 +118,6 @@ Adjustments, each from something pass 1 showed:
 
 ## Owner admin
 
-- **Bake-off GitHub tokens:** revoke `pass1`, `pass1-disc` and `canary`, and delete the `bakeoff-gh-*` keychain
-  items.
+- **Bake-off GitHub tokens:** revoked and the keychain items deleted (2026-10-11).
 - **Arm repos:** they stay private until you decide otherwise.
 - **The troupe.run product repo:** publish it before sharing the site, since "Watch on GitHub" 404s until it exists.
